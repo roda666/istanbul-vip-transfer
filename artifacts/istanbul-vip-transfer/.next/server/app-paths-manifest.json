@@ -1,6 +1,6 @@
 {
-  "/robots.txt/route": "app/robots.txt/route.js",
-  "/_not-found/page": "app/_not-found/page.js",
   "/page": "app/page.js",
-  "/sehirler-arasi-transfer/page": "app/sehirler-arasi-transfer/page.js"
+  "/istanbul-havalimani-transfer/page": "app/istanbul-havalimani-transfer/page.js",
+  "/blog/page": "app/blog/page.js",
+  "/vip-transfer/page": "app/vip-transfer/page.js"
 }

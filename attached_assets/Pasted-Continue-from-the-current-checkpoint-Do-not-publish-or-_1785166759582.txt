@@ -1,0 +1,148 @@
+Continue from the current checkpoint. Do not publish or connect the production domain.
+
+Complete the Blog Phase for the website.
+
+1. Blog architecture
+
+- Complete the existing /blog page.
+- Complete the existing /blog/[slug] dynamic route.
+- Preserve the current black-and-gold visual design.
+- Create a clean, responsive blog listing with article cards.
+- Each card must show:
+  - article title
+  - short summary
+  - category
+  - publication date
+  - “Devamını Oku” link
+- Add breadcrumb navigation.
+- Add links to relevant service pages naturally.
+- Keep all blog data in one centralized TypeScript content file so it can later be connected to an admin panel or CMS.
+- Do not build the admin panel yet.
+
+2. Create these three original Turkish articles
+
+Article 1:
+Slug:
+/istanbul-havalimani-transfer-rehberi
+
+H1:
+İstanbul Havalimanı Transfer Rehberi
+
+Topic:
+Explain how private airport transfer works, reservation steps, airport pickup, luggage planning, vehicle selection and transfer preparation.
+
+Article 2:
+Slug:
+/sabiha-gokcen-transfer-rehberi
+
+H1:
+Sabiha Gökçen Havalimanı Transfer Rehberi
+
+Topic:
+Explain advance reservation, passenger pickup, flight information, luggage requirements, Mercedes Vito and Sprinter selection and door-to-door transfer planning.
+
+Article 3:
+Slug:
+/vip-transfer-ile-taksi-arasindaki-farklar
+
+H1:
+VIP Transfer ile Taksi Arasındaki Farklar
+
+Topic:
+Provide a balanced comparison covering advance reservation, vehicle planning, group and luggage requirements, airport pickup and private transportation expectations. Do not make negative or unsupported claims about taxis.
+
+3. Article requirements
+
+Each article must:
+
+- Be unique and written in natural Turkish.
+- Contain approximately 900–1,300 useful words.
+- Use one H1 only.
+- Use logical H2 and H3 headings.
+- Include a short introduction.
+- Include practical passenger guidance.
+- Include 5 relevant FAQs.
+- Include a reservation CTA.
+- Include 3–5 natural internal links.
+- Avoid keyword stuffing.
+- Avoid copying text from the old website.
+- Avoid repeating identical paragraphs between articles.
+
+Do not invent:
+
+- Prices
+- Distances
+- Travel times
+- Guarantees
+- Customer numbers
+- Awards
+- Licences or certifications
+- Company history
+- Fake reviews or statistics
+
+4. SEO requirements
+
+For /blog:
+
+- Meta title: Blog | İstanbul VIP Transfer Rehberleri
+- Meta description: İstanbul havalimanı transferi, VIP ulaşım, araç seçimi ve rezervasyon süreçleri hakkında faydalı rehberleri inceleyin.
+- Canonical: https://www.istanbulviptransfer.com/blog
+
+For every article:
+
+- Create a unique meta title.
+- Create a unique meta description.
+- Create a canonical URL.
+- Add BreadcrumbList structured data.
+- Add BlogPosting structured data.
+- Use “İstanbul VIP Transfer” as the publisher organization.
+- Do not invent a personal author. Use “İstanbul VIP Transfer” as the author.
+- Do not add Review or AggregateRating schema.
+- Add the blog index and the three actual article URLs to sitemap.ts.
+- Do not add the literal /blog/[slug] pattern to the sitemap.
+- Remove noindex from /blog and these three completed articles.
+- Unknown or nonexistent slugs must return a proper 404 page and must not be indexable.
+
+5. Navigation and internal links
+
+- Keep Blog in desktop and mobile navigation.
+- Add Blog to footer quick links.
+- Add relevant blog links from related service pages where contextually appropriate.
+- Add a “İlgili Hizmetler” and “Diğer Yazılar” section to article pages.
+- Ensure links use descriptive anchor text.
+
+6. Images
+
+- Do not fabricate external image URLs.
+- If suitable existing local images are available, reuse them with descriptive Turkish alt text.
+- If no suitable article image exists, use the current visual design without broken image placeholders.
+- Do not download copyrighted images.
+
+7. Verification
+
+Run:
+
+- lint
+- TypeScript typecheck
+- production build
+
+Test:
+
+- /blog
+- all three article URLs
+- one nonexistent blog slug
+- desktop, tablet and mobile layouts
+- navigation and footer links
+- sitemap output
+
+Report:
+
+- files changed
+- completed blog URLs
+- metadata and structured data added
+- sitemap changes
+- 404 behavior
+- lint, typecheck and production build results
+- remaining draft/noindex routes
+
+Do not publish the website.

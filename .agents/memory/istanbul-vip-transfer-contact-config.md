@@ -60,8 +60,19 @@ Excluded: 6 draft scaffolds, /blog, /blog/[slug].
 ## Content rules (never invent)
 No prices, distances, travel times, unverified passenger counts, guarantees, awards, company history, licences, fake reviews or statistics.
 
-## Blog infrastructure
-`lib/blog-data.ts` — empty `blogPosts[]`. `BLOG_LIVE = blogPosts.length > 0`. Blog pages noindex until first approved article.
+## Blog infrastructure — LIVE
+`lib/blog-data.ts` — 3 published articles. `BLOG_LIVE = true`.
+Slugs: `istanbul-havalimani-transfer-rehberi`, `sabiha-gokcen-transfer-rehberi`, `vip-transfer-ile-taksi-arasindaki-farklar`.
+`components/ArticleBody.tsx` renders markdown-like body strings (##, ###, - list, **bold**, [text](url)).
+
+## Blog back-links from service pages
+IST and SAW airport pages each link to their matching rehberi + VIP-vs-taxi articles.
+VIP transfer page links to all 3 articles.
+Pattern: `<section className="py-16 bg-gray-50">` containing a responsive grid of `<Link>` cards, placed before JSON-LD scripts.
+
+## Sitemap inclusions (current)
+16 indexed routes: /, IST, SAW, /vip-transfer, /hizmetler, /sehirler-arasi-transfer, /soforlu-arac-kiralama, /otel-transfer, /saglik-turizmi-transfer, /kurumsal-vip-transfer, /araclar, /hakkimizda, /iletisim, /blog, 3 blog article URLs.
+Excluded: 6 draft scaffolds.
 
 ## Stale .next cache anti-pattern
 Never run `pnpm build` while `next dev` is running. Stop dev → build → rm -rf .next → restart dev.
@@ -69,5 +80,5 @@ Never run `pnpm build` while `next dev` is running. Stop dev → build → rm -r
 ## Social media links
 Removed entirely — restore when owner provides real URLs.
 
-## Build status after Content Phase 1
-✓ Compiled · ✓ Lint · ✓ Types · 25/25 static pages.
+## Build status (current)
+✓ Compiled · ✓ Lint · ✓ Types · 28/28 static pages.

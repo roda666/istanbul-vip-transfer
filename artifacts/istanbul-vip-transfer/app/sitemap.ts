@@ -10,11 +10,12 @@ const BASE = SITE.siteUrl;
  *  - /istanbul-bursa-transfer, /istanbul-sapanca-transfer,
  *    /istanbul-gunubirlik-turlar, /sapanca-masukiye-turu,
  *    /bursa-gunubirlik-tur, /yalova-gunubirlik-tur  — noindex until content approved
- *  - /blog and /blog/[slug] — noindex until first article is approved
  */
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     { url: BASE, lastModified: new Date(), changeFrequency: 'weekly', priority: 1 },
+
+    // Airport transfer pages
     {
       url: `${BASE}/istanbul-havalimani-transfer`,
       lastModified: new Date(),
@@ -27,6 +28,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly',
       priority: 0.9,
     },
+
+    // Service pages
     {
       url: `${BASE}/vip-transfer`,
       lastModified: new Date(),
@@ -69,6 +72,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly',
       priority: 0.75,
     },
+
+    // Info pages
     {
       url: `${BASE}/araclar`,
       lastModified: new Date(),
@@ -83,6 +88,34 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     {
       url: `${BASE}/iletisim`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    },
+
+    // Blog index
+    {
+      url: `${BASE}/blog`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.65,
+    },
+
+    // Blog articles
+    {
+      url: `${BASE}/blog/istanbul-havalimani-transfer-rehberi`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    },
+    {
+      url: `${BASE}/blog/sabiha-gokcen-transfer-rehberi`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    },
+    {
+      url: `${BASE}/blog/vip-transfer-ile-taksi-arasindaki-farklar`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.6,

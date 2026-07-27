@@ -5,7 +5,7 @@ const services = [
   {
     icon: Plane,
     title: 'Havalimanı Transferi',
-    description: 'İstanbul Havalimanı ve Sabiha Gökçen\'den tüm destinasyonlara sabit fiyatlı, konforlu ulaşım.',
+    description: 'İstanbul Havalimanı (IST) ve Sabiha Gökçen (SAW) transferleri için rezervasyon alıyoruz.',
   },
   {
     icon: Hotel,

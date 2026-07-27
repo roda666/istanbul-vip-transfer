@@ -1,30 +1,30 @@
 import { motion } from 'framer-motion';
-import { Clock, Users, ShieldCheck, Tag } from 'lucide-react';
+import { Clock, Plane, Car, User } from 'lucide-react';
 
 const stats = [
   {
     icon: Clock,
     number: '7/24',
-    label: 'Hizmet',
-    description: 'Her saat, her gün. Geç gece varışı mı? Sabah erken uçuş mu? Daima yanınızdayız.',
+    label: 'Rezervasyon Desteği',
+    description: 'Her saat, her gün. Geç gece varışı veya sabah erken uçuş olsun — WhatsApp ile ulaşabilirsiniz.',
   },
   {
-    icon: Users,
-    number: '+5.000',
-    label: 'Mutlu Yolcu',
-    description: 'Beş bini aşkın memnun müşteri ile İstanbul\'un güvendiği transfer markasıyız.',
+    icon: Plane,
+    number: 'IST & SAW',
+    label: 'Havalimanı Transferi',
+    description: 'İstanbul Havalimanı (IST) ve Sabiha Gökçen Havalimanı (SAW) için transfer rezervasyonu alıyoruz.',
   },
   {
-    icon: ShieldCheck,
-    number: '%100',
-    label: 'Zamanında Varış',
-    description: 'Uçuş takibi yapıyor, olası gecikmelerde sizi bekliyoruz. Geç kalmak bizim için yok.',
+    icon: Car,
+    number: 'Vito & Sprinter',
+    label: 'VIP Araç Seçenekleri',
+    description: 'Mercedes Vito ve Mercedes Sprinter VIP ile bireysel ve grup transferleri düzenliyoruz.',
   },
   {
-    icon: Tag,
-    number: 'Sabit',
-    label: 'Şeffaf Fiyat',
-    description: 'Metre çalışmıyoruz. Rezervasyon anında öğrendiğiniz fiyat, ödediğiniz fiyattır.',
+    icon: User,
+    number: 'Meet & Greet',
+    label: 'Karşılama Hizmeti',
+    description: 'Sürücünüz isim tabelasıyla karşılar, bagajlarınıza yardımcı olur ve sizi hedefinize ulaştırır.',
   },
 ];
 
@@ -53,7 +53,7 @@ export default function TrustSignals() {
             Neden Biz
           </span>
           <h2 className="text-4xl md:text-5xl font-bold mb-5" style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#FFFFFF' }}>
-            Farkımız Rakamlarla
+            Hizmet Anlayışımız
           </h2>
           <div className="mx-auto" style={{ width: '60px', height: '1px', background: 'linear-gradient(90deg, transparent, #C9A84C, transparent)' }} />
         </motion.div>

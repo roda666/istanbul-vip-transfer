@@ -5,7 +5,7 @@ import { Plus, Minus } from 'lucide-react';
 const faqs = [
   {
     question: 'Transfer ücretleriniz nasıl belirleniyor?',
-    answer: 'Tüm transferlerimiz sabit fiyatlıdır. Mesafeye, araç tipine ve güzergaha göre önceden belirlenen ücret, rezervasyon anında size iletilir. Trafik veya gecikme durumunda ek ücret talep etmiyoruz. Ödediğiniz ücret, başta söylediğimiz ücrettir.',
+    answer: 'Fiyatlar mesafeye, araç tipine ve güzergaha göre belirlenir. Fiyat bilgisi almak için WhatsApp üzerinden bizimle iletişime geçin; rezervasyon öncesinde size bilgi verilir.',
   },
   {
     question: 'Kaç bagaj taşıyabilirim?',
@@ -13,11 +13,11 @@ const faqs = [
   },
   {
     question: 'Uçuşum gecikirse sürücü bekler mi?',
-    answer: 'Evet, uçuşunuzu anlık olarak takip ediyoruz. Herhangi bir gecikme durumunda sürücünüz beklemeye devam eder. İstanbul Havalimanı ve Sabiha Gökçen transferlerinde 60 dakikaya kadar bekleme ücretsizdir. Sonrası için makul bir ek ücret uygulanır.',
+    answer: 'Uçuşunuzu takip ediyoruz. Gecikme durumunda sürücünüz bilgilendirilir. Bekleme koşulları ve detaylar için rezervasyon sırasında WhatsApp üzerinden bilgi alabilirsiniz.',
   },
   {
     question: 'Hangi ödeme yöntemlerini kabul ediyorsunuz?',
-    answer: 'Nakit (TL, EUR, USD), kredi/banka kartı ve online ödeme kabul ediyoruz. Kurumsal müşterilerimiz için fatura ve havale seçeneği de mevcuttur. Ödeme aracınızda yapılır.',
+    answer: 'Ödeme yöntemleri hakkında bilgi almak için WhatsApp üzerinden bizimle iletişime geçin; rezervasyon öncesinde size detay verilir.',
   },
   {
     question: 'Ne kadar önceden rezervasyon yapmalıyım?',

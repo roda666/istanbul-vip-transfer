@@ -5,7 +5,6 @@ import BookingForm from '@/components/BookingForm';
 import VehicleFleet from '@/components/VehicleFleet';
 import Services from '@/components/Services';
 import TrustSignals from '@/components/TrustSignals';
-import Reviews from '@/components/Reviews';
 import FAQ from '@/components/FAQ';
 import Contact from '@/components/Contact';
 import Footer from '@/components/Footer';
@@ -17,7 +16,7 @@ function App() {
 
     const metaDesc = document.querySelector('meta[name="description"]') || document.createElement('meta');
     metaDesc.setAttribute('name', 'description');
-    metaDesc.setAttribute('content', 'İstanbul\'un en güvenilir VIP havalimanı transfer hizmeti. Mercedes Vito ve Sprinter ile İstanbul Havalimanı ve Sabiha Gökçen\'den 7/24 lüks, sabit fiyatlı transfer. Hemen WhatsApp ile rezervasyon yapın.');
+    metaDesc.setAttribute('content', 'İstanbul VIP havalimanı transfer hizmeti. Mercedes Vito ve Sprinter VIP ile İstanbul Havalimanı (IST) ve Sabiha Gökçen (SAW) transferleri. 7/24 WhatsApp ile rezervasyon.');
     if (!document.querySelector('meta[name="description"]')) {
       document.head.appendChild(metaDesc);
     }
@@ -39,7 +38,6 @@ function App() {
         <VehicleFleet />
         <Services />
         <TrustSignals />
-        <Reviews />
         <FAQ />
         <Contact />
       </main>

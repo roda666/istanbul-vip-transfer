@@ -127,9 +127,9 @@ export default function Hero() {
           data-testid="hero-trust-bar"
         >
           {[
-            { number: '+5.000', label: 'Mutlu Yolcu' },
-            { number: '7/24', label: 'Kesintisiz Hizmet' },
-            { number: '100%', label: 'Zamanında Varış' },
+            { number: 'IST & SAW', label: 'Havalimanı Transfer' },
+            { number: '7/24', label: 'Rezervasyon Desteği' },
+            { number: 'Vito & Sprinter', label: 'VIP Araç Seçenekleri' },
           ].map((item, i) => (
             <div key={i} className="flex flex-col items-center" data-testid={`hero-trust-item-${i}`}>
               <span className="text-2xl md:text-3xl font-bold" style={{ color: '#C9A84C', fontFamily: 'Playfair Display, Georgia, serif' }}>{item.number}</span>

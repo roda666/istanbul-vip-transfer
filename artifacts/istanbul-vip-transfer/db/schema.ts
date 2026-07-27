@@ -165,6 +165,43 @@ export const auditLogs = pgTable('audit_logs', {
   metadata: jsonb('metadata'),
 });
 
+export const vehicles = pgTable('vehicles', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
+  shortDescription: text('short_description'),
+  fullDescription: text('full_description'),
+  passengerCapacity: integer('passenger_capacity'),
+  luggageCapacity: integer('luggage_capacity'),
+  vehicleType: text('vehicle_type'),
+  /** Ordered list of feature strings, e.g. ["Wi-Fi", "Klima"] */
+  features: jsonb('features').$type<string[]>().default([]).notNull(),
+  coverImage: text('cover_image'),
+  coverImageAlt: text('cover_image_alt'),
+  /** Gallery images: [{ url: string, alt: string }] */
+  gallery: jsonb('gallery').$type<Array<{ url: string; alt: string }>>().default([]).notNull(),
+  displayOrder: integer('display_order').default(0).notNull(),
+  isFeatured: boolean('is_featured').default(false).notNull(),
+  status: contentStatusEnum('status').default('DRAFT').notNull(),
+  // SEO fields
+  metaTitle: text('meta_title'),
+  metaDescription: text('meta_description'),
+  canonicalUrl: text('canonical_url'),
+  ogImage: text('og_image'),
+  robotsIndex: boolean('robots_index').default(true).notNull(),
+  robotsFollow: boolean('robots_follow').default(true).notNull(),
+  // Workflow timestamps
+  approvedAt: timestamp('approved_at', { withTimezone: true }),
+  approvedBy: uuid('approved_by').references(() => adminUsers.id),
+  scheduledAt: timestamp('scheduled_at', { withTimezone: true }),
+  publishedAt: timestamp('published_at', { withTimezone: true }),
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  createdBy: uuid('created_by').references(() => adminUsers.id),
+  updatedBy: uuid('updated_by').references(() => adminUsers.id),
+});
+
 // ── Inferred TypeScript types ────────────────────────────────────────────────
 
 export type AdminUser = typeof adminUsers.$inferSelect;
@@ -180,3 +217,5 @@ export type AIContentSuggestion = typeof aiContentSuggestions.$inferSelect;
 export type NewAIContentSuggestion = typeof aiContentSuggestions.$inferInsert;
 export type ResearchSource = typeof researchSources.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
+export type Vehicle = typeof vehicles.$inferSelect;
+export type NewVehicle = typeof vehicles.$inferInsert;

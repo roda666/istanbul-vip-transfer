@@ -10,6 +10,101 @@
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/page.js"
+    ],
+    "/hizmetler/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/hizmetler/page.js"
+    ],
+    "/istanbul-havalimani-transfer/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/istanbul-havalimani-transfer/page.js"
+    ],
+    "/sabiha-gokcen-havalimani-transfer/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/sabiha-gokcen-havalimani-transfer/page.js"
+    ],
+    "/vip-transfer/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/vip-transfer/page.js"
+    ],
+    "/sehirler-arasi-transfer/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/sehirler-arasi-transfer/page.js"
+    ],
+    "/araclar/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/araclar/page.js"
+    ],
+    "/hakkimizda/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/hakkimizda/page.js"
+    ],
+    "/iletisim/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/iletisim/page.js"
+    ],
+    "/soforlu-arac-kiralama/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/soforlu-arac-kiralama/page.js"
+    ],
+    "/otel-transfer/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/otel-transfer/page.js"
+    ],
+    "/saglik-turizmi-transfer/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/saglik-turizmi-transfer/page.js"
+    ],
+    "/kurumsal-vip-transfer/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/kurumsal-vip-transfer/page.js"
+    ],
+    "/istanbul-bursa-transfer/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/istanbul-bursa-transfer/page.js"
+    ],
+    "/istanbul-sapanca-transfer/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/istanbul-sapanca-transfer/page.js"
+    ],
+    "/istanbul-gunubirlik-turlar/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/istanbul-gunubirlik-turlar/page.js"
+    ],
+    "/sapanca-masukiye-turu/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/sapanca-masukiye-turu/page.js"
+    ],
+    "/bursa-gunubirlik-tur/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/bursa-gunubirlik-tur/page.js"
+    ],
+    "/yalova-gunubirlik-tur/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/yalova-gunubirlik-tur/page.js"
+    ],
+    "/blog/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/blog/page.js"
     ]
   }
 }

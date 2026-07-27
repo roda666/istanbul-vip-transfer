@@ -1,0 +1,140 @@
+Implement Phase 1 of the new navigation, services architecture and blog infrastructure.
+
+Important prerequisite:
+
+Before changing files, verify that the current Next.js preview is running and all existing routes return successfully. If the preview runtime error has not been fixed, stop and report it. Do not add new architecture on top of a broken preview.
+
+1. Redesign the desktop and mobile navigation with these top-level items:
+
+* Ana Sayfa → /
+* Hizmetler → /hizmetler
+* Araçlarımız → /araclar
+* Blog → /blog
+* Hakkımızda → /hakkimizda
+* İletişim → /iletisim
+* Rezervasyon Yap → /#rezervasyon
+
+2. Create one centralized typed navigation configuration file. Both desktop and mobile menus must use the same data source.
+
+3. Create an accessible “Hizmetler” dropdown or mega menu with these groups:
+
+Havalimanı Transferleri:
+
+* İstanbul Havalimanı Transfer → /istanbul-havalimani-transfer
+* Sabiha Gökçen Transfer → /sabiha-gokcen-havalimani-transfer
+
+VIP ve Özel Transferler:
+
+* VIP Transfer → /vip-transfer
+* Şoförlü Araç Kiralama → /soforlu-arac-kiralama
+* Otel Transferi → /otel-transfer
+* Sağlık Turizmi Transferi → /saglik-turizmi-transfer
+* Kurumsal VIP Transfer → /kurumsal-vip-transfer
+
+Şehirler Arası Transferler:
+
+* Şehirler Arası Transfer → /sehirler-arasi-transfer
+* İstanbul–Bursa Transfer → /istanbul-bursa-transfer
+* İstanbul–Sapanca Transfer → /istanbul-sapanca-transfer
+
+Günübirlik Turlar:
+
+* İstanbul Günübirlik Turlar → /istanbul-gunubirlik-turlar
+* Sapanca–Maşukiye Turu → /sapanca-masukiye-turu
+* Bursa Günübirlik Tur → /bursa-gunubirlik-tur
+* Yalova Günübirlik Tur → /yalova-gunubirlik-tur
+
+4. Desktop requirements:
+
+* Accessible dropdown or mega menu
+* Keyboard navigation
+* Escape key closes the menu
+* Visible focus states
+* Correct aria-expanded and aria-controls attributes
+* No href="#" links
+* Preserve the current black and gold visual style
+
+5. Mobile requirements:
+
+* Use an accessible accordion inside the mobile navigation
+* Subgroups must expand and collapse
+* All links must be large enough for touch
+* Opening or closing the menu must not cause horizontal overflow
+
+6. Create a /hizmetler hub page.
+
+It must list all service categories and routes using the same centralized navigation data. Existing completed services should remain indexable.
+
+7. Create route scaffolds for the new missing service and tour pages listed above.
+
+For this phase:
+
+* Use a unique H1
+* Use a short, factual introduction
+* Include breadcrumb navigation
+* Include the existing reservation form and contact CTAs
+* Set robots to noindex, follow
+* Exclude unfinished routes from sitemap.ts
+* Do not add invented prices, distances, durations, destinations, guarantees or statistics
+* Do not copy old website content automatically
+* Do not display “Lorem ipsum”
+* Keep a centralized draft flag so each route can later be made indexable after its final content is approved
+
+8. Create blog infrastructure:
+
+* /blog
+* /blog/[slug]
+* A typed local content source suitable for later CMS migration
+* generateStaticParams for static-export compatibility
+* Responsive blog-card layout
+* Article metadata fields: title, slug, description, published date, updated date, category, image, image ALT and body
+* BlogPosting and BreadcrumbList structured data only on real article pages
+
+Do not create fake blog articles. Keep /blog as noindex and exclude it from the sitemap until the first approved article is added.
+
+9. Add Blog and the existing service routes to the footer. Do not add legal-page links until those pages are actually created.
+
+10. Do not import these old-site features in this phase:
+
+* Login or registration
+* Reservation-query/member system
+* Villa Azelya
+* Old prices
+* Old travel times or distances
+* Old customer/statistics counters
+* Unverified addresses, licence details or company names
+* English pages
+* Admin panel
+* Database
+
+11. Preserve:
+
+* Existing design
+* Next.js App Router
+* Static-export compatibility
+* Verified contact information
+* Google Business Profile link
+* Genuine Google reviews
+* Existing metadata and technical SEO fixes
+* Working WhatsApp reservation form
+
+12. Do not publish and do not connect the production domain.
+
+13. Run:
+
+* lint
+* typecheck
+* Next.js production build
+* Route validation
+* Desktop and mobile navigation tests
+
+14. Report:
+
+* New routes created
+* Routes marked as draft/noindex
+* Final desktop menu hierarchy
+* Final mobile menu hierarchy
+* Blog architecture created
+* Sitemap inclusions and exclusions
+* Build and test results
+* Any existing content or design that changed

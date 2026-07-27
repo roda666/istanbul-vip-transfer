@@ -1,68 +1,57 @@
 ---
-name: Istanbul VIP Transfer — contact config & SEO architecture
-description: Centralized contact info pattern + title/nav/link architecture decisions. All contact strings in lib/site-config.ts; title template removed; airport pages linked from nav/services/footer.
+name: Istanbul VIP Transfer — architecture decisions
+description: Contact config, title pattern, nav architecture, draft scaffold system, blog infrastructure. All updated after Phase 1 nav/services build.
 ---
 
 ## Contact config rule
-All phone numbers, WhatsApp URLs, email addresses, and the canonical site URL live exclusively in `artifacts/istanbul-vip-transfer/lib/site-config.ts` (the `SITE` const). No component or page file may hard-code these values.
+All phone numbers, WhatsApp URLs, email addresses, and the canonical site URL live exclusively in `artifacts/istanbul-vip-transfer/lib/site-config.ts` (the `SITE` const). No component or page file may hard-code these values. `Reviews.tsx` uses `SITE.googleBusinessUrl`.
 
-`Reviews.tsx` uses `SITE.googleBusinessUrl` — it no longer has its own local const.
-
-**Why:** The owner changed the phone number once mid-build. Single source of truth means any future update requires editing exactly one file.
-
-## How to apply
-- Components import `SITE` and/or `bookingWhatsAppUrl` from `@/lib/site-config`.
-- Server pages import `SITE` for structured-data `telephone`/`email` fields and `siteUrl` for canonical/OG URLs.
-- `app/layout.tsx`, `app/sitemap.ts`, `app/robots.ts` all derive the domain from `SITE.siteUrl`.
+**Why:** The owner changed the phone number once mid-build.
 
 ## Verified contact values (as of 2026-07-27)
-- Display phone: `+90 532 660 08 47`
-- Tel URI: `tel:+905326600847`
-- WhatsApp URL: `https://wa.me/905326600847`
+- Display phone: `+90 532 660 08 47` · Tel URI: `tel:+905326600847`
+- WhatsApp: `https://wa.me/905326600847`
 - Email: `info@istanbulviptransfer.com`
-- Google Business Profile: `https://share.google/BaSBZMKi7j4AlQ5hO` — do NOT change
+- Google Business: `https://share.google/BaSBZMKi7j4AlQ5hO` — do NOT change
 - Canonical base: `https://www.istanbulviptransfer.com`
 
-## Title architecture (post-SEO batch 1)
-`app/layout.tsx` sets `title` as a plain string (no `template` object). Every public page sets its own complete, final title string. The template approach was removed because Next.js's `%s | brand` template was appending the brand suffix to titles that already contained it, producing duplicate suffixes.
+## Title architecture
+`app/layout.tsx` sets `title` as a plain string (no `template` object). Every public page sets its own complete, final title string. Next.js requires `template` when using `title: { default, template }` — using a plain string avoids the type constraint and the double-suffix bug.
 
-**Why:** Next.js requires `template` when using `title: { default, template }`. Using a plain string in the layout avoids the type constraint and the double-suffix bug.
+## allowedDevOrigins rule (CRITICAL)
+`next.config.ts` must list **bare hostnames only** (no `https://` scheme prefix). Next.js extracts `parsedOrigin.hostname` before comparing against `allowedDevOrigins`. Including schemes causes every `/_next/*` asset to 403 and the site to render as a blank black screen (only CSS background images visible). Correct config:
+```ts
+allowedDevOrigins: ['**.replit.dev', '127.0.0.1'],
+```
+`**.replit.dev` = recursive wildcard covering all Replit preview subdomains. `127.0.0.1` needed because Next.js only auto-allows `localhost`, not the IP.
 
-**How to apply:** When adding a new page, write the complete desired title string directly in `metadata.title`. Do not rely on the layout appending anything.
-
-## Target title strings (all under 50 chars)
-| Route | Title |
-|---|---|
-| `/` | `İstanbul VIP Transfer \| Vito ve Sprinter Hizmeti` |
-| `/istanbul-havalimani-transfer` | `İstanbul Havalimanı Transfer \| VIP Vito` |
-| `/sabiha-gokcen-havalimani-transfer` | `Sabiha Gökçen Transfer \| VIP Vito` |
-| `/vip-transfer` | `VIP Transfer İstanbul \| Vito ve Sprinter` |
-| `/sehirler-arasi-transfer` | `Şehirler Arası VIP Transfer \| İstanbul` |
-| `/araclar` | `VIP Araçlarımız \| Vito ve Sprinter` |
-| `/hakkimizda` | `Hakkımızda \| İstanbul VIP Transfer` |
-| `/iletisim` | `İletişim \| İstanbul VIP Transfer` |
+**Why discovered:** After SEO Batch 1, the old config had `https://` prefixes. This blocked all JS/CSS.
 
 ## robots.txt
-`public/robots.txt` was deleted. `app/robots.ts` is the single source. Build output confirms the `Sitemap:` directive is present.
+`public/robots.txt` was deleted. `app/robots.ts` is the single source.
 
-## Navigation structure (7 nav items)
-`navLinks` in `Header.tsx` now includes both airport pages:
-Ana Sayfa → / | IST Transfer → /istanbul-havalimani-transfer | SAW Transfer → /sabiha-gokcen-havalimani-transfer | Hizmetler → /vip-transfer | Araçlar → /araclar | Hakkımızda → /hakkimizda | İletişim → /iletisim
+## Navigation architecture (Phase 1)
+Single source of truth: `lib/nav-config.ts` exports `NAV: NavEntry[]`. Both Header (desktop + mobile) and Footer consume this. The Hizmetler entry has `groups` (4 groups, 15 items total). Desktop: split link+chevron button pattern (link→/hizmetler, chevron toggles dropdown). Mobile: two-level accordion (Hizmetler → group → items).
 
-Desktop nav gap reduced to `gap-5` (was `gap-8`) to accommodate the 7th item.
+Top-level nav order: Ana Sayfa · Hizmetler (dropdown) · Araçlarımız · Blog · Hakkımızda · İletişim · Rezervasyon Yap (cta=true).
 
-## Services.tsx (7 cards)
-IST and SAW airport cards added as the first two cards (both with hrefs). Total: 7 cards in a `lg:grid-cols-3` grid (3+3+1 layout at desktop). The last card (Şehirler Arası) sits alone on the 3rd row.
+## Draft scaffold system
+All new/thin service pages carry `const DRAFT = true` at the top. Robots metadata reads from this flag: `robots: DRAFT ? { index: false, follow: true } : { index: true, follow: true }`. To publish a page: set `DRAFT = false` and add to `app/sitemap.ts`.
 
-## Footer
-- quickLinks: 6 items (added /hakkimizda)
-- services list: IST and SAW links added; Şehirler Arası Transfer already linked; Otel/Şehir Turu/Kurumsal/Özel Etkinlik remain plain text (no pages exist)
-- Social media icons (Instagram/Facebook/Twitter) REMOVED — were href="#"
+Draft routes (as of Phase 1): soforlu-arac-kiralama, otel-transfer, saglik-turizmi-transfer, kurumsal-vip-transfer, istanbul-bursa-transfer, istanbul-sapanca-transfer, istanbul-gunubirlik-turlar, sapanca-masukiye-turu, bursa-gunubirlik-tur, yalova-gunubirlik-tur.
 
-## Deferred to later phases
-- Long-form content for thin service pages (IST, SAW, Şehirler Arası, Hakkımızda)
-- Privacy policy and terms of service pages
-- OG social share images
-- Social media profile URLs (owner hasn't provided them)
-- Footer copyright year static-build caveat
-- Footer Rezervasyon link (/#rezervasyon vs #rezervasyon debate)
+## Blog infrastructure
+`lib/blog-data.ts` exports typed `BlogPost` interface + `blogPosts[]` array (empty until first approved article). `BLOG_LIVE = blogPosts.length > 0`. Blog index is noindex. Slug page uses `generateStaticParams` returning empty array → zero static pages until articles are added. `BlogPosting` + `BreadcrumbList` schema only render on real article pages.
+
+## Sitemap inclusions (Phase 1)
+Indexed: /, /istanbul-havalimani-transfer, /sabiha-gokcen-havalimani-transfer, /vip-transfer, /hizmetler, /sehirler-arasi-transfer, /araclar, /hakkimizda, /iletisim.
+Excluded: all 10 draft scaffold pages, /blog, /blog/[slug].
+
+## Stale .next cache anti-pattern
+Never run `pnpm build` (next build) while `next dev` is running — they share the `.next` directory. Running both simultaneously overwrites dev chunks with production chunks → dev server 500s. Always: stop dev → build → restart dev. Or: build → rm -rf .next → restart dev.
+
+## Social media links
+Instagram/Facebook/Twitter icons REMOVED entirely (were href="#"). Restore when owner provides real URLs.
+
+## Build status after Phase 1
+✓ Compiled · ✓ Lint · ✓ Types · 25/25 static pages (was 13 before Phase 1).

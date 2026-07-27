@@ -5,6 +5,7 @@ import BookingForm from '@/components/BookingForm';
 import VehicleFleet from '@/components/VehicleFleet';
 import Services from '@/components/Services';
 import TrustSignals from '@/components/TrustSignals';
+import Reviews from '@/components/Reviews';
 import FAQ from '@/components/FAQ';
 import Contact from '@/components/Contact';
 import Footer from '@/components/Footer';
@@ -38,6 +39,7 @@ function App() {
         <VehicleFleet />
         <Services />
         <TrustSignals />
+        <Reviews />
         <FAQ />
         <Contact />
       </main>

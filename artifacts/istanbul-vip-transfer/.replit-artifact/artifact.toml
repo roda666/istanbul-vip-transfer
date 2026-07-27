@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "Istanbul VIP Airport Transfer"
+version = "1.0.0"
+id = "artifacts/istanbul-vip-transfer"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 26004
+
+[services.development]
+run = "pnpm --filter @workspace/istanbul-vip-transfer run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/istanbul-vip-transfer", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/istanbul-vip-transfer/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "26004"
+BASE_PATH = "/"

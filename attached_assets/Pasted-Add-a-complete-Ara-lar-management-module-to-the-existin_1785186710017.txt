@@ -1,0 +1,176 @@
+Add a complete “Araçlar” management module to the existing admin panel.
+
+Important:
+- First inspect the existing database schema, admin CRUD architecture, authentication, workflow and API route conventions.
+- Reuse existing shared components and utilities.
+- Do not create duplicate tables, routes or components if vehicle-related structures already exist.
+- Do not change or migrate the current public vehicle section yet.
+
+ADMIN NAVIGATION
+
+1. Add “Araçlar” to the admin sidebar:
+   - Place it directly below “Hizmetler”.
+   - Use an appropriate vehicle/car icon.
+   - Route: /admin/araclar
+   - Preserve the black-and-gold admin design.
+   - It must work in desktop and mobile navigation.
+
+VEHICLE DATABASE MODEL
+
+2. Add a portable PostgreSQL/Drizzle vehicle model with at least:
+
+- id
+- name
+- slug — unique
+- shortDescription
+- content or fullDescription
+- passengerCapacity — optional
+- luggageCapacity — optional
+- vehicleType — optional
+- features — structured list/JSON
+- coverImage
+- coverImageAlt
+- gallery — structured list/JSON
+- displayOrder
+- isFeatured
+- status
+- createdAt
+- updatedAt
+- publishedAt — optional
+- archivedAt — optional
+- createdBy
+- updatedBy
+
+SEO fields:
+
+- metaTitle
+- metaDescription
+- canonicalUrl
+- ogImage
+- robotsIndex
+- robotsFollow
+
+3. Use the existing content workflow where applicable:
+   DRAFT → RESEARCH → REVIEW → APPROVED → SCHEDULED/PUBLISHED → ARCHIVED
+
+- Do not allow direct creation as PUBLISHED.
+- Do not allow unapproved content to become publicly visible.
+- Editing approved/published data must return it to REVIEW if this is how the existing workflow operates.
+- Reuse the existing status validation functions instead of implementing a separate conflicting workflow.
+
+ADMIN CRUD
+
+4. Create these admin pages:
+
+- /admin/araclar
+- /admin/araclar/yeni
+- /admin/araclar/[id]/duzenle
+
+5. The vehicle list must include:
+
+- Vehicle name
+- Cover thumbnail
+- Passenger capacity
+- Status
+- Featured state
+- Display order
+- Last update
+- Edit action
+- Archive/remove action
+
+6. Add:
+   - Search
+   - Status filtering
+   - Sorting by displayOrder and updatedAt
+   - Clear empty state
+   - “Yeni Araç Ekle” button
+
+7. Vehicle form requirements:
+
+- Turkish labels and validation messages
+- Automatic slug suggestion from vehicle name
+- Allow manual slug editing
+- Prevent duplicate slugs
+- Cover image path/URL field
+- Cover-image ALT field required whenever a cover image is provided
+- Repeatable vehicle-features fields
+- Repeatable gallery image and ALT fields
+- Passenger/luggage capacity must remain optional
+- Do not invent vehicle capacities or specifications
+- SEO title and meta-description character counters
+- Save as draft
+- Submit for review
+- Appropriate approval actions only for authorized admins
+- Unsaved-change warning
+
+IMAGE HANDLING
+
+8. Do not build an unsafe filesystem upload system.
+For this phase, support existing public image paths and valid image URLs.
+Design the fields so they can later be connected to a portable media-library module.
+
+REMOVAL SAFETY
+
+9. Do not hard-delete published vehicle records by default.
+
+- Use archive/soft removal for published or previously published vehicles.
+- Require a confirmation dialog.
+- Clearly explain whether the vehicle is archived or permanently deleted.
+- Permanent deletion may only be available for never-published drafts and must require confirmation.
+
+API AND SECURITY
+
+10. Use the corrected existing admin API namespace under:
+
+/admin/api/...
+
+Do not recreate the old /api/admin route structure.
+
+11. All create, update, archive and delete actions must:
+
+- Require the existing authenticated admin session
+- Use the session user identity
+- Validate inputs server-side
+- Protect against CSRF using the existing project mechanism
+- Write appropriate AuditLog records
+- Never trust a user ID sent from the browser
+
+12. Do not modify:
+- Admin passwords or admin accounts
+- AUTH_SECRET or SESSION_SECRET
+- Existing authentication
+- Existing page/service/blog records
+- Public website content or layout
+
+13. Do not seed fabricated vehicles, capacities, features, prices or guarantees.
+Leave the list empty until the real existing vehicles are migrated later.
+
+LAYOUT AND VERIFICATION
+
+14. Confirm that:
+- Page H1 and “Yeni Araç Ekle” button are fully visible below the admin top bar
+- Sidebar account and logout controls remain visible
+- No horizontal overflow exists
+- Desktop 1920×1080 and 1366×768 work
+- Mobile 390×844 works
+
+15. Do not change admin credentials for browser tests.
+Do not reset passwords or modify Secrets.
+If login is unavailable, stop and ask me.
+
+16. Run:
+- Database migration
+- Lint
+- Typecheck
+- Production build
+
+17. Report:
+- Database/schema changes
+- Migration result
+- Routes created
+- Files changed
+- Security and workflow checks
+- Desktop/mobile visual verification
+- Lint/typecheck/build results
+
+18. Do not publish, deploy or connect the production domain.

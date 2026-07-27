@@ -1,22 +1,6 @@
 {
+  "/robots.txt/route": "app/robots.txt/route.js",
+  "/_not-found/page": "app/_not-found/page.js",
   "/page": "app/page.js",
-  "/hizmetler/page": "app/hizmetler/page.js",
-  "/istanbul-havalimani-transfer/page": "app/istanbul-havalimani-transfer/page.js",
-  "/sabiha-gokcen-havalimani-transfer/page": "app/sabiha-gokcen-havalimani-transfer/page.js",
-  "/sehirler-arasi-transfer/page": "app/sehirler-arasi-transfer/page.js",
-  "/vip-transfer/page": "app/vip-transfer/page.js",
-  "/araclar/page": "app/araclar/page.js",
-  "/hakkimizda/page": "app/hakkimizda/page.js",
-  "/iletisim/page": "app/iletisim/page.js",
-  "/soforlu-arac-kiralama/page": "app/soforlu-arac-kiralama/page.js",
-  "/otel-transfer/page": "app/otel-transfer/page.js",
-  "/kurumsal-vip-transfer/page": "app/kurumsal-vip-transfer/page.js",
-  "/saglik-turizmi-transfer/page": "app/saglik-turizmi-transfer/page.js",
-  "/istanbul-bursa-transfer/page": "app/istanbul-bursa-transfer/page.js",
-  "/istanbul-sapanca-transfer/page": "app/istanbul-sapanca-transfer/page.js",
-  "/istanbul-gunubirlik-turlar/page": "app/istanbul-gunubirlik-turlar/page.js",
-  "/sapanca-masukiye-turu/page": "app/sapanca-masukiye-turu/page.js",
-  "/yalova-gunubirlik-tur/page": "app/yalova-gunubirlik-tur/page.js",
-  "/bursa-gunubirlik-tur/page": "app/bursa-gunubirlik-tur/page.js",
-  "/blog/page": "app/blog/page.js"
+  "/sehirler-arasi-transfer/page": "app/sehirler-arasi-transfer/page.js"
 }

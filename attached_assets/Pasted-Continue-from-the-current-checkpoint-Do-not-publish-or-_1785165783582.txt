@@ -1,0 +1,122 @@
+Continue from the current checkpoint. Do not publish or connect the production domain.
+
+Complete Content Phase 1 and fix the desktop/mobile header layout.
+
+1. Header and navigation
+
+- Preserve the existing black-and-gold design.
+- Fix the crowded desktop header.
+- Keep “Rezervasyon Yap” on one line on normal desktop widths.
+- Ensure the logo, navigation links and CTA buttons do not overlap or wrap awkwardly.
+- Test desktop, tablet and mobile layouts.
+- Keep these main navigation items:
+  Ana Sayfa
+  Hizmetler
+  Araçlarımız
+  Blog
+  Hakkımızda
+  İletişim
+  Rezervasyon Yap
+
+- “Hizmetler” must open an accessible dropdown or mega menu.
+- Organize service links under these groups:
+
+  Havalimanı Transferleri:
+  - İstanbul Havalimanı Transfer
+  - Sabiha Gökçen Havalimanı Transfer
+
+  Özel Transfer Hizmetleri:
+  - VIP Transfer
+  - Şehirler Arası Transfer
+  - Şoförlü Araç Kiralama
+  - Otel Transfer
+  - Sağlık Turizmi Transfer
+  - Kurumsal VIP Transfer
+
+  Popüler Rotalar:
+  - İstanbul Bursa Transfer
+  - İstanbul Sapanca Transfer
+
+  Turlar:
+  - İstanbul Günübirlik Turlar
+  - Sapanca Maşukiye Turu
+  - Bursa Günübirlik Turu
+  - Yalova Günübirlik Turu
+
+2. Complete these four draft service pages with unique Turkish content:
+
+- /soforlu-arac-kiralama
+- /otel-transfer
+- /saglik-turizmi-transfer
+- /kurumsal-vip-transfer
+
+Each page must include:
+
+- A unique SEO-friendly H1
+- A short introductory section
+- Detailed, genuinely useful service information
+- Who the service is suitable for
+- Mercedes Vito and Mercedes Sprinter vehicle information
+- How reservation and passenger pickup work
+- Service areas without inventing coverage guarantees
+- A reservation call-to-action
+- 5 relevant frequently asked questions
+- Breadcrumb navigation
+- Relevant internal links
+- Unique meta title
+- Unique meta description
+- Canonical URL using https://www.istanbulviptransfer.com
+- Appropriate Service and BreadcrumbList structured data
+
+Use natural Turkish. Do not use keyword stuffing.
+
+Do not invent or publish:
+
+- Prices
+- Distances
+- Travel times
+- Passenger numbers not already verified
+- Customer counts
+- Guarantees
+- Awards
+- Company history
+- Licences or certifications
+- Fake reviews or statistics
+
+3. SEO publishing rules
+
+- Remove noindex only from these four pages after their real content is complete.
+- Add only these completed routes to sitemap.ts.
+- Keep all other unfinished scaffold pages as noindex and exclude them from the sitemap.
+- Ensure each completed page has at least one internal link from the Hizmetler page, service dropdown and footer.
+- Do not copy old website text word for word.
+- Do not add Review or AggregateRating schema.
+
+4. Content management preparation
+
+- Keep all repeated company details, phone number, WhatsApp number, email address, Google Business URL and navigation data in centralized configuration files.
+- Use:
+  Phone and WhatsApp: +90 532 660 08 47
+  WhatsApp number: 905326600847
+  Email: info@istanbulviptransfer.com
+  Google Business URL: https://share.google/BaSBZMKi7j4AlQ5hO
+- Structure the new page content cleanly so it can later be connected to an admin panel or CMS.
+- Do not build the admin panel in this phase.
+
+5. Verification
+
+Run:
+- lint
+- TypeScript typecheck
+- production build
+
+Test the dropdown and header at desktop, tablet and mobile widths.
+
+Report:
+- files changed
+- completed routes
+- which routes remain draft/noindex
+- sitemap changes
+- lint, typecheck and build results
+
+Do not publish the website.

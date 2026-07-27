@@ -35,29 +35,29 @@ export const NAV: NavEntry[] = [
         groupLabel: 'Havalimanı Transferleri',
         items: [
           { label: 'İstanbul Havalimanı Transfer', href: '/istanbul-havalimani-transfer' },
-          { label: 'Sabiha Gökçen Transfer', href: '/sabiha-gokcen-havalimani-transfer' },
+          { label: 'Sabiha Gökçen Havalimanı Transfer', href: '/sabiha-gokcen-havalimani-transfer' },
         ],
       },
       {
-        groupLabel: 'VIP ve Özel Transferler',
+        groupLabel: 'Özel Transfer Hizmetleri',
         items: [
           { label: 'VIP Transfer', href: '/vip-transfer' },
+          { label: 'Şehirler Arası Transfer', href: '/sehirler-arasi-transfer' },
           { label: 'Şoförlü Araç Kiralama', href: '/soforlu-arac-kiralama' },
-          { label: 'Otel Transferi', href: '/otel-transfer' },
-          { label: 'Sağlık Turizmi Transferi', href: '/saglik-turizmi-transfer' },
+          { label: 'Otel Transfer', href: '/otel-transfer' },
+          { label: 'Sağlık Turizmi Transfer', href: '/saglik-turizmi-transfer' },
           { label: 'Kurumsal VIP Transfer', href: '/kurumsal-vip-transfer' },
         ],
       },
       {
-        groupLabel: 'Şehirler Arası Transferler',
+        groupLabel: 'Popüler Rotalar',
         items: [
-          { label: 'Şehirler Arası Transfer', href: '/sehirler-arasi-transfer' },
           { label: 'İstanbul–Bursa Transfer', href: '/istanbul-bursa-transfer' },
           { label: 'İstanbul–Sapanca Transfer', href: '/istanbul-sapanca-transfer' },
         ],
       },
       {
-        groupLabel: 'Günübirlik Turlar',
+        groupLabel: 'Turlar',
         items: [
           { label: 'İstanbul Günübirlik Turlar', href: '/istanbul-gunubirlik-turlar' },
           { label: 'Sapanca–Maşukiye Turu', href: '/sapanca-masukiye-turu' },

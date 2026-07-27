@@ -107,7 +107,7 @@ export default function Header() {
 
             {/* ── Desktop navigation ── */}
             <nav
-              className="hidden lg:flex items-center"
+              className="hidden xl:flex items-center"
               data-testid="desktop-nav"
               aria-label="Ana menü"
             >
@@ -267,7 +267,7 @@ export default function Header() {
             </nav>
 
             {/* ── Desktop right-side CTAs ── */}
-            <div className="hidden lg:flex items-center gap-2">
+            <div className="hidden xl:flex items-center gap-2">
               {ctaEntry && (
                 <motion.div
                   initial={{ opacity: 0, x: 10 }}
@@ -310,7 +310,7 @@ export default function Header() {
 
             {/* Hamburger */}
             <button
-              className="lg:hidden p-2 rounded text-[#C9A84C] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C9A84C]"
+              className="xl:hidden p-2 rounded text-[#C9A84C] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C9A84C]"
               onClick={() => setMenuOpen((o) => !o)}
               aria-label={menuOpen ? 'Menüyü kapat' : 'Menüyü aç'}
               aria-expanded={menuOpen}

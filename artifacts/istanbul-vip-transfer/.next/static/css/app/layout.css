@@ -1172,6 +1172,11 @@
     margin-block-start: calc(var(--spacing) * var(--tw-space-y-reverse));
     margin-block-end: calc(var(--spacing) * calc(1 - var(--tw-space-y-reverse)));
   }
+  :where(.space-y-2 > :not(:last-child)) {
+    --tw-space-y-reverse: 0;
+    margin-block-start: calc(calc(var(--spacing) * 2) * var(--tw-space-y-reverse));
+    margin-block-end: calc(calc(var(--spacing) * 2) * calc(1 - var(--tw-space-y-reverse)));
+  }
   :where(.space-y-2\.5 > :not(:last-child)) {
     --tw-space-y-reverse: 0;
     margin-block-start: calc(calc(var(--spacing) * 2.5) * var(--tw-space-y-reverse));
@@ -1186,6 +1191,11 @@
     --tw-space-y-reverse: 0;
     margin-block-start: calc(calc(var(--spacing) * 4) * var(--tw-space-y-reverse));
     margin-block-end: calc(calc(var(--spacing) * 4) * calc(1 - var(--tw-space-y-reverse)));
+  }
+  :where(.space-y-5 > :not(:last-child)) {
+    --tw-space-y-reverse: 0;
+    margin-block-start: calc(calc(var(--spacing) * 5) * var(--tw-space-y-reverse));
+    margin-block-end: calc(calc(var(--spacing) * 5) * calc(1 - var(--tw-space-y-reverse)));
   }
   .overflow-hidden {
     overflow: hidden;
@@ -1257,6 +1267,9 @@
   .p-3 {
     padding: calc(var(--spacing) * 3);
   }
+  .p-4 {
+    padding: calc(var(--spacing) * 4);
+  }
   .p-5 {
     padding: calc(var(--spacing) * 5);
   }
@@ -1323,6 +1336,9 @@
   .py-12 {
     padding-block: calc(var(--spacing) * 12);
   }
+  .py-14 {
+    padding-block: calc(var(--spacing) * 14);
+  }
   .py-16 {
     padding-block: calc(var(--spacing) * 16);
   }
@@ -1334,6 +1350,9 @@
   }
   .py-28 {
     padding-block: calc(var(--spacing) * 28);
+  }
+  .pt-1 {
+    padding-top: var(--spacing);
   }
   .pt-5 {
     padding-top: calc(var(--spacing) * 5);
@@ -1361,6 +1380,9 @@
   }
   .pb-3 {
     padding-bottom: calc(var(--spacing) * 3);
+  }
+  .pb-4 {
+    padding-bottom: calc(var(--spacing) * 4);
   }
   .pb-6 {
     padding-bottom: calc(var(--spacing) * 6);
@@ -1892,6 +1914,9 @@
     .md\:gap-10 {
       gap: calc(var(--spacing) * 10);
     }
+    .md\:p-10 {
+      padding: calc(var(--spacing) * 10);
+    }
     .md\:p-12 {
       padding: calc(var(--spacing) * 12);
     }
@@ -1943,9 +1968,6 @@
     .lg\:col-span-1 {
       grid-column: span 1 / span 1;
     }
-    .lg\:flex {
-      display: flex;
-    }
     .lg\:hidden {
       display: none;
     }
@@ -1954,6 +1976,14 @@
     }
     .lg\:grid-cols-4 {
       grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+  @media (width >= 80rem) {
+    .xl\:flex {
+      display: flex;
+    }
+    .xl\:hidden {
+      display: none;
     }
   }
 }

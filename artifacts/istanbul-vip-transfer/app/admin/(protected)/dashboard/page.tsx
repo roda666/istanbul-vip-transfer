@@ -127,6 +127,20 @@ export default async function DashboardPage() {
 
   return (
     <div style={{ padding: '28px 24px' }}>
+      <style>{`
+        .dashboard-card {
+          background: #161616;
+          border: 1px solid rgba(255,255,255,0.06);
+          border-radius: 12px;
+          padding: 20px;
+          transition: border-color 0.15s;
+          cursor: pointer;
+        }
+        .dashboard-card:hover,
+        .dashboard-card:focus-within {
+          border-color: rgba(201,168,76,0.3);
+        }
+      `}</style>
       <AdminPageHeader
         title="Dashboard"
         description="İçerik durumu ve son işlemler"
@@ -169,22 +183,7 @@ export default async function DashboardPage() {
               href={card.href}
               style={{ textDecoration: 'none' }}
             >
-              <div
-                style={{
-                  background: '#161616',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                  borderRadius: '12px',
-                  padding: '20px',
-                  transition: 'border-color 0.15s',
-                  cursor: 'pointer',
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(201,168,76,0.3)';
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(255,255,255,0.06)';
-                }}
-              >
+              <div className="dashboard-card">
                 <div
                   style={{
                     display: 'flex',

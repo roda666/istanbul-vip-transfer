@@ -1,0 +1,82 @@
+The current project was incorrectly created as a Vite single-page application. This does not meet the original technical and SEO requirements.
+
+Migrate the existing project in place from Vite React SPA to Next.js App Router with TypeScript and Tailwind CSS.
+
+Critical requirements:
+
+1. Preserve the existing visual design, colors, responsive layout, components, images and completed content corrections.
+
+2. Preserve these verified details exactly:
+
+* Phone display: +90 505 587 70 06
+* Telephone link: tel:+905055877006
+* WhatsApp: https://wa.me/905055877006
+* Google Business Profile: https://share.google/BaSBZMKi7j4AlQ5hO
+* Existing genuine Google customer reviews
+
+3. Create real, separately crawlable pages using these routes:
+
+* /
+* /istanbul-havalimani-transfer
+* /sabiha-gokcen-havalimani-transfer
+* /vip-transfer
+* /araclar
+* /hakkimizda
+* /iletisim
+
+4. Do not simulate pages with anchor links or client-side conditional sections. Every route must have its own App Router page file and render independently.
+
+5. Use Next.js metadata for every route:
+
+* Unique Turkish title
+* Unique Turkish meta description
+* Canonical URL prepared for https://www.istanbulviptransfer.com
+* Open Graph title and description
+* Robots index/follow settings
+
+6. Add:
+
+* app/sitemap.ts
+* app/robots.ts
+* Proper semantic HTML
+* One unique H1 per page
+* Internal links using next/link
+* Optimized images using next/image where appropriate
+
+7. Add only valid structured data:
+
+* Organization or LocalBusiness on the homepage
+* Service structured data on service pages
+* BreadcrumbList on internal pages
+* FAQPage only when visible FAQs exist
+
+Do not add Review or AggregateRating structured data for our own business.
+
+8. Keep the genuine Google reviews on the homepage and keep the “Tüm Yorumları Google’da Görüntüle” button linked to the verified Google Business Profile.
+
+9. Do not invent prices, statistics, customer counts, addresses, email addresses, ratings, reviews or guarantees.
+
+10. Keep the WhatsApp reservation form working as a client component with URL-encoded pre-filled reservation details.
+
+11. Keep the architecture compatible with a future static export to our own server. Do not introduce Replit-specific database, authentication, storage or server dependencies.
+
+12. Remove obsolete Vite files and dependencies only after the Next.js migration has been verified successfully.
+
+13. Run:
+
+* lint
+* typecheck
+* Next.js production build
+
+Fix all errors and warnings.
+
+14. Do not publish the website and do not connect the production domain.
+
+15. When finished, report:
+
+* Confirmation that Vite has been removed
+* Confirmation that Next.js App Router is running
+* Complete route list
+* Metadata created for each route
+* Build and typecheck results
+* Any remaining information required from us

@@ -1,0 +1,309 @@
+Continue from the current checkpoint.
+
+Start Admin Panel Foundation — Phase 1.
+
+Do not publish the website.
+Do not connect the production domain.
+Do not enable any AI API calls yet.
+Preserve the current public website design and content.
+
+The project must remain portable to a standard Node.js server.
+
+1. Database architecture
+
+Use a standard PostgreSQL database.
+
+- If DATABASE_URL is not available, stop and clearly ask the user to create or connect a PostgreSQL database.
+- Do not silently fall back to SQLite.
+- Use a stable ORM compatible with the project’s current Next.js version.
+- Create migrations and a documented database schema.
+- Do not hard-code Replit-specific database identifiers.
+
+Create models for:
+
+AdminUser
+- id
+- email
+- passwordHash
+- name
+- role
+- active
+- createdAt
+- updatedAt
+- lastLoginAt
+
+Content
+- id
+- contentType: PAGE, SERVICE, BLOG_POST
+- title
+- slug
+- excerpt
+- body
+- heroImage
+- heroImageAlt
+- status
+- seoTitle
+- seoDescription
+- canonicalUrl
+- indexable
+- approvedAt
+- approvedBy
+- scheduledAt
+- publishedAt
+- createdAt
+- updatedAt
+
+Content statuses:
+- DRAFT
+- RESEARCH
+- REVIEW
+- APPROVED
+- SCHEDULED
+- PUBLISHED
+- ARCHIVED
+
+FAQ
+- id
+- contentId
+- question
+- answer
+- sortOrder
+
+SiteSettings
+- businessName
+- logoPath
+- phoneDisplay
+- phoneInternational
+- whatsappNumber
+- email
+- googleBusinessUrl
+- address
+- defaultSeoTitle
+- defaultSeoDescription
+- updatedAt
+
+NavigationItem
+- label
+- href
+- location
+- parentId
+- sortOrder
+- active
+
+AIContentSuggestion
+- id
+- suggestedTitle
+- suggestedSlug
+- primaryKeyword
+- secondaryKeywords
+- searchIntent
+- suggestedOutline
+- status
+- createdAt
+- updatedAt
+
+ResearchSource
+- id
+- suggestionId
+- title
+- url
+- sourceName
+- accessedAt
+- notes
+
+AuditLog
+- id
+- adminUserId
+- action
+- entityType
+- entityId
+- createdAt
+- metadata
+
+2. Authentication and security
+
+Create:
+
+- /admin/login
+- protected /admin routes
+- secure session handling
+- logout
+- session expiration
+- server-side authorization checks
+
+Requirements:
+
+- No public registration.
+- No default username or password in the repository.
+- Never print passwords, hashes, tokens or secrets in logs.
+- Passwords must be securely hashed with a maintained library compatible with the runtime.
+- Protect every admin API route server-side.
+- Use secure, httpOnly and sameSite cookies where applicable.
+- Add login rate limiting.
+- Prevent open redirects.
+- Validate and sanitize all submitted data.
+- Prevent stored XSS in content rendering.
+- Add CSRF protection using the selected authentication framework’s supported method.
+
+Create a secure admin creation script that:
+
+- Reads ADMIN_EMAIL and ADMIN_PASSWORD from environment secrets.
+- Creates the first admin only if no admin exists.
+- Never accepts the password as a visible command-line argument.
+- Never logs the password.
+- Clearly tells the user to remove ADMIN_PASSWORD from secrets after the account is created.
+
+Use AUTH_SECRET and DATABASE_URL only from environment variables.
+
+3. Admin interface
+
+Create a responsive admin interface under /admin with the existing brand’s black-and-gold style, but prioritize clarity and accessibility.
+
+Admin navigation:
+
+- Dashboard
+- Sayfalar
+- Hizmetler
+- Blog
+- SSS
+- Menü Yönetimi
+- Site Ayarları
+- AI İçerik Önerileri
+- İşlem Geçmişi
+- Çıkış
+
+Dashboard cards:
+
+- Draft content count
+- Waiting for review
+- Approved content
+- Scheduled content
+- Published content
+
+Create functional CRUD interfaces for:
+
+- pages
+- service pages
+- blog posts
+- FAQs
+- navigation items
+- site settings
+
+Content editor fields:
+
+- title
+- slug
+- excerpt
+- body
+- hero image path
+- hero image alt text
+- status
+- meta title
+- meta description
+- canonical URL
+- index/noindex
+- scheduled publication date and time
+
+Use a safe editor that produces sanitized HTML or structured content.
+Do not allow raw script tags, inline JavaScript or unsafe embeds.
+
+4. Approval and scheduled publication rules
+
+Enforce these rules in the database and server-side application logic:
+
+- AI suggestions can only create RESEARCH or DRAFT records.
+- AI-generated content can never directly become PUBLISHED.
+- Only an authenticated active admin can approve content.
+- Approval must record approvedBy and approvedAt.
+- Only APPROVED content can be scheduled.
+- Scheduled content becomes publicly eligible only when:
+  approvedAt is present,
+  approvedBy is present,
+  scheduledAt is less than or equal to the current server time.
+- If approved or scheduled content is edited, clear its approval and return it to REVIEW.
+- Archived, draft, research and review content must never appear publicly.
+- Store and display all scheduling times using Europe/Istanbul for the admin interface and UTC in the database.
+- Record approval, scheduling, editing and publication actions in AuditLog.
+
+Do not depend on a cron job for the basic publication gate. Public visibility must be determined safely from approval state and scheduledAt. A scheduler can be added later for notifications and cache revalidation.
+
+5. AI preparation only
+
+Create the admin UI and database structure for “AI İçerik Önerileri”, but do not call OpenAI, Google or any external API yet.
+
+The placeholder interface should support:
+
+- Manual topic entry
+- Primary keyword
+- Secondary keywords
+- Target service or location
+- Search intent
+- Requested article type
+- Suggested publication date
+- Research sources
+- Generate suggestion button shown as disabled with:
+  “AI bağlantısı sonraki aşamada etkinleştirilecek.”
+
+Do not request or store an OpenAI API key yet.
+Do not create fake keyword volumes or research results.
+
+6. Current public content
+
+Do not migrate or delete the current hard-coded public content in this phase.
+
+- The current website must continue working unchanged.
+- Build the database-backed admin foundation alongside it.
+- Prepare a documented migration plan for moving existing pages, services, blog content, FAQs, navigation and settings into the database during Phase 2.
+- Do not create duplicate public URLs.
+- Keep unfinished routes noindex.
+
+7. Documentation
+
+Create an ADMIN_SETUP.md file covering:
+
+- required environment variables
+- PostgreSQL setup
+- migration commands
+- first admin creation
+- login URL
+- how to remove the temporary ADMIN_PASSWORD secret
+- backup and restore basics
+- how the project remains portable to another Node.js/PostgreSQL server
+- Phase 2 content migration plan
+
+Do not include actual credentials or secret values.
+
+8. Verification
+
+Run:
+
+- database schema validation
+- database migrations if DATABASE_URL is available
+- lint
+- TypeScript typecheck
+- production build
+
+Test:
+
+- unauthenticated /admin access redirects to /admin/login
+- invalid login
+- protected admin API access
+- content validation
+- approval reset after editing
+- scheduling rules
+- desktop, tablet and mobile admin layouts
+- existing public pages still work
+
+Report:
+
+- database and authentication approach used
+- files created and changed
+- environment secrets the user must add
+- admin account creation procedure
+- completed admin functions
+- security protections
+- test results
+- lint, typecheck and production build results
+- anything deferred to Phase 2
+
+Do not publish the website.

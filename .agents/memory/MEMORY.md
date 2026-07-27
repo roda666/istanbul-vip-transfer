@@ -1,1 +1,2 @@
 - [Istanbul VIP Transfer contact config](istanbul-vip-transfer-contact-config.md) — contact info in lib/site-config.ts; title template removed; airport pages linked from nav/services/footer; robots.txt conflict resolved.
+- [Admin panel — iron-session + Next.js type quirks](admin-panel-iron-session.md) — RequestCookies cast, force-dynamic on protected layout, workflow status transition enforcement rules.

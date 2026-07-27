@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
-import WhatsAppFloat from '@/components/WhatsAppFloat';
+import PublicLayoutWrapper from '@/components/PublicLayoutWrapper';
 import { SITE } from '@/lib/site-config';
 
 export const metadata: Metadata = {
@@ -22,10 +20,9 @@ export default function RootLayout({
         className="grain-overlay"
         style={{ backgroundColor: '#0A0A0A', minHeight: '100dvh' }}
       >
-        <Header />
-        <main>{children}</main>
-        <Footer />
-        <WhatsAppFloat />
+        {/* PublicLayoutWrapper conditionally adds Header/Footer for public routes.
+            Admin routes render their own layout without public chrome. */}
+        <PublicLayoutWrapper>{children}</PublicLayoutWrapper>
       </body>
     </html>
   );

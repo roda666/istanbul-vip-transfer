@@ -1,1 +1,328 @@
-{"version":3,"caseSensitive":false,"basePath":"","rewrites":{"beforeFiles":[],"afterFiles":[],"fallback":[]},"redirects":[{"source":"/:path+/","destination":"/:path+","permanent":true,"internal":true,"regex":"^(?:\\/((?:[^\\/]+?)(?:\\/(?:[^\\/]+?))*))\\/$"}],"headers":[]}
+{
+  "version": 3,
+  "pages404": true,
+  "caseSensitive": false,
+  "basePath": "",
+  "redirects": [
+    {
+      "source": "/:path+/",
+      "destination": "/:path+",
+      "internal": true,
+      "statusCode": 308,
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+    }
+  ],
+  "headers": [],
+  "rewrites": {
+    "beforeFiles": [],
+    "afterFiles": [],
+    "fallback": []
+  },
+  "dynamicRoutes": [
+    {
+      "page": "/admin/blog/[id]",
+      "regex": "^/admin/blog/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/admin/blog/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/admin/hizmetler/[id]",
+      "regex": "^/admin/hizmetler/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/admin/hizmetler/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/admin/sayfalar/[id]",
+      "regex": "^/admin/sayfalar/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/admin/sayfalar/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/admin/ai-suggestions/[id]",
+      "regex": "^/api/admin/ai\\-suggestions/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/admin/ai\\-suggestions/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/admin/content/[id]",
+      "regex": "^/api/admin/content/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/admin/content/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/admin/faqs/[id]",
+      "regex": "^/api/admin/faqs/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/admin/faqs/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/admin/nav/[id]",
+      "regex": "^/api/admin/nav/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/admin/nav/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/blog/[slug]",
+      "regex": "^/blog/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPslug": "nxtPslug"
+      },
+      "namedRegex": "^/blog/(?<nxtPslug>[^/]+?)(?:/)?$"
+    }
+  ],
+  "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
+    {
+      "page": "/_not-found",
+      "regex": "^/_not\\-found(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_not\\-found(?:/)?$"
+    },
+    {
+      "page": "/admin",
+      "regex": "^/admin(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin(?:/)?$"
+    },
+    {
+      "page": "/admin/ai-oneriler",
+      "regex": "^/admin/ai\\-oneriler(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/ai\\-oneriler(?:/)?$"
+    },
+    {
+      "page": "/admin/ayarlar",
+      "regex": "^/admin/ayarlar(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/ayarlar(?:/)?$"
+    },
+    {
+      "page": "/admin/blog",
+      "regex": "^/admin/blog(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/blog(?:/)?$"
+    },
+    {
+      "page": "/admin/blog/yeni",
+      "regex": "^/admin/blog/yeni(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/blog/yeni(?:/)?$"
+    },
+    {
+      "page": "/admin/dashboard",
+      "regex": "^/admin/dashboard(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/dashboard(?:/)?$"
+    },
+    {
+      "page": "/admin/gecmis",
+      "regex": "^/admin/gecmis(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/gecmis(?:/)?$"
+    },
+    {
+      "page": "/admin/hizmetler",
+      "regex": "^/admin/hizmetler(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/hizmetler(?:/)?$"
+    },
+    {
+      "page": "/admin/hizmetler/yeni",
+      "regex": "^/admin/hizmetler/yeni(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/hizmetler/yeni(?:/)?$"
+    },
+    {
+      "page": "/admin/login",
+      "regex": "^/admin/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/login(?:/)?$"
+    },
+    {
+      "page": "/admin/menu",
+      "regex": "^/admin/menu(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/menu(?:/)?$"
+    },
+    {
+      "page": "/admin/sayfalar",
+      "regex": "^/admin/sayfalar(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/sayfalar(?:/)?$"
+    },
+    {
+      "page": "/admin/sayfalar/yeni",
+      "regex": "^/admin/sayfalar/yeni(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/sayfalar/yeni(?:/)?$"
+    },
+    {
+      "page": "/admin/sss",
+      "regex": "^/admin/sss(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/sss(?:/)?$"
+    },
+    {
+      "page": "/araclar",
+      "regex": "^/araclar(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/araclar(?:/)?$"
+    },
+    {
+      "page": "/blog",
+      "regex": "^/blog(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/blog(?:/)?$"
+    },
+    {
+      "page": "/bursa-gunubirlik-tur",
+      "regex": "^/bursa\\-gunubirlik\\-tur(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/bursa\\-gunubirlik\\-tur(?:/)?$"
+    },
+    {
+      "page": "/hakkimizda",
+      "regex": "^/hakkimizda(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/hakkimizda(?:/)?$"
+    },
+    {
+      "page": "/hizmetler",
+      "regex": "^/hizmetler(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/hizmetler(?:/)?$"
+    },
+    {
+      "page": "/iletisim",
+      "regex": "^/iletisim(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/iletisim(?:/)?$"
+    },
+    {
+      "page": "/istanbul-bursa-transfer",
+      "regex": "^/istanbul\\-bursa\\-transfer(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/istanbul\\-bursa\\-transfer(?:/)?$"
+    },
+    {
+      "page": "/istanbul-gunubirlik-turlar",
+      "regex": "^/istanbul\\-gunubirlik\\-turlar(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/istanbul\\-gunubirlik\\-turlar(?:/)?$"
+    },
+    {
+      "page": "/istanbul-havalimani-transfer",
+      "regex": "^/istanbul\\-havalimani\\-transfer(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/istanbul\\-havalimani\\-transfer(?:/)?$"
+    },
+    {
+      "page": "/istanbul-sapanca-transfer",
+      "regex": "^/istanbul\\-sapanca\\-transfer(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/istanbul\\-sapanca\\-transfer(?:/)?$"
+    },
+    {
+      "page": "/kurumsal-vip-transfer",
+      "regex": "^/kurumsal\\-vip\\-transfer(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/kurumsal\\-vip\\-transfer(?:/)?$"
+    },
+    {
+      "page": "/otel-transfer",
+      "regex": "^/otel\\-transfer(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/otel\\-transfer(?:/)?$"
+    },
+    {
+      "page": "/robots.txt",
+      "regex": "^/robots\\.txt(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/robots\\.txt(?:/)?$"
+    },
+    {
+      "page": "/sabiha-gokcen-havalimani-transfer",
+      "regex": "^/sabiha\\-gokcen\\-havalimani\\-transfer(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/sabiha\\-gokcen\\-havalimani\\-transfer(?:/)?$"
+    },
+    {
+      "page": "/saglik-turizmi-transfer",
+      "regex": "^/saglik\\-turizmi\\-transfer(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/saglik\\-turizmi\\-transfer(?:/)?$"
+    },
+    {
+      "page": "/sapanca-masukiye-turu",
+      "regex": "^/sapanca\\-masukiye\\-turu(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/sapanca\\-masukiye\\-turu(?:/)?$"
+    },
+    {
+      "page": "/sehirler-arasi-transfer",
+      "regex": "^/sehirler\\-arasi\\-transfer(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/sehirler\\-arasi\\-transfer(?:/)?$"
+    },
+    {
+      "page": "/sitemap.xml",
+      "regex": "^/sitemap\\.xml(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/sitemap\\.xml(?:/)?$"
+    },
+    {
+      "page": "/soforlu-arac-kiralama",
+      "regex": "^/soforlu\\-arac\\-kiralama(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/soforlu\\-arac\\-kiralama(?:/)?$"
+    },
+    {
+      "page": "/vip-transfer",
+      "regex": "^/vip\\-transfer(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/vip\\-transfer(?:/)?$"
+    },
+    {
+      "page": "/yalova-gunubirlik-tur",
+      "regex": "^/yalova\\-gunubirlik\\-tur(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/yalova\\-gunubirlik\\-tur(?:/)?$"
+    }
+  ],
+  "dataRoutes": [],
+  "rsc": {
+    "header": "rsc",
+    "varyHeader": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "prefetchHeader": "next-router-prefetch",
+    "didPostponeHeader": "x-nextjs-postponed",
+    "contentTypeHeader": "text/x-component",
+    "suffix": ".rsc",
+    "prefetchSuffix": ".prefetch.rsc",
+    "prefetchSegmentHeader": "next-router-segment-prefetch",
+    "prefetchSegmentSuffix": ".segment.rsc",
+    "prefetchSegmentDirSuffix": ".segments"
+  },
+  "rewriteHeaders": {
+    "pathHeader": "x-nextjs-rewritten-path",
+    "queryHeader": "x-nextjs-rewritten-query"
+  }
+}

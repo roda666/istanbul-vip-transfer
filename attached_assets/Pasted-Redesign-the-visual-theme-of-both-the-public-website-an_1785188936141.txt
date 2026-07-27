@@ -1,0 +1,156 @@
+Redesign the visual theme of both the public website and admin panel to feel brighter, modern, premium and more lively.
+
+Important:
+- This is a visual-design task only.
+- Do not change content, routes, database records, authentication, workflows or functionality.
+- Do not publish or connect the production domain.
+
+DESIGN DIRECTION
+
+Replace the excessively black/dim appearance with a modern luxury palette:
+
+Public website:
+- Deep navy: #0F1B2D
+- Navy surface: #16263D
+- Warm ivory: #F8F5EE
+- White: #FFFFFF
+- Premium gold: #D6B354
+- Bright gold accent: #F0C75E
+- Emerald accent: #16A36A
+- Main dark text: #142033
+- Muted text: #667085
+
+Admin panel:
+- Main background: #F4F6FA
+- Card background: #FFFFFF
+- Sidebar: #142033
+- Sidebar secondary surface: #1D2C43
+- Primary action: #2563EB
+- Gold brand accent: #D6B354
+- Success: #16A36A
+- Error: #DC3545
+- Main text: #172033
+- Muted text: #667085
+- Borders: #DDE3EC
+
+PUBLIC WEBSITE
+
+1. Preserve the existing premium black/gold brand identity, but make it significantly brighter.
+
+2. Hero section:
+- Keep the existing Istanbul background image.
+- Reduce the heavy black overlay so city lights and details are clearly visible.
+- Use a navy-based transparent overlay instead of pure black.
+- Ensure headings remain readable.
+- Keep gold-highlighted headline words.
+- Make primary and secondary CTA buttons clearer and more modern.
+
+3. Alternate section backgrounds:
+- Use warm ivory/light sections between navy sections.
+- Do not make every section dark.
+- Cards should use a mix of white and navy surfaces depending on their section.
+- Increase separation between sections.
+
+4. Cards:
+- Use lighter borders and subtle modern shadows.
+- Avoid large areas of pure black.
+- Improve hover states without excessive animation.
+- Keep readable contrast.
+
+5. Header and navigation:
+- Use a semi-transparent navy surface with appropriate backdrop blur.
+- Menu links must have clear hover and active states.
+- Preserve desktop and mobile behavior.
+
+6. Forms:
+- Use light form surfaces where appropriate.
+- Inputs must have visible borders, labels and focus states.
+- Maintain accessible error and success states.
+
+7. Footer:
+- Use deep navy rather than pure black.
+- Improve link contrast and spacing.
+
+ADMIN PANEL
+
+8. Convert the admin content area to a modern light interface:
+- Light gray main background
+- White cards and tables
+- Dark readable text
+- Navy sidebar
+- Gold active navigation marker
+- Blue primary action buttons
+- Clearly visible success, warning and error badges
+
+9. Keep the top bar and sidebar visually connected but do not use pure black.
+
+10. Improve:
+- Tables
+- Empty states
+- Forms
+- Filters
+- Status badges
+- Confirmation dialogs
+- Dashboard statistic cards
+- Page headings and action buttons
+
+11. Ensure all admin text has sufficient contrast.
+Currently muted gray text is too dark against black backgrounds; eliminate this problem throughout the panel.
+
+THEME ARCHITECTURE
+
+12. Define shared CSS design tokens/variables instead of repeating hex values:
+- Public theme tokens
+- Admin theme tokens
+- Backgrounds
+- Surfaces
+- Text
+- Muted text
+- Borders
+- Brand
+- Primary
+- Success
+- Warning
+- Error
+
+13. Replace hard-coded black, gray and gold values in shared components with these tokens where practical.
+
+14. Do not introduce a third-party UI framework or redesign the component architecture unnecessarily.
+
+ACCESSIBILITY AND RESPONSIVE QA
+
+15. Maintain at least WCAG AA contrast for normal text and controls.
+
+16. Check:
+- Keyboard focus states
+- Button hover/focus/disabled states
+- Form labels and errors
+- Status badges
+- Links
+- Mobile menu
+- Admin sidebar/drawer
+
+17. Verify visually at:
+- Public: 1920×1080, 1366×768 and 390×844
+- Admin: 1920×1080, 1366×768 and 390×844
+
+18. Confirm:
+- No clipped headings or buttons
+- No horizontal overflow
+- No unreadable gray-on-dark text
+- Existing responsive behavior remains intact
+- Public and admin functionality is unchanged
+
+19. Do not reset passwords, create test admins, modify Secrets or change real database records for visual testing.
+If authentication is unavailable, stop and ask me.
+
+20. Run lint, typecheck and production build.
+
+21. Report:
+- Theme files and shared components changed
+- Before/after color-system summary
+- Public and admin responsive verification
+- Accessibility/contrast verification
+- Lint/typecheck/build results
+
+22. Do not publish, deploy or connect the production domain.

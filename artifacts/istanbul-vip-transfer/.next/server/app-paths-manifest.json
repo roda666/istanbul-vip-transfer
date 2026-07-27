@@ -1,4 +1,11 @@
 {
-  "/admin/api/login/route": "app/admin/api/login/route.js",
-  "/page": "app/page.js"
+  "/admin/api/vehicles/route": "app/admin/api/vehicles/route.js",
+  "/admin/api/vehicles/[id]/route": "app/admin/api/vehicles/[id]/route.js",
+  "/page": "app/page.js",
+  "/araclar/page": "app/araclar/page.js",
+  "/admin/(protected)/sss/page": "app/admin/(protected)/sss/page.js",
+  "/admin/(protected)/dashboard/page": "app/admin/(protected)/dashboard/page.js",
+  "/admin/(protected)/araclar/page": "app/admin/(protected)/araclar/page.js",
+  "/admin/(protected)/araclar/yeni/page": "app/admin/(protected)/araclar/yeni/page.js",
+  "/admin/(protected)/araclar/[id]/duzenle/page": "app/admin/(protected)/araclar/[id]/duzenle/page.js"
 }

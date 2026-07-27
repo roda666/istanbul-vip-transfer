@@ -39,7 +39,7 @@ const serviceSchema = {
   '@type': 'Service',
   name: 'İstanbul VIP Transfer Hizmetleri',
   description:
-    'İstanbul genelinde havalimanı, otel, kurumsal, şehir turu ve özel etkinlik transferleri.',
+    'İstanbul genelinde havalimanı, otel, kurumsal, şehir turu, özel etkinlik ve şehirler arası transferler.',
   provider: { '@type': 'LocalBusiness', name: 'VIP Transfer Istanbul', telephone: '+905326600847', email: 'info@istanbulviptransfer.com' },
   areaServed: { '@type': 'City', name: 'İstanbul' },
   serviceType: 'VIP Transfer',

@@ -90,6 +90,15 @@ type LayoutConfig<Route extends LayoutRoutes = LayoutRoutes> = {
   type __Unused = __Check
 }
 
+// Validate ../../app/sehirler-arasi-transfer/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/sehirler-arasi-transfer">> = Specific
+  const handler = {} as typeof import("../../app/sehirler-arasi-transfer/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../app/vip-transfer/page.tsx
 {
   type __IsExpected<Specific extends AppPageConfig<"/vip-transfer">> = Specific

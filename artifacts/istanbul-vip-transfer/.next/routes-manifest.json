@@ -69,6 +69,12 @@
       "namedRegex": "^/sabiha\\-gokcen\\-havalimani\\-transfer(?:/)?$"
     },
     {
+      "page": "/sehirler-arasi-transfer",
+      "regex": "^/sehirler\\-arasi\\-transfer(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/sehirler\\-arasi\\-transfer(?:/)?$"
+    },
+    {
       "page": "/sitemap.xml",
       "regex": "^/sitemap\\.xml(?:/)?$",
       "routeKeys": {},

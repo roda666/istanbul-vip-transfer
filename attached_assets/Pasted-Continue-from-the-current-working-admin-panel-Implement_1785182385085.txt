@@ -1,0 +1,110 @@
+Continue from the current working admin panel.
+
+Implement only the authenticated admin password-change feature.
+
+Do not publish.
+Do not change public website content.
+Do not change the admin login email.
+Do not reset the password automatically.
+Do not expose or log passwords, hashes, secrets, cookies or tokens.
+Do not move the recently corrected admin API routes again.
+
+1. Admin account page
+
+Create or complete:
+
+/admin/hesabim
+
+Add “Hesabım” to the admin sidebar.
+
+The page must show:
+
+- Admin name
+- Admin email as read-only
+- Role as read-only
+- “Şifre Değiştir” form
+
+Form fields:
+
+- Mevcut Şifre
+- Yeni Şifre
+- Yeni Şifre Tekrar
+
+Include show/hide controls, but passwords must be hidden by default.
+
+2. Password rules
+
+- Minimum 8 characters.
+- Do not require special characters.
+- Reject an empty password.
+- Reject a new password that does not match confirmation.
+- Reject a new password that is the same as the current password.
+- Do not trim or silently alter passwords.
+- Show clear Turkish validation messages.
+
+3. Secure server implementation
+
+Use the existing:
+
+- authenticated admin session
+- verifyPassword helper
+- hashPassword helper
+- adminUsers database table
+- CSRF protection
+- server-side authorization
+- rate-limiting approach
+- AuditLog
+
+The server must:
+
+- identify the admin only from the authenticated session
+- verify the current password
+- hash the new password using the existing password helper
+- update exactly one active admin account
+- record a PASSWORD_CHANGED audit event without sensitive values
+- invalidate the current session after success
+- invalidate other existing admin sessions using the smallest compatible secure mechanism
+- redirect the user to /admin/login with a Turkish success message
+
+Never accept an email or admin ID from the form for determining which account to update.
+
+4. API location
+
+Use the corrected admin API namespace currently used by the working login system.
+
+Do not recreate the old conflicting /api/admin route structure.
+Do not weaken middleware, cookie, CSRF or login security.
+
+5. Testing
+
+Test:
+
+- unauthenticated request is rejected
+- wrong current password is rejected
+- mismatched confirmation is rejected
+- password shorter than 8 characters is rejected
+- unchanged password is rejected
+- successful password change
+- old password no longer works
+- new password works
+- session is invalidated after change
+- audit log contains no password or hash
+- desktop and mobile form layout
+- existing dashboard still works
+- public homepage still works
+
+Run:
+
+- lint
+- TypeScript typecheck
+- production build
+
+Report:
+
+- files changed
+- API route used
+- security protections
+- test results
+- lint, typecheck and build results
+
+Do not publish the website.

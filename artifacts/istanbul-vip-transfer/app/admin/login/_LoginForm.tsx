@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Lock, Mail, AlertCircle, Shield } from 'lucide-react';
 
 interface Props {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; changed?: string }>;
 }
 
 export default function LoginForm({ searchParams }: Props) {
@@ -17,6 +17,7 @@ export default function LoginForm({ searchParams }: Props) {
       ? 'Sunucu yapılandırma hatası: AUTH_SECRET ayarlanmamış. ADMIN_SETUP.md dosyasına bakın.'
       : '',
   );
+  const passwordChanged = params.changed === '1';
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
@@ -130,8 +131,29 @@ export default function LoginForm({ searchParams }: Props) {
             Admin hesabınızla oturum açın.
           </p>
 
+          {passwordChanged && (
+            <div
+              role="status"
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '10px',
+                background: 'rgba(74,222,128,0.1)',
+                border: '1px solid rgba(74,222,128,0.3)',
+                borderRadius: '8px',
+                padding: '12px',
+                marginBottom: '20px',
+              }}
+            >
+              <p style={{ color: '#4ade80', fontSize: '13px', margin: 0, fontFamily: 'Inter, sans-serif' }}>
+                ✓ Şifreniz başarıyla değiştirildi. Lütfen yeni şifrenizle giriş yapın.
+              </p>
+            </div>
+          )}
+
           {error && (
             <div
+              role="alert"
               style={{
                 display: 'flex',
                 alignItems: 'flex-start',

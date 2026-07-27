@@ -21,7 +21,18 @@ export default async function ProtectedAdminLayout({
     const { getSession } = await import('@/lib/auth/session');
     const session = await getSession();
     if (session.isLoggedIn && session.adminId) {
-      sessionData = { name: session.name, email: session.email, role: session.role };
+      // Verify sessionVersion to invalidate sessions superseded by a password change
+      const { db } = await import('@/db');
+      const { adminUsers } = await import('@/db/schema');
+      const { eq } = await import('drizzle-orm');
+      const [user] = await db
+        .select({ sessionVersion: adminUsers.sessionVersion, active: adminUsers.active })
+        .from(adminUsers)
+        .where(eq(adminUsers.id, session.adminId))
+        .limit(1);
+      if (user && user.active && user.sessionVersion === session.sessionVersion) {
+        sessionData = { name: session.name, email: session.email, role: session.role };
+      }
     }
   } catch {
     // AUTH_SECRET not configured or invalid session

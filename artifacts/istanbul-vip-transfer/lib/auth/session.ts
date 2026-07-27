@@ -11,6 +11,8 @@ export interface SessionData {
   role: string;
   name: string;
   isLoggedIn: boolean;
+  /** Incremented on every password change to invalidate other active sessions. */
+  sessionVersion: number;
 }
 
 const COOKIE_NAME = 'ivt_admin_session';
@@ -88,5 +90,6 @@ export async function requireAdminSession(): Promise<SessionData> {
     role: session.role,
     name: session.name,
     isLoggedIn: true,
+    sessionVersion: session.sessionVersion ?? 1,
   };
 }

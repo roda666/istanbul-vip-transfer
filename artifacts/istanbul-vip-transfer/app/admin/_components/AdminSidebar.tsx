@@ -18,6 +18,7 @@ import {
   ChevronRight,
   X,
   AlignLeft,
+  UserCircle,
 } from 'lucide-react';
 
 const GOLD = '#C9A84C';
@@ -41,6 +42,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/ayarlar', label: 'Site Ayarları', icon: <Settings size={18} /> },
   { href: '/admin/ai-oneriler', label: 'AI İçerik Önerileri', icon: <Sparkles size={18} /> },
   { href: '/admin/gecmis', label: 'İşlem Geçmişi', icon: <History size={18} /> },
+  { href: '/admin/hesabim', label: 'Hesabım', icon: <UserCircle size={18} /> },
 ];
 
 interface Props {

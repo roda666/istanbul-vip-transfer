@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Look up the user
-  let user: { id: string; passwordHash: string; name: string; role: string; active: boolean } | undefined;
+  let user: { id: string; passwordHash: string; name: string; role: string; active: boolean; sessionVersion: number } | undefined;
   try {
     const { db } = await import('@/db');
     const { adminUsers } = await import('@/db/schema');
@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
         name: adminUsers.name,
         role: adminUsers.role,
         active: adminUsers.active,
+        sessionVersion: adminUsers.sessionVersion,
       })
       .from(adminUsers)
       .where(eq(adminUsers.email, email.toLowerCase()))
@@ -106,7 +107,8 @@ export async function POST(request: NextRequest) {
   const { getIronSession } = await import('iron-session');
   const cookieStore = await cookies();
   const session = await getIronSession<{
-    adminId: string; email: string; role: string; name: string; isLoggedIn: boolean;
+    adminId: string; email: string; role: string; name: string;
+    isLoggedIn: boolean; sessionVersion: number;
   }>(cookieStore, sessionOptions);
 
   session.adminId = user.id;
@@ -114,6 +116,7 @@ export async function POST(request: NextRequest) {
   session.role = user.role;
   session.name = user.name;
   session.isLoggedIn = true;
+  session.sessionVersion = user.sessionVersion;
   await session.save();
 
   // Update lastLoginAt and write audit log (best-effort)

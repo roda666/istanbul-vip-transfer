@@ -110,6 +110,15 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../app/admin/(protected)/hesabim/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/admin/hesabim">> = Specific
+  const handler = {} as typeof import("../../app/admin/(protected)/hesabim/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../app/admin/(protected)/hizmetler/[id]/page.tsx
 {
   type __IsExpected<Specific extends AppPageConfig<"/admin/hizmetler/[id]">> = Specific
@@ -402,6 +411,15 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/admin/api/ai-suggestions">> = Specific
   const handler = {} as typeof import("../../app/admin/api/ai-suggestions/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../app/admin/api/change-password/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/admin/api/change-password">> = Specific
+  const handler = {} as typeof import("../../app/admin/api/change-password/route.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check

@@ -63,6 +63,7 @@ export const adminUsers = pgTable('admin_users', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
+  sessionVersion: integer('session_version').default(1).notNull(),
 });
 
 export const content = pgTable('content', {

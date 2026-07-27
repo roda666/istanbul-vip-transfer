@@ -53,7 +53,7 @@ export default function BookingForm() {
         `Ad Soyad: ${data.adSoyad}\n` +
         `Telefon: ${data.telefon}`,
     );
-    window.open(`https://wa.me/905055877006?text=${message}`, '_blank');
+    window.open(`https://wa.me/905326600847?text=${message}`, '_blank');
   };
 
   return (

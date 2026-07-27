@@ -1,0 +1,74 @@
+Update the verified business contact information throughout the entire project.
+
+Use these exact details:
+
+Business phone display:
++90 532 660 08 47
+
+Telephone link:
+tel:+905326600847
+
+WhatsApp number:
+905326600847
+
+WhatsApp link:
+https://wa.me/905326600847
+
+Business email:
+[info@istanbulviptransfer.com](mailto:info@istanbulviptransfer.com)
+
+Email link:
+mailto:info@istanbulviptransfer.com
+
+Requirements:
+
+1. Replace every occurrence of the old phone and WhatsApp number:
+
+* +90 505 587 70 06
+* +905055877006
+* 905055877006
+* https://wa.me/905055877006
+
+2. Update the phone and WhatsApp information in:
+
+* Header
+* Desktop and mobile navigation
+* Hero CTA buttons
+* Reservation form
+* Contact page
+* Footer
+* Floating WhatsApp button
+* Service pages
+* Structured data
+* Metadata or configuration files
+* Any shared contact-data constants
+
+3. Every telephone button must use:
+   tel:+905326600847
+
+4. Every WhatsApp button and the reservation form must use:
+   https://wa.me/905326600847
+
+5. Preserve the URL-encoded pre-filled WhatsApp reservation message and all existing form fields.
+
+6. Add the verified email address to the contact page and footer:
+   [info@istanbulviptransfer.com](mailto:info@istanbulviptransfer.com)
+
+7. Every email button must use:
+   mailto:info@istanbulviptransfer.com
+
+8. Update the Organization or LocalBusiness structured data with:
+
+* telephone: +905326600847
+* email: [info@istanbulviptransfer.com](mailto:info@istanbulviptransfer.com)
+
+9. Search the complete project and confirm that no old phone number, placeholder phone number or placeholder email remains.
+
+10. Do not change the Google Business Profile URL:
+    https://share.google/BaSBZMKi7j4AlQ5hO
+
+11. Do not publish the website and do not connect the production domain.
+
+12. Run lint, typecheck and the Next.js production build. Fix every error and warning.
+
+13. Report every component and page updated, along with the final verification results.

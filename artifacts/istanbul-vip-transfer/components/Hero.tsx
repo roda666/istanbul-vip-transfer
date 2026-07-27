@@ -111,7 +111,7 @@ export default function Hero() {
             Rezervasyon Yap
           </button>
           <a
-            href="tel:+905055877006"
+            href="tel:+905326600847"
             className="px-10 py-4 rounded text-sm font-semibold tracking-widest uppercase transition-all duration-300 hover:-translate-y-0.5"
             style={{
               border: '1px solid rgba(201,168,76,0.5)',

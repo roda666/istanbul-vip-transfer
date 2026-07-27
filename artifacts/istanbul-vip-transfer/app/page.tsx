@@ -34,7 +34,8 @@ const localBusinessSchema = {
   name: 'VIP Transfer Istanbul',
   description:
     'İstanbul havalimanı ve şehir içi VIP transfer hizmeti. Mercedes Vito ve Sprinter ile 7/24 hizmet.',
-  telephone: '+905055877006',
+  telephone: '+905326600847',
+  email: 'info@istanbulviptransfer.com',
   url: BASE,
   sameAs: ['https://share.google/BaSBZMKi7j4AlQ5hO'],
   areaServed: { '@type': 'City', name: 'İstanbul' },

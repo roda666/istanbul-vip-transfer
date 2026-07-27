@@ -87,7 +87,7 @@ export default function Header() {
 
             {/* WhatsApp CTA */}
             <motion.a
-              href="https://wa.me/905XXXXXXXXX"
+              href="https://wa.me/905055877006"
               target="_blank"
               rel="noopener noreferrer"
               className="hidden lg:flex items-center gap-2.5 px-5 py-2.5 rounded text-sm font-semibold transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
@@ -154,7 +154,7 @@ export default function Header() {
                 </motion.a>
               ))}
               <motion.a
-                href="https://wa.me/905XXXXXXXXX"
+                href="https://wa.me/905055877006"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-4 flex items-center justify-center gap-2.5 px-6 py-4 rounded text-base font-semibold"

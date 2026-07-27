@@ -53,7 +53,7 @@ export default function BookingForm() {
       `Ad Soyad: ${data.adSoyad}\n` +
       `Telefon: ${data.telefon}`
     );
-    window.open(`https://wa.me/905XXXXXXXXX?text=${message}`, '_blank');
+    window.open(`https://wa.me/905055877006?text=${message}`, '_blank');
   };
 
   return (
@@ -215,7 +215,7 @@ export default function BookingForm() {
                   type="tel"
                   {...register('telefon')}
                   className="vip-input"
-                  placeholder="+90 5XX XXX XX XX"
+                  placeholder="+90 5__ ___ __ __"
                   data-testid="input-telefon"
                 />
                 {errors.telefon && <p className="mt-1.5 text-xs" style={{ color: '#E07070', fontFamily: 'Inter, sans-serif' }}>{errors.telefon.message}</p>}

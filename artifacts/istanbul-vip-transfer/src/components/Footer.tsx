@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Phone, Mail, MapPin, Instagram, Facebook, Twitter } from 'lucide-react';
+import { Phone, MapPin, Instagram, Facebook, Twitter } from 'lucide-react';
 
 const quickLinks = [
   { label: 'Ana Sayfa', href: '#hero' },
@@ -115,15 +115,14 @@ export default function Footer() {
               <li className="flex items-start gap-3">
                 <Phone size={15} style={{ color: '#C9A84C', flexShrink: 0, marginTop: '2px' }} />
                 <div>
-                  <p className="text-sm" style={{ color: '#CCC', fontFamily: 'Inter, sans-serif' }}>+90 5XX XXX XX XX</p>
+                  <a
+                    href="tel:+905055877006"
+                    className="text-sm transition-colors duration-300 hover:text-[#C9A84C]"
+                    style={{ color: '#CCC', fontFamily: 'Inter, sans-serif' }}
+                  >
+                    +90 505 587 70 06
+                  </a>
                   <p className="text-xs mt-0.5" style={{ color: '#555', fontFamily: 'Inter, sans-serif' }}>7/24 Açık</p>
-                </div>
-              </li>
-              <li className="flex items-start gap-3">
-                <Mail size={15} style={{ color: '#C9A84C', flexShrink: 0, marginTop: '2px' }} />
-                <div>
-                  <p className="text-sm" style={{ color: '#CCC', fontFamily: 'Inter, sans-serif' }}>info@viptransfer.ist</p>
-                  <p className="text-xs mt-0.5" style={{ color: '#555', fontFamily: 'Inter, sans-serif' }}>E-posta ile ulaşın</p>
                 </div>
               </li>
               <li className="flex items-start gap-3">

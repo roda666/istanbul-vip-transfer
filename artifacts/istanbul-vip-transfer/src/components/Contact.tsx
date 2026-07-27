@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Phone, Mail, Clock, MapPin } from 'lucide-react';
+import { Phone, Clock, MapPin } from 'lucide-react';
 
 export default function Contact() {
   return (
@@ -54,12 +54,16 @@ export default function Contact() {
           <p className="text-sm tracking-widest uppercase mb-3" style={{ color: '#C9A84C', fontFamily: 'Inter, sans-serif' }}>
             7/24 Destek Hattı
           </p>
-          <p className="text-5xl md:text-6xl font-bold mb-8" style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#FFFFFF' }}>
-            +90 5XX XXX XX XX
-          </p>
+          <a
+            href="tel:+905055877006"
+            className="text-5xl md:text-6xl font-bold mb-8 block transition-colors duration-300 hover:text-[#C9A84C]"
+            style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#FFFFFF' }}
+          >
+            +90 505 587 70 06
+          </a>
 
           <motion.a
-            href="https://wa.me/905XXXXXXXXX"
+            href="https://wa.me/905055877006"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-3 px-12 py-5 rounded-lg text-base font-semibold transition-all duration-300 hover:shadow-2xl hover:-translate-y-1"
@@ -80,31 +84,28 @@ export default function Contact() {
         </motion.div>
 
         {/* Info Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
           {[
             {
               icon: Phone,
               title: 'Telefon',
-              content: '+90 5XX XXX XX XX',
+              content: '+90 505 587 70 06',
               sub: 'Her saat ulaşabilirsiniz',
-            },
-            {
-              icon: Mail,
-              title: 'E-posta',
-              content: 'info@viptransfer.ist',
-              sub: 'En geç 2 saatte yanıt',
+              href: 'tel:+905055877006',
             },
             {
               icon: Clock,
               title: 'Çalışma Saatleri',
               content: '7/24 Açık',
               sub: 'Yılın 365 günü',
+              href: null,
             },
             {
               icon: MapPin,
               title: 'Hizmet Bölgesi',
               content: 'Tüm İstanbul',
               sub: 'Her semte transfer',
+              href: null,
             },
           ].map((item, i) => (
             <motion.div
@@ -127,7 +128,11 @@ export default function Contact() {
                 <item.icon size={18} style={{ color: '#C9A84C' }} />
               </div>
               <p className="text-xs tracking-widest uppercase mb-1.5" style={{ color: '#666', fontFamily: 'Inter, sans-serif' }}>{item.title}</p>
-              <p className="text-sm font-semibold mb-1" style={{ color: '#E5E5E5', fontFamily: 'Inter, sans-serif' }}>{item.content}</p>
+              {item.href ? (
+                <a href={item.href} className="text-sm font-semibold mb-1 block transition-colors duration-300 hover:text-[#C9A84C]" style={{ color: '#E5E5E5', fontFamily: 'Inter, sans-serif' }}>{item.content}</a>
+              ) : (
+                <p className="text-sm font-semibold mb-1" style={{ color: '#E5E5E5', fontFamily: 'Inter, sans-serif' }}>{item.content}</p>
+              )}
               <p className="text-xs" style={{ color: '#555', fontFamily: 'Inter, sans-serif' }}>{item.sub}</p>
             </motion.div>
           ))}

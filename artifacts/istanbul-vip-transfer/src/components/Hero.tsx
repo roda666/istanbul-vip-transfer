@@ -101,9 +101,7 @@ export default function Hero() {
             Rezervasyon Yap
           </button>
           <a
-            href="https://wa.me/905XXXXXXXXX"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="tel:+905055877006"
             className="px-10 py-4 rounded text-sm font-semibold tracking-widest uppercase transition-all duration-300 hover:-translate-y-0.5"
             style={{
               border: '1px solid rgba(201, 168, 76, 0.5)',
@@ -114,7 +112,7 @@ export default function Hero() {
               backdropFilter: 'blur(10px)',
               background: 'rgba(201, 168, 76, 0.05)',
             }}
-            data-testid="hero-whatsapp-link"
+            data-testid="hero-call-link"
           >
             Hemen Ara
           </a>

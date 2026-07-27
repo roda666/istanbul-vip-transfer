@@ -50,8 +50,8 @@ export default function SssPage() {
     setLoading(true);
     try {
       const [faqsRes, contentRes] = await Promise.all([
-        fetch('/api/admin/faqs'),
-        fetch('/api/admin/content?limit=100'),
+        fetch('/admin/api/faqs'),
+        fetch('/admin/api/content?limit=100'),
       ]);
       const faqsData = await faqsRes.json();
       const contentData = await contentRes.json();
@@ -81,7 +81,7 @@ export default function SssPage() {
     if (!contentId) { setFormError('İçerik seçilmesi zorunludur.'); return; }
     setSaving(true); setFormError('');
     try {
-      const url = editId ? `/api/admin/faqs/${editId}` : '/api/admin/faqs';
+      const url = editId ? `/admin/api/faqs/${editId}` : '/admin/api/faqs';
       const method = editId ? 'PUT' : 'POST';
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question, answer, sortOrder, contentId }) });
       const data = await res.json().catch(() => ({}));
@@ -95,7 +95,7 @@ export default function SssPage() {
     if (!confirm('Bu SSS öğesini silmek istediğinizden emin misiniz?')) return;
     setDeleting(id);
     try {
-      const res = await fetch(`/api/admin/faqs/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/admin/api/faqs/${id}`, { method: 'DELETE' });
       if (res.ok) fetchData();
       else alert('Silme başarısız.');
     } catch { alert('Sunucu hatası.'); }

@@ -44,7 +44,7 @@ export default function ContentList({ items, baseUrl, page, total, limit }: Prop
     if (!confirm(`"${title}" içeriğini kalıcı olarak silmek istediğinizden emin misiniz?`)) return;
     setDeleting(id);
     try {
-      const res = await fetch(`/api/admin/content/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/admin/api/content/${id}`, { method: 'DELETE' });
       if (res.ok) {
         router.refresh();
       } else {

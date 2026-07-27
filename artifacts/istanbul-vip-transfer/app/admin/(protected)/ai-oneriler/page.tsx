@@ -45,7 +45,7 @@ export default function AiOnerilerPage() {
   const fetchSuggestions = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/ai-suggestions');
+      const res = await fetch('/admin/api/ai-suggestions');
       const data = await res.json();
       setSuggestions(data.items ?? []);
     } catch { setSuggestions([]); }
@@ -57,7 +57,7 @@ export default function AiOnerilerPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault(); setSaving(true); setFormError('');
     try {
-      const res = await fetch('/api/admin/ai-suggestions', {
+      const res = await fetch('/admin/api/ai-suggestions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ suggestedTitle, primaryKeyword, secondaryKeywords, searchIntent, articleType, targetService, targetLocation }),
@@ -75,7 +75,7 @@ export default function AiOnerilerPage() {
     if (!confirm('Bu öneriyi silmek istediğinizden emin misiniz?')) return;
     setDeleting(id);
     try {
-      const res = await fetch(`/api/admin/ai-suggestions/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/admin/api/ai-suggestions/${id}`, { method: 'DELETE' });
       if (res.ok) fetchSuggestions();
     } catch { /* ignore */ }
     finally { setDeleting(null); }

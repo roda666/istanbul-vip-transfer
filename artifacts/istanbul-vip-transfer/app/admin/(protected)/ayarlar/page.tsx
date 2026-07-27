@@ -35,13 +35,13 @@ export default function AyarlarPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetch('/api/admin/settings').then(r => r.json()).then(d => { setSettings(d.settings ?? {}); setLoading(false); }).catch(() => setLoading(false));
+    fetch('/admin/api/settings').then(r => r.json()).then(d => { setSettings(d.settings ?? {}); setLoading(false); }).catch(() => setLoading(false));
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault(); setSaving(true); setError(''); setSuccess(false);
     try {
-      const res = await fetch('/api/admin/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(settings) });
+      const res = await fetch('/admin/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(settings) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { setError(data.error || 'Kaydedilemedi.'); }
       else { setSuccess(true); setTimeout(() => setSuccess(false), 3000); }

@@ -44,7 +44,7 @@ export default function MenuPage() {
   const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/nav');
+      const res = await fetch('/admin/api/nav');
       const data = await res.json();
       setItems(data.items ?? []);
     } catch { setItems([]); }
@@ -67,7 +67,7 @@ export default function MenuPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault(); setSaving(true); setFormError('');
     try {
-      const url = editId ? `/api/admin/nav/${editId}` : '/api/admin/nav';
+      const url = editId ? `/admin/api/nav/${editId}` : '/admin/api/nav';
       const method = editId ? 'PUT' : 'POST';
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ label, href, location, parentId: parentId || null, sortOrder, active }) });
       const data = await res.json().catch(() => ({}));
@@ -81,7 +81,7 @@ export default function MenuPage() {
     if (!confirm('Bu menü öğesini silmek istediğinizden emin misiniz?')) return;
     setDeleting(id);
     try {
-      const res = await fetch(`/api/admin/nav/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/admin/api/nav/${id}`, { method: 'DELETE' });
       if (res.ok) fetchItems();
       else alert('Silme başarısız.');
     } catch { alert('Sunucu hatası.'); }

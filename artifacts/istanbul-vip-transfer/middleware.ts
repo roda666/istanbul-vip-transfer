@@ -1,11 +1,14 @@
 /**
- * Next.js middleware — protects /admin/* and /api/admin/* routes.
+ * Next.js middleware — protects /admin/* routes (UI + API).
  *
  * Strategy:
  * - /admin/login is always accessible (public)
- * - /api/admin/login and /api/admin/logout are always accessible
- * - All other /admin/* and /api/admin/* routes require a valid session
+ * - /admin/api/login and /admin/api/logout are always accessible
+ * - All other /admin/* routes require a valid session
  * - If AUTH_SECRET is not configured, all protected routes return 503/redirect
+ *
+ * Note: admin API routes live at /admin/api/* (not /api/admin/*) to avoid
+ * the Replit proxy routing /api/* to the separate api-server artifact.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
@@ -27,8 +30,8 @@ function tryGetOptions() {
   };
 }
 
-// Paths within /admin or /api/admin that don't require auth
-const PUBLIC_PATHS = ['/admin/login', '/api/admin/login', '/api/admin/logout'];
+// Paths within /admin that don't require auth
+const PUBLIC_PATHS = ['/admin/login', '/admin/api/login', '/admin/api/logout'];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'));
@@ -37,17 +40,14 @@ function isPublicPath(pathname: string): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const isAdminUi = pathname.startsWith('/admin');
-  const isAdminApi = pathname.startsWith('/api/admin');
-
-  if (!isAdminUi && !isAdminApi) return NextResponse.next();
+  if (!pathname.startsWith('/admin')) return NextResponse.next();
   if (isPublicPath(pathname)) return NextResponse.next();
 
   const options = tryGetOptions();
 
   // AUTH_SECRET not configured
   if (!options) {
-    if (isAdminApi) {
+    if (pathname.startsWith('/admin/api/')) {
       return NextResponse.json(
         { error: 'Server misconfigured: AUTH_SECRET is not set. See ADMIN_SETUP.md.' },
         { status: 503 },
@@ -61,14 +61,14 @@ export async function middleware(request: NextRequest) {
     const session = await getIronSession<SessionData>(request.cookies as any, options);
 
     if (!session.isLoggedIn || !session.adminId) {
-      if (isAdminApi) {
+      if (pathname.startsWith('/admin/api/')) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
       // Prevent open redirect: always redirect to /admin/login
       return NextResponse.redirect(new URL('/admin/login', request.url));
     }
   } catch {
-    if (isAdminApi) {
+    if (pathname.startsWith('/admin/api/')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     return NextResponse.redirect(new URL('/admin/login', request.url));
@@ -78,5 +78,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/api/admin/:path*'],
+  matcher: ['/admin/:path*'],
 };

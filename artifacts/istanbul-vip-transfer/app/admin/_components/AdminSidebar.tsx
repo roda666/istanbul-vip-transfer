@@ -60,7 +60,7 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
     if (loggingOut) return;
     setLoggingOut(true);
     try {
-      await fetch('/api/admin/logout', { method: 'POST' });
+      await fetch('/admin/api/logout', { method: 'POST' });
       router.push('/admin/login');
       router.refresh();
     } catch {

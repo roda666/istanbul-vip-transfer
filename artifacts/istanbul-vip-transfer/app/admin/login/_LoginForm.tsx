@@ -28,7 +28,7 @@ export default function LoginForm({ searchParams }: Props) {
     setError('');
 
     try {
-      const res = await fetch('/api/admin/login', {
+      const res = await fetch('/admin/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim().toLowerCase(), password }),

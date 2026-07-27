@@ -118,7 +118,7 @@ export default function ContentForm({ mode, contentType, initialData, backUrl }:
     };
 
     try {
-      const url = isEdit ? `/api/admin/content/${initialData!.id}` : '/api/admin/content';
+      const url = isEdit ? `/admin/api/content/${initialData!.id}` : '/admin/api/content';
       const method = isEdit ? 'PUT' : 'POST';
       const res = await fetch(url, {
         method,
@@ -151,7 +151,7 @@ export default function ContentForm({ mode, contentType, initialData, backUrl }:
     setError('');
     setSuccess('');
     try {
-      const res = await fetch(`/api/admin/content/${initialData!.id}`, {
+      const res = await fetch(`/admin/api/content/${initialData!.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action }),

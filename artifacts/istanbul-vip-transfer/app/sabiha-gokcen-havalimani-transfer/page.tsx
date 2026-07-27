@@ -3,8 +3,9 @@ import PageHero from '@/components/PageHero';
 import BookingForm from '@/components/BookingForm';
 import VehicleFleet from '@/components/VehicleFleet';
 import Contact from '@/components/Contact';
+import { SITE } from '@/lib/site-config';
 
-const BASE = 'https://www.istanbulviptransfer.com';
+const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/sabiha-gokcen-havalimani-transfer`;
 
 export const metadata: Metadata = {
@@ -39,7 +40,12 @@ const serviceSchema = {
   name: 'Sabiha Gökçen Havalimanı (SAW) VIP Transfer',
   description:
     'Sabiha Gökçen Havalimanı\'ndan şehir merkezine ve tüm destinasyonlara Mercedes VIP araçlarla karşılama ve transfer hizmeti.',
-  provider: { '@type': 'LocalBusiness', name: 'VIP Transfer Istanbul', telephone: '+905326600847', email: 'info@istanbulviptransfer.com' },
+  provider: {
+    '@type': 'LocalBusiness',
+    name: 'VIP Transfer Istanbul',
+    telephone: SITE.phoneE164,
+    email: SITE.email,
+  },
   areaServed: { '@type': 'City', name: 'İstanbul' },
   serviceType: 'Airport Transfer',
 };

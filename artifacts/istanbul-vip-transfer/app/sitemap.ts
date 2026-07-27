@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
+import { SITE } from '@/lib/site-config';
 
-const BASE = 'https://www.istanbulviptransfer.com';
+const BASE = SITE.siteUrl;
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [

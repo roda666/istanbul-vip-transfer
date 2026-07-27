@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Phone, MapPin, Mail, Instagram, Facebook, Twitter } from 'lucide-react';
+import { SITE } from '@/lib/site-config';
 
 const quickLinks = [
   { label: 'Ana Sayfa', href: '/' },
@@ -18,7 +19,7 @@ const services = [
   'Şehir Turu',
   'Kurumsal Transfer',
   'Özel Etkinlik Transferi',
-  'VIP Gece Transferi',
+  'Şehirler Arası Transfer',
 ];
 
 export default function Footer() {
@@ -110,9 +111,9 @@ export default function Footer() {
               <li className="flex items-start gap-3">
                 <Phone size={15} style={{ color: '#C9A84C', flexShrink: 0, marginTop: '2px' }} />
                 <div>
-                  <a href="tel:+905326600847" className="text-sm transition-colors duration-300 hover:text-[#C9A84C]"
+                  <a href={SITE.phoneTel} className="text-sm transition-colors duration-300 hover:text-[#C9A84C]"
                     style={{ color: '#CCC', fontFamily: 'Inter, sans-serif' }}>
-                    +90 532 660 08 47
+                    {SITE.phoneDisplay}
                   </a>
                   <p className="text-xs mt-0.5" style={{ color: '#555', fontFamily: 'Inter, sans-serif' }}>7/24 Açık</p>
                 </div>
@@ -120,9 +121,9 @@ export default function Footer() {
               <li className="flex items-start gap-3">
                 <Mail size={15} style={{ color: '#C9A84C', flexShrink: 0, marginTop: '2px' }} />
                 <div>
-                  <a href="mailto:info@istanbulviptransfer.com" className="text-sm transition-colors duration-300 hover:text-[#C9A84C]"
+                  <a href={SITE.emailMailto} className="text-sm transition-colors duration-300 hover:text-[#C9A84C] break-all"
                     style={{ color: '#CCC', fontFamily: 'Inter, sans-serif' }}>
-                    info@istanbulviptransfer.com
+                    {SITE.email}
                   </a>
                 </div>
               </li>

@@ -4,8 +4,9 @@ import Services from '@/components/Services';
 import VehicleFleet from '@/components/VehicleFleet';
 import BookingForm from '@/components/BookingForm';
 import Contact from '@/components/Contact';
+import { SITE } from '@/lib/site-config';
 
-const BASE = 'https://www.istanbulviptransfer.com';
+const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/vip-transfer`;
 
 export const metadata: Metadata = {
@@ -40,7 +41,12 @@ const serviceSchema = {
   name: 'İstanbul VIP Transfer Hizmetleri',
   description:
     'İstanbul genelinde havalimanı, otel, kurumsal, şehir turu, özel etkinlik ve şehirler arası transferler.',
-  provider: { '@type': 'LocalBusiness', name: 'VIP Transfer Istanbul', telephone: '+905326600847', email: 'info@istanbulviptransfer.com' },
+  provider: {
+    '@type': 'LocalBusiness',
+    name: 'VIP Transfer Istanbul',
+    telephone: SITE.phoneE164,
+    email: SITE.email,
+  },
   areaServed: { '@type': 'City', name: 'İstanbul' },
   serviceType: 'VIP Transfer',
 };

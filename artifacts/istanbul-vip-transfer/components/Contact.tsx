@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { Phone, Clock, MapPin, Mail } from 'lucide-react';
+import { SITE } from '@/lib/site-config';
 
 export default function Contact() {
   return (
@@ -51,14 +52,14 @@ export default function Contact() {
             7/24 Destek Hattı
           </p>
           <a
-            href="tel:+905326600847"
+            href={SITE.phoneTel}
             className="text-5xl md:text-6xl font-bold mb-8 block transition-colors duration-300 hover:text-[#C9A84C]"
             style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#FFFFFF' }}
           >
-            +90 532 660 08 47
+            {SITE.phoneDisplay}
           </a>
           <motion.a
-            href="https://wa.me/905326600847"
+            href={SITE.whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-3 px-12 py-5 rounded-lg text-base font-semibold transition-all duration-300 hover:shadow-2xl hover:-translate-y-1"
@@ -74,12 +75,12 @@ export default function Contact() {
         </motion.div>
 
         {/* Info Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {[
-            { icon: Phone, title: 'Telefon', content: '+90 532 660 08 47', sub: 'Her saat ulaşabilirsiniz', href: 'tel:+905326600847' },
-            { icon: Clock, title: 'Çalışma Saatleri', content: '7/24 Açık', sub: 'Yılın 365 günü', href: null },
-            { icon: Mail, title: 'E-posta', content: 'info@istanbulviptransfer.com', sub: 'İletişim için yazın', href: 'mailto:info@istanbulviptransfer.com' },
-            { icon: MapPin, title: 'Hizmet Bölgesi', content: 'Tüm İstanbul', sub: 'Her semte transfer', href: null },
+            { icon: Phone,  title: 'Telefon',          content: SITE.phoneDisplay,  sub: 'Her saat ulaşabilirsiniz', href: SITE.phoneTel },
+            { icon: Clock,  title: 'Çalışma Saatleri', content: '7/24 Açık',         sub: 'Yılın 365 günü',           href: null },
+            { icon: Mail,   title: 'E-posta',           content: SITE.email,          sub: 'İletişim için yazın',      href: SITE.emailMailto },
+            { icon: MapPin, title: 'Hizmet Bölgesi',   content: 'Tüm İstanbul',       sub: 'Her semte transfer',       href: null },
           ].map((item, i) => (
             <motion.div
               key={item.title}
@@ -97,8 +98,12 @@ export default function Contact() {
               </div>
               <p className="text-xs tracking-widest uppercase mb-1.5" style={{ color: '#666', fontFamily: 'Inter, sans-serif' }}>{item.title}</p>
               {item.href ? (
-                <a href={item.href} className="text-sm font-semibold mb-1 block transition-colors duration-300 hover:text-[#C9A84C]"
-                  style={{ color: '#E5E5E5', fontFamily: 'Inter, sans-serif' }}>{item.content}</a>
+                <a href={item.href}
+                  {...(item.href.startsWith('mailto:') || item.href.startsWith('tel:') ? {} : { target: '_blank', rel: 'noopener noreferrer' })}
+                  className="text-sm font-semibold mb-1 block transition-colors duration-300 hover:text-[#C9A84C] break-all"
+                  style={{ color: '#E5E5E5', fontFamily: 'Inter, sans-serif' }}>
+                  {item.content}
+                </a>
               ) : (
                 <p className="text-sm font-semibold mb-1" style={{ color: '#E5E5E5', fontFamily: 'Inter, sans-serif' }}>{item.content}</p>
               )}

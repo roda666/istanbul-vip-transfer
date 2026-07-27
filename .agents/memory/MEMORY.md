@@ -1,0 +1,1 @@
+- [Istanbul VIP Transfer contact config](istanbul-vip-transfer-contact-config.md) — all contact info centralized in lib/site-config.ts; never hard-code phone/email/URL elsewhere.

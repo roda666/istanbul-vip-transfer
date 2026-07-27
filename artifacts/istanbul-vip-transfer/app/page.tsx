@@ -8,8 +8,9 @@ import Reviews from '@/components/Reviews';
 import FAQ from '@/components/FAQ';
 import Contact from '@/components/Contact';
 import { faqs } from '@/lib/faq-data';
+import { SITE } from '@/lib/site-config';
 
-const BASE = 'https://www.istanbulviptransfer.com';
+const BASE = SITE.siteUrl;
 
 export const metadata: Metadata = {
   title: 'İstanbul VIP Havalimanı Transfer | Mercedes ile Lüks Yolculuk',
@@ -34,10 +35,10 @@ const localBusinessSchema = {
   name: 'VIP Transfer Istanbul',
   description:
     'İstanbul havalimanı ve şehir içi VIP transfer hizmeti. Mercedes Vito ve Sprinter ile 7/24 hizmet.',
-  telephone: '+905326600847',
-  email: 'info@istanbulviptransfer.com',
+  telephone: SITE.phoneE164,
+  email: SITE.email,
   url: BASE,
-  sameAs: ['https://share.google/BaSBZMKi7j4AlQ5hO'],
+  sameAs: [SITE.googleBusinessUrl],
   areaServed: { '@type': 'City', name: 'İstanbul' },
   priceRange: '$$',
 };

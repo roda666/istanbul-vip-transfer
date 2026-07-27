@@ -3,11 +3,11 @@
   "/robots.txt/route": "/robots.txt",
   "/sitemap.xml/route": "/sitemap.xml",
   "/hakkimizda/page": "/hakkimizda",
-  "/sabiha-gokcen-havalimani-transfer/page": "/sabiha-gokcen-havalimani-transfer",
   "/sehirler-arasi-transfer/page": "/sehirler-arasi-transfer",
-  "/vip-transfer/page": "/vip-transfer",
   "/iletisim/page": "/iletisim",
+  "/vip-transfer/page": "/vip-transfer",
   "/istanbul-havalimani-transfer/page": "/istanbul-havalimani-transfer",
   "/araclar/page": "/araclar",
+  "/sabiha-gokcen-havalimani-transfer/page": "/sabiha-gokcen-havalimani-transfer",
   "/page": "/"
 }

@@ -3,8 +3,9 @@ import PageHero from '@/components/PageHero';
 import VehicleFleet from '@/components/VehicleFleet';
 import BookingForm from '@/components/BookingForm';
 import Contact from '@/components/Contact';
+import { SITE } from '@/lib/site-config';
 
-const BASE = 'https://www.istanbulviptransfer.com';
+const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/araclar`;
 
 export const metadata: Metadata = {

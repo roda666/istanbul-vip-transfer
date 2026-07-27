@@ -1,8 +1,9 @@
 import type { MetadataRoute } from 'next';
+import { SITE } from '@/lib/site-config';
 
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: { userAgent: '*', allow: '/', disallow: [] },
-    sitemap: 'https://www.istanbulviptransfer.com/sitemap.xml',
+    sitemap: `${SITE.siteUrl}/sitemap.xml`,
   };
 }

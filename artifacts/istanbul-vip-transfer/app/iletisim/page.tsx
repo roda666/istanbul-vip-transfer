@@ -2,19 +2,18 @@ import type { Metadata } from 'next';
 import PageHero from '@/components/PageHero';
 import Contact from '@/components/Contact';
 import BookingForm from '@/components/BookingForm';
+import { SITE } from '@/lib/site-config';
 
-const BASE = 'https://www.istanbulviptransfer.com';
+const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/iletisim`;
 
 export const metadata: Metadata = {
   title: 'İletişim | VIP Transfer Istanbul — 7/24 WhatsApp Desteği',
-  description:
-    'VIP Transfer Istanbul iletişim. +90 532 660 08 47 numaralı hattımızı arayın veya WhatsApp üzerinden rezervasyon yapın. 7/24 hizmet.',
+  description: `VIP Transfer Istanbul iletişim. ${SITE.phoneDisplay} numaralı hattımızı arayın veya WhatsApp üzerinden rezervasyon yapın. 7/24 hizmet.`,
   alternates: { canonical: PAGE },
   openGraph: {
     title: 'İletişim | VIP Transfer Istanbul',
-    description:
-      '+90 532 660 08 47 — 7/24 ulaşın. WhatsApp ile hızlı rezervasyon ve destek.',
+    description: `${SITE.phoneDisplay} — 7/24 ulaşın. WhatsApp ile hızlı rezervasyon ve destek.`,
     url: PAGE,
     siteName: 'VIP Transfer Istanbul',
     locale: 'tr_TR',

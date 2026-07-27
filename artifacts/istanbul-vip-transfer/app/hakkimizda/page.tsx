@@ -4,8 +4,9 @@ import TrustSignals from '@/components/TrustSignals';
 import Reviews from '@/components/Reviews';
 import BookingForm from '@/components/BookingForm';
 import Contact from '@/components/Contact';
+import { SITE } from '@/lib/site-config';
 
-const BASE = 'https://www.istanbulviptransfer.com';
+const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/hakkimizda`;
 
 export const metadata: Metadata = {

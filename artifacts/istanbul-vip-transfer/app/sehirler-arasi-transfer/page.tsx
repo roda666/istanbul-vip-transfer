@@ -3,8 +3,9 @@ import PageHero from '@/components/PageHero';
 import BookingForm from '@/components/BookingForm';
 import VehicleFleet from '@/components/VehicleFleet';
 import Contact from '@/components/Contact';
+import { SITE } from '@/lib/site-config';
 
-const BASE = 'https://www.istanbulviptransfer.com';
+const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/sehirler-arasi-transfer`;
 
 export const metadata: Metadata = {
@@ -42,8 +43,8 @@ const serviceSchema = {
   provider: {
     '@type': 'LocalBusiness',
     name: 'VIP Transfer Istanbul',
-    telephone: '+905326600847',
-    email: 'info@istanbulviptransfer.com',
+    telephone: SITE.phoneE164,
+    email: SITE.email,
   },
   areaServed: { '@type': 'Country', name: 'Türkiye' },
   serviceType: 'Intercity Transfer',

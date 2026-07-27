@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
 import { MapPin, Calendar, Clock, Users, User, Phone } from 'lucide-react';
+import { bookingWhatsAppUrl } from '@/lib/site-config';
 
 const bookingSchema = z.object({
   nereden: z.string().min(1, 'Lütfen kalkış noktasını seçin'),
@@ -53,7 +54,7 @@ export default function BookingForm() {
         `Ad Soyad: ${data.adSoyad}\n` +
         `Telefon: ${data.telefon}`,
     );
-    window.open(`https://wa.me/905326600847?text=${message}`, '_blank');
+    window.open(bookingWhatsAppUrl(message), '_blank');
   };
 
   return (

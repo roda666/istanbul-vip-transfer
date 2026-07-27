@@ -191,7 +191,7 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
       </nav>
 
       {/* User + Logout */}
-      <div style={{ borderTop: '1px solid rgba(201,168,76,0.1)', padding: '12px 8px' }}>
+      <div style={{ borderTop: '1px solid rgba(201,168,76,0.1)', padding: '12px 8px 20px', flexShrink: 0 }}>
         {!collapsed && (
           <div
             style={{
@@ -287,12 +287,19 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
         style={{
           width: collapsed ? '60px' : '240px',
           flexShrink: 0,
-          height: '100vh',
+          height: '100dvh',
           position: 'sticky',
           top: 0,
           borderRight: '1px solid rgba(201,168,76,0.1)',
           transition: 'width 0.2s ease',
-          overflow: 'hidden',
+          /*
+           * overflowX clips nav-item text during the collapse width transition.
+           * overflowY must remain visible/auto so the inner flex column (which
+           * has its own overflow-y:auto nav) can render a scrollbar when the
+           * list of nav items is taller than the viewport.
+           */
+          overflowX: 'hidden',
+          overflowY: 'visible',
         }}
       >
         {sidebarContent}

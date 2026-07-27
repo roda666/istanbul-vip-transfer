@@ -66,6 +66,16 @@ export default async function ProtectedAdminLayout({
             padding: '0',
           }}
         >
+          {/*
+           * Mobile header clearance.
+           * The mobile top bar is position:fixed (56 px). On mobile the sidebar
+           * fragment's offset-div is a flex item in the horizontal row and gives
+           * no vertical clearance to this column.  This single spacer, placed
+           * once here in the shared layout, pushes all page content below the
+           * header on every protected admin page.  Hidden on lg+ (desktop uses
+           * a sticky sidebar with no fixed header).
+           */}
+          <div className="lg:hidden" style={{ height: '56px', flexShrink: 0 }} aria-hidden="true" />
           {children}
         </main>
       </div>

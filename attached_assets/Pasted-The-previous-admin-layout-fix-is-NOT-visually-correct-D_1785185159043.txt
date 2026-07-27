@@ -1,0 +1,64 @@
+The previous admin layout fix is NOT visually correct. Do not mark this task complete based only on lint/build results.
+
+The supplied/current browser view proves that:
+- The page H1 is still completely hidden behind the fixed top bar.
+- The top-right primary action button is still clipped.
+- The sidebar logout control is still not visible at the bottom.
+
+Fix the actual rendered layout.
+
+Requirements:
+
+1. Reproduce the issue in the running browser at 1920×1080 on:
+   - /admin/sayfalar
+   - /admin/hizmetler
+   - /admin/blog
+
+2. Inspect the real computed positions of:
+   - Fixed admin top bar
+   - Main content wrapper
+   - Page title/action toolbar
+   - Sidebar
+   - Account/logout section
+
+3. Create one shared, explicit top-bar height value and use it consistently.
+
+4. On desktop:
+   - The fixed top bar must occupy its own reserved vertical space.
+   - The main content must start at least 24px below the bottom edge of the top bar.
+   - Do not rely only on a 56px spacer if the actual rendered header is taller.
+   - Remove any negative margin, absolute positioning, translateY or margin collapse that pulls the page toolbar upward.
+   - The full H1, subtitle and primary action button must be visible without scrolling.
+
+5. Fix the shared ContentList/page-toolbar component if that is where the title and button are being positioned incorrectly.
+   - Do not patch each admin page separately.
+   - Page toolbar must use normal document flow.
+   - No absolute or fixed positioning for page titles/action buttons.
+
+6. Sidebar:
+   - Keep it below the top bar.
+   - Its usable height must equal the remaining viewport height.
+   - Navigation may scroll independently.
+   - Admin account card and “Çıkış” button must both be fully visible and clickable.
+   - Do not hide “Çıkış” below the viewport.
+
+7. Mobile:
+   - Content must begin below the mobile top bar.
+   - Drawer must remain usable.
+   - No horizontal overflow.
+
+8. Preserve all admin functionality, authentication, routes, database and public-site design.
+
+9. Verify visually in the running browser, not only from code:
+   - 1920×1080
+   - 1366×768
+   - 390×844
+
+10. Before completing the task, take/report actual browser screenshots showing:
+   - Full page H1
+   - Full top-right action button
+   - Full account card and logout button
+
+11. Run lint, typecheck and production build.
+
+12. Do not publish, deploy or connect the production domain.

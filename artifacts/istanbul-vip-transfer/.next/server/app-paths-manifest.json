@@ -1,4 +1,8 @@
 {
+  "/admin/api/login/route": "app/admin/api/login/route.js",
   "/page": "app/page.js",
-  "/admin/login/page": "app/admin/login/page.js"
+  "/admin/login/page": "app/admin/login/page.js",
+  "/admin/(protected)/dashboard/page": "app/admin/(protected)/dashboard/page.js",
+  "/admin/(protected)/sayfalar/page": "app/admin/(protected)/sayfalar/page.js",
+  "/admin/(protected)/hizmetler/page": "app/admin/(protected)/hizmetler/page.js"
 }

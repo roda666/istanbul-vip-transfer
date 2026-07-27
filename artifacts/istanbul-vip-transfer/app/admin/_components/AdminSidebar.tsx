@@ -126,7 +126,7 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
         <button
           onClick={() => setCollapsed((v) => !v)}
           aria-label={collapsed ? 'Menüyü genişlet' : 'Menüyü daralt'}
-          className="hidden lg:flex"
+          className="hidden lg:flex items-center justify-center"
           style={{
             background: 'none',
             border: 'none',
@@ -134,9 +134,6 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
             cursor: 'pointer',
             padding: '4px',
             borderRadius: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
           }}
         >
           {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
@@ -190,8 +187,9 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
         })}
       </nav>
 
-      {/* User + Logout */}
-      <div style={{ borderTop: '1px solid rgba(201,168,76,0.1)', padding: '12px 8px 20px', flexShrink: 0 }}>
+      {/* User + Logout — flexShrink:0 keeps this section always visible;
+           generous bottom padding clears the Next.js dev badge in development. */}
+      <div style={{ borderTop: '1px solid rgba(201,168,76,0.1)', padding: '12px 8px 28px', flexShrink: 0 }}>
         {!collapsed && (
           <div
             style={{
@@ -305,9 +303,10 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
         {sidebarContent}
       </div>
 
-      {/* Mobile top bar */}
+      {/* Mobile top bar — className controls display; no inline display: so Tailwind's
+           lg:hidden (display:none) is not overridden by an inline style at desktop widths. */}
       <div
-        className="lg:hidden"
+        className="lg:hidden flex items-center"
         style={{
           position: 'fixed',
           top: 0,
@@ -317,8 +316,6 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
           height: '56px',
           background: BG,
           borderBottom: '1px solid rgba(201,168,76,0.1)',
-          display: 'flex',
-          alignItems: 'center',
           padding: '0 16px',
           gap: '12px',
         }}

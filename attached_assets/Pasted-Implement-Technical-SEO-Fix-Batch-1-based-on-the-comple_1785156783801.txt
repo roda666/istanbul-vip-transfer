@@ -1,0 +1,150 @@
+Implement Technical SEO Fix Batch 1 based on the completed audit.
+
+Do not write or generate long-form service-page content yet. Do not create legal pages or OG images in this task.
+
+1. Fix the title-template duplication problem.
+
+Ensure the final rendered titles are exactly:
+
+* /
+  İstanbul VIP Transfer | Vito ve Sprinter Hizmeti
+
+* /istanbul-havalimani-transfer
+  İstanbul Havalimanı Transfer | VIP Vito
+
+* /sabiha-gokcen-havalimani-transfer
+  Sabiha Gökçen Transfer | VIP Vito
+
+* /vip-transfer
+  VIP Transfer İstanbul | Vito ve Sprinter
+
+* /sehirler-arasi-transfer
+  Şehirler Arası VIP Transfer | İstanbul
+
+* /araclar
+  VIP Araçlarımız | Vito ve Sprinter
+
+* /hakkimizda
+  Hakkımızda | İstanbul VIP Transfer
+
+* /iletisim
+  İletişim | İstanbul VIP Transfer
+
+Use absolute page titles or a correctly configured template so the brand name is never appended twice.
+
+2. Use these unique meta descriptions:
+
+* /
+  İstanbul VIP transfer hizmeti; İstanbul Havalimanı, Sabiha Gökçen, şehir içi ve şehirler arası Mercedes Vito ve Sprinter ulaşımı.
+
+* /istanbul-havalimani-transfer
+  İstanbul Havalimanı transfer hizmetiyle Mercedes Vito ve Sprinter araçlarla otel, ev ve istediğiniz adrese özel ulaşım.
+
+* /sabiha-gokcen-havalimani-transfer
+  Sabiha Gökçen Havalimanı transfer hizmetiyle Mercedes Vito ve Sprinter araçlarla İstanbul’un her noktasına özel ulaşım.
+
+* /vip-transfer
+  İstanbul’da Mercedes Vito ve Sprinter araçlarla havalimanı, otel, kurumsal ve şehirler arası VIP transfer hizmeti.
+
+* /sehirler-arasi-transfer
+  İstanbul çıkışlı şehirler arası VIP transfer hizmeti. Mercedes Vito ve Sprinter araçlarla konforlu ve kapıdan kapıya özel ulaşım.
+
+* /araclar
+  Mercedes Vito ve Sprinter VIP araç seçeneklerimizi inceleyin; transfer ihtiyaçlarınıza ve yolcu sayınıza uygun aracı seçin.
+
+* /hakkimizda
+  İstanbul VIP Transfer’in hizmet anlayışı, araç seçenekleri, havalimanı ve şehirler arası özel ulaşım çözümleri hakkında bilgi alın.
+
+* /iletisim
+  İstanbul VIP Transfer rezervasyonu ve bilgi için telefon, WhatsApp veya e-posta üzerinden bize 7/24 ulaşın.
+
+Report the final rendered character count for every title and description.
+
+3. Resolve the orphan-page problem.
+
+Add visible internal links to both:
+
+* /istanbul-havalimani-transfer
+* /sabiha-gokcen-havalimani-transfer
+
+These pages must be accessible from:
+
+* Desktop navigation
+* Mobile navigation
+* Homepage service area
+* Footer services
+* Relevant links on /vip-transfer
+
+4. Convert relevant service cards and footer service names from plain text into Next.js Link components.
+
+Add links only when a real page exists. Do not create fake routes or empty pages.
+
+Existing destinations include:
+
+* /istanbul-havalimani-transfer
+* /sabiha-gokcen-havalimani-transfer
+* /vip-transfer
+* /sehirler-arasi-transfer
+* /araclar
+* /hakkimizda
+* /iletisim
+
+5. Add /hakkimizda to the footer quick links.
+
+6. Remove public/robots.txt and keep app/robots.ts as the single source of truth.
+
+Verify that the generated robots.txt includes the correct sitemap URL:
+
+https://www.istanbulviptransfer.com/sitemap.xml
+
+7. Refactor Reviews.tsx to import the Google Business Profile URL from the centralized SITE configuration. Do not hard-code a second copy.
+
+Verified URL:
+
+https://share.google/BaSBZMKi7j4AlQ5hO
+
+8. Remove Instagram, Facebook and Twitter/X buttons that use href="#". Do not invent social profile URLs.
+
+9. Improve vehicle image ALT text without keyword stuffing:
+
+* Mercedes Vito VIP transfer aracı
+* Mercedes Sprinter VIP grup transfer aracı
+
+10. Replace the hero scroll indicator’s clickable div with an accessible button that has:
+
+* type="button"
+* A descriptive aria-label
+* Keyboard accessibility
+* The same existing visual design
+
+11. Preserve:
+
+* Existing visual design
+* Responsive layout
+* Verified contact information
+* Genuine Google reviews
+* Working WhatsApp reservation form
+* Valid structured data
+
+Do not add Review or AggregateRating structured data.
+
+12. Do not publish and do not connect the production domain.
+
+13. Run:
+
+* lint
+* typecheck
+* Next.js production build
+* Internal-link validation
+
+Fix all errors and warnings.
+
+14. Report:
+
+* Every file changed
+* Final rendered titles and descriptions
+* Internal links added
+* Confirmation that both airport pages are no longer orphan pages
+* Confirmation that public/robots.txt was removed
+* Build and validation results
+* Audit issues intentionally deferred to the content and legal phases

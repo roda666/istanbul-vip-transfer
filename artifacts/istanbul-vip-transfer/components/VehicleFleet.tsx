@@ -7,6 +7,7 @@ import { Users, Luggage, Wifi, Wind, UserCheck, Droplets, Star } from 'lucide-re
 const vehicles = [
   {
     name: 'Mercedes Vito',
+    alt: 'Mercedes Vito VIP transfer aracı',
     tagline: 'Executive Sınıf',
     image: '/images/mercedes-vito.jpg',
     passengers: 7,
@@ -22,6 +23,7 @@ const vehicles = [
   },
   {
     name: 'Mercedes Sprinter VIP',
+    alt: 'Mercedes Sprinter VIP grup transfer aracı',
     tagline: 'Prestige Sınıf',
     image: '/images/mercedes-sprinter.jpg',
     passengers: 13,
@@ -105,7 +107,7 @@ export default function VehicleFleet() {
               <div className="relative h-56 md:h-64 overflow-hidden" style={{ background: 'linear-gradient(135deg, #0A0A0A 0%, #1A1A1A 100%)' }}>
                 <Image
                   src={vehicle.image}
-                  alt={vehicle.name}
+                  alt={vehicle.alt}
                   fill
                   className="object-cover object-center transition-transform duration-700 group-hover:scale-105"
                   sizes="(max-width: 768px) 100vw, 50vw"

@@ -7,8 +7,15 @@ import { Plane, Hotel, Map, Briefcase, PartyPopper, Route, ArrowRight } from 'lu
 const services = [
   {
     icon: Plane,
-    title: 'Havalimanı Transferi',
-    description: 'İstanbul Havalimanı (IST) ve Sabiha Gökçen (SAW) transferleri için rezervasyon alıyoruz.',
+    title: 'İstanbul Havalimanı (IST) Transfer',
+    description: 'İstanbul Havalimanı\'ndan her destinasyona Mercedes Vito ve Sprinter ile profesyonel karşılama ve transfer.',
+    href: '/istanbul-havalimani-transfer',
+  },
+  {
+    icon: Plane,
+    title: 'Sabiha Gökçen (SAW) Transfer',
+    description: 'Sabiha Gökçen Havalimanı\'ndan İstanbul\'un her noktasına Mercedes Vito ve Sprinter ile VIP transfer.',
+    href: '/sabiha-gokcen-havalimani-transfer',
   },
   {
     icon: Hotel,

@@ -6,12 +6,10 @@ import WhatsAppFloat from '@/components/WhatsAppFloat';
 import { SITE } from '@/lib/site-config';
 
 export const metadata: Metadata = {
-  title: {
-    default: 'İstanbul VIP Havalimanı Transfer | Mercedes ile Lüks Yolculuk',
-    template: '%s | VIP Transfer Istanbul',
-  },
+  // Plain string fallback — all public pages set their own complete title.
+  title: 'İstanbul VIP Transfer | Vito ve Sprinter Hizmeti',
   description:
-    'İstanbul VIP havalimanı transfer hizmeti. Mercedes Vito ve Sprinter VIP ile İstanbul Havalimanı (IST) ve Sabiha Gökçen (SAW) transferleri. 7/24 WhatsApp ile rezervasyon.',
+    'İstanbul VIP transfer hizmeti; İstanbul Havalimanı, Sabiha Gökçen, şehir içi ve şehirler arası Mercedes Vito ve Sprinter ulaşımı.',
   metadataBase: new URL(SITE.siteUrl),
 };
 

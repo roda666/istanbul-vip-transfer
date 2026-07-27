@@ -1,1 +1,1 @@
-- [Istanbul VIP Transfer contact config](istanbul-vip-transfer-contact-config.md) — all contact info centralized in lib/site-config.ts; never hard-code phone/email/URL elsewhere.
+- [Istanbul VIP Transfer contact config](istanbul-vip-transfer-contact-config.md) — contact info in lib/site-config.ts; title template removed; airport pages linked from nav/services/footer; robots.txt conflict resolved.

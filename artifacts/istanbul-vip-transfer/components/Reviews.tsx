@@ -2,8 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { Star, Quote, ExternalLink } from 'lucide-react';
-
-const GOOGLE_REVIEWS_URL = 'https://share.google/BaSBZMKi7j4AlQ5hO';
+import { SITE } from '@/lib/site-config';
 
 // Genuine reviews copied from Google Business Profile.
 // Preserved verbatim. Reviewer name and star rating displayed only;
@@ -116,7 +115,7 @@ export default function Reviews() {
           transition={{ duration: 0.6, delay: 0.3 }}
         >
           <a
-            href={GOOGLE_REVIEWS_URL}
+            href={SITE.googleBusinessUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-3 px-10 py-4 rounded-lg text-sm font-semibold transition-all duration-300 hover:shadow-2xl hover:-translate-y-1"

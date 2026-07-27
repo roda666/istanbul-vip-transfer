@@ -10,14 +10,14 @@ const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/vip-transfer`;
 
 export const metadata: Metadata = {
-  title: 'İstanbul VIP Transfer Hizmetleri | Özel Araçla Transfer',
+  title: 'VIP Transfer İstanbul | Vito ve Sprinter',
   description:
-    'İstanbul VIP transfer hizmetleri. Havalimanı, otel, kurumsal, şehir turu ve özel etkinlik transferleri. Mercedes Vito ve Sprinter ile 7/24 hizmet.',
+    'İstanbul\'da Mercedes Vito ve Sprinter araçlarla havalimanı, otel, kurumsal ve şehirler arası VIP transfer hizmeti.',
   alternates: { canonical: PAGE },
   openGraph: {
-    title: 'İstanbul VIP Transfer Hizmetleri',
+    title: 'VIP Transfer İstanbul | Vito ve Sprinter',
     description:
-      'Havalimanı, otel, kurumsal ve özel etkinlik transferleri. Mercedes araçlar, 7/24 destek.',
+      'İstanbul\'da Mercedes Vito ve Sprinter araçlarla havalimanı, otel, kurumsal ve şehirler arası VIP transfer hizmeti.',
     url: PAGE,
     siteName: 'VIP Transfer Istanbul',
     locale: 'tr_TR',

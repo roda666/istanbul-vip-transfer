@@ -9,8 +9,10 @@ import { SITE } from '@/lib/site-config';
 
 const navLinks = [
   { label: 'Ana Sayfa', href: '/' },
-  { label: 'Araçlar', href: '/araclar' },
+  { label: 'IST Transfer', href: '/istanbul-havalimani-transfer' },
+  { label: 'SAW Transfer', href: '/sabiha-gokcen-havalimani-transfer' },
   { label: 'Hizmetler', href: '/vip-transfer' },
+  { label: 'Araçlar', href: '/araclar' },
   { label: 'Hakkımızda', href: '/hakkimizda' },
   { label: 'İletişim', href: '/iletisim' },
 ];
@@ -63,7 +65,7 @@ export default function Header() {
             </motion.div>
 
             {/* Desktop Nav */}
-            <nav className="hidden lg:flex items-center gap-8" data-testid="desktop-nav">
+            <nav className="hidden lg:flex items-center gap-5" data-testid="desktop-nav">
               {navLinks.map((link, i) => {
                 const isActive = pathname === link.href;
                 return (
@@ -78,7 +80,7 @@ export default function Header() {
                       className="text-sm tracking-widest uppercase transition-colors duration-300 hover:text-[#C9A84C]"
                       style={{
                         fontFamily: 'Inter, sans-serif',
-                        letterSpacing: '0.1em',
+                        letterSpacing: '0.08em',
                         color: isActive ? '#C9A84C' : '#999',
                       }}
                       data-testid={`nav-link-${i}`}

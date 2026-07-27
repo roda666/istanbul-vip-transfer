@@ -1,3 +1,13 @@
 {
-  "/page": "app/page.js"
+  "/_not-found/page": "app/_not-found/page.js",
+  "/robots.txt/route": "app/robots.txt/route.js",
+  "/sitemap.xml/route": "app/sitemap.xml/route.js",
+  "/istanbul-havalimani-transfer/page": "app/istanbul-havalimani-transfer/page.js",
+  "/hakkimizda/page": "app/hakkimizda/page.js",
+  "/page": "app/page.js",
+  "/vip-transfer/page": "app/vip-transfer/page.js",
+  "/araclar/page": "app/araclar/page.js",
+  "/iletisim/page": "app/iletisim/page.js",
+  "/sehirler-arasi-transfer/page": "app/sehirler-arasi-transfer/page.js",
+  "/sabiha-gokcen-havalimani-transfer/page": "app/sabiha-gokcen-havalimani-transfer/page.js"
 }

@@ -9,14 +9,14 @@ const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/araclar`;
 
 export const metadata: Metadata = {
-  title: 'VIP Araç Filosumuz | Mercedes Vito ve Sprinter',
+  title: 'VIP Araçlarımız | Vito ve Sprinter',
   description:
-    'Mercedes Vito (7 yolcu) ve Mercedes Sprinter VIP (13 yolcu) araçlarımızla bireysel ve grup transferleri. Lüks iç mekan, WiFi, meet & greet hizmeti.',
+    'Mercedes Vito ve Sprinter VIP araç seçeneklerimizi inceleyin; transfer ihtiyaçlarınıza ve yolcu sayınıza uygun aracı seçin.',
   alternates: { canonical: PAGE },
   openGraph: {
-    title: 'VIP Araç Filosumuz | Mercedes Vito ve Sprinter',
+    title: 'VIP Araçlarımız | Vito ve Sprinter',
     description:
-      'Mercedes Vito ve Sprinter VIP ile bireysel ve grup transferleri. WiFi, iklimlendirme, meet & greet.',
+      'Mercedes Vito ve Sprinter VIP araç seçeneklerimizi inceleyin; transfer ihtiyaçlarınıza ve yolcu sayınıza uygun aracı seçin.',
     url: PAGE,
     siteName: 'VIP Transfer Istanbul',
     locale: 'tr_TR',

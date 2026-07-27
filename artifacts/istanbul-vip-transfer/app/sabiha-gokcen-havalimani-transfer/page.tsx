@@ -9,14 +9,14 @@ const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/sabiha-gokcen-havalimani-transfer`;
 
 export const metadata: Metadata = {
-  title: 'Sabiha Gökçen Havalimanı (SAW) VIP Transfer Hizmeti',
+  title: 'Sabiha Gökçen Transfer | VIP Vito',
   description:
-    'Sabiha Gökçen Havalimanı (SAW) VIP transfer hizmeti. Mercedes Vito ve Sprinter ile karşılama, bagaj yardımı ve konforlu ulaşım. WhatsApp ile rezervasyon.',
+    'Sabiha Gökçen Havalimanı transfer hizmetiyle Mercedes Vito ve Sprinter araçlarla İstanbul\'un her noktasına özel ulaşım.',
   alternates: { canonical: PAGE },
   openGraph: {
-    title: 'Sabiha Gökçen Havalimanı (SAW) VIP Transfer',
+    title: 'Sabiha Gökçen Transfer | VIP Vito',
     description:
-      'SAW Havalimanı transfer hizmeti. Mercedes araçlar, karşılama tabelası ve 7/24 destek.',
+      'Sabiha Gökçen Havalimanı transfer hizmetiyle Mercedes Vito ve Sprinter araçlarla İstanbul\'un her noktasına özel ulaşım.',
     url: PAGE,
     siteName: 'VIP Transfer Istanbul',
     locale: 'tr_TR',

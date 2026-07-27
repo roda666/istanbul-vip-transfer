@@ -9,14 +9,14 @@ const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/istanbul-havalimani-transfer`;
 
 export const metadata: Metadata = {
-  title: 'İstanbul Havalimanı (IST) VIP Transfer Hizmeti',
+  title: 'İstanbul Havalimanı Transfer | VIP Vito',
   description:
-    'İstanbul Havalimanı (IST) VIP transfer hizmeti. Mercedes Vito ve Sprinter ile karşılama, bagaj yardımı ve konforlu ulaşım. WhatsApp ile rezervasyon.',
+    'İstanbul Havalimanı transfer hizmetiyle Mercedes Vito ve Sprinter araçlarla otel, ev ve istediğiniz adrese özel ulaşım.',
   alternates: { canonical: PAGE },
   openGraph: {
-    title: 'İstanbul Havalimanı (IST) VIP Transfer',
+    title: 'İstanbul Havalimanı Transfer | VIP Vito',
     description:
-      'IST Havalimanı transfer hizmeti. Mercedes araçlar, karşılama tabelası ve 7/24 destek.',
+      'İstanbul Havalimanı transfer hizmetiyle Mercedes Vito ve Sprinter araçlarla otel, ev ve istediğiniz adrese özel ulaşım.',
     url: PAGE,
     siteName: 'VIP Transfer Istanbul',
     locale: 'tr_TR',

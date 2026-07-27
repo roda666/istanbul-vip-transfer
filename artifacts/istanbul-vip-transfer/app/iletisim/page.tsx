@@ -8,12 +8,14 @@ const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/iletisim`;
 
 export const metadata: Metadata = {
-  title: 'İletişim | VIP Transfer Istanbul — 7/24 WhatsApp Desteği',
-  description: `VIP Transfer Istanbul iletişim. ${SITE.phoneDisplay} numaralı hattımızı arayın veya WhatsApp üzerinden rezervasyon yapın. 7/24 hizmet.`,
+  title: 'İletişim | İstanbul VIP Transfer',
+  description:
+    'İstanbul VIP Transfer rezervasyonu ve bilgi için telefon, WhatsApp veya e-posta üzerinden bize 7/24 ulaşın.',
   alternates: { canonical: PAGE },
   openGraph: {
-    title: 'İletişim | VIP Transfer Istanbul',
-    description: `${SITE.phoneDisplay} — 7/24 ulaşın. WhatsApp ile hızlı rezervasyon ve destek.`,
+    title: 'İletişim | İstanbul VIP Transfer',
+    description:
+      'İstanbul VIP Transfer rezervasyonu ve bilgi için telefon, WhatsApp veya e-posta üzerinden bize 7/24 ulaşın.',
     url: PAGE,
     siteName: 'VIP Transfer Istanbul',
     locale: 'tr_TR',

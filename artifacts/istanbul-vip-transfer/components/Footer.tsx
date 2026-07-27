@@ -2,24 +2,26 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Phone, MapPin, Mail, Instagram, Facebook, Twitter } from 'lucide-react';
+import { Phone, MapPin, Mail } from 'lucide-react';
 import { SITE } from '@/lib/site-config';
 
 const quickLinks = [
   { label: 'Ana Sayfa', href: '/' },
   { label: 'Araçlarımız', href: '/araclar' },
   { label: 'Hizmetlerimiz', href: '/vip-transfer' },
+  { label: 'Hakkımızda', href: '/hakkimizda' },
   { label: 'Rezervasyon', href: '/#rezervasyon' },
   { label: 'İletişim', href: '/iletisim' },
 ];
 
-const services = [
-  'Havalimanı Transferi',
-  'Otel Transferi',
-  'Şehir Turu',
-  'Kurumsal Transfer',
-  'Özel Etkinlik Transferi',
-  'Şehirler Arası Transfer',
+// Services with a page get a Link; others remain plain text.
+const services: { label: string; href?: string }[] = [
+  { label: 'İstanbul Havalimanı (IST) Transfer', href: '/istanbul-havalimani-transfer' },
+  { label: 'Sabiha Gökçen (SAW) Transfer', href: '/sabiha-gokcen-havalimani-transfer' },
+  { label: 'Otel Transferi' },
+  { label: 'Şehir Turu' },
+  { label: 'Kurumsal Transfer' },
+  { label: 'Şehirler Arası Transfer', href: '/sehirler-arasi-transfer' },
 ];
 
 export default function Footer() {
@@ -40,27 +42,9 @@ export default function Footer() {
                 </div>
               </Link>
             </div>
-            <p className="text-sm leading-relaxed mb-7" style={{ color: '#666', fontFamily: 'Inter, sans-serif' }}>
+            <p className="text-sm leading-relaxed" style={{ color: '#666', fontFamily: 'Inter, sans-serif' }}>
               İstanbul&apos;un en güvenilir VIP transfer hizmeti. Lüks Mercedes araçlar, profesyonel sürücüler, 7/24 hizmet.
             </p>
-            <div className="flex items-center gap-3" data-testid="footer-social">
-              {[
-                { icon: Instagram, label: 'Instagram' },
-                { icon: Facebook, label: 'Facebook' },
-                { icon: Twitter, label: 'Twitter/X' },
-              ].map(({ icon: Icon, label }) => (
-                <a
-                  key={label}
-                  href="#"
-                  className="w-9 h-9 rounded flex items-center justify-center transition-all duration-300 hover:-translate-y-0.5 hover:border-[#C9A84C]"
-                  style={{ background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.15)', color: '#888' }}
-                  aria-label={label}
-                  data-testid={`social-${label.toLowerCase()}`}
-                >
-                  <Icon size={15} />
-                </a>
-              ))}
-            </div>
           </div>
 
           {/* Quick Links */}
@@ -92,11 +76,22 @@ export default function Footer() {
             </h4>
             <ul className="space-y-3">
               {services.map((service) => (
-                <li key={service}>
-                  <span className="text-sm flex items-center gap-2" style={{ color: '#666', fontFamily: 'Inter, sans-serif' }}>
-                    <span className="w-4 h-px" style={{ background: 'rgba(201,168,76,0.3)', display: 'inline-block', flexShrink: 0 }} />
-                    {service}
-                  </span>
+                <li key={service.label}>
+                  {service.href ? (
+                    <Link
+                      href={service.href}
+                      className="text-sm flex items-center gap-2 group transition-colors duration-300 hover:text-[#C9A84C]"
+                      style={{ color: '#666', fontFamily: 'Inter, sans-serif' }}
+                    >
+                      <span className="w-4 h-px transition-all duration-300 group-hover:w-6" style={{ background: '#C9A84C', opacity: 0.5, display: 'inline-block', flexShrink: 0 }} />
+                      {service.label}
+                    </Link>
+                  ) : (
+                    <span className="text-sm flex items-center gap-2" style={{ color: '#666', fontFamily: 'Inter, sans-serif' }}>
+                      <span className="w-4 h-px" style={{ background: 'rgba(201,168,76,0.3)', display: 'inline-block', flexShrink: 0 }} />
+                      {service.label}
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>

@@ -13,14 +13,14 @@ import { SITE } from '@/lib/site-config';
 const BASE = SITE.siteUrl;
 
 export const metadata: Metadata = {
-  title: 'İstanbul VIP Havalimanı Transfer | Mercedes ile Lüks Yolculuk',
+  title: 'İstanbul VIP Transfer | Vito ve Sprinter Hizmeti',
   description:
-    'İstanbul VIP havalimanı transfer hizmeti. Mercedes Vito ve Sprinter VIP ile İstanbul Havalimanı (IST) ve Sabiha Gökçen (SAW) transferleri. 7/24 WhatsApp ile rezervasyon.',
+    'İstanbul VIP transfer hizmeti; İstanbul Havalimanı, Sabiha Gökçen, şehir içi ve şehirler arası Mercedes Vito ve Sprinter ulaşımı.',
   alternates: { canonical: BASE },
   openGraph: {
-    title: 'İstanbul VIP Havalimanı Transfer | Mercedes ile Lüks Yolculuk',
+    title: 'İstanbul VIP Transfer | Vito ve Sprinter Hizmeti',
     description:
-      'Mercedes Vito ve Sprinter VIP ile IST ve SAW havalimanı transferleri. 7/24 WhatsApp rezervasyon.',
+      'İstanbul VIP transfer hizmeti; İstanbul Havalimanı, Sabiha Gökçen, şehir içi ve şehirler arası Mercedes Vito ve Sprinter ulaşımı.',
     url: BASE,
     siteName: 'VIP Transfer Istanbul',
     locale: 'tr_TR',

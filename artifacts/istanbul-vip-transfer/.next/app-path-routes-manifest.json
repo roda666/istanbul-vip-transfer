@@ -2,12 +2,12 @@
   "/_not-found/page": "/_not-found",
   "/robots.txt/route": "/robots.txt",
   "/sitemap.xml/route": "/sitemap.xml",
-  "/hakkimizda/page": "/hakkimizda",
-  "/sehirler-arasi-transfer/page": "/sehirler-arasi-transfer",
-  "/iletisim/page": "/iletisim",
-  "/vip-transfer/page": "/vip-transfer",
   "/istanbul-havalimani-transfer/page": "/istanbul-havalimani-transfer",
+  "/hakkimizda/page": "/hakkimizda",
+  "/page": "/",
+  "/vip-transfer/page": "/vip-transfer",
   "/araclar/page": "/araclar",
-  "/sabiha-gokcen-havalimani-transfer/page": "/sabiha-gokcen-havalimani-transfer",
-  "/page": "/"
+  "/iletisim/page": "/iletisim",
+  "/sehirler-arasi-transfer/page": "/sehirler-arasi-transfer",
+  "/sabiha-gokcen-havalimani-transfer/page": "/sabiha-gokcen-havalimani-transfer"
 }

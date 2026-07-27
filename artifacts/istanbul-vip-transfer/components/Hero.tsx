@@ -154,10 +154,12 @@ export default function Hero() {
         </motion.div>
       </div>
 
-      {/* Scroll indicator */}
-      <motion.div
-        className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 cursor-pointer"
+      {/* Scroll indicator — accessible button */}
+      <motion.button
+        type="button"
+        className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 bg-transparent border-0 p-2 cursor-pointer"
         onClick={scrollToBooking}
+        aria-label="Aşağı kaydır, rezervasyon bölümüne git"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 1, delay: 1.2 }}
@@ -172,7 +174,7 @@ export default function Hero() {
         >
           <ChevronDown size={20} style={{ color: '#C9A84C' }} />
         </motion.div>
-      </motion.div>
+      </motion.button>
     </section>
   );
 }

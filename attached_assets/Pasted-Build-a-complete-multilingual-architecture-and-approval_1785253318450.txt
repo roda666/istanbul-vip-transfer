@@ -1,0 +1,518 @@
+Build a complete multilingual architecture and approval-gated AI translation workflow for the existing Next.js App Router website and admin panel.
+
+IMPORTANT
+
+- Inspect the existing project, database schema, content workflow and routes first.
+- Do not randomly rename or move existing Turkish URLs.
+- Do not translate content dynamically on every page request.
+- Store translations in the database.
+- AI-generated translations must never publish automatically.
+- Do not publish, deploy or connect the production domain.
+
+LANGUAGE ARCHITECTURE
+
+1. Add an admin-managed Language model with:
+
+- id
+- code — unique, such as tr, en, de, ru, ar
+- locale — such as tr-TR, en-US, de-DE, ru-RU, ar-SA
+- name
+- nativeName
+- direction — LTR or RTL
+- isDefault
+- isEnabled
+- displayOrder
+- createdAt
+- updatedAt
+- createdBy
+- updatedBy
+
+2. Seed these languages idempotently:
+
+- Türkçe — tr-TR — LTR — default
+- English — en-US — LTR
+- Deutsch — de-DE — LTR
+- Русский — ru-RU — LTR
+- العربية — ar-SA — RTL
+
+3. Only one language may be the default.
+
+4. “Tüm Diller” in the admin interface must mean all currently enabled non-source languages.
+
+URL AND SEO RULES
+
+5. Preserve all existing Turkish URLs exactly:
+
+- /
+- /hizmetler
+- /araclar
+- /blog
+- /sehirler-arasi-transfer
+- existing service routes
+
+Do not move Turkish pages under /tr.
+
+6. Use language prefixes for non-default languages:
+
+- /en/...
+- /de/...
+- /ru/...
+- /ar/...
+
+7. Support localized slugs without breaking the relationship between translations.
+
+8. Add:
+
+- Correct html lang
+- Correct dir attribute
+- RTL support for Arabic
+- Self-referencing canonical for each published translation
+- hreflang links between published equivalents
+- x-default pointing to Turkish/default content
+- Localized Open Graph locale
+- Localized metadata
+- Published translations in sitemap
+- Draft/unapproved translations excluded from sitemap and noindex
+
+9. Never serve Turkish content under a foreign-language URL as an indexable fallback.
+
+10. If a translation is unavailable:
+- Do not create a duplicate foreign URL
+- Keep that language unavailable for the current page
+- The language switcher may link to the language homepage only when clearly indicated
+
+PUBLIC LANGUAGE SELECTOR
+
+11. Add an accessible language selector to:
+
+- Desktop header
+- Mobile menu
+- Footer
+
+12. Display native language names or language codes.
+Do not rely only on flags.
+
+13. When switching language:
+- Open the equivalent published translation when available
+- Preserve the current page relationship
+- Do not always send users to the homepage
+
+14. The selector must work on keyboard and mobile.
+
+SITE INTERFACE TRANSLATIONS
+
+15. Create maintained translation dictionaries for shared interface text:
+
+- Header
+- Footer
+- Buttons
+- Reservation form
+- Quote/reservation intent options
+- Service types
+- Validation messages
+- WhatsApp CTA
+- Contact labels
+- FAQ controls
+- Empty/error/loading states
+- Accessibility labels
+
+16. Do not call AI during each public page request.
+UI dictionaries must load locally and quickly.
+
+CONTENT TRANSLATION MODEL
+
+17. Add a safe translation architecture for:
+
+- Pages
+- Services
+- Vehicles
+- Blog articles
+- FAQs
+- Navigation
+- Site settings
+- Image ALT/title/caption metadata
+
+18. Reuse existing content/version models where possible.
+Do not create conflicting duplicate content systems.
+
+19. Each translation must track at least:
+
+- Source content/entity
+- Source language
+- Target language
+- Source revision/version/hash
+- Translation status
+- Translated title
+- Localized slug
+- Excerpt
+- Body/content
+- Meta title
+- Meta description
+- Canonical path
+- Image ALT/title/caption translations
+- CreatedAt
+- UpdatedAt
+- GeneratedByAI
+- AI provider/model metadata
+- GeneratedAt
+- ReviewedBy
+- ReviewedAt
+- ApprovedBy
+- ApprovedAt
+- ScheduledAt
+- PublishedAt
+- Failure message — optional
+
+20. Enforce uniqueness for one content item and target language.
+
+TRANSLATION STATUS
+
+21. Add translation statuses:
+
+- NOT_STARTED
+- QUEUED
+- TRANSLATING
+- DRAFT
+- REVIEW
+- APPROVED
+- SCHEDULED
+- PUBLISHED
+- FAILED
+- OUTDATED
+- ARCHIVED
+
+22. AI translations must finish as DRAFT or REVIEW.
+Never finish as APPROVED or PUBLISHED.
+
+23. If source content changes:
+- Mark affected translations OUTDATED
+- Keep the last approved/published translation live
+- Do not replace it with an unreviewed translation
+- Show the source changes clearly to the admin
+
+ADMIN PANEL
+
+24. Add admin navigation:
+
+- Diller
+- Çeviriler
+
+25. Under “Diller”, admins must be able to:
+
+- Enable/disable a language
+- Add a new language
+- Edit its native name and locale
+- Set display order
+- Configure LTR/RTL
+- Change the default language only with confirmation
+
+26. Under “Çeviriler”, show:
+
+- Source content
+- Content type
+- Source language
+- Target language
+- Translation status
+- Source version
+- Outdated warning
+- Last update
+- Preview
+- Edit
+- Submit for review
+- Approve
+- Schedule
+- Publish
+- Archive
+
+27. Add filters:
+
+- Content type
+- Source language
+- Target language
+- Status
+- AI/manual
+- Outdated/current
+
+AI TRANSLATION SELECTION
+
+28. In the blog/article editor and AI content workflow, add:
+
+Button:
+AI ile Çevir
+
+Options:
+
+A. Tüm etkin dillere çevir
+B. Dilleri manuel seç
+
+29. Manual selection must show checkboxes for every enabled target language.
+
+30. Display:
+- Source language
+- Number of selected languages
+- Estimated number of translation jobs
+- Confirmation before starting
+
+31. Support two workflows:
+
+- Translate immediately after an AI article draft is generated
+- Translate later from the saved article editor
+
+32. If the source article is still a draft:
+- All translations remain drafts
+- All are noindex
+- None may publish automatically
+
+33. Create one independent translation job per language.
+Do not process an unlimited number of languages in one uncontrolled request.
+
+OPENAI INTEGRATION
+
+34. Use the official OpenAI JavaScript SDK and Responses API.
+
+35. Use Structured Outputs with a Zod/JSON schema for:
+
+- title
+- slug
+- excerpt
+- body
+- metaTitle
+- metaDescription
+- focusKeyword
+- supportingKeywords
+- imageAlt
+- imageTitle
+- imageCaption
+
+36. Read configuration only from server-side environment variables:
+
+- OPENAI_API_KEY
+- OPENAI_TRANSLATION_MODEL
+
+37. Never expose the API key to:
+- Browser JavaScript
+- Client components
+- API responses
+- Logs
+- Error messages
+- Database
+- Source code
+
+38. Keep the model configurable through OPENAI_TRANSLATION_MODEL.
+Do not scatter a hard-coded model name throughout the project.
+
+39. If OPENAI_API_KEY is absent:
+- Admin pages must still work
+- Manual translations must still work
+- Show “OpenAI çeviri servisi yapılandırılmamış” to authorized admins
+- Do not fail the production build
+- Do not make fake translations
+
+40. Use mocked OpenAI responses in automated tests.
+Do not spend API credits during lint/build/tests.
+
+TRANSLATION QUALITY RULES
+
+41. AI translation prompts must preserve:
+
+- Istanbul VIP Transfer brand name
+- Phone numbers
+- Email addresses
+- URLs
+- Internal-link targets
+- HTML/Markdown structure
+- Headings
+- Lists
+- Tables
+- Citations and source links
+- Vehicle names
+- Airport codes IST and SAW
+- Facts, numbers and qualifiers
+
+42. Do not translate proper names incorrectly.
+
+43. Do not invent:
+- Prices
+- Distances
+- Travel times
+- Guarantees
+- Services not present in the source
+- Customer reviews
+- Statistics
+- Search-volume claims
+
+44. Produce natural localized text, not word-for-word machine translation.
+
+45. Generate localized SEO suggestions, but clearly label keywords as suggestions.
+Do not claim they have verified search volume without an actual keyword-data source.
+
+46. Validate translated internal links.
+Keep external citation URLs unchanged.
+
+APPROVAL AND PUBLISHING
+
+47. Translation generation and publication must be separate permissions/actions.
+
+48. Required workflow:
+
+AI translation
+→ Draft
+→ Manual review/edit
+→ Approval
+→ Optional scheduling
+→ Publication
+
+49. Provide per-language approval.
+
+50. Optional bulk approval may exist only as an explicit SUPER_ADMIN action with:
+- Selection checkboxes
+- Confirmation dialog
+- AuditLog entry
+
+51. Article approval must not automatically approve its translations.
+
+52. Editing an approved translation must reset it to REVIEW and clear previous approval.
+
+53. Scheduling must use Europe/Istanbul timezone and preserve the existing workflow rules.
+
+54. Write AuditLog entries for:
+- AI translation request
+- Manual translation edit
+- Approval
+- Rejection
+- Scheduling
+- Publication
+- Archiving
+- Language configuration changes
+
+TRANSLATED ARTICLES AND PUBLIC SITE
+
+55. Only PUBLISHED translations may appear publicly.
+
+56. Blog language pages must list only published articles in that language.
+
+57. Each translated article must have:
+- Localized H1
+- Localized metadata
+- Localized slug
+- Correct canonical
+- hreflang links
+- Breadcrumb structured data in the selected language
+- Article structured data in the selected language
+- Translated image ALT where available
+
+58. Add appropriate language-aware internal links.
+
+59. Do not include draft or outdated replacement content in the public output.
+
+ARABIC RTL
+
+60. Verify Arabic pages with:
+
+- dir="rtl"
+- Correct text alignment
+- Mirrored layout only where appropriate
+- Icons that should not mirror remain correct
+- Reservation form remains usable
+- Phone numbers and technical values remain readable
+- No horizontal overflow
+
+RESERVATION SYSTEM
+
+61. Translate all visible reservation and quote form labels.
+
+62. The WhatsApp message must include the selected site language.
+
+63. Preserve structured operational values so the business can understand:
+
+- Request intent
+- Service type
+- Locations
+- Date/time
+- Passenger count
+- Contact details
+
+Do not change the verified WhatsApp number:
+905326600847
+
+CACHING AND PERFORMANCE
+
+64. Translation and language changes must revalidate the correct pages.
+
+65. Do not show stale translations after publication.
+
+66. Do not fetch all languages and all translations on every page request.
+
+67. Load only the selected language and required content.
+
+68. Language switching must not create full-page hydration errors or layout shifts.
+
+SECURITY
+
+69. Use the existing authenticated admin API convention:
+
+/admin/api/...
+
+70. Require:
+- Existing authenticated session
+- Server-side validation
+- Existing CSRF protection
+- Session user identity
+- Audit logging
+- Rate limits for AI endpoints
+
+71. Do not:
+- Reset passwords
+- Create test admins
+- Modify AUTH_SECRET or SESSION_SECRET
+- Display Secret values
+- Store API keys in the database
+- Publish translations without explicit approval
+
+VERIFICATION
+
+72. Test:
+
+- Turkish root URL remains unchanged
+- English prefixed URL
+- German prefixed URL
+- Russian prefixed URL
+- Arabic RTL URL
+- Language switcher preserves page relationship
+- Missing translation handling
+- Canonical/hreflang/x-default
+- Localized sitemap entries
+- Translate all enabled languages
+- Translate manually selected languages
+- AI result saved as DRAFT
+- API-key-missing behavior
+- Source update marks translation OUTDATED
+- Editing resets approval
+- No automatic publication
+- Mobile navigation
+- Arabic mobile layout
+- Reservation-form translation
+
+73. Run:
+
+- Database migration
+- Idempotent language seed
+- Lint
+- Typecheck
+- Production build
+
+74. Report:
+
+- Schema and migrations
+- Language routes
+- Admin pages
+- Public language selector
+- UI dictionary coverage
+- AI translation workflow
+- Approval protections
+- SEO/hreflang/sitemap results
+- RTL verification
+- API-key-missing behavior
+- Lint/typecheck/build results
+
+75. Do not publish, deploy or connect the production domain.

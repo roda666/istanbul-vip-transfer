@@ -1,0 +1,327 @@
+Build an admin-managed reservation-location and time-selection system.
+
+IMPORTANT SCOPE
+
+- The existing reservation form currently sends reservation details to WhatsApp.
+- Preserve this existing WhatsApp workflow.
+- Do not start storing customer names, phone numbers or reservation details in the database in this phase.
+- This task manages reservation locations and form settings only.
+- Do not publish or connect the production domain.
+
+ADMIN STRUCTURE
+
+1. Add an admin sidebar item:
+
+Label:
+Rezervasyon Ayarları
+
+Route:
+/admin/rezervasyon-ayarlari
+
+Place it after “Araçlar” or in an appropriate settings position.
+
+2. Create two tabs/sections:
+
+- Lokasyonlar
+- Form Ayarları
+
+DATABASE MODEL
+
+3. First inspect the existing Drizzle schema and avoid duplicates.
+
+Create a portable PostgreSQL location model with:
+
+- id
+- name
+- slug — unique
+- city
+- district — optional
+- type
+- pickupEnabled
+- dropoffEnabled
+- isActive
+- displayOrder
+- createdAt
+- updatedAt
+- archivedAt — optional
+- createdBy
+- updatedBy
+
+Suggested location types:
+
+- AIRPORT
+- DISTRICT
+- HOTEL
+- HOSPITAL
+- BUS_TERMINAL
+- PORT
+- TOURISTIC_POINT
+- OTHER
+
+4. Create reservation-form settings if an appropriate settings model does not already exist:
+
+- timeStepMinutes — default 5
+- exactAddressRequired
+- locationSearchEnabled
+- updatedAt
+- updatedBy
+
+Do not create a conflicting second site-settings system if existing site settings can store these values safely.
+
+INITIAL ISTANBUL LOCATIONS
+
+5. Create an idempotent seed/migration for these 39 Istanbul districts:
+
+- Adalar
+- Arnavutköy
+- Ataşehir
+- Avcılar
+- Bağcılar
+- Bahçelievler
+- Bakırköy
+- Başakşehir
+- Bayrampaşa
+- Beşiktaş
+- Beykoz
+- Beylikdüzü
+- Beyoğlu
+- Büyükçekmece
+- Çatalca
+- Çekmeköy
+- Esenler
+- Esenyurt
+- Eyüpsultan
+- Fatih
+- Gaziosmanpaşa
+- Güngören
+- Kadıköy
+- Kağıthane
+- Kartal
+- Küçükçekmece
+- Maltepe
+- Pendik
+- Sancaktepe
+- Sarıyer
+- Silivri
+- Sultanbeyli
+- Sultangazi
+- Şile
+- Şişli
+- Tuzla
+- Ümraniye
+- Üsküdar
+- Zeytinburnu
+
+6. Also add these separately as AIRPORT locations:
+
+- İstanbul Havalimanı (IST)
+- Sabiha Gökçen Havalimanı (SAW)
+
+7. Every seeded location must initially have:
+
+- pickupEnabled: true
+- dropoffEnabled: true
+- isActive: true
+
+8. The seed must be idempotent:
+- Running it more than once must not create duplicates.
+- Do not overwrite later admin edits.
+
+ADMIN LOCATION MANAGEMENT
+
+9. Admins must be able to:
+
+- Add a location
+- Edit a location
+- Activate/deactivate a location
+- Enable/disable it independently for pickup
+- Enable/disable it independently for destination
+- Change its display order
+- Search and filter locations
+- Archive/remove a location
+
+10. Location-list columns:
+
+- Name
+- Type
+- Pickup enabled
+- Destination enabled
+- Active status
+- Display order
+- Last update
+- Edit
+- Archive/remove
+
+11. Removal safety:
+
+- Use archive/soft delete if a location has been used or may be referenced.
+- Only allow permanent deletion for unused records.
+- Require a confirmation dialog.
+- Archived or inactive locations must not appear in the public reservation form.
+
+12. Validate:
+
+- Name is required
+- Slug is unique
+- City defaults to İstanbul for the initial records
+- Display order is numeric
+- At least one of pickupEnabled or dropoffEnabled must be selected
+- Validate all values server-side
+
+PUBLIC RESERVATION FORM
+
+13. Replace static pickup and destination options with database-driven searchable selectors:
+
+First selector:
+Alış Lokasyonu
+
+Second selector:
+Varış Lokasyonu
+
+14. Both selectors must use the same location database but filter separately:
+
+- Alış Lokasyonu shows only active records with pickupEnabled = true
+- Varış Lokasyonu shows only active records with dropoffEnabled = true
+
+15. Group options by type:
+
+- Havalimanları
+- İlçeler
+- Oteller
+- Hastaneler
+- Otogarlar
+- Limanlar
+- Turistik Noktalar
+- Diğer
+
+16. Provide accessible search:
+- Turkish-character aware
+- Keyboard usable
+- Mobile friendly
+- Clear “Sonuç bulunamadı” state
+- Do not load a huge unfiltered list unnecessarily
+
+17. Add exact-address fields:
+
+- Alış Adresi / Otel
+- Varış Adresi / Otel
+
+These allow users to provide a neighborhood, hotel, hospital, street or exact address even when they select only a district.
+
+Do not use Google Maps or an external Places API in this phase.
+
+TIME SELECTION
+
+18. Update reservation time selection to use 5-minute intervals.
+
+Hour options:
+00 through 23
+
+Minute options:
+00, 05, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55
+
+19. Display time in 24-hour HH:mm format.
+
+20. Server-side validation must reject or normalize any manipulated minute value that is not divisible by 5.
+
+21. Preserve Europe/Istanbul as the display/operational timezone where timezone handling is needed.
+
+22. Do not invent:
+- Minimum booking notice
+- Maximum booking dates
+- Prices
+- Distances
+- Travel times
+- Availability guarantees
+
+WHATSAPP OUTPUT
+
+23. Preserve the existing WhatsApp number:
+
+905326600847
+
+24. The generated WhatsApp reservation message must clearly include:
+
+- Alış lokasyonu
+- Alış adresi/otel
+- Varış lokasyonu
+- Varış adresi/otel
+- Tarih
+- Saat in HH:mm format
+- Existing passenger/vehicle/contact fields already present in the form
+
+Do not remove existing reservation fields.
+
+API AND SECURITY
+
+25. Use the existing corrected admin API convention:
+
+/admin/api/...
+
+Do not recreate /api/admin routes.
+
+26. All admin mutations must:
+
+- Require the existing authenticated admin session
+- Validate server-side
+- Use existing CSRF protection
+- Use the session admin identity
+- Write AuditLog entries
+- Never accept an admin user ID from the browser
+
+27. Do not reset passwords, create test admins or modify Secrets.
+If visual testing requires authentication and no session is available, stop and ask me.
+
+DESIGN
+
+28. Use the approved modern light design:
+
+- Eye-friendly light backgrounds
+- Dark navy readable text
+- Blue primary actions
+- Gold brand accents
+- White cards
+- Accessible status colors
+
+29. Ensure:
+- No gray-on-white low-contrast text
+- No black content backgrounds
+- No clipped headings or buttons
+- No horizontal overflow
+- Mobile form usability at 390×844
+
+VERIFICATION
+
+30. Test:
+
+- Adding a location
+- Editing a location
+- Pickup-only location
+- Destination-only location
+- Deactivating a location
+- Archived location hidden publicly
+- Search with Turkish characters
+- All 39 districts present exactly once
+- IST and SAW present exactly once
+- Minute options increment by 5
+- Invalid minute rejected server-side
+- WhatsApp message contains the selected values
+
+31. Run:
+
+- Database migration
+- Lint
+- Typecheck
+- Production build
+
+32. Report:
+
+- Schema/migration changes
+- Seed result and location count
+- Admin routes created
+- Public form changes
+- WhatsApp-message verification
+- Desktop/mobile verification
+- Lint/typecheck/build results
+
+33. Do not publish, deploy or connect the production domain.

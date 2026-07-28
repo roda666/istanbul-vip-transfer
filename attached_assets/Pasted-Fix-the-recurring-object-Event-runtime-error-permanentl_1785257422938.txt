@@ -1,0 +1,163 @@
+Fix the recurring “[object Event]” runtime error permanently.
+
+IMPORTANT FINDING
+
+Deleting .next temporarily fixes the problem, but the error returns after production builds or rebuilds.
+
+This strongly suggests that:
+- next dev
+- next build
+- Replit Preview/HMR
+
+are writing incompatible development and production artifacts into the same .next directory, causing missing/stale client chunks.
+
+Do not solve this by repeatedly deleting .next.
+Find and eliminate the cache/build collision.
+
+DIAGNOSIS
+
+1. Reproduce this exact sequence:
+
+- Start the development server
+- Open the homepage
+- Confirm it renders
+- Run the production build while the dev server exists
+- Refresh the preview
+- Inspect whether [object Event] returns
+
+2. Inspect browser Network and Console for:
+
+- /_next/static/chunks/* returning 404
+- ChunkLoadError
+- Failed to fetch dynamically imported module
+- React Client Manifest mismatch
+- Missing webpack modules
+- HMR connection failures
+- Script element error events
+
+3. Confirm whether the rejected browser Event comes from a failed Next.js JavaScript chunk request.
+
+PERMANENT CACHE ISOLATION
+
+4. Configure separate Next.js output directories for development and production.
+
+Use a safe configuration equivalent to:
+
+- Development: .next-dev
+- Production build/start: .next
+
+Implement this in the existing next.config file using NODE_ENV or another reliable build-mode check.
+
+Example intent:
+
+distDir:
+  development → ".next-dev"
+  production → ".next"
+
+Use syntax appropriate for the project’s existing Next.js configuration.
+
+5. Ensure:
+
+- next dev writes only to .next-dev
+- next build writes only to .next
+- next start reads from .next
+- Development HMR never reads production chunks
+- Production build never overwrites development chunks
+
+6. Add both directories to .gitignore:
+
+- .next/
+- .next-dev/
+
+7. Inspect package scripts and Replit run configuration.
+
+Prevent:
+- Multiple simultaneous next dev processes
+- Development and production servers using the same port
+- A build command automatically starting another dev server
+- Concurrent commands that modify the same output directory
+
+8. Stop the current development server safely, remove only these generated cache directories:
+
+- .next
+- .next-dev
+
+Then restart exactly one development server.
+
+Do not delete source files or database data.
+
+ROUTING SAFETY
+
+9. Verify that multilingual middleware and catch-all routes exclude:
+
+- /_next
+- /images
+- /favicon.ico
+- /admin
+- /admin/api
+- public assets
+- files with extensions
+
+10. The locale route must never intercept Next.js chunk requests.
+
+RUNTIME VERIFICATION
+
+11. After implementing cache isolation, perform this regression test:
+
+A. Start dev server
+B. Load /
+C. Load /en
+D. Load /ar
+E. Run production build
+F. Refresh / while dev server remains active
+G. Refresh /en and /ar
+H. Make one harmless source edit to trigger HMR
+I. Refresh again
+
+12. Confirm after every step:
+
+- No [object Event]
+- No red issue badge
+- No ChunkLoadError
+- No /_next chunk 404
+- No React Client Manifest error
+- Homepage layout remains complete
+- Hero image remains inside its card
+- No horizontal overflow
+
+13. Test desktop and mobile preview.
+
+14. Preserve all current:
+- Multilingual work
+- Reservation/quote work
+- Public visual design
+- Admin panel
+- Database content
+- Routes and SEO
+
+15. Do not:
+- Reset passwords
+- Modify Secrets
+- Modify database records
+- Reconstruct files from truncated terminal output
+- Use destructive git commands
+- Suppress the runtime overlay
+- Catch and ignore the Event without fixing its source
+
+16. Run:
+- Lint
+- Typecheck
+- Production build
+- The dev/build coexistence regression sequence above
+
+17. Report:
+- Exact failed resource/event source
+- Whether a chunk request returned 404
+- Previous dev/build output-directory collision
+- Final output-directory configuration
+- Package/Replit run-script changes
+- Full runtime regression results
+
+18. Do not mark complete until the preview remains healthy after running production build.
+
+19. Do not publish, deploy or connect the production domain.

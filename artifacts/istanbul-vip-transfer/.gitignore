@@ -1,0 +1,5 @@
+# Next.js build output — kept separate per-mode to prevent chunk collisions
+# next dev  → .next-dev   (NODE_ENV=development)
+# next build → .next      (NODE_ENV=production)
+.next/
+.next-dev/

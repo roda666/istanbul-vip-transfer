@@ -1,6 +1,18 @@
 import type { NextConfig } from 'next';
 
+const isDev = process.env.NODE_ENV === 'development';
+
 const nextConfig: NextConfig = {
+  // Isolate dev and production build output so that running `next build`
+  // while the dev server is active never overwrites the dev chunks — which
+  // previously caused missing vendor-chunk errors and the "[object Event]"
+  // unhandled-rejection in the browser.
+  //
+  //   next dev   →  writes to .next-dev   (HMR chunks, fast-refresh manifest)
+  //   next build →  writes to .next       (production bundles, static pages)
+  //   next start →  reads from .next      (production, NODE_ENV=production)
+  distDir: isDev ? '.next-dev' : '.next',
+
   // Static-export ready: unoptimized images work with `output: 'export'`
   // when deploying to a plain file server. To enable, add:
   //   output: 'export',

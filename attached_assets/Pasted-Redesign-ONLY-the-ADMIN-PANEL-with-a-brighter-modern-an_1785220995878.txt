@@ -1,0 +1,230 @@
+Redesign ONLY the ADMIN PANEL with a brighter, modern and professional light theme.
+
+The public website has already been redesigned successfully. Do not modify the public website in this task.
+
+CURRENT PROBLEM
+
+The admin panel is still overwhelmingly black and dim:
+- Main backgrounds are too dark
+- Cards and tables have insufficient visual separation
+- Muted text is difficult to read
+- Forms and content-management screens feel gloomy
+- Empty states are not prominent enough
+
+The new admin panel must be visibly light, modern and easy to use.
+
+ADMIN COLOR SYSTEM
+
+Create centralized admin CSS variables/tokens:
+
+- Main background: #F3F6FA
+- Secondary background: #EAF0F6
+- Card/surface: #FFFFFF
+- Sidebar: #132A44
+- Sidebar secondary: #1B3858
+- Top bar: #FFFFFF
+- Main text: #172B3A
+- Secondary text: #52697A
+- Muted text: #718596
+- Border: #D8E1E9
+- Primary blue: #2563EB
+- Primary blue hover: #1D4ED8
+- Premium gold: #C99A32
+- Gold hover: #B78624
+- Success: #168C5B
+- Warning: #D88916
+- Error: #D64545
+- Info: #1683A5
+
+GENERAL LAYOUT
+
+1. Keep the existing admin structure and routes.
+
+2. Change the main admin content area to:
+- Light gray/blue page background
+- White cards and panels
+- Dark navy readable text
+- Subtle borders and shadows
+- Consistent spacing and rounded corners
+
+3. Remove pure-black backgrounds from the admin content area.
+
+4. Preserve the previously fixed layout:
+- Page titles must remain fully below the top bar
+- Primary action buttons must never be clipped
+- Sidebar account and logout controls must remain accessible
+- Do not reintroduce fixed-header overlap
+
+TOP BAR
+
+5. Redesign the admin top bar:
+- White or warm-white background
+- Subtle bottom border
+- Navy text
+- Gold brand accent
+- Clearly visible hamburger/collapse button
+- Light shadow only when useful
+- Preserve existing behavior
+
+SIDEBAR
+
+6. The sidebar may remain dark navy, but not pure black:
+- Use #132A44
+- White/light-gray navigation text
+- Gold active item
+- Clear hover states
+- Icons must be readable
+- Account card should use a slightly lighter navy surface
+- Logout action must be fully visible and clearly identifiable
+
+7. Ensure “Araçlar” appears directly below “Hizmetler”.
+
+DASHBOARD AND CONTENT LISTS
+
+8. Redesign dashboard cards:
+- White surfaces
+- Dark headings
+- Colored icons
+- Clear statistic hierarchy
+- Subtle border/shadow
+- No black cards
+
+9. Apply the same design consistently to:
+- Dashboard
+- Sayfalar
+- Hizmetler
+- Araçlar
+- Blog
+- SSS
+- Menü Yönetimi
+- Site Ayarları
+- AI İçerik Önerileri
+- İşlem Geçmişi
+- Hesabım
+
+10. Content tables/lists:
+- White table background
+- Light header row
+- Visible row separators
+- Clear hover state
+- Readable status badges
+- Responsive mobile presentation
+- Empty states must be easy to notice
+
+FORMS
+
+11. Redesign all admin forms:
+- White form cards
+- Dark labels
+- Light input backgrounds
+- Visible borders
+- Navy/blue focus ring
+- Accessible validation messages
+- Clear required-field indicators
+- Proper spacing between fields
+
+12. Preserve every form field, validation rule and submit action.
+
+BUTTONS
+
+13. Standardize buttons:
+
+Primary actions:
+- Blue background
+- White text
+
+Approval/publish:
+- Green background
+- White text
+
+Brand/secondary emphasis:
+- Gold background
+- Dark navy text
+
+Destructive actions:
+- Red border or red background
+- Clear confirmation required
+
+Neutral/cancel:
+- White or light-gray background
+- Dark text
+- Visible border
+
+14. Add clear hover, focus, disabled and loading states.
+
+STATUS BADGES
+
+15. Give workflow statuses distinct accessible colors:
+- DRAFT: gray
+- RESEARCH: blue
+- REVIEW: amber
+- APPROVED: green
+- SCHEDULED: purple/indigo
+- PUBLISHED: teal/green
+- ARCHIVED: dark gray
+
+Do not change workflow logic or stored status values.
+
+DIALOGS AND NOTIFICATIONS
+
+16. Redesign:
+- Confirmation dialogs
+- Success/error notices
+- Toasts
+- Delete/archive warnings
+- Empty states
+- Loading indicators
+
+Use white surfaces, readable text and appropriate status colors.
+
+ACCOUNT PAGE
+
+17. Keep the existing “Hesabım → Şifre Değiştir” functionality unchanged.
+Only improve its visual presentation.
+
+RESPONSIVE AND ACCESSIBILITY
+
+18. Verify:
+- 1920×1080
+- 1366×768
+- 390×844
+
+19. Confirm:
+- No page title is hidden behind the header
+- No action button is clipped
+- Sidebar/drawer remains usable
+- Account and logout controls are accessible
+- No horizontal overflow
+- Tables/forms work on mobile
+- Text contrast meets WCAG AA
+- Keyboard focus is visible
+
+SECURITY
+
+20. Do not:
+- Reset or change admin passwords
+- Create test admins
+- Modify ADMIN_EMAIL
+- Modify AUTH_SECRET or SESSION_SECRET
+- Read or display Secret values
+- Modify real database records for testing
+- Change API routes or authentication
+- Change public website files
+
+21. If browser verification requires credentials and no authenticated test session is available, stop and ask me. Never reset a password for testing.
+
+TECHNICAL VERIFICATION
+
+22. Run:
+- Lint
+- Typecheck
+- Production build
+
+23. Report:
+- Admin theme files/components changed
+- Hard-coded black colors removed
+- Pages visually updated
+- Responsive and accessibility results
+- Lint/typecheck/build results
+
+24. Do not publish, deploy or connect the production domain.

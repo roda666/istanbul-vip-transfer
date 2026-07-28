@@ -1,5 +1,9 @@
 {
   "/page": "app/page.js",
-  "/araclar/page": "app/araclar/page.js",
-  "/istanbul-havalimani-transfer/page": "app/istanbul-havalimani-transfer/page.js"
+  "/istanbul-havalimani-transfer/page": "app/istanbul-havalimani-transfer/page.js",
+  "/hakkimizda/page": "app/hakkimizda/page.js",
+  "/iletisim/page": "app/iletisim/page.js",
+  "/blog/page": "app/blog/page.js",
+  "/sehirler-arasi-transfer/page": "app/sehirler-arasi-transfer/page.js",
+  "/admin/(protected)/sayfalar/yeni/page": "app/admin/(protected)/sayfalar/yeni/page.js"
 }

@@ -43,7 +43,7 @@ export default async function SayfalarPage({
         title="Sayfalar"
         description="Statik site sayfalarını yönetin"
         action={
-          <Link href="/admin/sayfalar/yeni" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '8px', background: '#C9A84C', color: '#0A0A0A', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
+          <Link href="/admin/sayfalar/yeni" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '8px', background: '#2563EB', color: '#FFFFFF', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
             <Plus size={15} /> Yeni Sayfa
           </Link>
         }

@@ -1,11 +1,1 @@
-{
-  "version": 4,
-  "routes": {},
-  "dynamicRoutes": {},
-  "notFoundRoutes": [],
-  "preview": {
-    "previewModeId": "3385e7271c2a1072f28077dcc91649bf",
-    "previewModeSigningKey": "004b6a461ad529935f0c65169d9f749ae32e1af0291d25135941a91a4487210c",
-    "previewModeEncryptionKey": "26bb9488fa9f3463aec2f700398ae143d2ff75137da3e4b13e40631e8d431976"
-  }
-}
+{"version":4,"routes":{"/blog/istanbul-havalimani-transfer-rehberi":{},"/blog/sabiha-gokcen-transfer-rehberi":{},"/blog/vip-transfer-ile-taksi-arasindaki-farklar":{}},"dynamicRoutes":{"/blog/[slug]":{"dataRoute":null,"dataRouteRegex":null,"fallback":null,"fallbackRevalidate":false,"fallbackSourceRoute":"/blog/[slug]","routeRegex":"^\\/blog\\/([^/]+?)(?:\\/)?$","allowHeader":[]}},"notFoundRoutes":[],"preview":{"previewModeId":"3385e7271c2a1072f28077dcc91649bf","previewModeSigningKey":"004b6a461ad529935f0c65169d9f749ae32e1af0291d25135941a91a4487210c","previewModeEncryptionKey":"26bb9488fa9f3463aec2f700398ae143d2ff75137da3e4b13e40631e8d431976"}}

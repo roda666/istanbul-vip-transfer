@@ -18,13 +18,13 @@ interface Settings {
 }
 
 const inputStyle: React.CSSProperties = {
-  width: '100%', padding: '9px 12px', background: '#0F0F0F',
-  border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px',
-  color: '#e5e5e5', fontSize: '13px', fontFamily: 'Inter, sans-serif', outline: 'none', boxSizing: 'border-box',
+  width: '100%', padding: '9px 12px', background: '#FFFFFF',
+  border: '1px solid #D8E1E9', borderRadius: '8px',
+  color: '#172B3A', fontSize: '13px', fontFamily: 'Inter, sans-serif', outline: 'none', boxSizing: 'border-box',
 };
 const labelStyle: React.CSSProperties = {
-  display: 'block', color: '#888', fontSize: '11px', fontFamily: 'Inter, sans-serif',
-  letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '6px',
+  display: 'block', color: '#52697A', fontSize: '11px', fontFamily: 'Inter, sans-serif',
+  letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '6px', fontWeight: 600,
 };
 
 export default function AyarlarPage() {
@@ -53,15 +53,15 @@ export default function AyarlarPage() {
     return { value: settings[key] ?? '', onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setSettings(s => ({ ...s, [key]: e.target.value || null })) };
   }
 
-  if (loading) return <div style={{ padding: '28px 24px', color: '#555', fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>Yükleniyor...</div>;
+  if (loading) return <div style={{ padding: '28px 24px', color: '#718596', fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>Yükleniyor...</div>;
 
   return (
     <div style={{ padding: '28px 24px' }}>
       <AdminPageHeader title="Site Ayarları" description="Genel site yapılandırması" />
 
-      {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', color: '#f87171', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>{error}</div>}
+      {error && <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', color: '#D64545', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>{error}</div>}
       {success && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', color: '#86efac', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', color: '#168C5B', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>
           <CheckCircle size={14} /> Ayarlar kaydedildi.
         </div>
       )}
@@ -85,8 +85,8 @@ export default function AyarlarPage() {
             { key: 'defaultSeoDescription' as keyof Settings, label: 'Varsayılan Meta Açıklama' },
           ]},
         ].map(section => (
-          <div key={section.section} style={{ background: '#161616', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
-            <p style={{ color: '#888', fontSize: '11px', fontFamily: 'Inter, sans-serif', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '16px', paddingBottom: '10px', borderBottom: '1px solid rgba(255,255,255,0.05)', margin: '0 0 16px' }}>{section.section}</p>
+          <div key={section.section} style={{ background: '#FFFFFF', border: '1px solid #D8E1E9', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
+            <p style={{ color: '#52697A', fontSize: '11px', fontFamily: 'Inter, sans-serif', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '16px', paddingBottom: '10px', borderBottom: '1px solid #EDF2F7', margin: '0 0 16px' }}>{section.section}</p>
             <div style={{ display: 'grid', gap: '12px' }}>
               {section.fields.map(f => (
                 <div key={f.key}>
@@ -102,7 +102,7 @@ export default function AyarlarPage() {
           </div>
         ))}
 
-        <button type="submit" disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '10px 20px', borderRadius: '8px', background: saving ? 'rgba(201,168,76,0.5)' : '#C9A84C', color: '#0A0A0A', fontWeight: 700, fontSize: '13px', fontFamily: 'Inter, sans-serif', border: 'none', cursor: saving ? 'not-allowed' : 'pointer' }}>
+        <button type="submit" disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '10px 20px', borderRadius: '8px', background: saving ? '#93C5FD' : '#2563EB', color: '#FFFFFF', fontWeight: 700, fontSize: '13px', fontFamily: 'Inter, sans-serif', border: 'none', cursor: saving ? 'not-allowed' : 'pointer' }}>
           {saving ? <Loader2 size={14} /> : <Save size={14} />} {saving ? 'Kaydediliyor...' : 'Kaydet'}
         </button>
       </form>

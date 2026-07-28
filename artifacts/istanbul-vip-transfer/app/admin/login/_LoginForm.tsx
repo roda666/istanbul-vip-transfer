@@ -8,6 +8,21 @@ interface Props {
   searchParams: Promise<{ error?: string; changed?: string }>;
 }
 
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  paddingTop: '10px',
+  paddingBottom: '10px',
+  paddingRight: '12px',
+  background: '#FFFFFF',
+  border: '1px solid #D8E1E9',
+  borderRadius: '8px',
+  color: '#172B3A',
+  fontSize: '14px',
+  fontFamily: 'Inter, sans-serif',
+  outline: 'none',
+  boxSizing: 'border-box',
+};
+
 export default function LoginForm({ searchParams }: Props) {
   const params = use(searchParams);
   const [email, setEmail] = useState('');
@@ -58,7 +73,7 @@ export default function LoginForm({ searchParams }: Props) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#0A0A0A',
+        background: '#F3F6FA',
         padding: '24px',
       }}
     >
@@ -73,17 +88,16 @@ export default function LoginForm({ searchParams }: Props) {
               width: '56px',
               height: '56px',
               borderRadius: '12px',
-              background: 'rgba(201,168,76,0.1)',
-              border: '1px solid rgba(201,168,76,0.3)',
+              background: '#132A44',
               marginBottom: '16px',
             }}
           >
-            <Shield size={24} style={{ color: '#C9A84C' }} />
+            <Shield size={24} style={{ color: '#C99A32' }} />
           </div>
           <h1
             style={{
               fontFamily: 'Playfair Display, Georgia, serif',
-              color: '#C9A84C',
+              color: '#132A44',
               fontSize: '22px',
               fontWeight: 700,
               letterSpacing: '0.1em',
@@ -95,7 +109,7 @@ export default function LoginForm({ searchParams }: Props) {
           </h1>
           <p
             style={{
-              color: '#666',
+              color: '#718596',
               fontSize: '12px',
               letterSpacing: '0.2em',
               textTransform: 'uppercase',
@@ -110,15 +124,16 @@ export default function LoginForm({ searchParams }: Props) {
         {/* Card */}
         <div
           style={{
-            background: '#161616',
-            border: '1px solid rgba(201,168,76,0.15)',
+            background: '#FFFFFF',
+            border: '1px solid #D8E1E9',
             borderRadius: '16px',
             padding: '32px',
+            boxShadow: '0 4px 24px rgba(19,42,68,0.08)',
           }}
         >
           <h2
             style={{
-              color: '#fff',
+              color: '#172B3A',
               fontSize: '20px',
               fontWeight: 600,
               marginBottom: '8px',
@@ -127,7 +142,7 @@ export default function LoginForm({ searchParams }: Props) {
           >
             Giriş Yap
           </h2>
-          <p style={{ color: '#666', fontSize: '14px', marginBottom: '28px', fontFamily: 'Inter, sans-serif' }}>
+          <p style={{ color: '#718596', fontSize: '14px', marginBottom: '28px', fontFamily: 'Inter, sans-serif' }}>
             Admin hesabınızla oturum açın.
           </p>
 
@@ -138,14 +153,14 @@ export default function LoginForm({ searchParams }: Props) {
                 display: 'flex',
                 alignItems: 'flex-start',
                 gap: '10px',
-                background: 'rgba(74,222,128,0.1)',
-                border: '1px solid rgba(74,222,128,0.3)',
+                background: '#F0FDF4',
+                border: '1px solid #BBF7D0',
                 borderRadius: '8px',
                 padding: '12px',
                 marginBottom: '20px',
               }}
             >
-              <p style={{ color: '#4ade80', fontSize: '13px', margin: 0, fontFamily: 'Inter, sans-serif' }}>
+              <p style={{ color: '#168C5B', fontSize: '13px', margin: 0, fontFamily: 'Inter, sans-serif' }}>
                 ✓ Şifreniz başarıyla değiştirildi. Lütfen yeni şifrenizle giriş yapın.
               </p>
             </div>
@@ -158,15 +173,15 @@ export default function LoginForm({ searchParams }: Props) {
                 display: 'flex',
                 alignItems: 'flex-start',
                 gap: '10px',
-                background: 'rgba(239,68,68,0.1)',
-                border: '1px solid rgba(239,68,68,0.3)',
+                background: '#FEF2F2',
+                border: '1px solid #FECACA',
                 borderRadius: '8px',
                 padding: '12px',
                 marginBottom: '20px',
               }}
             >
-              <AlertCircle size={16} style={{ color: '#f87171', flexShrink: 0, marginTop: '1px' }} />
-              <p style={{ color: '#f87171', fontSize: '13px', margin: 0, fontFamily: 'Inter, sans-serif' }}>
+              <AlertCircle size={16} style={{ color: '#D64545', flexShrink: 0, marginTop: '1px' }} />
+              <p style={{ color: '#D64545', fontSize: '13px', margin: 0, fontFamily: 'Inter, sans-serif' }}>
                 {error}
               </p>
             </div>
@@ -177,14 +192,14 @@ export default function LoginForm({ searchParams }: Props) {
             <div>
               <label
                 htmlFor="email"
-                style={{ display: 'block', color: '#999', fontSize: '12px', fontFamily: 'Inter, sans-serif', letterSpacing: '0.05em', marginBottom: '6px' }}
+                style={{ display: 'block', color: '#52697A', fontSize: '12px', fontFamily: 'Inter, sans-serif', letterSpacing: '0.05em', marginBottom: '6px', fontWeight: 600 }}
               >
                 E-Posta
               </label>
               <div style={{ position: 'relative' }}>
                 <Mail
                   size={16}
-                  style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#555' }}
+                  style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#A0B0BC' }}
                   aria-hidden="true"
                 />
                 <input
@@ -195,21 +210,7 @@ export default function LoginForm({ searchParams }: Props) {
                   required
                   autoComplete="email"
                   placeholder="admin@example.com"
-                  style={{
-                    width: '100%',
-                    paddingLeft: '40px',
-                    paddingRight: '12px',
-                    paddingTop: '10px',
-                    paddingBottom: '10px',
-                    background: '#0F0F0F',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: '8px',
-                    color: '#fff',
-                    fontSize: '14px',
-                    fontFamily: 'Inter, sans-serif',
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                  }}
+                  style={{ ...inputStyle, paddingLeft: '40px' }}
                 />
               </div>
             </div>
@@ -218,14 +219,14 @@ export default function LoginForm({ searchParams }: Props) {
             <div>
               <label
                 htmlFor="password"
-                style={{ display: 'block', color: '#999', fontSize: '12px', fontFamily: 'Inter, sans-serif', letterSpacing: '0.05em', marginBottom: '6px' }}
+                style={{ display: 'block', color: '#52697A', fontSize: '12px', fontFamily: 'Inter, sans-serif', letterSpacing: '0.05em', marginBottom: '6px', fontWeight: 600 }}
               >
                 Şifre
               </label>
               <div style={{ position: 'relative' }}>
                 <Lock
                   size={16}
-                  style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#555' }}
+                  style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#A0B0BC' }}
                   aria-hidden="true"
                 />
                 <input
@@ -236,21 +237,7 @@ export default function LoginForm({ searchParams }: Props) {
                   required
                   autoComplete="current-password"
                   placeholder="••••••••"
-                  style={{
-                    width: '100%',
-                    paddingLeft: '40px',
-                    paddingRight: '44px',
-                    paddingTop: '10px',
-                    paddingBottom: '10px',
-                    background: '#0F0F0F',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: '8px',
-                    color: '#fff',
-                    fontSize: '14px',
-                    fontFamily: 'Inter, sans-serif',
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                  }}
+                  style={{ ...inputStyle, paddingLeft: '40px', paddingRight: '44px' }}
                 />
                 <button
                   type="button"
@@ -263,7 +250,7 @@ export default function LoginForm({ searchParams }: Props) {
                     transform: 'translateY(-50%)',
                     background: 'none',
                     border: 'none',
-                    color: '#555',
+                    color: '#A0B0BC',
                     cursor: 'pointer',
                     padding: '2px',
                   }}
@@ -281,15 +268,15 @@ export default function LoginForm({ searchParams }: Props) {
                 marginTop: '8px',
                 padding: '12px',
                 borderRadius: '8px',
-                background: loading ? 'rgba(201,168,76,0.5)' : '#C9A84C',
-                color: '#0A0A0A',
+                background: loading ? '#93C5FD' : '#2563EB',
+                color: '#FFFFFF',
                 fontWeight: 700,
                 fontSize: '14px',
                 fontFamily: 'Inter, sans-serif',
                 letterSpacing: '0.05em',
                 border: 'none',
                 cursor: loading ? 'not-allowed' : 'pointer',
-                transition: 'opacity 0.2s',
+                transition: 'background 0.2s',
               }}
             >
               {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
@@ -297,7 +284,7 @@ export default function LoginForm({ searchParams }: Props) {
           </form>
         </div>
 
-        <p style={{ textAlign: 'center', color: '#333', fontSize: '12px', marginTop: '24px', fontFamily: 'Inter, sans-serif' }}>
+        <p style={{ textAlign: 'center', color: '#A0B0BC', fontSize: '12px', marginTop: '24px', fontFamily: 'Inter, sans-serif' }}>
           Kayıt sistemi kapalıdır. Yöneticinizle iletişime geçin.
         </p>
       </div>

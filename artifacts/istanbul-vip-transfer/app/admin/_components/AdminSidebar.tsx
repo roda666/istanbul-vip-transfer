@@ -22,10 +22,14 @@ import {
   UserCircle,
 } from 'lucide-react';
 
-const GOLD = '#C9A84C';
-const BG = '#111111';
-const BG_HOVER = 'rgba(201,168,76,0.08)';
-const BG_ACTIVE = 'rgba(201,168,76,0.14)';
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const SIDEBAR_BG   = '#132A44';
+const SIDEBAR_BG2  = '#1B3858';
+const GOLD         = '#C99A32';
+const NAV_TEXT     = 'rgba(255,255,255,0.75)';
+const NAV_MUTED    = 'rgba(255,255,255,0.4)';
+const NAV_ACTIVE_BG = 'rgba(201,154,50,0.18)';
+const NAV_HOVER_BG  = 'rgba(255,255,255,0.07)';
 
 interface NavItem {
   href: string;
@@ -34,17 +38,17 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: '/admin/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
-  { href: '/admin/sayfalar', label: 'Sayfalar', icon: <FileText size={18} /> },
-  { href: '/admin/hizmetler', label: 'Hizmetler', icon: <Wrench size={18} /> },
-  { href: '/admin/araclar', label: 'Araçlar', icon: <Car size={18} /> },
-  { href: '/admin/blog', label: 'Blog', icon: <BookOpen size={18} /> },
-  { href: '/admin/sss', label: 'SSS', icon: <HelpCircle size={18} /> },
-  { href: '/admin/menu', label: 'Menü Yönetimi', icon: <MenuIcon size={18} /> },
-  { href: '/admin/ayarlar', label: 'Site Ayarları', icon: <Settings size={18} /> },
+  { href: '/admin/dashboard',   label: 'Dashboard',           icon: <LayoutDashboard size={18} /> },
+  { href: '/admin/sayfalar',    label: 'Sayfalar',            icon: <FileText size={18} /> },
+  { href: '/admin/hizmetler',   label: 'Hizmetler',           icon: <Wrench size={18} /> },
+  { href: '/admin/araclar',     label: 'Araçlar',             icon: <Car size={18} /> },
+  { href: '/admin/blog',        label: 'Blog',                icon: <BookOpen size={18} /> },
+  { href: '/admin/sss',         label: 'SSS',                 icon: <HelpCircle size={18} /> },
+  { href: '/admin/menu',        label: 'Menü Yönetimi',       icon: <MenuIcon size={18} /> },
+  { href: '/admin/ayarlar',     label: 'Site Ayarları',       icon: <Settings size={18} /> },
   { href: '/admin/ai-oneriler', label: 'AI İçerik Önerileri', icon: <Sparkles size={18} /> },
-  { href: '/admin/gecmis', label: 'İşlem Geçmişi', icon: <History size={18} /> },
-  { href: '/admin/hesabim', label: 'Hesabım', icon: <UserCircle size={18} /> },
+  { href: '/admin/gecmis',      label: 'İşlem Geçmişi',       icon: <History size={18} /> },
+  { href: '/admin/hesabim',     label: 'Hesabım',             icon: <UserCircle size={18} /> },
 ];
 
 interface Props {
@@ -56,7 +60,7 @@ interface Props {
 export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
   const pathname = usePathname();
   const router = useRouter();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed]   = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -78,19 +82,12 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
   }
 
   const sidebarContent = (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        background: BG,
-      }}
-    >
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: SIDEBAR_BG }}>
       {/* Logo */}
       <div
         style={{
           padding: collapsed ? '20px 12px' : '20px 20px',
-          borderBottom: '1px solid rgba(201,168,76,0.1)',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: collapsed ? 'center' : 'space-between',
@@ -113,7 +110,7 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
             </div>
             <div
               style={{
-                color: '#444',
+                color: 'rgba(255,255,255,0.35)',
                 fontSize: '10px',
                 letterSpacing: '0.2em',
                 textTransform: 'uppercase',
@@ -130,23 +127,20 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
           aria-label={collapsed ? 'Menüyü genişlet' : 'Menüyü daralt'}
           className="hidden lg:flex items-center justify-center"
           style={{
-            background: 'none',
+            background: 'rgba(255,255,255,0.07)',
             border: 'none',
-            color: '#555',
+            color: 'rgba(255,255,255,0.5)',
             cursor: 'pointer',
-            padding: '4px',
-            borderRadius: '4px',
+            padding: '5px',
+            borderRadius: '6px',
           }}
         >
-          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
         </button>
       </div>
 
       {/* Navigation */}
-      <nav
-        style={{ flex: 1, overflowY: 'auto', padding: '12px 8px' }}
-        aria-label="Admin menüsü"
-      >
+      <nav style={{ flex: 1, overflowY: 'auto', padding: '10px 8px' }} aria-label="Admin menüsü">
         {NAV_ITEMS.map((item) => {
           const active = isActive(item.href);
           return (
@@ -159,51 +153,57 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '10px',
-                padding: collapsed ? '10px 12px' : '10px 12px',
+                padding: '9px 12px',
                 borderRadius: '8px',
                 marginBottom: '2px',
-                background: active ? BG_ACTIVE : 'transparent',
-                color: active ? GOLD : '#777',
+                background: active ? NAV_ACTIVE_BG : 'transparent',
+                color: active ? GOLD : NAV_TEXT,
                 textDecoration: 'none',
                 fontSize: '13px',
                 fontFamily: 'Inter, sans-serif',
                 fontWeight: active ? 600 : 400,
-                transition: 'all 0.15s',
+                transition: 'background 0.15s, color 0.15s',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 justifyContent: collapsed ? 'center' : 'flex-start',
+                borderLeft: active ? `3px solid ${GOLD}` : '3px solid transparent',
               }}
               onMouseEnter={(e) => {
-                if (!active) (e.currentTarget as HTMLAnchorElement).style.background = BG_HOVER;
-                if (!active) (e.currentTarget as HTMLAnchorElement).style.color = '#bbb';
+                if (!active) {
+                  (e.currentTarget as HTMLAnchorElement).style.background = NAV_HOVER_BG;
+                  (e.currentTarget as HTMLAnchorElement).style.color = '#fff';
+                }
               }}
               onMouseLeave={(e) => {
-                if (!active) (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
-                if (!active) (e.currentTarget as HTMLAnchorElement).style.color = '#777';
+                if (!active) {
+                  (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
+                  (e.currentTarget as HTMLAnchorElement).style.color = NAV_TEXT;
+                }
               }}
             >
-              <span style={{ flexShrink: 0, color: active ? GOLD : 'inherit' }}>{item.icon}</span>
+              <span style={{ flexShrink: 0, color: active ? GOLD : 'rgba(255,255,255,0.55)' }}>
+                {item.icon}
+              </span>
               {!collapsed && <span>{item.label}</span>}
             </Link>
           );
         })}
       </nav>
 
-      {/* User + Logout — flexShrink:0 keeps this section always visible;
-           generous bottom padding clears the Next.js dev badge in development. */}
-      <div style={{ borderTop: '1px solid rgba(201,168,76,0.1)', padding: '12px 8px 28px', flexShrink: 0 }}>
+      {/* User + Logout */}
+      <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', padding: '12px 8px 28px', flexShrink: 0 }}>
         {!collapsed && (
           <div
             style={{
-              padding: '8px 12px',
+              padding: '10px 12px',
               marginBottom: '4px',
               borderRadius: '8px',
-              background: 'rgba(255,255,255,0.02)',
+              background: SIDEBAR_BG2,
             }}
           >
             <div
               style={{
-                color: '#ccc',
+                color: 'rgba(255,255,255,0.9)',
                 fontSize: '13px',
                 fontFamily: 'Inter, sans-serif',
                 fontWeight: 500,
@@ -216,7 +216,7 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
             </div>
             <div
               style={{
-                color: '#555',
+                color: 'rgba(255,255,255,0.4)',
                 fontSize: '11px',
                 fontFamily: 'Inter, sans-serif',
                 whiteSpace: 'nowrap',
@@ -235,7 +235,7 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
                 letterSpacing: '0.1em',
                 textTransform: 'uppercase',
                 marginTop: '3px',
-                opacity: 0.7,
+                opacity: 0.8,
               }}
             >
               {userRole.replace('_', ' ')}
@@ -252,24 +252,24 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
             alignItems: 'center',
             gap: '10px',
             width: '100%',
-            padding: '10px 12px',
+            padding: '9px 12px',
             borderRadius: '8px',
             background: 'none',
             border: 'none',
-            color: '#666',
+            color: 'rgba(255,255,255,0.4)',
             cursor: loggingOut ? 'not-allowed' : 'pointer',
             fontSize: '13px',
             fontFamily: 'Inter, sans-serif',
             justifyContent: collapsed ? 'center' : 'flex-start',
-            transition: 'all 0.15s',
+            transition: 'background 0.15s, color 0.15s',
           }}
           onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.1)';
-            (e.currentTarget as HTMLButtonElement).style.color = '#f87171';
+            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(214,69,69,0.15)';
+            (e.currentTarget as HTMLButtonElement).style.color = '#FCA5A5';
           }}
           onMouseLeave={(e) => {
             (e.currentTarget as HTMLButtonElement).style.background = 'none';
-            (e.currentTarget as HTMLButtonElement).style.color = '#666';
+            (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.4)';
           }}
         >
           <LogOut size={18} style={{ flexShrink: 0 }} />
@@ -290,23 +290,17 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
           height: '100dvh',
           position: 'sticky',
           top: 0,
-          borderRight: '1px solid rgba(201,168,76,0.1)',
+          borderRight: '1px solid rgba(0,0,0,0.08)',
           transition: 'width 0.2s ease',
-          /*
-           * overflowX clips nav-item text during the collapse width transition.
-           * overflowY must remain visible/auto so the inner flex column (which
-           * has its own overflow-y:auto nav) can render a scrollbar when the
-           * list of nav items is taller than the viewport.
-           */
           overflowX: 'hidden',
           overflowY: 'visible',
+          boxShadow: '2px 0 12px rgba(19,42,68,0.12)',
         }}
       >
         {sidebarContent}
       </div>
 
-      {/* Mobile top bar — className controls display; no inline display: so Tailwind's
-           lg:hidden (display:none) is not overridden by an inline style at desktop widths. */}
+      {/* Mobile top bar */}
       <div
         className="lg:hidden flex items-center"
         style={{
@@ -316,23 +310,17 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
           right: 0,
           zIndex: 50,
           height: '56px',
-          background: BG,
-          borderBottom: '1px solid rgba(201,168,76,0.1)',
+          background: SIDEBAR_BG,
+          borderBottom: '1px solid rgba(0,0,0,0.1)',
           padding: '0 16px',
           gap: '12px',
+          boxShadow: '0 2px 8px rgba(19,42,68,0.15)',
         }}
       >
         <button
           onClick={() => setMobileOpen(true)}
           aria-label="Menüyü aç"
-          style={{
-            background: 'none',
-            border: 'none',
-            color: GOLD,
-            cursor: 'pointer',
-            padding: '4px',
-            display: 'flex',
-          }}
+          style={{ background: 'none', border: 'none', color: GOLD, cursor: 'pointer', padding: '4px', display: 'flex' }}
         >
           <AlignLeft size={22} />
         </button>
@@ -362,7 +350,7 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
               position: 'fixed',
               inset: 0,
               zIndex: 55,
-              background: 'rgba(0,0,0,0.7)',
+              background: 'rgba(19,42,68,0.6)',
               backdropFilter: 'blur(4px)',
             }}
             aria-hidden="true"
@@ -375,25 +363,19 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
               bottom: 0,
               width: '260px',
               zIndex: 60,
-              borderRight: '1px solid rgba(201,168,76,0.15)',
+              borderRight: '1px solid rgba(255,255,255,0.08)',
+              boxShadow: '4px 0 20px rgba(19,42,68,0.3)',
             }}
           >
-            <div
-              style={{
-                position: 'absolute',
-                top: '12px',
-                right: '12px',
-                zIndex: 10,
-              }}
-            >
+            <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 10 }}>
               <button
                 onClick={() => setMobileOpen(false)}
                 aria-label="Menüyü kapat"
                 style={{
-                  background: 'rgba(255,255,255,0.05)',
+                  background: 'rgba(255,255,255,0.1)',
                   border: 'none',
                   borderRadius: '6px',
-                  color: '#777',
+                  color: 'rgba(255,255,255,0.7)',
                   cursor: 'pointer',
                   padding: '6px',
                   display: 'flex',

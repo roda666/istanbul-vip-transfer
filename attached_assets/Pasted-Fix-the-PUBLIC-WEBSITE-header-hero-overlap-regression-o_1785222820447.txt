@@ -1,0 +1,72 @@
+Fix the PUBLIC WEBSITE header/hero overlap regression only.
+
+The light-theme redesign is approved, but the actual screenshot proves that the first line of the homepage H1 (“İstanbul’u”) is hidden behind the header.
+
+Requirements:
+
+1. Inspect the actual rendered public Header and homepage Hero.
+
+2. Prefer making the public header:
+   position: sticky;
+   top: 0;
+   z-index: appropriate;
+
+A sticky header must remain in normal document flow so it reserves its own height.
+
+3. If a fixed header is absolutely necessary:
+- Define one shared CSS variable for its exact rendered height.
+- Reserve that complete height before all page content.
+- Do not use guessed spacer values.
+- Account for desktop and mobile header heights separately.
+
+4. Remove:
+- Negative top margins
+- translateY values
+- Absolute positioning that pulls the hero upward
+- Incorrect top offsets
+- Margin-collapse behavior that places the H1 behind the header
+
+5. The complete homepage content must begin below the header:
+- Badge
+- Full three-line H1: “İstanbul’u Konforla Keşfedin”
+- Description
+- CTA buttons
+
+6. Check the logo:
+- It must fit completely inside the header.
+- It must not be clipped vertically.
+- Header height must accommodate the complete logo.
+
+7. Apply the correction through the shared public layout/header.
+Do not patch only the homepage if internal pages have the same risk.
+
+8. Verify these routes:
+- /
+- /araclar
+- /hakkimizda
+- /iletisim
+- /otel-transfer
+- /sehirler-arasi-transfer
+- /blog
+
+9. Verify actual browser rendering at:
+- 1920×1080
+- 1366×768
+- 390×844
+
+10. Confirm:
+- Full H1 is visible
+- Page titles are not hidden
+- Header does not cover content
+- No excessive blank spacer appears
+- No horizontal overflow
+- Mobile menu still works
+
+11. Preserve the approved light color theme.
+Do not change content, SEO, routes, database, admin panel or functionality.
+
+12. Do not reset passwords, modify Secrets or change database records.
+
+13. Run lint, typecheck and production build.
+
+14. Do not publish, deploy or connect the production domain.

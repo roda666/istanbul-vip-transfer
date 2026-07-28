@@ -14,14 +14,14 @@ export default function AdminPageHeader({ title, description, action }: Props) {
         gap: '16px',
         marginBottom: '24px',
         paddingBottom: '20px',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        borderBottom: '1px solid #D8E1E9',
         flexWrap: 'wrap',
       }}
     >
       <div>
         <h1
           style={{
-            color: '#fff',
+            color: '#172B3A',
             fontSize: '22px',
             fontWeight: 700,
             fontFamily: 'Inter, sans-serif',
@@ -33,7 +33,7 @@ export default function AdminPageHeader({ title, description, action }: Props) {
         {description && (
           <p
             style={{
-              color: '#666',
+              color: '#718596',
               fontSize: '13px',
               fontFamily: 'Inter, sans-serif',
               margin: '4px 0 0',

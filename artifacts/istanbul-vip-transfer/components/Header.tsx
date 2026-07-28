@@ -70,10 +70,10 @@ export default function Header() {
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-400 ${
+        className={`sticky top-0 left-0 right-0 z-50 transition-all duration-400 ${
           scrolled
             ? 'bg-[#FFFDF8]/95 backdrop-blur-xl border-b border-[#D9E2EC] shadow-sm'
-            : 'bg-transparent'
+            : 'bg-[#FFFDF8] border-b border-[#D9E2EC]'
         }`}
         data-testid="header"
       >

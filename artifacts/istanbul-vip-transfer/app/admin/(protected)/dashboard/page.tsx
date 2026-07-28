@@ -13,6 +13,7 @@ interface StatusCard {
   count: number;
   icon: React.ReactNode;
   color: string;
+  bgColor: string;
   href: string;
 }
 
@@ -80,6 +81,17 @@ function formatDate(date: Date) {
   }).format(date);
 }
 
+const ACTION_COLORS: Record<string, { bg: string; text: string }> = {
+  LOGIN:   { bg: '#F0FDF4', text: '#168C5B' },
+  LOGOUT:  { bg: '#FEF2F2', text: '#D64545' },
+  CREATE:  { bg: '#EFF6FF', text: '#2563EB' },
+  UPDATE:  { bg: '#FFFBEB', text: '#D97706' },
+  DELETE:  { bg: '#FEF2F2', text: '#D64545' },
+  APPROVE: { bg: '#F0FDF4', text: '#168C5B' },
+  PUBLISH: { bg: '#ECFDF5', text: '#059669' },
+  ARCHIVE: { bg: '#F8FAFC', text: '#64748B' },
+};
+
 export default async function DashboardPage() {
   const [counts, logs] = await Promise.all([getStatusCounts(), getRecentAuditLogs()]);
 
@@ -91,35 +103,40 @@ export default async function DashboardPage() {
           label: 'Taslak',
           count: counts.DRAFT + counts.RESEARCH,
           icon: <FileText size={20} />,
-          color: '#666',
+          color: '#64748B',
+          bgColor: '#F1F5F9',
           href: '/admin/sayfalar',
         },
         {
           label: 'İncelemede',
           count: counts.REVIEW,
           icon: <Clock size={20} />,
-          color: '#fbbf24',
+          color: '#D97706',
+          bgColor: '#FFFBEB',
           href: '/admin/sayfalar',
         },
         {
           label: 'Onaylandı',
           count: counts.APPROVED,
           icon: <CheckCircle size={20} />,
-          color: '#86efac',
+          color: '#168C5B',
+          bgColor: '#F0FDF4',
           href: '/admin/sayfalar',
         },
         {
           label: 'Zamanlandı',
           count: counts.SCHEDULED,
           icon: <Calendar size={20} />,
-          color: '#c4b5fd',
+          color: '#7C3AED',
+          bgColor: '#F5F3FF',
           href: '/admin/sayfalar',
         },
         {
           label: 'Yayında',
           count: counts.PUBLISHED,
           icon: <Globe size={20} />,
-          color: '#4ade80',
+          color: '#059669',
+          bgColor: '#ECFDF5',
           href: '/admin/sayfalar',
         },
       ]
@@ -129,16 +146,17 @@ export default async function DashboardPage() {
     <div style={{ padding: '28px 24px' }}>
       <style>{`
         .dashboard-card {
-          background: #161616;
-          border: 1px solid rgba(255,255,255,0.06);
+          background: #FFFFFF;
+          border: 1px solid #D8E1E9;
           border-radius: 12px;
           padding: 20px;
-          transition: border-color 0.15s;
+          transition: border-color 0.15s, box-shadow 0.15s;
           cursor: pointer;
         }
         .dashboard-card:hover,
         .dashboard-card:focus-within {
-          border-color: rgba(201,168,76,0.3);
+          border-color: #2563EB;
+          box-shadow: 0 4px 16px rgba(37,99,235,0.08);
         }
       `}</style>
       <AdminPageHeader
@@ -152,17 +170,16 @@ export default async function DashboardPage() {
             display: 'flex',
             alignItems: 'center',
             gap: '10px',
-            background: 'rgba(239,68,68,0.1)',
-            border: '1px solid rgba(239,68,68,0.3)',
+            background: '#FEF2F2',
+            border: '1px solid #FECACA',
             borderRadius: '10px',
             padding: '14px 16px',
             marginBottom: '24px',
           }}
         >
-          <AlertTriangle size={18} style={{ color: '#f87171', flexShrink: 0 }} />
-          <p style={{ color: '#f87171', fontSize: '13px', fontFamily: 'Inter, sans-serif', margin: 0 }}>
+          <AlertTriangle size={18} style={{ color: '#D64545', flexShrink: 0 }} />
+          <p style={{ color: '#D64545', fontSize: '13px', fontFamily: 'Inter, sans-serif', margin: 0 }}>
             Veritabanına bağlanılamadı. DATABASE_URL ve migrationların çalıştırıldığını kontrol edin.
-            Detaylar için ADMIN_SETUP.md dosyasına bakın.
           </p>
         </div>
       )}
@@ -178,26 +195,27 @@ export default async function DashboardPage() {
           }}
         >
           {cards.map((card) => (
-            <Link
-              key={card.label}
-              href={card.href}
-              style={{ textDecoration: 'none' }}
-            >
+            <Link key={card.label} href={card.href} style={{ textDecoration: 'none' }}>
               <div className="dashboard-card">
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    marginBottom: '12px',
-                  }}
-                >
-                  <span style={{ color: card.color }}>{card.icon}</span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <div
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '8px',
+                      background: card.bgColor,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <span style={{ color: card.color }}>{card.icon}</span>
+                  </div>
                   <span
                     style={{
                       fontSize: '28px',
                       fontWeight: 700,
-                      color: '#fff',
+                      color: '#172B3A',
                       fontFamily: 'Inter, sans-serif',
                     }}
                   >
@@ -206,11 +224,12 @@ export default async function DashboardPage() {
                 </div>
                 <p
                   style={{
-                    color: '#666',
+                    color: '#718596',
                     fontSize: '12px',
                     fontFamily: 'Inter, sans-serif',
                     margin: 0,
                     letterSpacing: '0.05em',
+                    fontWeight: 500,
                   }}
                 >
                   {card.label}
@@ -226,68 +245,71 @@ export default async function DashboardPage() {
         <div>
           <h2
             style={{
-              color: '#888',
+              color: '#52697A',
               fontSize: '11px',
               fontFamily: 'Inter, sans-serif',
               letterSpacing: '0.15em',
               textTransform: 'uppercase',
               marginBottom: '12px',
+              fontWeight: 600,
             }}
           >
             Son İşlemler
           </h2>
           <div
             style={{
-              background: '#161616',
-              border: '1px solid rgba(255,255,255,0.06)',
+              background: '#FFFFFF',
+              border: '1px solid #D8E1E9',
               borderRadius: '12px',
               overflow: 'hidden',
             }}
           >
-            {logs.map((log, i) => (
-              <div
-                key={log.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '12px 16px',
-                  borderBottom:
-                    i < logs.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
-                }}
-              >
-                <span
+            {logs.map((log, i) => {
+              const actionStyle = ACTION_COLORS[log.action] ?? { bg: '#F8FAFC', text: '#64748B' };
+              return (
+                <div
+                  key={log.id}
                   style={{
-                    display: 'inline-block',
-                    padding: '2px 8px',
-                    borderRadius: '4px',
-                    background: 'rgba(201,168,76,0.1)',
-                    color: '#C9A84C',
-                    fontSize: '10px',
-                    fontFamily: 'Inter, sans-serif',
-                    fontWeight: 600,
-                    letterSpacing: '0.08em',
-                    whiteSpace: 'nowrap',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '12px 16px',
+                    borderBottom: i < logs.length - 1 ? '1px solid #EDF2F7' : 'none',
                   }}
                 >
-                  {log.action}
-                </span>
-                <span style={{ color: '#777', fontSize: '12px', fontFamily: 'Inter, sans-serif', flex: 1, minWidth: 0 }}>
-                  {log.entityType ?? '—'}{log.entityId ? ` (${log.entityId.slice(0, 8)}…)` : ''}
-                </span>
-                <span style={{ color: '#444', fontSize: '11px', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
-                  {log.adminName ?? '—'}
-                </span>
-                <span style={{ color: '#333', fontSize: '11px', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
-                  {formatDate(log.createdAt)}
-                </span>
-              </div>
-            ))}
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      background: actionStyle.bg,
+                      color: actionStyle.text,
+                      fontSize: '10px',
+                      fontFamily: 'Inter, sans-serif',
+                      fontWeight: 700,
+                      letterSpacing: '0.08em',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {log.action}
+                  </span>
+                  <span style={{ color: '#52697A', fontSize: '12px', fontFamily: 'Inter, sans-serif', flex: 1, minWidth: 0 }}>
+                    {log.entityType ?? '—'}{log.entityId ? ` (${log.entityId.slice(0, 8)}…)` : ''}
+                  </span>
+                  <span style={{ color: '#718596', fontSize: '11px', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
+                    {log.adminName ?? '—'}
+                  </span>
+                  <span style={{ color: '#A0B0BC', fontSize: '11px', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
+                    {formatDate(log.createdAt)}
+                  </span>
+                </div>
+              );
+            })}
           </div>
           <div style={{ marginTop: '8px', textAlign: 'right' }}>
             <Link
               href="/admin/gecmis"
-              style={{ color: '#C9A84C', fontSize: '12px', fontFamily: 'Inter, sans-serif', opacity: 0.8 }}
+              style={{ color: '#2563EB', fontSize: '12px', fontFamily: 'Inter, sans-serif' }}
             >
               Tüm geçmişi görüntüle →
             </Link>

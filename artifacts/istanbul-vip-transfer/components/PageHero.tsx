@@ -18,7 +18,7 @@ interface PageHeroProps {
 export default function PageHero({ breadcrumbs, title, subtitle }: PageHeroProps) {
   return (
     <section
-      className="relative pt-36 pb-20 text-center overflow-hidden"
+      className="relative pt-16 pb-20 text-center overflow-hidden"
       style={{ background: 'linear-gradient(160deg, #FFFDF8 0%, #F7F5EF 60%, #EAF2F8 100%)' }}
     >
       {/* Subtle radial accent */}

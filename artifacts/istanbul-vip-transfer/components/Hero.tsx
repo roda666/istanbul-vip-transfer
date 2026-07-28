@@ -37,7 +37,7 @@ export default function Hero() {
       />
 
       <div className="max-w-7xl mx-auto px-5 md:px-8 w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 xl:gap-16 items-center py-24 lg:py-0 lg:min-h-[100dvh]">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 xl:gap-16 items-center py-16 lg:py-0 lg:min-h-[calc(100dvh-80px)]">
 
           {/* ── Left: Content ── */}
           <div className="order-1">

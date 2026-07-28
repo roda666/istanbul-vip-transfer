@@ -43,7 +43,7 @@ export default async function ProtectedAdminLayout({
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#0A0A0A' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#F3F6FA' }}>
       <AdminSidebar
         userName={sessionData.name}
         userEmail={sessionData.email}

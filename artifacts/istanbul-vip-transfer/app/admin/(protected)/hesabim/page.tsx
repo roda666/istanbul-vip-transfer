@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 };
 
 const labelStyle: React.CSSProperties = {
-  color: '#999',
+  color: '#718596',
   fontSize: '12px',
   fontFamily: 'Inter, sans-serif',
   letterSpacing: '0.05em',
@@ -16,17 +16,27 @@ const labelStyle: React.CSSProperties = {
 };
 
 const valueStyle: React.CSSProperties = {
-  color: '#ccc',
+  color: '#172B3A',
   fontSize: '14px',
   fontFamily: 'Inter, sans-serif',
 };
 
 const sectionStyle: React.CSSProperties = {
-  background: '#161616',
-  border: '1px solid rgba(255,255,255,0.06)',
+  background: '#FFFFFF',
+  border: '1px solid #D8E1E9',
   borderRadius: '12px',
   padding: '24px',
   marginBottom: '24px',
+};
+
+const sectionHeadingStyle: React.CSSProperties = {
+  color: '#52697A',
+  fontSize: '11px',
+  fontFamily: 'Inter, sans-serif',
+  letterSpacing: '0.15em',
+  textTransform: 'uppercase',
+  marginBottom: '20px',
+  fontWeight: 600,
 };
 
 export default async function HesabimPage() {
@@ -45,18 +55,7 @@ export default async function HesabimPage() {
 
       {/* Profile info */}
       <section style={sectionStyle} aria-label="Profil bilgileri">
-        <h2
-          style={{
-            color: '#888',
-            fontSize: '11px',
-            fontFamily: 'Inter, sans-serif',
-            letterSpacing: '0.15em',
-            textTransform: 'uppercase',
-            marginBottom: '20px',
-          }}
-        >
-          Profil
-        </h2>
+        <h2 style={sectionHeadingStyle}>Profil</h2>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
@@ -65,10 +64,10 @@ export default async function HesabimPage() {
           </div>
           <div>
             <p style={labelStyle}>E-Posta</p>
-            <p style={{ ...valueStyle, color: '#777' }} aria-label="E-Posta (salt okunur)">
+            <p style={{ ...valueStyle, color: '#52697A' }} aria-label="E-Posta (salt okunur)">
               {session.email || '—'}
             </p>
-            <p style={{ color: '#444', fontSize: '11px', fontFamily: 'Inter, sans-serif', marginTop: '3px' }}>
+            <p style={{ color: '#A0B0BC', fontSize: '11px', fontFamily: 'Inter, sans-serif', marginTop: '3px' }}>
               E-posta adresi değiştirilemez.
             </p>
           </div>
@@ -79,12 +78,13 @@ export default async function HesabimPage() {
                 display: 'inline-block',
                 padding: '3px 10px',
                 borderRadius: '4px',
-                background: 'rgba(201,168,76,0.1)',
-                color: '#C9A84C',
+                background: '#FFFBEB',
+                color: '#C99A32',
                 fontSize: '11px',
                 fontFamily: 'Inter, sans-serif',
                 fontWeight: 600,
                 letterSpacing: '0.08em',
+                border: '1px solid #FDE68A',
               }}
               aria-label="Rol (salt okunur)"
             >
@@ -96,18 +96,7 @@ export default async function HesabimPage() {
 
       {/* Password change */}
       <section style={sectionStyle} aria-label="Şifre değiştir">
-        <h2
-          style={{
-            color: '#888',
-            fontSize: '11px',
-            fontFamily: 'Inter, sans-serif',
-            letterSpacing: '0.15em',
-            textTransform: 'uppercase',
-            marginBottom: '20px',
-          }}
-        >
-          Şifre Değiştir
-        </h2>
+        <h2 style={sectionHeadingStyle}>Şifre Değiştir</h2>
         <PasswordChangeForm />
       </section>
     </div>

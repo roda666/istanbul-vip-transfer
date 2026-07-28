@@ -9,8 +9,8 @@ import StatusBadge from '../../_components/StatusBadge';
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 const GOLD = '#C9A84C';
-const BG2 = '#1a1a1a';
-const BORDER = 'rgba(201,168,76,0.15)';
+const BG2 = '#FFFFFF';
+const BORDER = '#D8E1E9';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface GalleryItem { url: string; alt: string }
@@ -103,15 +103,15 @@ function Label({ children, required }: { children: React.ReactNode; required?: b
     <label
       style={{
         display: 'block',
-        color: '#aaa',
+        color: '#52697A',
         fontSize: '12px',
         fontFamily: 'Inter, sans-serif',
         marginBottom: '6px',
-        fontWeight: 500,
+        fontWeight: 600,
       }}
     >
       {children}
-      {required && <span style={{ color: '#f87171', marginLeft: '3px' }}>*</span>}
+      {required && <span style={{ color: '#D64545', marginLeft: '3px' }}>*</span>}
     </label>
   );
 }
@@ -141,7 +141,7 @@ function Input({
         background: BG2,
         border: `1px solid ${BORDER}`,
         borderRadius: '6px',
-        color: '#ddd',
+        color: '#172B3A',
         fontSize: '13px',
         fontFamily: 'Inter, sans-serif',
         padding: '8px 12px',
@@ -175,7 +175,7 @@ function Textarea({
         background: BG2,
         border: `1px solid ${BORDER}`,
         borderRadius: '6px',
-        color: '#ddd',
+        color: '#172B3A',
         fontSize: '13px',
         fontFamily: 'Inter, sans-serif',
         padding: '8px 12px',
@@ -215,7 +215,7 @@ function CharCounter({ value, max }: { value: string; max: number }) {
       style={{
         fontSize: '11px',
         fontFamily: 'Inter, sans-serif',
-        color: over ? '#f87171' : len > max * 0.85 ? '#fbbf24' : '#555',
+        color: over ? '#D64545' : len > max * 0.85 ? '#D97706' : '#718596',
         marginLeft: '4px',
       }}
     >
@@ -228,11 +228,11 @@ function ErrorBanner({ msg }: { msg: string }) {
   return (
     <div
       style={{
-        background: 'rgba(239,68,68,0.1)',
-        border: '1px solid rgba(239,68,68,0.3)',
+        background: '#FEF2F2',
+        border: '1px solid #FECACA',
         borderRadius: '8px',
         padding: '12px 16px',
-        color: '#f87171',
+        color: '#D64545',
         fontSize: '13px',
         fontFamily: 'Inter, sans-serif',
         marginBottom: '16px',
@@ -257,22 +257,22 @@ function ActionButton({
   children: React.ReactNode;
 }) {
   const styles: Record<string, React.CSSProperties> = {
-    primary: { background: GOLD, color: '#0A0A0A', fontWeight: 600 },
+    primary: { background: '#2563EB', color: '#FFFFFF', fontWeight: 600 },
     secondary: {
       background: 'transparent',
-      color: GOLD,
-      border: `1px solid ${GOLD}`,
+      color: '#2563EB',
+      border: '1px solid #2563EB',
       fontWeight: 500,
     },
     danger: {
-      background: 'rgba(239,68,68,0.15)',
-      color: '#f87171',
-      border: '1px solid rgba(239,68,68,0.3)',
+      background: '#FEF2F2',
+      color: '#D64545',
+      border: '1px solid #FECACA',
       fontWeight: 500,
     },
     ghost: {
-      background: 'rgba(255,255,255,0.05)',
-      color: '#777',
+      background: '#F1F5F9',
+      color: '#52697A',
       fontWeight: 400,
     },
   };
@@ -323,7 +323,8 @@ function ConfirmDialog({
         position: 'fixed',
         inset: 0,
         zIndex: 200,
-        background: 'rgba(0,0,0,0.75)',
+        background: 'rgba(23,43,58,0.5)',
+        backdropFilter: 'blur(4px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -332,17 +333,18 @@ function ConfirmDialog({
     >
       <div
         style={{
-          background: '#181818',
-          border: `1px solid ${BORDER}`,
+          background: '#FFFFFF',
+          border: '1px solid #D8E1E9',
           borderRadius: '12px',
           padding: '28px',
           maxWidth: '440px',
           width: '100%',
+          boxShadow: '0 8px 32px rgba(23,43,58,0.12)',
         }}
       >
         <h3
           style={{
-            color: '#fff',
+            color: '#172B3A',
             fontSize: '16px',
             fontFamily: 'Inter, sans-serif',
             fontWeight: 600,
@@ -353,7 +355,7 @@ function ConfirmDialog({
         </h3>
         <p
           style={{
-            color: '#888',
+            color: '#52697A',
             fontSize: '13px',
             fontFamily: 'Inter, sans-serif',
             margin: '0 0 24px',

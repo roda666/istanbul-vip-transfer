@@ -10,10 +10,10 @@ const inputStyle: React.CSSProperties = {
   paddingRight: '44px',
   paddingTop: '10px',
   paddingBottom: '10px',
-  background: '#0F0F0F',
-  border: '1px solid rgba(255,255,255,0.08)',
+  background: '#FFFFFF',
+  border: '1px solid #D8E1E9',
   borderRadius: '8px',
-  color: '#fff',
+  color: '#172B3A',
   fontSize: '14px',
   fontFamily: 'Inter, sans-serif',
   outline: 'none',
@@ -42,11 +42,12 @@ function PasswordField({
         htmlFor={id}
         style={{
           display: 'block',
-          color: '#999',
+          color: '#52697A',
           fontSize: '12px',
           fontFamily: 'Inter, sans-serif',
           letterSpacing: '0.05em',
           marginBottom: '6px',
+          fontWeight: 600,
         }}
       >
         {label}
@@ -54,14 +55,7 @@ function PasswordField({
       <div style={{ position: 'relative' }}>
         <Lock
           size={16}
-          style={{
-            position: 'absolute',
-            left: '12px',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            color: '#555',
-            pointerEvents: 'none',
-          }}
+          style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#A0B0BC', pointerEvents: 'none' }}
           aria-hidden="true"
         />
         <input
@@ -85,7 +79,7 @@ function PasswordField({
             transform: 'translateY(-50%)',
             background: 'none',
             border: 'none',
-            color: '#555',
+            color: '#A0B0BC',
             cursor: 'pointer',
             padding: '2px',
             display: 'flex',
@@ -128,11 +122,7 @@ export default function PasswordChangeForm() {
       const res = await fetch('/admin/api/change-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          currentPassword: current,
-          newPassword: next,
-          confirmPassword: confirm,
-        }),
+        body: JSON.stringify({ currentPassword: current, newPassword: next, confirmPassword: confirm }),
       });
 
       const data = await res.json().catch(() => ({}));
@@ -142,7 +132,6 @@ export default function PasswordChangeForm() {
         return;
       }
 
-      // Session destroyed server-side — redirect to login with success indicator
       router.push('/admin/login?changed=1');
     } catch {
       setError('Sunucuya bağlanılamadı. Lütfen tekrar deneyin.');
@@ -160,42 +149,24 @@ export default function PasswordChangeForm() {
             display: 'flex',
             alignItems: 'flex-start',
             gap: '10px',
-            background: 'rgba(239,68,68,0.1)',
-            border: '1px solid rgba(239,68,68,0.3)',
+            background: '#FEF2F2',
+            border: '1px solid #FECACA',
             borderRadius: '8px',
             padding: '12px',
           }}
         >
-          <AlertCircle size={16} style={{ color: '#f87171', flexShrink: 0, marginTop: '1px' }} aria-hidden="true" />
-          <p style={{ color: '#f87171', fontSize: '13px', margin: 0, fontFamily: 'Inter, sans-serif' }}>
+          <AlertCircle size={16} style={{ color: '#D64545', flexShrink: 0, marginTop: '1px' }} aria-hidden="true" />
+          <p style={{ color: '#D64545', fontSize: '13px', margin: 0, fontFamily: 'Inter, sans-serif' }}>
             {error}
           </p>
         </div>
       )}
 
-      <PasswordField
-        id="current-password"
-        label="Mevcut Şifre"
-        value={current}
-        onChange={setCurrent}
-        autoComplete="current-password"
-      />
-      <PasswordField
-        id="new-password"
-        label="Yeni Şifre"
-        value={next}
-        onChange={setNext}
-        autoComplete="new-password"
-      />
-      <PasswordField
-        id="confirm-password"
-        label="Yeni Şifre Tekrar"
-        value={confirm}
-        onChange={setConfirm}
-        autoComplete="new-password"
-      />
+      <PasswordField id="current-password" label="Mevcut Şifre" value={current} onChange={setCurrent} autoComplete="current-password" />
+      <PasswordField id="new-password" label="Yeni Şifre" value={next} onChange={setNext} autoComplete="new-password" />
+      <PasswordField id="confirm-password" label="Yeni Şifre Tekrar" value={confirm} onChange={setConfirm} autoComplete="new-password" />
 
-      <p style={{ color: '#555', fontSize: '11px', fontFamily: 'Inter, sans-serif', margin: 0 }}>
+      <p style={{ color: '#718596', fontSize: '11px', fontFamily: 'Inter, sans-serif', margin: 0 }}>
         Minimum 8 karakter. Şifre değiştirildikten sonra oturumunuz kapatılır.
       </p>
 
@@ -206,8 +177,8 @@ export default function PasswordChangeForm() {
           marginTop: '4px',
           padding: '11px',
           borderRadius: '8px',
-          background: loading ? 'rgba(201,168,76,0.5)' : '#C9A84C',
-          color: '#0A0A0A',
+          background: loading ? '#93C5FD' : '#2563EB',
+          color: '#FFFFFF',
           fontWeight: 700,
           fontSize: '14px',
           fontFamily: 'Inter, sans-serif',

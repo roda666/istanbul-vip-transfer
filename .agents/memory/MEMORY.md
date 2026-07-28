@@ -1,2 +1,4 @@
 - [Istanbul VIP Transfer contact config](istanbul-vip-transfer-contact-config.md) — contact info in lib/site-config.ts; title template removed; airport pages linked from nav/services/footer; robots.txt conflict resolved.
 - [Admin panel — iron-session + Next.js type quirks](admin-panel-iron-session.md) — RequestCookies cast, force-dynamic on protected layout, workflow status transition enforcement rules.
+- [Admin light theme migration](admin-light-theme.md) — full color token system, button variants, status badge pills; all admin pages/components migrated from dark (#0A0A0A) to light (#F3F6FA) theme.
+- [Public light section tokens](public-light-sections.md) — dark section bg/text replacements for service and blog pages; ServiceFAQ component rewritten to light theme.

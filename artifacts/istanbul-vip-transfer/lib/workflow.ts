@@ -110,11 +110,11 @@ export const STATUS_COLORS: Record<
   ContentStatus,
   { bg: string; text: string }
 > = {
-  DRAFT: { bg: '#2a2a2a', text: '#aaa' },
-  RESEARCH: { bg: '#1e3a5f', text: '#93c5fd' },
-  REVIEW: { bg: '#3d2e00', text: '#fbbf24' },
-  APPROVED: { bg: '#14532d', text: '#86efac' },
-  SCHEDULED: { bg: '#3b1f6e', text: '#c4b5fd' },
-  PUBLISHED: { bg: '#1a3a1a', text: '#4ade80' },
-  ARCHIVED: { bg: '#3b1111', text: '#fca5a5' },
+  DRAFT:     { bg: '#F1F5F9', text: '#64748B' },
+  RESEARCH:  { bg: '#EFF6FF', text: '#2563EB' },
+  REVIEW:    { bg: '#FFFBEB', text: '#D97706' },
+  APPROVED:  { bg: '#F0FDF4', text: '#168C5B' },
+  SCHEDULED: { bg: '#F5F3FF', text: '#7C3AED' },
+  PUBLISHED: { bg: '#ECFDF5', text: '#059669' },
+  ARCHIVED:  { bg: '#F8FAFC', text: '#64748B' },
 };

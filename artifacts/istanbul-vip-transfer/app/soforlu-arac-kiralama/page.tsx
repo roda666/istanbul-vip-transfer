@@ -172,11 +172,11 @@ export default function SoforluAracKiralamaPage() {
       </section>
 
       {/* ── Kimler için ── */}
-      <section className="py-14 md:py-16" style={{ background: '#0A0A0A' }}>
+      <section className="py-14 md:py-16" style={{ background: '#EDF3F7' }}>
         <div className="max-w-5xl mx-auto px-5 md:px-8">
           <div
             className="rounded p-8 md:p-10"
-            style={{ border: '1px solid rgba(201,168,76,0.15)', background: 'rgba(201,168,76,0.02)' }}
+            style={{ border: '1px solid rgba(199,154,50,0.2)', background: '#FFFDF8' }}
           >
             <p
               className="text-xs tracking-[0.25em] uppercase mb-3"
@@ -186,7 +186,7 @@ export default function SoforluAracKiralamaPage() {
             </p>
             <h2
               className="text-xl md:text-2xl font-bold mb-6"
-              style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#FFFFFF' }}
+              style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#183247' }}
             >
               Şoförlü Kiralama Kimler İçin Uygun?
             </h2>
@@ -202,7 +202,7 @@ export default function SoforluAracKiralamaPage() {
                 <li
                   key={item}
                   className="flex items-start gap-3 text-sm"
-                  style={{ color: '#888', fontFamily: 'Inter, sans-serif' }}
+                  style={{ color: '#304A5E', fontFamily: 'Inter, sans-serif' }}
                 >
                   <span
                     className="mt-1.5 flex-shrink-0 rounded-full"
@@ -217,17 +217,17 @@ export default function SoforluAracKiralamaPage() {
       </section>
 
       {/* ── Nasıl Çalışır ── */}
-      <section className="py-14 md:py-16" style={{ background: '#0D0D0D' }}>
+      <section className="py-14 md:py-16" style={{ background: '#F7F5EF' }}>
         <div className="max-w-3xl mx-auto px-5 md:px-8">
           <p
             className="text-xs tracking-[0.25em] uppercase mb-3 text-center"
-            style={{ color: '#C9A84C', fontFamily: 'Inter, sans-serif' }}
+            style={{ color: '#C99A32', fontFamily: 'Inter, sans-serif' }}
           >
             Rezervasyon
           </p>
           <h2
             className="text-xl md:text-2xl font-bold mb-8 text-center"
-            style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#FFFFFF' }}
+            style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#183247' }}
           >
             Nasıl Rezervasyon Yapılır?
           </h2>
@@ -247,7 +247,7 @@ export default function SoforluAracKiralamaPage() {
                 </span>
                 <p
                   className="text-sm leading-relaxed pt-1"
-                  style={{ color: '#888', fontFamily: 'Inter, sans-serif' }}
+                  style={{ color: '#304A5E', fontFamily: 'Inter, sans-serif' }}
                 >
                   {step.text}
                 </p>
@@ -262,7 +262,7 @@ export default function SoforluAracKiralamaPage() {
       <ServiceFAQ items={faqs} />
 
       {/* ── İlgili Hizmetler ── */}
-      <section className="py-14 md:py-16" style={{ background: '#0D0D0D' }}>
+      <section className="py-14 md:py-16" style={{ background: '#EDF3F7' }}>
         <div className="max-w-5xl mx-auto px-5 md:px-8">
           <p
             className="text-xs tracking-[0.25em] uppercase mb-6 text-center"

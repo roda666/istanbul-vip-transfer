@@ -700,6 +700,9 @@
   .border-gray-200 {
     border-color: var(--color-gray-200);
   }
+  .bg-\[\#FFFDF8\] {
+    background-color: #FFFDF8;
+  }
   .bg-\[\#FFFDF8\]\/95 {
     background-color: color-mix(in oklab, #FFFDF8 95%, transparent);
   }
@@ -825,6 +828,9 @@
   }
   .pt-10 {
     padding-top: calc(var(--spacing) * 10);
+  }
+  .pt-16 {
+    padding-top: calc(var(--spacing) * 16);
   }
   .pt-36 {
     padding-top: calc(var(--spacing) * 36);
@@ -1161,6 +1167,9 @@
   .focus-visible\:ring-\[\#C79A35\]:focus-visible {
     --tw-ring-color: #C79A35;
   }
+  .focus-visible\:ring-\[\#C99A32\]:focus-visible {
+    --tw-ring-color: #C99A32;
+  }
   .focus-visible\:ring-offset-2:focus-visible {
     --tw-ring-offset-width: 2px;
     --tw-ring-offset-shadow: var(--tw-ring-inset,) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
@@ -1271,6 +1280,9 @@
     }
     .lg\:min-h-\[100dvh\] {
       min-height: 100dvh;
+    }
+    .lg\:min-h-\[calc\(100dvh-80px\)\] {
+      min-height: calc(100dvh - 80px);
     }
     .lg\:grid-cols-2 {
       grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -32,7 +32,7 @@ export default async function BlogPage({ searchParams }: { searchParams: Promise
       <AdminPageHeader
         title="Blog"
         description="Blog yazılarını yönetin"
-        action={<Link href="/admin/blog/yeni" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '8px', background: '#C9A84C', color: '#0A0A0A', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}><Plus size={15} /> Yeni Yazı</Link>}
+        action={<Link href="/admin/blog/yeni" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '8px', background: '#2563EB', color: '#FFFFFF', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}><Plus size={15} /> Yeni Yazı</Link>}
       />
       {dbError ? <p style={{ color: '#f87171', fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>Veritabanı bağlantı hatası.</p> : <ContentList items={items} baseUrl="/admin/blog" page={page} total={total} limit={limit} />}
     </div>

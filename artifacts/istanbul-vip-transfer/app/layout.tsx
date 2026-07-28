@@ -18,7 +18,7 @@ export default function RootLayout({
     <html lang="tr" suppressHydrationWarning>
       <body
         className="grain-overlay"
-        style={{ backgroundColor: '#0A0A0A', minHeight: '100dvh' }}
+        style={{ backgroundColor: 'var(--pub-page-bg, #F7F5EF)', minHeight: '100dvh' }}
       >
         {/* PublicLayoutWrapper conditionally adds Header/Footer for public routes.
             Admin routes render their own layout without public chrome. */}

@@ -184,7 +184,7 @@ export default async function BlogArticlePage({ params }: Props) {
 
       {/* ── Diğer Yazılar ── */}
       {otherPosts.length > 0 && (
-        <section className="py-14 md:py-16" style={{ background: '#0A0A0A' }}>
+        <section className="py-14 md:py-16" style={{ background: '#EDF3F7' }}>
           <div className="max-w-5xl mx-auto px-5 md:px-8">
             <p
               className="text-xs tracking-[0.25em] uppercase mb-8 text-center"
@@ -199,8 +199,8 @@ export default async function BlogArticlePage({ params }: Props) {
                   href={`/blog/${other.slug}`}
                   className="group flex gap-4 p-5 rounded transition-colors duration-200"
                   style={{
-                    border: '1px solid rgba(201,168,76,0.1)',
-                    background: 'rgba(201,168,76,0.02)',
+                    border: '1px solid #D8E1E8',
+                    background: '#FFFFFF',
                   }}
                 >
                   {other.image && (
@@ -225,7 +225,7 @@ export default async function BlogArticlePage({ params }: Props) {
                     </p>
                     <p
                       className="text-sm font-medium leading-snug transition-colors duration-200 group-hover:text-[#C9A84C]"
-                      style={{ color: '#CCC', fontFamily: 'Playfair Display, Georgia, serif' }}
+                      style={{ color: '#243B53', fontFamily: 'Playfair Display, Georgia, serif' }}
                     >
                       {other.title}
                     </p>

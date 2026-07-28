@@ -62,14 +62,14 @@ export default function ContentList({ items, baseUrl, page, total, limit }: Prop
     return (
       <div
         style={{
-          background: '#161616',
-          border: '1px solid rgba(255,255,255,0.06)',
+          background: '#FFFFFF',
+          border: '1px solid #D8E1E9',
           borderRadius: '12px',
           padding: '48px',
           textAlign: 'center',
         }}
       >
-        <p style={{ color: '#555', fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
+        <p style={{ color: '#718596', fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
           Henüz içerik yok. Yeni bir tane oluşturun.
         </p>
       </div>
@@ -80,8 +80,8 @@ export default function ContentList({ items, baseUrl, page, total, limit }: Prop
     <div>
       <div
         style={{
-          background: '#161616',
-          border: '1px solid rgba(255,255,255,0.06)',
+          background: '#FFFFFF',
+          border: '1px solid #D8E1E9',
           borderRadius: '12px',
           overflow: 'hidden',
         }}
@@ -93,15 +93,15 @@ export default function ContentList({ items, baseUrl, page, total, limit }: Prop
             gridTemplateColumns: '1fr 200px 130px 160px 90px',
             gap: '12px',
             padding: '10px 16px',
-            borderBottom: '1px solid rgba(255,255,255,0.05)',
-            background: 'rgba(255,255,255,0.02)',
+            borderBottom: '1px solid #D8E1E9',
+            background: '#F8FAFC',
           }}
         >
           {['Başlık', 'Slug', 'Durum', 'Güncellendi', 'İşlemler'].map((h) => (
             <span
               key={h}
               style={{
-                color: '#555',
+                color: '#718596',
                 fontSize: '11px',
                 fontFamily: 'Inter, sans-serif',
                 fontWeight: 600,
@@ -124,14 +124,16 @@ export default function ContentList({ items, baseUrl, page, total, limit }: Prop
               gap: '12px',
               padding: '12px 16px',
               alignItems: 'center',
-              borderBottom: '1px solid rgba(255,255,255,0.04)',
+              borderBottom: '1px solid #EDF2F7',
               transition: 'background 0.1s',
             }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = '#F8FAFC'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
           >
             <div style={{ minWidth: 0 }}>
               <p
                 style={{
-                  color: '#e5e5e5',
+                  color: '#172B3A',
                   fontSize: '13px',
                   fontFamily: 'Inter, sans-serif',
                   fontWeight: 500,
@@ -148,7 +150,7 @@ export default function ContentList({ items, baseUrl, page, total, limit }: Prop
             <div style={{ minWidth: 0 }}>
               <span
                 style={{
-                  color: '#555',
+                  color: '#718596',
                   fontSize: '12px',
                   fontFamily: 'monospace',
                   overflow: 'hidden',
@@ -165,7 +167,7 @@ export default function ContentList({ items, baseUrl, page, total, limit }: Prop
               <StatusBadge status={item.status as ContentStatus} size="sm" />
             </div>
 
-            <span style={{ color: '#555', fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>
+            <span style={{ color: '#718596', fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>
               {formatDate(item.updatedAt)}
             </span>
 
@@ -180,8 +182,8 @@ export default function ContentList({ items, baseUrl, page, total, limit }: Prop
                   width: '32px',
                   height: '32px',
                   borderRadius: '6px',
-                  background: 'rgba(201,168,76,0.1)',
-                  color: '#C9A84C',
+                  background: '#EFF6FF',
+                  color: '#2563EB',
                   textDecoration: 'none',
                   transition: 'background 0.15s',
                 }}
@@ -199,8 +201,8 @@ export default function ContentList({ items, baseUrl, page, total, limit }: Prop
                   width: '32px',
                   height: '32px',
                   borderRadius: '6px',
-                  background: 'rgba(239,68,68,0.1)',
-                  color: '#f87171',
+                  background: '#FEF2F2',
+                  color: '#D64545',
                   border: 'none',
                   cursor: deleting === item.id ? 'not-allowed' : 'pointer',
                   opacity: deleting === item.id ? 0.5 : 1,
@@ -224,7 +226,7 @@ export default function ContentList({ items, baseUrl, page, total, limit }: Prop
             marginTop: '16px',
           }}
         >
-          <span style={{ color: '#555', fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>
+          <span style={{ color: '#718596', fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>
             {total} içerikten {(page - 1) * limit + 1}–{Math.min(page * limit, total)} gösteriliyor
           </span>
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -237,9 +239,9 @@ export default function ContentList({ items, baseUrl, page, total, limit }: Prop
                   gap: '4px',
                   padding: '6px 12px',
                   borderRadius: '6px',
-                  background: '#1a1a1a',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  color: '#aaa',
+                  background: '#FFFFFF',
+                  border: '1px solid #D8E1E9',
+                  color: '#52697A',
                   fontSize: '12px',
                   fontFamily: 'Inter, sans-serif',
                   textDecoration: 'none',
@@ -258,9 +260,9 @@ export default function ContentList({ items, baseUrl, page, total, limit }: Prop
                   gap: '4px',
                   padding: '6px 12px',
                   borderRadius: '6px',
-                  background: '#1a1a1a',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  color: '#aaa',
+                  background: '#FFFFFF',
+                  border: '1px solid #D8E1E9',
+                  color: '#52697A',
                   fontSize: '12px',
                   fontFamily: 'Inter, sans-serif',
                   textDecoration: 'none',

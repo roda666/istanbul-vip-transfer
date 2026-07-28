@@ -1,0 +1,192 @@
+Fix the current PUBLIC WEBSITE runtime regression.
+
+ACTUAL ERROR
+
+Next.js runtime overlay shows:
+
+Runtime Error
+[object Event]
+
+The production build passes, but the running browser is broken:
+- Homepage does not render normally
+- A full-size hero image may appear without the website layout
+- Horizontal overflow occurs
+- Next.js displays a red “1 Issue” badge
+- The regression appeared after the multilingual/i18n work
+
+Do not hide or suppress the error overlay. Find and fix the root cause.
+
+DIAGNOSTIC REQUIREMENTS
+
+1. Reproduce the problem in the real running browser on:
+
+- /
+- /en
+- /de
+- /ru
+- /ar
+
+2. Inspect:
+
+- Browser console
+- Network failures
+- Server/dev logs
+- Unhandled promise rejections
+- Client-side error listeners
+- Image load/error handlers
+- Language provider
+- Language switcher
+- Locale dictionaries
+- Dynamic imports
+- The new [lang]/[...slug] route
+- Middleware locale routing
+- Root layout and localized layouts
+
+3. Search recently changed files for:
+
+- throw event
+- throw new Event
+- Promise.reject with non-Error values
+- window.addEventListener
+- unhandledrejection
+- onerror
+- dispatchEvent
+- event handlers that throw the browser Event object
+- failed dynamic imports
+- failed locale dictionary imports
+
+4. When catching unknown values, do not convert them directly to “[object Event]”.
+For diagnostics, safely capture relevant Event properties such as:
+
+- type
+- target/currentTarget
+- message when available
+- resource URL when available
+
+Do not log Secrets or customer data.
+
+REGRESSION ANALYSIS
+
+5. Compare the current multilingual-task changes with the last known working checkpoint.
+
+6. Do not use git reset, git checkout or destructive rollback.
+
+7. Do not reconstruct complete source files from truncated git/terminal output.
+Inspect the actual complete files and apply minimal targeted patches.
+
+8. Check whether the new locale catch-all route incorrectly intercepts:
+
+- /
+- /images/*
+- /_next/*
+- /favicon.ico
+- public assets
+- admin routes
+- API routes
+
+Static assets and Next.js internal paths must never be treated as language routes.
+
+9. Verify that:
+
+- Turkish root / still renders the original public homepage
+- /images/istanbul-vip-transfer-hero.webp returns only the image
+- / must return the full website, not the raw image
+- Non-default language routes use the locale layout correctly
+
+IMAGE AND LAYOUT
+
+10. Preserve the approved golden-hour hero image.
+
+11. Restore the normal homepage composition:
+
+- Header
+- Logo/navigation
+- Badge
+- Full H1
+- Description
+- CTA buttons
+- Framed hero image
+- Remaining page sections
+
+12. Ensure the hero image uses its container correctly:
+
+- Next.js Image
+- fill or controlled responsive dimensions
+- position: relative on its wrapper
+- object-fit: cover
+- no intrinsic 1600px overflow
+- no page-level horizontal scrolling
+
+Do not render the image as an unrestricted full-page element.
+
+I18N SAFETY
+
+13. Preserve the multilingual architecture when it is correct.
+Do not remove the entire language system merely to make the error disappear.
+
+14. Ensure missing dictionaries or missing translations are handled with a controlled Error or notFound result, never by throwing a browser Event.
+
+15. Locale-loading functions must reject with real Error instances containing safe diagnostic messages.
+
+16. Verify Arabic RTL without breaking the Turkish root layout.
+
+ADMIN SAFETY
+
+17. Do not modify:
+
+- Admin passwords
+- Admin users
+- AUTH_SECRET
+- SESSION_SECRET
+- OPENAI_API_KEY
+- Database records
+- Reservation data
+- Public content
+
+18. Do not reset credentials for browser tests.
+If admin authentication is unavailable, do not alter it.
+
+RUNTIME VERIFICATION
+
+19. A successful build is not sufficient.
+
+Before completing, verify in the real browser:
+
+- No red Next.js issue badge
+- No runtime overlay
+- No console errors
+- Homepage renders completely
+- Hero image remains inside its card
+- No horizontal overflow
+- Turkish root works
+- At least one LTR language works
+- Arabic RTL works
+- Public assets load correctly
+- Admin login route still loads
+
+20. Test at:
+
+- 1920×1080
+- 1366×768
+- 390×844
+
+21. Run:
+
+- Lint
+- Typecheck
+- Production build
+- Runtime browser smoke tests
+
+22. Report:
+
+- Exact root cause
+- Exact Event source
+- Files changed
+- Routes tested
+- Console/network results
+- Visual verification
+- Lint/typecheck/build results
+
+23. Do not mark the task complete while “[object Event]” or the red issue badge remains.
+
+24. Do not publish, deploy or connect the production domain.

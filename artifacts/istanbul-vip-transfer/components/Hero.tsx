@@ -192,34 +192,13 @@ export default function Hero() {
               }}
             >
               <Image
-                src="/images/istanbul-hero.jpg"
-                alt="İstanbul Boğaz Köprüsü manzarası"
+                src="/images/istanbul-vip-transfer-hero.webp"
+                alt="İstanbul Boğazı manzarası eşliğinde VIP transfer hizmeti"
                 fill
                 className="object-cover object-center"
                 priority
-                sizes="(max-width: 1024px) 100vw, 50vw"
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 50vw"
               />
-              {/* Subtle bottom gradient for caption legibility */}
-              <div
-                className="absolute inset-x-0 bottom-0 h-28"
-                style={{ background: 'linear-gradient(to top, rgba(16,42,67,0.55) 0%, transparent 100%)' }}
-                aria-hidden="true"
-              />
-              {/* Caption overlay */}
-              <div className="absolute bottom-5 left-5 right-5 flex items-center justify-between">
-                <span
-                  className="text-[11px] tracking-[0.18em] uppercase"
-                  style={{ color: 'rgba(255,255,255,0.88)', fontFamily: 'Inter, sans-serif' }}
-                >
-                  İstanbul Boğazı
-                </span>
-                <div
-                  className="px-2.5 py-1 rounded-full text-[10px] tracking-wider uppercase font-semibold"
-                  style={{ background: 'rgba(199,154,53,0.92)', color: '#102A43', fontFamily: 'Inter, sans-serif' }}
-                >
-                  VIP Transfer
-                </div>
-              </div>
             </div>
           </motion.div>
         </div>

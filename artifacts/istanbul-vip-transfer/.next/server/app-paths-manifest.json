@@ -1,9 +1,4 @@
 {
-  "/page": "app/page.js",
-  "/iletisim/page": "app/iletisim/page.js",
-  "/hakkimizda/page": "app/hakkimizda/page.js",
   "/hizmetler/page": "app/hizmetler/page.js",
-  "/blog/page": "app/blog/page.js",
-  "/araclar/page": "app/araclar/page.js",
-  "/otel-transfer/page": "app/otel-transfer/page.js"
+  "/page": "app/page.js"
 }

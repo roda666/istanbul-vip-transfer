@@ -1,0 +1,235 @@
+Redesign the PUBLIC WEBSITE with a clearly brighter, modern luxury theme.
+
+The current public website is still overwhelmingly black, dark and gloomy. Previous small color adjustments are not sufficient.
+
+This task must create a visibly light website, not another dark theme.
+
+SCOPE
+
+- Change only the public website visual design.
+- Do not modify the admin panel in this task.
+- Do not change content, routes, database models, SEO metadata, forms, phone numbers, email addresses or business logic.
+- Preserve all existing functionality and responsive behavior.
+- Do not publish or connect the production domain.
+
+NEW PUBLIC COLOR SYSTEM
+
+Use centralized CSS variables:
+
+- Page background: #F7F5EF
+- Main surface: #FFFDF8
+- Alternate light-blue surface: #EAF2F8
+- White card: #FFFFFF
+- Deep navy text: #102A43
+- Standard text: #243B53
+- Muted text: #627D98
+- Premium gold: #C79A35
+- Bright gold: #E4B84B
+- Modern teal: #168C8C
+- Soft border: #D9E2EC
+- Footer navy: #102A43
+- Success/WhatsApp: #16A36A
+
+REMOVE EXCESSIVE BLACK
+
+1. Search the public website components and styles for:
+   - #000
+   - #000000
+   - black
+   - bg-black
+   - rgba(0,0,0,...)
+   - excessively dark gray backgrounds
+
+2. Remove pure-black backgrounds from:
+   - body
+   - main
+   - homepage sections
+   - services
+   - vehicles
+   - reviews
+   - FAQ
+   - booking form
+   - contact
+   - internal service pages
+   - blog pages
+
+3. Pure black may only be used sparingly for text where appropriate.
+The public page background must be visibly light.
+
+HOMEPAGE HERO
+
+4. The current full-screen night hero feels too dark.
+
+Redesign it as a modern bright luxury hero:
+
+- Keep the existing Istanbul image but do not let it cover the entire screen as a dark background.
+- Use a modern split or framed composition:
+  - Light ivory content area with headline, description and CTA buttons
+  - Istanbul image displayed in a large rounded visual panel
+- On desktop, use a balanced two-column layout.
+- On mobile, stack content first and image second.
+- If the image remains behind text in any viewport, use a navy/blue transparent gradient, never a heavy black overlay.
+- Make the first screen visibly brighter than the current version.
+- Preserve the existing H1 and CTA destinations.
+- Do not invent new statistics, guarantees or claims.
+
+HEADER
+
+5. Redesign the public header:
+- Warm white or lightly transparent ivory background
+- Navy menu text
+- Gold active/hover indicators
+- Subtle border and backdrop blur
+- Clearly visible logo
+- Modern mobile menu
+- Header must remain readable over the hero
+
+PUBLIC SECTIONS
+
+6. Alternate section backgrounds:
+
+- Warm ivory
+- White
+- Very light blue
+
+Do not place several dark sections consecutively.
+
+7. Services and vehicle cards:
+- White card surfaces
+- Navy headings
+- Dark readable text
+- Gold icon/accent
+- Subtle shadow
+- Soft border
+- Rounded modern corners
+- Clear hover state
+- No black card backgrounds
+
+8. Booking form:
+- White or warm-ivory surface
+- Clearly visible labels
+- Light inputs with dark text
+- Navy focus borders
+- Gold primary button
+- Accessible error and success states
+
+9. Google reviews:
+- Use white review cards
+- Dark readable review text
+- Gold stars
+- Google source indicator must remain visible
+- Preserve the real Google Business Profile link
+
+10. FAQ:
+- Use light accordion cards
+- Navy questions
+- Dark text
+- Gold or teal expand indicators
+- Clear separators
+
+11. Contact section:
+- Use a light-blue or ivory surface
+- Preserve:
+  - +90 532 660 08 47
+  - tel:+905326600847
+  - WhatsApp 905326600847
+  - info@istanbulviptransfer.com
+
+12. Footer:
+- Footer may use deep navy #102A43
+- Do not use pure black
+- Use high-contrast white/light text and gold accents
+
+BUTTON SYSTEM
+
+13. Standardize public buttons:
+
+Primary:
+- Gold background
+- Navy text
+- Clear hover and focus states
+
+Secondary:
+- Navy background
+- White text
+
+WhatsApp:
+- Green background
+- White text
+
+Do not use low-contrast transparent buttons.
+
+TYPOGRAPHY AND SPACING
+
+14. Preserve the premium headline font if it remains readable.
+Use a clean modern sans-serif for body text.
+
+15. Improve:
+- Section spacing
+- Card padding
+- Text line height
+- Heading hierarchy
+- Mobile readability
+
+16. Avoid excessive animations.
+Use only subtle hover and entrance transitions.
+Respect prefers-reduced-motion.
+
+ACCESSIBILITY
+
+17. Meet WCAG AA contrast for:
+- Body text
+- Buttons
+- Navigation
+- Form labels
+- Links
+- Muted text
+- Cards
+
+18. Add clear keyboard focus indicators.
+
+VISUAL VERIFICATION — REQUIRED
+
+19. Verify the actual running public website at:
+- 1920×1080
+- 1366×768
+- 390×844
+
+20. Do not mark the task complete until actual browser screenshots prove that:
+- The homepage is predominantly light
+- The first viewport is visibly brighter
+- Black backgrounds have been removed
+- Text remains readable
+- Navigation and CTA buttons are fully visible
+- There is no horizontal overflow
+- Mobile layout works correctly
+
+21. Verify at least:
+- Homepage
+- One service page
+- Vehicles page
+- Blog page
+- Contact page
+
+SECURITY AND FUNCTIONAL SAFETY
+
+22. Do not:
+- Reset admin passwords
+- Modify admin users
+- Change Secrets
+- Modify database records
+- Connect the public vehicle module to the database
+- Publish or deploy
+
+23. Run:
+- Lint
+- Typecheck
+- Production build
+
+24. Report:
+- Public theme files/components changed
+- Hard-coded black backgrounds removed
+- Actual visual verification results
+- Responsive results
+- Accessibility results
+- Lint/typecheck/build results

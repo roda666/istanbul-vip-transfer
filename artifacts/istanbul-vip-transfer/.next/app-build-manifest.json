@@ -11,65 +11,15 @@
       "static/chunks/main-app.js",
       "static/chunks/app/page.js"
     ],
-    "/admin/api/login/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/admin/api/login/route.js"
-    ],
-    "/admin/(protected)/layout": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/admin/(protected)/layout.js"
-    ],
-    "/admin/(protected)/sss/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/admin/(protected)/sss/page.js"
-    ],
-    "/admin/api/faqs/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/admin/api/faqs/route.js"
-    ],
-    "/admin/api/content/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/admin/api/content/route.js"
-    ],
-    "/admin/(protected)/dashboard/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/admin/(protected)/dashboard/page.js"
-    ],
-    "/admin/(protected)/araclar/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/admin/(protected)/araclar/page.js"
-    ],
-    "/admin/api/vehicles/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/admin/api/vehicles/route.js"
-    ],
-    "/admin/(protected)/araclar/yeni/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/admin/(protected)/araclar/yeni/page.js"
-    ],
-    "/admin/(protected)/araclar/[id]/duzenle/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/admin/(protected)/araclar/[id]/duzenle/page.js"
-    ],
-    "/admin/api/vehicles/[id]/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/admin/api/vehicles/[id]/route.js"
-    ],
     "/araclar/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/araclar/page.js"
+    ],
+    "/istanbul-havalimani-transfer/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/istanbul-havalimani-transfer/page.js"
     ]
   }
 }

@@ -47,24 +47,39 @@ const services = [
 
 export default function Services() {
   return (
-    <section id="hizmetler" className="py-28 relative" style={{ background: '#0A0A0A' }} data-testid="services-section">
+    <section
+      id="hizmetler"
+      className="py-24 relative"
+      style={{ background: '#FFFDF8' }}
+      data-testid="services-section"
+    >
+      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: '#D9E2EC' }} aria-hidden="true" />
       <div className="max-w-6xl mx-auto px-5 md:px-8">
         <motion.div
-          className="text-center mb-16"
+          className="text-center mb-14"
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.7 }}
           data-testid="services-header"
         >
-          <span className="text-xs tracking-[0.3em] uppercase mb-4 block" style={{ color: '#C9A84C', fontFamily: 'Inter, sans-serif' }}>
+          <span
+            className="text-xs tracking-[0.3em] uppercase mb-4 block"
+            style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
+          >
             Hizmetlerimiz
           </span>
-          <h2 className="text-4xl md:text-5xl font-bold mb-5" style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#FFFFFF' }}>
+          <h2
+            className="text-4xl md:text-5xl font-bold mb-5"
+            style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}
+          >
             Her İhtiyaca Uygun Transfer
           </h2>
-          <div className="mx-auto mb-6" style={{ width: '60px', height: '1px', background: 'linear-gradient(90deg, transparent, #C9A84C, transparent)' }} />
-          <p className="text-base max-w-xl mx-auto" style={{ color: '#888', fontFamily: 'Inter, sans-serif' }}>
+          <div
+            className="mx-auto mb-6"
+            style={{ width: '60px', height: '3px', background: 'linear-gradient(90deg, #C79A35, #E4B84B)', borderRadius: '2px' }}
+          />
+          <p className="text-base max-w-xl mx-auto" style={{ color: '#627D98', fontFamily: 'Inter, sans-serif' }}>
             Bireysel ya da kurumsal — tüm transfer ihtiyaçlarınız için kapsamlı VIP hizmet.
           </p>
         </motion.div>
@@ -74,46 +89,59 @@ export default function Services() {
             const card = (
               <motion.div
                 key={service.title}
-                className="group relative p-8 rounded-xl overflow-hidden cursor-pointer transition-all duration-500 h-full"
+                className="group relative p-7 rounded-2xl overflow-hidden cursor-pointer h-full"
                 style={{
-                  background: 'linear-gradient(160deg, #161616 0%, #1A1A1A 100%)',
-                  border: '1px solid rgba(201,168,76,0.12)',
+                  background: '#FFFFFF',
+                  border: '1px solid #D9E2EC',
+                  boxShadow: '0 2px 12px rgba(16,42,67,0.05)',
+                  transition: 'box-shadow 0.25s, transform 0.25s, border-color 0.25s',
                 }}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-80px' }}
                 transition={{ duration: 0.6, delay: (i % 3) * 0.1 }}
-                whileHover={{ y: -4, borderColor: 'rgba(201,168,76,0.35)', transition: { duration: 0.3 } }}
+                whileHover={{
+                  y: -4,
+                  boxShadow: '0 12px 40px rgba(16,42,67,0.1)',
+                  borderColor: 'rgba(199,154,53,0.4)',
+                  transition: { duration: 0.25 },
+                }}
                 data-testid={`service-card-${i}`}
               >
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                  style={{ background: 'radial-gradient(ellipse at top left, rgba(201,168,76,0.06) 0%, transparent 70%)' }} />
                 <div
-                  className="w-12 h-12 rounded-lg flex items-center justify-center mb-6 transition-all duration-300 group-hover:scale-110"
-                  style={{ background: 'linear-gradient(135deg, rgba(201,168,76,0.15), rgba(201,168,76,0.05))', border: '1px solid rgba(201,168,76,0.25)' }}
+                  className="w-12 h-12 rounded-xl flex items-center justify-center mb-5 transition-colors duration-300 group-hover:bg-[#C79A35]/15"
+                  style={{ background: 'rgba(199,154,53,0.1)', border: '1px solid rgba(199,154,53,0.2)' }}
                 >
-                  <service.icon size={22} style={{ color: '#C9A84C' }} />
+                  <service.icon size={22} style={{ color: '#C79A35' }} aria-hidden="true" />
                 </div>
-                <h3 className="text-xl font-semibold mb-3 transition-colors duration-300 group-hover:text-[#E5C36A]"
-                  style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#FFFFFF' }}>
+                <h3
+                  className="text-lg font-semibold mb-3 transition-colors duration-300 group-hover:text-[#C79A35]"
+                  style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}
+                >
                   {service.title}
                 </h3>
-                <p className="text-sm leading-relaxed" style={{ color: '#888', fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-sm leading-relaxed" style={{ color: '#627D98', fontFamily: 'Inter, sans-serif' }}>
                   {service.description}
                 </p>
                 {'href' in service && (
-                  <div className="flex items-center gap-1.5 mt-5 text-xs font-semibold tracking-widest uppercase transition-colors duration-300 group-hover:text-[#E5C36A]"
-                    style={{ color: '#C9A84C', fontFamily: 'Inter, sans-serif' }}>
+                  <div
+                    className="flex items-center gap-1.5 mt-5 text-xs font-semibold tracking-wider uppercase transition-colors duration-300 group-hover:text-[#C79A35]"
+                    style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
+                  >
                     Detaylar
-                    <ArrowRight size={12} className="transition-transform duration-300 group-hover:translate-x-1" />
+                    <ArrowRight size={12} className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true" />
                   </div>
                 )}
-                <div className="absolute bottom-0 left-0 h-[1px] w-0 group-hover:w-full transition-all duration-500"
-                  style={{ background: 'linear-gradient(90deg, #C9A84C, transparent)' }} />
+                {/* Bottom accent line on hover */}
+                <div
+                  className="absolute bottom-0 left-0 h-[2px] w-0 group-hover:w-full transition-all duration-500"
+                  style={{ background: 'linear-gradient(90deg, #C79A35, transparent)' }}
+                  aria-hidden="true"
+                />
               </motion.div>
             );
             return 'href' in service ? (
-              <Link key={service.title} href={service.href!} className="block">
+              <Link key={service.title} href={service.href!} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C79A35] rounded-2xl">
                 {card}
               </Link>
             ) : (

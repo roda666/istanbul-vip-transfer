@@ -11,35 +11,49 @@ export default function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section className="py-28 relative" style={{ background: '#111111' }} data-testid="faq-section">
-      <div className="gold-divider absolute top-0 left-0 right-0" />
+    <section
+      className="py-24 relative"
+      style={{ background: '#FFFDF8' }}
+      data-testid="faq-section"
+    >
+      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: '#D9E2EC' }} aria-hidden="true" />
       <div className="max-w-3xl mx-auto px-5 md:px-8">
         <motion.div
-          className="text-center mb-14"
+          className="text-center mb-12"
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.7 }}
           data-testid="faq-header"
         >
-          <span className="text-xs tracking-[0.3em] uppercase mb-4 block" style={{ color: '#C9A84C', fontFamily: 'Inter, sans-serif' }}>
+          <span
+            className="text-xs tracking-[0.3em] uppercase mb-4 block"
+            style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
+          >
             Sık Sorulan Sorular
           </span>
-          <h2 className="text-4xl md:text-5xl font-bold mb-5" style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#FFFFFF' }}>
+          <h2
+            className="text-4xl md:text-5xl font-bold mb-5"
+            style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}
+          >
             Merak Ettikleriniz
           </h2>
-          <div className="mx-auto" style={{ width: '60px', height: '1px', background: 'linear-gradient(90deg, transparent, #C9A84C, transparent)' }} />
+          <div
+            className="mx-auto"
+            style={{ width: '60px', height: '3px', background: 'linear-gradient(90deg, #C79A35, #E4B84B)', borderRadius: '2px' }}
+          />
         </motion.div>
 
         <div className="space-y-3">
           {faqs.map((faq, i) => (
             <motion.div
               key={i}
-              className="rounded-xl overflow-hidden"
+              className="rounded-2xl overflow-hidden"
               style={{
-                background: 'linear-gradient(160deg, #161616 0%, #1A1A1A 100%)',
-                border: openIndex === i ? '1px solid rgba(201,168,76,0.35)' : '1px solid rgba(201,168,76,0.1)',
-                transition: 'border-color 0.3s ease',
+                background: '#FFFFFF',
+                border: openIndex === i ? '1px solid rgba(199,154,53,0.5)' : '1px solid #D9E2EC',
+                boxShadow: openIndex === i ? '0 4px 20px rgba(16,42,67,0.08)' : '0 1px 4px rgba(16,42,67,0.04)',
+                transition: 'border-color 0.25s, box-shadow 0.25s',
               }}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -48,26 +62,29 @@ export default function FAQ() {
               data-testid={`faq-item-${i}`}
             >
               <button
-                className="w-full flex items-center justify-between p-6 text-left group"
+                className="w-full flex items-center justify-between p-6 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#C79A35]"
                 onClick={() => setOpenIndex(openIndex === i ? null : i)}
                 data-testid={`faq-toggle-${i}`}
               >
                 <span
-                  className="text-base font-medium pr-4 transition-colors duration-300 group-hover:text-[#C9A84C]"
-                  style={{ fontFamily: 'Inter, sans-serif', color: openIndex === i ? '#E5C36A' : '#E5E5E5' }}
+                  className="text-base font-medium pr-4 transition-colors duration-300"
+                  style={{
+                    fontFamily: 'Inter, sans-serif',
+                    color: openIndex === i ? '#C79A35' : '#102A43',
+                  }}
                 >
                   {faq.question}
                 </span>
                 <div
                   className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-300"
                   style={{
-                    background: openIndex === i ? 'linear-gradient(135deg, #C9A84C, #E5C36A)' : 'rgba(201,168,76,0.1)',
-                    border: openIndex === i ? 'none' : '1px solid rgba(201,168,76,0.25)',
+                    background: openIndex === i ? '#C79A35' : 'rgba(199,154,53,0.1)',
+                    border: openIndex === i ? 'none' : '1px solid rgba(199,154,53,0.3)',
                   }}
                 >
                   {openIndex === i
-                    ? <Minus size={14} style={{ color: '#0A0A0A' }} />
-                    : <Plus size={14} style={{ color: '#C9A84C' }} />}
+                    ? <Minus size={14} style={{ color: '#102A43' }} aria-hidden="true" />
+                    : <Plus size={14} style={{ color: '#C79A35' }} aria-hidden="true" />}
                 </div>
               </button>
 
@@ -77,12 +94,19 @@ export default function FAQ() {
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.35, ease: [0.04, 0.62, 0.23, 0.98] }}
+                    transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
                     data-testid={`faq-answer-${i}`}
                   >
                     <div className="px-6 pb-6">
-                      <div className="h-px mb-4" style={{ background: 'linear-gradient(90deg, rgba(201,168,76,0.2), transparent)' }} />
-                      <p className="text-sm leading-relaxed" style={{ color: '#888', fontFamily: 'Inter, sans-serif' }}>
+                      <div
+                        className="h-px mb-4"
+                        style={{ background: 'linear-gradient(90deg, rgba(199,154,53,0.3), transparent)' }}
+                        aria-hidden="true"
+                      />
+                      <p
+                        className="text-sm leading-relaxed"
+                        style={{ color: '#627D98', fontFamily: 'Inter, sans-serif' }}
+                      >
                         {faq.answer}
                       </p>
                     </div>

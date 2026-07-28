@@ -26,6 +26,35 @@
         "x-next-revalidate-tag-token"
       ]
     },
+    "/sitemap.xml": {
+      "initialHeaders": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "application/xml",
+        "x-next-cache-tags": "_N_T_/layout,_N_T_/sitemap.xml/layout,_N_T_/sitemap.xml/route,_N_T_/sitemap.xml"
+      },
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/sitemap.xml",
+      "dataRoute": null,
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
     "/robots.txt": {
       "initialHeaders": {
         "cache-control": "public, max-age=0, must-revalidate",
@@ -55,12 +84,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/sitemap.xml": {
-      "initialHeaders": {
-        "cache-control": "public, max-age=0, must-revalidate",
-        "content-type": "application/xml",
-        "x-next-cache-tags": "_N_T_/layout,_N_T_/sitemap.xml/layout,_N_T_/sitemap.xml/route,_N_T_/sitemap.xml"
-      },
+    "/araclar": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -73,8 +97,32 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/sitemap.xml",
-      "dataRoute": null,
+      "srcRoute": "/araclar",
+      "dataRoute": "/araclar.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/blog": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/blog",
+      "dataRoute": "/blog.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -156,30 +204,6 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/blog": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/blog",
-      "dataRoute": "/blog.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
     "/blog/istanbul-havalimani-transfer-rehberi": {
       "experimentalBypassFor": [
         {
@@ -252,7 +276,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/iletisim": {
+    "/istanbul-bursa-transfer": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -265,8 +289,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/iletisim",
-      "dataRoute": "/iletisim.rsc",
+      "srcRoute": "/istanbul-bursa-transfer",
+      "dataRoute": "/istanbul-bursa-transfer.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -300,7 +324,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/istanbul-bursa-transfer": {
+    "/iletisim": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -313,56 +337,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/istanbul-bursa-transfer",
-      "dataRoute": "/istanbul-bursa-transfer.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/araclar": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/araclar",
-      "dataRoute": "/araclar.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/istanbul-havalimani-transfer": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/istanbul-havalimani-transfer",
-      "dataRoute": "/istanbul-havalimani-transfer.rsc",
+      "srcRoute": "/iletisim",
+      "dataRoute": "/iletisim.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -396,7 +372,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/kurumsal-vip-transfer": {
+    "/istanbul-havalimani-transfer": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -409,8 +385,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/kurumsal-vip-transfer",
-      "dataRoute": "/kurumsal-vip-transfer.rsc",
+      "srcRoute": "/istanbul-havalimani-transfer",
+      "dataRoute": "/istanbul-havalimani-transfer.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -444,6 +420,54 @@
         "x-next-revalidate-tag-token"
       ]
     },
+    "/sabiha-gokcen-havalimani-transfer": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/sabiha-gokcen-havalimani-transfer",
+      "dataRoute": "/sabiha-gokcen-havalimani-transfer.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/kurumsal-vip-transfer": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/kurumsal-vip-transfer",
+      "dataRoute": "/kurumsal-vip-transfer.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
     "/sapanca-masukiye-turu": {
       "experimentalBypassFor": [
         {
@@ -468,7 +492,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/sabiha-gokcen-havalimani-transfer": {
+    "/sehirler-arasi-transfer": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -481,8 +505,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/sabiha-gokcen-havalimani-transfer",
-      "dataRoute": "/sabiha-gokcen-havalimani-transfer.rsc",
+      "srcRoute": "/sehirler-arasi-transfer",
+      "dataRoute": "/sehirler-arasi-transfer.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -516,30 +540,6 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/otel-transfer": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/otel-transfer",
-      "dataRoute": "/otel-transfer.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
     "/vip-transfer": {
       "experimentalBypassFor": [
         {
@@ -555,30 +555,6 @@
       "initialRevalidateSeconds": false,
       "srcRoute": "/vip-transfer",
       "dataRoute": "/vip-transfer.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/soforlu-arac-kiralama": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/soforlu-arac-kiralama",
-      "dataRoute": "/soforlu-arac-kiralama.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -612,7 +588,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/sehirler-arasi-transfer": {
+    "/soforlu-arac-kiralama": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -625,8 +601,32 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/sehirler-arasi-transfer",
-      "dataRoute": "/sehirler-arasi-transfer.rsc",
+      "srcRoute": "/soforlu-arac-kiralama",
+      "dataRoute": "/soforlu-arac-kiralama.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/otel-transfer": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/otel-transfer",
+      "dataRoute": "/otel-transfer.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",

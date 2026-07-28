@@ -1,0 +1,89 @@
+Refine only the public combined Quote / Reservation form UX and fields.
+
+Do not modify authentication, admin routes, translation database tables or production deployment.
+
+1. Preserve the existing request intents:
+   - Fiyat Teklifi Al
+   - Rezervasyon Talebi Gönder
+
+2. Preserve the existing service types:
+   - Havalimanı / Şehir İçi Transfer
+   - Şehirler Arası Transfer
+   - Araç Tahsisi
+   - Özel Tur / Gezi
+
+3. Replace all black form inputs, selects and textareas with the public light-theme form style:
+   - background: white or very light blue-gray
+   - main text: dark navy
+   - placeholder text: readable medium gray
+   - border: visible light blue-gray
+   - focus ring: blue
+   - active service/request cards may keep the gold accent
+   - maintain WCAG-readable contrast
+   Do not change the public header or overall visual identity.
+
+4. Add these shared optional fields to all service forms:
+   - E-posta
+   - Bagaj Sayısı
+   - Çocuk Koltuğu Sayısı
+   - Araç Tercihi:
+     * Fark Etmez
+     * Mercedes Vito
+     * Mercedes Sprinter
+     * VW Transporter
+   Do not promise that the selected vehicle is guaranteed.
+
+5. Havalimanı / Şehir İçi:
+   - Preserve pickup, destination, exact addresses, flight number, date, time, passenger count, name, phone and notes.
+   - Preserve the admin-managed Istanbul locations.
+   - Flight number remains optional.
+   - Preserve 5-minute time increments.
+
+6. Şehirler Arası:
+   - Preserve searchable departure and destination province selectors.
+   - Preserve one-way / round-trip selection.
+   - When Gidiş-Dönüş is selected, dynamically show:
+     * Dönüş Tarihi
+     * Dönüş Saati
+   - Preserve exact departure and destination address fields.
+   - Preserve 5-minute time increments.
+   - Do not invent distance, duration, price or guarantees.
+
+7. Araç Tahsisi:
+   - Fix the broken/narrow Tahsis Süresi layout.
+   - Use a properly sized positive number input and a unit select:
+     * Saat
+     * Gün
+   - Both controls must remain usable on desktop, tablet and mobile.
+   - Preserve pickup location/address, planned route, start date/time and customer fields.
+
+8. Özel Tur / Gezi:
+   - Preserve requested route and places-to-visit fields.
+   - Replace the free-text “Planlanan Süre” with:
+     * positive duration number
+     * Saat / Gün unit selector
+   - Preserve pickup, date, start time, passenger and customer fields.
+
+9. Dynamic CTA:
+   - For quote intent: “WhatsApp’tan Fiyat Teklifi Al”
+   - For reservation intent: “WhatsApp’tan Rezervasyon Talebi Gönder”
+   - Update the generated WhatsApp message so it includes the selected intent, service type and all completed fields.
+   - Never describe a reservation as confirmed. State that availability and price will be confirmed separately.
+
+10. Validation and accessibility:
+   - Required fields must depend on the selected service type.
+   - Optional fields must be clearly labelled.
+   - Add proper labels, error messages, keyboard navigation, focus states and aria attributes.
+   - Prevent selecting a past date.
+   - Preserve Turkish characters.
+   - No horizontal overflow at 390px mobile width.
+
+11. Do not store customer data in this task yet. Do not add marketing consent in this task. Customer request storage and legally compliant email consent will be implemented as the next dedicated admin module.
+
+12. Test all 8 combinations:
+   - 2 request intents × 4 service types
+   Test desktop 1440px, tablet 768px and mobile 390px.
+
+13. Run lint, typecheck and production build.
+14. Do not publish, deploy, connect a production domain, modify credentials or reset the admin password.
+15. Report changed files and test results.

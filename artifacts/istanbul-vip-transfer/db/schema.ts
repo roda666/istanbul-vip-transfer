@@ -1,6 +1,5 @@
 /**
  * Drizzle ORM schema — all database tables for the admin panel.
- * Phase 2 will connect these to the public-facing site.
  */
 import {
   pgTable,
@@ -57,7 +56,11 @@ export const locationTypeEnum = pgEnum('location_type', [
   'REGION',
   'HOTEL_ZONE',
   'CUSTOM',
+  'PROVINCE',
 ]);
+
+/** LOCAL = only in local (Istanbul) transfer form, INTERCITY = only in intercity form, BOTH = appears in both. */
+export const locationScopeEnum = pgEnum('location_scope', ['LOCAL', 'INTERCITY', 'BOTH']);
 
 // ── Tables ──────────────────────────────────────────────────────────────────
 
@@ -186,23 +189,19 @@ export const vehicles = pgTable('vehicles', {
   passengerCapacity: integer('passenger_capacity'),
   luggageCapacity: integer('luggage_capacity'),
   vehicleType: text('vehicle_type'),
-  /** Ordered list of feature strings, e.g. ["Wi-Fi", "Klima"] */
   features: jsonb('features').$type<string[]>().default([]).notNull(),
   coverImage: text('cover_image'),
   coverImageAlt: text('cover_image_alt'),
-  /** Gallery images: [{ url: string, alt: string }] */
   gallery: jsonb('gallery').$type<Array<{ url: string; alt: string }>>().default([]).notNull(),
   displayOrder: integer('display_order').default(0).notNull(),
   isFeatured: boolean('is_featured').default(false).notNull(),
   status: contentStatusEnum('status').default('DRAFT').notNull(),
-  // SEO fields
   metaTitle: text('meta_title'),
   metaDescription: text('meta_description'),
   canonicalUrl: text('canonical_url'),
   ogImage: text('og_image'),
   robotsIndex: boolean('robots_index').default(true).notNull(),
   robotsFollow: boolean('robots_follow').default(true).notNull(),
-  // Workflow timestamps
   approvedAt: timestamp('approved_at', { withTimezone: true }),
   approvedBy: uuid('approved_by').references(() => adminUsers.id),
   scheduledAt: timestamp('scheduled_at', { withTimezone: true }),
@@ -221,6 +220,8 @@ export const locations = pgTable('locations', {
   city: text('city').default('İstanbul').notNull(),
   district: text('district'),
   type: locationTypeEnum('type').default('DISTRICT').notNull(),
+  /** LOCAL = only local transfer form; INTERCITY = only intercity form; BOTH = both forms. */
+  scope: locationScopeEnum('scope').default('LOCAL').notNull(),
   pickupEnabled: boolean('pickup_enabled').default(true).notNull(),
   dropoffEnabled: boolean('dropoff_enabled').default(true).notNull(),
   isActive: boolean('is_active').default(true).notNull(),
@@ -229,6 +230,24 @@ export const locations = pgTable('locations', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   createdBy: uuid('created_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+  updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+});
+
+/**
+ * Service types for the booking form.
+ * Seeded with 4 system types; admins can edit labels, descriptions, and toggles.
+ */
+export const serviceTypes = pgTable('service_types', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  /** Stable system key — never changed by admins. e.g. AIRPORT_TRANSFER */
+  key: text('key').notNull().unique(),
+  label: text('label').notNull(),
+  description: text('description'),
+  enabled: boolean('enabled').default(true).notNull(),
+  quoteEnabled: boolean('quote_enabled').default(true).notNull(),
+  reservationEnabled: boolean('reservation_enabled').default(true).notNull(),
+  displayOrder: integer('display_order').default(0).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
 });
 
@@ -251,3 +270,5 @@ export type Vehicle = typeof vehicles.$inferSelect;
 export type NewVehicle = typeof vehicles.$inferInsert;
 export type Location = typeof locations.$inferSelect;
 export type NewLocation = typeof locations.$inferInsert;
+export type ServiceType = typeof serviceTypes.$inferSelect;
+export type NewServiceType = typeof serviceTypes.$inferInsert;

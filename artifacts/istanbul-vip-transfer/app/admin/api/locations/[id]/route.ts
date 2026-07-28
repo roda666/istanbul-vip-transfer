@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
+const LOCATION_TYPES = ['AIRPORT', 'DISTRICT', 'REGION', 'HOTEL_ZONE', 'CUSTOM', 'PROVINCE'] as const;
+const LOCATION_SCOPES = ['LOCAL', 'INTERCITY', 'BOTH'] as const;
+
 const updateSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   slug: z
@@ -10,7 +13,8 @@ const updateSchema = z.object({
     .optional(),
   city: z.string().max(100).optional(),
   district: z.string().max(200).optional().nullable(),
-  type: z.enum(['AIRPORT', 'DISTRICT', 'REGION', 'HOTEL_ZONE', 'CUSTOM']).optional(),
+  type: z.enum(LOCATION_TYPES).optional(),
+  scope: z.enum(LOCATION_SCOPES).optional(),
   pickupEnabled: z.boolean().optional(),
   dropoffEnabled: z.boolean().optional(),
   isActive: z.boolean().optional(),
@@ -76,7 +80,6 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     .from(locations).where(eq(locations.id, id)).limit(1).catch(() => []);
   if (!current) return NextResponse.json({ error: 'Bulunamadı.' }, { status: 404 });
 
-  // Enforce at least one of pickup/dropoff enabled
   const nextPickup = data.pickupEnabled ?? current.pickupEnabled;
   const nextDropoff = data.dropoffEnabled ?? current.dropoffEnabled;
   if (!nextPickup && !nextDropoff) {
@@ -94,6 +97,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (data.city !== undefined) updateValues.city = sanitizeText(data.city);
   if (data.district !== undefined) updateValues.district = data.district ? sanitizeText(data.district) : null;
   if (data.type !== undefined) updateValues.type = data.type;
+  if (data.scope !== undefined) updateValues.scope = data.scope;
   if (data.pickupEnabled !== undefined) updateValues.pickupEnabled = data.pickupEnabled;
   if (data.dropoffEnabled !== undefined) updateValues.dropoffEnabled = data.dropoffEnabled;
   if (data.isActive !== undefined) updateValues.isActive = data.isActive;
@@ -110,6 +114,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       metadata: { name: updated.name },
     }).catch(() => {});
 
+    const { revalidatePath } = await import('next/cache');
+    revalidatePath('/data/locations');
+
     return NextResponse.json({ item: updated });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : '';
@@ -122,7 +129,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
 /** DELETE /admin/api/locations/[id]
  *  First call: sets archivedAt (soft archive).
- *  Second call (when already archived): permanent delete.
+ *  Second call (already archived): permanent delete.
  */
 export async function DELETE(_req: NextRequest, { params }: Params) {
   let session;
@@ -142,8 +149,9 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     .from(locations).where(eq(locations.id, id)).limit(1).catch(() => []);
   if (!current) return NextResponse.json({ error: 'Bulunamadı.' }, { status: 404 });
 
+  const { revalidatePath } = await import('next/cache');
+
   if (!current.archivedAt) {
-    // First step: archive (soft delete)
     const [updated] = await db.update(locations)
       .set({ archivedAt: new Date(), isActive: false, updatedAt: new Date(), updatedBy: session.adminId })
       .where(eq(locations.id, id))
@@ -157,9 +165,9 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
       metadata: { name: current.name },
     }).catch(() => {});
 
+    revalidatePath('/data/locations');
     return NextResponse.json({ item: updated, archived: true });
   } else {
-    // Second step: permanent delete
     await db.delete(locations).where(eq(locations.id, id));
 
     await db.insert(auditLogs).values({
@@ -170,6 +178,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
       metadata: { name: current.name },
     }).catch(() => {});
 
+    revalidatePath('/data/locations');
     return NextResponse.json({ success: true, deleted: true });
   }
 }

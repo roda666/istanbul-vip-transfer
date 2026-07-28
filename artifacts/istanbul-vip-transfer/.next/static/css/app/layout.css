@@ -757,9 +757,6 @@
   .px-10 {
     padding-inline: calc(var(--spacing) * 10);
   }
-  .px-12 {
-    padding-inline: calc(var(--spacing) * 12);
-  }
   .py-1 {
     padding-block: var(--spacing);
   }
@@ -1207,6 +1204,9 @@
     .md\:grid-cols-3 {
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
+    .md\:grid-cols-4 {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
     .md\:flex-row {
       flex-direction: row;
     }
@@ -1215,9 +1215,6 @@
     }
     .md\:p-10 {
       padding: calc(var(--spacing) * 10);
-    }
-    .md\:p-12 {
-      padding: calc(var(--spacing) * 12);
     }
     .md\:p-14 {
       padding: calc(var(--spacing) * 14);

@@ -115,7 +115,7 @@ export default function Hero() {
                 }}
                 data-testid="hero-booking-cta"
               >
-                Rezervasyon Yap
+                Fiyat Al / Rezervasyon
               </button>
               <a
                 href={SITE.phoneTel}

@@ -15,7 +15,8 @@ const BLUE = '#2563EB';
 const RED = '#D64545';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-type LocationType = 'AIRPORT' | 'DISTRICT' | 'REGION' | 'HOTEL_ZONE' | 'CUSTOM';
+type LocationType = 'AIRPORT' | 'DISTRICT' | 'REGION' | 'HOTEL_ZONE' | 'CUSTOM' | 'PROVINCE';
+type LocationScope = 'LOCAL' | 'INTERCITY' | 'BOTH';
 
 interface Location {
   id: string;
@@ -24,6 +25,7 @@ interface Location {
   city: string;
   district: string | null;
   type: LocationType;
+  scope: LocationScope;
   pickupEnabled: boolean;
   dropoffEnabled: boolean;
   isActive: boolean;
@@ -39,6 +41,17 @@ interface FormSettings {
   locationSearchEnabled: boolean;
 }
 
+interface ServiceTypeItem {
+  id: string;
+  key: string;
+  label: string;
+  description: string | null;
+  enabled: boolean;
+  quoteEnabled: boolean;
+  reservationEnabled: boolean;
+  displayOrder: number;
+}
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 const TYPE_LABELS: Record<LocationType, string> = {
   AIRPORT: 'Havalimanı',
@@ -46,6 +59,13 @@ const TYPE_LABELS: Record<LocationType, string> = {
   REGION: 'Bölge',
   HOTEL_ZONE: 'Otel Bölgesi',
   CUSTOM: 'Özel',
+  PROVINCE: 'İl',
+};
+
+const SCOPE_LABELS: Record<LocationScope, string> = {
+  LOCAL: 'Şehir İçi',
+  INTERCITY: 'Şehirler Arası',
+  BOTH: 'Her İkisi',
 };
 
 const TYPE_COLORS: Record<LocationType, { bg: string; color: string }> = {
@@ -54,6 +74,13 @@ const TYPE_COLORS: Record<LocationType, { bg: string; color: string }> = {
   REGION: { bg: '#FFF7ED', color: '#9A3412' },
   HOTEL_ZONE: { bg: '#F5F3FF', color: '#4C1D95' },
   CUSTOM: { bg: '#F1F5F9', color: '#334155' },
+  PROVINCE: { bg: '#FEF9EE', color: '#92400E' },
+};
+
+const SCOPE_COLORS: Record<LocationScope, { bg: string; color: string }> = {
+  LOCAL: { bg: '#EBF4FF', color: '#1D5FD1' },
+  INTERCITY: { bg: '#F0FDF4', color: '#166534' },
+  BOTH: { bg: '#F5F3FF', color: '#4C1D95' },
 };
 
 function slugify(val: string): string {
@@ -64,7 +91,7 @@ function slugify(val: string): string {
     .replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '');
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
+// ── Shared sub-components ─────────────────────────────────────────────────────
 function Label({ children, required }: { children: React.ReactNode; required?: boolean }) {
   return (
     <label style={{ display: 'block', color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif', marginBottom: '5px', fontWeight: 600 }}>
@@ -73,7 +100,7 @@ function Label({ children, required }: { children: React.ReactNode; required?: b
   );
 }
 
-function Input({ value, onChange, placeholder, type = 'text', disabled }: {
+function FieldInput({ value, onChange, placeholder, type = 'text', disabled }: {
   value: string; onChange: (v: string) => void; placeholder?: string; type?: string; disabled?: boolean;
 }) {
   return (
@@ -85,17 +112,8 @@ function Input({ value, onChange, placeholder, type = 'text', disabled }: {
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
     <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none' }}>
-      <div
-        onClick={() => onChange(!checked)}
-        style={{
-          width: '40px', height: '22px', borderRadius: '11px', position: 'relative', flexShrink: 0, cursor: 'pointer',
-          background: checked ? BLUE : '#CBD5E0', transition: 'background 0.2s',
-        }}
-      >
-        <div style={{
-          position: 'absolute', top: '3px', left: checked ? '21px' : '3px', width: '16px', height: '16px',
-          borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-        }} />
+      <div onClick={() => onChange(!checked)} style={{ width: '40px', height: '22px', borderRadius: '11px', position: 'relative', flexShrink: 0, cursor: 'pointer', background: checked ? BLUE : '#CBD5E0', transition: 'background 0.2s' }}>
+        <div style={{ position: 'absolute', top: '3px', left: checked ? '21px' : '3px', width: '16px', height: '16px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
       </div>
       <span style={{ color: NAVY, fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>{label}</span>
     </label>
@@ -136,23 +154,29 @@ function ConfirmDialog({ title, message, confirmLabel, danger, onConfirm, onCanc
   );
 }
 
-// ── Location Modal ────────────────────────────────────────────────────────────
+// ── Location Modal ─────────────────────────────────────────────────────────────
 interface LocationFormState {
   name: string; slug: string; city: string; district: string;
-  type: LocationType; pickupEnabled: boolean; dropoffEnabled: boolean;
+  type: LocationType; scope: LocationScope;
+  pickupEnabled: boolean; dropoffEnabled: boolean;
   isActive: boolean; displayOrder: string;
 }
 
 const EMPTY_FORM: LocationFormState = {
-  name: '', slug: '', city: 'İstanbul', district: '', type: 'DISTRICT',
+  name: '', slug: '', city: 'İstanbul', district: '', type: 'DISTRICT', scope: 'LOCAL',
   pickupEnabled: true, dropoffEnabled: true, isActive: true, displayOrder: '0',
 };
 
 function locationToForm(loc: Location): LocationFormState {
-  return { name: loc.name, slug: loc.slug, city: loc.city, district: loc.district ?? '', type: loc.type, pickupEnabled: loc.pickupEnabled, dropoffEnabled: loc.dropoffEnabled, isActive: loc.isActive, displayOrder: String(loc.displayOrder) };
+  return {
+    name: loc.name, slug: loc.slug, city: loc.city, district: loc.district ?? '',
+    type: loc.type, scope: loc.scope,
+    pickupEnabled: loc.pickupEnabled, dropoffEnabled: loc.dropoffEnabled,
+    isActive: loc.isActive, displayOrder: String(loc.displayOrder),
+  };
 }
 
-function LocationModal({ loc, onSave, onClose }: { loc?: Location; onSave: () => void; onClose: () => void; }) {
+function LocationModal({ loc, onSave, onClose }: { loc?: Location; onSave: () => void; onClose: () => void }) {
   const isEdit = !!loc;
   const [form, setForm] = useState<LocationFormState>(loc ? locationToForm(loc) : EMPTY_FORM);
   const [slugManual, setSlugManual] = useState(isEdit);
@@ -176,7 +200,8 @@ function LocationModal({ loc, onSave, onClose }: { loc?: Location; onSave: () =>
     setSaving(true);
     const payload = {
       name: form.name, slug: form.slug, city: form.city, district: form.district || null,
-      type: form.type, pickupEnabled: form.pickupEnabled, dropoffEnabled: form.dropoffEnabled,
+      type: form.type, scope: form.scope,
+      pickupEnabled: form.pickupEnabled, dropoffEnabled: form.dropoffEnabled,
       isActive: form.isActive, displayOrder: parseInt(form.displayOrder, 10) || 0,
     };
     const url = isEdit ? `/admin/api/locations/${loc!.id}` : '/admin/api/locations';
@@ -192,9 +217,11 @@ function LocationModal({ loc, onSave, onClose }: { loc?: Location; onSave: () =>
     }
   }
 
+  const selectStyle: React.CSSProperties = { width: '100%', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '6px', color: NAVY, fontSize: '13px', fontFamily: 'Inter, sans-serif', padding: '8px 12px', outline: 'none' };
+
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(23,43,58,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-      <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '14px', padding: '28px', width: '100%', maxWidth: '540px', boxShadow: '0 12px 48px rgba(23,43,58,0.18)', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '14px', padding: '28px', width: '100%', maxWidth: '560px', boxShadow: '0 12px 48px rgba(23,43,58,0.18)', maxHeight: '92vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h2 style={{ color: NAVY, fontSize: '16px', fontFamily: 'Inter, sans-serif', fontWeight: 700, margin: 0 }}>
             {isEdit ? 'Lokasyon Düzenle' : 'Yeni Lokasyon Ekle'}
@@ -209,30 +236,35 @@ function LocationModal({ loc, onSave, onClose }: { loc?: Location; onSave: () =>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
           <div style={{ gridColumn: '1 / -1' }}>
             <Label required>Lokasyon Adı</Label>
-            <Input value={form.name} onChange={handleNameChange} placeholder="ör. Kadıköy" />
+            <FieldInput value={form.name} onChange={handleNameChange} placeholder="ör. Kadıköy" />
           </div>
           <div>
             <Label required>Slug</Label>
-            <Input value={form.slug} onChange={v => { setSlugManual(true); set('slug', v); }} placeholder="kadikoy" />
+            <FieldInput value={form.slug} onChange={v => { setSlugManual(true); set('slug', v); }} placeholder="kadikoy" />
           </div>
           <div>
             <Label required>Tip</Label>
-            <select value={form.type} onChange={e => set('type', e.target.value as LocationType)}
-              style={{ width: '100%', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '6px', color: NAVY, fontSize: '13px', fontFamily: 'Inter, sans-serif', padding: '8px 12px', outline: 'none' }}>
+            <select value={form.type} onChange={e => set('type', e.target.value as LocationType)} style={selectStyle}>
               {Object.entries(TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </div>
           <div>
+            <Label required>Kapsam</Label>
+            <select value={form.scope} onChange={e => set('scope', e.target.value as LocationScope)} style={selectStyle}>
+              {Object.entries(SCOPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </div>
+          <div>
             <Label>Şehir</Label>
-            <Input value={form.city} onChange={v => set('city', v)} placeholder="İstanbul" />
+            <FieldInput value={form.city} onChange={v => set('city', v)} placeholder="İstanbul" />
           </div>
           <div>
             <Label>İlçe</Label>
-            <Input value={form.district} onChange={v => set('district', v)} placeholder="ör. Kadıköy" />
+            <FieldInput value={form.district} onChange={v => set('district', v)} placeholder="ör. Kadıköy" />
           </div>
           <div>
             <Label>Sıralama</Label>
-            <Input value={form.displayOrder} onChange={v => set('displayOrder', v)} type="number" placeholder="0" />
+            <FieldInput value={form.displayOrder} onChange={v => set('displayOrder', v)} type="number" placeholder="0" />
           </div>
         </div>
 
@@ -253,9 +285,92 @@ function LocationModal({ loc, onSave, onClose }: { loc?: Location; onSave: () =>
   );
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
+// ── Service Type Editor (inline) ───────────────────────────────────────────────
+function ServiceTypeRow({ st, onSaved }: { st: ServiceTypeItem; onSaved: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({ label: st.label, description: st.description ?? '', enabled: st.enabled, quoteEnabled: st.quoteEnabled, reservationEnabled: st.reservationEnabled, displayOrder: String(st.displayOrder) });
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  async function save() {
+    setSaving(true);
+    setMsg('');
+    try {
+      const res = await fetch(`/admin/api/service-types/${st.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          label: form.label,
+          description: form.description || null,
+          enabled: form.enabled,
+          quoteEnabled: form.quoteEnabled,
+          reservationEnabled: form.reservationEnabled,
+          displayOrder: parseInt(form.displayOrder, 10) || 0,
+        }),
+      });
+      if (!res.ok) { const j = await res.json(); setMsg(j.error ?? 'Hata oluştu.'); }
+      else { setMsg('Kaydedildi.'); setEditing(false); onSaved(); }
+    } catch { setMsg('Bağlantı hatası.'); }
+    setSaving(false);
+  }
+
+  const inputS: React.CSSProperties = { background: CARD, border: `1px solid ${BORDER}`, borderRadius: '6px', color: NAVY, fontSize: '13px', fontFamily: 'Inter, sans-serif', padding: '6px 10px', outline: 'none', width: '100%', boxSizing: 'border-box' };
+
+  return (
+    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '18px 20px', marginBottom: '10px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 600, color: NAVY }}>{st.label}</span>
+            <span style={{ background: '#F1F5F9', color: MUTED, fontSize: '11px', padding: '1px 7px', borderRadius: '10px', fontFamily: 'Inter, sans-serif' }}>{st.key}</span>
+            {!st.enabled && <span style={{ background: '#FEF2F2', color: RED, fontSize: '11px', padding: '1px 7px', borderRadius: '10px', fontFamily: 'Inter, sans-serif' }}>Devre Dışı</span>}
+            {st.enabled && <span style={{ background: '#ECFDF5', color: '#065F46', fontSize: '11px', padding: '1px 7px', borderRadius: '10px', fontFamily: 'Inter, sans-serif' }}>Aktif</span>}
+          </div>
+          {st.description && <p style={{ color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif', marginTop: '4px', marginBottom: 0 }}>{st.description}</p>}
+        </div>
+        <button onClick={() => { setEditing(e => !e); setMsg(''); }}
+          style={{ background: editing ? '#EEF3F9' : '#F8FAFC', border: `1px solid ${BORDER}`, borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', color: BLUE, fontSize: '12px', fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
+          <Pencil size={12} /> {editing ? 'Kapat' : 'Düzenle'}
+        </button>
+      </div>
+
+      {editing && (
+        <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: `1px solid ${BORDER}` }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+            <div>
+              <Label>Görünen Ad</Label>
+              <input value={form.label} onChange={e => setForm(f => ({ ...f, label: e.target.value }))} style={inputS} />
+            </div>
+            <div>
+              <Label>Sıralama</Label>
+              <input type="number" value={form.displayOrder} onChange={e => setForm(f => ({ ...f, displayOrder: e.target.value }))} style={{ ...inputS, maxWidth: '100px' }} />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <Label>Açıklama (opsiyonel)</Label>
+              <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} style={{ ...inputS, resize: 'vertical' }} />
+            </div>
+          </div>
+          <div style={{ display: 'grid', gap: '10px', marginBottom: '14px' }}>
+            <Toggle checked={form.enabled} onChange={v => setForm(f => ({ ...f, enabled: v }))} label="Hizmet Türü Etkin (Formda Göster)" />
+            <Toggle checked={form.quoteEnabled} onChange={v => setForm(f => ({ ...f, quoteEnabled: v }))} label="Fiyat Teklifi Almaya İzin Ver" />
+            <Toggle checked={form.reservationEnabled} onChange={v => setForm(f => ({ ...f, reservationEnabled: v }))} label="Rezervasyon Talebine İzin Ver" />
+          </div>
+          {msg && (
+            <div style={{ background: msg === 'Kaydedildi.' ? '#ECFDF5' : '#FEF2F2', border: `1px solid ${msg === 'Kaydedildi.' ? '#86EFAC' : '#FECACA'}`, borderRadius: '8px', padding: '8px 12px', color: msg === 'Kaydedildi.' ? '#065F46' : RED, fontSize: '12px', fontFamily: 'Inter, sans-serif', marginBottom: '12px' }}>{msg}</div>
+          )}
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+            <Btn variant="ghost" onClick={() => { setEditing(false); setMsg(''); }}>İptal</Btn>
+            <Btn variant="primary" loading={saving} onClick={save}>{saving ? 'Kaydediliyor…' : 'Kaydet'}</Btn>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main Component ─────────────────────────────────────────────────────────────
 export default function ReservasyonAyarlariClient() {
-  const [tab, setTab] = useState<'lokasyonlar' | 'form-ayarlari'>('lokasyonlar');
+  const [tab, setTab] = useState<'lokasyonlar' | 'hizmet-turleri' | 'form-ayarlari'>('lokasyonlar');
 
   // ── Lokasyonlar state ──
   const [items, setItems] = useState<Location[]>([]);
@@ -263,10 +378,15 @@ export default function ReservasyonAyarlariClient() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [scopeFilter, setScopeFilter] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [modalLoc, setModalLoc] = useState<Location | 'new' | null>(null);
   const [confirm, setConfirm] = useState<{ loc: Location; action: 'archive' | 'delete' } | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // ── Hizmet Türleri state ──
+  const [serviceTypes, setServiceTypes] = useState<ServiceTypeItem[]>([]);
+  const [stLoading, setStLoading] = useState(true);
 
   // ── Form Ayarları state ──
   const [settings, setSettings] = useState<FormSettings>({ timeStepMinutes: 5, exactAddressRequired: false, locationSearchEnabled: true });
@@ -276,10 +396,10 @@ export default function ReservasyonAyarlariClient() {
 
   const fetchLocations = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams({ limit: '200' });
+    const params = new URLSearchParams({ limit: '300' });
     if (search) params.set('search', search);
     if (typeFilter) params.set('type', typeFilter);
-    // include archived locations in results, filter client-side
+    if (scopeFilter) params.set('scope', scopeFilter);
     try {
       const res = await fetch(`/admin/api/locations?${params}`);
       const json = await res.json();
@@ -289,9 +409,21 @@ export default function ReservasyonAyarlariClient() {
       setTotal(json.total ?? 0);
     } catch { /* ignore */ }
     setLoading(false);
-  }, [search, typeFilter, showArchived]);
+  }, [search, typeFilter, scopeFilter, showArchived]);
 
   useEffect(() => { fetchLocations(); }, [fetchLocations]);
+
+  async function fetchServiceTypes() {
+    setStLoading(true);
+    try {
+      const res = await fetch('/admin/api/service-types');
+      const json = await res.json();
+      if (json.items) setServiceTypes(json.items);
+    } catch { /* ignore */ }
+    setStLoading(false);
+  }
+
+  useEffect(() => { fetchServiceTypes(); }, []);
 
   async function fetchSettings() {
     setSettingsLoading(true);
@@ -333,13 +465,19 @@ export default function ReservasyonAyarlariClient() {
     setSettingsSaving(false);
   }
 
+  const TABS = [
+    ['lokasyonlar', 'Lokasyonlar'],
+    ['hizmet-turleri', 'Hizmet Türleri'],
+    ['form-ayarlari', 'Form Ayarları'],
+  ] as const;
+
   return (
     <div style={{ padding: '28px 24px', minHeight: '100vh', background: BG }}>
-      <AdminPageHeader title="Rezervasyon Ayarları" description="Lokasyonları ve form ayarlarını yönetin" />
+      <AdminPageHeader title="Rezervasyon Ayarları" description="Lokasyonları, hizmet türlerini ve form ayarlarını yönetin" />
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '4px', background: '#E2E8F0', borderRadius: '10px', padding: '4px', width: 'fit-content', marginBottom: '24px' }}>
-        {([['lokasyonlar', 'Lokasyonlar'], ['form-ayarlari', 'Form Ayarları']] as const).map(([key, label]) => (
+        {TABS.map(([key, label]) => (
           <button key={key} onClick={() => setTab(key)}
             style={{ padding: '7px 20px', borderRadius: '7px', border: 'none', cursor: 'pointer', fontSize: '13px', fontFamily: 'Inter, sans-serif', fontWeight: tab === key ? 600 : 400, background: tab === key ? CARD : 'transparent', color: tab === key ? NAVY : MUTED, boxShadow: tab === key ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.15s' }}>
             {label}
@@ -350,7 +488,6 @@ export default function ReservasyonAyarlariClient() {
       {/* ── Lokasyonlar Tab ── */}
       {tab === 'lokasyonlar' && (
         <div>
-          {/* Toolbar */}
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '16px', alignItems: 'center' }}>
             <div style={{ position: 'relative', flex: '1 1 220px', minWidth: '180px' }}>
               <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: MUTED }} />
@@ -362,6 +499,11 @@ export default function ReservasyonAyarlariClient() {
               <option value="">Tüm Tipler</option>
               {Object.entries(TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
+            <select value={scopeFilter} onChange={e => setScopeFilter(e.target.value)}
+              style={{ padding: '8px 12px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', color: NAVY, fontSize: '13px', fontFamily: 'Inter, sans-serif', outline: 'none' }}>
+              <option value="">Tüm Kapsamlar</option>
+              {Object.entries(SCOPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', color: MUTED, fontFamily: 'Inter, sans-serif' }}>
               <input type="checkbox" checked={showArchived} onChange={e => setShowArchived(e.target.checked)} />
               Arşivlenenleri Göster
@@ -370,12 +512,10 @@ export default function ReservasyonAyarlariClient() {
             <Btn variant="primary" onClick={() => setModalLoc('new')} small><Plus size={13} /> Yeni Lokasyon</Btn>
           </div>
 
-          {/* Count */}
           <p style={{ color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif', marginBottom: '12px' }}>
             {items.length} lokasyon {total > items.length ? `(toplam ${total})` : ''}
           </p>
 
-          {/* Table */}
           <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(23,43,58,0.06)' }}>
             {loading ? (
               <div style={{ padding: '48px', textAlign: 'center', color: MUTED, fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>Yükleniyor…</div>
@@ -386,7 +526,7 @@ export default function ReservasyonAyarlariClient() {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: '#F8FAFC', borderBottom: `1px solid ${BORDER}` }}>
-                      {['Ad', 'Tip', 'Alış', 'Bırakış', 'Aktif', 'Sıra', 'Güncelleme', ''].map((h, i) => (
+                      {['Ad', 'Tip', 'Kapsam', 'Alış', 'Bırakış', 'Aktif', 'Sıra', 'Güncelleme', ''].map((h, i) => (
                         <th key={i} style={{ padding: '10px 14px', textAlign: 'left', color: MUTED, fontSize: '11px', fontFamily: 'Inter, sans-serif', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
                       ))}
                     </tr>
@@ -394,6 +534,7 @@ export default function ReservasyonAyarlariClient() {
                   <tbody>
                     {items.map((loc, i) => {
                       const tc = TYPE_COLORS[loc.type] ?? TYPE_COLORS.CUSTOM;
+                      const sc = SCOPE_COLORS[loc.scope] ?? SCOPE_COLORS.LOCAL;
                       const isArchived = !!loc.archivedAt;
                       return (
                         <tr key={loc.id} style={{ borderBottom: i < items.length - 1 ? `1px solid #F0F4F8` : 'none', opacity: isArchived ? 0.55 : 1 }}>
@@ -404,6 +545,11 @@ export default function ReservasyonAyarlariClient() {
                           <td style={{ padding: '10px 14px' }}>
                             <span style={{ background: tc.bg, color: tc.color, fontSize: '11px', padding: '2px 8px', borderRadius: '12px', fontFamily: 'Inter, sans-serif', fontWeight: 600, whiteSpace: 'nowrap' }}>
                               {TYPE_LABELS[loc.type]}
+                            </span>
+                          </td>
+                          <td style={{ padding: '10px 14px' }}>
+                            <span style={{ background: sc.bg, color: sc.color, fontSize: '11px', padding: '2px 8px', borderRadius: '12px', fontFamily: 'Inter, sans-serif', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                              {SCOPE_LABELS[loc.scope]}
                             </span>
                           </td>
                           <td style={{ padding: '10px 14px', textAlign: 'center' }}>
@@ -430,10 +576,8 @@ export default function ReservasyonAyarlariClient() {
                                   <Pencil size={13} />
                                 </button>
                               )}
-                              <button
-                                onClick={() => setConfirm({ loc, action: isArchived ? 'delete' : 'archive' })}
-                                disabled={actionLoading === loc.id}
-                                title={isArchived ? 'Kalıcı Sil' : 'Arşivle'}
+                              <button onClick={() => setConfirm({ loc, action: isArchived ? 'delete' : 'archive' })}
+                                disabled={actionLoading === loc.id} title={isArchived ? 'Kalıcı Sil' : 'Arşivle'}
                                 style={{ background: isArchived ? '#FEF2F2' : '#FFF8E1', border: 'none', borderRadius: '6px', padding: '5px 8px', cursor: actionLoading === loc.id ? 'not-allowed' : 'pointer', color: isArchived ? RED : '#B45309', display: 'flex', alignItems: 'center', opacity: actionLoading === loc.id ? 0.5 : 1 }}>
                                 {isArchived ? <Trash2 size={13} /> : <Archive size={13} />}
                               </button>
@@ -444,6 +588,30 @@ export default function ReservasyonAyarlariClient() {
                     })}
                   </tbody>
                 </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Hizmet Türleri Tab ── */}
+      {tab === 'hizmet-turleri' && (
+        <div style={{ maxWidth: '680px' }}>
+          <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px', padding: '20px', marginBottom: '16px', boxShadow: '0 2px 8px rgba(23,43,58,0.06)' }}>
+            <h3 style={{ color: GOLD, fontSize: '12px', fontFamily: 'Inter, sans-serif', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 6px', paddingBottom: '12px', borderBottom: `1px solid ${BORDER}` }}>
+              Hizmet Türleri
+            </h3>
+            <p style={{ color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif', marginTop: '0', marginBottom: '16px' }}>
+              Rezervasyon formunda görünen hizmet türlerini yönetin. Sistem anahtarları (key) değiştirilmez.
+            </p>
+            {stLoading ? (
+              <div style={{ color: MUTED, fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>Yükleniyor…</div>
+            ) : serviceTypes.map((st) => (
+              <ServiceTypeRow key={st.id} st={st} onSaved={fetchServiceTypes} />
+            ))}
+            {!stLoading && serviceTypes.length === 0 && (
+              <div style={{ color: MUTED, fontSize: '13px', fontFamily: 'Inter, sans-serif', padding: '20px', textAlign: 'center' }}>
+                Hizmet türü bulunamadı. Veritabanını kontrol edin.
               </div>
             )}
           </div>
@@ -464,7 +632,7 @@ export default function ReservasyonAyarlariClient() {
               <div style={{ display: 'grid', gap: '20px' }}>
                 <div>
                   <Label required>Zaman Adımı (Dakika)</Label>
-                  <Input
+                  <FieldInput
                     value={String(settings.timeStepMinutes)}
                     onChange={v => setSettings(s => ({ ...s, timeStepMinutes: Math.min(60, Math.max(1, parseInt(v, 10) || 5)) }))}
                     type="number"

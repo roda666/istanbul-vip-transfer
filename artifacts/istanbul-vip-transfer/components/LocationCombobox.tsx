@@ -8,7 +8,8 @@ export interface LocationOption {
   id: string;
   name: string;
   slug: string;
-  type: 'AIRPORT' | 'DISTRICT' | 'REGION' | 'HOTEL_ZONE' | 'CUSTOM';
+  type: 'AIRPORT' | 'DISTRICT' | 'REGION' | 'HOTEL_ZONE' | 'CUSTOM' | 'PROVINCE';
+  scope: 'LOCAL' | 'INTERCITY' | 'BOTH';
   city: string;
   district: string | null;
 }
@@ -21,10 +22,11 @@ interface LocationGroup {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-const TYPE_ORDER = ['AIRPORT', 'DISTRICT', 'REGION', 'HOTEL_ZONE', 'CUSTOM'];
+const TYPE_ORDER = ['AIRPORT', 'PROVINCE', 'DISTRICT', 'REGION', 'HOTEL_ZONE', 'CUSTOM'];
 
 const TYPE_LABELS: Record<string, string> = {
   AIRPORT: 'Havalimanları',
+  PROVINCE: 'İller',
   DISTRICT: 'İstanbul İlçeleri',
   REGION: 'Bölgeler',
   HOTEL_ZONE: 'Otel Bölgeleri',
@@ -47,12 +49,8 @@ function groupLocations(options: LocationOption[]): LocationGroup[] {
   const map = new Map<string, LocationOption[]>();
   for (const type of TYPE_ORDER) map.set(type, []);
   for (const opt of options) {
-    const bucket = map.get(opt.type);
-    if (bucket) bucket.push(opt);
-    else {
-      if (!map.has(opt.type)) map.set(opt.type, []);
-      map.get(opt.type)!.push(opt);
-    }
+    if (!map.has(opt.type)) map.set(opt.type, []);
+    map.get(opt.type)!.push(opt);
   }
   return Array.from(map.entries())
     .filter(([, opts]) => opts.length > 0)
@@ -68,6 +66,8 @@ function groupLocations(options: LocationOption[]): LocationGroup[] {
 interface Props {
   /** Which endpoint filter to use */
   for: 'pickup' | 'dropoff';
+  /** Optional scope: 'local' for Istanbul/city, 'intercity' for provinces */
+  scope?: 'local' | 'intercity';
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -78,6 +78,7 @@ interface Props {
 
 export default function LocationCombobox({
   for: forProp,
+  scope,
   value,
   onChange,
   placeholder,
@@ -95,14 +96,18 @@ export default function LocationCombobox({
 
   // Fetch on mount
   useEffect(() => {
-    fetch(`/data/locations?for=${forProp}`)
+    const url = new URL('/data/locations', window.location.origin);
+    url.searchParams.set('for', forProp);
+    if (scope) url.searchParams.set('scope', scope);
+
+    fetch(url.toString())
       .then((r) => r.json())
       .then((d) => {
         setAllOptions(d.locations ?? []);
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [forProp]);
+  }, [forProp, scope]);
 
   // Close on outside click
   useEffect(() => {
@@ -173,7 +178,6 @@ export default function LocationCombobox({
     }
   }
 
-  // Show search text while open, selected value when closed
   const displayValue = open ? search : value;
 
   return (
@@ -186,6 +190,7 @@ export default function LocationCombobox({
           aria-expanded={open}
           aria-haspopup="listbox"
           aria-autocomplete="list"
+          aria-controls={open ? 'location-combobox-listbox' : undefined}
           value={displayValue}
           placeholder={loading ? 'Yükleniyor…' : (placeholder ?? 'Lokasyon seçin veya yazın')}
           onChange={handleInputChange}
@@ -289,11 +294,7 @@ export default function LocationCombobox({
                       style={{
                         padding: '10px 16px',
                         cursor: 'pointer',
-                        background: isActive
-                          ? '#EEF3F9'
-                          : isSelected
-                          ? '#EBF4FF'
-                          : 'transparent',
+                        background: isActive ? '#EEF3F9' : isSelected ? '#EBF4FF' : 'transparent',
                         color: isSelected ? '#1D5FD1' : '#172B3A',
                         fontSize: '13px',
                         fontFamily: 'Inter, sans-serif',

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
+const LOCATION_TYPES = ['AIRPORT', 'DISTRICT', 'REGION', 'HOTEL_ZONE', 'CUSTOM', 'PROVINCE'] as const;
+const LOCATION_SCOPES = ['LOCAL', 'INTERCITY', 'BOTH'] as const;
+
 const createSchema = z.object({
   name: z.string().min(1, 'Lokasyon adı gereklidir').max(200),
   slug: z
@@ -10,7 +13,8 @@ const createSchema = z.object({
     .regex(/^[a-z0-9-]+$/, 'Slug yalnızca küçük harf, rakam ve tire içerebilir'),
   city: z.string().max(100).default('İstanbul'),
   district: z.string().max(200).optional().nullable(),
-  type: z.enum(['AIRPORT', 'DISTRICT', 'REGION', 'HOTEL_ZONE', 'CUSTOM']).default('DISTRICT'),
+  type: z.enum(LOCATION_TYPES).default('DISTRICT'),
+  scope: z.enum(LOCATION_SCOPES).default('LOCAL'),
   pickupEnabled: z.boolean().default(true),
   dropoffEnabled: z.boolean().default(true),
   isActive: z.boolean().default(true),
@@ -31,19 +35,21 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const search = searchParams.get('search')?.trim() ?? '';
   const type = searchParams.get('type') ?? '';
+  const scopeFilter = searchParams.get('scope') ?? '';
   const activeOnly = searchParams.get('active') === 'true';
   const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
-  const limit = Math.min(200, Math.max(1, parseInt(searchParams.get('limit') || '100', 10)));
+  const limit = Math.min(300, Math.max(1, parseInt(searchParams.get('limit') || '100', 10)));
   const offset = (page - 1) * limit;
 
   try {
     const { db } = await import('@/db');
     const { locations } = await import('@/db/schema');
-    const { eq, desc, asc, ilike, and, isNull, count } = await import('drizzle-orm');
+    const { eq, asc, ilike, and, isNull, count } = await import('drizzle-orm');
 
     const conditions = [isNull(locations.archivedAt)];
     if (search) conditions.push(ilike(locations.name, `%${search}%`));
-    if (type) conditions.push(eq(locations.type, type as 'AIRPORT' | 'DISTRICT' | 'REGION' | 'HOTEL_ZONE' | 'CUSTOM'));
+    if (type) conditions.push(eq(locations.type, type as typeof LOCATION_TYPES[number]));
+    if (scopeFilter) conditions.push(eq(locations.scope, scopeFilter as typeof LOCATION_SCOPES[number]));
     if (activeOnly) conditions.push(eq(locations.isActive, true));
 
     const where = and(...conditions);
@@ -106,6 +112,7 @@ export async function POST(request: NextRequest) {
         city: sanitizeText(data.city),
         district: data.district ? sanitizeText(data.district) : null,
         type: data.type,
+        scope: data.scope,
         pickupEnabled: data.pickupEnabled,
         dropoffEnabled: data.dropoffEnabled,
         isActive: data.isActive,
@@ -120,8 +127,12 @@ export async function POST(request: NextRequest) {
       action: 'CREATE',
       entityType: 'Location',
       entityId: newItem.id,
-      metadata: { name: newItem.name, type: newItem.type },
+      metadata: { name: newItem.name, type: newItem.type, scope: newItem.scope },
     }).catch(() => {});
+
+    // Invalidate public locations cache
+    const { revalidatePath } = await import('next/cache');
+    revalidatePath('/data/locations');
 
     return NextResponse.json({ item: newItem }, { status: 201 });
   } catch (err: unknown) {

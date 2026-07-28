@@ -15,6 +15,13 @@
       "when": 1785600000000,
       "tag": "0001_locations_and_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785247483266,
+      "tag": "0002_service_types_and_scope",
+      "breakpoints": true
     }
   ]
 }

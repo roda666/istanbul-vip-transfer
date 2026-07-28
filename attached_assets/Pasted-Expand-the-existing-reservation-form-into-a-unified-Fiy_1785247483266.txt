@@ -1,0 +1,340 @@
+Expand the existing reservation form into a unified “Fiyat Teklifi ve Rezervasyon Talebi” system.
+
+IMPORTANT
+
+- Preserve the current WhatsApp-based workflow.
+- Do not create a payment system.
+- Do not claim that a reservation is confirmed before price and availability are verified.
+- Do not store customer personal data or requests in the database in this phase.
+- Do not publish or connect the production domain.
+
+REQUEST INTENT
+
+1. Add a required selection at the beginning of the form:
+
+Label:
+Ne yapmak istiyorsunuz?
+
+Options:
+- Fiyat Teklifi Al
+- Rezervasyon Talebi Gönder
+
+2. Default selection:
+Fiyat Teklifi Al
+
+3. Use accessible segmented buttons or cards, not an unclear dropdown.
+
+4. Change the public form title to:
+
+Fiyat ve Rezervasyon Talebi
+
+5. Change the explanatory text to:
+
+Talebinizi iletin, fiyat ve araç uygunluğu bilgisini WhatsApp üzerinden paylaşalım.
+
+6. Show this notice close to the submit button:
+
+Rezervasyon talepleri, araç uygunluğu ve fiyat tarafımızca WhatsApp üzerinden doğrulandıktan sonra kesinleşir.
+
+SERVICE TYPE
+
+7. Add a required service selection:
+
+Label:
+Hizmet Türü
+
+Options:
+- Havalimanı / Şehir İçi Transfer
+- Şehirler Arası Transfer
+- Araç Tahsisi
+- Özel Tur / Gezi
+
+8. Use the existing form for all options, but display relevant fields dynamically.
+
+COMMON FIELDS
+
+9. Keep these common fields:
+
+- Tarih
+- Saat — hours and 5-minute intervals
+- Yolcu sayısı
+- Ad soyad
+- Telefon
+- Additional notes — optional
+
+10. Continue using:
+
+Hour:
+00–23
+
+Minute:
+00, 05, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55
+
+Validate the 5-minute rule server-side.
+
+HAVALİMANI / ŞEHİR İÇİ TRANSFER
+
+11. Show:
+
+- Alış lokasyonu
+- Alış adresi / otel
+- Varış lokasyonu
+- Varış adresi / otel
+- Flight number — optional
+- Existing date, time, passenger and contact fields
+
+12. Use the existing 41 active Istanbul locations.
+
+ŞEHİRLER ARASI TRANSFER
+
+13. Show:
+
+- Kalkış ili
+- Kalkış ilçesi/adresi
+- Varış ili
+- Varış ilçesi/adresi
+- Tek yön / Gidiş-dönüş selection
+- Return date and time only when “Gidiş-dönüş” is selected
+- Passenger and contact fields
+- Notes — optional
+
+14. Add the official 81 provinces of Türkiye as an idempotent location seed:
+
+- Type: PROVINCE
+- Scope: INTERCITY
+- Active for departure and arrival
+- Unique slug
+- Display order based on plate/province order
+
+15. Confirm exactly 81 unique provinces are seeded.
+Running the seed again must not create duplicates or overwrite later admin changes.
+
+16. İstanbul districts and airports must remain in the local-transfer selector.
+The 81-province list must only appear in the intercity form.
+
+17. In the intercity form, departure and arrival provinces must be different.
+Show a clear Turkish validation message when they are the same.
+
+ARAÇ TAHSİSİ
+
+18. Show:
+
+- Alış lokasyonu
+- Alış adresi
+- Başlangıç tarihi
+- Başlangıç saati
+- Tahsis süresi
+- Duration unit: Saat / Gün
+- Planned route or usage description
+- Passenger count
+- Contact fields
+- Notes
+
+19. Do not invent minimum rental periods, prices or availability.
+
+ÖZEL TUR / GEZİ
+
+20. Show:
+
+- Alış lokasyonu
+- Alış adresi / otel
+- Requested tour/route
+- Places requested
+- Date
+- Start time
+- Planned duration — optional
+- Passenger count
+- Contact fields
+- Notes
+
+21. Do not invent tour prices, included services, duration or guarantees.
+
+ADMIN MANAGEMENT
+
+22. Extend:
+
+/admin/rezervasyon-ayarlari
+
+Add these tabs:
+
+- Lokasyonlar
+- Hizmet Türleri
+- Form Ayarları
+
+23. Under “Hizmet Türleri”, admins must be able to:
+
+- Enable or disable a service type
+- Change its visible label
+- Change display order
+- Enable/disable quote requests
+- Enable/disable reservation requests
+- Edit its short explanatory text
+
+24. Do not allow deletion of required system identifiers.
+Allow safe activation/deactivation instead.
+
+25. Extend the location model safely if necessary:
+
+- type: include PROVINCE
+- scope: LOCAL / INTERCITY / BOTH
+- pickupEnabled
+- dropoffEnabled
+- isActive
+- displayOrder
+
+Avoid duplicate database tables or conflicting models.
+
+26. Admin location filters must support:
+
+- İstanbul districts
+- Airports
+- Provinces
+- Other manually added locations
+- Active/archived status
+- Local/intercity scope
+
+PUBLIC CTA CHANGES
+
+27. Update public CTA wording consistently:
+
+Header CTA:
+Fiyat / Rezervasyon
+
+Homepage primary CTA:
+Fiyat Al / Rezervasyon
+
+Form title:
+Fiyat ve Rezervasyon Talebi
+
+28. Service-specific CTA links should preselect the correct service:
+
+- /sehirler-arasi-transfer → Şehirler Arası Transfer
+- Airport pages → Havalimanı / Şehir İçi Transfer
+- Chauffeur/allocation pages → Araç Tahsisi
+- Tour pages → Özel Tur / Gezi
+
+29. Use one shared reservation-form component and one shared validation system.
+Do not create four unrelated forms.
+
+WHATSAPP MESSAGE
+
+30. Preserve the verified WhatsApp destination:
+
+905326600847
+
+31. Start the generated WhatsApp message with:
+
+Talep Amacı: Fiyat Teklifi
+or
+Talep Amacı: Rezervasyon Talebi
+
+Then include:
+
+- Hizmet türü
+- Service-specific fields
+- Date and time
+- Return information when applicable
+- Passenger count
+- Name
+- Phone
+- Notes
+
+32. Submit-button label must change according to intent:
+
+Quote:
+WhatsApp’tan Fiyat Teklifi Al
+
+Reservation request:
+WhatsApp’tan Rezervasyon Talebi Gönder
+
+33. Correctly encode Turkish characters and line breaks in the WhatsApp URL.
+
+FRESH DATA
+
+34. Admin location and service-setting changes must appear in the public form immediately after a successful update.
+
+Use the existing Next.js cache strategy correctly:
+- revalidatePath/revalidateTag where appropriate, or
+- no-store for operational form configuration
+
+Do not leave stale locations or disabled service types visible.
+
+DESIGN AND ACCESSIBILITY
+
+35. Use the approved light theme:
+
+- Eye-friendly light background
+- White form cards
+- Dark navy text
+- Blue selections and focus states
+- Gold brand accents
+- No pale-gray text on white
+- No black form backgrounds
+
+36. Dynamic fields must:
+- Work with keyboard navigation
+- Have visible labels
+- Announce validation errors
+- Avoid layout jumps where practical
+- Work at 390×844 mobile width
+- Have no horizontal overflow
+
+SECURITY
+
+37. Use the existing corrected admin API structure:
+
+/admin/api/...
+
+38. Admin changes must require:
+- Existing authenticated session
+- Server-side validation
+- Existing CSRF protection
+- Session user identity
+- AuditLog entry
+
+39. Do not:
+- Reset passwords
+- Create test admins
+- Modify Secrets
+- Change AUTH_SECRET or SESSION_SECRET
+- Store submitted customer information
+- Invent prices, availability, duration or guarantees
+
+VERIFICATION
+
+40. Test all combinations:
+
+- Quote + local transfer
+- Reservation request + local transfer
+- Quote + intercity
+- Reservation request + intercity
+- One-way intercity
+- Round-trip intercity
+- Vehicle allocation
+- Private tour
+- 5-minute time validation
+- Disabled service type hidden publicly
+- Admin location changes reflected without stale data
+- Correct WhatsApp message for each case
+
+41. Run:
+
+- Database migration
+- Idempotent seed
+- Lint
+- Typecheck
+- Production build
+
+42. Report:
+
+- Database/schema changes
+- Number of province records seeded
+- Admin pages updated
+- Public form changes
+- CTA links updated
+- WhatsApp-message test results
+- Cache/revalidation behavior
+- Desktop/mobile results
+- Lint/typecheck/build results
+
+43. Do not publish, deploy or connect the production domain.

@@ -1,7 +1,6 @@
 /**
  * Centralized navigation configuration.
  * Both desktop and mobile menus consume this single data source.
- * Dropdown groups live here; each item links to its canonical route.
  */
 
 export interface NavItem {
@@ -71,6 +70,6 @@ export const NAV: NavEntry[] = [
   { label: 'Blog', href: '/blog' },
   { label: 'Hakkımızda', href: '/hakkimizda' },
   { label: 'İletişim', href: '/iletisim' },
-  /** CTA entry — rendered as an outlined gold button, not a plain text link. */
-  { label: 'Rezervasyon Yap', href: '/#rezervasyon', cta: true },
+  /** CTA entry — rendered as an outlined button, not a plain text link. */
+  { label: 'Fiyat / Rezervasyon', href: '/#rezervasyon', cta: true },
 ];

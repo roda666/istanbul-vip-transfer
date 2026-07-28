@@ -51,6 +51,14 @@ export const aiSuggestionStatusEnum = pgEnum('ai_suggestion_status', [
   'REJECTED',
 ]);
 
+export const locationTypeEnum = pgEnum('location_type', [
+  'AIRPORT',
+  'DISTRICT',
+  'REGION',
+  'HOTEL_ZONE',
+  'CUSTOM',
+]);
+
 // ── Tables ──────────────────────────────────────────────────────────────────
 
 export const adminUsers = pgTable('admin_users', {
@@ -112,6 +120,10 @@ export const siteSettings = pgTable('site_settings', {
   defaultSeoTitle: text('default_seo_title'),
   defaultSeoDescription: text('default_seo_description'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  // Reservation form settings
+  timeStepMinutes: integer('time_step_minutes').default(5).notNull(),
+  exactAddressRequired: boolean('exact_address_required').default(false).notNull(),
+  locationSearchEnabled: boolean('location_search_enabled').default(true).notNull(),
 });
 
 export const navigationItems = pgTable('navigation_items', {
@@ -202,6 +214,24 @@ export const vehicles = pgTable('vehicles', {
   updatedBy: uuid('updated_by').references(() => adminUsers.id),
 });
 
+export const locations = pgTable('locations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
+  city: text('city').default('İstanbul').notNull(),
+  district: text('district'),
+  type: locationTypeEnum('type').default('DISTRICT').notNull(),
+  pickupEnabled: boolean('pickup_enabled').default(true).notNull(),
+  dropoffEnabled: boolean('dropoff_enabled').default(true).notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  displayOrder: integer('display_order').default(0).notNull(),
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  createdBy: uuid('created_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+  updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+});
+
 // ── Inferred TypeScript types ────────────────────────────────────────────────
 
 export type AdminUser = typeof adminUsers.$inferSelect;
@@ -219,3 +249,5 @@ export type ResearchSource = typeof researchSources.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type Vehicle = typeof vehicles.$inferSelect;
 export type NewVehicle = typeof vehicles.$inferInsert;
+export type Location = typeof locations.$inferSelect;
+export type NewLocation = typeof locations.$inferInsert;

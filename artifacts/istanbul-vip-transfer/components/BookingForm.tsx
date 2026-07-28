@@ -1,59 +1,101 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
-import { MapPin, Calendar, Clock, Users, User, Phone } from 'lucide-react';
+import { MapPin, Calendar, Clock, Users, User, Phone, Home } from 'lucide-react';
 import { bookingWhatsAppUrl } from '@/lib/site-config';
+import LocationCombobox from './LocationCombobox';
 
-const bookingSchema = z.object({
-  nereden: z.string().min(1, 'Lütfen kalkış noktasını seçin'),
-  nereye: z.string().min(1, 'Lütfen varış noktasını seçin'),
-  tarih: z.string().min(1, 'Lütfen tarih seçin'),
-  saat: z.string().min(1, 'Lütfen saat seçin'),
-  yolcuSayisi: z.string().min(1, 'Lütfen yolcu sayısı seçin'),
-  adSoyad: z.string().min(2, 'Lütfen adınızı ve soyadınızı girin'),
-  telefon: z.string().min(10, 'Geçerli bir telefon numarası girin'),
-});
+// ── Schema ────────────────────────────────────────────────────────────────────
+
+const bookingSchema = z
+  .object({
+    alisLokasyonu: z.string().min(1, 'Lütfen kalkış noktasını seçin'),
+    alisAdresi: z.string().optional(),
+    varisLokasyonu: z.string().min(1, 'Lütfen varış noktasını seçin'),
+    varisAdresi: z.string().optional(),
+    tarih: z.string().min(1, 'Lütfen tarih seçin'),
+    saatSaat: z.string().min(1, 'Lütfen saat seçin'),
+    saatDakika: z
+      .string()
+      .min(1, 'Lütfen dakika seçin')
+      .refine((v) => parseInt(v, 10) % 5 === 0, { message: 'Dakika 5\'in katı olmalıdır' }),
+    yolcuSayisi: z.string().min(1, 'Lütfen yolcu sayısı seçin'),
+    adSoyad: z.string().min(2, 'Lütfen adınızı ve soyadınızı girin'),
+    telefon: z.string().min(10, 'Geçerli bir telefon numarası girin'),
+  })
+  .refine((d) => d.alisLokasyonu !== d.varisLokasyonu, {
+    message: 'Kalkış ve varış aynı lokasyon olamaz',
+    path: ['varisLokasyonu'],
+  });
 
 type BookingFormData = z.infer<typeof bookingSchema>;
 
-const locations = [
-  'İstanbul Havalimanı (IST)',
-  'Sabiha Gökçen Havalimanı (SAW)',
-  'Otel / Adres',
-  'Taksim Meydanı',
-  'Sultanahmet',
-  'Beşiktaş',
-  'Kadıköy',
-  'Üsküdar',
-];
+// ── Hour/minute options ───────────────────────────────────────────────────────
+
+const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+const MINUTES = ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'];
+
+// ── Shared style helpers ──────────────────────────────────────────────────────
+
+const labelStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '6px',
+  fontSize: '11px',
+  letterSpacing: '0.2em',
+  textTransform: 'uppercase',
+  marginBottom: '10px',
+  fontWeight: 700,
+  color: '#263F55',
+  fontFamily: 'Inter, sans-serif',
+};
+
+const errorStyle: React.CSSProperties = {
+  marginTop: '6px',
+  fontSize: '12px',
+  color: '#DC2626',
+  fontFamily: 'Inter, sans-serif',
+};
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function BookingForm() {
   const {
     register,
+    control,
     handleSubmit,
     watch,
     formState: { errors },
   } = useForm<BookingFormData>({
     resolver: zodResolver(bookingSchema),
-    defaultValues: { yolcuSayisi: '1' },
+    defaultValues: { yolcuSayisi: '1', saatSaat: '', saatDakika: '' },
   });
 
-  const neredenValue = watch('nereden');
+  const alisLokasyonuValue = watch('alisLokasyonu');
+  const varisLokasyonuValue = watch('varisLokasyonu');
 
   const onSubmit = (data: BookingFormData) => {
-    const message = encodeURIComponent(
-      `Merhaba, rezervasyon yapmak istiyorum.\n\n` +
-        `Nereden: ${data.nereden}\n` +
-        `Nereye: ${data.nereye}\n` +
-        `Tarih: ${data.tarih}\n` +
-        `Saat: ${data.saat}\n` +
-        `Yolcu Sayisi: ${data.yolcuSayisi}\n` +
-        `Ad Soyad: ${data.adSoyad}\n` +
-        `Telefon: ${data.telefon}`,
+    const saat = `${data.saatSaat}:${data.saatDakika}`;
+    const lines: string[] = [
+      'Merhaba, rezervasyon yapmak istiyorum.',
+      '',
+      `Alış Lokasyonu: ${data.alisLokasyonu}`,
+    ];
+    if (data.alisAdresi?.trim()) lines.push(`Alış Adresi / Otel: ${data.alisAdresi}`);
+    lines.push(`Varış Lokasyonu: ${data.varisLokasyonu}`);
+    if (data.varisAdresi?.trim()) lines.push(`Varış Adresi / Otel: ${data.varisAdresi}`);
+    lines.push(
+      `Tarih: ${data.tarih}`,
+      `Saat: ${saat}`,
+      `Yolcu Sayısı: ${data.yolcuSayisi}`,
+      `Ad Soyad: ${data.adSoyad}`,
+      `Telefon: ${data.telefon}`,
     );
+
+    const message = encodeURIComponent(lines.join('\n'));
     window.open(bookingWhatsAppUrl(message), '_blank');
   };
 
@@ -114,50 +156,92 @@ export default function BookingForm() {
 
           <form onSubmit={handleSubmit(onSubmit)} className="p-8 md:p-12" data-testid="booking-form">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Nereden */}
-              <div data-testid="field-nereden">
-                <label
-                  className="flex items-center gap-2 text-xs tracking-widest uppercase mb-2.5 font-semibold"
-                  style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}
-                >
-                  <MapPin size={12} aria-hidden="true" /> Nereden
+
+              {/* ── Alış Lokasyonu ── */}
+              <div data-testid="field-alis-lokasyon">
+                <label style={labelStyle}>
+                  <MapPin size={12} aria-hidden="true" /> Alış Lokasyonu
                 </label>
-                <select {...register('nereden')} className="vip-input vip-select" data-testid="input-nereden">
-                  <option value="">Kalkış noktası seçin</option>
-                  {locations.map((loc) => <option key={loc} value={loc}>{loc}</option>)}
-                </select>
-                {errors.nereden && (
-                  <p className="mt-1.5 text-xs" style={{ color: '#DC2626', fontFamily: 'Inter, sans-serif' }}>
-                    {errors.nereden.message}
-                  </p>
+                <Controller
+                  control={control}
+                  name="alisLokasyonu"
+                  render={({ field }) => (
+                    <LocationCombobox
+                      for="pickup"
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
+                      placeholder="Kalkış noktası seçin"
+                      error={!!errors.alisLokasyonu}
+                      excludeName={varisLokasyonuValue}
+                    />
+                  )}
+                />
+                {errors.alisLokasyonu && (
+                  <p style={errorStyle}>{errors.alisLokasyonu.message}</p>
                 )}
               </div>
 
-              {/* Nereye */}
-              <div data-testid="field-nereye">
-                <label
-                  className="flex items-center gap-2 text-xs tracking-widest uppercase mb-2.5 font-semibold"
-                  style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}
-                >
-                  <MapPin size={12} aria-hidden="true" /> Nereye
+              {/* ── Varış Lokasyonu ── */}
+              <div data-testid="field-varis-lokasyon">
+                <label style={labelStyle}>
+                  <MapPin size={12} aria-hidden="true" /> Varış Lokasyonu
                 </label>
-                <select {...register('nereye')} className="vip-input vip-select" data-testid="input-nereye">
-                  <option value="">Varış noktası seçin</option>
-                  {locations.filter((l) => l !== neredenValue).map((loc) => <option key={loc} value={loc}>{loc}</option>)}
-                </select>
-                {errors.nereye && (
-                  <p className="mt-1.5 text-xs" style={{ color: '#DC2626', fontFamily: 'Inter, sans-serif' }}>
-                    {errors.nereye.message}
-                  </p>
+                <Controller
+                  control={control}
+                  name="varisLokasyonu"
+                  render={({ field }) => (
+                    <LocationCombobox
+                      for="dropoff"
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
+                      placeholder="Varış noktası seçin"
+                      error={!!errors.varisLokasyonu}
+                      excludeName={alisLokasyonuValue}
+                    />
+                  )}
+                />
+                {errors.varisLokasyonu && (
+                  <p style={errorStyle}>{errors.varisLokasyonu.message}</p>
                 )}
               </div>
 
-              {/* Tarih */}
+              {/* ── Alış Adresi ── */}
+              <div data-testid="field-alis-adres">
+                <label style={labelStyle}>
+                  <Home size={12} aria-hidden="true" /> Alış Adresi / Otel
+                  <span style={{ color: '#718596', fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: '11px' }}>
+                    &nbsp;(opsiyonel)
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  {...register('alisAdresi')}
+                  className="vip-input"
+                  placeholder="Otel veya kesin adres"
+                  data-testid="input-alis-adres"
+                />
+              </div>
+
+              {/* ── Varış Adresi ── */}
+              <div data-testid="field-varis-adres">
+                <label style={labelStyle}>
+                  <Home size={12} aria-hidden="true" /> Varış Adresi / Otel
+                  <span style={{ color: '#718596', fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: '11px' }}>
+                    &nbsp;(opsiyonel)
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  {...register('varisAdresi')}
+                  className="vip-input"
+                  placeholder="Otel veya kesin adres"
+                  data-testid="input-varis-adres"
+                />
+              </div>
+
+              {/* ── Tarih ── */}
               <div data-testid="field-tarih">
-                <label
-                  className="flex items-center gap-2 text-xs tracking-widest uppercase mb-2.5 font-semibold"
-                  style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}
-                >
+                <label style={labelStyle}>
                   <Calendar size={12} aria-hidden="true" /> Tarih
                 </label>
                 <input
@@ -168,40 +252,53 @@ export default function BookingForm() {
                   data-testid="input-tarih"
                 />
                 {errors.tarih && (
-                  <p className="mt-1.5 text-xs" style={{ color: '#DC2626', fontFamily: 'Inter, sans-serif' }}>
-                    {errors.tarih.message}
-                  </p>
+                  <p style={errorStyle}>{errors.tarih.message}</p>
                 )}
               </div>
 
-              {/* Saat */}
+              {/* ── Saat ── */}
               <div data-testid="field-saat">
-                <label
-                  className="flex items-center gap-2 text-xs tracking-widest uppercase mb-2.5 font-semibold"
-                  style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}
-                >
+                <label style={labelStyle}>
                   <Clock size={12} aria-hidden="true" /> Saat
                 </label>
-                <input
-                  type="time"
-                  {...register('saat')}
-                  className="vip-input"
-                  style={{ colorScheme: 'light' }}
-                  data-testid="input-saat"
-                />
-                {errors.saat && (
-                  <p className="mt-1.5 text-xs" style={{ color: '#DC2626', fontFamily: 'Inter, sans-serif' }}>
-                    {errors.saat.message}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ flex: 1 }}>
+                    <select
+                      {...register('saatSaat')}
+                      className="vip-input vip-select"
+                      style={{ width: '100%' }}
+                      data-testid="input-saat-saat"
+                    >
+                      <option value="">Sa.</option>
+                      {HOURS.map((h) => (
+                        <option key={h} value={h}>{h}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <select
+                      {...register('saatDakika')}
+                      className="vip-input vip-select"
+                      style={{ width: '100%' }}
+                      data-testid="input-saat-dakika"
+                    >
+                      <option value="">Dk.</option>
+                      {MINUTES.map((m) => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                {(errors.saatSaat || errors.saatDakika) && (
+                  <p style={errorStyle}>
+                    {errors.saatSaat?.message ?? errors.saatDakika?.message}
                   </p>
                 )}
               </div>
 
-              {/* Yolcu Sayısı */}
+              {/* ── Yolcu Sayısı ── */}
               <div data-testid="field-yolcu">
-                <label
-                  className="flex items-center gap-2 text-xs tracking-widest uppercase mb-2.5 font-semibold"
-                  style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}
-                >
+                <label style={labelStyle}>
                   <Users size={12} aria-hidden="true" /> Yolcu Sayısı
                 </label>
                 <select {...register('yolcuSayisi')} className="vip-input vip-select" data-testid="input-yolcu">
@@ -210,18 +307,13 @@ export default function BookingForm() {
                   ))}
                 </select>
                 {errors.yolcuSayisi && (
-                  <p className="mt-1.5 text-xs" style={{ color: '#DC2626', fontFamily: 'Inter, sans-serif' }}>
-                    {errors.yolcuSayisi.message}
-                  </p>
+                  <p style={errorStyle}>{errors.yolcuSayisi.message}</p>
                 )}
               </div>
 
-              {/* Ad Soyad */}
+              {/* ── Ad Soyad ── */}
               <div data-testid="field-adsoyad">
-                <label
-                  className="flex items-center gap-2 text-xs tracking-widest uppercase mb-2.5 font-semibold"
-                  style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}
-                >
+                <label style={labelStyle}>
                   <User size={12} aria-hidden="true" /> Ad Soyad
                 </label>
                 <input
@@ -232,18 +324,13 @@ export default function BookingForm() {
                   data-testid="input-adsoyad"
                 />
                 {errors.adSoyad && (
-                  <p className="mt-1.5 text-xs" style={{ color: '#DC2626', fontFamily: 'Inter, sans-serif' }}>
-                    {errors.adSoyad.message}
-                  </p>
+                  <p style={errorStyle}>{errors.adSoyad.message}</p>
                 )}
               </div>
 
-              {/* Telefon */}
+              {/* ── Telefon ── */}
               <div className="md:col-span-2" data-testid="field-telefon">
-                <label
-                  className="flex items-center gap-2 text-xs tracking-widest uppercase mb-2.5 font-semibold"
-                  style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}
-                >
+                <label style={labelStyle}>
                   <Phone size={12} aria-hidden="true" /> Telefon
                 </label>
                 <input
@@ -254,9 +341,7 @@ export default function BookingForm() {
                   data-testid="input-telefon"
                 />
                 {errors.telefon && (
-                  <p className="mt-1.5 text-xs" style={{ color: '#DC2626', fontFamily: 'Inter, sans-serif' }}>
-                    {errors.telefon.message}
-                  </p>
+                  <p style={errorStyle}>{errors.telefon.message}</p>
                 )}
               </div>
             </div>

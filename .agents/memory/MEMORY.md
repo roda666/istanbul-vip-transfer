@@ -2,3 +2,4 @@
 - [Admin panel — iron-session + Next.js type quirks](admin-panel-iron-session.md) — RequestCookies cast, force-dynamic on protected layout, workflow status transition enforcement rules.
 - [Admin light theme migration](admin-light-theme.md) — full color token system, button variants, status badge pills; all admin pages/components migrated from dark (#0A0A0A) to light (#F3F6FA) theme.
 - [Public light section tokens](public-light-sections.md) — dark section bg/text replacements for service and blog pages; ServiceFAQ component rewritten to light theme.
+- [Reservation location system](reservation-location-system.md) — /api/* conflict with api-server; use /data/ prefix for public Next.js routes; migration strategy; seed; combobox fetch path.

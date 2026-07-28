@@ -186,6 +186,10 @@
   background-color: #FFFFFF;
   border: 1px solid var(--pub-border);
   color: var(--pub-text);
+  /* Minimum 16px prevents iOS Safari auto-zoom on input focus */
+  font-size: 1rem;
+  /* Ensure comfortable touch target height */
+  min-height: 48px;
 }
 .pub-form .vip-input::placeholder {
   color: var(--pub-muted);

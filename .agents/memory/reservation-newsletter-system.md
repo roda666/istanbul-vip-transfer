@@ -11,9 +11,10 @@ description: DB tables, submit endpoint, admin modules, and i18n updates for the
 ## Submit endpoint: /data/submit-request
 - Honeypot `_hp` field: non-empty → silent success (no DB write)
 - Rate limit: 10 submissions/hour/IP (in-memory Map, separate from login limiter)
-- Reference format: `IVT-YYYYMMDD-XXXXX`
+- Reference format: `IVT-YYYYMMDD-XXXXX` (stored in DB for admin only, never shown to customer)
 - Newsletter: only written when checkbox checked AND email present; repeated submissions upsert; consent version `2026-07-28-v1`
-- On DB failure: error panel shown with retry + direct WA fallback
+- Always saves intent as 'QUOTE' (intent selection removed from public form)
+- On DB failure: request is lost silently — WA redirect already happened (fire-and-forget with keepalive:true)
 
 ## Admin modules
 - `/admin/talepler` — list + detail + status/archive; uses `/admin/api/requests` (GET list) and `/admin/api/requests/[id]` (PATCH)

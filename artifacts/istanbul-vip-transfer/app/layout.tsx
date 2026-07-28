@@ -1,7 +1,14 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import PublicLayoutWrapper from '@/components/PublicLayoutWrapper';
 import { SITE } from '@/lib/site-config';
+
+export const viewport: Viewport = {
+  width:        'device-width',
+  initialScale: 1,
+  viewportFit:  'cover',   // expose safe-area-inset-* CSS env vars
+  themeColor:   '#102A43',
+};
 
 export const metadata: Metadata = {
   // Plain string fallback — all public pages set their own complete title.

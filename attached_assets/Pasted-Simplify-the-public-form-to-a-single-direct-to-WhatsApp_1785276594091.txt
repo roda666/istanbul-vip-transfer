@@ -1,0 +1,117 @@
+Simplify the public form to a single direct-to-WhatsApp flow and perform a complete mobile compatibility review.
+
+1. Remove the entire “Ne Yapmak İstiyorsunuz?” section.
+
+2. Remove both intent-selection controls and related public logic:
+   - Fiyat Teklifi Al
+   - Rezervasyon Talebi Gönder
+
+3. Replace them with one unified workflow:
+   - Page heading: “Fiyat ve Rezervasyon Talebi”
+   - Main CTA: “WhatsApp’tan Fiyat / Rezervasyon Talebi Gönder”
+   - Keep the four service types:
+     * Havalimanı / Şehir İçi Transfer
+     * Şehirler Arası Transfer
+     * Araç Tahsisi
+     * Özel Tur / Gezi
+
+4. Remove the intermediate submission-success screen completely:
+   - remove “Talebiniz Alındı”
+   - remove the visible reference number
+   - remove “WhatsApp’ta Devam Et”
+   - remove any success-page component, submitted-state UI, sessionStorage/localStorage success state and related route state
+   - do not show a confirmation page before WhatsApp
+
+5. On form submission:
+   - validate the required fields
+   - save the request/email/newsletter consent using the existing secure server endpoint
+   - do not make the customer wait on a separate screen
+   - redirect the same browser tab directly to the prefilled WhatsApp URL
+   - use the business number 905326600847
+   - use a broadly compatible HTTPS wa.me URL, not a WhatsApp-app-only custom protocol
+   - safely encode the complete message
+   - never claim that price, vehicle availability or reservation is confirmed
+
+6. The WhatsApp message heading must be:
+   “Fiyat / Rezervasyon Talebi”
+
+7. Database behavior:
+   - keep request records available in the admin panel
+   - an internal database ID may remain, but do not show a reference number to the customer
+   - preserve the optional email field
+   - only create a newsletter subscription/consent record if the separate newsletter checkbox is checked
+   - entering an email alone must not grant newsletter permission
+   - if background saving fails, still open WhatsApp so the customer is not lost
+   - do not show a false “saved successfully” message
+
+8. Fix the Ana Sayfa navigation:
+   - clicking “Ana Sayfa” must always navigate to the real homepage and show the homepage from its normal initial state
+   - it must never reopen or preserve the old “Talebiniz Alındı” screen
+   - reset obsolete submitted/success state during navigation
+   - verify both desktop and mobile header navigation
+
+9. Preserve the previously requested form simplifications:
+   - no Uçuş Numarası
+   - no Seyahat Yönü
+   - no return date/time fields
+   - no Bagaj Sayısı
+   - no Çocuk Koltuğu Sayısı
+   - no Araç Tercihi
+   - no generic Ek Notlar
+   - passenger count 1–30
+   - Araç Tahsisi minimum 4 hours
+   - optional email and separate optional newsletter consent remain
+
+10. Complete mobile operating-system compatibility review:
+
+   Test on layouts matching:
+   - iPhone SE / 320–375px
+   - current iPhone / 390–430px
+   - Android Chrome / 360–412px
+   - Samsung Internet compatible layout
+   - tablet portrait and landscape
+   - desktop
+
+11. Mobile requirements:
+   - correct viewport metadata
+   - no horizontal scrolling
+   - no clipped form fields or buttons
+   - minimum 44×44px touch targets
+   - form text at least 16px where needed to prevent unwanted iOS Safari input zoom
+   - correct inputMode and autocomplete for phone, name and email
+   - use native-compatible date/select controls
+   - support iOS safe-area insets
+   - avoid fixed elements covering fields when the keyboard opens
+   - floating WhatsApp button must not cover form controls or the CTA
+   - use dynamic viewport units where appropriate instead of problematic fixed 100vh
+   - do not rely on hover for essential interaction
+   - correct Arabic RTL layout on mobile
+   - preserve 5-minute time selections
+   - clicking the CTA must work on iOS Safari, Android Chrome and Samsung Internet
+   - if WhatsApp is not installed, wa.me must fall back to the browser/WhatsApp Web behavior
+
+12. Keep the lively light design:
+   - ivory, pale blue and light lavender section backgrounds
+   - white readable controls
+   - navy text
+   - gold/blue/lavender accents
+   - strong accessible contrast
+   - no dark form controls
+   - no heavy animation or large dependency
+
+13. Update all affected strings in Turkish, English, German, Russian and Arabic.
+
+14. Test:
+   - all four service types
+   - direct WhatsApp redirect
+   - homepage navigation after form submission
+   - request/email storage
+   - newsletter permission separation
+   - mobile portrait and landscape
+   - browser back/forward navigation
+   - no stale success screen
+   - no console errors or horizontal overflow
+
+15. Run lint, typecheck and production build.
+16. Do not publish, deploy, connect the production domain, change credentials or perform destructive database operations.
+17. Report changed files, tested viewport sizes and results.

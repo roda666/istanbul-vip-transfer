@@ -48,9 +48,6 @@ export interface Dictionary {
     sectionLabel: string;
     sectionTitle: string;
     sectionDescription: string;
-    intentLabel: string;
-    intentQuote: string;
-    intentReservation: string;
     serviceTypeLabel: string;
     // Location fields
     pickupLocation: string;

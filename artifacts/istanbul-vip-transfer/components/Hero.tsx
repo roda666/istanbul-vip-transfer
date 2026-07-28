@@ -14,7 +14,7 @@ export default function Hero() {
     <section
       id="hero"
       className="relative overflow-hidden"
-      style={{ background: 'linear-gradient(135deg, #FFFDF8 0%, #F7F5EF 55%, #EAF2F8 100%)' }}
+      style={{ background: 'linear-gradient(135deg, #FFFDF8 0%, #F7F8FC 55%, #EEF3F9 100%)' }}
       data-testid="hero-section"
     >
       {/* Decorative radial glow — top right */}
@@ -87,7 +87,7 @@ export default function Hero() {
             {/* Subheadline */}
             <motion.p
               className="text-base md:text-lg mb-8 max-w-xl leading-relaxed"
-              style={{ color: '#627D98', fontFamily: 'Inter, sans-serif', fontWeight: 400 }}
+              style={{ color: '#50677A', fontFamily: 'Inter, sans-serif', fontWeight: 400 }}
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.42 }}
@@ -155,7 +155,7 @@ export default function Hero() {
                   </span>
                   <span
                     className="text-[11px] tracking-wider uppercase mt-0.5"
-                    style={{ color: '#627D98', fontFamily: 'Inter, sans-serif' }}
+                    style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
                   >
                     {item.label}
                   </span>
@@ -238,7 +238,7 @@ export default function Hero() {
       >
         <span
           className="text-[10px] tracking-[0.28em] uppercase"
-          style={{ color: '#627D98', fontFamily: 'Inter, sans-serif' }}
+          style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
         >
           Aşağı Kaydır
         </span>

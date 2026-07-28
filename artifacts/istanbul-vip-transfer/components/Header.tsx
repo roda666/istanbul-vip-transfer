@@ -88,13 +88,13 @@ export default function Header() {
               <Link href="/" className="flex flex-col leading-none" data-testid="logo-link">
                 <span
                   className="text-xl md:text-2xl font-bold tracking-widest uppercase"
-                  style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#C79A35', letterSpacing: '0.15em' }}
+                  style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#C99A32', letterSpacing: '0.15em' }}
                 >
                   VIP Transfer
                 </span>
                 <span
                   className="text-[10px] tracking-[0.35em] uppercase"
-                  style={{ color: '#627D98', fontFamily: 'Inter, sans-serif', marginTop: '1px' }}
+                  style={{ color: '#50677A', fontFamily: 'Inter, sans-serif', marginTop: '1px' }}
                 >
                   Istanbul
                 </span>
@@ -124,10 +124,10 @@ export default function Header() {
                         className="text-xs tracking-wider uppercase transition-colors duration-300 px-2 py-7 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C79A35] rounded"
                         style={{
                           fontFamily: 'Inter, sans-serif',
-                          color: isActive ? '#C79A35' : '#243B53',
+                          color: isActive ? '#C99A32' : '#263F55',
                         }}
-                        onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLAnchorElement).style.color = '#C79A35'; }}
-                        onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLAnchorElement).style.color = '#243B53'; }}
+                        onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLAnchorElement).style.color = '#C99A32'; }}
+                        onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLAnchorElement).style.color = '#263F55'; }}
                         data-testid="nav-hizmetler-link"
                       >
                         {entry.label}
@@ -139,10 +139,10 @@ export default function Header() {
                         aria-controls="hizmetler-dropdown"
                         aria-label="Hizmetler alt menüsünü aç veya kapat"
                         className="flex items-center justify-center w-5 h-5 mr-1 rounded transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C79A35]"
-                        style={{ color: isActive ? '#C79A35' : '#627D98' }}
+                        style={{ color: isActive ? '#C99A32' : '#50677A' }}
                         onClick={() => setDropdownOpen((o) => !o)}
-                        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#C79A35'; }}
-                        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = isActive ? '#C79A35' : '#627D98'; }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#C99A32'; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = isActive ? '#C99A32' : '#50677A'; }}
                       >
                         <ChevronDown
                           size={12}
@@ -186,7 +186,7 @@ export default function Header() {
                                 >
                                   <p
                                     className="text-[10px] tracking-[0.18em] uppercase mb-3"
-                                    style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
+                                    style={{ color: '#C99A32', fontFamily: 'Inter, sans-serif' }}
                                   >
                                     {group.groupLabel}
                                   </p>
@@ -199,11 +199,11 @@ export default function Header() {
                                             href={item.href}
                                             className="text-xs flex items-center gap-2 group transition-colors duration-200 focus:outline-none focus-visible:underline"
                                             style={{
-                                              color: active ? '#C79A35' : '#627D98',
+                                              color: active ? '#C99A32' : '#50677A',
                                               fontFamily: 'Inter, sans-serif',
                                             }}
-                                            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#C79A35'; }}
-                                            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = active ? '#C79A35' : '#627D98'; }}
+                                            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#C99A32'; }}
+                                            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = active ? '#C99A32' : '#50677A'; }}
                                             onClick={() => setDropdownOpen(false)}
                                           >
                                             <span
@@ -226,7 +226,7 @@ export default function Header() {
                               <Link
                                 href="/hizmetler"
                                 className="text-[10px] tracking-[0.15em] uppercase transition-colors focus:outline-none focus-visible:underline"
-                                style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
+                                style={{ color: '#C99A32', fontFamily: 'Inter, sans-serif' }}
                                 onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = '0.75'; }}
                                 onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = '1'; }}
                                 onClick={() => setDropdownOpen(false)}
@@ -254,10 +254,10 @@ export default function Header() {
                       className="text-xs tracking-wider uppercase transition-colors duration-300 px-2 py-7 block focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C79A35] rounded"
                       style={{
                         fontFamily: 'Inter, sans-serif',
-                        color: isActive ? '#C79A35' : '#243B53',
+                        color: isActive ? '#C99A32' : '#263F55',
                       }}
-                      onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLAnchorElement).style.color = '#C79A35'; }}
-                      onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLAnchorElement).style.color = '#243B53'; }}
+                      onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLAnchorElement).style.color = '#C99A32'; }}
+                      onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLAnchorElement).style.color = '#263F55'; }}
                       data-testid={`nav-link-${i}`}
                     >
                       {entry.label}
@@ -375,7 +375,7 @@ export default function Header() {
                           className="flex-1 py-4 text-2xl transition-colors duration-300 focus:outline-none"
                           style={{
                             fontFamily: 'Playfair Display, Georgia, serif',
-                            color: isActive ? '#C79A35' : '#102A43',
+                            color: isActive ? '#C99A32' : '#102A43',
                           }}
                           data-testid="mobile-nav-hizmetler-link"
                         >
@@ -386,7 +386,7 @@ export default function Header() {
                           aria-expanded={mobileServicesOpen}
                           aria-label="Hizmetler alt kategorilerini aç veya kapat"
                           onClick={() => setMobileServicesOpen((o) => !o)}
-                          style={{ color: '#C79A35' }}
+                          style={{ color: '#C99A32' }}
                         >
                           <ChevronDown
                             size={20}
@@ -420,7 +420,7 @@ export default function Header() {
                                     >
                                       <span
                                         className="text-xs tracking-[0.14em] uppercase"
-                                        style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
+                                        style={{ color: '#C99A32', fontFamily: 'Inter, sans-serif' }}
                                       >
                                         {group.groupLabel}
                                       </span>
@@ -428,7 +428,7 @@ export default function Header() {
                                         size={13}
                                         aria-hidden="true"
                                         style={{
-                                          color: '#C79A35',
+                                          color: '#C99A32',
                                           flexShrink: 0,
                                           transform: groupOpen ? 'rotate(180deg)' : 'rotate(0deg)',
                                           transition: 'transform 0.2s',
@@ -451,12 +451,12 @@ export default function Header() {
                                                 href={item.href}
                                                 className="flex items-center gap-3 py-2.5 text-base transition-colors duration-200 focus:outline-none"
                                                 style={{
-                                                  color: pathname === item.href ? '#C79A35' : '#627D98',
+                                                  color: pathname === item.href ? '#C99A32' : '#50677A',
                                                   fontFamily: 'Inter, sans-serif',
                                                   minHeight: '44px',
                                                 }}
-                                                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#C79A35'; }}
-                                                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = pathname === item.href ? '#C79A35' : '#627D98'; }}
+                                                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#C99A32'; }}
+                                                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = pathname === item.href ? '#C99A32' : '#50677A'; }}
                                               >
                                                 <span
                                                   className="h-px flex-shrink-0"
@@ -493,7 +493,7 @@ export default function Header() {
                       className="block py-4 text-2xl transition-colors duration-300 focus:outline-none"
                       style={{
                         fontFamily: 'Playfair Display, Georgia, serif',
-                        color: pathname === entry.href ? '#C79A35' : '#102A43',
+                        color: pathname === entry.href ? '#C99A32' : '#102A43',
                         minHeight: '44px',
                       }}
                       data-testid={`mobile-nav-link-${i}`}

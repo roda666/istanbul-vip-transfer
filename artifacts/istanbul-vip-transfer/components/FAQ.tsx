@@ -105,7 +105,7 @@ export default function FAQ() {
                       />
                       <p
                         className="text-sm leading-relaxed"
-                        style={{ color: '#627D98', fontFamily: 'Inter, sans-serif' }}
+                        style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
                       >
                         {faq.answer}
                       </p>

@@ -25,8 +25,8 @@ function parseInline(text: string, baseKey: number): ReactNode {
           <Link
             key={`${baseKey}-${i}`}
             href={href}
-            className="transition-colors hover:text-[#E5C36A]"
-            style={{ color: '#C9A84C' }}
+            className="underline underline-offset-2 transition-colors hover:text-[#174EA6]"
+            style={{ color: '#1D5FD1' }}
           >
             {label}
           </Link>
@@ -38,8 +38,8 @@ function parseInline(text: string, baseKey: number): ReactNode {
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className="transition-colors hover:text-[#E5C36A]"
-          style={{ color: '#C9A84C' }}
+          className="underline underline-offset-2 transition-colors hover:text-[#174EA6]"
+          style={{ color: '#1D5FD1' }}
         >
           {label}
         </a>
@@ -48,7 +48,7 @@ function parseInline(text: string, baseKey: number): ReactNode {
     const boldMatch = part.match(/^\*\*(.+?)\*\*$/);
     if (boldMatch) {
       return (
-        <strong key={`${baseKey}-${i}`} style={{ color: '#E5E5E5' }}>
+        <strong key={`${baseKey}-${i}`} style={{ color: '#102A43' }}>
           {boldMatch[1]}
         </strong>
       );
@@ -73,7 +73,7 @@ export default function ArticleBody({ body }: { body: string }) {
           <li
             key={i}
             className="flex items-start gap-3 text-sm leading-relaxed"
-            style={{ color: '#888', fontFamily: 'Inter, sans-serif' }}
+            style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
           >
             <span
               className="mt-2 flex-shrink-0 rounded-full"
@@ -102,7 +102,7 @@ export default function ArticleBody({ body }: { body: string }) {
         <h2
           key={ek++}
           className="text-xl md:text-2xl font-bold mt-10 mb-4"
-          style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#FFFFFF' }}
+          style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}
         >
           {line.slice(3)}
         </h2>
@@ -129,7 +129,7 @@ export default function ArticleBody({ body }: { body: string }) {
         <p
           key={ek++}
           className="mb-5 text-sm leading-relaxed"
-          style={{ color: '#888', fontFamily: 'Inter, sans-serif' }}
+          style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}
         >
           {parseInline(line, lineEk)}
         </p>

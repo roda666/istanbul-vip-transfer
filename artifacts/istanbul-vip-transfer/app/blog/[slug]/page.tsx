@@ -127,7 +127,7 @@ export default async function BlogArticlePage({ params }: Props) {
 
         {/* Updated date */}
         {post.updatedAt && (
-          <p className="mt-10 text-xs" style={{ color: '#555', fontFamily: 'Inter, sans-serif' }}>
+          <p className="mt-10 text-xs" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
             Son güncelleme:{' '}
             <time dateTime={post.updatedAt}>
               {new Date(post.updatedAt).toLocaleDateString('tr-TR', {
@@ -225,7 +225,7 @@ export default async function BlogArticlePage({ params }: Props) {
                     </p>
                     <p
                       className="text-sm font-medium leading-snug transition-colors duration-200 group-hover:text-[#C9A84C]"
-                      style={{ color: '#243B53', fontFamily: 'Playfair Display, Georgia, serif' }}
+                      style={{ color: '#263F55', fontFamily: 'Playfair Display, Georgia, serif' }}
                     >
                       {other.title}
                     </p>

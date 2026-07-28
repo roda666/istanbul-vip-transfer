@@ -35,7 +35,7 @@ export default function TrustSignals() {
     <section
       id="hakkimizda"
       className="py-24 relative"
-      style={{ background: '#EAF2F8' }}
+      style={{ background: '#EEF3F9' }}
       data-testid="trust-section"
     >
       {/* Top border */}
@@ -111,7 +111,7 @@ export default function TrustSignals() {
               >
                 {stat.label}
               </div>
-              <p className="text-sm leading-relaxed" style={{ color: '#627D98', fontFamily: 'Inter, sans-serif' }}>
+              <p className="text-sm leading-relaxed" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
                 {stat.description}
               </p>
             </motion.div>

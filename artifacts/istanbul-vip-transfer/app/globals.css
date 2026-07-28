@@ -53,14 +53,19 @@
 /* ── Public website design tokens ─────────────────── */
 :root {
   /* Public palette */
-  --pub-page-bg:    #F7F5EF;
+  --pub-page-bg:    #F7F8FC;
   --pub-surface:    #FFFDF8;
-  --pub-surface-blue: #EAF2F8;
+  --pub-surface-alt: #EEF3F9;
+  --pub-surface-blue: #EEF3F9;
   --pub-white:      #FFFFFF;
   --pub-navy:       #102A43;
-  --pub-text:       #243B53;
-  --pub-muted:      #627D98;
-  --pub-gold:       #C79A35;
+  --pub-text:       #263F55;
+  --pub-muted:      #50677A;
+  --pub-link:       #1D5FD1;
+  --pub-link-hover: #174EA6;
+  --pub-blue:       #2563EB;
+  --pub-blue-dark:  #1D4ED8;
+  --pub-gold:       #C99A32;
   --pub-gold-light: #E4B84B;
   --pub-teal:       #168C8C;
   --pub-border:     #D9E2EC;
@@ -69,11 +74,11 @@
   --pub-error:      #DC2626;
 
   /* Tailwind semantic variables */
-  --background: 40 29% 95%;
+  --background: 220 22% 97%;
   --foreground: 210 45% 17%;
   --border: 213 27% 84%;
   --card: 0 0% 100%;
-  --card-foreground: 210 38% 24%;
+  --card-foreground: 210 35% 26%;
   --card-border: 213 27% 84%;
 
   --popover: 0 0% 100%;
@@ -86,7 +91,7 @@
   --secondary-foreground: 0 0% 100%;
 
   --muted: 213 27% 84%;
-  --muted-foreground: 211 25% 59%;
+  --muted-foreground: 204 21% 40%;
 
   --accent: 38 66% 59%;
   --accent-foreground: 210 45% 17%;
@@ -186,8 +191,8 @@
   color: var(--pub-muted);
 }
 .pub-form .vip-input:focus {
-  border-color: var(--pub-navy);
-  box-shadow: 0 0 0 2px rgba(16, 42, 67, 0.1);
+  border-color: var(--pub-blue);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 .pub-form .vip-input option {
   background-color: #FFFFFF;

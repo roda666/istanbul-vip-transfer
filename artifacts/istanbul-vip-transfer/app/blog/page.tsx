@@ -40,7 +40,7 @@ export default function BlogPage() {
               <article
                 key={post.slug}
                 className="rounded-sm overflow-hidden group flex flex-col"
-                style={{ background: 'rgba(201,168,76,0.04)', border: '1px solid rgba(201,168,76,0.12)' }}
+                style={{ background: '#FFFFFF', border: '1px solid #D9E2EC' }}
               >
                 {post.image && (
                   <div className="aspect-video overflow-hidden flex-shrink-0">
@@ -68,25 +68,25 @@ export default function BlogPage() {
                   </p>
                   <h2
                     className="text-lg font-bold mb-3 leading-snug flex-1"
-                    style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#E5E5E5' }}
+                    style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}
                   >
                     <Link
                       href={`/blog/${post.slug}`}
-                      className="transition-colors hover:text-[#C9A84C]"
+                      className="transition-colors hover:text-[#174EA6]"
                     >
                       {post.title}
                     </Link>
                   </h2>
                   <p
                     className="text-sm leading-relaxed mb-4"
-                    style={{ color: '#777', fontFamily: 'Inter, sans-serif' }}
+                    style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
                   >
                     {post.description}
                   </p>
                   <Link
                     href={`/blog/${post.slug}`}
-                    className="inline-block text-xs tracking-wider uppercase transition-colors hover:text-[#E5C36A] mt-auto"
-                    style={{ color: '#C9A84C', fontFamily: 'Inter, sans-serif' }}
+                    className="inline-block text-xs tracking-wider uppercase transition-colors hover:text-[#174EA6] mt-auto"
+                    style={{ color: '#1D5FD1', fontFamily: 'Inter, sans-serif' }}
                     aria-label={`${post.title} yazısını oku`}
                   >
                     Devamını Oku →
@@ -100,14 +100,14 @@ export default function BlogPage() {
           <div className="text-center py-20">
             <p
               className="text-base"
-              style={{ color: '#555', fontFamily: 'Inter, sans-serif' }}
+              style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
             >
               Yakında blog yazıları yayımlanacak.
             </p>
             <Link
               href="/"
-              className="inline-block mt-6 text-sm tracking-wider uppercase transition-colors hover:text-[#E5C36A]"
-              style={{ color: '#C9A84C', fontFamily: 'Inter, sans-serif' }}
+              className="inline-block mt-6 text-sm tracking-wider uppercase transition-colors hover:text-[#174EA6]"
+              style={{ color: '#1D5FD1', fontFamily: 'Inter, sans-serif' }}
             >
               ← Ana Sayfaya Dön
             </Link>

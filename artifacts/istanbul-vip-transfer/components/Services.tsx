@@ -79,7 +79,7 @@ export default function Services() {
             className="mx-auto mb-6"
             style={{ width: '60px', height: '3px', background: 'linear-gradient(90deg, #C79A35, #E4B84B)', borderRadius: '2px' }}
           />
-          <p className="text-base max-w-xl mx-auto" style={{ color: '#627D98', fontFamily: 'Inter, sans-serif' }}>
+          <p className="text-base max-w-xl mx-auto" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
             Bireysel ya da kurumsal — tüm transfer ihtiyaçlarınız için kapsamlı VIP hizmet.
           </p>
         </motion.div>
@@ -120,7 +120,7 @@ export default function Services() {
                 >
                   {service.title}
                 </h3>
-                <p className="text-sm leading-relaxed" style={{ color: '#627D98', fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-sm leading-relaxed" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
                   {service.description}
                 </p>
                 {'href' in service && (

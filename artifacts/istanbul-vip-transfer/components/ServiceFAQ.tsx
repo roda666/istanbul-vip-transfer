@@ -23,7 +23,7 @@ export default function ServiceFAQ({
     setOpenIndex((prev) => (prev === i ? null : i));
 
   return (
-    <section className="py-16 md:py-20" style={{ background: '#EDF3F7' }}>
+    <section className="py-16 md:py-20" style={{ background: '#EEF3F9' }}>
       <div className="max-w-3xl mx-auto px-5 md:px-8">
         {/* Heading */}
         <div className="text-center mb-12">
@@ -89,7 +89,7 @@ export default function ServiceFAQ({
                   <div className="px-5 pb-4">
                     <p
                       className="text-sm leading-relaxed"
-                      style={{ color: '#607789', fontFamily: 'Inter, sans-serif' }}
+                      style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
                     >
                       {item.a}
                     </p>

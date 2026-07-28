@@ -9,7 +9,7 @@ export default function Contact() {
     <section
       id="iletisim"
       className="py-24 relative"
-      style={{ background: '#EAF2F8' }}
+      style={{ background: '#EEF3F9' }}
       data-testid="contact-section"
     >
       <div className="absolute top-0 left-0 right-0 h-px" style={{ background: '#D9E2EC' }} aria-hidden="true" />
@@ -39,7 +39,7 @@ export default function Contact() {
             className="mx-auto mb-5"
             style={{ width: '60px', height: '3px', background: 'linear-gradient(90deg, #C79A35, #E4B84B)', borderRadius: '2px' }}
           />
-          <p className="text-base max-w-lg mx-auto" style={{ color: '#627D98', fontFamily: 'Inter, sans-serif' }}>
+          <p className="text-base max-w-lg mx-auto" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
             Sorularınız için 7/24 ulaşabilirsiniz. WhatsApp ile hızlı destek alın.
           </p>
         </motion.div>
@@ -125,7 +125,7 @@ export default function Contact() {
               </div>
               <p
                 className="text-xs tracking-widest uppercase mb-1.5"
-                style={{ color: '#627D98', fontFamily: 'Inter, sans-serif' }}
+                style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
               >
                 {item.title}
               </p>
@@ -145,7 +145,7 @@ export default function Contact() {
                   {item.content}
                 </p>
               )}
-              <p className="text-xs" style={{ color: '#627D98', fontFamily: 'Inter, sans-serif' }}>
+              <p className="text-xs" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
                 {item.sub}
               </p>
             </motion.div>

@@ -59,7 +59,7 @@ export default function Reviews() {
             <GoogleMark size={16} />
             <span
               className="text-xs tracking-[0.2em] uppercase"
-              style={{ color: '#627D98', fontFamily: 'Inter, sans-serif' }}
+              style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
             >
               Google Müşteri Yorumları
             </span>
@@ -113,7 +113,7 @@ export default function Reviews() {
               </div>
               <p
                 className="text-sm leading-relaxed flex-1 mb-5"
-                style={{ color: '#243B53', fontFamily: 'Inter, sans-serif', fontStyle: 'italic' }}
+                style={{ color: '#263F55', fontFamily: 'Inter, sans-serif', fontStyle: 'italic' }}
               >
                 &ldquo;{review.text}&rdquo;
               </p>

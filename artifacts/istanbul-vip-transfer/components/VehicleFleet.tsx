@@ -49,7 +49,7 @@ export default function VehicleFleet() {
     <section
       id="araclar"
       className="py-24 relative"
-      style={{ background: '#F7F5EF' }}
+      style={{ background: '#F7F8FC' }}
       data-testid="vehicles-section"
     >
       <div className="absolute top-0 left-0 right-0 h-px" style={{ background: '#D9E2EC' }} aria-hidden="true" />
@@ -79,7 +79,7 @@ export default function VehicleFleet() {
             className="mx-auto mb-6"
             style={{ width: '60px', height: '3px', background: 'linear-gradient(90deg, #C79A35, #E4B84B)', borderRadius: '2px' }}
           />
-          <p className="text-base max-w-xl mx-auto" style={{ color: '#627D98', fontFamily: 'Inter, sans-serif' }}>
+          <p className="text-base max-w-xl mx-auto" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
             Her ihtiyaca özel, en yüksek standartta iki araç seçeneği — her ikisi de tam konforlu.
           </p>
         </motion.div>
@@ -159,7 +159,7 @@ export default function VehicleFleet() {
                 >
                   {vehicle.name}
                 </h3>
-                <p className="text-sm mb-5 leading-relaxed" style={{ color: '#627D98', fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-sm mb-5 leading-relaxed" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
                   {vehicle.description}
                 </p>
 
@@ -169,15 +169,15 @@ export default function VehicleFleet() {
                   style={{ borderBottom: '1px solid #D9E2EC' }}
                 >
                   <div className="flex items-center gap-2">
-                    <Users size={16} style={{ color: '#C79A35' }} aria-hidden="true" />
-                    <span className="text-sm" style={{ color: '#243B53', fontFamily: 'Inter, sans-serif' }}>
-                      <strong style={{ color: '#C79A35' }}>{vehicle.passengers}</strong> Yolcu
+                    <Users size={16} style={{ color: '#C99A32' }} aria-hidden="true" />
+                    <span className="text-sm" style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}>
+                      <strong style={{ color: '#C99A32' }}>{vehicle.passengers}</strong> Yolcu
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Luggage size={16} style={{ color: '#C79A35' }} aria-hidden="true" />
-                    <span className="text-sm" style={{ color: '#243B53', fontFamily: 'Inter, sans-serif' }}>
-                      <strong style={{ color: '#C79A35' }}>{vehicle.luggage}</strong> Bagaj
+                    <Luggage size={16} style={{ color: '#C99A32' }} aria-hidden="true" />
+                    <span className="text-sm" style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}>
+                      <strong style={{ color: '#C99A32' }}>{vehicle.luggage}</strong> Bagaj
                     </span>
                   </div>
                 </div>
@@ -195,7 +195,7 @@ export default function VehicleFleet() {
                       }}
                     >
                       <feature.icon size={12} style={{ color: '#C79A35' }} aria-hidden="true" />
-                      <span className="text-xs" style={{ color: '#243B53' }}>{feature.label}</span>
+                      <span className="text-xs" style={{ color: '#263F55' }}>{feature.label}</span>
                     </div>
                   ))}
                 </div>

@@ -43,7 +43,7 @@ export default function IstanbulSapancaTransferPage() {
 
       <section
         className="py-16 md:py-20 max-w-3xl mx-auto px-5 md:px-8"
-        style={{ color: '#888', fontFamily: 'Inter, sans-serif' }}
+        style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
       >
         <p className="text-base leading-relaxed">
           İstanbul ile Sapanca arasında özel araç transferi hizmetimizle doğanın içinde konforlu bir

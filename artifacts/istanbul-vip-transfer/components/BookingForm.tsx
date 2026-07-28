@@ -61,7 +61,7 @@ export default function BookingForm() {
     <section
       id="rezervasyon"
       className="py-24 relative"
-      style={{ background: '#F7F5EF' }}
+      style={{ background: '#F7F8FC' }}
       data-testid="booking-section"
     >
       <div className="absolute top-0 left-0 right-0 h-px" style={{ background: '#D9E2EC' }} aria-hidden="true" />
@@ -86,7 +86,7 @@ export default function BookingForm() {
           >
             Transfer Rezervasyonu
           </h2>
-          <p className="text-base max-w-lg mx-auto" style={{ color: '#627D98', fontFamily: 'Inter, sans-serif' }}>
+          <p className="text-base max-w-lg mx-auto" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
             Formu doldurun, WhatsApp üzerinden anında onaylayalım.
           </p>
         </motion.div>
@@ -118,7 +118,7 @@ export default function BookingForm() {
               <div data-testid="field-nereden">
                 <label
                   className="flex items-center gap-2 text-xs tracking-widest uppercase mb-2.5 font-semibold"
-                  style={{ color: '#243B53', fontFamily: 'Inter, sans-serif' }}
+                  style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}
                 >
                   <MapPin size={12} aria-hidden="true" /> Nereden
                 </label>
@@ -137,7 +137,7 @@ export default function BookingForm() {
               <div data-testid="field-nereye">
                 <label
                   className="flex items-center gap-2 text-xs tracking-widest uppercase mb-2.5 font-semibold"
-                  style={{ color: '#243B53', fontFamily: 'Inter, sans-serif' }}
+                  style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}
                 >
                   <MapPin size={12} aria-hidden="true" /> Nereye
                 </label>
@@ -156,7 +156,7 @@ export default function BookingForm() {
               <div data-testid="field-tarih">
                 <label
                   className="flex items-center gap-2 text-xs tracking-widest uppercase mb-2.5 font-semibold"
-                  style={{ color: '#243B53', fontFamily: 'Inter, sans-serif' }}
+                  style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}
                 >
                   <Calendar size={12} aria-hidden="true" /> Tarih
                 </label>
@@ -178,7 +178,7 @@ export default function BookingForm() {
               <div data-testid="field-saat">
                 <label
                   className="flex items-center gap-2 text-xs tracking-widest uppercase mb-2.5 font-semibold"
-                  style={{ color: '#243B53', fontFamily: 'Inter, sans-serif' }}
+                  style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}
                 >
                   <Clock size={12} aria-hidden="true" /> Saat
                 </label>
@@ -200,7 +200,7 @@ export default function BookingForm() {
               <div data-testid="field-yolcu">
                 <label
                   className="flex items-center gap-2 text-xs tracking-widest uppercase mb-2.5 font-semibold"
-                  style={{ color: '#243B53', fontFamily: 'Inter, sans-serif' }}
+                  style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}
                 >
                   <Users size={12} aria-hidden="true" /> Yolcu Sayısı
                 </label>
@@ -220,7 +220,7 @@ export default function BookingForm() {
               <div data-testid="field-adsoyad">
                 <label
                   className="flex items-center gap-2 text-xs tracking-widest uppercase mb-2.5 font-semibold"
-                  style={{ color: '#243B53', fontFamily: 'Inter, sans-serif' }}
+                  style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}
                 >
                   <User size={12} aria-hidden="true" /> Ad Soyad
                 </label>
@@ -242,7 +242,7 @@ export default function BookingForm() {
               <div className="md:col-span-2" data-testid="field-telefon">
                 <label
                   className="flex items-center gap-2 text-xs tracking-widest uppercase mb-2.5 font-semibold"
-                  style={{ color: '#243B53', fontFamily: 'Inter, sans-serif' }}
+                  style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}
                 >
                   <Phone size={12} aria-hidden="true" /> Telefon
                 </label>
@@ -265,7 +265,7 @@ export default function BookingForm() {
             <div className="mt-10 text-center">
               <motion.button
                 type="submit"
-                className="inline-flex items-center gap-3 px-12 py-4 rounded-xl text-sm font-semibold tracking-wider uppercase transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C79A35] focus-visible:ring-offset-2"
+                className="inline-flex items-center gap-3 px-12 py-4 rounded-xl text-sm font-semibold tracking-wider uppercase transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] focus-visible:ring-offset-2"
                 style={{
                   background: '#C79A35',
                   color: '#102A43',
@@ -281,7 +281,7 @@ export default function BookingForm() {
                 </svg>
                 WhatsApp ile Rezervasyon Yap
               </motion.button>
-              <p className="mt-4 text-xs" style={{ color: '#627D98', fontFamily: 'Inter, sans-serif' }}>
+              <p className="mt-4 text-xs" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
                 Mesajınız doğrudan WhatsApp&apos;a iletilir. Ek ücret yoktur.
               </p>
             </div>

@@ -43,7 +43,7 @@ export default function SapancaMasukiyeTuruPage() {
 
       <section
         className="py-16 md:py-20 max-w-3xl mx-auto px-5 md:px-8"
-        style={{ color: '#888', fontFamily: 'Inter, sans-serif' }}
+        style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
       >
         <p className="text-base leading-relaxed">
           Sapanca Gölü kıyıları ve Maşukiye orman köyü, İstanbul&apos;dan ulaşılabilecek en popüler

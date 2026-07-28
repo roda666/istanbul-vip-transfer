@@ -1,0 +1,79 @@
+Improve the public website typography contrast and introduce a refined blue-led color identity.
+
+PROBLEM
+
+Text on white and light backgrounds currently looks washed out because gray colors are too light and some text uses reduced opacity.
+
+REQUIREMENTS
+
+1. Replace low-contrast gray text across all public pages.
+
+Use:
+- Headings: #102A43
+- Body text: #263F55
+- Secondary text: #50677A
+- Placeholder text: #667C8E
+- Links: #1D5FD1
+- Links hover: #174EA6
+
+2. Do not use opacity to create muted body text.
+Avoid:
+- opacity below 1 on paragraphs
+- text-gray-300
+- text-gray-400 on light backgrounds
+- pale blue-gray text that is difficult to read
+
+3. Normal paragraph text must meet WCAG AA contrast.
+Long-form blog and service text should be especially comfortable to read.
+
+4. Introduce blue as the primary modern accent:
+- Primary blue: #2563EB
+- Dark blue: #173B67
+- Blue hover: #1D4ED8
+
+Use blue for:
+- Links
+- Focus rings
+- Selected controls
+- Secondary CTA buttons
+- Small icons
+- Form focus states
+
+5. Preserve premium gold #C99A32 for:
+- Logo
+- Important highlights
+- Decorative lines
+- Premium labels
+- Selected heading words
+
+6. Purple may be used only as a limited optional accent:
+- Purple: #6D4BC3
+- Use only for small badges, subtle icon details or very restrained blue-to-purple gradients.
+- Do not use purple for large page backgrounds.
+- Do not combine blue, purple and gold heavily in the same component.
+
+7. Keep page backgrounds eye-friendly:
+- Main: #F7F8FC
+- Warm/light surface: #FFFDF8
+- Alternate: #EEF3F9
+- Cards: #FFFFFF
+
+8. Audit all public pages and shared components, not only the homepage.
+
+9. Verify actual rendered contrast on:
+- Homepage
+- Service pages
+- Vehicles
+- Blog
+- Contact
+- Booking form
+- FAQ
+- Footer
+
+10. Preserve all content, routes, SEO, forms, images and functionality.
+
+11. Do not modify the admin panel, credentials, Secrets or database.
+
+12. Run lint, typecheck and production build.
+
+13. Do not publish, deploy or connect the production domain.

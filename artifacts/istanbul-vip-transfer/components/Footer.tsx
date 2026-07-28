@@ -46,7 +46,7 @@ export default function Footer() {
                 </div>
                 <div
                   className="text-[10px] tracking-[0.35em] uppercase"
-                  style={{ color: 'rgba(255,255,255,0.45)', fontFamily: 'Inter, sans-serif' }}
+                  style={{ color: 'rgba(255,255,255,0.65)', fontFamily: 'Inter, sans-serif' }}
                 >
                   Istanbul
                 </div>
@@ -148,7 +148,7 @@ export default function Footer() {
                   >
                     {SITE.phoneDisplay}
                   </a>
-                  <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.4)', fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Inter, sans-serif' }}>
                     7/24 Açık
                   </p>
                 </div>
@@ -173,7 +173,7 @@ export default function Footer() {
                   <p className="text-sm" style={{ color: 'rgba(255,255,255,0.88)', fontFamily: 'Inter, sans-serif' }}>
                     İstanbul, Türkiye
                   </p>
-                  <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.4)', fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Inter, sans-serif' }}>
                     Tüm İstanbul&apos;a hizmet
                   </p>
                 </div>
@@ -191,10 +191,10 @@ export default function Footer() {
           transition={{ duration: 0.6 }}
           data-testid="footer-bottom"
         >
-          <p className="text-xs text-center md:text-left" style={{ color: 'rgba(255,255,255,0.4)', fontFamily: 'Inter, sans-serif' }}>
+          <p className="text-xs text-center md:text-left" style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Inter, sans-serif' }}>
             &copy; {new Date().getFullYear()} VIP Transfer Istanbul. Tüm hakları saklıdır.
           </p>
-          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)', fontFamily: 'Inter, sans-serif' }}>
+          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Inter, sans-serif' }}>
             İstanbul&apos;un Premium Transfer Hizmeti
           </p>
         </motion.div>

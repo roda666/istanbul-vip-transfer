@@ -832,9 +832,6 @@
   .pt-16 {
     padding-top: calc(var(--spacing) * 16);
   }
-  .pt-36 {
-    padding-top: calc(var(--spacing) * 36);
-  }
   .pr-4 {
     padding-right: calc(var(--spacing) * 4);
   }
@@ -1006,6 +1003,12 @@
   .italic {
     font-style: italic;
   }
+  .underline {
+    text-decoration-line: underline;
+  }
+  .underline-offset-2 {
+    text-underline-offset: 2px;
+  }
   .shadow-2xl {
     --tw-shadow: 0 25px 50px -12px var(--tw-shadow-color, rgb(0 0 0 / 0.25));
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
@@ -1021,9 +1024,6 @@
   .outline {
     outline-style: var(--tw-outline-style);
     outline-width: 1px;
-  }
-  .filter {
-    filter: var(--tw-blur,) var(--tw-brightness,) var(--tw-contrast,) var(--tw-grayscale,) var(--tw-hue-rotate,) var(--tw-invert,) var(--tw-saturate,) var(--tw-sepia,) var(--tw-drop-shadow,);
   }
   .backdrop-blur-2xl {
     --tw-backdrop-blur: blur(var(--blur-2xl));
@@ -1121,6 +1121,9 @@
     .hover\:bg-\[\#C9A84C\]\/10:hover {
       background-color: color-mix(in oklab, #C9A84C 10%, transparent);
     }
+    .hover\:text-\[\#174EA6\]:hover {
+      color: #174EA6;
+    }
     .hover\:text-\[\#C9A84C\]:hover {
       color: #C9A84C;
     }
@@ -1161,8 +1164,8 @@
   .focus-visible\:ring-\[\#102A43\]:focus-visible {
     --tw-ring-color: #102A43;
   }
-  .focus-visible\:ring-\[\#C9A84C\]:focus-visible {
-    --tw-ring-color: #C9A84C;
+  .focus-visible\:ring-\[\#2563EB\]:focus-visible {
+    --tw-ring-color: #2563EB;
   }
   .focus-visible\:ring-\[\#C79A35\]:focus-visible {
     --tw-ring-color: #C79A35;
@@ -1277,9 +1280,6 @@
     }
     .lg\:hidden {
       display: none;
-    }
-    .lg\:min-h-\[100dvh\] {
-      min-height: 100dvh;
     }
     .lg\:min-h-\[calc\(100dvh-80px\)\] {
       min-height: calc(100dvh - 80px);
@@ -1397,25 +1397,30 @@
   initial-value: 0;
 }
 :root {
-  --pub-page-bg: #F7F5EF;
+  --pub-page-bg: #F7F8FC;
   --pub-surface: #FFFDF8;
-  --pub-surface-blue: #EAF2F8;
+  --pub-surface-alt: #EEF3F9;
+  --pub-surface-blue: #EEF3F9;
   --pub-white: #FFFFFF;
   --pub-navy: #102A43;
-  --pub-text: #243B53;
-  --pub-muted: #627D98;
-  --pub-gold: #C79A35;
+  --pub-text: #263F55;
+  --pub-muted: #50677A;
+  --pub-link: #1D5FD1;
+  --pub-link-hover: #174EA6;
+  --pub-blue: #2563EB;
+  --pub-blue-dark: #1D4ED8;
+  --pub-gold: #C99A32;
   --pub-gold-light: #E4B84B;
   --pub-teal: #168C8C;
   --pub-border: #D9E2EC;
   --pub-footer: #102A43;
   --pub-success: #16A36A;
   --pub-error: #DC2626;
-  --background: 40 29% 95%;
+  --background: 220 22% 97%;
   --foreground: 210 45% 17%;
   --border: 213 27% 84%;
   --card: 0 0% 100%;
-  --card-foreground: 210 38% 24%;
+  --card-foreground: 210 35% 26%;
   --card-border: 213 27% 84%;
   --popover: 0 0% 100%;
   --popover-foreground: 210 38% 24%;
@@ -1425,7 +1430,7 @@
   --secondary: 210 45% 17%;
   --secondary-foreground: 0 0% 100%;
   --muted: 213 27% 84%;
-  --muted-foreground: 211 25% 59%;
+  --muted-foreground: 204 21% 40%;
   --accent: 38 66% 59%;
   --accent-foreground: 210 45% 17%;
   --destructive: 0 72% 51%;
@@ -1520,8 +1525,8 @@
   color: var(--pub-muted);
 }
 .pub-form .vip-input:focus {
-  border-color: var(--pub-navy);
-  box-shadow: 0 0 0 2px rgba(16, 42, 67, 0.1);
+  border-color: var(--pub-blue);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 .pub-form .vip-input option {
   background-color: #FFFFFF;
@@ -1657,59 +1662,6 @@
   inherits: false;
   initial-value: solid;
 }
-@property --tw-blur {
-  syntax: "*";
-  inherits: false;
-}
-@property --tw-brightness {
-  syntax: "*";
-  inherits: false;
-}
-@property --tw-contrast {
-  syntax: "*";
-  inherits: false;
-}
-@property --tw-grayscale {
-  syntax: "*";
-  inherits: false;
-}
-@property --tw-hue-rotate {
-  syntax: "*";
-  inherits: false;
-}
-@property --tw-invert {
-  syntax: "*";
-  inherits: false;
-}
-@property --tw-opacity {
-  syntax: "*";
-  inherits: false;
-}
-@property --tw-saturate {
-  syntax: "*";
-  inherits: false;
-}
-@property --tw-sepia {
-  syntax: "*";
-  inherits: false;
-}
-@property --tw-drop-shadow {
-  syntax: "*";
-  inherits: false;
-}
-@property --tw-drop-shadow-color {
-  syntax: "*";
-  inherits: false;
-}
-@property --tw-drop-shadow-alpha {
-  syntax: "<percentage>";
-  inherits: false;
-  initial-value: 100%;
-}
-@property --tw-drop-shadow-size {
-  syntax: "*";
-  inherits: false;
-}
 @property --tw-backdrop-blur {
   syntax: "*";
   inherits: false;
@@ -1801,19 +1753,6 @@
       --tw-ring-offset-color: #fff;
       --tw-ring-offset-shadow: 0 0 #0000;
       --tw-outline-style: solid;
-      --tw-blur: initial;
-      --tw-brightness: initial;
-      --tw-contrast: initial;
-      --tw-grayscale: initial;
-      --tw-hue-rotate: initial;
-      --tw-invert: initial;
-      --tw-opacity: initial;
-      --tw-saturate: initial;
-      --tw-sepia: initial;
-      --tw-drop-shadow: initial;
-      --tw-drop-shadow-color: initial;
-      --tw-drop-shadow-alpha: 100%;
-      --tw-drop-shadow-size: initial;
       --tw-backdrop-blur: initial;
       --tw-backdrop-brightness: initial;
       --tw-backdrop-contrast: initial;

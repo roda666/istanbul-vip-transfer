@@ -36,14 +36,14 @@ export default function PageHero({ breadcrumbs, title, subtitle }: PageHeroProps
         >
           {breadcrumbs.map((crumb, i) => (
             <span key={i} className="flex items-center gap-1.5">
-              {i > 0 && <ChevronRight size={11} style={{ color: '#627D98' }} aria-hidden="true" />}
+              {i > 0 && <ChevronRight size={11} style={{ color: '#50677A' }} aria-hidden="true" />}
               {crumb.href ? (
                 <Link
                   href={crumb.href}
                   className="transition-colors duration-200 focus:outline-none focus-visible:underline"
-                  style={{ color: '#627D98', fontFamily: 'Inter, sans-serif' }}
+                  style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#C79A35'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#627D98'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#50677A'; }}
                 >
                   {crumb.label}
                 </Link>
@@ -79,7 +79,7 @@ export default function PageHero({ breadcrumbs, title, subtitle }: PageHeroProps
         {subtitle && (
           <motion.p
             className="text-base md:text-lg max-w-2xl mx-auto leading-relaxed"
-            style={{ color: '#627D98', fontFamily: 'Inter, sans-serif' }}
+            style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.4 }}

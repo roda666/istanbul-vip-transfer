@@ -94,7 +94,7 @@ export default function SaglikTurizmiTransferPage() {
       />
 
       {/* ── Hizmet Tanımı ── */}
-      <section className="py-16 md:py-20" style={{ background: '#0D0D0D' }}>
+      <section className="py-16 md:py-20" style={{ background: '#EEF3F9' }}>
         <div className="max-w-5xl mx-auto px-5 md:px-8">
           <div className="grid md:grid-cols-2 gap-12 items-start">
             <div>
@@ -106,13 +106,13 @@ export default function SaglikTurizmiTransferPage() {
               </p>
               <h2
                 className="text-2xl md:text-3xl font-bold mb-5"
-                style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#FFFFFF' }}
+                style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}
               >
                 Tedavi Sürecinizde Güvenilir Ulaşım
               </h2>
               <p
                 className="text-sm leading-relaxed mb-4"
-                style={{ color: '#888', fontFamily: 'Inter, sans-serif' }}
+                style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
               >
                 Sağlık turizmi amacıyla İstanbul&apos;a gelen misafirler için havalimanından doğrudan
                 hastaneye veya otele, iki randevu arasında klinike, tedavi sonrasında tekrar konaklamaya
@@ -121,7 +121,7 @@ export default function SaglikTurizmiTransferPage() {
               </p>
               <p
                 className="text-sm leading-relaxed"
-                style={{ color: '#888', fontFamily: 'Inter, sans-serif' }}
+                style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
               >
                 Tedavi süreçleri zaman zaman uzayabilir veya değişebilir. Bu nedenle sürücülerimiz
                 esnek bekleme planlamasına alışkındır ve gelişmeleri WhatsApp üzerinden anlık takip eder.
@@ -159,7 +159,7 @@ export default function SaglikTurizmiTransferPage() {
                   </p>
                   <p
                     className="text-xs leading-relaxed"
-                    style={{ color: '#777', fontFamily: 'Inter, sans-serif' }}
+                    style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
                   >
                     {item.desc}
                   </p>

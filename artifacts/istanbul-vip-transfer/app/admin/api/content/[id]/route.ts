@@ -69,7 +69,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
   const data = parsed.data;
   const { db } = await import('@/db');
   const { content, auditLogs } = await import('@/db/schema');
-  const { eq } = await import('drizzle-orm');
+  const { eq, and, or } = await import('drizzle-orm');
 
   // Fetch current record
   const [current] = await db.select({ id: content.id, status: content.status }).from(content).where(eq(content.id, id)).limit(1).catch(() => []);
@@ -137,6 +137,27 @@ export async function PUT(request: NextRequest, { params }: Params) {
       entityId: id,
       metadata: { resetApproval: !!reset, newStatus: updated.status },
     }).catch(() => {});
+
+    // Mark existing PUBLISHED / APPROVED translations as OUTDATED
+    // so editors know the source content changed.
+    try {
+      const { contentTranslations } = await import('@/db/schema');
+      await db
+        .update(contentTranslations)
+        .set({ status: 'OUTDATED', updatedAt: new Date() })
+        .where(
+          and(
+            eq(contentTranslations.entityType, 'content'),
+            eq(contentTranslations.entityId, id),
+            or(
+              eq(contentTranslations.status, 'PUBLISHED' as never),
+              eq(contentTranslations.status, 'APPROVED' as never),
+            ),
+          ),
+        );
+    } catch {
+      // Translation table may not exist yet (migration not run); silently skip.
+    }
 
     return NextResponse.json({ item: updated });
   } catch (err: unknown) {

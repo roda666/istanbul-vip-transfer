@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Phone, ChevronDown } from 'lucide-react';
 import { SITE } from '@/lib/site-config';
 import { NAV } from '@/lib/nav-config';
+import LanguageSelector from './LanguageSelector';
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
@@ -269,6 +270,7 @@ export default function Header() {
 
             {/* ── Desktop right CTAs ── */}
             <div className="hidden xl:flex items-center gap-2">
+              <LanguageSelector variant="light" />
               {ctaEntry && (
                 <motion.div
                   initial={{ opacity: 0, x: 10 }}
@@ -503,6 +505,18 @@ export default function Header() {
                   </motion.div>
                 );
               })}
+
+              {/* Language selector (mobile) */}
+              <motion.div
+                className="pt-5"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.32 }}
+              >
+                <div style={{ borderBottom: '1px solid rgba(217,226,236,0.8)', paddingBottom: '16px' }}>
+                  <LanguageSelector variant="light" />
+                </div>
+              </motion.div>
 
               {/* Mobile CTAs */}
               <motion.div

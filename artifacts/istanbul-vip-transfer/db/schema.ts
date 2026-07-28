@@ -10,6 +10,7 @@ import {
   timestamp,
   uuid,
   jsonb,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 
@@ -61,6 +62,24 @@ export const locationTypeEnum = pgEnum('location_type', [
 
 /** LOCAL = only in local (Istanbul) transfer form, INTERCITY = only in intercity form, BOTH = appears in both. */
 export const locationScopeEnum = pgEnum('location_scope', ['LOCAL', 'INTERCITY', 'BOTH']);
+
+/** Status lifecycle for translation jobs. */
+export const translationStatusEnum = pgEnum('translation_status', [
+  'NOT_STARTED',
+  'QUEUED',
+  'TRANSLATING',
+  'DRAFT',
+  'REVIEW',
+  'APPROVED',
+  'SCHEDULED',
+  'PUBLISHED',
+  'FAILED',
+  'OUTDATED',
+  'ARCHIVED',
+]);
+
+/** Text direction for languages. */
+export const textDirectionEnum = pgEnum('text_direction', ['ltr', 'rtl']);
 
 // ── Tables ──────────────────────────────────────────────────────────────────
 
@@ -251,6 +270,92 @@ export const serviceTypes = pgTable('service_types', {
   updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
 });
 
+/**
+ * Languages available for translation.
+ * Turkish (tr) is the default/source language and is always present.
+ */
+export const languages = pgTable('languages', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  /** ISO 639-1 code: 'en', 'de', 'ru', 'ar' */
+  code: text('code').notNull().unique(),
+  /** BCP 47 locale: 'en-GB', 'de-DE', 'ru-RU', 'ar-TR' */
+  locale: text('locale').notNull(),
+  /** English name: 'English', 'German' */
+  name: text('name').notNull(),
+  /** Native name: 'English', 'Deutsch', 'Русский', 'العربية' */
+  nativeName: text('native_name').notNull(),
+  direction: textDirectionEnum('direction').default('ltr').notNull(),
+  isDefault: boolean('is_default').default(false).notNull(),
+  isEnabled: boolean('is_enabled').default(true).notNull(),
+  displayOrder: integer('display_order').default(0).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  createdBy: uuid('created_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+  updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+});
+
+/**
+ * Translation jobs for all translatable entities.
+ * One row per (entityType, entityId, targetLanguageCode).
+ */
+export const contentTranslations = pgTable(
+  'content_translations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    /** 'content', 'vehicle', 'faq', 'navigation' */
+    entityType: text('entity_type').notNull(),
+    entityId: text('entity_id').notNull(),
+    sourceLanguageCode: text('source_language_code').notNull().default('tr'),
+    targetLanguageCode: text('target_language_code').notNull(),
+    status: translationStatusEnum('status').default('NOT_STARTED').notNull(),
+
+    // ── Translated fields ──────────────────────────────────────────────────
+    title: text('title'),
+    slug: text('slug'),
+    excerpt: text('excerpt'),
+    body: text('body'),
+    metaTitle: text('meta_title'),
+    metaDescription: text('meta_description'),
+    focusKeyword: text('focus_keyword'),
+    supportingKeywords: jsonb('supporting_keywords').$type<string[]>(),
+    imageAlt: text('image_alt'),
+    imageTitle: text('image_title'),
+    imageCaption: text('image_caption'),
+
+    // ── Translation origin ─────────────────────────────────────────────────
+    isAiGenerated: boolean('is_ai_generated').default(false).notNull(),
+    aiModel: text('ai_model'),
+    aiPromptVersion: text('ai_prompt_version'),
+
+    // ── Workflow timestamps ────────────────────────────────────────────────
+    queuedAt: timestamp('queued_at', { withTimezone: true }),
+    translatingAt: timestamp('translating_at', { withTimezone: true }),
+    draftAt: timestamp('draft_at', { withTimezone: true }),
+    reviewAt: timestamp('review_at', { withTimezone: true }),
+    approvedAt: timestamp('approved_at', { withTimezone: true }),
+    scheduledAt: timestamp('scheduled_at', { withTimezone: true }),
+    publishedAt: timestamp('published_at', { withTimezone: true }),
+    failedAt: timestamp('failed_at', { withTimezone: true }),
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
+    failureReason: text('failure_reason'),
+
+    // ── Approval ──────────────────────────────────────────────────────────
+    approvedBy: uuid('approved_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+    createdBy: uuid('created_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+    updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+  },
+  (table) => [
+    uniqueIndex('ct_entity_lang_unique').on(
+      table.entityType,
+      table.entityId,
+      table.targetLanguageCode,
+    ),
+  ],
+);
+
 // ── Inferred TypeScript types ────────────────────────────────────────────────
 
 export type AdminUser = typeof adminUsers.$inferSelect;
@@ -272,3 +377,7 @@ export type Location = typeof locations.$inferSelect;
 export type NewLocation = typeof locations.$inferInsert;
 export type ServiceType = typeof serviceTypes.$inferSelect;
 export type NewServiceType = typeof serviceTypes.$inferInsert;
+export type Language = typeof languages.$inferSelect;
+export type NewLanguage = typeof languages.$inferInsert;
+export type ContentTranslation = typeof contentTranslations.$inferSelect;
+export type NewContentTranslation = typeof contentTranslations.$inferInsert;

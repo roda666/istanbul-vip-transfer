@@ -15,7 +15,13 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="tr" suppressHydrationWarning>
+    /*
+     * suppressHydrationWarning is required because [lang]/layout.tsx
+     * injects a synchronous <script> that updates html[lang] and html[dir]
+     * for non-Turkish pages before React hydration. Without this attribute
+     * React would warn about the attribute mismatch.
+     */
+    <html lang="tr" dir="ltr" suppressHydrationWarning>
       <body
         className="grain-overlay"
         style={{ backgroundColor: 'var(--pub-page-bg, #F7F5EF)', minHeight: '100dvh' }}

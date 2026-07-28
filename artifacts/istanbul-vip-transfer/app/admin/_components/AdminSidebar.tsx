@@ -21,6 +21,8 @@ import {
   AlignLeft,
   UserCircle,
   CalendarClock,
+  Globe,
+  Languages,
 } from 'lucide-react';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -45,6 +47,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/araclar',           label: 'Araçlar',              icon: <Car size={18} /> },
   { href: '/admin/rezervasyon-ayarlari', label: 'Rezervasyon Ayarları', icon: <CalendarClock size={18} /> },
   { href: '/admin/blog',              label: 'Blog',                 icon: <BookOpen size={18} /> },
+  { href: '/admin/diller',      label: 'Dil Yönetimi',        icon: <Globe size={18} /> },
+  { href: '/admin/ceviriler',   label: 'Çeviriler',           icon: <Languages size={18} /> },
   { href: '/admin/sss',         label: 'SSS',                 icon: <HelpCircle size={18} /> },
   { href: '/admin/menu',        label: 'Menü Yönetimi',       icon: <MenuIcon size={18} /> },
   { href: '/admin/ayarlar',     label: 'Site Ayarları',       icon: <Settings size={18} /> },

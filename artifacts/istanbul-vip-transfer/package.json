@@ -16,10 +16,12 @@
     "reset-admin-password": "tsx scripts/reset-admin-password.ts"
   },
   "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^17.4.2",
     "drizzle-orm": "catalog:",
-    "postgres": "^3.4.4",
     "iron-session": "^8.0.4",
-    "bcryptjs": "^2.4.3"
+    "openai": "^6.49.0",
+    "postgres": "^3.4.4"
   },
   "devDependencies": {
     "@hookform/resolvers": "^3.10.0",

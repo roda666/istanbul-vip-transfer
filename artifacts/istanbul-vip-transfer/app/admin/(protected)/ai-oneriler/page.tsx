@@ -139,11 +139,14 @@ export default function AiOnerilerPage() {
             </div>
             <div>
               <label style={labelStyle}>Makale Türü</label>
-              <input type="text" value={articleType} onChange={(e) => setArticleType(e.target.value)} style={inputStyle} placeholder="Rehber, Liste, Karşılaştırma..." />
+              <select value={articleType} onChange={(e) => setArticleType(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                <option value="">Seçin...</option>
+                {['Rehber', 'Karşılaştırma', 'Liste', 'SSS', 'Vaka Analizi', 'Haber'].map(v => <option key={v} value={v}>{v}</option>)}
+              </select>
             </div>
             <div>
               <label style={labelStyle}>Hedef Hizmet</label>
-              <input type="text" value={targetService} onChange={(e) => setTargetService(e.target.value)} style={inputStyle} placeholder="IST Transfer, VIP Transfer..." />
+              <input type="text" value={targetService} onChange={(e) => setTargetService(e.target.value)} style={inputStyle} placeholder="VIP Transfer, Havalimanı Transfer..." />
             </div>
             <div>
               <label style={labelStyle}>Hedef Konum</label>

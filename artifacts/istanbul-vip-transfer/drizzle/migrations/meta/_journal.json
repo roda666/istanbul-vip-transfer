@@ -22,6 +22,13 @@
       "when": 1785247483266,
       "tag": "0002_service_types_and_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1753700000000,
+      "tag": "0003_languages_and_translations",
+      "breakpoints": true
     }
   ]
 }

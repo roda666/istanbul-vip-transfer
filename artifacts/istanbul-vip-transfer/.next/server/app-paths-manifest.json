@@ -1,7 +1,4 @@
 {
-  "/data/locations/route": "app/data/locations/route.js",
-  "/data/service-types/route": "app/data/service-types/route.js",
-  "/_not-found/page": "app/_not-found/page.js",
-  "/robots.txt/route": "app/robots.txt/route.js",
-  "/page": "app/page.js"
+  "/page": "app/page.js",
+  "/[lang]/[...slug]/page": "app/[lang]/[...slug]/page.js"
 }

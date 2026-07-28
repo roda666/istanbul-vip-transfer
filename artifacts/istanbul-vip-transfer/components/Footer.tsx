@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Phone, MapPin, Mail } from 'lucide-react';
 import { SITE } from '@/lib/site-config';
+import LanguageSelector from './LanguageSelector';
 
 const quickLinks = [
   { label: 'Ana Sayfa', href: '/' },
@@ -194,9 +195,12 @@ export default function Footer() {
           <p className="text-xs text-center md:text-left" style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Inter, sans-serif' }}>
             &copy; {new Date().getFullYear()} VIP Transfer Istanbul. Tüm hakları saklıdır.
           </p>
-          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Inter, sans-serif' }}>
-            İstanbul&apos;un Premium Transfer Hizmeti
-          </p>
+          <div className="flex items-center gap-4">
+            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Inter, sans-serif' }}>
+              İstanbul&apos;un Premium Transfer Hizmeti
+            </p>
+            <LanguageSelector variant="dark" />
+          </div>
         </motion.div>
       </div>
     </footer>

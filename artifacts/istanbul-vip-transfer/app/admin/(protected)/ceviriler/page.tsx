@@ -5,7 +5,7 @@
 import type { Metadata } from 'next';
 import { db } from '@/db';
 import { contentTranslations, content, languages } from '@/db/schema';
-import { desc, asc, eq } from 'drizzle-orm';
+import { desc, asc, eq, sql } from 'drizzle-orm';
 import AdminPageHeader from '../../_components/AdminPageHeader';
 import CevirilerClient from './_CevirilerClient';
 
@@ -70,7 +70,7 @@ export default async function CevirilerPage({
         sourceStatus: content.status,
       })
       .from(contentTranslations)
-      .innerJoin(content, eq(contentTranslations.entityId, content.id))
+      .innerJoin(content, sql`${contentTranslations.entityId}::uuid = ${content.id}`)
       .orderBy(desc(contentTranslations.updatedAt))
       .limit(limit)
       .offset(offset);

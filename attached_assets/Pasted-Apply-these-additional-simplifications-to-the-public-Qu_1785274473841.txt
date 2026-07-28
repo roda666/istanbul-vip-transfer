@@ -1,0 +1,48 @@
+Apply these additional simplifications to the public Quote / Reservation system.
+
+1. Remove “Uçuş Numarası” completely:
+   - remove it from every public form
+   - remove state, types, validation and WhatsApp message output
+   - remove unused translation strings from TR, EN, DE, RU and AR
+
+2. Remove “Seyahat Yönü” from Şehirler Arası Transfer:
+   - remove Tek Yön / Gidiş-Dönüş controls
+   - remove related state and validation
+   - remove conditional Dönüş Tarihi and Dönüş Saati fields
+   - remove these values from the WhatsApp message and translation dictionaries
+   - travel direction and return details will be clarified through WhatsApp
+
+3. Update “Tahsis Süresi”:
+   - default value: 4
+   - when unit is “Saat”, minimum allowed value is 4
+   - prevent typing or submitting values below 4 hours
+   - show an inline message: “Minimum tahsis süresi 4 saattir.”
+   - when unit is “Gün”, minimum value is 1
+   - switching between Saat and Gün must automatically correct an invalid value
+   - apply the same rule to validation and the generated WhatsApp message
+
+4. Passenger count:
+   - use selectable values from 1 to 30
+   - maximum value must be 30 in every service form
+   - apply the limit in both client-side and server-side validation
+   - do not imply that 30 passengers will use one vehicle; vehicle planning will be confirmed through WhatsApp
+
+5. Preserve:
+   - optional email field
+   - separate optional newsletter consent
+   - request database saving
+   - admin Talepler and Bülten Aboneleri modules
+   - four service types
+   - 5-minute time intervals
+   - current light blue/lavender/gold visual direction
+   - dynamic quote/reservation WhatsApp CTA
+
+6. Rebalance the form layout after removing the fields:
+   - no empty columns or blank wrappers
+   - desktop, tablet and 390px mobile must remain clean
+   - no horizontal overflow
+
+7. Test all four service forms and both request intents.
+8. Run lint, typecheck and production build.
+9. Do not publish, deploy, change credentials or perform destructive database operations.
+10. Report changed files and test results.

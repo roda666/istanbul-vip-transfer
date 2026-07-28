@@ -68,6 +68,22 @@
       "namedRegex": "^/admin/api/nav/(?<nxtPid>[^/]+?)(?:/)?$"
     },
     {
+      "page": "/admin/api/newsletter/[id]",
+      "regex": "^/admin/api/newsletter/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/admin/api/newsletter/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/admin/api/requests/[id]",
+      "regex": "^/admin/api/requests/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/admin/api/requests/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
       "page": "/admin/api/service-types/[id]",
       "regex": "^/admin/api/service\\-types/([^/]+?)(?:/)?$",
       "routeKeys": {
@@ -122,6 +138,14 @@
         "nxtPid": "nxtPid"
       },
       "namedRegex": "^/admin/sayfalar/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/admin/talepler/[id]",
+      "regex": "^/admin/talepler/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/admin/talepler/(?<nxtPid>[^/]+?)(?:/)?$"
     },
     {
       "page": "/blog/[slug]",
@@ -246,6 +270,24 @@
       "namedRegex": "^/admin/api/nav(?:/)?$"
     },
     {
+      "page": "/admin/api/newsletter",
+      "regex": "^/admin/api/newsletter(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/api/newsletter(?:/)?$"
+    },
+    {
+      "page": "/admin/api/newsletter-export",
+      "regex": "^/admin/api/newsletter\\-export(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/api/newsletter\\-export(?:/)?$"
+    },
+    {
+      "page": "/admin/api/requests",
+      "regex": "^/admin/api/requests(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/api/requests(?:/)?$"
+    },
+    {
       "page": "/admin/api/reservation-settings",
       "regex": "^/admin/api/reservation\\-settings(?:/)?$",
       "routeKeys": {},
@@ -310,6 +352,12 @@
       "regex": "^/admin/blog/yeni(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/admin/blog/yeni(?:/)?$"
+    },
+    {
+      "page": "/admin/bulten-aboneleri",
+      "regex": "^/admin/bulten\\-aboneleri(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/bulten\\-aboneleri(?:/)?$"
     },
     {
       "page": "/admin/ceviriler",
@@ -390,6 +438,12 @@
       "namedRegex": "^/admin/sss(?:/)?$"
     },
     {
+      "page": "/admin/talepler",
+      "regex": "^/admin/talepler(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/talepler(?:/)?$"
+    },
+    {
       "page": "/araclar",
       "regex": "^/araclar(?:/)?$",
       "routeKeys": {},
@@ -418,6 +472,12 @@
       "regex": "^/data/service\\-types(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/data/service\\-types(?:/)?$"
+    },
+    {
+      "page": "/data/submit-request",
+      "regex": "^/data/submit\\-request(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/data/submit\\-request(?:/)?$"
     },
     {
       "page": "/hakkimizda",

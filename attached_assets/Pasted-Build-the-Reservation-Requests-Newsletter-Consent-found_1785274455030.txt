@@ -1,0 +1,169 @@
+Build the Reservation Requests + Newsletter Consent foundation and refresh the public form colors.
+
+Work in ordered phases and keep the existing site stable.
+
+PHASE 1 — Simplify and visually refresh the public form
+
+1. Remove these fields from all four public service forms:
+   - Bagaj Sayısı
+   - Çocuk Koltuğu Sayısı
+   - Araç Tercihi
+   - Ek Notlar
+
+2. Remove their unused state, types, validation, WhatsApp message lines and public translation strings.
+
+3. Do not remove service-specific fields:
+   - Planlanan Rota / Kullanım Açıklaması
+   - Talep Edilen Tur / Rota
+   - Ziyaret Edilmek İstenen Yerler
+
+4. Keep the E-posta field optional.
+
+5. Add a separate optional newsletter checkbox under the email field:
+   “Kampanya, yeni hizmet, gezi ve blog içeriklerini e-posta ile almak istiyorum.”
+
+   Rules:
+   - unchecked by default
+   - never required to submit a quote or reservation request
+   - if checked while email is empty, show an inline validation error
+   - include links to the privacy/KVKK notice and commercial communication information
+   - do not combine this permission with reservation processing
+
+6. Make the form visually livelier while preserving the premium navy/gold identity:
+   - page/form background: subtle ivory → pale blue → very light lavender gradient
+   - content groups: alternating very pale blue and lavender-tinted panels
+   - inputs/selects: white background, dark navy text and readable gray placeholders
+   - intent cards: blue accent
+   - service cards: gold/blue/lavender icon accents
+   - active selections: visible gold border plus soft colored background
+   - section icons may use blue, violet and gold
+   - CTA remains clearly prominent
+   - WhatsApp green is used only for WhatsApp actions
+   - avoid dark inputs, excessive gradients, heavy shadows and low-contrast text
+   - maintain WCAG-readable contrast
+   - no large animation library
+
+7. Preserve responsive behavior:
+   - desktop: balanced two-column layout
+   - tablet: readable layout without compressed controls
+   - mobile 390px: single column, no horizontal overflow
+   - removing fields must not leave blank grid cells or empty spaces
+
+PHASE 2 — Save quote and reservation requests
+
+8. Create an additive, non-destructive database migration for a reservation_requests table using the existing Drizzle/PostgreSQL conventions.
+
+Recommended fields:
+   - id
+   - referenceNumber
+   - intent: QUOTE or RESERVATION
+   - serviceType
+   - name
+   - phone
+   - normalizedEmail, nullable
+   - locale/language
+   - requestData JSONB containing only service-specific form data
+   - status: NEW, CONTACTED, QUOTED, CONFIRMED, COMPLETED, CANCELLED, SPAM
+   - createdAt
+   - updatedAt
+   - archivedAt, nullable
+
+9. Create a secure public server-side submission endpoint:
+   - validate with the project’s existing validation approach
+   - normalize email addresses
+   - sanitize and limit input lengths
+   - add a hidden honeypot and reasonable rate limiting
+   - do not log personal customer data
+   - do not expose request records publicly
+   - generate a human-readable unique reference number
+   - save the request before continuing to WhatsApp
+
+10. After successful saving:
+   - show the reference number
+   - continue to the existing prefilled WhatsApp conversation
+   - include the reference number in the WhatsApp message
+   - never state that availability, price or reservation is confirmed
+   - state that the team will confirm availability and price through WhatsApp
+
+11. If database saving fails:
+   - show a clear retry message
+   - do not silently claim success
+   - provide a direct WhatsApp fallback so the customer is not lost
+
+PHASE 3 — Newsletter subscriber and consent records
+
+12. Create additive tables using the existing conventions:
+   - newsletter_subscribers
+   - newsletter_consent_events
+
+13. newsletter_subscribers should include:
+   - id
+   - normalized unique email
+   - name, nullable
+   - preferredLanguage
+   - status: PENDING, ACTIVE, UNSUBSCRIBED
+   - source
+   - createdAt
+   - updatedAt
+
+14. newsletter_consent_events should record:
+   - subscriber/email relationship
+   - GRANTED or WITHDRAWN action
+   - consent text version
+   - language
+   - source
+   - timestamp
+
+15. Only create/update a newsletter subscriber when the optional newsletter checkbox is checked.
+16. Do not subscribe customers automatically merely because they entered an email address.
+17. Do not send newsletter emails in this task. Sending and double-opt-in provider integration will be implemented separately.
+18. Repeated submissions with the same normalized email must not create duplicate subscriber records.
+
+PHASE 4 — Admin management
+
+19. Add “Talepler” to the admin sidebar and create an authenticated admin module:
+   - list requests
+   - search by reference, name, phone or email
+   - filter by intent, service type, status and date
+   - open request detail
+   - update status
+   - archive without destructive deletion
+   - show service-specific request details clearly
+   - record status changes in the existing audit log
+
+20. Add “Bülten Aboneleri” to the admin panel:
+   - list subscribers
+   - filter by status and language
+   - show consent date/source/version
+   - mark unsubscribed
+   - export only consented subscribers as CSV
+   - never display passwords, secrets or unrelated customer data
+
+21. Update public UI strings for all enabled languages:
+   - Turkish
+   - English
+   - German
+   - Russian
+   - Arabic with correct RTL behavior
+
+PHASE 5 — Verification
+
+22. Test all 8 form combinations:
+   - 2 request intents × 4 service types
+
+23. Verify:
+   - requests are stored once
+   - reference number is generated
+   - WhatsApp message is correct
+   - email without newsletter permission does not create a subscriber
+   - checked newsletter permission creates one consent record
+   - duplicate emails are normalized
+   - admin pages require authentication
+   - mobile/tablet/desktop layouts work
+   - no personal data appears in logs
+   - no horizontal overflow
+
+24. Run database migration, lint, typecheck and production build.
+25. Keep the development and production Next.js output directories isolated as currently configured.
+26. Do not publish, deploy, connect the production domain, modify secrets or reset the admin password.
+27. Report migrations, changed files and complete test results.

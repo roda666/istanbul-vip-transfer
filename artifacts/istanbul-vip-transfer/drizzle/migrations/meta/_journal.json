@@ -29,6 +29,13 @@
       "when": 1753700000000,
       "tag": "0003_languages_and_translations",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1753800000000,
+      "tag": "0004_reservation_requests_and_newsletter",
+      "breakpoints": true
     }
   ]
 }

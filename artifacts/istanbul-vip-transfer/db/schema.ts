@@ -381,3 +381,62 @@ export type Language = typeof languages.$inferSelect;
 export type NewLanguage = typeof languages.$inferInsert;
 export type ContentTranslation = typeof contentTranslations.$inferSelect;
 export type NewContentTranslation = typeof contentTranslations.$inferInsert;
+
+// ── Reservation requests ─────────────────────────────────────────────────────
+
+export const requestIntentEnum = pgEnum('request_intent', ['QUOTE', 'RESERVATION']);
+
+export const requestStatusEnum = pgEnum('request_status', [
+  'NEW', 'CONTACTED', 'QUOTED', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'SPAM',
+]);
+
+export const reservationRequests = pgTable('reservation_requests', {
+  id:              uuid('id').primaryKey().defaultRandom(),
+  referenceNumber: text('reference_number').notNull().unique(),
+  intent:          requestIntentEnum('intent').notNull(),
+  serviceType:     text('service_type').notNull(),
+  name:            text('name').notNull(),
+  phone:           text('phone').notNull(),
+  normalizedEmail: text('normalized_email'),
+  locale:          text('locale').default('tr').notNull(),
+  requestData:     jsonb('request_data').notNull().default({}),
+  status:          requestStatusEnum('status').default('NEW').notNull(),
+  createdAt:       timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:       timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  archivedAt:      timestamp('archived_at', { withTimezone: true }),
+});
+
+// ── Newsletter ────────────────────────────────────────────────────────────────
+
+export const newsletterStatusEnum = pgEnum('newsletter_status', [
+  'PENDING', 'ACTIVE', 'UNSUBSCRIBED',
+]);
+
+export const newsletterSubscribers = pgTable('newsletter_subscribers', {
+  id:                uuid('id').primaryKey().defaultRandom(),
+  normalizedEmail:   text('normalized_email').notNull().unique(),
+  name:              text('name'),
+  preferredLanguage: text('preferred_language').default('tr').notNull(),
+  status:            newsletterStatusEnum('status').default('PENDING').notNull(),
+  source:            text('source').notNull(),
+  createdAt:         timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:         timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const newsletterConsentEvents = pgTable('newsletter_consent_events', {
+  id:                 uuid('id').primaryKey().defaultRandom(),
+  subscriberId:       uuid('subscriber_id').references(() => newsletterSubscribers.id, { onDelete: 'cascade' }),
+  normalizedEmail:    text('normalized_email').notNull(),
+  action:             text('action').notNull(), // 'GRANTED' | 'WITHDRAWN'
+  consentTextVersion: text('consent_text_version').notNull(),
+  language:           text('language').notNull(),
+  source:             text('source').notNull(),
+  createdAt:          timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type ReservationRequest    = typeof reservationRequests.$inferSelect;
+export type NewReservationRequest = typeof reservationRequests.$inferInsert;
+export type NewsletterSubscriber    = typeof newsletterSubscribers.$inferSelect;
+export type NewNewsletterSubscriber = typeof newsletterSubscribers.$inferInsert;
+export type NewsletterConsentEvent    = typeof newsletterConsentEvents.$inferSelect;
+export type NewNewsletterConsentEvent = typeof newsletterConsentEvents.$inferInsert;

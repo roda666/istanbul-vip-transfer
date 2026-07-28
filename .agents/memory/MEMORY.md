@@ -4,3 +4,4 @@
 - [Public light section tokens](public-light-sections.md) — dark section bg/text replacements for service and blog pages; ServiceFAQ component rewritten to light theme.
 - [Reservation location system](reservation-location-system.md) — /api/* conflict with api-server; use /data/ prefix for public Next.js routes; migration strategy; seed; combobox fetch path.
 - [Booking form & service types](istanbul-vip-transfer-booking-form.md) — unified quote/reservation form, 4 service types, 81 provinces, location scope system, WhatsApp message format.
+- [Reservation + Newsletter system](reservation-newsletter-system.md) — DB tables (reservation_requests, newsletter_subscribers, newsletter_consent_events), /data/submit-request route, admin Talepler/Bülten modules, i18n key removals/additions.

@@ -58,16 +58,10 @@ export interface Dictionary {
     pickupAddress: string;
     dropoffAddress: string;
     optional: string;
-    flightNumber: string;
     departureCity: string;
     arrivalCity: string;
     departureAddress: string;
     arrivalAddress: string;
-    direction: string;
-    oneWay: string;
-    roundTrip: string;
-    returnDate: string;
-    returnTime: string;
     allocationLocation: string;
     allocationDuration: string;
     allocationHours: string;
@@ -82,7 +76,10 @@ export interface Dictionary {
     passengerCount: string;
     fullName: string;
     phone: string;
-    notes: string;
+    email: string;
+    newsletterConsent: string;
+    newsletterEmailRequired: string;
+    minAllocationDuration: string;
     // Submit
     submitQuote: string;
     submitReservation: string;
@@ -91,7 +88,6 @@ export interface Dictionary {
     dropoffPlaceholder: string;
     pickupAddressPlaceholder: string;
     dropoffAddressPlaceholder: string;
-    flightPlaceholder: string;
     departureCityPlaceholder: string;
     arrivalCityPlaceholder: string;
     departureCityAddressPlaceholder: string;
@@ -109,7 +105,6 @@ export interface Dictionary {
     requiredDeparture: string;
     requiredArrival: string;
     sameProvinceError: string;
-    requiredReturnDate: string;
     requiredAllocationLocation: string;
     requiredDuration: string;
     requiredTourRoute: string;
@@ -121,20 +116,12 @@ export interface Dictionary {
     waPickupAddress: string;
     waDropoff: string;
     waDropoffAddress: string;
-    waFlightNumber: string;
     waDate: string;
     waTime: string;
     waDepartureCity: string;
     waDepartureAddress: string;
     waArrivalCity: string;
     waArrivalAddress: string;
-    waDirection: string;
-    waOneWay: string;
-    waRoundTrip: string;
-    waDepartureDate: string;
-    waDepartureTime: string;
-    waReturnDate: string;
-    waReturnTime: string;
     waStartDate: string;
     waStartTime: string;
     waDuration: string;
@@ -145,7 +132,8 @@ export interface Dictionary {
     waPassengers: string;
     waFullName: string;
     waPhone: string;
-    waNotes: string;
+    waEmail: string;
+    waReference: string;
     waQuote: string;
     waReservation: string;
     waHours: string;

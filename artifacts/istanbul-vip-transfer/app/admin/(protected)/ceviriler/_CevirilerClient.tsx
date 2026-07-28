@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Globe, Loader2, Archive, Brain, AlertTriangle } from 'lucide-react';
 import type { Language } from '@/db/schema';
 
@@ -43,7 +42,7 @@ interface Props {
   limit: number;
 }
 
-export default function CevirilerClient({ jobs: initialJobs, langs, page, total, limit }: Props) {
+export default function CevirilerClient({ jobs: initialJobs, page, total, limit }: Props) {
   const [jobs, setJobs] = useState(initialJobs);
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

@@ -58,7 +58,6 @@ export default function LanguageSelector({ variant = 'light', className = '' }: 
   const isDark = variant === 'dark';
   const textColor = isDark ? 'rgba(255,255,255,0.75)' : '#263F55';
   const textHover = isDark ? '#C99A32' : '#C99A32';
-  const bgColor = isDark ? '#1B3A56' : '#FFFDF8';
   const borderColor = isDark ? 'rgba(255,255,255,0.15)' : '#D9E2EC';
   const dropdownBg = isDark ? '#102A43' : '#FFFDF8';
   const activeLangColor = '#C99A32';

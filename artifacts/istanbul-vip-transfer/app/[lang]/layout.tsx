@@ -10,7 +10,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import LangProvider from '@/components/LangProvider';
-import { isValidLang, getLangDir, LANG_LOCALES, getDictionary } from '@/lib/i18n';
+import { isValidLang, getLangDir, LANG_LOCALES } from '@/lib/i18n';
 
 interface Props {
   children: React.ReactNode;
@@ -21,7 +21,6 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   const { lang } = await params;
   if (!isValidLang(lang)) return {};
 
-  const dict = getDictionary(lang);
   const locale = LANG_LOCALES[lang as keyof typeof LANG_LOCALES] ?? 'en-GB';
 
   return {

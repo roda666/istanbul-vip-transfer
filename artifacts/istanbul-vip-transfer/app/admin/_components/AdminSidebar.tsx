@@ -30,7 +30,6 @@ const SIDEBAR_BG   = '#132A44';
 const SIDEBAR_BG2  = '#1B3858';
 const GOLD         = '#C99A32';
 const NAV_TEXT     = 'rgba(255,255,255,0.75)';
-const NAV_MUTED    = 'rgba(255,255,255,0.4)';
 const NAV_ACTIVE_BG = 'rgba(201,154,50,0.18)';
 const NAV_HOVER_BG  = 'rgba(255,255,255,0.07)';
 

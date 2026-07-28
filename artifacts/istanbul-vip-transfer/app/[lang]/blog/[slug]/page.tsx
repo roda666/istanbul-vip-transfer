@@ -12,7 +12,6 @@ import { contentTranslations, content } from '@/db/schema';
 import { eq, and, or } from 'drizzle-orm';
 import { isValidLang, getDictionary, getLangDir } from '@/lib/i18n';
 import { buildAlternates, getOgLocale } from '@/lib/i18n/seo';
-import { SITE } from '@/lib/site-config';
 
 interface Props {
   params: Promise<{ lang: string; slug: string }>;

@@ -1,0 +1,103 @@
+Before marking this task complete, perform a final persistence and functional verification.
+
+Critical issue:
+The report says “DB (manual DDL)”. Every database change must also exist in the project’s Drizzle schema and committed migration files so the project can be installed on another server from source code.
+
+1. DATABASE PORTABILITY
+
+Verify that all database changes are represented in:
+
+- the Drizzle schema
+- a new migration SQL file
+- the migration journal/metadata used by this project
+
+This includes at minimum:
+
+- reservation request admin notes
+- request source/source page
+- ARCHIVED request status
+- newsletter SUPPRESSED status
+- newsletter consent fields
+- audit/status history fields added by this task
+
+Do not duplicate existing columns or tables.
+Do not delete or reset existing data.
+Do not rely only on SQL manually executed against the current Replit database.
+
+Report the exact schema and migration file paths.
+
+2. REAL PUBLIC FORM TEST
+
+Using the actual public preview origin:
+
+- Open the Turkish booking form.
+- Enter a unique test name such as:
+  Test Müşteri 30072026
+- Use a clearly marked test phone number.
+- Enter a test email.
+- Keep newsletter consent unchecked.
+- Submit the form.
+- Confirm WhatsApp opens directly without an intermediate success page.
+- Confirm exactly one reservation request was saved.
+- Confirm no active newsletter subscriber was created.
+
+Then run a second test with a different test email and newsletter consent checked:
+
+- Confirm exactly one request was saved.
+- Confirm exactly one ACTIVE newsletter subscriber was created.
+- Confirm locale, source page and consent timestamp were saved.
+
+Do not send a real WhatsApp message; only verify the generated wa.me URL and message.
+
+3. ADMIN VERIFICATION
+
+Using the authenticated admin panel, verify and report:
+
+- “Talepler” appears in the sidebar.
+- The test request appears in the list.
+- Search by name, phone and email works.
+- Request detail opens.
+- Source page and language are visible.
+- Internal admin notes can be saved.
+- Status can move from NEW to CONTACTED.
+- Status history records the change.
+- Archive works without deleting the request.
+- The new-request badge count changes correctly.
+
+Verify “Bülten Aboneleri”:
+
+- The consented test email appears as ACTIVE.
+- The non-consented test email does not appear as ACTIVE.
+- Locale and source filters work.
+- CSV export contains consented subscribers only.
+
+4. SECURITY TEST
+
+Without an admin session:
+
+- requests list API must return 401
+- request detail API must return 401
+- newsletter admin API must return 401
+- request count API must return 401
+
+5. REGRESSION TEST
+
+Run and report:
+
+- database migration command/status
+- TypeScript
+- ESLint
+- production build
+- Turkish /
+- English /en
+- German /de
+- Russian /ru
+- Arabic /ar with RTL
+- language switching and persistence
+- desktop, tablet and 390px mobile booking form
+
+Do not reset the admin password.
+Do not expose secrets.
+Do not publish or deploy.
+
+Do not claim completion with general statements. Provide a result table with concrete values, record counts, HTTP status codes, generated migration path and tested URLs.

@@ -143,17 +143,17 @@ export async function POST(req: NextRequest) {
 
       if (existing.length > 0) {
         subscriberId = existing[0].id;
-        // Re-activate if previously unsubscribed
+        // Re-activate if previously unsubscribed / pending
         await db
           .update(newsletterSubscribers)
-          .set({ status: 'PENDING', updatedAt: new Date() })
+          .set({ status: 'ACTIVE', updatedAt: new Date() })
           .where(eq(newsletterSubscribers.normalizedEmail, normalizedEmail));
       } else {
         const [inserted] = await db.insert(newsletterSubscribers).values({
           normalizedEmail,
           name:              sanitizeText(data.adSoyad).slice(0, 120),
           preferredLanguage: data.locale ?? 'tr',
-          status:            'PENDING',
+          status:            'ACTIVE',
           source:            `booking-form:${data.serviceType}`,
         }).returning({ id: newsletterSubscribers.id });
         subscriberId = inserted.id;

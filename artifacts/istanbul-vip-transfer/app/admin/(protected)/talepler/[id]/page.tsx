@@ -98,13 +98,23 @@ export default async function TalepDetayPage({ params }: { params: Promise<{ id:
           <div style={row}><span style={label}>Ad Soyad</span><span style={value}>{req.name}</span></div>
           <div style={row}><span style={label}>Telefon</span><span style={value}>{req.phone}</span></div>
           <div style={row}><span style={label}>E-posta</span><span style={value}>{req.normalizedEmail ?? '—'}</span></div>
+          <div style={row}><span style={label}>Dil</span><span style={value}>{req.locale?.toUpperCase() ?? 'TR'}</span></div>
+          <div style={row}><span style={label}>Kaynak</span><span style={value}>{req.source === 'booking-form' ? 'Rezervasyon Formu' : (req.source ?? '—')}</span></div>
           <div style={{ ...row, borderBottom: 'none' }}><span style={label}>Kayıt Tarihi</span><span style={value}>{formatDate(req.createdAt)}</span></div>
         </div>
 
-        {/* Status */}
+        {/* Status + actions */}
         <div style={{ background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0', padding: '20px' }}>
-          <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#102A43', fontFamily: 'Inter, sans-serif', marginBottom: '12px' }}>Durum</h3>
-          <TalepDetayClient requestId={req.id} currentStatus={req.status} archivedAt={req.archivedAt?.toISOString() ?? null} />
+          <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#102A43', fontFamily: 'Inter, sans-serif', marginBottom: '12px' }}>Durum ve İşlemler</h3>
+          <TalepDetayClient
+            requestId={req.id}
+            currentStatus={req.status}
+            archivedAt={req.archivedAt?.toISOString() ?? null}
+            customerName={req.name}
+            customerPhone={req.phone}
+            referenceNumber={req.referenceNumber}
+            adminNotes={req.adminNotes ?? null}
+          />
         </div>
 
         {/* Service-specific data */}

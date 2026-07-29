@@ -1,18 +1,19 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Download, RefreshCw } from 'lucide-react';
+import { Download, RefreshCw, Search } from 'lucide-react';
 
 interface Subscriber {
   id: string;
   normalizedEmail: string;
   name: string | null;
   preferredLanguage: string;
-  status: 'PENDING' | 'ACTIVE' | 'UNSUBSCRIBED';
+  status: string;
   source: string;
   createdAt: string;
-  consentDate?: string | null;
-  consentVersion?: string | null;
+  consentVersion: string | null;
+  consentAction:  string | null;
+  consentDate:    string | null;
 }
 
 interface PageResult {
@@ -23,15 +24,22 @@ interface PageResult {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  PENDING:       'Beklemede',
-  ACTIVE:        'Aktif',
-  UNSUBSCRIBED:  'Abonelik İptal',
+  PENDING:      'Beklemede',
+  ACTIVE:       'Aktif',
+  UNSUBSCRIBED: 'Abonelik İptal',
+  SUPPRESSED:   'Engellendi',
 };
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   PENDING:      { bg: '#FFFBEB', text: '#B45309' },
   ACTIVE:       { bg: '#F0FDF4', text: '#15803D' },
   UNSUBSCRIBED: { bg: '#F1F5F9', text: '#64748B' },
+  SUPPRESSED:   { bg: '#FFF1F2', text: '#BE123C' },
+};
+
+const CONSENT_ACTION_LABELS: Record<string, { label: string; color: string }> = {
+  GRANTED:   { label: 'Rıza Verildi',  color: '#15803D' },
+  WITHDRAWN: { label: 'Rıza Geri Alındı', color: '#BE123C' },
 };
 
 const td: React.CSSProperties = {
@@ -52,18 +60,18 @@ export default function AbonelerClient() {
   const [page, setPage]       = useState(1);
   const [status, setStatus]   = useState('');
   const [lang, setLang]       = useState('');
-  const [updating, setUpdating] = useState<string | null>(null);
+  const [search, setSearch]   = useState('');
+  const [updating, setUpdating]   = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const params = new URLSearchParams({
-        page: String(page),
-        ...(status && { status }),
-        ...(lang   && { lang }),
-      });
+      const params = new URLSearchParams({ page: String(page) });
+      if (status) params.set('status', status);
+      if (lang)   params.set('lang', lang);
+      if (search) params.set('search', search);
       const res = await fetch(`/admin/api/newsletter?${params}`);
       if (!res.ok) throw new Error();
       setData(await res.json());
@@ -72,7 +80,7 @@ export default function AbonelerClient() {
     } finally {
       setLoading(false);
     }
-  }, [page, status, lang]);
+  }, [page, status, lang, search]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -114,6 +122,13 @@ export default function AbonelerClient() {
     }).format(new Date(iso));
   }
 
+  function formatDateTime(iso: string) {
+    return new Intl.DateTimeFormat('tr-TR', {
+      timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    }).format(new Date(iso));
+  }
+
   const inputStyle: React.CSSProperties = {
     padding: '8px 12px', borderRadius: '8px', border: '1px solid #D1D5DB',
     fontSize: '13px', fontFamily: 'Inter, sans-serif', background: '#FFFFFF', color: '#1E293B',
@@ -123,6 +138,19 @@ export default function AbonelerClient() {
     <div>
       {/* Toolbar */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
+
+        {/* Email search */}
+        <div style={{ position: 'relative', flex: '1 1 200px', maxWidth: '280px' }}>
+          <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+          <input
+            type="text"
+            placeholder="E-posta ara…"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            style={{ ...inputStyle, paddingLeft: '32px', width: '100%' }}
+          />
+        </div>
+
         <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} style={inputStyle}>
           <option value="">Tüm Durumlar</option>
           {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -163,17 +191,19 @@ export default function AbonelerClient() {
                     <th style={th}>Dil</th>
                     <th style={th}>Kaynak</th>
                     <th style={th}>Durum</th>
-                    <th style={th}>Rıza Versiyonu</th>
+                    <th style={th}>Rıza Durumu</th>
+                    <th style={th}>Rıza Tarihi</th>
                     <th style={th}>Kayıt Tarihi</th>
                     <th style={th}>İşlem</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.rows.length === 0 && (
-                    <tr><td colSpan={8} style={{ ...td, textAlign: 'center', color: '#94A3B8', padding: '40px' }}>Kayıt bulunamadı.</td></tr>
+                    <tr><td colSpan={9} style={{ ...td, textAlign: 'center', color: '#94A3B8', padding: '40px' }}>Kayıt bulunamadı.</td></tr>
                   )}
                   {data.rows.map((sub) => {
                     const sc = STATUS_COLORS[sub.status] ?? STATUS_COLORS.PENDING;
+                    const consent = sub.consentAction ? CONSENT_ACTION_LABELS[sub.consentAction] : null;
                     return (
                       <tr key={sub.id}>
                         <td style={{ ...td, fontFamily: 'mono, monospace', fontSize: '12px' }}>{sub.normalizedEmail}</td>
@@ -185,10 +215,19 @@ export default function AbonelerClient() {
                             {STATUS_LABELS[sub.status] ?? sub.status}
                           </span>
                         </td>
-                        <td style={{ ...td, fontSize: '12px', color: '#64748B' }}>{sub.consentVersion ?? '—'}</td>
+                        <td style={{ ...td, fontSize: '12px' }}>
+                          {consent ? (
+                            <span style={{ color: consent.color, fontWeight: 600 }}>{consent.label}</span>
+                          ) : (
+                            <span style={{ color: '#94A3B8' }}>—</span>
+                          )}
+                        </td>
+                        <td style={{ ...td, fontSize: '12px', color: '#64748B' }}>
+                          {sub.consentDate ? formatDateTime(sub.consentDate) : '—'}
+                        </td>
                         <td style={{ ...td, fontSize: '12px', color: '#64748B' }}>{formatDate(sub.createdAt)}</td>
                         <td style={td}>
-                          {sub.status !== 'UNSUBSCRIBED' && (
+                          {sub.status !== 'UNSUBSCRIBED' && sub.status !== 'SUPPRESSED' && (
                             <button
                               onClick={() => unsubscribe(sub.id)}
                               disabled={!!updating}

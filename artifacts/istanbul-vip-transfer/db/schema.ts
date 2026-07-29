@@ -387,7 +387,7 @@ export type NewContentTranslation = typeof contentTranslations.$inferInsert;
 export const requestIntentEnum = pgEnum('request_intent', ['QUOTE', 'RESERVATION']);
 
 export const requestStatusEnum = pgEnum('request_status', [
-  'NEW', 'CONTACTED', 'QUOTED', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'SPAM',
+  'NEW', 'CONTACTED', 'QUOTED', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'SPAM', 'ARCHIVED',
 ]);
 
 export const reservationRequests = pgTable('reservation_requests', {
@@ -401,6 +401,8 @@ export const reservationRequests = pgTable('reservation_requests', {
   locale:          text('locale').default('tr').notNull(),
   requestData:     jsonb('request_data').notNull().default({}),
   status:          requestStatusEnum('status').default('NEW').notNull(),
+  adminNotes:      text('admin_notes'),
+  source:          text('source').default('booking-form').notNull(),
   createdAt:       timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt:       timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   archivedAt:      timestamp('archived_at', { withTimezone: true }),
@@ -409,7 +411,7 @@ export const reservationRequests = pgTable('reservation_requests', {
 // ── Newsletter ────────────────────────────────────────────────────────────────
 
 export const newsletterStatusEnum = pgEnum('newsletter_status', [
-  'PENDING', 'ACTIVE', 'UNSUBSCRIBED',
+  'PENDING', 'ACTIVE', 'UNSUBSCRIBED', 'SUPPRESSED',
 ]);
 
 export const newsletterSubscribers = pgTable('newsletter_subscribers', {

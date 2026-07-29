@@ -1,11 +1,13 @@
 /**
- * PATCH /admin/api/requests/[id] — Update status or archive a reservation request.
+ * PATCH /admin/api/requests/[id] — Update status, notes, or archive a reservation request.
  */
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-const VALID_STATUSES = ['NEW', 'CONTACTED', 'QUOTED', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'SPAM'] as const;
+const VALID_STATUSES = [
+  'NEW', 'CONTACTED', 'QUOTED', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'SPAM', 'ARCHIVED',
+] as const;
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { getSession } = await import('@/lib/auth/session');
@@ -14,7 +16,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
 
-  let body: { status?: string; archive?: boolean };
+  let body: { status?: string; archive?: boolean; notes?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
 
   try {
@@ -38,12 +40,35 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ ok: true });
     }
 
+    // Update notes — can be combined with status or standalone
+    if (typeof body.notes === 'string') {
+      const trimmed = body.notes.trim().slice(0, 4000);
+      await db.update(reservationRequests)
+        .set({ adminNotes: trimmed || null, updatedAt: new Date() })
+        .where(eq(reservationRequests.id, id));
+
+      await db.insert(auditLogs).values({
+        adminUserId: session.adminId ?? null,
+        action:      'UPDATE_NOTES',
+        entityType:  'reservation_request',
+        entityId:    id,
+        metadata:    {},
+      });
+
+      // If only notes update, return early unless status also provided
+      if (!body.status) return NextResponse.json({ ok: true });
+    }
+
     if (body.status) {
       if (!(VALID_STATUSES as readonly string[]).includes(body.status)) {
         return NextResponse.json({ error: 'Invalid status' }, { status: 422 });
       }
 
-      const [before] = await db.select({ status: reservationRequests.status }).from(reservationRequests).where(eq(reservationRequests.id, id)).limit(1);
+      const [before] = await db
+        .select({ status: reservationRequests.status })
+        .from(reservationRequests)
+        .where(eq(reservationRequests.id, id))
+        .limit(1);
 
       await db.update(reservationRequests)
         .set({ status: body.status as never, updatedAt: new Date() })

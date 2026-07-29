@@ -36,6 +36,13 @@
       "when": 1753800000000,
       "tag": "0004_reservation_requests_and_newsletter",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1753900000000,
+      "tag": "0005_admin_notes_and_statuses",
+      "breakpoints": true
     }
   ]
 }

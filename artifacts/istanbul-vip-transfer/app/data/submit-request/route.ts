@@ -54,6 +54,7 @@ const RequestSchema = z.object({
   telefon:           z.string().min(7).max(30),
   email:             z.string().max(254).nullable().optional(),
   newsletterConsent: z.boolean().optional().default(false),
+  locale:            z.string().min(2).max(5).optional().default('tr'),
   _hp:               z.string().optional(),
   formData:          z.record(z.unknown()),
 });
@@ -123,7 +124,8 @@ export async function POST(req: NextRequest) {
       name:            sanitizeText(data.adSoyad).slice(0, 120),
       phone:           sanitizeText(data.telefon).slice(0, 30),
       normalizedEmail,
-      locale:          'tr',
+      locale:          data.locale ?? 'tr',
+      source:          'booking-form',
       requestData:     safeFormData,
       status:          'NEW',
     });
@@ -150,7 +152,7 @@ export async function POST(req: NextRequest) {
         const [inserted] = await db.insert(newsletterSubscribers).values({
           normalizedEmail,
           name:              sanitizeText(data.adSoyad).slice(0, 120),
-          preferredLanguage: 'tr',
+          preferredLanguage: data.locale ?? 'tr',
           status:            'PENDING',
           source:            `booking-form:${data.serviceType}`,
         }).returning({ id: newsletterSubscribers.id });

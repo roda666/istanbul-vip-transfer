@@ -16,15 +16,17 @@ export async function GET(req: NextRequest) {
   const offset = (page - 1) * limit;
   const status = searchParams.get('status') ?? '';
   const lang   = searchParams.get('lang') ?? '';
+  const search = searchParams.get('search')?.trim() ?? '';
 
   try {
     const { db } = await import('@/db');
     const { newsletterSubscribers, newsletterConsentEvents } = await import('@/db/schema');
-    const { desc, eq, and, count } = await import('drizzle-orm');
+    const { desc, eq, and, count, ilike } = await import('drizzle-orm');
 
     const conditions = [];
     if (status) conditions.push(eq(newsletterSubscribers.status, status as never));
     if (lang)   conditions.push(eq(newsletterSubscribers.preferredLanguage, lang));
+    if (search) conditions.push(ilike(newsletterSubscribers.normalizedEmail, `%${search}%`));
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
     const [rows, totals] = await Promise.all([
@@ -40,30 +42,36 @@ export async function GET(req: NextRequest) {
       db.select({ count: count() }).from(newsletterSubscribers).where(where),
     ]);
 
-    // Get latest consent event version for each subscriber
+    // Get latest consent event (action + date) for each subscriber
     const ids = rows.map((r) => r.id);
-    const consentMap: Record<string, string> = {};
+    const consentMap: Record<string, { version: string; action: string; date: string }> = {};
     if (ids.length > 0) {
       const events = await db
         .select({
           subscriberId:  newsletterConsentEvents.subscriberId,
           version:       newsletterConsentEvents.consentTextVersion,
+          action:        newsletterConsentEvents.action,
           createdAt:     newsletterConsentEvents.createdAt,
         })
         .from(newsletterConsentEvents)
-        .where(eq(newsletterConsentEvents.action, 'GRANTED'))
         .orderBy(desc(newsletterConsentEvents.createdAt));
 
       for (const ev of events) {
         if (ev.subscriberId && !consentMap[ev.subscriberId]) {
-          consentMap[ev.subscriberId] = ev.version;
+          consentMap[ev.subscriberId] = {
+            version: ev.version,
+            action:  ev.action,
+            date:    ev.createdAt.toISOString(),
+          };
         }
       }
     }
 
     const rowsWithConsent = rows.map((r) => ({
       ...r,
-      consentVersion: consentMap[r.id] ?? null,
+      consentVersion: consentMap[r.id]?.version ?? null,
+      consentAction:  consentMap[r.id]?.action  ?? null,
+      consentDate:    consentMap[r.id]?.date     ?? null,
     }));
 
     const total      = totals[0]?.count ?? 0;

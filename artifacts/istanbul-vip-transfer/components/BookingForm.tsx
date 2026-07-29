@@ -351,6 +351,7 @@ export default function BookingForm() {
         telefon:          data.telefon,
         email:            data.email?.trim() ?? null,
         newsletterConsent,
+        locale:           lang,
         _hp:              honeypotRef.current?.value ?? '',
         formData:         data,
       }),

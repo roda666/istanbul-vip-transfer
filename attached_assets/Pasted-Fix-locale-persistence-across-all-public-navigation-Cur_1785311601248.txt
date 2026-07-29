@@ -1,0 +1,87 @@
+Fix locale persistence across all public navigation.
+
+Current bug:
+After selecting English, German, Russian or Arabic, navigating to another page returns the website to Turkish.
+
+1. Make the locale-prefixed URL the primary source of truth:
+   - Turkish: existing unprefixed URLs
+   - English: /en/...
+   - German: /de/...
+   - Russian: /ru/...
+   - Arabic: /ar/...
+
+2. Create or repair one central locale-aware internal-link helper.
+
+   Required behavior:
+   - localePath("/", "en") => "/en"
+   - localePath("/hizmetler", "en") => "/en/hizmetler"
+   - localePath("/blog", "de") => "/de/blog"
+   - Turkish links remain unprefixed
+   - never create duplicate prefixes such as /en/en/...
+   - preserve query strings and anchors
+
+3. Use the locale-aware link system everywhere:
+   - desktop header
+   - mobile menu
+   - logo/home link
+   - service dropdown
+   - service cards
+   - vehicle links
+   - blog cards
+   - breadcrumbs
+   - footer
+   - reservation CTA
+   - contact links
+   - pagination
+   - related-content links
+   - 404 return links
+
+4. Do not add locale prefixes to:
+   - external URLs
+   - WhatsApp/wa.me
+   - tel:
+   - mailto:
+   - /admin
+   - /api
+   - /_next
+   - static assets, images, sitemap or robots routes
+
+5. Language selector:
+   - switching language must navigate to the equivalent current page
+   - do not always send users to the homepage
+   - use the existing localized route mapping when slugs differ
+   - if no equivalent translation exists, navigate to that language’s homepage
+   - persist the chosen language in a safe preference cookie for future client navigation
+   - URL locale must override the cookie
+   - do not create an SEO redirect loop
+
+6. Homepage behavior:
+   - clicking the logo or Home while on /en/... must navigate to /en
+   - on /de/... it must navigate to /de
+   - on /ru/... it must navigate to /ru
+   - on /ar/... it must navigate to /ar
+   - only Turkish navigation should go to /
+
+7. Refresh and browser navigation:
+   - refreshing a localized page must preserve its language
+   - browser Back/Forward must preserve the route locale
+   - opening a localized deep link directly must render the correct language
+   - navigating after submitting/resetting the form must not return to Turkish
+
+8. Middleware:
+   - inspect locale middleware for redirects that incorrectly strip locale prefixes
+   - exclude admin, API, Next.js assets and public files
+   - preserve valid localized deep links
+   - prevent redirect loops
+
+9. Test these journeys:
+   - /en → Services → service detail → Blog → Home: stays English
+   - /de → Fahrzeuge/vehicles → service detail → Home: stays German
+   - /ru → Blog → article → Home: stays Russian
+   - /ar → Services → reservation form → Home: stays Arabic and RTL
+   - Turkish root navigation remains unprefixed
+
+10. Test both desktop header and mobile drawer navigation.
+11. Run lint, typecheck and production build.
+12. Do not publish, deploy, modify credentials or change the admin password.
+13. Report changed link components and tested route sequences.

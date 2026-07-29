@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
+import { useLang } from '@/lib/i18n/context';
+import { localePath } from '@/lib/locale-path';
 
 interface Crumb {
   label: string;
@@ -16,6 +18,8 @@ interface PageHeroProps {
 }
 
 export default function PageHero({ breadcrumbs, title, subtitle }: PageHeroProps) {
+  const { lang } = useLang();
+
   return (
     <section
       className="relative pt-16 pb-20 text-center overflow-hidden"
@@ -39,7 +43,7 @@ export default function PageHero({ breadcrumbs, title, subtitle }: PageHeroProps
               {i > 0 && <ChevronRight size={11} style={{ color: '#50677A' }} aria-hidden="true" />}
               {crumb.href ? (
                 <Link
-                  href={crumb.href}
+                  href={localePath(crumb.href, lang)}
                   className="transition-colors duration-200 focus:outline-none focus-visible:underline"
                   style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#C79A35'; }}

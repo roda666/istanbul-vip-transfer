@@ -1,38 +1,35 @@
 ---
 name: Public i18n system
-description: Full i18n wiring for all public-facing components; key constraints and gotchas.
+description: Full i18n wiring for all public components; locale persistence architecture; catch-all routing for Turkish pages under locale prefixes.
 ---
 
-# Public i18n System
+## Turkish string apostrophe rule
+Turkish strings in `.ts`/`.tsx` literals must use double-quotes — SWC parse error otherwise.
 
-All public components use `useLang()` from `@/lib/i18n/context` to get `{ lang, dict }`.
+## LangProvider detection
+`LangProvider` (no `forceLang`) auto-detects lang from `usePathname()` by checking the first URL segment.
+- `/en/hizmetler` → detects `en` → Header/Footer render in English ✓
+- `[lang]/layout.tsx` passes `forceLang={lang}` for the page-level LangProvider
+- `PublicLayoutWrapper` provides the outer LangProvider for Header/Footer/WhatsApp
 
-## Key files
-- `lib/i18n/types.ts` — Dictionary interface (all keys documented here)
-- `lib/i18n/dictionaries/[tr|en|de|ru|ar].ts` — 5 language files
-- `lib/locale-path.ts` — `localePath(path, lang)` helper; all internal links must go through this
-- `lib/nav-config.ts` — `getNav(lang, dict)` factory for locale-aware nav entries
-- `middleware.ts` — admin auth + `ivt_lang_pref` cookie persistence (locale redirect on `/`)
-- `app/[lang]/layout.tsx` — wraps with `<LangProvider forceLang={lang}>`; exists, DO NOT recreate
+## Catch-all locale routing
+`app/[lang]/[...slug]/page.tsx` maps Turkish slug keys to their page components.
+- Enables `/en/hizmetler`, `/de/istanbul-havalimani-transfer`, etc.
+- MUST use `slug` (not `path`) to match the `[lang]/blog/[slug]` dynamic segment name — Next.js requires same param name for overlapping routes.
+- `robots: { index: false }` on this catch-all — Turkish canonical URLs remain authoritative.
 
-## Component wiring pattern
-```tsx
-const { lang, dict } = useLang();
-const p = (path: string) => localePath(path, lang);
-```
+## Middleware locale cookie rules
+- `urlLang` detected (e.g. `/en/*`) → stamp cookie with that lang
+- Root `/` with non-TR cookie → redirect to `/{pref}`
+- Turkish sub-pages (e.g. `/hizmetler`) → do NOT stamp `tr` — only stamp on first root visit (no cookie yet). This prevents an English user clicking a Turkish URL from losing their language preference.
 
-## Critical gotcha — Turkish apostrophes in JS string literals
-Turkish strings like `"Havalimanı'ndan"` contain apostrophes. Using single-quote JS strings
-(`'Havalimanı'ndan'`) causes a parse error. **Always use double-quotes** for Turkish strings in JS/TSX.
+## Locale-aware link helpers
+- `lib/locale-path.ts` → `localePath(path, lang)` — strips existing prefix, adds new one (tr = no prefix)
+- `components/LocaleLink.tsx` — `'use client'` wrapper that auto-calls `localePath`; skips https://, tel:, mailto:, /admin, /api, /_next
+- `components/HizmetlerServiceGrid.tsx` — client grid that calls `getNav(lang, dict)` so service links are always locale-prefixed
+- `components/PageHero.tsx` — uses `useLang()` + `localePath()` to make breadcrumb hrefs locale-aware
 
-**Why:** SWC/webpack fails with `Expected ':'` syntax error when a Turkish apostrophe appears inside a single-quoted JS string.
+## Dict/type change chain
+`lib/i18n/types.ts` → `lib/i18n/dictionaries/[lang].ts` (all 5) → component
 
-**How to apply:** Whenever writing Turkish text directly in `.tsx`/`.ts` files, use double-quote string delimiters, or backtick template literals.
-
-## Never prefix these paths
-`/admin`, `/api`, `/_next`, `/data`, `wa.me`, `tel:`, `mailto:`, static asset extensions.
-
-## Locale persistence
-- `ivt_lang_pref` cookie (1-year, path=/) written by middleware
-- Visiting `/en` stamps cookie `en`; visiting `/` stamps `tr`
-- Fresh `/` visit with non-`tr` cookie → 302 redirect to `/{pref}`
+**Why:** All 5 language dicts must be updated together or TypeScript errors on missing keys.

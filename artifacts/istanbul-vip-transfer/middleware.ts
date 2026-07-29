@@ -133,8 +133,15 @@ export async function middleware(request: NextRequest) {
     return redirect;
   }
 
-  // Stamp (or refresh) the "tr" preference for any Turkish page visit
-  response.cookies.set(LANG_PREF_COOKIE, 'tr', cookieOpts);
+  // Turkish sub-pages (e.g. /hizmetler, /blog, /araclar) do NOT carry an
+  // explicit locale in the URL.  We leave the existing cookie untouched so
+  // an English user who lands on a Turkish page (e.g. via a hardcoded link)
+  // does not lose their language preference.
+  // We only stamp "tr" on first contact at the root "/" so brand-new visitors
+  // get the default Turkish experience.
+  if (!pref) {
+    response.cookies.set(LANG_PREF_COOKIE, 'tr', cookieOpts);
+  }
   return response;
 }
 

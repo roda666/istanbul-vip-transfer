@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import LocaleLink from '@/components/LocaleLink';
 import PageHero from '@/components/PageHero';
 import Services from '@/components/Services';
 import VehicleFleet from '@/components/VehicleFleet';
@@ -73,7 +73,7 @@ export default function VipTransferPage() {
         <div className="max-w-5xl mx-auto px-4">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">İlgili Blog Yazıları</h2>
           <div className="grid gap-4 sm:grid-cols-3">
-            <Link
+            <LocaleLink
               href="/blog/istanbul-havalimani-transfer-rehberi"
               className="block bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md hover:border-amber-400 transition-all"
             >
@@ -82,8 +82,8 @@ export default function VipTransferPage() {
                 İstanbul Havalimanı Transfer Rehberi
               </h3>
               <p className="text-sm text-gray-500 mt-2">IST&apos;ten her destinasyona →</p>
-            </Link>
-            <Link
+            </LocaleLink>
+            <LocaleLink
               href="/blog/sabiha-gokcen-transfer-rehberi"
               className="block bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md hover:border-amber-400 transition-all"
             >
@@ -92,8 +92,8 @@ export default function VipTransferPage() {
                 Sabiha Gökçen Havalimanı Transfer Rehberi
               </h3>
               <p className="text-sm text-gray-500 mt-2">SAW&apos;dan her destinasyona →</p>
-            </Link>
-            <Link
+            </LocaleLink>
+            <LocaleLink
               href="/blog/vip-transfer-ile-taksi-arasindaki-farklar"
               className="block bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md hover:border-amber-400 transition-all"
             >
@@ -102,7 +102,7 @@ export default function VipTransferPage() {
                 VIP Transfer ile Taksi Arasındaki Farklar
               </h3>
               <p className="text-sm text-gray-500 mt-2">Hangisi sizin için doğru seçim? →</p>
-            </Link>
+            </LocaleLink>
           </div>
         </div>
       </section>

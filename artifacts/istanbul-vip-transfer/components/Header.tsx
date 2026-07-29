@@ -72,6 +72,10 @@ export default function Header() {
 
   const mainEntries = nav.filter((e) => !e.cta);
   const ctaEntry = nav.find((e) => e.cta);
+
+  // German has longer nav labels — tighten tracking + padding to avoid wrapping
+  const isDE = lang === 'de';
+  const navLinkCls = `text-xs ${isDE ? 'tracking-wide px-1.5' : 'tracking-wider px-2'} uppercase whitespace-nowrap transition-colors duration-300 py-7 block focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C79A35] rounded`;
   const homePath = localePath('/', lang);
   const servicesPath = localePath('/hizmetler', lang);
 
@@ -89,13 +93,14 @@ export default function Header() {
           <div className="flex items-center justify-between h-20">
             {/* Logo */}
             <motion.div
+              className="flex-shrink-0"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
             >
               <Link href={homePath} className="flex flex-col leading-none" data-testid="logo-link">
                 <span
-                  className="text-xl md:text-2xl font-bold tracking-widest uppercase"
+                  className="text-xl md:text-2xl font-bold tracking-widest uppercase whitespace-nowrap"
                   style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#C99A32', letterSpacing: '0.15em' }}
                 >
                   VIP Transfer
@@ -129,7 +134,7 @@ export default function Header() {
                     >
                       <Link
                         href={entry.href!}
-                        className="text-xs tracking-wider uppercase transition-colors duration-300 px-2 py-7 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C79A35] rounded"
+                        className={navLinkCls}
                         style={{
                           fontFamily: 'Inter, sans-serif',
                           color: isActive ? '#C99A32' : '#263F55',
@@ -259,7 +264,7 @@ export default function Header() {
                   >
                     <Link
                       href={entry.href!}
-                      className="text-xs tracking-wider uppercase transition-colors duration-300 px-2 py-7 block focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C79A35] rounded"
+                      className={navLinkCls}
                       style={{
                         fontFamily: 'Inter, sans-serif',
                         color: isActive ? '#C99A32' : '#263F55',
@@ -276,7 +281,7 @@ export default function Header() {
             </nav>
 
             {/* ── Desktop right CTAs ── */}
-            <div className="hidden xl:flex items-center gap-2">
+            <div className="hidden xl:flex items-center gap-2 flex-shrink-0">
               <LanguageSelector variant="light" />
               {ctaEntry && (
                 <motion.div
@@ -286,7 +291,7 @@ export default function Header() {
                 >
                   <Link
                     href={ctaEntry.href!}
-                    className="text-xs tracking-wider uppercase px-4 py-2 rounded-lg border transition-all duration-300 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#102A43]"
+                    className="text-xs tracking-wider uppercase whitespace-nowrap px-4 py-2 rounded-lg border transition-all duration-300 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#102A43]"
                     style={{
                       borderColor: '#102A43',
                       color: '#102A43',
@@ -312,7 +317,7 @@ export default function Header() {
                 href={SITE.whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#16A36A]"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#16A36A]"
                 style={{
                   background: '#16A36A',
                   color: '#FFFFFF',

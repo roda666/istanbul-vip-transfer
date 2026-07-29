@@ -1,0 +1,101 @@
+Fix the remaining visible i18n and responsive header issues only. Do not redesign the site or change the completed locale-routing system.
+
+1. Fully localize BookingForm
+
+The four service-type card labels are still Turkish on English, German and Russian pages.
+
+Use the existing centralized i18n dictionary. Do not create a second translation system.
+
+Translations:
+
+Turkish:
+- Havalimanı / Şehir İçi Transfer
+- Şehirler Arası Transfer
+- Araç Tahsisi
+- Özel Tur / Gezi
+
+English:
+- Airport / City Transfer
+- Intercity Transfer
+- Chauffeured Vehicle Hire
+- Private Tour / Excursion
+
+German:
+- Flughafen- / Stadttransfer
+- Ferntransfer
+- Fahrzeug mit Chauffeur
+- Private Tour / Ausflug
+
+Russian:
+- Трансфер из аэропорта / по городу
+- Междугородний трансфер
+- Автомобиль с водителем
+- Индивидуальный тур / экскурсия
+
+Arabic:
+- نقل المطار / داخل المدينة
+- نقل بين المدن
+- سيارة خاصة مع سائق
+- جولة خاصة / رحلة
+
+Audit the complete BookingForm for remaining Turkish literals:
+- Section headings
+- Field labels
+- Placeholders
+- Select options
+- Optional/required text
+- Validation errors
+- Newsletter-consent text
+- Submit button
+- Loading/error text
+- WhatsApp pre-filled message field labels
+
+Proper names such as İstanbul, IST, SAW, Mercedes Vito and Sprinter may remain unchanged and must render LTR on Arabic pages.
+
+2. Fix sticky-header overlap
+
+The “Price & Reservation Request” heading is partially hidden beneath the sticky header on /en and /ru.
+
+Requirements:
+- Navigating to a locale homepage without a hash must start at the top.
+- Opening #rezervasyon must position the complete section heading below the sticky header.
+- Add an appropriate scroll-margin-top or equivalent robust solution.
+- Do not use fixed pixel values that fail on mobile.
+
+3. Fix German desktop header wrapping
+
+At desktop width, the German logo and “PREIS / BUCHEN” button wrap onto multiple lines.
+
+Requirements:
+- Brand name and action buttons must not wrap.
+- Keep the header on one clean row when there is enough space.
+- Reduce safe gaps/font sizing slightly if necessary.
+- If the navigation cannot fit, switch to the existing hamburger menu before text begins wrapping.
+- Do not shrink text until it becomes difficult to read.
+- Preserve Arabic RTL header behavior.
+
+4. Verification
+
+Visually test:
+- /en#rezervasyon
+- /de#rezervasyon
+- /ru#rezervasyon
+- /ar#rezervasyon
+
+At:
+- 1440px desktop
+- 1024px tablet
+- 390px mobile
+
+Verify:
+- No Turkish service labels outside Turkish locale
+- No header wrapping
+- Reservation heading is fully visible
+- No horizontal overflow
+- Arabic remains correctly RTL
+- WhatsApp message is generated in the active language
+- Language remains selected after navigation
+
+Run TypeScript, ESLint and production build.
+Report changed files and provide screenshots for EN, DE, RU and AR.
+Do not publish or connect the production domain.

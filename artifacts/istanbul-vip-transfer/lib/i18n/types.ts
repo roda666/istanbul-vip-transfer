@@ -146,6 +146,11 @@ export interface Dictionary {
     requiredDuration: string;
     requiredTourRoute: string;
     minuteMultipleError: string;
+    // Service type card labels (used by BookingForm; DB labels are always Turkish)
+    stAirportTransfer: string;
+    stIntercity: string;
+    stAllocation: string;
+    stTour: string;
     // WhatsApp message labels
     waRequestType: string;
     waService: string;

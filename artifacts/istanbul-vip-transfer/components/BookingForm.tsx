@@ -213,6 +213,14 @@ export default function BookingForm() {
   const { dict, lang } = useLang();
   const b = dict.booking;
 
+  // Localised service-type card labels — DB labels are always Turkish
+  const ST_LABELS: Record<string, string> = {
+    AIRPORT_TRANSFER: b.stAirportTransfer,
+    INTERCITY:        b.stIntercity,
+    ALLOCATION:       b.stAllocation,
+    TOUR:             b.stTour,
+  };
+
   const [serviceTypes, setServiceTypes]   = useState<ServiceTypeOption[]>([]);
   const [activeService, setActiveService] = useState('AIRPORT_TRANSFER');
   const [loadingST, setLoadingST]         = useState(true);
@@ -336,7 +344,7 @@ export default function BookingForm() {
     setNewsletterError('');
     setSubmitting(true);
 
-    const serviceLabel = activeST?.label ?? activeService;
+    const serviceLabel = ST_LABELS[activeService] ?? activeST?.label ?? activeService;
     const msg   = buildWhatsAppMessage(data, serviceLabel, activeService, b);
     const waUrl = `https://wa.me/${WA_NUMBER}?text=${msg}`;
 
@@ -364,7 +372,7 @@ export default function BookingForm() {
   return (
     <section
       id="rezervasyon"
-      className="py-24 relative"
+      className="py-24 relative scroll-mt-20"
       style={{ background: 'linear-gradient(160deg, #FDFBF6 0%, #EBF4FF 50%, #F3EFFD 100%)' }}
       data-testid="booking-section"
     >
@@ -427,7 +435,7 @@ export default function BookingForm() {
                         data-testid={`service-type-${st.key}`}
                       >
                         <span style={{ color: iconColor }}>{SERVICE_ICONS[st.key] ?? <MapPin size={20} />}</span>
-                        <span className="text-center leading-tight">{st.label}</span>
+                        <span className="text-center leading-tight">{ST_LABELS[st.key] ?? st.label}</span>
                       </button>
                     );
                   })}

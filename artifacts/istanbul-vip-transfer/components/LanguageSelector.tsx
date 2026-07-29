@@ -66,7 +66,9 @@ export default function LanguageSelector({ variant = 'light', className = '' }: 
     // Single navigation to atomic switch endpoint:
     //   server sets cookie + redirects in ONE response → no race
     const params = new URLSearchParams({ locale: targetLang, next: targetPath });
-    window.location.assign(`/api/locale/switch?${params.toString()}`);
+    // /data/ prefix reaches Next.js directly; /api/* is intercepted by the
+    // separate api-server artifact in this monorepo and never reaches Next.js.
+    window.location.assign(`/data/locale/switch?${params.toString()}`);
   }
 
   const isDark          = variant === 'dark';

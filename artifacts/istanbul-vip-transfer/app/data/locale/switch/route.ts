@@ -1,14 +1,13 @@
 /**
- * GET /api/locale/switch?locale=<lang>&next=<path>
+ * GET /data/locale/switch?locale=<lang>&next=<path>
  *
- * Atomic locale-preference switch: sets the cookie AND redirects in a single
- * response so there is no window where the browser navigates before the
- * cookie reaches the server.
+ * Atomic locale-preference switch: sets the ivt_lang_pref cookie AND redirects
+ * in a single response so there is no window where the browser navigates before
+ * the cookie reaches the server.
  *
- * The previous two-step "POST cookie → then navigate" approach had a race:
- * if the browser completed the navigation before the Set-Cookie header was
- * flushed and committed, middleware read the stale cookie and redirected back
- * to the old locale.  A single redirect response eliminates that race.
+ * Route is under /data/ (not /api/) because the Replit workspace proxy routes
+ * all /api/* requests to the separate api-server artifact; /data/* reaches
+ * this Next.js application directly (same pattern as /data/service-types, etc.).
  *
  * Security:
  *   - `locale` must be one of: tr, en, de, ru, ar
@@ -17,15 +16,13 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 
-// ── Shared constants ────────────────────────────────────────────────────────
 const LANG_PREF_COOKIE = 'ivt_lang_pref';
-const VALID_LANGS = ['tr', 'en', 'de', 'ru', 'ar'] as const;
-type ValidLang = typeof VALID_LANGS[number];
+const VALID_LANGS      = ['tr', 'en', 'de', 'ru', 'ar'] as const;
 
 /** Legacy paths on which stale cookies may still exist — expire them. */
 const LEGACY_COOKIE_PATHS = ['/en', '/de', '/ru', '/ar', '/tr'];
 
-function isValidLang(s: unknown): s is ValidLang {
+function isValidLang(s: unknown): s is typeof VALID_LANGS[number] {
   return typeof s === 'string' && (VALID_LANGS as readonly string[]).includes(s);
 }
 
@@ -36,8 +33,7 @@ function isValidLang(s: unknown): s is ValidLang {
  */
 function isSafePath(next: string): boolean {
   if (!next || !next.startsWith('/')) return false;
-  if (next.startsWith('//'))          return false;   // protocol-relative
-  // Reject anything that parses as a foreign origin
+  if (next.startsWith('//'))          return false; // protocol-relative
   try {
     const u = new URL(next, 'http://localhost');
     return u.host === 'localhost';
@@ -72,8 +68,7 @@ export async function GET(request: NextRequest) {
   const redirect = NextResponse.redirect(target, { status: 302 });
 
   // ── Authoritative cookie at path=/ ────────────────────────────────────────
-  // Use redirect.cookies.set() — only ONE call so the name-keyed Map is not
-  // overwritten by subsequent sets.
+  // One call to cookies.set() so the name-keyed internal Map is not overwritten.
   redirect.cookies.set(LANG_PREF_COOKIE, locale, {
     path:     '/',
     maxAge:   60 * 60 * 24 * 365, // 1 year
@@ -82,8 +77,8 @@ export async function GET(request: NextRequest) {
     httpOnly: false,
   });
 
-  // ── Expire legacy cookies (different paths) ────────────────────────────────
-  // Use headers.append() so the above cookies.set() entry is not overwritten.
+  // ── Expire legacy cookies (wrong paths) ───────────────────────────────────
+  // Use headers.append() — not cookies.set() — to avoid overwriting the entry above.
   for (const legacyPath of LEGACY_COOKIE_PATHS) {
     redirect.headers.append(
       'Set-Cookie',

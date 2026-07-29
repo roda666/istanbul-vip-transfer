@@ -1,0 +1,108 @@
+CRITICAL REGRESSION: The language switcher now opens:
+
+/api/locale/switch?locale=en&next=%2Fen
+
+but the server returns:
+
+Cannot GET /api/locale/switch
+
+The switcher was connected to an endpoint that is not registered in the running Next.js application.
+
+Fix this before doing any other work.
+
+1. Locate the real Next.js application root
+
+This is a monorepo. Confirm the route is created inside the actual application package:
+
+artifacts/istanbul-vip-transfer/app/api/locale/switch/route.ts
+
+Do not create it in the workspace root or another app/package.
+
+2. Verify the route file
+
+The route must export an actual GET handler:
+
+export async function GET(request: NextRequest)
+
+The language switcher currently performs a GET navigation, so a POST-only handler is not sufficient.
+
+The GET handler must:
+- Validate locale: tr, en, de, ru, ar
+- Validate `next` as a same-site relative path
+- Reject values beginning with `//` or containing an external origin
+- Set the exact locale cookie read by middleware
+- Set cookie path to `/`
+- Redirect to the validated `next` path in the same response
+- Preserve safe query strings and hashes
+- Never expose an error page to the visitor
+
+3. Ensure route registration
+
+Check:
+- File is named exactly `route.ts`
+- Directory names are exactly `app/api/locale/switch/`
+- It is not placed under `[lang]`
+- It is not accidentally a page.tsx file
+- Middleware does not intercept or redirect `/api/locale/switch`
+- Next.js build output recognizes `/api/locale/switch`
+- No Express/custom-server rule blocks this Next.js API route
+
+4. Restart correctly
+
+After fixing:
+- Stop the current dev server
+- Clear only the development cache `.next-dev` if necessary
+- Restart the existing development command
+- Do not delete production data, database tables or migrations
+
+5. Test the endpoint directly before testing the menu
+
+Request:
+
+/api/locale/switch?locale=tr&next=%2F
+
+Required result:
+- HTTP redirect response, not 404 and not “Cannot GET”
+- Location: /
+- Set-Cookie: the existing locale cookie with value tr and Path=/
+
+Also test:
+
+/api/locale/switch?locale=en&next=%2Fen
+
+Required result:
+- Redirect to /en
+- Locale cookie value en
+
+6. Real browser test
+
+After the direct endpoint works:
+
+- Open /de
+- Select Türkçe
+- Confirm final URL is /
+- Confirm Turkish homepage content appears
+- Refresh and confirm it remains Turkish
+
+Then test:
+- Türkçe → English
+- English → Türkçe
+- German → Türkçe
+- Russian → Türkçe
+- Arabic → Türkçe
+
+7. Required evidence
+
+Do not mark complete without reporting:
+
+GET /api/locale/switch registered: PASS
+Direct endpoint status: 307 or 303
+Direct endpoint Location: /
+Set-Cookie value: tr
+Set-Cookie Path: /
+Browser final URL after German → Turkish: /
+Visible Turkish hero heading: İstanbul’u Konforla Keşfedin
+Refresh remains Turkish: PASS
+
+Run TypeScript, ESLint and production build after the runtime tests.
+Do not publish.

@@ -1,21 +1,26 @@
 ---
-name: Locale switch cookie race — /api/locale route
-description: Why LanguageSelector must POST before navigating, and the ResponseCookies.set() key-collision trap.
+name: Locale switch cookie race — atomic /data/locale/switch
+description: Why LanguageSelector must use an atomic redirect endpoint, /api/* vs /data/* routing, and the ResponseCookies.set() key-collision trap.
 ---
+
+## CRITICAL: /api/* does NOT reach Next.js in this monorepo
+The Replit workspace proxy routes all `/api/*` requests to the **separate `api-server` artifact** (port 8080), not to the Next.js app. Any Next.js route placed under `app/api/` will return "Cannot GET" in the browser even though the file exists and TSC passes.
+
+**Always use `/data/` for public Next.js API routes** — same pattern as `/data/service-types`, `/data/locations`, `/data/submit-request`. The middleware `isExemptFromLocale` already covers `/data`.
 
 ## The rule
 **Never use `<Link>` for language switching when middleware reads a cookie to decide redirects.**  
-Use a GET redirect endpoint that sets the cookie AND redirects atomically in a single response.
+Use an atomic GET redirect endpoint that sets the cookie AND redirects in a **single response**.
 
 **Why:**  
 Next.js middleware reads the cookie from the *incoming* request.  
 `<Link>` navigates before the cookie update — middleware sees the stale cookie and redirects back.  
 A two-step "POST cookie then navigate" approach still has a race: the navigation can fire before Set-Cookie commits.  
-The atomic `GET /api/locale/switch?locale=tr&next=/` response sends Set-Cookie **and** Location in the same headers — the destination page always arrives with the updated cookie already in the jar.
+The atomic `GET /data/locale/switch?locale=tr&next=/` response sends Set-Cookie **and** Location in the same headers — the destination page always arrives with the updated cookie already in the jar.
 
 ## Atomic endpoint pattern
-`GET /api/locale/switch?locale=<lang>&next=<path>` → 302 redirect  
-LanguageSelector: `window.location.assign('/api/locale/switch?' + new URLSearchParams({locale, next}))` — no fetch, no await.
+Route: `app/data/locale/switch/route.ts` — `GET ?locale=<lang>&next=<path>` → 302 redirect  
+LanguageSelector: `window.location.assign('/data/locale/switch?' + new URLSearchParams({locale, next}))` — no fetch, no await.
 
 ## ResponseCookies.set() key-collision trap
 `response.cookies.set(name, ...)` uses the cookie **name** as a unique key in a Map.  
@@ -38,11 +43,8 @@ for (const p of legacyPaths) {
 ## How to apply
 Any time a Next.js route needs to set one authoritative cookie **and** expire several same-name cookies at different paths, use `response.cookies.set()` for the main one and `response.headers.append('Set-Cookie', rawString)` for the extras.
 
-## Route location
-`artifacts/istanbul-vip-transfer/app/api/locale/route.ts`  
-Accepts POST `{ locale: 'tr'|'en'|'de'|'ru'|'ar' }`, sets `ivt_lang_pref` at `path=/`, expires five legacy sub-path variants.
-
 ## LanguageSelector pattern
-`components/LanguageSelector.tsx` — dropdown items are now `<button>` elements (not `<Link>`).  
-Click handler: `fetch('/api/locale', {method:'POST',...})` → await OK → `window.location.assign(localePath(pathname, targetLang))`.  
+`components/LanguageSelector.tsx` — dropdown items are `<button>` elements (not `<Link>`).  
+Click handler computes `targetPath = localePath(pathname, targetLang) + window.location.hash`, then:  
+`window.location.assign('/data/locale/switch?' + new URLSearchParams({locale: targetLang, next: targetPath}))`  
 Shows a `pending` state (cursor:wait, disabled) until the navigation fires.

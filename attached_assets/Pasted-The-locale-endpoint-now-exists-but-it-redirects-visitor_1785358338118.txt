@@ -1,0 +1,111 @@
+The locale endpoint now exists, but it redirects visitors to the internal Replit server address:
+
+https://0.0.0.0:26004/
+
+This causes ERR_ADDRESS_INVALID.
+
+Root cause:
+The route builds the redirect URL using request.url, request.nextUrl.origin, localhost, 0.0.0.0 or the internal PORT.
+
+Fix only this redirect-origin bug.
+
+1. Inspect:
+
+artifacts/istanbul-vip-transfer/app/api/locale/switch/route.ts
+
+Find and remove redirect construction similar to:
+
+new URL(nextPath, request.url)
+new URL(nextPath, request.nextUrl.origin)
+http://0.0.0.0:${PORT}
+http://localhost:${PORT}
+
+Never expose 0.0.0.0, localhost or an internal Replit port to the browser.
+
+2. Use a relative HTTP Location header
+
+After validating `next`, return a 303 response with a relative Location header.
+
+Expected behavior conceptually:
+
+- Status: 303
+- Location: /
+- Set-Cookie: existing locale cookie = tr; Path=/
+
+Use a manual NextResponse/Response with the relative Location header if NextResponse.redirect requires an absolute URL.
+
+The browser must preserve the current public Replit preview origin automatically.
+
+Do not construct the redirect from the internal request origin.
+
+3. Security validation
+
+The `next` value must:
+- Start with exactly one /
+- Not start with //
+- Not contain an external protocol or hostname
+- Reject backslashes and malformed encoded redirects
+- Default safely to / when invalid
+
+4. Required direct test
+
+Test:
+
+GET /api/locale/switch?locale=tr&next=%2F
+
+Required response before following redirect:
+
+Status: 303
+Location: /
+Set-Cookie locale value: tr
+Cookie Path: /
+
+Forbidden response values:
+- 0.0.0.0
+- localhost
+- :26004
+- Any absolute internal URL
+
+Also test:
+
+GET /api/locale/switch?locale=en&next=%2Fen
+
+Required:
+
+Status: 303
+Location: /en
+Cookie value: en
+
+5. Required real public-preview browser test
+
+Use the actual *.pike.replit.dev preview URL, not localhost and not 0.0.0.0.
+
+- Open /de
+- Select Türkçe
+- Confirm final URL is the public preview root /
+- Confirm Turkish hero content appears
+- Refresh and confirm Turkish remains selected
+- Navigate to Hizmetler and confirm /hizmetler remains Turkish
+
+Then test:
+- Turkish → English
+- English → Turkish
+- Russian → Turkish
+- Arabic → Turkish
+
+6. Required report
+
+Do not mark complete without reporting:
+
+Redirect status: 303
+Redirect Location: /
+Redirect contains 0.0.0.0: NO
+Redirect contains localhost: NO
+Cookie value after Turkish selection: tr
+Final browser origin: the public *.pike.replit.dev origin
+Final pathname: /
+Visible Turkish hero heading: İstanbul’u Konforla Keşfedin
+Refresh remains Turkish: PASS
+
+Run TypeScript, ESLint and production build after the runtime test passes.
+Do not publish.

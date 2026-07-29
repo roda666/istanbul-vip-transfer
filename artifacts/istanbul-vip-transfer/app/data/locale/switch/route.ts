@@ -11,8 +11,15 @@
  *
  * Security:
  *   - `locale` must be one of: tr, en, de, ru, ar
- *   - `next`   must be a safe same-site relative path (starts with /, no host)
+ *   - `next`   must be a safe same-site relative path (starts with /, no host,
+ *              no //, no backslashes, no external protocol)
  *   - Legacy cookies with wrong sub-paths are expired in the same response
+ *
+ * Redirect construction:
+ *   We NEVER use request.url / request.nextUrl.origin / new URL(next, request.url)
+ *   because in Replit's container the internal origin is 0.0.0.0:<PORT>, which
+ *   is unreachable by the browser.  Instead the Location header carries only the
+ *   validated relative path; the browser preserves its current origin automatically.
  */
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -29,11 +36,13 @@ function isValidLang(s: unknown): s is typeof VALID_LANGS[number] {
 /**
  * Accepts only root-relative same-site paths such as "/", "/hizmetler",
  * "/#rezervasyon", "/de/hizmetler?foo=1".
- * Rejects: empty, external URLs, protocol-relative ("//…").
+ * Rejects: empty string, external URLs, protocol-relative ("//…"),
+ *          backslashes, and any value that parses to a non-localhost host.
  */
 function isSafePath(next: string): boolean {
   if (!next || !next.startsWith('/')) return false;
   if (next.startsWith('//'))          return false; // protocol-relative
+  if (/\\/.test(next))               return false; // backslash
   try {
     const u = new URL(next, 'http://localhost');
     return u.host === 'localhost';
@@ -45,7 +54,7 @@ function isSafePath(next: string): boolean {
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const locale = searchParams.get('locale') ?? '';
-  const next   = searchParams.get('next')   ?? '/';
+  const rawNext = searchParams.get('next') ?? '/';
 
   if (!isValidLang(locale)) {
     return NextResponse.json(
@@ -53,23 +62,26 @@ export async function GET(request: NextRequest) {
       { status: 400 },
     );
   }
-  if (!isSafePath(next)) {
-    return NextResponse.json(
-      { error: 'next must be a safe same-site relative path' },
-      { status: 400 },
-    );
-  }
+
+  // Fall back to "/" for any invalid next value rather than rejecting.
+  const next = isSafePath(rawNext) ? rawNext : '/';
 
   const isProduction = process.env.NODE_ENV === 'production';
   const secure       = isProduction ? '; Secure' : '';
 
-  // Build the redirect target URL (preserves path + query + hash)
-  const target   = new URL(next, request.url);
-  const redirect = NextResponse.redirect(target, { status: 302 });
+  // ── Build the response manually with a RELATIVE Location header ──────────
+  // Never use new URL(next, request.url) — in Replit's container request.url
+  // contains 0.0.0.0:<PORT> which is invalid from the browser's perspective.
+  // A relative Location value (e.g. "/") is perfectly valid per RFC 7231 §7.1.2
+  // and the browser resolves it against its own current origin.
+  const response = new NextResponse(null, {
+    status: 303,
+    headers: { Location: next },
+  });
 
   // ── Authoritative cookie at path=/ ────────────────────────────────────────
   // One call to cookies.set() so the name-keyed internal Map is not overwritten.
-  redirect.cookies.set(LANG_PREF_COOKIE, locale, {
+  response.cookies.set(LANG_PREF_COOKIE, locale, {
     path:     '/',
     maxAge:   60 * 60 * 24 * 365, // 1 year
     sameSite: 'lax',
@@ -80,11 +92,11 @@ export async function GET(request: NextRequest) {
   // ── Expire legacy cookies (wrong paths) ───────────────────────────────────
   // Use headers.append() — not cookies.set() — to avoid overwriting the entry above.
   for (const legacyPath of LEGACY_COOKIE_PATHS) {
-    redirect.headers.append(
+    response.headers.append(
       'Set-Cookie',
       `${LANG_PREF_COOKIE}=; Path=${legacyPath}; Max-Age=0; SameSite=lax${secure}`,
     );
   }
 
-  return redirect;
+  return response;
 }

@@ -5,12 +5,17 @@ description: Why LanguageSelector must POST before navigating, and the ResponseC
 
 ## The rule
 **Never use `<Link>` for language switching when middleware reads a cookie to decide redirects.**  
-Always POST to set the cookie server-side first, then navigate with `window.location.assign()`.
+Use a GET redirect endpoint that sets the cookie AND redirects atomically in a single response.
 
 **Why:**  
-Next.js middleware runs on every request and reads the current cookie from the *incoming* request.  
-If `<Link>` navigates to `/` while the cookie still says `de`, middleware redirects to `/de` before the cookie is ever updated.  
-The POST sets the cookie in the browser *before* the navigation so the subsequent GET already carries the new value.
+Next.js middleware reads the cookie from the *incoming* request.  
+`<Link>` navigates before the cookie update — middleware sees the stale cookie and redirects back.  
+A two-step "POST cookie then navigate" approach still has a race: the navigation can fire before Set-Cookie commits.  
+The atomic `GET /api/locale/switch?locale=tr&next=/` response sends Set-Cookie **and** Location in the same headers — the destination page always arrives with the updated cookie already in the jar.
+
+## Atomic endpoint pattern
+`GET /api/locale/switch?locale=<lang>&next=<path>` → 302 redirect  
+LanguageSelector: `window.location.assign('/api/locale/switch?' + new URLSearchParams({locale, next}))` — no fetch, no await.
 
 ## ResponseCookies.set() key-collision trap
 `response.cookies.set(name, ...)` uses the cookie **name** as a unique key in a Map.  

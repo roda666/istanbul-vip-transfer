@@ -3,13 +3,17 @@
 /**
  * LanguageSelector — dropdown that switches the user's language.
  *
- * Switch flow:
- *  1. POST /api/locale   — sets ivt_lang_pref cookie server-side *before* navigation
- *  2. window.location.assign(targetPath) — full page load so middleware sees the
- *     updated cookie and server components re-render in the new locale
+ * Switch flow (atomic — no race condition):
+ *   window.location.assign('/api/locale/switch?locale=<lang>&next=<path>')
  *
- * This avoids the race where <Link> navigates to / while the cookie still says
- * "de", causing middleware to redirect straight back to /de.
+ * The switch endpoint sets the ivt_lang_pref cookie AND issues the redirect
+ * in a single response.  Because the cookie arrives with the redirect, the
+ * very next request the browser makes (the destination page) already carries
+ * the new cookie — middleware cannot redirect back to the old locale.
+ *
+ * The previous two-step "fetch, then navigate" approach had a race: the
+ * fetch could complete, the browser could start the navigation, and Next.js
+ * middleware would see the stale cookie on the incoming GET and redirect back.
  */
 import { useState, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
@@ -29,8 +33,8 @@ interface Props {
 export default function LanguageSelector({ variant = 'light', className = '' }: Props) {
   const { lang, dict } = useLang();
   const pathname = usePathname() ?? '/';
-  const [open, setOpen]         = useState(false);
-  const [pending, setPending]   = useState<SiteLang | null>(null);
+  const [open, setOpen]       = useState(false);
+  const [pending, setPending] = useState<SiteLang | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   // Close on outside click or Escape
@@ -48,33 +52,28 @@ export default function LanguageSelector({ variant = 'light', className = '' }: 
     };
   }, [open]);
 
-  async function switchLocale(targetLang: SiteLang) {
+  function switchLocale(targetLang: SiteLang) {
     if (targetLang === lang || pending !== null) return;
     setOpen(false);
     setPending(targetLang);
-    try {
-      const res = await fetch('/api/locale', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ locale: targetLang }),
-      });
-      if (!res.ok) throw new Error(`/api/locale returned ${res.status}`);
 
-      // Full navigation: middleware will see the updated cookie and serve the
-      // correct locale without redirecting.
-      const targetPath = localePath(pathname, targetLang);
-      window.location.assign(targetPath);
-    } catch (err) {
-      console.error('[LanguageSelector] locale switch failed:', err);
-      setPending(null);
-    }
+    // Preserve hash (usePathname never includes the fragment — read it live)
+    const hash = typeof window !== 'undefined' ? window.location.hash : '';
+
+    // Strip existing lang prefix, apply new one; append any hash
+    const targetPath = localePath(pathname, targetLang) + hash;
+
+    // Single navigation to atomic switch endpoint:
+    //   server sets cookie + redirects in ONE response → no race
+    const params = new URLSearchParams({ locale: targetLang, next: targetPath });
+    window.location.assign(`/api/locale/switch?${params.toString()}`);
   }
 
-  const isDark        = variant === 'dark';
-  const textColor     = isDark ? 'rgba(255,255,255,0.75)' : '#263F55';
-  const textHover     = '#C99A32';
-  const borderColor   = isDark ? 'rgba(255,255,255,0.15)' : '#D9E2EC';
-  const dropdownBg    = isDark ? '#102A43' : '#FFFDF8';
+  const isDark          = variant === 'dark';
+  const textColor       = isDark ? 'rgba(255,255,255,0.75)' : '#263F55';
+  const textHover       = '#C99A32';
+  const borderColor     = isDark ? 'rgba(255,255,255,0.15)' : '#D9E2EC';
+  const dropdownBg      = isDark ? '#102A43' : '#FFFDF8';
   const activeLangColor = '#C99A32';
 
   return (
@@ -88,12 +87,12 @@ export default function LanguageSelector({ variant = 'light', className = '' }: 
         aria-haspopup="listbox"
         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C79A35]"
         style={{
-          color:       pending ? '#aaa' : textColor,
-          border:      `1px solid ${borderColor}`,
-          background:  'transparent',
-          fontFamily:  'Inter, sans-serif',
+          color:         pending ? '#aaa' : textColor,
+          border:        `1px solid ${borderColor}`,
+          background:    'transparent',
+          fontFamily:    'Inter, sans-serif',
           letterSpacing: '0.03em',
-          cursor:      pending ? 'wait' : 'pointer',
+          cursor:        pending ? 'wait' : 'pointer',
         }}
         onMouseEnter={(e) => { if (!pending) (e.currentTarget as HTMLButtonElement).style.color = textHover; }}
         onMouseLeave={(e) => { if (!pending) (e.currentTarget as HTMLButtonElement).style.color = textColor; }}
@@ -108,9 +107,9 @@ export default function LanguageSelector({ variant = 'light', className = '' }: 
           size={11}
           aria-hidden="true"
           style={{
-            flexShrink:  0,
-            transform:   open ? 'rotate(180deg)' : 'none',
-            transition:  'transform 0.15s',
+            flexShrink: 0,
+            transform:  open ? 'rotate(180deg)' : 'none',
+            transition: 'transform 0.15s',
           }}
         />
       </button>
@@ -140,13 +139,13 @@ export default function LanguageSelector({ variant = 'light', className = '' }: 
                 onClick={() => switchLocale(l)}
                 className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs transition-colors duration-150 focus:outline-none focus-visible:bg-[rgba(199,154,53,0.08)]"
                 style={{
-                  fontFamily:  'Inter, sans-serif',
-                  color:       isActive ? activeLangColor : (isDark ? 'rgba(255,255,255,0.8)' : '#263F55'),
-                  fontWeight:  isActive ? 600 : 400,
-                  background:  isActive ? 'rgba(199,154,53,0.08)' : 'transparent',
-                  textAlign:   'start',
-                  cursor:      pending ? 'wait' : 'pointer',
-                  border:      'none',
+                  fontFamily: 'Inter, sans-serif',
+                  color:      isActive ? activeLangColor : (isDark ? 'rgba(255,255,255,0.8)' : '#263F55'),
+                  fontWeight: isActive ? 600 : 400,
+                  background: isActive ? 'rgba(199,154,53,0.08)' : 'transparent',
+                  textAlign:  'start',
+                  cursor:     pending ? 'wait' : 'pointer',
+                  border:     'none',
                 }}
                 onMouseEnter={(e) => {
                   if (!isActive && !pending)

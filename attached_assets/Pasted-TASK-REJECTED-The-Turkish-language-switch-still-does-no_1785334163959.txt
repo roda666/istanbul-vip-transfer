@@ -1,0 +1,134 @@
+TASK REJECTED: The Turkish language switch still does not work.
+
+The previous completion report did not include the required evidence:
+- URL after clicking Türkçe
+- Locale cookie after clicking Türkçe
+
+The live preview is still German. Do not mark this task complete again until the real browser acceptance test passes.
+
+Replace the unreliable locale-switch flow with one atomic server-side cookie-and-redirect response.
+
+1. Diagnose before editing
+
+Use Playwright or the real Replit browser to reproduce:
+
+- Open /de
+- Open language menu
+- Click Türkçe
+- Record:
+  - URL before click
+  - URL after click
+  - Redirect chain
+  - Locale cookies before click
+  - Locale cookies after click
+  - Final page language
+
+Inspect which cookie name middleware actually reads. Check for:
+- Cookie-name mismatch
+- Duplicate cookies with different paths
+- Client navigation occurring before the cookie is saved
+- Middleware overriding `tr`
+- Accept-Language overriding an explicit Turkish choice
+
+2. Implement an atomic locale-switch endpoint
+
+Create or repair a route such as:
+
+GET /api/locale/switch?locale=tr&next=/
+
+This route must perform both operations in the same response:
+- Set the existing locale-preference cookie
+- Redirect to the validated target URL
+
+Do not use the previous “fetch, then router.push” race-prone implementation.
+
+Requirements:
+- Use one centralized cookie-name constant shared by middleware and the switch endpoint.
+- Do not create competing locale cookies.
+- Allowed values: tr, en, de, ru, ar.
+- Cookie path must be `/`.
+- SameSite=Lax.
+- Use Secure in production.
+- Use an appropriate maxAge.
+- Reject external/open redirects.
+- `next` must be a safe same-site relative path.
+- Expire duplicate legacy cookies for `/en`, `/de`, `/ru` and `/ar` paths if they exist.
+- Exclude the locale-switch API route from middleware redirects.
+
+3. Language menu behavior
+
+When Türkçe is selected, navigate through the atomic switch endpoint.
+
+Required conversions:
+- /de → /
+- /de/hizmetler → /hizmetler
+- /en/araclar → /araclar
+- /ru/hakkimizda → /hakkimizda
+- /ar/iletisim → /iletisim
+- /de#rezervasyon → /#rezervasyon
+
+Preserve safe query strings and hashes.
+
+Turkish must remain the default root locale. Do not create `/tr`.
+
+4. Middleware priority
+
+Use this order:
+1. Explicit locale in the URL
+2. Explicit locale-preference cookie
+3. Browser-language detection only when no explicit preference exists
+
+Critical behavior:
+- Request `/` with locale cookie `tr` must return the Turkish homepage.
+- It must not redirect to `/de`, `/en`, `/ru` or `/ar`.
+- Request `/hizmetler` with cookie `tr` must remain Turkish.
+
+5. Required automated acceptance test
+
+Create/run a Playwright regression test that actually clicks the visible language menu:
+
+Test A:
+- Navigate to /de
+- Click language menu
+- Click Türkçe
+- Assert final pathname equals `/`
+- Assert visible hero heading is Turkish
+- Assert locale cookie value equals `tr`
+- Assert cookie path equals `/`
+
+Test B:
+- Click Hizmetler
+- Assert pathname equals `/hizmetler`
+- Assert page title is `Hizmetlerimiz`
+- Reload
+- Assert content is still Turkish
+
+Repeat the switch-to-Turkish test from:
+- /en
+- /ru
+- /ar
+
+Then test:
+- TR → DE → TR
+- TR → AR → TR
+
+6. Required report
+
+Do not mark complete without printing these exact observed results:
+
+URL before clicking Türkçe: ...
+URL after clicking Türkçe: /
+Locale cookie name: ...
+Locale cookie value after click: tr
+Locale cookie path: /
+Visible Turkish hero text after click: ...
+Turkish language after refresh: PASS
+Turkish language after navigating to /hizmetler: PASS
+
+Also report any duplicate cookie that was found and removed.
+
+Run TypeScript, ESLint and production build only after the browser acceptance test passes.
+
+Do not clear all browser data as the solution.
+Do not change authentication, database data or production configuration.
+Do not publish.

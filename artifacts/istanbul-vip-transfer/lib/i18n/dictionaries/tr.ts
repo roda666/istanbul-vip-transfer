@@ -271,6 +271,16 @@ const tr: Dictionary = {
     sectionLabel: 'Sık Sorulan Sorular',
     heading: 'Merak Ettikleriniz',
   },
+  pages: {
+    servicesTitle: 'Hizmetlerimiz',
+    servicesSubtitle: 'İstanbul ve çevresinde Mercedes Vito ve Sprinter araçlarla sunduğumuz tüm transfer ve tur hizmetleri.',
+    vehiclesTitle: 'Lüks Mercedes Araç Filosumuz',
+    vehiclesSubtitle: 'Bireysel yolculardan büyük gruplara — her ihtiyaca uygun iki VIP araç seçeneği.',
+    aboutTitle: 'Hakkımızda',
+    aboutSubtitle: 'VIP Transfer Istanbul olarak hizmet anlayışımız, araç filomuz ve müşteri memnuniyetine verdiğimiz önem hakkında bilgi edinin.',
+    contactTitle: 'İletişim',
+    contactSubtitle: 'Sorularınız ve rezervasyonlarınız için 7/24 WhatsApp veya telefon ile ulaşabilirsiniz.',
+  },
 };
 
 export default tr;

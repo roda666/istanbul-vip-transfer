@@ -271,6 +271,16 @@ const en: Dictionary = {
     sectionLabel: 'Frequently Asked Questions',
     heading: 'Your Questions Answered',
   },
+  pages: {
+    servicesTitle: 'Our Services',
+    servicesSubtitle: 'All our transfer and tour services across Istanbul and beyond, with Mercedes Vito and Sprinter.',
+    vehiclesTitle: 'Our Luxury Vehicle Fleet',
+    vehiclesSubtitle: 'From solo travellers to large groups — two premium VIP vehicle options for every need.',
+    aboutTitle: 'About Us',
+    aboutSubtitle: 'Learn about our service philosophy, luxury fleet and commitment to customer satisfaction at VIP Transfer Istanbul.',
+    contactTitle: 'Contact',
+    contactSubtitle: 'Reach us 24/7 via WhatsApp or phone for questions and reservations.',
+  },
 };
 
 export default en;

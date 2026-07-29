@@ -38,11 +38,7 @@ const breadcrumbSchema = {
 export default function HizmetlerPage() {
   return (
     <>
-      <PageHero
-        breadcrumbs={[{ label: 'Ana Sayfa', href: '/' }, { label: 'Hizmetler' }]}
-        title="Hizmetlerimiz"
-        subtitle="İstanbul ve çevresinde Mercedes Vito ve Sprinter araçlarla sunduğumuz tüm transfer ve tur hizmetleri."
-      />
+      <PageHero pageKey="services" />
 
       <section className="py-16 md:py-20 max-w-7xl mx-auto px-5 md:px-8">
         <HizmetlerServiceGrid />

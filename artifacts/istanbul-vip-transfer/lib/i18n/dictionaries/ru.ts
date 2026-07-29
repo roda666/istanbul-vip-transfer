@@ -271,6 +271,16 @@ const ru: Dictionary = {
     sectionLabel: 'Часто задаваемые вопросы',
     heading: 'Ваши вопросы',
   },
+  pages: {
+    servicesTitle: 'Наши услуги',
+    servicesSubtitle: 'Все наши трансферы и туры по Стамбулу и за его пределами на автомобилях Mercedes Vito и Sprinter.',
+    vehiclesTitle: 'Наш автопарк премиум-класса',
+    vehiclesSubtitle: 'Для индивидуальных путешественников и больших групп — два варианта VIP-автомобилей на любой случай.',
+    aboutTitle: 'О нас',
+    aboutSubtitle: 'Узнайте о нашей философии обслуживания, автопарке и приверженности удовлетворённости клиентов в VIP Transfer Istanbul.',
+    contactTitle: 'Контакты',
+    contactSubtitle: 'Свяжитесь с нами 24/7 через WhatsApp или по телефону по вопросам и бронированию.',
+  },
 };
 
 export default ru;

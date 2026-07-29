@@ -1,0 +1,140 @@
+Fix only the remaining mixed-language page-intro, breadcrumb and Arabic RTL layout defects shown in the latest screenshots.
+
+Locale persistence is now working. Do not rewrite the routing system again.
+
+CURRENT VISIBLE DEFECTS
+
+English routes still show Turkish page-intro content:
+- /en/hizmetler
+- /en/araclar
+- /en/hakkimizda
+- /en/iletisim
+
+Arabic routes still show Turkish page-intro content:
+- /ar/hizmetler
+- /ar/araclar
+- /ar/hakkimizda
+- /ar/iletisim
+
+The affected content includes:
+- breadcrumbs such as “Ana Sayfa”
+- page titles such as “Hizmetlerimiz”, “Lüks Mercedes Araç Filomuz”, “Hakkımızda”, “İletişim”
+- page descriptions below those titles
+
+1. Find the exact shared PageHero/PageHeader/Breadcrumb components or route-level props responsible for these Turkish strings.
+
+2. Move all affected strings into the existing centralized locale dictionary.
+   Do not introduce a second translation system.
+
+3. Provide complete static UI translations for tr, en, de, ru and ar.
+
+Expected primary page titles:
+
+Services:
+- tr: Hizmetlerimiz
+- en: Our Services
+- de: Unsere Dienstleistungen
+- ru: Наши услуги
+- ar: خدماتنا
+
+Vehicles:
+- tr: Lüks Mercedes Araç Filomuz
+- en: Our Luxury Vehicle Fleet
+- de: Unsere Luxusfahrzeugflotte
+- ru: Наш автопарк премиум-класса
+- ar: أسطول مركباتنا الفاخرة
+
+About:
+- tr: Hakkımızda
+- en: About Us
+- de: Über uns
+- ru: О нас
+- ar: من نحن
+
+Contact:
+- tr: İletişim
+- en: Contact
+- de: Kontakt
+- ru: Контакты
+- ar: اتصل بنا
+
+4. Translate each page’s introductory description naturally.
+   Do not use Turkish fallback text on non-Turkish routes.
+
+5. Localize all breadcrumb labels:
+   - Home
+   - Services
+   - Vehicles
+   - Blog
+   - About Us
+   - Contact
+   and their German, Russian and Arabic equivalents.
+
+6. Search specifically for these remaining hard-coded Turkish strings:
+   - Ana Sayfa
+   - Hizmetlerimiz
+   - Lüks Mercedes Araç Filomuz
+   - Hakkımızda
+   - İletişim
+   - İstanbul ve çevresinde
+   - Bireysel yolculardan
+   - hizmet anlayışımız
+   - Sorularınız ve rezervasyonlarınız
+
+7. Do not alter Turkish root-page wording.
+8. Do not alter correct translated lower-page sections.
+9. Do not auto-publish blog or service-content translations.
+10. The localized blog empty state may remain until approved translated articles exist.
+
+ARABIC RTL CORRECTION
+
+11. Verify that /ar pages use html lang="ar" and dir="rtl".
+
+12. Fully mirror Arabic public layouts where appropriate:
+   - desktop and mobile header order
+   - navigation direction
+   - hero text alignment
+   - hero text/image column order
+   - breadcrumbs
+   - service-card content
+   - page-intro text
+   - form labels and controls
+   - footer columns
+
+13. Keep these elements LTR inside Arabic pages:
+   - phone numbers
+   - email addresses
+   - IST and SAW
+   - Mercedes Vito
+   - Mercedes Sprinter
+   - VW Transporter
+
+14. Do not merely apply text-align:right. Verify actual grid/flex ordering and reading direction.
+
+VERIFICATION
+
+15. Visually verify these routes:
+   - /en/hizmetler
+   - /en/araclar
+   - /en/hakkimizda
+   - /en/iletisim
+   - /de/hizmetler
+   - /ru/hizmetler
+   - /ar/hizmetler
+   - /ar/araclar
+   - /ar/hakkimizda
+   - /ar/iletisim
+
+16. Test English and Arabic at:
+   - 1440px desktop
+   - 390px mobile
+
+17. Confirm:
+   - no visible Turkish UI on non-Turkish pages
+   - Arabic layout is genuinely RTL
+   - locale remains selected during navigation
+   - zero console errors or hydration warnings
+
+18. Run lint, typecheck and production build.
+19. Do not publish, deploy, modify credentials or change unrelated functionality.
+20. Report changed files and provide route-by-route verification results.

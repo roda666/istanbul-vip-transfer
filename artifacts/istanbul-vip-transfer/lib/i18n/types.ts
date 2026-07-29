@@ -287,4 +287,17 @@ export interface Dictionary {
     sectionLabel: string;
     heading: string;
   };
+  /** Static page-intro strings for hizmetler / araclar / hakkimizda / iletisim.
+   *  Resolved inside PageHero via useLang() when a pageKey prop is supplied,
+   *  allowing Server-Component pages to remain locale-neutral. */
+  pages: {
+    servicesTitle: string;
+    servicesSubtitle: string;
+    vehiclesTitle: string;
+    vehiclesSubtitle: string;
+    aboutTitle: string;
+    aboutSubtitle: string;
+    contactTitle: string;
+    contactSubtitle: string;
+  };
 }

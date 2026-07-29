@@ -271,6 +271,16 @@ const de: Dictionary = {
     sectionLabel: 'Häufig gestellte Fragen',
     heading: 'Ihre Fragen beantwortet',
   },
+  pages: {
+    servicesTitle: 'Unsere Dienstleistungen',
+    servicesSubtitle: 'Alle unsere Transfer- und Tourdienste in und um Istanbul mit Mercedes Vito und Sprinter.',
+    vehiclesTitle: 'Unsere Luxusfahrzeugflotte',
+    vehiclesSubtitle: 'Von Einzelreisenden bis zu großen Gruppen — zwei Premium-VIP-Fahrzeugoptionen für jeden Bedarf.',
+    aboutTitle: 'Über uns',
+    aboutSubtitle: 'Erfahren Sie mehr über unsere Servicephilosophie, unsere Fahrzeugflotte und unser Engagement für Kundenzufriedenheit.',
+    contactTitle: 'Kontakt',
+    contactSubtitle: 'Erreichen Sie uns 24/7 per WhatsApp oder Telefon für Fragen und Reservierungen.',
+  },
 };
 
 export default de;

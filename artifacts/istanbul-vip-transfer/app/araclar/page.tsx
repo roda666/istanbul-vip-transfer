@@ -37,14 +37,7 @@ const breadcrumbSchema = {
 export default function AraclarPage() {
   return (
     <>
-      <PageHero
-        breadcrumbs={[
-          { label: 'Ana Sayfa', href: '/' },
-          { label: 'Araçlarımız' },
-        ]}
-        title="Lüks Mercedes Araç Filosumuz"
-        subtitle="Bireysel yolculardan büyük gruplara — her ihtiyaca uygun iki VIP araç seçeneği."
-      />
+      <PageHero pageKey="vehicles" />
       <VehicleFleet />
       <BookingForm />
       <Contact />

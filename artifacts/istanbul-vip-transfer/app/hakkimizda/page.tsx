@@ -38,14 +38,7 @@ const breadcrumbSchema = {
 export default function HakkimizdaPage() {
   return (
     <>
-      <PageHero
-        breadcrumbs={[
-          { label: 'Ana Sayfa', href: '/' },
-          { label: 'Hakkımızda' },
-        ]}
-        title="Hakkımızda"
-        subtitle="VIP Transfer Istanbul olarak hizmet anlayışımız, araç filomuz ve müşteri memnuniyetine verdiğimiz önem hakkında bilgi edinin."
-      />
+      <PageHero pageKey="about" />
       <TrustSignals />
       <Reviews />
       <BookingForm />

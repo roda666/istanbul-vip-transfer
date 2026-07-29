@@ -36,14 +36,7 @@ const breadcrumbSchema = {
 export default function IletisimPage() {
   return (
     <>
-      <PageHero
-        breadcrumbs={[
-          { label: 'Ana Sayfa', href: '/' },
-          { label: 'İletişim' },
-        ]}
-        title="İletişim"
-        subtitle="Sorularınız ve rezervasyonlarınız için 7/24 WhatsApp veya telefon ile ulaşabilirsiniz."
-      />
+      <PageHero pageKey="contact" />
       <Contact />
       <BookingForm />
       <script

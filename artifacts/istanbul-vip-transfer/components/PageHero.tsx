@@ -5,20 +5,67 @@ import { motion } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
 import { localePath } from '@/lib/locale-path';
+import type { Dictionary } from '@/lib/i18n/types';
+
+// ── PageKey support ───────────────────────────────────────────────────────────
+// Server Components cannot call useLang(). Instead of passing hardcoded Turkish
+// strings as props, they pass a `pageKey` and PageHero resolves the correct
+// title / subtitle / breadcrumbs from the active locale dictionary.
+
+export type PageKey = 'services' | 'vehicles' | 'about' | 'contact';
+
+/** Maps a PageKey to the nav dict key used as the breadcrumb current-page label. */
+const PAGE_NAV_KEY: Record<PageKey, keyof Dictionary['nav']> = {
+  services: 'services',
+  vehicles: 'vehicles',
+  about:    'about',
+  contact:  'contact',
+};
+
+// ── Props ─────────────────────────────────────────────────────────────────────
 
 interface Crumb {
   label: string;
   href?: string;
 }
 
-interface PageHeroProps {
-  breadcrumbs: Crumb[];
-  title: string;
-  subtitle?: string;
-}
+type PageHeroProps =
+  | {
+      pageKey: PageKey;
+      breadcrumbs?: never;
+      title?: never;
+      subtitle?: never;
+    }
+  | {
+      pageKey?: never;
+      breadcrumbs: Crumb[];
+      title: string;
+      subtitle?: string;
+    };
 
-export default function PageHero({ breadcrumbs, title, subtitle }: PageHeroProps) {
-  const { lang } = useLang();
+// ── Component ─────────────────────────────────────────────────────────────────
+
+export default function PageHero(props: PageHeroProps) {
+  const { lang, dict } = useLang();
+
+  // Resolve strings — either from pageKey (locale-aware) or from explicit props.
+  let title: string;
+  let subtitle: string | undefined;
+  let breadcrumbs: Crumb[];
+
+  if (props.pageKey) {
+    const k = props.pageKey;
+    title      = dict.pages[`${k}Title`   as keyof Dictionary['pages']];
+    subtitle   = dict.pages[`${k}Subtitle` as keyof Dictionary['pages']];
+    breadcrumbs = [
+      { label: dict.nav.home,                            href: '/' },
+      { label: dict.nav[PAGE_NAV_KEY[k]] as string },
+    ];
+  } else {
+    title       = props.title;
+    subtitle    = props.subtitle;
+    breadcrumbs = props.breadcrumbs;
+  }
 
   return (
     <section

@@ -271,6 +271,16 @@ const ar: Dictionary = {
     sectionLabel: 'الأسئلة الشائعة',
     heading: 'إجابات لاستفساراتك',
   },
+  pages: {
+    servicesTitle: 'خدماتنا',
+    servicesSubtitle: 'جميع خدمات النقل والجولات في إسطنبول وخارجها بسيارات مرسيدس فيتو وسبرينتر.',
+    vehiclesTitle: 'أسطول مركباتنا الفاخرة',
+    vehiclesSubtitle: 'من المسافرين الأفراد إلى المجموعات الكبيرة — خياران من سيارات VIP الفاخرة لكل احتياج.',
+    aboutTitle: 'من نحن',
+    aboutSubtitle: 'تعرّف على فلسفتنا في الخدمة وأسطول سياراتنا والتزامنا برضا العملاء في VIP Transfer Istanbul.',
+    contactTitle: 'اتصل بنا',
+    contactSubtitle: 'تواصل معنا على مدار الساعة عبر واتساب أو الهاتف للاستفسارات والحجوزات.',
+  },
 };
 
 export default ar;

@@ -1,0 +1,83 @@
+The Turkish language switch is still broken. Reproduce the click in the real browser before editing.
+
+Observed behavior:
+- Current URL: /de
+- The Türkçe menu item points to /
+- Clicking Türkçe leaves the visitor on German
+- Middleware or the saved locale cookie redirects / back to /de
+
+Do not claim this is fixed until you physically click Türkçe in the browser and verify the URL and content.
+
+Implement a reliable server-confirmed locale switch:
+
+1. Inspect:
+- The exact cookie name read by middleware
+- The LanguageSwitcher click handler
+- All locale helper functions
+- Whether duplicate locale cookies exist with different paths
+- The redirect response produced when requesting / after selecting Turkish
+
+2. Use the existing locale cookie name. Do not create another cookie.
+
+3. If necessary, create or fix a same-origin locale route handler such as:
+POST /api/locale
+
+It must:
+- Accept only tr, en, de, ru and ar
+- Set the existing locale cookie server-side
+- Use path=/
+- Use SameSite=Lax
+- Use a suitable maxAge
+- Prevent open redirects
+- Remove/expire any legacy locale cookies using /en, /de, /ru or /ar paths
+
+4. LanguageSwitcher must:
+- Be a client component
+- Await the locale-cookie request
+- Navigate only after the server confirms the cookie update
+- Use a full navigation such as window.location.assign(targetPath) so server components cannot remain stale
+- Close the menu after selection
+
+5. Correct path conversion:
+
+/de                    → /
+/de/hizmetler          → /hizmetler
+/de/araclar             → /araclar
+/en/hakkimizda          → /hakkimizda
+/ru/iletisim            → /iletisim
+/ar/blog                → /blog
+/de#rezervasyon         → /#rezervasyon
+
+Preserve query strings and hashes.
+
+6. Middleware behavior:
+- Cookie=tr and request=/ must return the Turkish page without redirecting.
+- Do not create /tr.
+- Other locale routes must continue working.
+- Exclude /api/locale from locale redirection.
+
+7. Required real-browser test:
+
+Start at /de:
+- Open language menu
+- Click Türkçe
+- Confirm URL becomes /
+- Confirm hero title becomes Turkish
+- Click Hizmetler
+- Confirm URL is /hizmetler and content remains Turkish
+- Refresh
+- Confirm it remains Turkish
+
+Repeat:
+- /en → Türkçe
+- /ru → Türkçe
+- /ar → Türkçe
+- Turkish → German → Turkish
+
+Test desktop and 390px mobile.
+
+Also inspect browser cookies after the click and confirm there is only one active locale-preference cookie with value tr and path=/.
+
+Run TypeScript, ESLint and production build.
+Report the actual redirect status and the cookie value observed during the browser test.
+Do not publish.

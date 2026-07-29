@@ -6,10 +6,15 @@ import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Phone, ChevronDown } from 'lucide-react';
 import { SITE } from '@/lib/site-config';
-import { NAV } from '@/lib/nav-config';
+import { getNav } from '@/lib/nav-config';
+import { useLang } from '@/lib/i18n/context';
+import { localePath } from '@/lib/locale-path';
 import LanguageSelector from './LanguageSelector';
 
 export default function Header() {
+  const { lang, dict } = useLang();
+  const nav = getNav(lang, dict);
+
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -65,8 +70,10 @@ export default function Header() {
     });
   };
 
-  const mainEntries = NAV.filter((e) => !e.cta);
-  const ctaEntry = NAV.find((e) => e.cta);
+  const mainEntries = nav.filter((e) => !e.cta);
+  const ctaEntry = nav.find((e) => e.cta);
+  const homePath = localePath('/', lang);
+  const servicesPath = localePath('/hizmetler', lang);
 
   return (
     <>
@@ -86,7 +93,7 @@ export default function Header() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
             >
-              <Link href="/" className="flex flex-col leading-none" data-testid="logo-link">
+              <Link href={homePath} className="flex flex-col leading-none" data-testid="logo-link">
                 <span
                   className="text-xl md:text-2xl font-bold tracking-widest uppercase"
                   style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#C99A32', letterSpacing: '0.15em' }}
@@ -106,12 +113,12 @@ export default function Header() {
             <nav
               className="hidden xl:flex items-center"
               data-testid="desktop-nav"
-              aria-label="Ana menü"
+              aria-label={dict.header.desktopNav}
             >
               {mainEntries.map((entry, i) => {
                 if (entry.groups) {
                   const isActive =
-                    pathname === '/hizmetler' ||
+                    pathname === servicesPath ||
                     entry.groups.some((g) => g.items.some((item) => pathname === item.href));
 
                   return (
@@ -138,7 +145,7 @@ export default function Header() {
                         ref={dropdownTriggerRef}
                         aria-expanded={dropdownOpen}
                         aria-controls="hizmetler-dropdown"
-                        aria-label="Hizmetler alt menüsünü aç veya kapat"
+                        aria-label={dict.header.servicesSubmenuToggle}
                         className="flex items-center justify-center w-5 h-5 mr-1 rounded transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C79A35]"
                         style={{ color: isActive ? '#C99A32' : '#50677A' }}
                         onClick={() => setDropdownOpen((o) => !o)}
@@ -160,7 +167,7 @@ export default function Header() {
                           <motion.div
                             id="hizmetler-dropdown"
                             role="navigation"
-                            aria-label="Hizmetler alt menüsü"
+                            aria-label={dict.header.servicesSubmenu}
                             className="absolute top-full left-1/2 mt-0 rounded-xl shadow-xl border overflow-hidden"
                             style={{
                               translate: '-50% 0',
@@ -225,14 +232,14 @@ export default function Header() {
                               style={{ borderTop: '1px solid rgba(217,226,236,0.8)', background: 'rgba(199,154,53,0.04)' }}
                             >
                               <Link
-                                href="/hizmetler"
+                                href={servicesPath}
                                 className="text-[10px] tracking-[0.15em] uppercase transition-colors focus:outline-none focus-visible:underline"
                                 style={{ color: '#C99A32', fontFamily: 'Inter, sans-serif' }}
                                 onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = '0.75'; }}
                                 onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = '1'; }}
                                 onClick={() => setDropdownOpen(false)}
                               >
-                                Tüm Hizmetleri Görüntüle →
+                                {dict.header.allServices}
                               </Link>
                             </div>
                           </motion.div>
@@ -317,7 +324,7 @@ export default function Header() {
                 data-testid="header-whatsapp-cta"
               >
                 <Phone size={13} aria-hidden="true" />
-                WhatsApp ile Ara
+                {dict.header.whatsappCta}
               </motion.a>
             </div>
 
@@ -326,7 +333,7 @@ export default function Header() {
               className="xl:hidden p-2 rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C79A35]"
               style={{ color: '#102A43' }}
               onClick={() => setMenuOpen((o) => !o)}
-              aria-label={menuOpen ? 'Menüyü kapat' : 'Menüyü aç'}
+              aria-label={menuOpen ? dict.header.menuClose : dict.header.menuOpen}
               aria-expanded={menuOpen}
               data-testid="hamburger-button"
             >
@@ -361,12 +368,12 @@ export default function Header() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: -20, opacity: 0 }}
               transition={{ duration: 0.25 }}
-              aria-label="Mobil menü"
+              aria-label={dict.header.mobileMenu}
             >
               {mainEntries.map((entry, i) => {
                 if (entry.groups) {
                   const isActive =
-                    pathname === '/hizmetler' ||
+                    pathname === servicesPath ||
                     entry.groups.some((g) => g.items.some((item) => pathname === item.href));
 
                   return (
@@ -386,7 +393,7 @@ export default function Header() {
                         <button
                           className="p-3 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C79A35] rounded"
                           aria-expanded={mobileServicesOpen}
-                          aria-label="Hizmetler alt kategorilerini aç veya kapat"
+                          aria-label={dict.header.servicesSubmenuToggle}
                           onClick={() => setMobileServicesOpen((o) => !o)}
                           style={{ color: '#C99A32' }}
                         >
@@ -554,7 +561,7 @@ export default function Header() {
                   data-testid="mobile-whatsapp-cta"
                 >
                   <Phone size={18} aria-hidden="true" />
-                  WhatsApp ile Ara
+                  {dict.header.whatsappCta}
                 </a>
               </motion.div>
             </motion.nav>

@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Minus } from 'lucide-react';
-import { faqs } from '@/lib/faq-data';
-
-export { faqs };
+import { getFaqs } from '@/lib/faq-data';
+import { useLang } from '@/lib/i18n/context';
 
 export default function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const { lang, dict } = useLang();
+  const faqs = getFaqs(lang);
 
   return (
     <section
@@ -30,13 +31,13 @@ export default function FAQ() {
             className="text-xs tracking-[0.3em] uppercase mb-4 block"
             style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
           >
-            Sık Sorulan Sorular
+            {dict.faq.sectionLabel}
           </span>
           <h2
             className="text-4xl md:text-5xl font-bold mb-5"
             style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}
           >
-            Merak Ettikleriniz
+            {dict.faq.heading}
           </h2>
           <div
             className="mx-auto"

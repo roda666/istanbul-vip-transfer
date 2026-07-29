@@ -2,14 +2,17 @@
 
 import { motion } from 'framer-motion';
 import { SITE } from '@/lib/site-config';
+import { useLang } from '@/lib/i18n/context';
 
 export default function WhatsAppFloat() {
+  const { dict } = useLang();
+
   return (
     <motion.a
       href={SITE.whatsappFloatUrl}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label="WhatsApp ile iletişime geç"
+      aria-label={dict.common.whatsappAria}
       data-testid="whatsapp-float"
       className="fixed z-50 flex items-center justify-center w-14 h-14 rounded-full shadow-2xl"
       style={{

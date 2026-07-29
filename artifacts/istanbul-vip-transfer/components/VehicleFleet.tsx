@@ -3,47 +3,51 @@
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Users, Luggage, Wifi, Wind, UserCheck, Droplets, Star } from 'lucide-react';
-
-const vehicles = [
-  {
-    name: 'Mercedes Vito',
-    alt: 'Mercedes Vito VIP transfer aracı',
-    tagline: 'Executive Sınıf',
-    image: '/images/mercedes-vito.jpg',
-    passengers: 7,
-    luggage: 7,
-    description: 'Küçük gruplar ve aileler için ideal olan Mercedes Vito, üstün konforuyla her yolculuğu ayrıcalıklı kılar.',
-    features: [
-      { icon: Wifi, label: 'WiFi' },
-      { icon: Wind, label: 'İklimlendirme' },
-      { icon: UserCheck, label: 'Meet & Greet' },
-      { icon: Star, label: 'Deri Koltuklar' },
-    ],
-    featured: false,
-  },
-  {
-    name: 'Mercedes Sprinter VIP',
-    alt: 'Mercedes Sprinter VIP grup transfer aracı',
-    tagline: 'Prestige Sınıf',
-    image: '/images/mercedes-sprinter.jpg',
-    passengers: 13,
-    luggage: 13,
-    description: 'Büyük gruplar ve kurumsal transferler için VIP Sprinter — geniş iç mekan, tam konfor, lüks donanım.',
-    features: [
-      { icon: Wifi, label: 'WiFi' },
-      { icon: Wind, label: 'İklimlendirme' },
-      { icon: UserCheck, label: 'Meet & Greet' },
-      { icon: Star, label: 'Lüks Koltuklar' },
-      { icon: Droplets, label: 'Su İkramı' },
-    ],
-    featured: true,
-  },
-];
+import { useLang } from '@/lib/i18n/context';
 
 export default function VehicleFleet() {
+  const { dict } = useLang();
+  const v = dict.vehicles;
+
   const scrollToBooking = () => {
     document.querySelector('#rezervasyon')?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  const vehicles = [
+    {
+      name: 'Mercedes Vito',
+      alt: v.vitoAlt,
+      tagline: v.vitoTagline,
+      image: '/images/mercedes-vito.jpg',
+      passengers: 7,
+      luggage: 7,
+      description: v.vitoDesc,
+      features: [
+        { icon: Wifi,      label: 'WiFi' },
+        { icon: Wind,      label: v.featureClimate },
+        { icon: UserCheck, label: 'Meet & Greet' },
+        { icon: Star,      label: v.featureLeather },
+      ],
+      featured: false,
+    },
+    {
+      name: 'Mercedes Sprinter VIP',
+      alt: v.sprinterAlt,
+      tagline: v.sprinterTagline,
+      image: '/images/mercedes-sprinter.jpg',
+      passengers: 13,
+      luggage: 13,
+      description: v.sprinterDesc,
+      features: [
+        { icon: Wifi,      label: 'WiFi' },
+        { icon: Wind,      label: v.featureClimate },
+        { icon: UserCheck, label: 'Meet & Greet' },
+        { icon: Star,      label: v.featureLuxury },
+        { icon: Droplets,  label: v.featureWater },
+      ],
+      featured: true,
+    },
+  ];
 
   return (
     <section
@@ -67,20 +71,20 @@ export default function VehicleFleet() {
             className="text-xs tracking-[0.3em] uppercase mb-4 block"
             style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
           >
-            Araç Filosu
+            {v.sectionLabel}
           </span>
           <h2
             className="text-4xl md:text-5xl font-bold mb-5"
             style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}
           >
-            Lüks Mercedes Filomuz
+            {v.heading}
           </h2>
           <div
             className="mx-auto mb-6"
             style={{ width: '60px', height: '3px', background: 'linear-gradient(90deg, #C79A35, #E4B84B)', borderRadius: '2px' }}
           />
           <p className="text-base max-w-xl mx-auto" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
-            Her ihtiyaca özel, en yüksek standartta iki araç seçeneği — her ikisi de tam konforlu.
+            {v.subheading}
           </p>
         </motion.div>
 
@@ -119,7 +123,7 @@ export default function VehicleFleet() {
                   className="absolute top-6 right-6 z-10 px-3 py-1 rounded-full text-[10px] tracking-widest uppercase font-semibold"
                   style={{ background: '#C79A35', color: '#102A43', fontFamily: 'Inter, sans-serif' }}
                 >
-                  En Popüler
+                  {v.popular}
                 </div>
               )}
 
@@ -135,7 +139,6 @@ export default function VehicleFleet() {
                   className="object-cover object-center transition-transform duration-700 group-hover:scale-105"
                   sizes="(max-width: 768px) 100vw, 50vw"
                 />
-                {/* Very subtle bottom gradient to blend into card */}
                 <div
                   className="absolute inset-x-0 bottom-0 h-16"
                   style={{ background: 'linear-gradient(to top, rgba(255,255,255,0.4) 0%, transparent 100%)' }}
@@ -171,13 +174,13 @@ export default function VehicleFleet() {
                   <div className="flex items-center gap-2">
                     <Users size={16} style={{ color: '#C99A32' }} aria-hidden="true" />
                     <span className="text-sm" style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}>
-                      <strong style={{ color: '#C99A32' }}>{vehicle.passengers}</strong> Yolcu
+                      <strong style={{ color: '#C99A32' }}>{vehicle.passengers}</strong> {v.passengers}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Luggage size={16} style={{ color: '#C99A32' }} aria-hidden="true" />
                     <span className="text-sm" style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}>
-                      <strong style={{ color: '#C99A32' }}>{vehicle.luggage}</strong> Bagaj
+                      <strong style={{ color: '#C99A32' }}>{vehicle.luggage}</strong> {v.luggage}
                     </span>
                   </div>
                 </div>
@@ -225,7 +228,7 @@ export default function VehicleFleet() {
                   }}
                   data-testid={`vehicle-cta-${i}`}
                 >
-                  Rezervasyon Yap
+                  {v.cta}
                 </button>
               </div>
             </motion.div>

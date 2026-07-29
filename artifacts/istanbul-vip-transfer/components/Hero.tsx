@@ -4,8 +4,12 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { ChevronDown, Star } from 'lucide-react';
 import { SITE } from '@/lib/site-config';
+import { useLang } from '@/lib/i18n/context';
 
 export default function Hero() {
+  const { dict } = useLang();
+  const h = dict.hero;
+
   const scrollToBooking = () => {
     document.querySelector('#rezervasyon')?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -55,7 +59,7 @@ export default function Hero() {
                 className="text-[11px] tracking-[0.22em] uppercase"
                 style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
               >
-                İstanbul&apos;un Prestijli Transfer Hizmeti
+                {h.badge}
               </span>
               <Star size={12} fill="#C79A35" stroke="none" aria-hidden="true" />
             </motion.div>
@@ -69,10 +73,10 @@ export default function Hero() {
               transition={{ duration: 0.8, delay: 0.25 }}
               data-testid="hero-headline"
             >
-              İstanbul&apos;u{' '}
-              <span style={{ color: '#C79A35' }}>Konforla</span>
+              {h.headline1}{' '}
+              <span style={{ color: '#C79A35' }}>{h.headlineAccent}</span>
               <br />
-              Keşfedin
+              {h.headline2}
             </motion.h1>
 
             {/* Gold accent bar */}
@@ -93,8 +97,7 @@ export default function Hero() {
               transition={{ duration: 0.7, delay: 0.42 }}
               data-testid="hero-subheadline"
             >
-              Havalimanından otelinize, toplantınıza ve her hedefe — lüks Mercedes araçlarımız ve
-              profesyonel sürücülerimizle zamanında, güvenle ulaşın.
+              {h.subheadline}
             </motion.p>
 
             {/* CTA Buttons */}
@@ -115,7 +118,7 @@ export default function Hero() {
                 }}
                 data-testid="hero-booking-cta"
               >
-                Fiyat Al / Rezervasyon
+                {h.ctaBooking}
               </button>
               <a
                 href={SITE.phoneTel}
@@ -128,7 +131,7 @@ export default function Hero() {
                 }}
                 data-testid="hero-call-link"
               >
-                Hemen Ara
+                {h.ctaCall}
               </a>
             </motion.div>
 
@@ -142,14 +145,15 @@ export default function Hero() {
               data-testid="hero-trust-bar"
             >
               {[
-                { number: 'IST & SAW', label: 'Havalimanı Transfer' },
-                { number: '7/24', label: 'Rezervasyon Desteği' },
-                { number: 'Vito & Sprinter', label: 'VIP Araç Seçenekleri' },
+                { number: 'IST & SAW', label: h.trustAirportLabel },
+                { number: '7/24',      label: h.trustSupportLabel },
+                { number: 'Vito & Sprinter', label: h.trustVehiclesLabel },
               ].map((item, i) => (
                 <div key={i} className="flex flex-col" data-testid={`hero-trust-item-${i}`}>
                   <span
                     className="text-lg sm:text-xl font-bold"
                     style={{ color: '#C79A35', fontFamily: 'Playfair Display, Georgia, serif' }}
+                    dir="ltr"
                   >
                     {item.number}
                   </span>
@@ -181,7 +185,6 @@ export default function Hero() {
               }}
               aria-hidden="true"
             />
-
             {/* Image container */}
             <div
               className="relative rounded-2xl xl:rounded-3xl overflow-hidden"
@@ -193,7 +196,7 @@ export default function Hero() {
             >
               <Image
                 src="/images/istanbul-vip-transfer-hero.webp"
-                alt="İstanbul Boğazı manzarası eşliğinde VIP transfer hizmeti"
+                alt={h.imageAlt}
                 fill
                 className="object-cover object-center"
                 priority
@@ -209,7 +212,7 @@ export default function Hero() {
         type="button"
         className="absolute bottom-6 left-1/2 -translate-x-1/2 hidden lg:flex flex-col items-center gap-1.5 bg-transparent border-0 p-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C79A35] rounded"
         onClick={scrollToBooking}
-        aria-label="Aşağı kaydır, rezervasyon bölümüne git"
+        aria-label={h.scrollAriaLabel}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8, delay: 1.1 }}
@@ -219,7 +222,7 @@ export default function Hero() {
           className="text-[10px] tracking-[0.28em] uppercase"
           style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
         >
-          Aşağı Kaydır
+          {h.scrollHint}
         </span>
         <motion.div
           animate={{ y: [0, 5, 0] }}

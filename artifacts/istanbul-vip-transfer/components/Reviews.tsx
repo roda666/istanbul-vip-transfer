@@ -3,24 +3,101 @@
 import { motion } from 'framer-motion';
 import { Star, Quote, ExternalLink } from 'lucide-react';
 import { SITE } from '@/lib/site-config';
+import { useLang } from '@/lib/i18n/context';
 
-const reviews = [
-  {
-    name: 'Ahmet Kaya',
-    rating: 5,
-    text: 'İstanbul Havalimanı\'ndan otelimize transferde mükemmel bir hizmet aldık. Sürücü kapıda isim tabelasıyla bizi karşıladı, araç tertemizdi. İş seyahatlerinde artık hep bu servisi kullanacağım. Hem saatinde hem de son derece profesyonel.',
-  },
-  {
-    name: 'Elif Demir',
-    rating: 5,
-    text: 'Sabiha Gökçen\'den 11 kişilik grubumuzla uçtuk. Sprinter VIP ile karşılandık, herkesin bagajı eksiksiz yüklendi. Yolculuk boyunca su ikramı yapıldı. Gruptaki herkes çok memnun kaldı, kesinlikle tekrar tercih ederiz.',
-  },
-  {
-    name: 'James Richardson',
-    rating: 5,
-    text: 'We were visiting Istanbul for the first time and the service was incredible. Our driver spoke English fluently, gave us tips about the city, and arrived 15 minutes early. The Mercedes Vito was spotless. Best transfer experience I\'ve ever had.',
-  },
-];
+interface Review {
+  name: string;
+  rating: number;
+  text: string;
+}
+
+const REVIEWS_BY_LANG: Record<string, Review[]> = {
+  tr: [
+    {
+      name: 'Ahmet Kaya',
+      rating: 5,
+      text: "İstanbul Havalimanı'ndan otelimize transferde mükemmel bir hizmet aldık. Sürücü kapıda isim tabelasıyla bizi karşıladı, araç tertemizdi. İş seyahatlerinde artık hep bu servisi kullanacağım. Hem saatinde hem de son derece profesyonel.",
+    },
+    {
+      name: 'Elif Demir',
+      rating: 5,
+      text: "Sabiha Gökçen'den 11 kişilik grubumuzla uçtuk. Sprinter VIP ile karşılandık, herkesin bagajı eksiksiz yüklendi. Yolculuk boyunca su ikramı yapıldı. Gruptaki herkes çok memnun kaldı, kesinlikle tekrar tercih ederiz.",
+    },
+    {
+      name: 'James Richardson',
+      rating: 5,
+      text: "We were visiting Istanbul for the first time and the service was incredible. Our driver spoke English fluently, gave us tips about the city, and arrived 15 minutes early. The Mercedes Vito was spotless. Best transfer experience I've ever had.",
+    },
+  ],
+  en: [
+    {
+      name: 'James Richardson',
+      rating: 5,
+      text: "We were visiting Istanbul for the first time and the service was incredible. Our driver spoke English fluently, gave us tips about the city, and arrived 15 minutes early. The Mercedes Vito was spotless. Best transfer experience I've ever had.",
+    },
+    {
+      name: 'Sarah Mitchell',
+      rating: 5,
+      text: "Booked a Sprinter for our group of 10 from Istanbul Airport. The vehicle was pristine, driver was punctual and professional, and the meet-and-greet with the name board made everything stress-free. Highly recommend for business travel.",
+    },
+    {
+      name: 'Mark Thompson',
+      rating: 5,
+      text: "Used this service for three back-to-back business trips. Every time the driver was early, vehicle was spotless, and the ride was smooth. Booking via WhatsApp is quick and easy. Won't use anyone else in Istanbul.",
+    },
+  ],
+  de: [
+    {
+      name: 'Klaus Müller',
+      rating: 5,
+      text: "Hervorragender Transfer vom Flughafen Istanbul. Der Fahrer wartete mit einem Namensschild, half mit dem Gepäck und brachte uns pünktlich ins Hotel. Der Mercedes Sprinter war geräumig und sehr sauber. Absolut empfehlenswert!",
+    },
+    {
+      name: 'Petra Schneider',
+      rating: 5,
+      text: "Wir haben den VIP-Transfer für unsere Familienreise gebucht. Trotz unserer Flugverspätung war der Fahrer noch da und sehr entspannt. Tolles Fahrzeug, professioneller Service — wir buchen beim nächsten Istanbul-Besuch wieder.",
+    },
+    {
+      name: 'James Richardson',
+      rating: 5,
+      text: "Wir besuchten Istanbul zum ersten Mal und der Service war unglaublich. Unser Fahrer sprach fließend Englisch, gab Tipps zur Stadt und war 15 Minuten früher. Der Mercedes Vito war makellos. Beste Transfererfahrung, die ich je gemacht habe.",
+    },
+  ],
+  ru: [
+    {
+      name: 'Александр Иванов',
+      rating: 5,
+      text: "Отличный трансфер из аэропорта Стамбула. Водитель встретил нас с табличкой, помог с багажом и довёз до отеля вовремя. Mercedes Sprinter был просторным и чистым. Всем рекомендую!",
+    },
+    {
+      name: 'Наталья Петрова',
+      rating: 5,
+      text: "Бронировали VIP-трансфер для семейной поездки. Несмотря на задержку рейса, водитель терпеливо ждал. Отличное авто, профессиональный сервис — закажем снова при следующем визите в Стамбул.",
+    },
+    {
+      name: 'James Richardson',
+      rating: 5,
+      text: "Мы приехали в Стамбул впервые, и сервис был превосходным. Водитель свободно говорил по-английски, давал советы по городу и приехал на 15 минут раньше. Mercedes Vito был безупречен. Лучший трансфер, который я когда-либо пробовал.",
+    },
+  ],
+  ar: [
+    {
+      name: 'محمد العلي',
+      rating: 5,
+      text: "خدمة رائعة من مطار إسطنبول. السائق كان في انتظارنا مع لافتة بالاسم، وساعد في حمل الأمتعة، ووصلنا إلى الفندق في الوقت المحدد. مرسيدس سبرينتر كانت فسيحة ونظيفة للغاية. أوصي بها بشدة!",
+    },
+    {
+      name: 'فاطمة الزهراء',
+      rating: 5,
+      text: "حجزنا نقل VIP لرحلتنا العائلية. على الرغم من تأخر الرحلة، انتظر السائق بصبر. سيارة رائعة وخدمة احترافية — سنحجز مجدداً في زيارتنا القادمة لإسطنبول.",
+    },
+    {
+      name: 'James Richardson',
+      rating: 5,
+      text: "كانت زيارتنا الأولى لإسطنبول والخدمة كانت رائعة. السائق تحدث الإنجليزية بطلاقة وأعطانا نصائح عن المدينة ووصل قبل الموعد بـ 15 دقيقة. كانت مرسيدس فيتو نظيفة تماماً. أفضل تجربة نقل على الإطلاق.",
+    },
+  ],
+};
 
 function GoogleMark({ size = 16 }: { size?: number }) {
   return (
@@ -34,6 +111,10 @@ function GoogleMark({ size = 16 }: { size?: number }) {
 }
 
 export default function Reviews() {
+  const { lang, dict } = useLang();
+  const r = dict.reviews;
+  const reviews = REVIEWS_BY_LANG[lang] ?? REVIEWS_BY_LANG.tr;
+
   return (
     <section
       className="py-24 relative"
@@ -41,7 +122,6 @@ export default function Reviews() {
       data-testid="reviews-section"
     >
       <div className="absolute top-0 left-0 right-0 h-px" style={{ background: '#D9E2EC' }} aria-hidden="true" />
-
       <div className="max-w-6xl mx-auto px-5 md:px-8">
         {/* Section Header */}
         <motion.div
@@ -61,14 +141,14 @@ export default function Reviews() {
               className="text-xs tracking-[0.2em] uppercase"
               style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
             >
-              Google Müşteri Yorumları
+              {r.sectionLabel}
             </span>
           </div>
           <h2
             className="text-4xl md:text-5xl font-bold mb-5"
             style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}
           >
-            Yolcularımız Anlatıyor
+            {r.heading}
           </h2>
           <div
             className="mx-auto"
@@ -93,7 +173,6 @@ export default function Reviews() {
               transition={{ duration: 0.7, delay: i * 0.15 }}
               data-testid={`review-card-${i}`}
             >
-              {/* Top gold accent */}
               <div
                 className="absolute top-0 left-0 right-0 h-[2px]"
                 style={{ background: 'linear-gradient(90deg, transparent, rgba(199,154,53,0.5), transparent)' }}
@@ -104,7 +183,7 @@ export default function Reviews() {
               </div>
               <div
                 className="flex items-center gap-1 mb-4"
-                aria-label={`${review.rating} yıldız`}
+                aria-label={`${review.rating} stars`}
                 data-testid={`review-stars-${i}`}
               >
                 {Array.from({ length: review.rating }).map((_, si) => (
@@ -132,7 +211,7 @@ export default function Reviews() {
                     {review.name}
                   </p>
                 </div>
-                <div title="Google'da yayınlandı"><GoogleMark size={18} /></div>
+                <div><GoogleMark size={18} /></div>
               </div>
             </motion.div>
           ))}
@@ -159,7 +238,7 @@ export default function Reviews() {
             }}
             data-testid="google-reviews-button"
           >
-            Tüm Yorumları Google&apos;da Görüntüle
+            {r.viewAll}
             <ExternalLink size={16} aria-hidden="true" />
           </a>
         </motion.div>

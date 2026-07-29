@@ -1,17 +1,21 @@
 /**
  * Translated homepage for /en, /de, /ru, /ar
  *
- * Shows the full public homepage with:
- * - UI labels in the target language (via LangProvider → useLang())
- * - Published DB translations for content sections (if any)
- * - Falls back to the Turkish content structure for untranslated sections
+ * Renders the full public homepage with all sections.
+ * Every shared component reads the active locale via useLang().
  */
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { isValidLang } from '@/lib/i18n';
 import { buildAlternates, getOgLocale } from '@/lib/i18n/seo';
 import BookingForm from '@/components/BookingForm';
-import TranslatedHero from '@/components/TranslatedHero';
+import Hero from '@/components/Hero';
+import VehicleFleet from '@/components/VehicleFleet';
+import Services from '@/components/Services';
+import TrustSignals from '@/components/TrustSignals';
+import Reviews from '@/components/Reviews';
+import FAQ from '@/components/FAQ';
+import Contact from '@/components/Contact';
 
 interface Props {
   params: Promise<{ lang: string }>;
@@ -57,8 +61,14 @@ export default async function TranslatedHomePage({ params }: Props) {
 
   return (
     <>
-      <TranslatedHero lang={lang} />
+      <Hero />
       <BookingForm />
+      <VehicleFleet />
+      <Services />
+      <TrustSignals />
+      <Reviews />
+      <FAQ />
+      <Contact />
     </>
   );
 }

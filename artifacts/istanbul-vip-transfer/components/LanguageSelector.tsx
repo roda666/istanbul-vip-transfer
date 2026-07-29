@@ -2,8 +2,8 @@
 
 /**
  * LanguageSelector — dropdown that switches the user's language.
- * Links to the equivalent page in the selected language.
- * Turkish is at root (/), other languages are at /[lang]/[path].
+ * Links to the equivalent page in the selected language using the
+ * shared localePath utility so prefixing logic is defined in one place.
  */
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
@@ -11,22 +11,9 @@ import { usePathname } from 'next/navigation';
 import { Globe, ChevronDown } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
 import { SUPPORTED_LANGS, LANG_NATIVE_NAMES, type SiteLang } from '@/lib/i18n';
+import { localePath } from '@/lib/locale-path';
 
 const ALL_SITE_LANGS: SiteLang[] = ['tr', ...SUPPORTED_LANGS];
-
-/** Transforms a pathname + target lang into the corresponding URL. */
-function getPathForLang(pathname: string, targetLang: string): string {
-  // Strip any existing lang prefix
-  let base = pathname;
-  for (const l of SUPPORTED_LANGS) {
-    if (base === `/${l}`) { base = '/'; break; }
-    if (base.startsWith(`/${l}/`)) { base = base.slice(l.length + 1); break; }
-  }
-  if (!base.startsWith('/')) base = '/' + base;
-
-  if (targetLang === 'tr') return base || '/';
-  return base === '/' ? `/${targetLang}` : `/${targetLang}${base}`;
-}
 
 interface Props {
   /** Visual variant — dark background or light background. */
@@ -57,7 +44,7 @@ export default function LanguageSelector({ variant = 'light', className = '' }: 
 
   const isDark = variant === 'dark';
   const textColor = isDark ? 'rgba(255,255,255,0.75)' : '#263F55';
-  const textHover = isDark ? '#C99A32' : '#C99A32';
+  const textHover = '#C99A32';
   const borderColor = isDark ? 'rgba(255,255,255,0.15)' : '#D9E2EC';
   const dropdownBg = isDark ? '#102A43' : '#FFFDF8';
   const activeLangColor = '#C99A32';
@@ -104,7 +91,8 @@ export default function LanguageSelector({ variant = 'light', className = '' }: 
           }}
         >
           {ALL_SITE_LANGS.map((l) => {
-            const href = getPathForLang(pathname, l);
+            // Use localePath: strip existing prefix from current pathname, then apply target lang
+            const href = localePath(pathname, l);
             const isActive = l === lang;
             return (
               <Link

@@ -4,29 +4,34 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Phone, MapPin, Mail } from 'lucide-react';
 import { SITE } from '@/lib/site-config';
+import { useLang } from '@/lib/i18n/context';
+import { localePath } from '@/lib/locale-path';
 import LanguageSelector from './LanguageSelector';
 
-const quickLinks = [
-  { label: 'Ana Sayfa', href: '/' },
-  { label: 'Hizmetler', href: '/hizmetler' },
-  { label: 'Araçlarımız', href: '/araclar' },
-  { label: 'Blog', href: '/blog' },
-  { label: 'Hakkımızda', href: '/hakkimizda' },
-  { label: 'Rezervasyon', href: '/#rezervasyon' },
-  { label: 'İletişim', href: '/iletisim' },
-];
-
-const services: { label: string; href: string }[] = [
-  { label: 'İstanbul Havalimanı Transfer', href: '/istanbul-havalimani-transfer' },
-  { label: 'Sabiha Gökçen Transfer', href: '/sabiha-gokcen-havalimani-transfer' },
-  { label: 'VIP Transfer', href: '/vip-transfer' },
-  { label: 'Otel Transferi', href: '/otel-transfer' },
-  { label: 'Şehirler Arası Transfer', href: '/sehirler-arasi-transfer' },
-  { label: 'Şoförlü Araç Kiralama', href: '/soforlu-arac-kiralama' },
-  { label: 'Kurumsal VIP Transfer', href: '/kurumsal-vip-transfer' },
-];
-
 export default function Footer() {
+  const { lang, dict } = useLang();
+  const p = (path: string) => localePath(path, lang);
+
+  const quickLinks = [
+    { label: dict.footer.homeLink,        href: p('/') },
+    { label: dict.footer.servicesLink,    href: p('/hizmetler') },
+    { label: dict.footer.vehiclesLink,    href: p('/araclar') },
+    { label: dict.footer.blogLink,        href: p('/blog') },
+    { label: dict.footer.aboutLink,       href: p('/hakkimizda') },
+    { label: dict.footer.reservationLink, href: p('/#rezervasyon') },
+    { label: dict.footer.contactLink,     href: p('/iletisim') },
+  ];
+
+  const services = [
+    { label: dict.nav.istTransfer,       href: p('/istanbul-havalimani-transfer') },
+    { label: dict.nav.sawTransfer,       href: p('/sabiha-gokcen-havalimani-transfer') },
+    { label: dict.nav.vipTransfer,       href: p('/vip-transfer') },
+    { label: dict.nav.hotelTransfer,     href: p('/otel-transfer') },
+    { label: dict.nav.intercityTransfer, href: p('/sehirler-arasi-transfer') },
+    { label: dict.nav.chauffeur,         href: p('/soforlu-arac-kiralama') },
+    { label: dict.nav.corporateTransfer, href: p('/kurumsal-vip-transfer') },
+  ];
+
   return (
     <footer
       style={{ background: '#102A43', borderTop: '1px solid rgba(255,255,255,0.08)' }}
@@ -38,7 +43,7 @@ export default function Footer() {
           {/* Brand */}
           <div className="lg:col-span-1">
             <div className="mb-5">
-              <Link href="/">
+              <Link href={p('/')}>
                 <div
                   className="text-2xl font-bold tracking-widest uppercase mb-1"
                   style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#C79A35', letterSpacing: '0.15em' }}
@@ -54,7 +59,7 @@ export default function Footer() {
               </Link>
             </div>
             <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.65)', fontFamily: 'Inter, sans-serif' }}>
-              İstanbul&apos;un en güvenilir VIP transfer hizmeti. Lüks Mercedes araçlar, profesyonel sürücüler, 7/24 hizmet.
+              {dict.footer.tagline}
             </p>
           </div>
 
@@ -64,7 +69,7 @@ export default function Footer() {
               className="text-xs tracking-[0.2em] uppercase mb-6"
               style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
             >
-              Hızlı Bağlantılar
+              {dict.footer.quickLinks}
             </h4>
             <ul className="space-y-3">
               {quickLinks.map((link) => (
@@ -94,7 +99,7 @@ export default function Footer() {
               className="text-xs tracking-[0.2em] uppercase mb-6"
               style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
             >
-              Hizmetlerimiz
+              {dict.footer.services}
             </h4>
             <ul className="space-y-3">
               {services.map((service) => (
@@ -116,13 +121,13 @@ export default function Footer() {
               ))}
               <li>
                 <Link
-                  href="/hizmetler"
+                  href={p('/hizmetler')}
                   className="text-xs tracking-wider uppercase transition-colors duration-300 mt-2 block focus:outline-none focus-visible:underline"
                   style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif', opacity: 0.75 }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = '1'; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = '0.75'; }}
                 >
-                  Tüm Hizmetler →
+                  {dict.footer.allServices}
                 </Link>
               </li>
             </ul>
@@ -134,7 +139,7 @@ export default function Footer() {
               className="text-xs tracking-[0.2em] uppercase mb-6"
               style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
             >
-              İletişim
+              {dict.footer.contact}
             </h4>
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
@@ -146,11 +151,12 @@ export default function Footer() {
                     style={{ color: 'rgba(255,255,255,0.88)', fontFamily: 'Inter, sans-serif' }}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#C79A35'; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,0.88)'; }}
+                    dir="ltr"
                   >
                     {SITE.phoneDisplay}
                   </a>
                   <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Inter, sans-serif' }}>
-                    7/24 Açık
+                    {dict.footer.available247}
                   </p>
                 </div>
               </li>
@@ -163,6 +169,7 @@ export default function Footer() {
                     style={{ color: 'rgba(255,255,255,0.88)', fontFamily: 'Inter, sans-serif' }}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#C79A35'; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,0.88)'; }}
+                    dir="ltr"
                   >
                     {SITE.email}
                   </a>
@@ -172,10 +179,10 @@ export default function Footer() {
                 <MapPin size={15} style={{ color: '#C79A35', flexShrink: 0, marginTop: '2px' }} aria-hidden="true" />
                 <div>
                   <p className="text-sm" style={{ color: 'rgba(255,255,255,0.88)', fontFamily: 'Inter, sans-serif' }}>
-                    İstanbul, Türkiye
+                    {dict.footer.locationCity}
                   </p>
                   <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Inter, sans-serif' }}>
-                    Tüm İstanbul&apos;a hizmet
+                    {dict.footer.locationServing}
                   </p>
                 </div>
               </li>
@@ -193,11 +200,11 @@ export default function Footer() {
           data-testid="footer-bottom"
         >
           <p className="text-xs text-center md:text-left" style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Inter, sans-serif' }}>
-            &copy; {new Date().getFullYear()} VIP Transfer Istanbul. Tüm hakları saklıdır.
+            &copy; {new Date().getFullYear()} VIP Transfer Istanbul. {dict.footer.copyright}
           </p>
           <div className="flex items-center gap-4">
             <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Inter, sans-serif' }}>
-              İstanbul&apos;un Premium Transfer Hizmeti
+              {dict.footer.premium}
             </p>
             <LanguageSelector variant="dark" />
           </div>

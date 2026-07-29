@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { useLang } from '@/lib/i18n/context';
 
 export interface FAQItem {
   q: string;
@@ -15,9 +16,11 @@ interface ServiceFAQProps {
 
 export default function ServiceFAQ({
   items,
-  heading = 'Sık Sorulan Sorular',
+  heading,
 }: ServiceFAQProps) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const { dict } = useLang();
+  const displayHeading = heading ?? dict.faq.sectionLabel;
 
   const toggle = (i: number) =>
     setOpenIndex((prev) => (prev === i ? null : i));
@@ -31,13 +34,13 @@ export default function ServiceFAQ({
             className="text-xs tracking-[0.25em] uppercase mb-4"
             style={{ color: '#C99A32', fontFamily: 'Inter, sans-serif' }}
           >
-            SSS
+            {dict.faq.sectionLabel}
           </p>
           <h2
             className="text-2xl md:text-3xl font-bold"
             style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#183247' }}
           >
-            {heading}
+            {displayHeading}
           </h2>
           <div
             className="mx-auto mt-4"

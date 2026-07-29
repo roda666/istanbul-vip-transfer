@@ -3,49 +3,100 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Plane, Hotel, Map, Briefcase, PartyPopper, Route, ArrowRight } from 'lucide-react';
-
-const services = [
-  {
-    icon: Plane,
-    title: 'İstanbul Havalimanı (IST) Transfer',
-    description: 'İstanbul Havalimanı\'ndan her destinasyona Mercedes Vito ve Sprinter ile profesyonel karşılama ve transfer.',
-    href: '/istanbul-havalimani-transfer',
-  },
-  {
-    icon: Plane,
-    title: 'Sabiha Gökçen (SAW) Transfer',
-    description: 'Sabiha Gökçen Havalimanı\'ndan İstanbul\'un her noktasına Mercedes Vito ve Sprinter ile VIP transfer.',
-    href: '/sabiha-gokcen-havalimani-transfer',
-  },
-  {
-    icon: Hotel,
-    title: 'Otel Transferi',
-    description: 'İstanbul\'un tüm otellerinden kapıdan kapıya sorunsuz transfer hizmeti.',
-  },
-  {
-    icon: Map,
-    title: 'Şehir Turu',
-    description: 'İstanbul\'un tarihi ve modern güzelliklerini özel şoförlü aracınızla keşfedin.',
-  },
-  {
-    icon: Briefcase,
-    title: 'Kurumsal Transfer',
-    description: 'İş toplantıları, konferanslar ve kurumsal etkinlikler için güvenilir ve temsili transfer.',
-  },
-  {
-    icon: PartyPopper,
-    title: 'Özel Etkinlik Transferi',
-    description: 'Düğün, gala ve özel davetler için lüks araç kiralama ve konvoy hizmeti.',
-  },
-  {
-    icon: Route,
-    title: 'Şehirler Arası Transfer',
-    description: 'İstanbul\'dan Türkiye\'nin farklı şehirlerine Mercedes Vito ve Sprinter araçlarla konforlu, kapıdan kapıya özel transfer.',
-    href: '/sehirler-arasi-transfer',
-  },
-];
+import { useLang } from '@/lib/i18n/context';
+import { localePath } from '@/lib/locale-path';
 
 export default function Services() {
+  const { lang, dict } = useLang();
+  const s = dict.services;
+  const p = (path: string) => localePath(path, lang);
+
+  const serviceDesc = (tr: string, en: string, de: string, ru: string, ar: string) =>
+    lang === 'tr' ? tr : lang === 'en' ? en : lang === 'de' ? de : lang === 'ru' ? ru : ar;
+
+  const services = [
+    {
+      icon: Plane,
+      title: dict.nav.istTransfer,
+      description: serviceDesc(
+        "İstanbul Havalimanı'ndan her destinasyona Mercedes Vito ve Sprinter ile profesyonel karşılama ve transfer.",
+        "Professional meet & greet and transfer from Istanbul Airport to any destination with Mercedes Vito and Sprinter.",
+        "Professioneller Empfang und Transfer vom Istanbul Flughafen zu jedem Ziel mit Mercedes Vito und Sprinter.",
+        "Профессиональная встреча и трансфер из аэропорта Стамбула в любую точку на Mercedes Vito и Sprinter.",
+        "استقبال احترافي ونقل من مطار إسطنبول إلى أي وجهة بسيارات مرسيدس فيتو وسبرينتر.",
+      ),
+      href: p('/istanbul-havalimani-transfer'),
+    },
+    {
+      icon: Plane,
+      title: dict.nav.sawTransfer,
+      description: serviceDesc(
+        "Sabiha Gökçen Havalimanı'ndan İstanbul'un her noktasına Mercedes Vito ve Sprinter ile VIP transfer.",
+        "VIP transfer from Sabiha Gökçen Airport to every point in Istanbul with Mercedes Vito and Sprinter.",
+        "VIP-Transfer vom Flughafen Sabiha Gökçen zu jedem Punkt in Istanbul mit Mercedes Vito und Sprinter.",
+        "VIP-трансфер из аэропорта Сабиха Гёкчен в любую точку Стамбула на Mercedes Vito и Sprinter.",
+        "نقل VIP من مطار صبيحة كوكجن إلى كل نقطة في إسطنبول بسيارات مرسيدس فيتو وسبرينتر.",
+      ),
+      href: p('/sabiha-gokcen-havalimani-transfer'),
+    },
+    {
+      icon: Hotel,
+      title: dict.nav.hotelTransfer,
+      description: serviceDesc(
+        "İstanbul'un tüm otellerinden kapıdan kapıya sorunsuz transfer hizmeti.",
+        "Seamless door-to-door transfer service from all hotels in Istanbul.",
+        "Nahtloser Tür-zu-Tür-Transferservice von allen Hotels in Istanbul.",
+        "Беспроблемный трансфер «от двери до двери» из всех отелей Стамбула.",
+        "خدمة نقل سلسة من الباب إلى الباب من جميع فنادق إسطنبول.",
+      ),
+    },
+    {
+      icon: Map,
+      title: serviceDesc("Şehir Turu", "City Tour", "Stadtführung", "Городской тур", "جولة المدينة"),
+      description: serviceDesc(
+        "İstanbul'un tarihi ve modern güzelliklerini özel şoförlü aracınızla keşfedin.",
+        "Explore Istanbul's historic and modern beauty with your private chauffeur.",
+        "Entdecken Sie Istanbuls historische und moderne Schönheiten mit Ihrem privaten Fahrer.",
+        "Откройте для себя историческую и современную красоту Стамбула с личным водителем.",
+        "استكشف جمال إسطنبول التاريخي والحديث مع سائقك الخاص.",
+      ),
+    },
+    {
+      icon: Briefcase,
+      title: dict.nav.corporateTransfer,
+      description: serviceDesc(
+        "İş toplantıları, konferanslar ve kurumsal etkinlikler için güvenilir ve temsili transfer.",
+        "Reliable and representative transfer for business meetings, conferences and corporate events.",
+        "Zuverlässiger und repräsentativer Transfer für Geschäftsmeetings, Konferenzen und Firmenveranstaltungen.",
+        "Надёжный и представительный трансфер для деловых встреч, конференций и корпоративных мероприятий.",
+        "نقل موثوق ومميز لاجتماعات الأعمال والمؤتمرات والفعاليات المؤسسية.",
+      ),
+    },
+    {
+      icon: PartyPopper,
+      title: serviceDesc("Özel Etkinlik Transferi", "Special Event Transfer", "Sonderveranstaltungs-Transfer", "Трансфер для особых мероприятий", "نقل للمناسبات الخاصة"),
+      description: serviceDesc(
+        "Düğün, gala ve özel davetler için lüks araç kiralama ve konvoy hizmeti.",
+        "Luxury vehicle hire and convoy service for weddings, galas and private events.",
+        "Luxusfahrzeugmiete und Konvoiservice für Hochzeiten, Galas und private Veranstaltungen.",
+        "Аренда роскошных автомобилей и кортеж для свадеб, гала-вечеров и частных мероприятий.",
+        "تأجير سيارات فاخرة وخدمة موكب للأعراس والحفلات الرسمية والفعاليات الخاصة.",
+      ),
+    },
+    {
+      icon: Route,
+      title: dict.nav.intercityTransfer,
+      description: serviceDesc(
+        "İstanbul'dan Türkiye'nin farklı şehirlerine Mercedes Vito ve Sprinter araçlarla konforlu, kapıdan kapıya özel transfer.",
+        "Comfortable door-to-door private transfer from Istanbul to other Turkish cities with Mercedes Vito and Sprinter.",
+        "Komfortabler Tür-zu-Tür-Privattransfer von Istanbul in andere türkische Städte mit Mercedes Vito und Sprinter.",
+        "Комфортный частный трансфер «от двери до двери» из Стамбула в другие города Турции на Mercedes Vito и Sprinter.",
+        "نقل خاص مريح من الباب إلى الباب من إسطنبول إلى مدن تركية أخرى بسيارات مرسيدس فيتو وسبرينتر.",
+      ),
+      href: p('/sehirler-arasi-transfer'),
+    },
+  ];
+
   return (
     <section
       id="hizmetler"
@@ -67,20 +118,20 @@ export default function Services() {
             className="text-xs tracking-[0.3em] uppercase mb-4 block"
             style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
           >
-            Hizmetlerimiz
+            {s.sectionLabel}
           </span>
           <h2
             className="text-4xl md:text-5xl font-bold mb-5"
             style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}
           >
-            Her İhtiyaca Uygun Transfer
+            {s.heading}
           </h2>
           <div
             className="mx-auto mb-6"
             style={{ width: '60px', height: '3px', background: 'linear-gradient(90deg, #C79A35, #E4B84B)', borderRadius: '2px' }}
           />
           <p className="text-base max-w-xl mx-auto" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
-            Bireysel ya da kurumsal — tüm transfer ihtiyaçlarınız için kapsamlı VIP hizmet.
+            {s.subheading}
           </p>
         </motion.div>
 
@@ -128,7 +179,7 @@ export default function Services() {
                     className="flex items-center gap-1.5 mt-5 text-xs font-semibold tracking-wider uppercase transition-colors duration-300 group-hover:text-[#C79A35]"
                     style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
                   >
-                    Detaylar
+                    {s.detailsLink}
                     <ArrowRight size={12} className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true" />
                   </div>
                 )}

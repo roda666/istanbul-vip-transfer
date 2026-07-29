@@ -10,6 +10,7 @@ import {
   Plane, ArrowRightLeft, Car, Compass, Mail,
 } from 'lucide-react';
 import LocationCombobox from './LocationCombobox';
+import { useLang } from '@/lib/i18n/context';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -47,46 +48,48 @@ const HIZMET_MAP: Record<string, string> = {
   'tur':            'TOUR',
 };
 
-// ── Form schema ───────────────────────────────────────────────────────────────
+// ── Form schema (built with translated messages) ──────────────────────────────
 
 const HOURS   = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
 const MINUTES = ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'];
 
-const formSchema = z.object({
-  tarih:      z.string().min(1, 'Lütfen tarih seçin'),
-  saatSaat:   z.string().min(1, 'Lütfen saat seçin'),
-  saatDakika: z.string().min(1, 'Lütfen dakika seçin')
-    .refine((v) => parseInt(v, 10) % 5 === 0, { message: "Dakika 5'in katı olmalıdır" }),
-  yolcuSayisi: z.string().min(1, 'Lütfen yolcu sayısı seçin'),
-  adSoyad:     z.string().min(2, 'Lütfen adınızı ve soyadınızı girin'),
-  telefon:     z.string().min(10, 'Geçerli bir telefon numarası girin'),
-  email:       z.string().optional(),
+function buildSchema(b: import('@/lib/i18n/types').Dictionary['booking']) {
+  return z.object({
+    tarih:      z.string().min(1, b.requiredDate),
+    saatSaat:   z.string().min(1, b.requiredHour),
+    saatDakika: z.string().min(1, b.requiredMinute)
+      .refine((v) => parseInt(v, 10) % 5 === 0, { message: b.minuteMultipleError }),
+    yolcuSayisi: z.string().min(1, b.requiredPassengers),
+    adSoyad:     z.string().min(2, b.requiredName),
+    telefon:     z.string().min(10, b.requiredPhone),
+    email:       z.string().optional(),
 
-  // AIRPORT_TRANSFER
-  alisLokasyonu:  z.string().optional(),
-  alisAdresi:     z.string().optional(),
-  varisLokasyonu: z.string().optional(),
-  varisAdresi:    z.string().optional(),
+    // AIRPORT_TRANSFER
+    alisLokasyonu:  z.string().optional(),
+    alisAdresi:     z.string().optional(),
+    varisLokasyonu: z.string().optional(),
+    varisAdresi:    z.string().optional(),
 
-  // INTERCITY
-  kalkisIli:   z.string().optional(),
-  kalkisAdres: z.string().optional(),
-  varisIli:    z.string().optional(),
-  varisAdres:  z.string().optional(),
+    // INTERCITY
+    kalkisIli:   z.string().optional(),
+    kalkisAdres: z.string().optional(),
+    varisIli:    z.string().optional(),
+    varisAdres:  z.string().optional(),
 
-  // ALLOCATION
-  tahsisSuresi:     z.string().optional(),
-  tahsisSuresiUnit: z.enum(['SAAT', 'GUN']).default('SAAT'),
-  rotaAciklama:     z.string().optional(),
+    // ALLOCATION
+    tahsisSuresi:     z.string().optional(),
+    tahsisSuresiUnit: z.enum(['SAAT', 'GUN']).default('SAAT'),
+    rotaAciklama:     z.string().optional(),
 
-  // TOUR
-  talepsRota:        z.string().optional(),
-  talepsYerler:      z.string().optional(),
-  planlananSure:     z.string().optional(),
-  planlananSureUnit: z.enum(['SAAT', 'GUN']).default('SAAT'),
-});
+    // TOUR
+    talepsRota:        z.string().optional(),
+    talepsYerler:      z.string().optional(),
+    planlananSure:     z.string().optional(),
+    planlananSureUnit: z.enum(['SAAT', 'GUN']).default('SAAT'),
+  });
+}
 
-type FormData = z.infer<typeof formSchema>;
+type FormData = z.infer<ReturnType<typeof buildSchema>>;
 
 // ── Style tokens ──────────────────────────────────────────────────────────────
 
@@ -117,12 +120,6 @@ const hintStyle: React.CSSProperties = {
   fontFamily: 'Inter, sans-serif',
 };
 
-const optionalBadge = (
-  <span style={{ color: '#718596', fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: '11px' }}>
-    &nbsp;(opsiyonel)
-  </span>
-);
-
 // Alternating content panels
 const panelA: React.CSSProperties = {
   background:    'rgba(235,244,255,0.85)',
@@ -152,55 +149,56 @@ function buildWhatsAppMessage(
   data: FormData,
   serviceLabel: string,
   activeService: string,
+  b: import('@/lib/i18n/types').Dictionary['booking'],
 ): string {
   const saat  = `${data.saatSaat}:${data.saatDakika}`;
   const lines: string[] = [];
 
-  lines.push('Fiyat / Rezervasyon Talebi', `Hizmet: ${serviceLabel}`, '');
+  lines.push(b.waHeading, `${b.waService}: ${serviceLabel}`, '');
 
   if (activeService === 'AIRPORT_TRANSFER') {
-    lines.push(`Alış Lokasyonu: ${data.alisLokasyonu}`);
-    if (data.alisAdresi?.trim())  lines.push(`Alış Adresi / Otel: ${data.alisAdresi}`);
-    lines.push(`Varış Lokasyonu: ${data.varisLokasyonu}`);
-    if (data.varisAdresi?.trim()) lines.push(`Varış Adresi / Otel: ${data.varisAdresi}`);
-    lines.push(`Tarih: ${data.tarih}`, `Saat: ${saat}`);
+    lines.push(`${b.waPickup}: ${data.alisLokasyonu}`);
+    if (data.alisAdresi?.trim())  lines.push(`${b.waPickupAddress}: ${data.alisAdresi}`);
+    lines.push(`${b.waDropoff}: ${data.varisLokasyonu}`);
+    if (data.varisAdresi?.trim()) lines.push(`${b.waDropoffAddress}: ${data.varisAdresi}`);
+    lines.push(`${b.waDate}: ${data.tarih}`, `${b.waTime}: ${saat}`);
 
   } else if (activeService === 'INTERCITY') {
-    lines.push(`Kalkış İli: ${data.kalkisIli}`);
-    if (data.kalkisAdres?.trim()) lines.push(`Kalkış Adresi: ${data.kalkisAdres}`);
-    lines.push(`Varış İli: ${data.varisIli}`);
-    if (data.varisAdres?.trim())  lines.push(`Varış Adresi: ${data.varisAdres}`);
-    lines.push(`Tarih: ${data.tarih}`, `Saat: ${saat}`);
+    lines.push(`${b.waDepartureCity}: ${data.kalkisIli}`);
+    if (data.kalkisAdres?.trim()) lines.push(`${b.waDepartureAddress}: ${data.kalkisAdres}`);
+    lines.push(`${b.waArrivalCity}: ${data.varisIli}`);
+    if (data.varisAdres?.trim())  lines.push(`${b.waArrivalAddress}: ${data.varisAdres}`);
+    lines.push(`${b.waDate}: ${data.tarih}`, `${b.waTime}: ${saat}`);
 
   } else if (activeService === 'ALLOCATION') {
-    lines.push(`Alış Lokasyonu: ${data.alisLokasyonu}`);
-    if (data.alisAdresi?.trim())  lines.push(`Alış Adresi: ${data.alisAdresi}`);
-    lines.push(`Başlangıç Tarihi: ${data.tarih}`, `Başlangıç Saati: ${saat}`);
+    lines.push(`${b.waPickup}: ${data.alisLokasyonu}`);
+    if (data.alisAdresi?.trim())  lines.push(`${b.waPickupAddress}: ${data.alisAdresi}`);
+    lines.push(`${b.waStartDate}: ${data.tarih}`, `${b.waStartTime}: ${saat}`);
     if (data.tahsisSuresi) {
-      const unit = data.tahsisSuresiUnit === 'GUN' ? 'Gün' : 'Saat';
-      lines.push(`Tahsis Süresi: ${data.tahsisSuresi} ${unit}`);
+      const unit = data.tahsisSuresiUnit === 'GUN' ? b.waDays : b.waHours;
+      lines.push(`${b.waDuration}: ${data.tahsisSuresi} ${unit}`);
     }
-    if (data.rotaAciklama?.trim()) lines.push(`Rota / Kullanım: ${data.rotaAciklama}`);
+    if (data.rotaAciklama?.trim()) lines.push(`${b.waRouteDescription}: ${data.rotaAciklama}`);
 
   } else if (activeService === 'TOUR') {
-    lines.push(`Alış Lokasyonu: ${data.alisLokasyonu}`);
-    if (data.alisAdresi?.trim())  lines.push(`Alış Adresi / Otel: ${data.alisAdresi}`);
-    lines.push(`Talep Edilen Tur / Rota: ${data.talepsRota}`);
-    if (data.talepsYerler?.trim()) lines.push(`Ziyaret Edilmek İstenen Yerler: ${data.talepsYerler}`);
-    lines.push(`Tarih: ${data.tarih}`, `Başlangıç Saati: ${saat}`);
+    lines.push(`${b.waPickup}: ${data.alisLokasyonu}`);
+    if (data.alisAdresi?.trim())  lines.push(`${b.waPickupAddress}: ${data.alisAdresi}`);
+    lines.push(`${b.waTourRoute}: ${data.talepsRota}`);
+    if (data.talepsYerler?.trim()) lines.push(`${b.waTourPlaces}: ${data.talepsYerler}`);
+    lines.push(`${b.waDate}: ${data.tarih}`, `${b.waStartTime}: ${saat}`);
     if (data.planlananSure?.trim()) {
-      const unit = data.planlananSureUnit === 'GUN' ? 'Gün' : 'Saat';
-      lines.push(`Planlanan Süre: ${data.planlananSure} ${unit}`);
+      const unit = data.planlananSureUnit === 'GUN' ? b.waDays : b.waHours;
+      lines.push(`${b.waPlannedDuration}: ${data.planlananSure} ${unit}`);
     }
   }
 
   lines.push(
     '',
-    `Yolcu Sayısı: ${data.yolcuSayisi}`,
-    `Ad Soyad: ${data.adSoyad}`,
-    `Telefon: ${data.telefon}`,
+    `${b.waPassengers}: ${data.yolcuSayisi} ${b.passengerSuffix}`,
+    `${b.waFullName}: ${data.adSoyad}`,
+    `${b.waPhone}: ${data.telefon}`,
   );
-  if (data.email?.trim()) lines.push(`E-posta: ${data.email.trim()}`);
+  if (data.email?.trim()) lines.push(`${b.waEmail}: ${data.email.trim()}`);
 
   return encodeURIComponent(lines.join('\n'));
 }
@@ -208,6 +206,9 @@ function buildWhatsAppMessage(
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function BookingForm() {
+  const { dict, lang } = useLang();
+  const b = dict.booking;
+
   const [serviceTypes, setServiceTypes]   = useState<ServiceTypeOption[]>([]);
   const [activeService, setActiveService] = useState('AIRPORT_TRANSFER');
   const [loadingST, setLoadingST]         = useState(true);
@@ -218,6 +219,7 @@ export default function BookingForm() {
 
   const today = new Date().toISOString().split('T')[0];
 
+  // Load service types once on mount
   useEffect(() => {
     fetch('/data/service-types')
       .then((r) => r.json())
@@ -230,11 +232,14 @@ export default function BookingForm() {
       .catch(() => setLoadingST(false));
   }, []);
 
+  // Read ?hizmet= query param once on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const hizmet = params.get('hizmet');
     if (hizmet && HIZMET_MAP[hizmet]) setActiveService(HIZMET_MAP[hizmet]);
   }, []);
+
+  const schema = buildSchema(b);
 
   const {
     register,
@@ -245,7 +250,7 @@ export default function BookingForm() {
     clearErrors,
     formState: { errors },
   } = useForm<FormData>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(schema),
     defaultValues: {
       yolcuSayisi:       '1',
       saatSaat:          '',
@@ -264,71 +269,73 @@ export default function BookingForm() {
 
   const activeST = serviceTypes.find((s) => s.key === activeService);
 
+  const optionalBadge = (
+    <span style={{ color: '#718596', fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: '11px' }}>
+      &nbsp;({b.optional})
+    </span>
+  );
+
   // ── Service field validation ───────────────────────────────────────────────
   function validateServiceFields(data: FormData): boolean {
     let valid = true;
 
     if (activeService === 'AIRPORT_TRANSFER') {
       if (!data.alisLokasyonu?.trim()) {
-        setError('alisLokasyonu', { message: 'Lütfen kalkış noktasını seçin' }); valid = false;
+        setError('alisLokasyonu', { message: b.requiredPickup }); valid = false;
       }
       if (!data.varisLokasyonu?.trim()) {
-        setError('varisLokasyonu', { message: 'Lütfen varış noktasını seçin' }); valid = false;
+        setError('varisLokasyonu', { message: b.requiredDropoff }); valid = false;
       }
       if (data.alisLokasyonu && data.varisLokasyonu && data.alisLokasyonu === data.varisLokasyonu) {
-        setError('varisLokasyonu', { message: 'Kalkış ve varış aynı lokasyon olamaz' }); valid = false;
+        setError('varisLokasyonu', { message: b.sameLocationError }); valid = false;
       }
     } else if (activeService === 'INTERCITY') {
       if (!data.kalkisIli?.trim()) {
-        setError('kalkisIli', { message: 'Lütfen kalkış ilini seçin' }); valid = false;
+        setError('kalkisIli', { message: b.requiredDeparture }); valid = false;
       }
       if (!data.varisIli?.trim()) {
-        setError('varisIli', { message: 'Lütfen varış ilini seçin' }); valid = false;
+        setError('varisIli', { message: b.requiredArrival }); valid = false;
       }
       if (data.kalkisIli && data.varisIli && data.kalkisIli === data.varisIli) {
-        setError('varisIli', { message: 'Kalkış ve varış ili aynı olamaz' }); valid = false;
+        setError('varisIli', { message: b.sameProvinceError }); valid = false;
       }
     } else if (activeService === 'ALLOCATION') {
       if (!data.alisLokasyonu?.trim()) {
-        setError('alisLokasyonu', { message: 'Lütfen alış lokasyonunu seçin' }); valid = false;
+        setError('alisLokasyonu', { message: b.requiredAllocationLocation }); valid = false;
       }
       const n = parseInt(data.tahsisSuresi ?? '', 10);
       if (!data.tahsisSuresi?.trim() || isNaN(n) || n < 1) {
-        setError('tahsisSuresi', { message: 'Lütfen tahsis süresini girin' }); valid = false;
+        setError('tahsisSuresi', { message: b.requiredDuration }); valid = false;
       } else if (data.tahsisSuresiUnit === 'SAAT' && n < 4) {
-        setError('tahsisSuresi', { message: 'Minimum tahsis süresi 4 saattir.' }); valid = false;
-      } else if (data.tahsisSuresiUnit === 'GUN' && n < 1) {
-        setError('tahsisSuresi', { message: 'Minimum tahsis süresi 1 gündür.' }); valid = false;
+        setError('tahsisSuresi', { message: b.minAllocationDuration }); valid = false;
       }
     } else if (activeService === 'TOUR') {
       if (!data.alisLokasyonu?.trim()) {
-        setError('alisLokasyonu', { message: 'Lütfen alış lokasyonunu seçin' }); valid = false;
+        setError('alisLokasyonu', { message: b.requiredAllocationLocation }); valid = false;
       }
       if (!data.talepsRota?.trim()) {
-        setError('talepsRota', { message: 'Lütfen talep edilen tur / rotayı girin' }); valid = false;
+        setError('talepsRota', { message: b.requiredTourRoute }); valid = false;
       }
     }
 
     return valid;
   }
 
-  // ── Submit handler — fire-and-forget DB save, immediate WA redirect ────────
+  // ── Submit handler ─────────────────────────────────────────────────────────
   const onSubmit = async (data: FormData) => {
     if (!validateServiceFields(data)) return;
 
     if (newsletterConsent && !data.email?.trim()) {
-      setNewsletterError('E-posta adresi girilmeden bülten aboneliği yapılamaz.');
+      setNewsletterError(b.newsletterEmailRequired);
       return;
     }
     setNewsletterError('');
     setSubmitting(true);
 
     const serviceLabel = activeST?.label ?? activeService;
-    const msg   = buildWhatsAppMessage(data, serviceLabel, activeService);
+    const msg   = buildWhatsAppMessage(data, serviceLabel, activeService, b);
     const waUrl = `https://wa.me/${WA_NUMBER}?text=${msg}`;
 
-    // Background save — keepalive keeps the request alive after navigation.
-    // Errors are intentionally ignored so the customer is never blocked.
     fetch('/data/submit-request', {
       method:    'POST',
       keepalive: true,
@@ -345,8 +352,6 @@ export default function BookingForm() {
       }),
     }).catch(() => {});
 
-    // Redirect same tab — compatible with iOS Safari, Android Chrome, Samsung Internet.
-    // wa.me falls back to WhatsApp Web if the app is not installed.
     window.location.href = waUrl;
   };
 
@@ -370,13 +375,13 @@ export default function BookingForm() {
           transition={{ duration: 0.7 }}
         >
           <span className="text-xs tracking-[0.3em] uppercase mb-4 block" style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}>
-            Hızlı Rezervasyon
+            {b.sectionLabel}
           </span>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4" style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}>
-            Fiyat ve Rezervasyon Talebi
+            {b.sectionTitle}
           </h2>
           <p className="text-base max-w-lg mx-auto" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
-            Talebinizi iletin, fiyat ve araç uygunluğu bilgisini WhatsApp üzerinden paylaşalım.
+            {b.sectionDescription}
           </p>
         </motion.div>
 
@@ -400,12 +405,12 @@ export default function BookingForm() {
             {/* Panel — Service type */}
             <div style={panelB} data-testid="service-panel">
               <p className="text-xs tracking-[0.18em] uppercase mb-3 font-semibold" style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}>
-                Hizmet Türü
+                {b.serviceTypeLabel}
               </p>
               {loadingST ? (
                 <div className="h-16 rounded-xl" style={{ background: '#EBF4FF' }} />
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2" role="group" aria-label="Hizmet türü">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2" role="group" aria-label={b.serviceTypeLabel}>
                   {serviceTypes.map((st) => {
                     const isActive  = activeService === st.key;
                     const iconColor = isActive ? SERVICE_ICON_COLORS[st.key] ?? '#C79A35' : '#718596';
@@ -436,7 +441,7 @@ export default function BookingForm() {
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} data-testid="booking-form" noValidate>
-              {/* Honeypot — hidden from real users */}
+              {/* Honeypot */}
               <input
                 ref={honeypotRef}
                 type="text"
@@ -450,122 +455,122 @@ export default function BookingForm() {
               {/* Panel A — Service-specific fields */}
               <div style={panelA} data-testid="service-fields-panel">
                 <p className="text-xs tracking-[0.15em] uppercase mb-4 font-semibold" style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}>
-                  {activeService === 'AIRPORT_TRANSFER' ? 'Güzergah Bilgileri'
-                    : activeService === 'INTERCITY'     ? 'Güzergah Bilgileri'
-                    : activeService === 'ALLOCATION'    ? 'Tahsis Bilgileri'
-                    : 'Tur Bilgileri'}
+                  {activeService === 'AIRPORT_TRANSFER' ? b.routeFieldsLabel
+                    : activeService === 'INTERCITY'     ? b.routeFieldsLabel
+                    : activeService === 'ALLOCATION'    ? b.allocationFieldsLabel
+                    : b.tourFieldsLabel}
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
 
                   {/* AIRPORT_TRANSFER */}
                   {activeService === 'AIRPORT_TRANSFER' && (<>
                     <div data-testid="field-alis-lokasyon">
-                      <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> Alış Lokasyonu</label>
+                      <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.pickupLocation}</label>
                       <Controller control={control} name="alisLokasyonu" render={({ field }) => (
                         <LocationCombobox for="pickup" scope="local" value={field.value ?? ''} onChange={field.onChange}
-                          placeholder="Kalkış noktası seçin" error={!!errors.alisLokasyonu} excludeName={varisLokasyonuValue} />
+                          placeholder={b.pickupPlaceholder} error={!!errors.alisLokasyonu} excludeName={varisLokasyonuValue} />
                       )} />
                       {errors.alisLokasyonu && <p role="alert" style={errorStyle}>{errors.alisLokasyonu.message}</p>}
                     </div>
                     <div data-testid="field-varis-lokasyon">
-                      <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> Varış Lokasyonu</label>
+                      <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.dropoffLocation}</label>
                       <Controller control={control} name="varisLokasyonu" render={({ field }) => (
                         <LocationCombobox for="dropoff" scope="local" value={field.value ?? ''} onChange={field.onChange}
-                          placeholder="Varış noktası seçin" error={!!errors.varisLokasyonu} excludeName={alisLokasyonuValue} />
+                          placeholder={b.dropoffPlaceholder} error={!!errors.varisLokasyonu} excludeName={alisLokasyonuValue} />
                       )} />
                       {errors.varisLokasyonu && <p role="alert" style={errorStyle}>{errors.varisLokasyonu.message}</p>}
                     </div>
                     <div>
-                      <label style={labelStyle}><Home size={12} aria-hidden="true" /> Alış Adresi / Otel {optionalBadge}</label>
+                      <label style={labelStyle}><Home size={12} aria-hidden="true" /> {b.pickupAddress} {optionalBadge}</label>
                       <input type="text" {...register('alisAdresi')} className="vip-input"
-                        placeholder="Otel veya kesin adres" autoComplete="address-line1" />
+                        placeholder={b.pickupAddressPlaceholder} autoComplete="address-line1" />
                     </div>
                     <div>
-                      <label style={labelStyle}><Home size={12} aria-hidden="true" /> Varış Adresi / Otel {optionalBadge}</label>
+                      <label style={labelStyle}><Home size={12} aria-hidden="true" /> {b.dropoffAddress} {optionalBadge}</label>
                       <input type="text" {...register('varisAdresi')} className="vip-input"
-                        placeholder="Otel veya kesin adres" autoComplete="off" />
+                        placeholder={b.dropoffAddressPlaceholder} autoComplete="off" />
                     </div>
                   </>)}
 
                   {/* INTERCITY */}
                   {activeService === 'INTERCITY' && (<>
                     <div data-testid="field-kalkis-ili">
-                      <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> Kalkış İli</label>
+                      <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.departureCity}</label>
                       <Controller control={control} name="kalkisIli" render={({ field }) => (
                         <LocationCombobox for="pickup" scope="intercity" value={field.value ?? ''} onChange={field.onChange}
-                          placeholder="Kalkış ilini seçin" error={!!errors.kalkisIli} excludeName={varisIliValue} />
+                          placeholder={b.departureCityPlaceholder} error={!!errors.kalkisIli} excludeName={varisIliValue} />
                       )} />
                       {errors.kalkisIli && <p role="alert" style={errorStyle}>{errors.kalkisIli.message}</p>}
                     </div>
                     <div data-testid="field-varis-ili">
-                      <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> Varış İli</label>
+                      <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.arrivalCity}</label>
                       <Controller control={control} name="varisIli" render={({ field }) => (
                         <LocationCombobox for="dropoff" scope="intercity" value={field.value ?? ''} onChange={field.onChange}
-                          placeholder="Varış ilini seçin" error={!!errors.varisIli} excludeName={kalkisIliValue} />
+                          placeholder={b.arrivalCityPlaceholder} error={!!errors.varisIli} excludeName={kalkisIliValue} />
                       )} />
                       {errors.varisIli && <p role="alert" style={errorStyle}>{errors.varisIli.message}</p>}
                     </div>
                     <div>
-                      <label style={labelStyle}><Home size={12} aria-hidden="true" /> Kalkış İlçesi / Adresi {optionalBadge}</label>
+                      <label style={labelStyle}><Home size={12} aria-hidden="true" /> {b.departureAddress} {optionalBadge}</label>
                       <input type="text" {...register('kalkisAdres')} className="vip-input"
-                        placeholder="İlçe veya kesin adres" autoComplete="address-line1" />
+                        placeholder={b.departureCityAddressPlaceholder} autoComplete="address-line1" />
                     </div>
                     <div>
-                      <label style={labelStyle}><Home size={12} aria-hidden="true" /> Varış İlçesi / Adresi {optionalBadge}</label>
+                      <label style={labelStyle}><Home size={12} aria-hidden="true" /> {b.arrivalAddress} {optionalBadge}</label>
                       <input type="text" {...register('varisAdres')} className="vip-input"
-                        placeholder="İlçe veya kesin adres" autoComplete="off" />
+                        placeholder={b.arrivalCityAddressPlaceholder} autoComplete="off" />
                     </div>
                   </>)}
 
                   {/* ALLOCATION */}
                   {activeService === 'ALLOCATION' && (<>
                     <div data-testid="field-alis-alloc">
-                      <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> Alış Lokasyonu</label>
+                      <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.allocationLocation}</label>
                       <Controller control={control} name="alisLokasyonu" render={({ field }) => (
                         <LocationCombobox for="pickup" scope="local" value={field.value ?? ''} onChange={field.onChange}
-                          placeholder="Lokasyon seçin" error={!!errors.alisLokasyonu} />
+                          placeholder={b.tourPickupPlaceholder} error={!!errors.alisLokasyonu} />
                       )} />
                       {errors.alisLokasyonu && <p role="alert" style={errorStyle}>{errors.alisLokasyonu.message}</p>}
                     </div>
                     <div>
-                      <label style={labelStyle}><Home size={12} aria-hidden="true" /> Alış Adresi {optionalBadge}</label>
+                      <label style={labelStyle}><Home size={12} aria-hidden="true" /> {b.pickupAddress} {optionalBadge}</label>
                       <input type="text" {...register('alisAdresi')} className="vip-input"
-                        placeholder="Kesin adres veya otel" autoComplete="address-line1" />
+                        placeholder={b.allocationAddressPlaceholder} autoComplete="address-line1" />
                     </div>
                     <div data-testid="field-tahsis">
-                      <label style={labelStyle}><Clock size={12} aria-hidden="true" /> Tahsis Süresi</label>
+                      <label style={labelStyle}><Clock size={12} aria-hidden="true" /> {b.allocationDuration}</label>
                       <div style={durationRowStyle}>
                         <input
                           type="number"
                           min={tahsisSuresiUnit === 'SAAT' ? 4 : 1}
                           step="1"
                           inputMode="numeric"
-                          aria-label="Tahsis süresi miktarı"
+                          aria-label={b.allocationDurationAmountLabel}
                           {...register('tahsisSuresi')}
                           className="vip-input"
                           placeholder={tahsisSuresiUnit === 'SAAT' ? 'Min. 4' : 'Min. 1'}
                           style={{ flex: '1 1 0', minWidth: 0 }}
                         />
                         <select
-                          aria-label="Tahsis süresi birimi"
+                          aria-label={b.allocationDurationUnitLabel}
                           {...register('tahsisSuresiUnit')}
                           className="vip-input vip-select"
                           style={{ flex: '0 0 100px', width: '100px' }}
                         >
-                          <option value="SAAT">Saat</option>
-                          <option value="GUN">Gün</option>
+                          <option value="SAAT">{b.allocationHours}</option>
+                          <option value="GUN">{b.allocationDays}</option>
                         </select>
                       </div>
                       {errors.tahsisSuresi
                         ? <p role="alert" style={errorStyle}>{errors.tahsisSuresi.message}</p>
                         : tahsisSuresiUnit === 'SAAT'
-                          ? <p style={hintStyle}>Minimum tahsis süresi 4 saattir.</p>
+                          ? <p style={hintStyle}>{b.minAllocationDuration}</p>
                           : null}
                     </div>
                     <div className="md:col-span-2">
-                      <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> Planlanan Rota / Kullanım Açıklaması {optionalBadge}</label>
+                      <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.routeDescription} {optionalBadge}</label>
                       <textarea {...register('rotaAciklama')} className="vip-input"
-                        placeholder="Hangi güzergahları / etkinlikleri planlıyorsunuz?" rows={2}
+                        placeholder={b.allocationRoutePlaceholder} rows={2}
                         style={{ width: '100%', resize: 'vertical', minHeight: '72px' }} />
                     </div>
                   </>)}
@@ -573,52 +578,52 @@ export default function BookingForm() {
                   {/* TOUR */}
                   {activeService === 'TOUR' && (<>
                     <div data-testid="field-alis-tour">
-                      <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> Alış Lokasyonu</label>
+                      <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.allocationLocation}</label>
                       <Controller control={control} name="alisLokasyonu" render={({ field }) => (
                         <LocationCombobox for="pickup" scope="local" value={field.value ?? ''} onChange={field.onChange}
-                          placeholder="Otel veya lokasyon seçin" error={!!errors.alisLokasyonu} />
+                          placeholder={b.tourPickupPlaceholder} error={!!errors.alisLokasyonu} />
                       )} />
                       {errors.alisLokasyonu && <p role="alert" style={errorStyle}>{errors.alisLokasyonu.message}</p>}
                     </div>
                     <div>
-                      <label style={labelStyle}><Home size={12} aria-hidden="true" /> Alış Adresi / Otel {optionalBadge}</label>
+                      <label style={labelStyle}><Home size={12} aria-hidden="true" /> {b.pickupAddress} {optionalBadge}</label>
                       <input type="text" {...register('alisAdresi')} className="vip-input"
-                        placeholder="Kesin adres" autoComplete="address-line1" />
+                        placeholder={b.tourAddressPlaceholder} autoComplete="address-line1" />
                     </div>
                     <div className="md:col-span-2" data-testid="field-rota-tour">
-                      <label style={labelStyle}><Compass size={12} aria-hidden="true" /> Talep Edilen Tur / Rota</label>
+                      <label style={labelStyle}><Compass size={12} aria-hidden="true" /> {b.tourRoute}</label>
                       <input type="text" {...register('talepsRota')} className="vip-input"
-                        placeholder="ör. Boğaz Turu, Tarihi Yarımada, Prens Adaları" />
+                        placeholder={b.tourRoutePlaceholder} />
                       {errors.talepsRota && <p role="alert" style={errorStyle}>{errors.talepsRota.message}</p>}
                     </div>
                     <div className="md:col-span-2">
-                      <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> Ziyaret Edilmek İstenen Yerler {optionalBadge}</label>
+                      <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.tourPlaces} {optionalBadge}</label>
                       <textarea {...register('talepsYerler')} className="vip-input"
-                        placeholder="ör. Aya Sofya, Topkapı Sarayı, Kapalıçarşı…" rows={2}
+                        placeholder={b.tourPlacesPlaceholder} rows={2}
                         style={{ width: '100%', resize: 'vertical', minHeight: '72px' }} />
                     </div>
                     <div data-testid="field-sure-tour">
-                      <label style={labelStyle}><Clock size={12} aria-hidden="true" /> Planlanan Süre {optionalBadge}</label>
+                      <label style={labelStyle}><Clock size={12} aria-hidden="true" /> {b.plannedDuration} {optionalBadge}</label>
                       <div style={durationRowStyle}>
                         <input
                           type="number"
                           min="1"
                           step="1"
                           inputMode="numeric"
-                          aria-label="Planlanan süre miktarı"
+                          aria-label={b.plannedDurationAmountLabel}
                           {...register('planlananSure')}
                           className="vip-input"
                           placeholder="ör. 4"
                           style={{ flex: '1 1 0', minWidth: 0 }}
                         />
                         <select
-                          aria-label="Planlanan süre birimi"
+                          aria-label={b.plannedDurationUnitLabel}
                           {...register('planlananSureUnit')}
                           className="vip-input vip-select"
                           style={{ flex: '0 0 100px', width: '100px' }}
                         >
-                          <option value="SAAT">Saat</option>
-                          <option value="GUN">Gün</option>
+                          <option value="SAAT">{b.allocationHours}</option>
+                          <option value="GUN">{b.allocationDays}</option>
                         </select>
                       </div>
                     </div>
@@ -630,14 +635,14 @@ export default function BookingForm() {
               {/* Panel B — Date / Time / Passengers */}
               <div style={panelB} data-testid="datetime-panel">
                 <p className="text-xs tracking-[0.15em] uppercase mb-4 font-semibold" style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}>
-                  {activeService === 'ALLOCATION' ? 'Başlangıç ve Yolcu' : 'Tarih, Saat ve Yolcu'}
+                  {activeService === 'ALLOCATION' ? b.startPanel : b.datetimePanel}
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
 
                   <div data-testid="field-tarih">
                     <label style={labelStyle}>
                       <Calendar size={12} aria-hidden="true" />
-                      {activeService === 'ALLOCATION' ? 'Başlangıç Tarihi' : 'Tarih'}
+                      {activeService === 'ALLOCATION' ? b.waStartDate : b.date}
                     </label>
                     <input type="date" {...register('tarih')} className="vip-input" min={today}
                       style={{ colorScheme: 'light' }} data-testid="input-tarih" />
@@ -647,17 +652,17 @@ export default function BookingForm() {
                   <div data-testid="field-saat">
                     <label style={labelStyle}>
                       <Clock size={12} aria-hidden="true" />
-                      {activeService === 'ALLOCATION' || activeService === 'TOUR' ? 'Başlangıç Saati' : 'Saat'}
+                      {activeService === 'ALLOCATION' || activeService === 'TOUR' ? b.waStartTime : b.time}
                     </label>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <select {...register('saatSaat')} className="vip-input vip-select" style={{ flex: 1 }}
-                        aria-label="Saat" data-testid="input-saat-saat">
-                        <option value="">Sa.</option>
+                        aria-label={b.time} data-testid="input-saat-saat">
+                        <option value="">{b.hourAbbr}</option>
                         {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
                       </select>
                       <select {...register('saatDakika')} className="vip-input vip-select" style={{ flex: 1 }}
-                        aria-label="Dakika" data-testid="input-saat-dakika">
-                        <option value="">Dk.</option>
+                        aria-label={b.time} data-testid="input-saat-dakika">
+                        <option value="">{b.minuteAbbr}</option>
                         {MINUTES.map((m) => <option key={m} value={m}>{m}</option>)}
                       </select>
                     </div>
@@ -667,13 +672,13 @@ export default function BookingForm() {
                   </div>
 
                   <div data-testid="field-yolcu">
-                    <label style={labelStyle}><Users size={12} aria-hidden="true" /> Yolcu Sayısı</label>
+                    <label style={labelStyle}><Users size={12} aria-hidden="true" /> {b.passengerCount}</label>
                     <select {...register('yolcuSayisi')} className="vip-input vip-select" data-testid="input-yolcu">
                       {Array.from({ length: 30 }, (_, i) => i + 1).map((n) => (
-                        <option key={n} value={String(n)}>{n} Yolcu</option>
+                        <option key={n} value={String(n)}>{n} {b.passengerSuffix}</option>
                       ))}
                     </select>
-                    <p style={hintStyle}>Araç planlaması WhatsApp üzerinden teyit edilir.</p>
+                    <p style={hintStyle}>{b.vehicleHint}</p>
                   </div>
 
                 </div>
@@ -682,21 +687,21 @@ export default function BookingForm() {
               {/* Panel A — Contact */}
               <div style={panelA} data-testid="contact-panel">
                 <p className="text-xs tracking-[0.15em] uppercase mb-4 font-semibold" style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}>
-                  İletişim Bilgileri
+                  {b.contactPanel}
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
                   <div data-testid="field-adsoyad">
-                    <label style={labelStyle}><User size={12} aria-hidden="true" /> Ad Soyad</label>
+                    <label style={labelStyle}><User size={12} aria-hidden="true" /> {b.fullName}</label>
                     <input type="text" {...register('adSoyad')} className="vip-input"
-                      placeholder="Adınız ve soyadınız" autoComplete="name"
+                      placeholder={b.namePlaceholder} autoComplete="name"
                       inputMode="text" data-testid="input-adsoyad" />
                     {errors.adSoyad && <p role="alert" style={errorStyle}>{errors.adSoyad.message}</p>}
                   </div>
                   <div data-testid="field-telefon">
-                    <label style={labelStyle}><Phone size={12} aria-hidden="true" /> Telefon</label>
+                    <label style={labelStyle}><Phone size={12} aria-hidden="true" /> {b.phone}</label>
                     <input type="tel" {...register('telefon')} className="vip-input"
-                      placeholder="+90 5__ ___ __ __" autoComplete="tel"
-                      inputMode="tel" data-testid="input-telefon" />
+                      placeholder={b.phonePlaceholder} autoComplete="tel"
+                      inputMode="tel" data-testid="input-telefon" dir="ltr" />
                     {errors.telefon && <p role="alert" style={errorStyle}>{errors.telefon.message}</p>}
                   </div>
                 </div>
@@ -706,10 +711,10 @@ export default function BookingForm() {
               <div style={panelB} data-testid="email-panel">
                 <div className="grid grid-cols-1 gap-4">
                   <div data-testid="field-email">
-                    <label style={labelStyle}><Mail size={12} aria-hidden="true" /> E-posta {optionalBadge}</label>
+                    <label style={labelStyle}><Mail size={12} aria-hidden="true" /> {b.email} {optionalBadge}</label>
                     <input type="email" {...register('email')} className="vip-input"
-                      placeholder="ornek@email.com" autoComplete="email" inputMode="email"
-                      style={{ maxWidth: '420px' }} />
+                      placeholder={b.emailPlaceholder} autoComplete="email" inputMode="email"
+                      style={{ maxWidth: '420px' }} dir="ltr" />
                   </div>
 
                   {/* Newsletter checkbox */}
@@ -732,15 +737,15 @@ export default function BookingForm() {
                         data-testid="newsletter-checkbox"
                       />
                       <span>
-                        Kampanya, yeni hizmet, gezi ve blog içeriklerini e-posta ile almak istiyorum.{' '}
+                        {b.newsletterConsent}{' '}
                         <a href="/kvkk" target="_blank" rel="noopener noreferrer"
                           style={{ color: '#2563EB', textDecoration: 'underline' }}>
-                          Aydınlatma Metni
+                          {b.kvkkLink}
                         </a>{' '}
-                        ve{' '}
+                        {lang === 'tr' ? 've' : '/'}{' '}
                         <a href="/ticari-iletisim" target="_blank" rel="noopener noreferrer"
                           style={{ color: '#2563EB', textDecoration: 'underline' }}>
-                          Ticari İletişim Bilgilendirmesi
+                          {b.commercialLink}
                         </a>
                       </span>
                     </label>
@@ -756,7 +761,7 @@ export default function BookingForm() {
               {/* Notice */}
               <div className="mt-2 mb-6 rounded-xl px-5 py-4" style={{ background: 'rgba(199,154,53,0.06)', border: '1px solid rgba(199,154,53,0.25)' }}>
                 <p className="text-xs leading-relaxed" style={{ color: '#6B5C2E', fontFamily: 'Inter, sans-serif' }}>
-                  <strong>Önemli:</strong> Fiyat, araç uygunluğu ve rezervasyon onayı WhatsApp üzerinden tarafımızca teyit edilir.
+                  <strong>{b.importantLabel}</strong> {b.importantNotice}
                 </p>
               </div>
 
@@ -785,19 +790,19 @@ export default function BookingForm() {
                         <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
                         <path d="M12 2a10 10 0 0 1 10 10" />
                       </svg>
-                      Yönlendiriliyor…
+                      {b.submittingLabel}
                     </>
                   ) : (
                     <>
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ flexShrink: 0 }}>
                         <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
                       </svg>
-                      WhatsApp&apos;tan Fiyat / Rezervasyon Talebi Gönder
+                      {b.submitButton}
                     </>
                   )}
                 </motion.button>
                 <p className="mt-4 text-xs" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
-                  Mesajınız doğrudan WhatsApp&apos;a iletilir. Ek ücret yoktur.
+                  {b.directMessage}
                 </p>
               </div>
             </form>

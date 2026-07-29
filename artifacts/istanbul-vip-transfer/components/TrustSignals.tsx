@@ -2,35 +2,19 @@
 
 import { motion } from 'framer-motion';
 import { Clock, Plane, Car, User } from 'lucide-react';
-
-const stats = [
-  {
-    icon: Clock,
-    number: '7/24',
-    label: 'Rezervasyon Desteği',
-    description: 'Her saat, her gün. Geç gece varışı veya sabah erken uçuş olsun — WhatsApp ile ulaşabilirsiniz.',
-  },
-  {
-    icon: Plane,
-    number: 'IST & SAW',
-    label: 'Havalimanı Transferi',
-    description: 'İstanbul Havalimanı (IST) ve Sabiha Gökçen Havalimanı (SAW) için transfer rezervasyonu alıyoruz.',
-  },
-  {
-    icon: Car,
-    number: 'Vito & Sprinter',
-    label: 'VIP Araç Seçenekleri',
-    description: 'Mercedes Vito ve Mercedes Sprinter VIP ile bireysel ve grup transferleri düzenliyoruz.',
-  },
-  {
-    icon: User,
-    number: 'Meet & Greet',
-    label: 'Karşılama Hizmeti',
-    description: 'Sürücünüz isim tabelasıyla karşılar, bagajlarınıza yardımcı olur ve sizi hedefinize ulaştırır.',
-  },
-];
+import { useLang } from '@/lib/i18n/context';
 
 export default function TrustSignals() {
+  const { dict } = useLang();
+  const t = dict.trust;
+
+  const stats = [
+    { icon: Clock,  number: '7/24',            label: t.stat247Label,      description: t.stat247Desc },
+    { icon: Plane,  number: 'IST & SAW',        label: t.statAirportLabel,  description: t.statAirportDesc },
+    { icon: Car,    number: 'Vito & Sprinter',  label: t.statVehiclesLabel, description: t.statVehiclesDesc },
+    { icon: User,   number: 'Meet & Greet',     label: t.statMeetLabel,     description: t.statMeetDesc },
+  ];
+
   return (
     <section
       id="hakkimizda"
@@ -38,9 +22,7 @@ export default function TrustSignals() {
       style={{ background: '#EEF3F9' }}
       data-testid="trust-section"
     >
-      {/* Top border */}
       <div className="absolute top-0 left-0 right-0 h-px" style={{ background: '#D9E2EC' }} aria-hidden="true" />
-
       <div className="max-w-6xl mx-auto px-5 md:px-8">
         <motion.div
           className="text-center mb-14"
@@ -54,13 +36,13 @@ export default function TrustSignals() {
             className="text-xs tracking-[0.3em] uppercase mb-4 block"
             style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
           >
-            Neden Biz
+            {t.sectionLabel}
           </span>
           <h2
             className="text-4xl md:text-5xl font-bold mb-5"
             style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}
           >
-            Hizmet Anlayışımız
+            {t.heading}
           </h2>
           <div
             className="mx-auto"
@@ -86,7 +68,6 @@ export default function TrustSignals() {
               whileHover={{ y: -4, boxShadow: '0 8px 32px rgba(16,42,67,0.12)' }}
               data-testid={`trust-card-${i}`}
             >
-              {/* Top gold accent */}
               <div
                 className="absolute top-0 left-6 right-6 h-[2px]"
                 style={{ background: 'linear-gradient(90deg, transparent, #C79A35, transparent)' }}
@@ -102,6 +83,7 @@ export default function TrustSignals() {
                 className="text-3xl md:text-4xl font-bold mb-1"
                 style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#C79A35', lineHeight: 1 }}
                 data-testid={`trust-number-${i}`}
+                dir="ltr"
               >
                 {stat.number}
               </div>

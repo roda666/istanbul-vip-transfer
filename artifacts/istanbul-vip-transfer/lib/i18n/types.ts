@@ -29,6 +29,9 @@ export interface Dictionary {
     aboutLink: string;
     reservationLink: string;
     contactLink: string;
+    tagline: string;
+    locationCity: string;
+    locationServing: string;
   };
   common: {
     loading: string;
@@ -43,6 +46,7 @@ export interface Dictionary {
     send: string;
     save: string;
     cancel: string;
+    whatsappAria: string;
   };
   booking: {
     sectionLabel: string;
@@ -80,6 +84,28 @@ export interface Dictionary {
     // Submit
     submitQuote: string;
     submitReservation: string;
+    // Panel labels
+    routeFieldsLabel: string;
+    allocationFieldsLabel: string;
+    tourFieldsLabel: string;
+    datetimePanel: string;
+    startPanel: string;
+    contactPanel: string;
+    // Hints and notices
+    vehicleHint: string;
+    importantLabel: string;
+    importantNotice: string;
+    submittingLabel: string;
+    submitButton: string;
+    directMessage: string;
+    kvkkLink: string;
+    commercialLink: string;
+    // Time abbr
+    hourAbbr: string;
+    minuteAbbr: string;
+    // WhatsApp message
+    waHeading: string;
+    passengerSuffix: string;
     // Placeholders
     pickupPlaceholder: string;
     dropoffPlaceholder: string;
@@ -89,6 +115,20 @@ export interface Dictionary {
     arrivalCityPlaceholder: string;
     departureCityAddressPlaceholder: string;
     arrivalCityAddressPlaceholder: string;
+    allocationAddressPlaceholder: string;
+    allocationRoutePlaceholder: string;
+    tourPickupPlaceholder: string;
+    tourAddressPlaceholder: string;
+    tourRoutePlaceholder: string;
+    tourPlacesPlaceholder: string;
+    namePlaceholder: string;
+    phonePlaceholder: string;
+    emailPlaceholder: string;
+    // Aria labels
+    allocationDurationAmountLabel: string;
+    allocationDurationUnitLabel: string;
+    plannedDurationAmountLabel: string;
+    plannedDurationUnitLabel: string;
     // Validation
     requiredDate: string;
     requiredHour: string;
@@ -142,11 +182,109 @@ export interface Dictionary {
     currentLang: string;
   };
   nav: {
+    home: string;
     services: string;
     vehicles: string;
     blog: string;
     about: string;
     contact: string;
     booking: string;
+    // Service submenu group labels
+    groupAirport: string;
+    groupSpecial: string;
+    groupRoutes: string;
+    groupTours: string;
+    // Service item labels
+    istTransfer: string;
+    sawTransfer: string;
+    vipTransfer: string;
+    intercityTransfer: string;
+    chauffeur: string;
+    hotelTransfer: string;
+    healthTransfer: string;
+    corporateTransfer: string;
+    istBursaRoute: string;
+    istSapancaRoute: string;
+    istDayTours: string;
+    sapancaTour: string;
+    bursaTour: string;
+    yalovaTour: string;
+  };
+  hero: {
+    badge: string;
+    headline1: string;
+    headlineAccent: string;
+    headline2: string;
+    subheadline: string;
+    ctaBooking: string;
+    ctaCall: string;
+    trustAirportLabel: string;
+    trustSupportLabel: string;
+    trustVehiclesLabel: string;
+    scrollHint: string;
+    scrollAriaLabel: string;
+    imageAlt: string;
+  };
+  services: {
+    sectionLabel: string;
+    heading: string;
+    subheading: string;
+    detailsLink: string;
+  };
+  trust: {
+    sectionLabel: string;
+    heading: string;
+    stat247Label: string;
+    stat247Desc: string;
+    statAirportLabel: string;
+    statAirportDesc: string;
+    statVehiclesLabel: string;
+    statVehiclesDesc: string;
+    statMeetLabel: string;
+    statMeetDesc: string;
+  };
+  vehicles: {
+    sectionLabel: string;
+    heading: string;
+    subheading: string;
+    passengers: string;
+    luggage: string;
+    popular: string;
+    cta: string;
+    vitoTagline: string;
+    vitoAlt: string;
+    vitoDesc: string;
+    sprinterTagline: string;
+    sprinterAlt: string;
+    sprinterDesc: string;
+    featureClimate: string;
+    featureLeather: string;
+    featureLuxury: string;
+    featureWater: string;
+  };
+  reviews: {
+    sectionLabel: string;
+    heading: string;
+    viewAll: string;
+  };
+  contact: {
+    sectionLabel: string;
+    heading: string;
+    subheading: string;
+    supportLine: string;
+    whatsappCta: string;
+    phoneTitle: string;
+    hoursTitle: string;
+    hoursValue: string;
+    hoursAlways: string;
+    emailTitle: string;
+    emailSub: string;
+    regionTitle: string;
+    regionValue: string;
+    regionSub: string;
+  };
+  faq: {
+    sectionLabel: string;
+    heading: string;
   };
 }

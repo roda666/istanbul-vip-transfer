@@ -61,6 +61,7 @@ export default function AbonelerClient() {
   const [status, setStatus]   = useState('');
   const [lang, setLang]       = useState('');
   const [search, setSearch]   = useState('');
+  const [source, setSource]   = useState('');
   const [updating, setUpdating]   = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
 
@@ -71,6 +72,7 @@ export default function AbonelerClient() {
       const params = new URLSearchParams({ page: String(page) });
       if (status) params.set('status', status);
       if (lang)   params.set('lang', lang);
+      if (source) params.set('source', source);
       if (search) params.set('search', search);
       const res = await fetch(`/admin/api/newsletter?${params}`);
       if (!res.ok) throw new Error();
@@ -80,7 +82,7 @@ export default function AbonelerClient() {
     } finally {
       setLoading(false);
     }
-  }, [page, status, lang, search]);
+  }, [page, status, lang, source, search]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -159,6 +161,14 @@ export default function AbonelerClient() {
         <select value={lang} onChange={(e) => { setLang(e.target.value); setPage(1); }} style={inputStyle}>
           <option value="">Tüm Diller</option>
           {['tr', 'en', 'de', 'ru', 'ar'].map((l) => <option key={l} value={l}>{l.toUpperCase()}</option>)}
+        </select>
+
+        <select value={source} onChange={(e) => { setSource(e.target.value); setPage(1); }} style={inputStyle}>
+          <option value="">Tüm Kaynaklar</option>
+          <option value="booking-form:AIRPORT_TRANSFER">Havalimanı Formu</option>
+          <option value="booking-form:INTERCITY">Şehirler Arası Formu</option>
+          <option value="booking-form:ALLOCATION">Araç Tahsisi Formu</option>
+          <option value="booking-form:TOUR">Özel Tur Formu</option>
         </select>
 
         <button onClick={fetchData} style={{ ...inputStyle, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>

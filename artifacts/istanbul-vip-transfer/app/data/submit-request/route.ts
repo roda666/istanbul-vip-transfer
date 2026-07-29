@@ -159,13 +159,13 @@ export async function POST(req: NextRequest) {
         subscriberId = inserted.id;
       }
 
-      // Record consent event
+      // Record consent event — use the visitor's actual locale, not a hardcoded 'tr'
       await db.insert(newsletterConsentEvents).values({
         subscriberId,
         normalizedEmail,
         action:             'GRANTED',
         consentTextVersion: CONSENT_VERSION,
-        language:           'tr',
+        language:           data.locale ?? 'tr',
         source:             `booking-form:${data.serviceType}`,
       });
     }

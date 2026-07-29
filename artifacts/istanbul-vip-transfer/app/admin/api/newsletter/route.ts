@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get('status') ?? '';
   const lang   = searchParams.get('lang') ?? '';
   const search = searchParams.get('search')?.trim() ?? '';
+  const source = searchParams.get('source')?.trim() ?? '';
 
   try {
     const { db } = await import('@/db');
@@ -26,6 +27,7 @@ export async function GET(req: NextRequest) {
     const conditions = [];
     if (status) conditions.push(eq(newsletterSubscribers.status, status as never));
     if (lang)   conditions.push(eq(newsletterSubscribers.preferredLanguage, lang));
+    if (source) conditions.push(ilike(newsletterSubscribers.source, `%${source}%`));
     if (search) conditions.push(ilike(newsletterSubscribers.normalizedEmail, `%${search}%`));
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 

@@ -6,4 +6,5 @@
 - [Reservation location system](reservation-location-system.md) — /api/* conflict with api-server; use /data/ prefix for public Next.js routes; migration strategy; seed; combobox fetch path.
 - [Booking form & service types](istanbul-vip-transfer-booking-form.md) — unified quote/reservation form, 4 service types, 81 provinces, location scope system, WhatsApp message format.
 - [Reservation + Newsletter system](reservation-newsletter-system.md) — DB tables (reservation_requests, newsletter_subscribers, newsletter_consent_events), /data/submit-request route, admin Talepler/Bülten modules, i18n key removals/additions.
+- [Migration 0005 manual DDL fix](migration-0005-manual-fix.md) — migration journal said applied but admin_notes/source columns were absent; fixed by running ALTER TABLE directly.
 - [Public i18n system](public-i18n-system.md) — locale persistence via catch-all [lang]/[...slug] route; LocaleLink + PageHero + HizmetlerServiceGrid locale-aware; middleware only stamps tr on root /.

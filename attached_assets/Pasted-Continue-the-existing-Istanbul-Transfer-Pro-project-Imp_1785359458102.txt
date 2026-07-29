@@ -1,0 +1,155 @@
+Continue the existing Istanbul Transfer Pro project.
+
+Implement and verify the admin-side management of price/reservation requests and newsletter subscribers.
+
+IMPORTANT:
+- First inspect the existing database schema, booking form, API routes, admin authentication and admin navigation.
+- Reuse and repair existing implementations instead of creating duplicate tables, routes or admin pages.
+- Do not publish, deploy or connect the production domain.
+- Do not modify or expose secrets.
+- Do not reset the admin password.
+- Use additive, non-destructive database migrations only.
+- Preserve the working multilingual system: Turkish root /, English /en, German /de, Russian /ru and Arabic /ar.
+- Do not break locale switching, locale persistence or Arabic RTL.
+- Do not add an intermediate “Talebiniz Alındı” success page.
+
+1. PRICE / RESERVATION REQUEST FLOW
+
+The public booking form must:
+
+- Collect only the fields currently visible and appropriate for the selected service.
+- Keep email optional.
+- Support these four service types:
+  1. Havalimanı / Şehir İçi Transfer
+  2. Şehirler Arası Transfer
+  3. Araç Tahsisi
+  4. Özel Tur / Gezi
+- Keep passenger count between 1 and 30.
+- Keep vehicle allocation duration at a minimum of 4 hours.
+- Do not restore these removed fields:
+  - Bagaj Sayısı
+  - Çocuk Koltuğu Sayısı
+  - Araç Tercihi
+  - Ek Notlar
+  - Uçuş Numarası
+  - Seyahat Yönü
+  - Gidiş-Dönüş fields
+- On submit, first attempt to save the request to the database.
+- Then immediately open WhatsApp with a properly formatted, locale-aware message to:
+  905326600847
+- If the database save fails, WhatsApp must still open with the completed request.
+- Do not show a success/reference-number screen.
+- Prevent duplicate submissions caused by double-clicking.
+- Validate and sanitize all submitted data server-side.
+
+2. ADMIN “TALEPLER” MODULE
+
+Add or repair a visible admin sidebar item named “Talepler”.
+
+Create a practical responsive admin interface with:
+
+- Request list
+- Request detail page or detail drawer
+- Search by customer name, phone, email and request reference
+- Filters:
+  - service type
+  - status
+  - language
+  - date range
+- Pagination
+- New request indicator
+- Display:
+  - customer name
+  - telephone
+  - email
+  - selected service type
+  - route/service details
+  - date and time
+  - passenger count
+  - customer language
+  - source page
+  - created date
+- Status workflow:
+  - NEW
+  - CONTACTED
+  - QUOTED
+  - CONFIRMED
+  - CANCELLED
+  - ARCHIVED
+- Internal admin notes
+- A WhatsApp button that opens the customer conversation
+- Status history or audit log
+- No permanent hard deletion from the normal interface; archive records instead
+- Require authenticated admin access for every page and API route
+
+3. EMAIL AND NEWSLETTER RECORDS
+
+Email addresses entered in reservation forms may be stored with the request, but email entry alone must NOT count as newsletter consent.
+
+Add a separate, optional and unchecked newsletter consent checkbox to the public form with locale-aware text.
+
+Consent must include:
+
+- email
+- locale
+- source page
+- consent status
+- consent date and time
+- unsubscribe status/date when applicable
+
+Add or repair an admin sidebar item:
+
+“Bülten Aboneleri”
+
+The page must include:
+
+- subscriber list
+- search
+- locale filter
+- consent-status filter
+- source filter
+- pagination
+- ACTIVE, UNSUBSCRIBED and SUPPRESSED statuses
+- CSV export of consented subscribers only
+- no newsletter sending yet
+- never treat customers without explicit consent as subscribers
+
+4. DATABASE AND SECURITY
+
+- Inspect existing tables before creating migrations.
+- Do not duplicate existing booking_requests, subscribers, contacts or audit tables.
+- Preserve all existing data.
+- Use Drizzle schema and migration conventions already present in the project.
+- Protect admin APIs against unauthenticated access.
+- Validate all API payloads.
+- Do not expose database errors, secrets or stack traces to users.
+
+5. DESIGN AND RESPONSIVENESS
+
+- Match the existing light, modern admin design with navy sidebar, ivory/white surfaces, pale blue/lavender accents and readable contrast.
+- Verify desktop, tablet and 390px mobile layouts.
+- Tables must remain usable on mobile through responsive cards or controlled horizontal scrolling.
+- Do not reintroduce black public-form inputs or low-contrast text.
+
+6. VERIFICATION
+
+Run and report:
+
+- database migration status
+- TypeScript/typecheck
+- ESLint
+- production build
+- public form submission test
+- database record verification
+- direct WhatsApp redirect verification
+- authenticated admin list/detail/status update test
+- unauthenticated admin API test, which must return 401
+- explicit newsletter consent test
+- non-consented email test, which must NOT create an active subscriber
+- Turkish, English, German, Russian and Arabic locale regression tests
+- 390px mobile test
+- Arabic RTL test
+
+Do not claim completion without showing concrete test results.
+
+Do not publish or deploy.

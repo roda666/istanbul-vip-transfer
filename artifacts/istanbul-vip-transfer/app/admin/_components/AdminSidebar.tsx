@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -72,6 +72,23 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
   const [collapsed, setCollapsed]   = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [newCount, setNewCount]     = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    async function fetchCount() {
+      try {
+        const res = await fetch('/admin/api/requests/count');
+        if (!res.ok) return;
+        const data = await res.json() as { count: number };
+        if (active) setNewCount(data.count ?? 0);
+      } catch { /* ignore */ }
+    }
+    fetchCount();
+    // Refresh every 60 s while the tab is visible
+    const id = setInterval(fetchCount, 60_000);
+    return () => { active = false; clearInterval(id); };
+  }, []);
 
   async function handleLogout() {
     if (loggingOut) return;
@@ -193,7 +210,28 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
               <span style={{ flexShrink: 0, color: active ? GOLD : 'rgba(255,255,255,0.55)' }}>
                 {item.icon}
               </span>
-              {!collapsed && <span>{item.label}</span>}
+              {!collapsed && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
+                  {item.href === '/admin/talepler' && newCount > 0 && (
+                    <span style={{
+                      marginLeft: 'auto',
+                      background: '#DC2626',
+                      color: '#FFFFFF',
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      borderRadius: '999px',
+                      padding: '1px 6px',
+                      minWidth: '18px',
+                      textAlign: 'center',
+                      lineHeight: '16px',
+                      flexShrink: 0,
+                    }}>
+                      {newCount > 99 ? '99+' : newCount}
+                    </span>
+                  )}
+                </span>
+              )}
             </Link>
           );
         })}

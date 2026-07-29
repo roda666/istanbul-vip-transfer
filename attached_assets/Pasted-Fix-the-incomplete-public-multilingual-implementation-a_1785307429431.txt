@@ -1,0 +1,130 @@
+Fix the incomplete public multilingual implementation across the entire website.
+
+Current bug:
+When English, German, Russian or Arabic is selected, only some upper-page/hero content changes. Header navigation, booking section, form fields and other shared components remain in Turkish. Mixed-language pages are not acceptable.
+
+1. Audit every public component for hard-coded Turkish strings, including:
+   - Header and mobile menu
+   - Language selector
+   - Hero
+   - Booking / Quote form
+   - Service-type selectors
+   - Form labels, placeholders and validation messages
+   - WhatsApp CTA and generated WhatsApp message
+   - Services
+   - Trust signals
+   - Vehicle fleet
+   - Reviews
+   - Contact
+   - FAQ
+   - Footer
+   - Cookie/privacy notices
+   - Empty, loading, success and error states
+   - 404/not-found page
+   - All public service and blog page shared components
+
+2. Use one centralized, strongly typed public UI dictionary system for:
+   - Turkish: tr
+   - English: en
+   - German: de
+   - Russian: ru
+   - Arabic: ar
+
+3. Remove hard-coded public Turkish UI strings and obtain them from the active locale dictionary.
+   Do not create multiple conflicting dictionary systems.
+
+4. Ensure every shared public component receives or resolves the active locale correctly.
+   Pay special attention to the combined Quote / Reservation form reused on the homepage and service pages.
+
+5. Translate the unified form completely in every enabled language:
+   - page heading and description
+   - four service types
+   - all labels and placeholders
+   - required/optional indicators
+   - validation and server errors
+   - newsletter permission
+   - privacy/KVKK links
+   - direct WhatsApp CTA
+   - generated WhatsApp message
+
+6. Preserve the simplified form requirements:
+   - one unified Fiyat / Rezervasyon workflow
+   - no intent selector
+   - no intermediate success/reference screen
+   - direct WhatsApp redirect
+   - no flight number
+   - no travel direction
+   - no return date/time
+   - no baggage count
+   - no child-seat count
+   - no vehicle preference
+   - no generic extra-notes field
+   - passenger count 1–30
+   - vehicle allocation minimum 4 hours
+   - optional email
+   - separate optional newsletter permission
+
+7. Language routing:
+   - Turkish remains on the existing root URLs
+   - English uses /en
+   - German uses /de
+   - Russian uses /ru
+   - Arabic uses /ar
+   - switching language should preserve the equivalent current page whenever a localized route exists
+   - preserve valid query strings and section anchors where appropriate
+   - do not send every language switch only to the homepage
+
+8. HTML and SEO:
+   - set correct html lang for every locale
+   - Arabic must use dir="rtl"
+   - other languages use dir="ltr"
+   - provide locale-specific title, meta description, canonical and hreflang
+   - x-default must point to the Turkish/default equivalent
+   - do not index mixed-language placeholder pages
+
+9. Dynamic admin content:
+   - public service/blog/page translations must come from the approved/published translation record
+   - never expose DRAFT or REVIEW translations publicly
+   - if an approved translation does not exist, do not silently mix Turkish paragraphs into another-language page
+   - show a short message in the selected language with a link to the Turkish source, or omit the untranslated item from localized listings
+   - do not automatically publish AI translations
+
+10. Never translate or alter:
+   - VIP TRANSFER brand name
+   - Mercedes Vito
+   - Mercedes Sprinter
+   - VW Transporter
+   - IST and SAW airport codes
+   - phone number
+   - email address
+   - URLs unless an existing localized route mapping requires it
+
+11. Arabic:
+   - mirror layout direction correctly
+   - ensure icons, dropdowns, form controls and navigation work in RTL
+   - telephone numbers, email addresses and airport codes must remain readable LTR
+   - test mobile RTL separately
+
+12. Mobile verification:
+   - test tr, en, de, ru and ar at 390px
+   - German and Russian longer labels must not overflow
+   - mobile menu must be fully translated
+   - language menu must remain usable on iOS Safari, Android Chrome and Samsung Internet
+
+13. Regression tests:
+   For each of tr, en, de, ru and ar verify:
+   - header
+   - hero
+   - booking heading
+   - all four service forms
+   - validation messages
+   - WhatsApp message
+   - services
+   - footer
+   - mobile menu
+   - no visible mixed Turkish UI in non-Turkish locales
+
+14. Run a source search for remaining hard-coded Turkish public UI strings and report legitimate exceptions.
+15. Run lint, typecheck and production build.
+16. Do not publish, deploy, connect the production domain, modify credentials or reset the admin password.
+17. Report changed files, tested routes and screenshots/results for /, /en, /de, /ru and /ar.

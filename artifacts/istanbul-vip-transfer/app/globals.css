@@ -238,6 +238,33 @@
   text-align: right;
 }
 
+/* ── BookingForm scroll-reveal animations ─────────────────────────────────────
+   Pure CSS equivalents of the former Framer Motion whileInView motion.div
+   wrappers. Declared here so the server renders the class name (no inline
+   style), the client reads the same class → zero hydration mismatch.
+   animation-fill-mode:both keeps the element invisible before the animation
+   starts and visible after it ends.
+   Respects prefers-reduced-motion: users who opt out get no movement.       */
+@keyframes ivt-fade-up {
+  from { opacity: 0; transform: translateY(32px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.ivt-booking-header {
+  animation: ivt-fade-up 0.7s ease both;
+}
+
+.ivt-booking-card {
+  animation: ivt-fade-up 0.8s 0.15s ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ivt-booking-header,
+  .ivt-booking-card {
+    animation: none;
+  }
+}
+
 /* Grain overlay (brand texture) — RTL-safe, no directional dependency */
 .grain-overlay::before {
   content: '';

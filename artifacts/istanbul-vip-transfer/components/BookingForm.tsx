@@ -4,7 +4,11 @@ import { useState, useRef, useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { motion } from 'framer-motion';
+// framer-motion removed from this file — animations handled via CSS keyframes
+// in globals.css (.ivt-booking-header / .ivt-booking-card) to avoid the
+// SSR → client inline-style hydration mismatch that motion.div/whileInView
+// caused (server writes opacity:0 as an inline style; client reconciler sees
+// a different attribute representation and warns).
 import {
   MapPin, Calendar, Clock, Users, User, Phone, Home,
   Plane, ArrowRightLeft, Car, Compass, Mail,
@@ -367,13 +371,7 @@ export default function BookingForm() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 md:px-8">
 
         {/* Header */}
-        <motion.div
-          className="text-center mb-12"
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-80px' }}
-          transition={{ duration: 0.7 }}
-        >
+        <div className="text-center mb-12 ivt-booking-header">
           <span className="text-xs tracking-[0.3em] uppercase mb-4 block" style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}>
             {b.sectionLabel}
           </span>
@@ -383,20 +381,16 @@ export default function BookingForm() {
           <p className="text-base max-w-lg mx-auto" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
             {b.sectionDescription}
           </p>
-        </motion.div>
+        </div>
 
         {/* Form card */}
-        <motion.div
-          className="relative rounded-2xl overflow-hidden"
+        <div
+          className="relative rounded-2xl overflow-hidden ivt-booking-card"
           style={{
             background:  '#FFFFFF',
             border:      '1px solid #D9E2EC',
             boxShadow:   '0 8px 40px rgba(16,42,67,0.08)',
           }}
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-80px' }}
-          transition={{ duration: 0.8, delay: 0.2 }}
           data-testid="booking-form-card"
         >
           <div className="h-[3px] w-full" style={{ background: 'linear-gradient(90deg, transparent, #C79A35 30%, #E4B84B 50%, #C79A35 70%, transparent)' }} aria-hidden="true" />
@@ -767,10 +761,10 @@ export default function BookingForm() {
 
               {/* Submit */}
               <div className="text-center">
-                <motion.button
+                <button
                   type="submit"
                   disabled={submitting}
-                  className="inline-flex items-center justify-center gap-3 w-full sm:w-auto px-8 sm:px-10 py-4 rounded-xl text-sm font-semibold tracking-wider uppercase transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#C79A35] disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="inline-flex items-center justify-center gap-3 w-full sm:w-auto px-8 sm:px-10 py-4 rounded-xl text-sm font-semibold tracking-wider uppercase transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#C79A35] disabled:opacity-70 disabled:cursor-not-allowed"
                   style={{
                     background:    '#25D366',
                     color:         '#FFFFFF',
@@ -781,7 +775,6 @@ export default function BookingForm() {
                     maxWidth:      '100%',
                     touchAction:   'manipulation',
                   }}
-                  whileTap={{ scale: 0.98 }}
                   data-testid="booking-submit-button"
                 >
                   {submitting ? (
@@ -800,14 +793,14 @@ export default function BookingForm() {
                       {b.submitButton}
                     </>
                   )}
-                </motion.button>
+                </button>
                 <p className="mt-4 text-xs" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
                   {b.directMessage}
                 </p>
               </div>
             </form>
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );

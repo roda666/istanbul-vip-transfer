@@ -1,0 +1,94 @@
+Audit and complete the existing Reservation Requests and Newsletter Subscribers admin modules.
+
+Important:
+- First inspect the current database schema, APIs, and admin routes.
+- Reuse existing work and implement only missing parts.
+- Use additive, non-destructive migrations.
+- Do not reset or delete existing data.
+- Do not change passwords, secrets, public design, locale system, or production configuration.
+- Do not publish or connect the production domain.
+
+1. Reservation Requests
+
+Create or complete /admin/talepler.
+
+The list must show:
+- Request date
+- Service type
+- Customer name
+- Phone
+- Email
+- Customer language
+- Request status
+- Source
+
+Add:
+- Search
+- Service, status, language and date filters
+- Pagination
+- Request detail page
+- Direct WhatsApp contact button with a pre-filled message
+- Internal admin notes
+- Safe status workflow:
+  NEW, CONTACTED, QUOTED, CONFIRMED, CANCELLED, ARCHIVED
+
+Do not describe NEW requests as confirmed reservations.
+
+Verify that the public request form:
+- Saves the request before opening WhatsApp
+- Opens WhatsApp directly without a success/reference screen
+- Still opens WhatsApp if database saving fails
+- Never loses the customer’s selected language
+- Does not display “Talebiniz Alındı”
+- Does not display “Rezervasyon Talebi Gönder”
+
+2. Newsletter Subscribers
+
+Create or complete /admin/bulten-aboneleri.
+
+Show:
+- Email
+- Language
+- Signup source
+- Consent status
+- Consent date
+- Subscription status
+
+Rules:
+- An email must become a newsletter subscriber only when the separate newsletter consent checkbox was explicitly selected.
+- Merely entering an email in the reservation form must not create marketing consent.
+- Support ACTIVE, UNSUBSCRIBED and SUPPRESSED statuses.
+- Add search, language/status filters and pagination.
+- Do not send newsletters yet.
+
+3. Security and privacy
+
+- Protect every admin/API route with existing admin authentication.
+- Validate and normalize all inputs server-side.
+- Do not expose passwords, secrets or sensitive customer data in logs.
+- Preserve the existing rate limiting, honeypot and audit-log protections.
+- Do not place personal customer information in browser console output.
+
+4. Verification
+
+Test:
+- One request for each of the four service types
+- Turkish, English and Arabic request flows
+- Direct WhatsApp redirect
+- Request appearing correctly in /admin/talepler
+- Newsletter consent checked and unchecked scenarios
+- Admin desktop and 390px mobile layouts
+
+Run:
+- TypeScript typecheck
+- ESLint
+- Production build
+
+Report:
+- Existing parts found
+- Missing parts implemented
+- Database migration result
+- Test results
+- Files changed
+
+Do not publish.

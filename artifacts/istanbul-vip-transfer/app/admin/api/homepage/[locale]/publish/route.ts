@@ -33,7 +33,8 @@ export async function POST(
 
   const searchParams = req.nextUrl.searchParams;
   const action = searchParams.get('action') ?? 'publish';
-  const isPublish = action !== 'unpublish';
+  const isApprove = action === 'approve';
+  const isPublish = action !== 'unpublish' && !isApprove;
 
   try {
     const { db } = await import('@/db');
@@ -92,13 +93,18 @@ export async function POST(
 
       if (!tx) return NextResponse.json({ error: 'No translation to publish' }, { status: 404 });
 
+      let newStatus: 'PUBLISHED' | 'DRAFT' | 'APPROVED';
+      if (isApprove) newStatus = 'APPROVED';
+      else if (isPublish) newStatus = 'PUBLISHED';
+      else newStatus = 'DRAFT';
+
       await db
         .update(contentTranslations)
         .set({
-          status: isPublish ? 'PUBLISHED' : 'DRAFT',
+          status: newStatus,
           publishedAt: isPublish ? now : null,
-          approvedAt: isPublish ? now : null,
-          approvedBy: isPublish ? session.adminId : null,
+          approvedAt: (isPublish || isApprove) ? now : null,
+          approvedBy: (isPublish || isApprove) ? session.adminId : null,
           updatedAt: now,
           updatedBy: session.adminId,
         })
@@ -106,7 +112,7 @@ export async function POST(
 
       await db.insert(auditLogs).values({
         adminUserId: session.adminId,
-        action: isPublish ? 'HOMEPAGE_PUBLISH' : 'HOMEPAGE_UNPUBLISH',
+        action: isApprove ? 'HOMEPAGE_TRANSLATION_APPROVE' : isPublish ? 'HOMEPAGE_PUBLISH' : 'HOMEPAGE_UNPUBLISH',
         entityType: 'homepage',
         entityId: src.id,
         metadata: { locale },

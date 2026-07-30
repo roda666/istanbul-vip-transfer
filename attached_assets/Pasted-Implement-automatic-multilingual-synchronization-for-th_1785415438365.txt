@@ -1,0 +1,123 @@
+Implement automatic multilingual synchronization for the existing “Ana Sayfa Düzenleyici” without rebuilding the CMS.
+
+Current source language:
+- Turkish (tr) is the source language.
+- Target languages: English (en), German (de), Russian (ru), Arabic (ar).
+- Reuse the existing language, translation, workflow, database, authentication and admin infrastructure.
+- Do not create a second translation system.
+
+Required behavior:
+
+1. Cover every homepage editor section:
+- A Hero
+- B Statistics
+- C Services
+- D Trust Cards
+- E Vehicles
+- F Google Reviews
+- G Reservation Section
+- H Contact Section
+- I Footer
+- J SEO
+
+2. Add an “Otomatik Çeviri” control to the homepage editor:
+- Enabled by default.
+- Default targets: EN, DE, RU and AR.
+- Allow admins to select all or individual target languages.
+- Turkish remains the single source language.
+
+3. When the Turkish draft is saved:
+- Immediately synchronize all language-independent fields to every selected language:
+  image/file references, section enabled state, order, URLs, phone numbers, email addresses, links, icons, numeric values and settings.
+- Queue server-side AI translation jobs for every changed translatable text field.
+- Only translate fields whose Turkish source value changed.
+- Store source hashes so unchanged fields are not translated repeatedly.
+- Do not make external AI calls from the browser.
+
+4. Translate all translatable text:
+- Titles, subtitles, descriptions, CTA labels, statistics labels, service text, trust-card text, vehicle presentation text, review text, reservation presentation text, contact text, footer text, image ALT text, meta title, meta description, OG title and OG description.
+- Preserve the intended meaning, premium transfer tone and SEO intent.
+- Produce natural native-language text, not literal word-for-word translation.
+
+5. Never translate or alter:
+- Brand names
+- Customer names
+- URLs and slugs
+- Email addresses
+- Phone numbers
+- IST and SAW
+- Mercedes Vito, Mercedes Sprinter and VW Transporter
+- Numeric values and technical identifiers
+
+6. Arabic:
+- Generate natural Modern Standard Arabic.
+- Preserve RTL layout.
+- Keep phone numbers, email addresses, URLs, IST/SAW and vehicle model names LTR where required.
+
+7. Approval safety:
+- AI-generated translations must be saved as DRAFT / REVIEW_REQUIRED.
+- Never publish translated content automatically.
+- Never overwrite the currently published public-language version until the translated draft is approved.
+- Keep the existing published version visible while a new translation is being prepared.
+- Provide “Tüm Çevirileri İncele” and “Onaylanan Dilleri Toplu Yayınla” actions.
+- Publishing still requires explicit admin approval.
+
+8. Manual protection:
+- Add a per-language “Manuel düzenlemeyi koru” lock.
+- Automatic translation must not overwrite a manually locked translation.
+- If Turkish changes while a translation is locked, mark it “Kaynak değişti — güncelleme gerekli”.
+- Provide an explicit “Kilidi kaldır ve yeniden çevir” action.
+
+9. Interface states for each language tab:
+- Başlamadı
+- Çeviri bekliyor
+- Çevriliyor
+- İnceleme gerekli
+- Güncel
+- Kaynak değişti
+- Hata
+- Yayında
+
+Show translation progress, last translation time and retry action for failures.
+
+10. Buttons:
+- Rename the Turkish save action to “Taslak Kaydet ve Çevir”.
+- Add “Tüm Çevirileri İncele”.
+- Add “Onaylanan Dilleri Toplu Yayınla”.
+- Keep individual language preview, approve, publish and unpublish controls.
+
+11. Existing content:
+- Create translation drafts for EN, DE, RU and AR from the current published Turkish homepage content.
+- Do not publish these automatically.
+- Do not replace existing public localized content until each CMS translation is approved and published.
+
+12. AI integration:
+- Reuse the project’s existing server-side AI provider and translation job infrastructure.
+- Do not hard-code fake translations.
+- Do not expose API keys in client code, responses or logs.
+- If the AI provider is not configured, show a clear configuration error in the admin panel while preserving queued jobs for retry.
+
+13. Database:
+- Add required Drizzle schema changes and a versioned migration.
+- Do not rely only on manual SQL.
+- Make migrations idempotent and safe for existing records.
+- Record translation jobs, target locale, source hash, status, error, created time and completed time.
+- Add audit-log entries for translation creation, approval, publishing, retry and manual-lock changes.
+
+14. Public website:
+- Continue rendering only PUBLISHED content.
+- Preserve existing locale URLs: /, /en, /de, /ru and /ar.
+- Preserve canonical, hreflang, LTR/RTL and locale-persistent navigation.
+- Do not allow a failed translation job to break a public page.
+
+15. Verification:
+- Safely test a Turkish draft change without publishing it.
+- Confirm four target translation jobs are created.
+- Confirm shared fields synchronize without unnecessary AI calls.
+- Confirm public pages remain unchanged before approval.
+- Confirm manual locks prevent overwriting.
+- Confirm Arabic RTL and protected LTR values.
+- Run lint, TypeScript typecheck and production build.
+- Report actual results and changed files.
+- Provide desktop and 390px mobile screenshots of the translation-review interface.
+- Do not deploy, publish the Replit app or connect the production domain.

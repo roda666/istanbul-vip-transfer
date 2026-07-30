@@ -84,6 +84,13 @@ export interface HomepageAdminRecord {
   sections: HomepageSections | null;
   updatedAt: Date | null;
   publishedAt: Date | null;
+  // Translation sync fields (null for TR source)
+  sourceHash: string | null;
+  isManuallyLocked: boolean;
+  lockedAt: Date | null;
+  failureReason: string | null;
+  lastTranslatedAt: Date | null;
+  isAiGenerated: boolean;
 }
 
 /** Returns the latest (draft or published) homepage record for a locale for admin editing. */
@@ -106,6 +113,12 @@ export async function getHomepageAdminRecord(locale: string): Promise<HomepageAd
       sections: parseHomepageSections(row?.body),
       updatedAt: row?.updatedAt ?? null,
       publishedAt: row?.publishedAt ?? null,
+      sourceHash: null,
+      isManuallyLocked: false,
+      lockedAt: null,
+      failureReason: null,
+      lastTranslatedAt: null,
+      isAiGenerated: false,
     };
   }
 
@@ -115,7 +128,14 @@ export async function getHomepageAdminRecord(locale: string): Promise<HomepageAd
     .where(eq(content.slug, HOMEPAGE_SLUG))
     .limit(1);
 
-  if (!src) return { id: null, locale, status: 'DRAFT', sections: null, updatedAt: null, publishedAt: null };
+  if (!src) {
+    return {
+      id: null, locale, status: 'NOT_STARTED', sections: null,
+      updatedAt: null, publishedAt: null,
+      sourceHash: null, isManuallyLocked: false, lockedAt: null,
+      failureReason: null, lastTranslatedAt: null, isAiGenerated: false,
+    };
+  }
 
   const [tx] = await db
     .select()
@@ -136,7 +156,13 @@ export async function getHomepageAdminRecord(locale: string): Promise<HomepageAd
     sections: parseHomepageSections(tx?.body),
     updatedAt: tx?.updatedAt ?? null,
     publishedAt: tx?.publishedAt ?? null,
+    sourceHash: tx?.sourceHash ?? null,
+    isManuallyLocked: tx?.isManuallyLocked ?? false,
+    lockedAt: tx?.lockedAt ?? null,
+    failureReason: tx?.failureReason ?? null,
+    lastTranslatedAt: tx?.draftAt ?? tx?.updatedAt ?? null,
+    isAiGenerated: tx?.isAiGenerated ?? false,
   };
 }
 
-export { CACHE_TAG };
+export { CACHE_TAG, HOMEPAGE_SLUG };

@@ -9,3 +9,4 @@
 - [Migration 0005 manual DDL fix](migration-0005-manual-fix.md) — migration journal said applied but admin_notes/source columns were absent; fixed by running ALTER TABLE directly.
 - [Public i18n system](public-i18n-system.md) — locale persistence via catch-all [lang]/[...slug] route; LocaleLink + PageHero + HizmetlerServiceGrid locale-aware; middleware only stamps tr on root /.
 - [Homepage CMS architecture](homepage-cms-architecture.md) — Phase 1: content/contentTranslations tables + google_reviews; HomepageCmsProvider pattern; admin editor at /admin/sayfalar/ana-sayfa; drizzle migration DDL quirk.
+- [Homepage translation sync](homepage-translation-sync.md) — auto AI sync on TR save; shared vs translatable field split; manual lock; 8 status states; migration 0007 adds source_hash/isManuallyLocked.

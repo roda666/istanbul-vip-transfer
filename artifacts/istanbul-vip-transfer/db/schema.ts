@@ -342,6 +342,14 @@ export const contentTranslations = pgTable(
     // ── Approval ──────────────────────────────────────────────────────────
     approvedBy: uuid('approved_by').references(() => adminUsers.id, { onDelete: 'set null' }),
 
+    // ── Homepage translation sync (migration 0007) ──────────────────────
+    /** SHA-256 of TR translatable fields at time of last AI translation — used to skip re-translation when nothing changed. */
+    sourceHash: text('source_hash'),
+    /** When true, automatic sync must not overwrite this translation. */
+    isManuallyLocked: boolean('is_manually_locked').notNull().default(false),
+    lockedAt: timestamp('locked_at', { withTimezone: true }),
+    lockedBy: uuid('locked_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
     createdBy: uuid('created_by').references(() => adminUsers.id, { onDelete: 'set null' }),

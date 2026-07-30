@@ -4,6 +4,7 @@
  * Only exports PENDING and ACTIVE subscribers — never UNSUBSCRIBED.
  */
 import { NextResponse } from 'next/server';
+import { formatSource } from '@/lib/source-labels';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,7 +55,7 @@ export async function GET() {
       }
     }
 
-    const header = 'email,name,language,status,source,consent_version,created_at\n';
+    const header = 'email,name,language,status,source,source_label,consent_version,created_at\n';
     const csvRows = subs.map((s) =>
       [
         escapeCsv(s.normalizedEmail),
@@ -62,6 +63,7 @@ export async function GET() {
         escapeCsv(s.preferredLanguage),
         escapeCsv(s.status),
         escapeCsv(s.source),
+        escapeCsv(formatSource(s.source)),
         escapeCsv(consentMap[s.id] ?? ''),
         escapeCsv(new Date(s.createdAt).toISOString()),
       ].join(',')

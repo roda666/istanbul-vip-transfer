@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Search, ChevronLeft, ChevronRight, Archive, RefreshCw } from 'lucide-react';
+import { SOURCE_FILTER_OPTIONS, formatSource } from '@/lib/source-labels';
 
 interface RequestRow {
   id: string;
@@ -227,7 +228,9 @@ export default function TaleplerClient() {
 
         <select value={source} onChange={(e) => { setSource(e.target.value); setPage(1); }} style={inputStyle}>
           <option value="">Tüm Kaynaklar</option>
-          <option value="booking-form">Rezervasyon Formu</option>
+          {SOURCE_FILTER_OPTIONS.map(({ value, label }) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
         </select>
       </div>
 
@@ -293,7 +296,7 @@ export default function TaleplerClient() {
                     <th style={th}>Hizmet</th>
                     <th style={th}>Talep</th>
                     <th style={th}>Durum</th>
-                    <th style={th}>Tarih</th>
+                    <th style={th}>Kayıt Tarihi</th>
                     <th style={th}>İşlemler</th>
                   </tr>
                 </thead>
@@ -329,7 +332,7 @@ export default function TaleplerClient() {
                           </span>
                         </td>
                         <td style={{ ...td, fontSize: '12px', color: '#64748B' }}>
-                          {row.source === 'booking-form' ? 'Rezervasyon Formu' : row.source}
+                          {formatSource(row.source)}
                         </td>
                         <td style={{ ...td, fontSize: '12px' }}>{SERVICE_LABELS[row.serviceType] ?? row.serviceType}</td>
                         <td style={{ ...td, fontSize: '12px' }}>

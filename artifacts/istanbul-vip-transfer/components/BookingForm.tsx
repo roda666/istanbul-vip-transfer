@@ -147,6 +147,23 @@ const durationRowStyle: React.CSSProperties = {
   alignItems: 'stretch',
 };
 
+// ── Service date formatter ────────────────────────────────────────────────────
+
+/**
+ * Formats a stored YYYY-MM-DD service date for display to the customer.
+ * Parses year/month/day separately to avoid any UTC offset shifting the
+ * calendar day (e.g. midnight Istanbul = previous UTC day).
+ *   TR / DE / RU : DD.MM.YYYY
+ *   EN / AR      : DD/MM/YYYY
+ */
+function formatServiceDate(isoDate: string, locale: string): string {
+  const parts = isoDate.split('-');
+  if (parts.length !== 3) return isoDate;
+  const [year, month, day] = parts;
+  const sep = locale === 'en' || locale === 'ar' ? '/' : '.';
+  return `${day}${sep}${month}${sep}${year}`;
+}
+
 // ── WhatsApp message builder ──────────────────────────────────────────────────
 
 function buildWhatsAppMessage(
@@ -154,8 +171,10 @@ function buildWhatsAppMessage(
   serviceLabel: string,
   activeService: string,
   b: import('@/lib/i18n/types').Dictionary['booking'],
+  locale: string,
 ): string {
-  const saat  = `${data.saatSaat}:${data.saatDakika}`;
+  const saat      = `${data.saatSaat}:${data.saatDakika}`;
+  const fmtDate   = formatServiceDate(data.tarih, locale);
   const lines: string[] = [];
 
   lines.push(b.waHeading, `${b.waService}: ${serviceLabel}`, '');
@@ -165,19 +184,19 @@ function buildWhatsAppMessage(
     if (data.alisAdresi?.trim())  lines.push(`${b.waPickupAddress}: ${data.alisAdresi}`);
     lines.push(`${b.waDropoff}: ${data.varisLokasyonu}`);
     if (data.varisAdresi?.trim()) lines.push(`${b.waDropoffAddress}: ${data.varisAdresi}`);
-    lines.push(`${b.waDate}: ${data.tarih}`, `${b.waTime}: ${saat}`);
+    lines.push(`${b.waDate}: ${fmtDate}`, `${b.waTime}: ${saat}`);
 
   } else if (activeService === 'INTERCITY') {
     lines.push(`${b.waDepartureCity}: ${data.kalkisIli}`);
     if (data.kalkisAdres?.trim()) lines.push(`${b.waDepartureAddress}: ${data.kalkisAdres}`);
     lines.push(`${b.waArrivalCity}: ${data.varisIli}`);
     if (data.varisAdres?.trim())  lines.push(`${b.waArrivalAddress}: ${data.varisAdres}`);
-    lines.push(`${b.waDate}: ${data.tarih}`, `${b.waTime}: ${saat}`);
+    lines.push(`${b.waDate}: ${fmtDate}`, `${b.waTime}: ${saat}`);
 
   } else if (activeService === 'ALLOCATION') {
     lines.push(`${b.waPickup}: ${data.alisLokasyonu}`);
     if (data.alisAdresi?.trim())  lines.push(`${b.waPickupAddress}: ${data.alisAdresi}`);
-    lines.push(`${b.waStartDate}: ${data.tarih}`, `${b.waStartTime}: ${saat}`);
+    lines.push(`${b.waStartDate}: ${fmtDate}`, `${b.waStartTime}: ${saat}`);
     if (data.tahsisSuresi) {
       const unit = data.tahsisSuresiUnit === 'GUN' ? b.waDays : b.waHours;
       lines.push(`${b.waDuration}: ${data.tahsisSuresi} ${unit}`);
@@ -189,7 +208,7 @@ function buildWhatsAppMessage(
     if (data.alisAdresi?.trim())  lines.push(`${b.waPickupAddress}: ${data.alisAdresi}`);
     lines.push(`${b.waTourRoute}: ${data.talepsRota}`);
     if (data.talepsYerler?.trim()) lines.push(`${b.waTourPlaces}: ${data.talepsYerler}`);
-    lines.push(`${b.waDate}: ${data.tarih}`, `${b.waStartTime}: ${saat}`);
+    lines.push(`${b.waDate}: ${fmtDate}`, `${b.waStartTime}: ${saat}`);
     if (data.planlananSure?.trim()) {
       const unit = data.planlananSureUnit === 'GUN' ? b.waDays : b.waHours;
       lines.push(`${b.waPlannedDuration}: ${data.planlananSure} ${unit}`);
@@ -345,7 +364,7 @@ export default function BookingForm() {
     setSubmitting(true);
 
     const serviceLabel = ST_LABELS[activeService] ?? activeST?.label ?? activeService;
-    const msg   = buildWhatsAppMessage(data, serviceLabel, activeService, b);
+    const msg   = buildWhatsAppMessage(data, serviceLabel, activeService, b, lang);
     const waUrl = `https://wa.me/${WA_NUMBER}?text=${msg}`;
 
     fetch('/data/submit-request', {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Download, RefreshCw, Search } from 'lucide-react';
+import { SOURCE_FILTER_OPTIONS, formatSource } from '@/lib/source-labels';
 
 interface Subscriber {
   id: string;
@@ -165,10 +166,9 @@ export default function AbonelerClient() {
 
         <select value={source} onChange={(e) => { setSource(e.target.value); setPage(1); }} style={inputStyle}>
           <option value="">Tüm Kaynaklar</option>
-          <option value="booking-form:AIRPORT_TRANSFER">Havalimanı Formu</option>
-          <option value="booking-form:INTERCITY">Şehirler Arası Formu</option>
-          <option value="booking-form:ALLOCATION">Araç Tahsisi Formu</option>
-          <option value="booking-form:TOUR">Özel Tur Formu</option>
+          {SOURCE_FILTER_OPTIONS.map(({ value, label }) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
         </select>
 
         <button onClick={fetchData} style={{ ...inputStyle, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -219,7 +219,7 @@ export default function AbonelerClient() {
                         <td style={{ ...td, fontFamily: 'mono, monospace', fontSize: '12px' }}>{sub.normalizedEmail}</td>
                         <td style={td}>{sub.name ?? '—'}</td>
                         <td style={{ ...td, textAlign: 'center' }}>{sub.preferredLanguage.toUpperCase()}</td>
-                        <td style={{ ...td, fontSize: '12px', color: '#64748B' }}>{sub.source}</td>
+                        <td style={{ ...td, fontSize: '12px', color: '#64748B' }}>{formatSource(sub.source)}</td>
                         <td style={td}>
                           <span style={{ padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, background: sc.bg, color: sc.text }}>
                             {STATUS_LABELS[sub.status] ?? sub.status}

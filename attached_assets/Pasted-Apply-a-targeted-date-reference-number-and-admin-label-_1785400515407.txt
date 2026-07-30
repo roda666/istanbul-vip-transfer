@@ -1,0 +1,88 @@
+Apply a targeted date, reference-number and admin-label correction.
+
+1. WHATSAPP SERVICE DATE
+
+Keep stored service dates in YYYY-MM-DD format, but format customer-facing dates as:
+
+- Turkish: 31.07.2026
+- English: 31/07/2026
+- German: 31.07.2026
+- Russian: 31.07.2026
+- Arabic: 31/07/2026
+
+Apply this to WhatsApp messages and all customer-facing request summaries.
+
+Parse YYYY-MM-DD using separate year, month and day values. Do not allow UTC parsing to change the calendar day.
+
+2. REQUEST REFERENCE DATE BUG
+
+A request created at 30.07.2026 00:37 currently has a reference such as:
+
+IVT-20260729-DRAR8
+
+This is incorrect. Reference numbers must use the Europe/Istanbul local calendar date at request creation.
+
+Expected example:
+
+IVT-20260730-DRAR8
+
+- Do not modify existing reference numbers.
+- Fix only newly generated references.
+- Create one shared Europe/Istanbul-safe reference date helper.
+- Verify around midnight in Europe/Istanbul.
+- Do not derive the reference date from UTC date methods such as toISOString().slice(0, 10).
+
+3. ADMIN DISPLAY LABELS
+
+Keep technical database source values unchanged, but display readable Turkish labels in the admin panel.
+
+Examples:
+
+booking-form:AIRPORT_TRANSFER
+→ Rezervasyon Formu – Havalimanı / Şehir İçi Transfer
+
+booking-form:INTERCITY
+→ Rezervasyon Formu – Şehirler Arası Transfer
+
+booking-form:CHAUFFEUR
+→ Rezervasyon Formu – Araç Tahsisi
+
+booking-form:TOUR
+→ Rezervasyon Formu – Özel Tur / Gezi
+
+Apply these readable labels in:
+
+- Talepler
+- Talep detayı
+- Bülten Aboneleri
+- Source filters
+- CSV exports where appropriate
+
+4. ADMIN TABLE CLARITY
+
+If the “TARİH” column represents request creation time, rename it to:
+
+KAYIT TARİHİ
+
+Keep service/travel date separately labelled:
+
+HİZMET TARİHİ
+
+Do not confuse these two dates.
+
+5. VERIFICATION
+
+Prove these exact results:
+
+- Stored service date: 2026-07-31
+- Turkish WhatsApp date: 31.07.2026
+- A request created just after midnight Istanbul time receives the same Istanbul calendar date in its reference
+- No previous-day or next-day shift
+- Existing reference numbers are unchanged
+- Readable source labels appear in both admin modules
+- TypeScript passes
+- ESLint passes
+- Production build passes
+
+Do not publish or deploy.
+Do not reset passwords or modify secrets.

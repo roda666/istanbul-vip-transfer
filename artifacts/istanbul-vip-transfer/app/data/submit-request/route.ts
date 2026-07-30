@@ -32,8 +32,20 @@ function checkRateLimit(ip: string): boolean {
 }
 
 // ── Reference number generator ────────────────────────────────────────────────
+
+/**
+ * Returns the current calendar date in Europe/Istanbul as YYYYMMDD.
+ * Uses sv-SE locale (native YYYY-MM-DD output) to avoid any UTC shift
+ * that would occur if we relied on toISOString().slice(0,10).
+ */
+function getIstanbulDateStamp(): string {
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Istanbul' })
+    .format(new Date())
+    .replace(/-/g, '');
+}
+
 function generateRefNumber(): string {
-  const d     = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const d     = getIstanbulDateStamp();
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let rand    = '';
   for (let i = 0; i < 5; i++) rand += chars[Math.floor(Math.random() * chars.length)];

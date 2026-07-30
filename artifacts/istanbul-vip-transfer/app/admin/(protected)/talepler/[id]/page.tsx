@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import AdminPageHeader from '../../../_components/AdminPageHeader';
 import TalepDetayClient from './_TalepDetayClient';
+import { formatSource } from '@/lib/source-labels';
 
 export const metadata: Metadata = {
   title: 'Talep Detayı | Admin',
@@ -162,7 +163,7 @@ export default async function TalepDetayPage({ params }: { params: Promise<{ id:
           <div style={rowStyle}><span style={labelStyle}>Telefon</span><span style={valueStyle}>{req.phone}</span></div>
           <div style={rowStyle}><span style={labelStyle}>E-posta</span><span style={valueStyle}>{req.normalizedEmail ?? '—'}</span></div>
           <div style={rowStyle}><span style={labelStyle}>Dil</span><span style={valueStyle}>{req.locale?.toUpperCase() ?? 'TR'}</span></div>
-          <div style={rowStyle}><span style={labelStyle}>Kaynak</span><span style={valueStyle}>{req.source === 'booking-form' ? 'Rezervasyon Formu' : (req.source ?? '—')}</span></div>
+          <div style={rowStyle}><span style={labelStyle}>Kaynak</span><span style={valueStyle}>{formatSource(req.source)}</span></div>
           <div style={{ ...rowStyle, borderBottom: 'none' }}><span style={labelStyle}>Kayıt Tarihi</span><span style={valueStyle}>{formatDate(req.createdAt)}</span></div>
         </div>
 

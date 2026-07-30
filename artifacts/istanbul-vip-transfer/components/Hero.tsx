@@ -5,10 +5,34 @@ import { motion } from 'framer-motion';
 import { ChevronDown, Star } from 'lucide-react';
 import { SITE } from '@/lib/site-config';
 import { useLang } from '@/lib/i18n/context';
+import { useHomepageCms } from '@/lib/homepage-cms-context';
 
 export default function Hero() {
   const { dict } = useLang();
-  const h = dict.hero;
+  const cms = useHomepageCms();
+
+  // Use CMS data where published; fall back to static i18n dictionary
+  const h = cms?.hero
+    ? {
+        badge:             cms.hero.badge,
+        headline1:         cms.hero.headline1,
+        headlineAccent:    cms.hero.headlineAccent,
+        headline2:         cms.hero.headline2,
+        subheadline:       cms.hero.subheadline,
+        ctaBooking:        cms.hero.ctaBookingText,
+        ctaCall:           cms.hero.ctaCallText,
+        trustAirportLabel: cms.heroStats.find(s => s.key === 'airport')?.label ?? dict.hero.trustAirportLabel,
+        trustSupportLabel: cms.heroStats.find(s => s.key === 'support')?.label ?? dict.hero.trustSupportLabel,
+        trustVehiclesLabel:cms.heroStats.find(s => s.key === 'vehicles')?.label ?? dict.hero.trustVehiclesLabel,
+        scrollHint:        dict.hero.scrollHint,
+        scrollAriaLabel:   dict.hero.scrollAriaLabel,
+        imageAlt:          cms.hero.imageAlt,
+        imageSrc:          cms.hero.imagePath,
+      }
+    : {
+        ...dict.hero,
+        imageSrc: '/images/istanbul-vip-transfer-hero.webp',
+      };
 
   const scrollToBooking = () => {
     document.querySelector('#rezervasyon')?.scrollIntoView({ behavior: 'smooth' });
@@ -195,7 +219,7 @@ export default function Hero() {
               }}
             >
               <Image
-                src="/images/istanbul-vip-transfer-hero.webp"
+                src={h.imageSrc ?? '/images/istanbul-vip-transfer-hero.webp'}
                 alt={h.imageAlt}
                 fill
                 className="object-cover object-center"

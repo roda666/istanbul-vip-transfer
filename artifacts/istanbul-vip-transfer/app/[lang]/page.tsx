@@ -1,8 +1,8 @@
 /**
  * Translated homepage for /en, /de, /ru, /ar
  *
- * Renders the full public homepage with all sections.
- * Every shared component reads the active locale via useLang().
+ * Reads published CMS data server-side and provides it via HomepageCmsProvider.
+ * Falls back to the static i18n dictionaries if the database is unavailable.
  */
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
@@ -16,6 +16,8 @@ import TrustSignals from '@/components/TrustSignals';
 import Reviews from '@/components/Reviews';
 import FAQ from '@/components/FAQ';
 import Contact from '@/components/Contact';
+import { HomepageCmsProvider } from '@/lib/homepage-cms-context';
+import { getPublishedHomepageData } from '@/lib/homepage-cms';
 
 interface Props {
   params: Promise<{ lang: string }>;
@@ -27,23 +29,33 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const alternates = buildAlternates('/', [lang]);
 
-  const titles: Record<string, string> = {
-    en: 'Istanbul VIP Transfer | Luxury Airport & City Transfers',
-    de: 'Istanbul VIP Transfer | Luxus Flughafen & Stadttransfers',
-    ru: 'Стамбул VIP Трансфер | Трансфер из аэропорта и по городу',
-    ar: 'إسطنبول VIP ترانسفير | نقل فاخر من المطار والمدينة',
-  };
-
-  const descriptions: Record<string, string> = {
-    en: 'Premium airport transfers, intercity transport and private tours in Istanbul with luxury Mercedes Vito & Sprinter. 24/7 service.',
-    de: 'Premiumtransfers vom Flughafen, Stadtfahrten und Privattouren in Istanbul mit luxuriösen Mercedes Vito & Sprinter. 24/7 Service.',
-    ru: 'Премиальные трансферы из аэропорта, городские перевозки и частные туры в Стамбуле на люксовых Mercedes Vito и Sprinter. Работаем 24/7.',
-    ar: 'خدمة نقل فاخرة من المطار والمدينة وجولات خاصة في إسطنبول بسيارات مرسيدس فيتو وسبرينتر. خدمة 24/7.',
-  };
+  // Try to read SEO from DB; fall back to hardcoded defaults
+  let seoTitle: string;
+  let seoDescription: string;
+  try {
+    const cmsData = await getPublishedHomepageData(lang);
+    seoTitle       = cmsData.seo.metaTitle;
+    seoDescription = cmsData.seo.metaDescription;
+  } catch {
+    const titles: Record<string, string> = {
+      en: 'Istanbul VIP Transfer | Luxury Airport & City Transfers',
+      de: 'Istanbul VIP Transfer | Luxus Flughafen & Stadttransfers',
+      ru: 'Стамбул VIP Трансфер | Трансфер из аэропорта и по городу',
+      ar: 'إسطنبول VIP ترانسفير | نقل فاخر من المطار والمدينة',
+    };
+    const descriptions: Record<string, string> = {
+      en: 'Premium airport transfers, intercity transport and private tours in Istanbul with luxury Mercedes Vito & Sprinter. 24/7 service.',
+      de: 'Premiumtransfers vom Flughafen, Stadtfahrten und Privattouren in Istanbul mit luxuriösen Mercedes Vito & Sprinter. 24/7 Service.',
+      ru: 'Премиальные трансферы из аэропорта, городские перевозки и частные туры в Стамбуле на люксовых Mercedes Vito и Sprinter. Работаем 24/7.',
+      ar: 'خدمة نقل فاخرة من المطار والمدينة وجولات خاصة في إسطنبول بسيارات مرسيدس فيتو وسبرينتر. خدمة 24/7.',
+    };
+    seoTitle       = titles[lang] ?? titles.en;
+    seoDescription = descriptions[lang] ?? descriptions.en;
+  }
 
   return {
-    title: titles[lang] ?? titles.en,
-    description: descriptions[lang] ?? descriptions.en,
+    title: seoTitle,
+    description: seoDescription,
     alternates: {
       canonical: alternates.canonical,
       languages: alternates.languages,
@@ -59,8 +71,11 @@ export default async function TranslatedHomePage({ params }: Props) {
   const { lang } = await params;
   if (!isValidLang(lang)) notFound();
 
+  // Read published CMS data server-side; falls back to static i18n if DB unavailable
+  const cmsData = await getPublishedHomepageData(lang);
+
   return (
-    <>
+    <HomepageCmsProvider data={cmsData}>
       <Hero />
       <BookingForm />
       <VehicleFleet />
@@ -69,6 +84,6 @@ export default async function TranslatedHomePage({ params }: Props) {
       <Reviews />
       <FAQ />
       <Contact />
-    </>
+    </HomepageCmsProvider>
   );
 }

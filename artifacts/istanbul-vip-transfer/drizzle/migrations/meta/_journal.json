@@ -43,6 +43,13 @@
       "when": 1753900000000,
       "tag": "0005_admin_notes_and_statuses",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785500000000,
+      "tag": "0006_homepage_cms",
+      "breakpoints": true
     }
   ]
 }

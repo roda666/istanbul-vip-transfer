@@ -1,0 +1,341 @@
+Continue the existing Istanbul Transfer Pro project.
+
+TASK:
+Move the existing public homepage content into the existing admin content-management system without changing the current public design.
+
+This is “Homepage CMS Migration – Phase 1”.
+
+IMPORTANT:
+
+- First inspect the existing Pages, Services, Vehicles, Menu Management, Site Settings, Languages and Translations modules.
+- Reuse and extend existing database tables, admin pages and API routes.
+- Do not create a second or competing CMS.
+- Preserve all current public content and translations.
+- Do not publish or deploy the Replit project.
+- Do not connect the production domain.
+- Do not reset passwords or modify/expose secrets.
+- Use additive, non-destructive Drizzle migrations.
+- Keep all existing reservation, newsletter and locale features working.
+
+1. CONTENT OWNERSHIP
+
+Use these existing admin modules as the single source of truth:
+
+Site Settings:
+- brand name
+- logo
+- business phone
+- WhatsApp number
+- business email
+- Google Business Profile URL
+- address, if present
+- social-media URLs
+- default SEO/OG settings
+
+Menu Management:
+- desktop navigation
+- mobile navigation
+- footer quick links
+- labels for every locale
+- route, order, enabled status and external-link status
+
+Services:
+- homepage service cards
+- service title
+- short description
+- icon
+- target route
+- order
+- enabled status
+- locale translations
+
+Vehicles:
+- homepage vehicle cards
+- vehicle name
+- description
+- passenger capacity
+- image and image ALT text
+- display order
+- featured status
+- enabled status
+- locale translations
+
+Pages:
+- homepage-specific sections, headings, descriptions, buttons and SEO
+
+Do not duplicate phone, email, menu, service or vehicle information inside multiple tables.
+
+2. HOMEPAGE ADMIN EDITOR
+
+Create or repair:
+
+/admin/sayfalar/ana-sayfa
+
+The editor must provide clearly separated section cards or tabs for:
+
+A. Hero
+
+- eyebrow/badge text
+- main heading, including separately editable highlighted words if required by the design
+- description
+- primary button text and target
+- secondary button text and target
+- hero image
+- image ALT text
+- image caption/badge if displayed
+- section enabled status
+
+B. Hero statistics/trust highlights
+
+- IST & SAW text
+- 7/24 text
+- Vito & Sprinter text
+- descriptions
+- icons where applicable
+- order and enabled status
+
+C. Services section
+
+- section eyebrow
+- heading
+- description
+- select which published Services appear
+- service order
+- “all services” button text and route
+
+The service title, description and route must come from the Services module, not be copied into the homepage record.
+
+D. Trust/advantages section
+
+- section heading and description
+- editable cards
+- title
+- short description
+- icon
+- order
+- enabled status
+
+E. Vehicle section
+
+- section heading and description
+- select published vehicles from the Vehicles module
+- display order
+- button text and target
+
+Vehicle data must come from the Vehicles module.
+
+F. Google reviews section
+
+- heading and description
+- Google Business Profile URL
+- selected visible reviews
+- reviewer name
+- review text
+- rating
+- review language
+- review date if available
+- Google source indicator
+- “View all reviews on Google” button
+
+Do not invent reviews, reviewer names or ratings.
+Preserve the existing genuine reviews.
+Do not add aggregate-rating schema based only on copied reviews.
+
+G. Reservation section presentation
+
+Only manage presentation content here:
+
+- eyebrow
+- heading
+- description
+- section enabled status
+
+Do not duplicate or alter reservation form business logic.
+
+H. Contact/CTA section
+
+- heading
+- description
+- button labels
+
+Phone, WhatsApp and email must come from Site Settings.
+
+I. Footer presentation
+
+- footer description
+- column headings
+- copyright text template
+
+Menus and contact data must come from their owning modules.
+
+J. Homepage SEO
+
+For every locale:
+
+- meta title
+- meta description
+- index/noindex
+- OG title
+- OG description
+- OG image
+- image ALT text
+
+Canonical and hreflang URLs must be generated automatically from the current locale and route. Do not allow administrators to accidentally create conflicting canonical URLs.
+
+3. MULTILINGUAL EDITING
+
+Support:
+
+- Turkish: source/default
+- English
+- German
+- Russian
+- Arabic
+
+Requirements:
+
+- Locale tabs in the homepage editor
+- Clear translation status for every locale:
+  - Missing
+  - Draft
+  - Review
+  - Approved
+  - Published
+- Arabic editor and preview must support RTL.
+- Preserve LTR for phone numbers, email, IST/SAW, Mercedes Vito and Sprinter.
+- Import the current working public translations into the database.
+- Do not replace translated public pages with Turkish content.
+- Do not add automatic AI translation yet.
+
+4. CONTENT WORKFLOW
+
+Use the existing content workflow where possible:
+
+- DRAFT
+- REVIEW
+- APPROVED
+- SCHEDULED
+- PUBLISHED
+- ARCHIVED
+
+Requirements:
+
+- “Taslak Kaydet”
+- “Önizle”
+- “İncelemeye Gönder”
+- “Onayla”
+- “Yayınla”
+- “Yayından Kaldır”
+- scheduled publication field if already supported
+- audit log showing administrator, field changed and date
+
+Editing published content must not silently change the public site.
+Only a deliberate Publish action can update public content.
+
+5. MEDIA UPLOAD
+
+Allow administrators to upload homepage images directly.
+
+Requirements:
+
+- Do not require manually pasted external image URLs.
+- Use the storage solution already configured in the project.
+- Accept JPEG, PNG, WebP and AVIF.
+- Validate MIME type and file size server-side.
+- Optimise large uploads and preferably store public display versions as WebP or AVIF.
+- Require ALT text for published content.
+- Show image dimensions and file size.
+- Prevent deletion of an image currently used by published content.
+- Use Next.js Image correctly with explicit dimensions or fill/sizes.
+- Do not create layout shift.
+
+If no durable object/media storage is configured, stop and report the missing storage requirement instead of storing uploads in an unreliable temporary filesystem.
+
+6. INITIAL CONTENT MIGRATION
+
+Migrate/seed the exact content currently visible on:
+
+- /
+- /en
+- /de
+- /ru
+- /ar
+
+Rules:
+
+- No visible content may disappear.
+- Preserve the current golden-hour Bosphorus hero image.
+- Preserve current genuine Google reviews.
+- Preserve the current light navy/gold/ivory/pale-blue/lavender design.
+- Do not fabricate statistics, guarantees, reviews, prices or claims.
+- Make the seed/migration safe to run once without creating duplicate homepage records.
+- Existing public content should initially be marked PUBLISHED.
+
+7. PUBLIC RENDERING AND PERFORMANCE
+
+Public pages must:
+
+- render published content server-side
+- not fetch core homepage content after hydration
+- provide the current static content as a safe fallback if the database is temporarily unavailable
+- use caching appropriate for Next.js App Router
+- invalidate only affected routes/tags after publishing
+- revalidate:
+  - /
+  - /en
+  - /de
+  - /ru
+  - /ar
+- preserve SEO-visible HTML
+- avoid unnecessary client JavaScript
+- preserve PageSpeed performance
+- preserve responsive desktop/tablet/mobile layout
+
+8. SECURITY
+
+- Protect every admin page and mutation API with admin authentication.
+- Validate all content server-side.
+- Sanitize rich text safely.
+- Prevent script, iframe and event-handler injection.
+- Apply CSRF protection according to the existing admin architecture.
+- Do not expose draft or review content through public APIs.
+- Preview links must be authenticated or use secure expiring preview tokens.
+
+9. VERIFICATION
+
+Perform and report:
+
+- exact schema and migration file paths
+- initial homepage content record count
+- translation record count for each locale
+- image/media storage status
+- authenticated editor test
+- unauthenticated mutation API must return 401
+- save-draft test showing public page remains unchanged
+- publish test showing only the intended section changes
+- rollback/revert test
+- database-unavailable fallback test
+- Turkish, English, German, Russian and Arabic rendering
+- Arabic RTL
+- locale switching and persistence
+- reservation form regression
+- Talepler regression
+- Bülten Aboneleri regression
+- desktop 1440px
+- tablet 768px
+- mobile 390px
+- TypeScript
+- ESLint
+- production build
+
+Do not leave test text visible on the public site. Restore the original published content after the publish/revert verification.
+
+Do not claim completion with general statements. Provide concrete results and screenshots of:
+
+- homepage admin editor
+- Turkish homepage
+- English homepage
+- Arabic RTL homepage
+- mobile homepage
+
+Do not publish or deploy the Replit project.

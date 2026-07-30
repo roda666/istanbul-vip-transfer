@@ -9,6 +9,8 @@ import FAQ from '@/components/FAQ';
 import Contact from '@/components/Contact';
 import { faqs } from '@/lib/faq-data';
 import { SITE } from '@/lib/site-config';
+import { HomepageCmsProvider } from '@/lib/homepage-cms-context';
+import { getPublishedHomepageData } from '@/lib/homepage-cms';
 
 const BASE = SITE.siteUrl;
 
@@ -53,9 +55,12 @@ const faqSchema = {
   })),
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  // Read published CMS data server-side; falls back to static i18n if DB unavailable
+  const cmsData = await getPublishedHomepageData('tr');
+
   return (
-    <>
+    <HomepageCmsProvider data={cmsData}>
       <Hero />
       <BookingForm />
       <VehicleFleet />
@@ -72,6 +77,6 @@ export default function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
-    </>
+    </HomepageCmsProvider>
   );
 }

@@ -442,3 +442,22 @@ export type NewsletterSubscriber    = typeof newsletterSubscribers.$inferSelect;
 export type NewNewsletterSubscriber = typeof newsletterSubscribers.$inferInsert;
 export type NewsletterConsentEvent    = typeof newsletterConsentEvents.$inferSelect;
 export type NewNewsletterConsentEvent = typeof newsletterConsentEvents.$inferInsert;
+
+// ── Google Reviews ────────────────────────────────────────────────────────────
+
+export const googleReviews = pgTable('google_reviews', {
+  id:                    uuid('id').primaryKey().defaultRandom(),
+  reviewerName:          text('reviewer_name').notNull(),
+  reviewText:            text('review_text').notNull(),
+  rating:                integer('rating').notNull().default(5),
+  reviewLanguage:        text('review_language').notNull().default('tr'),
+  reviewDate:            timestamp('review_date', { withTimezone: true }),
+  isVisible:             boolean('is_visible').notNull().default(true),
+  sortOrder:             integer('sort_order').notNull().default(0),
+  googleSourceIndicator: boolean('google_source_indicator').notNull().default(true),
+  createdAt:             timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:             timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type GoogleReview    = typeof googleReviews.$inferSelect;
+export type NewGoogleReview = typeof googleReviews.$inferInsert;

@@ -16,6 +16,7 @@
     "reset-admin-password": "tsx scripts/reset-admin-password.ts"
   },
   "dependencies": {
+    "@google-cloud/storage": "^7.21.0",
     "bcryptjs": "^2.4.3",
     "dotenv": "^17.4.2",
     "drizzle-orm": "catalog:",

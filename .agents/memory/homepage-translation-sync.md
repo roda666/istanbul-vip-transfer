@@ -3,6 +3,14 @@ name: Homepage Translation Sync
 description: Automatic multilingual synchronization for homepage CMS — field classification, AI translation pipeline, manual lock, status states.
 ---
 
+## Critical: Migration 0007 must be applied via psql
+
+`drizzle-kit migrate` reports success but does NOT actually apply this migration. Always run:
+```
+psql $DATABASE_URL < drizzle/migrations/0007_homepage_translation_sync.sql
+```
+Columns added: `source_hash`, `is_manually_locked`, `locked_at`, `locked_by`
+
 ## Architecture
 
 On **TR draft save** (`PATCH /admin/api/homepage/tr` with `autoTranslate=true`):

@@ -1,0 +1,90 @@
+Fix the actual “Taslak Kaydet ve Çevir” runtime failure in Ana Sayfa Düzenleyici.
+
+Observed browser error:
+Failed to execute 'json' on 'Response': Unexpected end of JSON input
+
+Important:
+- Diagnose the exact API request triggered by “Taslak Kaydet ve Çevir”.
+- Do not merely hide the frontend error.
+- Do not rebuild the CMS or translation system.
+- Preserve the Turkish text currently entered:
+  “İstanbul'un Prestijli VIP Transfer Hizmeti”
+- Do not publish, unpublish, deploy or connect the production domain.
+
+Requirements:
+
+1. Inspect the browser request, API route, HTTP method, authentication, CSRF handling, server logs and database operation used by “Taslak Kaydet ve Çevir”.
+
+2. Determine why the endpoint returns an empty body, HTML, redirect or invalid JSON.
+
+3. Every possible API outcome must return valid JSON with the correct Content-Type:
+Success example:
+{
+  "success": true,
+  "draftSaved": true,
+  "translationJobsCreated": 4,
+  "targetLocales": ["en", "de", "ru", "ar"]
+}
+
+Error example:
+{
+  "success": false,
+  "code": "TRANSLATION_QUEUE_FAILED",
+  "message": "Açıklayıcı Türkçe hata mesajı"
+}
+
+4. Do not return an empty 204 response from this endpoint.
+
+5. Fix the client request safely:
+- Read response.text() first.
+- Check response.ok and Content-Type.
+- Parse JSON only when a non-empty JSON response exists.
+- Show the actual server error message.
+- Never display “Unexpected end of JSON input” to the admin.
+
+6. Turkish draft saving and translation-job creation must be reliable:
+- Save the Turkish draft.
+- Create exactly one idempotent job per selected target locale.
+- Avoid duplicate jobs when the admin retries.
+- If the Turkish source hash has not changed, reuse or update the existing pending job.
+- Do not publish any target language automatically.
+
+7. If the AI provider/API key is missing:
+- Still save the Turkish draft safely.
+- Return structured JSON with code AI_PROVIDER_NOT_CONFIGURED.
+- Show a clear admin warning.
+- Preserve translation jobs for later retry.
+- Do not create fake or hard-coded translations.
+
+8. If database migration/schema is missing:
+- Add or correct the Drizzle schema and versioned migration.
+- Do not rely only on manually applied SQL.
+
+9. After fixing, perform a real authenticated end-to-end test using the existing homepage editor:
+- Save the current Turkish Hero draft.
+- Confirm the response contains valid JSON.
+- Confirm exactly four target jobs exist: en, de, ru, ar.
+- Confirm tabs change from “Başlamadı” to the correct job status.
+- Confirm the public Turkish and translated pages remain unchanged before approval.
+- Do not use mocked success responses.
+
+10. Test retry behavior:
+- Clicking once must not create duplicates.
+- A failed job must be retryable.
+- The UI must refresh job statuses without requiring a full page reload.
+
+11. Run:
+- TypeScript typecheck
+- ESLint
+- Production build
+
+Report:
+- Root cause
+- Exact API route and method fixed
+- Actual HTTP status and JSON response
+- Number and locales of translation jobs created
+- Whether the AI provider is configured
+- Changed files
+- Typecheck/lint/build results
+
+Do not mark complete unless the real authenticated button click succeeds and the four language tabs leave “Başlamadı”.

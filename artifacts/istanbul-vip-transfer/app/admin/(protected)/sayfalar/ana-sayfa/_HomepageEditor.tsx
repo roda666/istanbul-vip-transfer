@@ -11,6 +11,26 @@ import type {
 } from '@/lib/homepage-types';
 import { HOMEPAGE_FALLBACK } from '@/lib/homepage-types';
 
+// ── Safe JSON fetch helper ─────────────────────────────────────────────────
+// Reads response.text() first so an empty body or HTML error page never throws
+// "Unexpected end of JSON input". Returns parsed JSON or throws with a clean message.
+async function safeJson<T = Record<string, unknown>>(res: Response): Promise<T> {
+  const text = await res.text();
+  const ct = res.headers.get('content-type') ?? '';
+  if (!text.trim()) {
+    throw new Error(`Sunucu boş yanıt döndürdü (HTTP ${res.status}).`);
+  }
+  if (!ct.includes('json')) {
+    // Likely an HTML error page — show truncated text
+    throw new Error(`Sunucudan beklenmeyen yanıt alındı (HTTP ${res.status}): ${text.slice(0, 120)}`);
+  }
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error(`JSON ayrıştırma hatası (HTTP ${res.status}): ${text.slice(0, 120)}`);
+  }
+}
+
 // ── Constants ──────────────────────────────────────────────────────────────
 
 const LOCALES = [
@@ -474,22 +494,30 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sections, autoTranslate: isTranslating, targetLocales }),
       });
-      if (!res.ok) throw new Error((await res.json()).error ?? 'Save failed');
-      const data = await res.json() as { syncResults?: Record<string, { status: string; reason?: string }> };
+      const data = await safeJson<{
+        success: boolean; draftSaved?: boolean;
+        translationJobsCreated?: number; targetLocales?: string[];
+        code?: string; message?: string;
+        syncResults?: Record<string, { status: string; reason?: string }>;
+      }>(res);
+      if (!res.ok) throw new Error(data.message ?? data.code ?? 'Kaydetme başarısız.');
 
       // Refresh all target locale records
-      if (data.syncResults) {
+      // AI_PROVIDER_NOT_CONFIGURED is a soft warning — draft IS saved
+      if (data.code === 'AI_PROVIDER_NOT_CONFIGURED') {
+        setMessage({ type: 'info', text: data.message ?? 'Taslak kaydedildi. AI sağlayıcısı yapılandırılmamış.' });
+      } else if (data.syncResults) {
         const refreshPromises = Object.keys(data.syncResults).map(l => refreshLocale(l));
         await Promise.all(refreshPromises);
 
         const translated = Object.entries(data.syncResults).filter(([, r]) => r.status === 'translated').length;
-        const failed = Object.entries(data.syncResults).filter(([, r]) => r.status === 'failed').length;
-        const skipped = Object.entries(data.syncResults).filter(([, r]) => r.status === 'skipped').length;
-        const queued = Object.entries(data.syncResults).filter(([, r]) => r.status === 'queued').length;
+        const failed    = Object.entries(data.syncResults).filter(([, r]) => r.status === 'failed').length;
+        const skipped   = Object.entries(data.syncResults).filter(([, r]) => r.status === 'skipped').length;
+        const queued    = Object.entries(data.syncResults).filter(([, r]) => r.status === 'queued').length;
 
         let msg = 'Türkçe taslak kaydedildi.';
         if (translated > 0) msg += ` ${translated} dil çevrildi (inceleme gerekli).`;
-        if (queued > 0) msg += ` ${queued} dil sıraya alındı (AI yapılandırılmamış).`;
+        if (queued > 0) msg += ` ⚠ ${queued} dil sıraya alındı — AI sağlayıcısı yapılandırılmamış.`;
         if (skipped > 0) msg += ` ${skipped} dil atlandı (değişiklik yok).`;
         if (failed > 0) msg += ` ⚠ ${failed} dilde hata — sekme detaylarını kontrol edin.`;
         setMessage({ type: failed > 0 ? 'err' : 'ok', text: msg });
@@ -511,7 +539,8 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
     setMessage(null);
     try {
       const res = await fetch(`/admin/api/homepage/${activeLocale}/publish?action=${action}`, { method: 'POST' });
-      if (!res.ok) throw new Error((await res.json()).error ?? 'Publish failed');
+      const pubData = await safeJson<{ error?: string; message?: string }>(res);
+      if (!res.ok) throw new Error(pubData.message ?? pubData.error ?? 'Yayın işlemi başarısız.');
       setMessage({ type: 'ok', text: action === 'publish' ? 'Yayınlandı!' : 'Yayından kaldırıldı.' });
       await refreshLocale(activeLocale);
     } catch (err) {
@@ -529,8 +558,8 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ locales: ['en', 'de', 'ru', 'ar'] }),
       });
-      if (!res.ok) throw new Error('Bulk publish failed');
-      const data = await res.json() as { results: Record<string, string> };
+      const data = await safeJson<{ results: Record<string, string>; error?: string; message?: string }>(res);
+      if (!res.ok) throw new Error(data.message ?? data.error ?? 'Toplu yayın başarısız.');
       const published = Object.entries(data.results).filter(([, v]) => v === 'published').map(([k]) => k.toUpperCase());
       const skipped  = Object.entries(data.results).filter(([, v]) => v === 'skipped').map(([k]) => k.toUpperCase());
       let msg = '';
@@ -551,7 +580,8 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
     setMessage({ type: 'info', text: `⏳ ${locale.toUpperCase()} çeviriliyor…` });
     try {
       const res = await fetch(`/admin/api/homepage/${locale}/translate`, { method: 'POST' });
-      if (!res.ok) throw new Error((await res.json()).error ?? 'Failed');
+      const retryData = await safeJson<{ error?: string; message?: string }>(res);
+      if (!res.ok) throw new Error(retryData.message ?? retryData.error ?? 'Çeviri başarısız.');
       setMessage({ type: 'ok', text: `${locale.toUpperCase()} çevirisi taslak olarak kaydedildi.` });
       await refreshLocale(locale);
     } catch (err) {
@@ -568,7 +598,8 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ locked: lock }),
       });
-      if (!res.ok) throw new Error('Lock change failed');
+      const lockData = await safeJson<{ error?: string; message?: string }>(res);
+      if (!res.ok) throw new Error(lockData.message ?? lockData.error ?? 'Kilit değiştirilemedi.');
       setMessage({ type: 'ok', text: lock ? `${locale.toUpperCase()} kilitlendi.` : `${locale.toUpperCase()} kilidi kaldırıldı.` });
       await refreshLocale(locale);
     } catch (err) {
@@ -580,7 +611,8 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
     setLocaleBusyFor(locale, true);
     try {
       const res = await fetch(`/admin/api/homepage/${locale}/publish?action=approve`, { method: 'POST' });
-      if (!res.ok) throw new Error(((await res.json()) as { error?: string })?.error ?? 'Approve failed');
+      const approveData = await safeJson<{ error?: string; message?: string }>(res);
+      if (!res.ok) throw new Error(approveData.message ?? approveData.error ?? 'Onaylama başarısız.');
       setMessage({ type: 'ok', text: `${locale.toUpperCase()} onaylandı.` });
       await refreshLocale(locale);
     } catch (err) {

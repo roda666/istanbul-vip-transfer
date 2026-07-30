@@ -85,233 +85,264 @@ export async function PATCH(
   const sections = rawSections;
   const sectionsJson = JSON.stringify(sections);
 
-  const { db } = await import('@/db');
-  const { content, contentTranslations, auditLogs } = await import('@/db/schema');
-  const { eq, and, inArray } = await import('drizzle-orm');
-  const { sql } = await import('drizzle-orm');
+  try {
+    const { db } = await import('@/db');
+    const { content, contentTranslations, auditLogs } = await import('@/db/schema');
+    const { eq, and, inArray } = await import('drizzle-orm');
+    const { sql } = await import('drizzle-orm');
 
-  // ── Non-TR save (manual edit) ────────────────────────────────────────────
-  if (locale !== 'tr') {
-    const [src] = await db.select({ id: content.id }).from(content).where(eq(content.slug, HOMEPAGE_SLUG)).limit(1);
-    if (!src) return NextResponse.json({ error: 'Turkish source record not found — save TR first' }, { status: 409 });
+    // ── Non-TR save (manual edit) ──────────────────────────────────────────
+    if (locale !== 'tr') {
+      const [src] = await db.select({ id: content.id }).from(content).where(eq(content.slug, HOMEPAGE_SLUG)).limit(1);
+      if (!src) return NextResponse.json(
+        { success: false, code: 'TR_NOT_FOUND', message: 'Türkçe kaynak bulunamadı — önce TR taslağını kaydedin.' },
+        { status: 409 },
+      );
 
-    const [existing] = await db.select({ id: contentTranslations.id }).from(contentTranslations).where(
-      and(
-        eq(contentTranslations.entityType, 'homepage'),
-        eq(contentTranslations.entityId, src.id),
-        eq(contentTranslations.targetLanguageCode, locale),
-      ),
-    ).limit(1);
+      const [existing] = await db.select({ id: contentTranslations.id }).from(contentTranslations).where(
+        and(
+          eq(contentTranslations.entityType, 'homepage'),
+          eq(contentTranslations.entityId, src.id),
+          eq(contentTranslations.targetLanguageCode, locale),
+        ),
+      ).limit(1);
 
-    if (existing) {
-      await db.update(contentTranslations).set({
-        body: sectionsJson, updatedAt: new Date(), updatedBy: session.adminId,
-        status: 'DRAFT', draftAt: sql`now()`,
-      }).where(eq(contentTranslations.id, existing.id));
-    } else {
-      await db.insert(contentTranslations).values({
+      if (existing) {
+        await db.update(contentTranslations).set({
+          body: sectionsJson, updatedAt: new Date(), updatedBy: session.adminId,
+          status: 'DRAFT', draftAt: sql`now()`,
+        }).where(eq(contentTranslations.id, existing.id));
+      } else {
+        await db.insert(contentTranslations).values({
+          entityType: 'homepage', entityId: src.id,
+          targetLanguageCode: locale, sourceLanguageCode: 'tr',
+          status: 'DRAFT', body: sectionsJson, title: 'Homepage',
+          createdBy: session.adminId, updatedBy: session.adminId,
+          draftAt: sql`now()`,
+        });
+      }
+
+      await db.insert(auditLogs).values({
+        adminUserId: session.adminId, action: 'HOMEPAGE_SAVE_DRAFT',
         entityType: 'homepage', entityId: src.id,
-        targetLanguageCode: locale, sourceLanguageCode: 'tr',
-        status: 'DRAFT', body: sectionsJson, title: 'Homepage',
-        createdBy: session.adminId, updatedBy: session.adminId,
-        draftAt: sql`now()`,
+        metadata: { locale, manual: true },
       });
+
+      return NextResponse.json({ success: true, draftSaved: true });
+    }
+
+    // ── TR save ────────────────────────────────────────────────────────────
+    const [existing] = await db.select({ id: content.id }).from(content).where(eq(content.slug, HOMEPAGE_SLUG)).limit(1);
+
+    let contentId: string;
+    if (existing) {
+      await db.update(content).set({ body: sectionsJson, updatedAt: new Date(), title: 'Ana Sayfa' }).where(eq(content.id, existing.id));
+      contentId = existing.id;
+    } else {
+      const [inserted] = await db.insert(content).values({
+        contentType: 'PAGE', title: 'Ana Sayfa', slug: HOMEPAGE_SLUG,
+        body: sectionsJson, status: 'DRAFT',
+      }).returning({ id: content.id });
+      contentId = inserted.id;
     }
 
     await db.insert(auditLogs).values({
       adminUserId: session.adminId, action: 'HOMEPAGE_SAVE_DRAFT',
-      entityType: 'homepage', entityId: src.id,
-      metadata: { locale, manual: true },
+      entityType: 'homepage', entityId: contentId,
+      metadata: { locale: 'tr', autoTranslate, targetLocales },
     });
 
-    return NextResponse.json({ ok: true });
-  }
+    // ── If autoTranslate disabled, return early ────────────────────────────
+    if (!autoTranslate || targetLocales.length === 0) {
+      return NextResponse.json({ success: true, draftSaved: true, translationJobsCreated: 0, targetLocales: [] });
+    }
 
-  // ── TR save ──────────────────────────────────────────────────────────────
-  const [existing] = await db.select({ id: content.id }).from(content).where(eq(content.slug, HOMEPAGE_SLUG)).limit(1);
+    const trHash = computeTranslatableHash(sections);
+    const trFields = extractTranslatableFields(sections);
 
-  let contentId: string;
-  if (existing) {
-    await db.update(content).set({ body: sectionsJson, updatedAt: new Date(), title: 'Ana Sayfa' }).where(eq(content.id, existing.id));
-    contentId = existing.id;
-  } else {
-    const [inserted] = await db.insert(content).values({
-      contentType: 'PAGE', title: 'Ana Sayfa', slug: HOMEPAGE_SLUG,
-      body: sectionsJson, status: 'DRAFT',
-    }).returning({ id: content.id });
-    contentId = inserted.id;
-  }
+    // Load existing translation rows for all 4 target locales
+    const existingTx = await db.select({
+      id: contentTranslations.id,
+      targetLanguageCode: contentTranslations.targetLanguageCode,
+      status: contentTranslations.status,
+      sourceHash: contentTranslations.sourceHash,
+      isManuallyLocked: contentTranslations.isManuallyLocked,
+      body: contentTranslations.body,
+    }).from(contentTranslations).where(
+      and(
+        eq(contentTranslations.entityType, 'homepage'),
+        eq(contentTranslations.entityId, contentId),
+        inArray(contentTranslations.targetLanguageCode, [...targetLocales]),
+      ),
+    );
 
-  await db.insert(auditLogs).values({
-    adminUserId: session.adminId, action: 'HOMEPAGE_SAVE_DRAFT',
-    entityType: 'homepage', entityId: contentId,
-    metadata: { locale: 'tr', autoTranslate, targetLocales },
-  });
+    const txByLocale = Object.fromEntries(existingTx.map(r => [r.targetLanguageCode, r]));
 
-  // ── If autoTranslate disabled, return early ──────────────────────────────
-  if (!autoTranslate || targetLocales.length === 0) {
-    return NextResponse.json({ ok: true, contentId, syncResults: {} });
-  }
+    type SyncResult = {
+      status: 'skipped' | 'queued' | 'translated' | 'locked_outdated' | 'failed';
+      reason?: string;
+      jobId?: string;
+      aiModel?: string;
+    };
+    const syncResults: Record<string, SyncResult> = {};
 
-  const trHash = computeTranslatableHash(sections);
-  const trFields = extractTranslatableFields(sections);
+    const hasOpenAI = !!process.env.OPENAI_API_KEY;
 
-  // Load existing translation rows for all 4 target locales
-  const existingTx = await db.select({
-    id: contentTranslations.id,
-    targetLanguageCode: contentTranslations.targetLanguageCode,
-    status: contentTranslations.status,
-    sourceHash: contentTranslations.sourceHash,
-    isManuallyLocked: contentTranslations.isManuallyLocked,
-    body: contentTranslations.body,
-  }).from(contentTranslations).where(
-    and(
-      eq(contentTranslations.entityType, 'homepage'),
-      eq(contentTranslations.entityId, contentId),
-      inArray(contentTranslations.targetLanguageCode, [...targetLocales]),
-    ),
-  );
+    for (const targetLocale of targetLocales) {
+      const tx = txByLocale[targetLocale];
 
-  const txByLocale = Object.fromEntries(existingTx.map(r => [r.targetLanguageCode, r]));
-
-  // Per-locale results
-  type SyncResult = {
-    status: 'skipped' | 'queued' | 'translated' | 'locked_outdated' | 'failed';
-    reason?: string;
-    jobId?: string;
-    aiModel?: string;
-  };
-  const syncResults: Record<string, SyncResult> = {};
-
-  const hasOpenAI = !!process.env.OPENAI_API_KEY;
-
-  for (const targetLocale of targetLocales) {
-    const tx = txByLocale[targetLocale];
-
-    if (tx?.isManuallyLocked) {
-      // Locked — only mark OUTDATED if source changed
-      if (tx.sourceHash !== trHash) {
-        await db.update(contentTranslations).set({
-          status: 'OUTDATED',
-          failureReason: 'Kaynak değişti — güncelleme gerekli',
-          updatedAt: new Date(), updatedBy: session.adminId,
-        }).where(eq(contentTranslations.id, tx.id));
-        await db.insert(auditLogs).values({
-          adminUserId: session.adminId, action: 'HOMEPAGE_TRANSLATION_OUTDATED',
-          entityType: 'content_translation', entityId: tx.id,
-          metadata: { locale: targetLocale, reason: 'manual_lock_source_changed' },
-        });
-        syncResults[targetLocale] = { status: 'locked_outdated', reason: 'Source changed while locked' };
-      } else {
-        syncResults[targetLocale] = { status: 'skipped', reason: 'Locked and hash unchanged' };
+      if (tx?.isManuallyLocked) {
+        if (tx.sourceHash !== trHash) {
+          await db.update(contentTranslations).set({
+            status: 'OUTDATED',
+            failureReason: 'Kaynak değişti — güncelleme gerekli',
+            updatedAt: new Date(), updatedBy: session.adminId,
+          }).where(eq(contentTranslations.id, tx.id));
+          await db.insert(auditLogs).values({
+            adminUserId: session.adminId, action: 'HOMEPAGE_TRANSLATION_OUTDATED',
+            entityType: 'content_translation', entityId: tx.id,
+            metadata: { locale: targetLocale, reason: 'manual_lock_source_changed' },
+          });
+          syncResults[targetLocale] = { status: 'locked_outdated', reason: 'Source changed while locked' };
+        } else {
+          syncResults[targetLocale] = { status: 'skipped', reason: 'Locked and hash unchanged' };
+        }
+        continue;
       }
-      continue;
-    }
 
-    // Skip if hash unchanged and already translated
-    if (tx && tx.sourceHash === trHash && !['NOT_STARTED', 'FAILED', 'OUTDATED'].includes(tx.status ?? '')) {
-      syncResults[targetLocale] = { status: 'skipped', reason: 'Hash unchanged' };
-      continue;
-    }
+      // Skip if hash unchanged and already in a good state
+      if (tx && tx.sourceHash === trHash && !['NOT_STARTED', 'FAILED', 'OUTDATED'].includes(tx.status ?? '')) {
+        syncResults[targetLocale] = { status: 'skipped', reason: 'Hash unchanged' };
+        continue;
+      }
 
-    // Build the initial sections for this locale (sync shared fields)
-    const fallback = (HOMEPAGE_FALLBACK[targetLocale] ?? HOMEPAGE_FALLBACK.en) as import('@/lib/homepage-types').HomepageSections;
-    const existingTargetSections = tx?.body ? (JSON.parse(tx.body) as import('@/lib/homepage-types').HomepageSections) : null;
-    const baseTarget = existingTargetSections ?? buildInitialTargetSections(sections, fallback);
-    const sharedSynced = syncSharedFields(baseTarget, sections);
+      const fallback = (HOMEPAGE_FALLBACK[targetLocale] ?? HOMEPAGE_FALLBACK.en) as HomepageSections;
+      const existingTargetSections = tx?.body ? (JSON.parse(tx.body) as HomepageSections) : null;
+      const baseTarget = existingTargetSections ?? buildInitialTargetSections(sections, fallback);
+      const sharedSynced = syncSharedFields(baseTarget, sections);
 
-    if (!hasOpenAI) {
-      // No AI available — save shared-synced body and mark QUEUED
-      const now = new Date();
-      const sharedJson = JSON.stringify(sharedSynced);
+      if (!hasOpenAI) {
+        const sharedJson = JSON.stringify(sharedSynced);
+        if (tx) {
+          await db.update(contentTranslations).set({
+            body: sharedJson, status: 'QUEUED', sourceHash: trHash,
+            queuedAt: sql`now()`, updatedAt: new Date(), updatedBy: session.adminId,
+            failureReason: null,
+          }).where(eq(contentTranslations.id, tx.id));
+          syncResults[targetLocale] = { status: 'queued', reason: 'AI provider not configured', jobId: tx.id };
+        } else {
+          const [ins] = await db.insert(contentTranslations).values({
+            entityType: 'homepage', entityId: contentId,
+            targetLanguageCode: targetLocale, sourceLanguageCode: 'tr',
+            status: 'QUEUED', body: sharedJson, title: 'Homepage',
+            sourceHash: trHash, isAiGenerated: true,
+            queuedAt: sql`now()`,
+            createdBy: session.adminId, updatedBy: session.adminId,
+          }).returning({ id: contentTranslations.id });
+          syncResults[targetLocale] = { status: 'queued', reason: 'AI provider not configured', jobId: ins.id };
+        }
+        await db.insert(auditLogs).values({
+          adminUserId: session.adminId, action: 'HOMEPAGE_TRANSLATION_QUEUED',
+          entityType: 'homepage', entityId: contentId,
+          metadata: { locale: targetLocale, reason: 'no_openai_key' },
+        });
+        continue;
+      }
+
+      // ── Run AI translation ─────────────────────────────────────────────
+      let jobId: string;
       if (tx) {
         await db.update(contentTranslations).set({
-          body: sharedJson, status: 'QUEUED', sourceHash: trHash,
-          queuedAt: sql`now()`, updatedAt: now, updatedBy: session.adminId,
-          failureReason: null,
+          status: 'TRANSLATING', sourceHash: trHash,
+          translatingAt: sql`now()`, updatedAt: new Date(), updatedBy: session.adminId,
+          isAiGenerated: true, failureReason: null,
         }).where(eq(contentTranslations.id, tx.id));
-        syncResults[targetLocale] = { status: 'queued', reason: 'AI not configured — shared fields synced, text queued', jobId: tx.id };
+        jobId = tx.id;
       } else {
         const [ins] = await db.insert(contentTranslations).values({
           entityType: 'homepage', entityId: contentId,
           targetLanguageCode: targetLocale, sourceLanguageCode: 'tr',
-          status: 'QUEUED', body: sharedJson, title: 'Homepage',
+          status: 'TRANSLATING', title: 'Homepage',
           sourceHash: trHash, isAiGenerated: true,
-          queuedAt: sql`now()`,
+          queuedAt: sql`now()`, translatingAt: sql`now()`,
           createdBy: session.adminId, updatedBy: session.adminId,
         }).returning({ id: contentTranslations.id });
-        syncResults[targetLocale] = { status: 'queued', reason: 'AI not configured — shared fields synced, text queued', jobId: ins.id };
+        jobId = ins.id;
       }
-      await db.insert(auditLogs).values({
-        adminUserId: session.adminId, action: 'HOMEPAGE_TRANSLATION_QUEUED',
-        entityType: 'homepage', entityId: contentId,
-        metadata: { locale: targetLocale, reason: 'no_openai_key' },
-      });
-      continue;
-    }
 
-    // ── Run AI translation ───────────────────────────────────────────────
-    let jobId: string;
+      const aiResult = await translateHomepageFields(trFields, targetLocale);
 
-    if (tx) {
+      if (!aiResult.ok) {
+        const reason = aiResult.message ?? aiResult.reason;
+        await db.update(contentTranslations).set({
+          status: 'FAILED', failureReason: reason,
+          failedAt: sql`now()`, updatedAt: new Date(),
+        }).where(eq(contentTranslations.id, jobId));
+        await db.insert(auditLogs).values({
+          adminUserId: session.adminId, action: 'HOMEPAGE_TRANSLATION_FAILED',
+          entityType: 'content_translation', entityId: jobId,
+          metadata: { locale: targetLocale, reason },
+        });
+        syncResults[targetLocale] = { status: 'failed', reason, jobId };
+        continue;
+      }
+
+      const translatedSections = applyTranslatedFields(sharedSynced, aiResult.translated);
+      const translatedJson = JSON.stringify(translatedSections);
+
       await db.update(contentTranslations).set({
-        status: 'TRANSLATING', sourceHash: trHash,
-        translatingAt: sql`now()`, updatedAt: new Date(), updatedBy: session.adminId,
-        isAiGenerated: true, failureReason: null,
-      }).where(eq(contentTranslations.id, tx.id));
-      jobId = tx.id;
-    } else {
-      const [ins] = await db.insert(contentTranslations).values({
-        entityType: 'homepage', entityId: contentId,
-        targetLanguageCode: targetLocale, sourceLanguageCode: 'tr',
-        status: 'TRANSLATING', title: 'Homepage',
-        sourceHash: trHash, isAiGenerated: true,
-        queuedAt: sql`now()`, translatingAt: sql`now()`,
-        createdBy: session.adminId, updatedBy: session.adminId,
-      }).returning({ id: contentTranslations.id });
-      jobId = ins.id;
-    }
-
-    const aiResult = await translateHomepageFields(trFields, targetLocale);
-
-    if (!aiResult.ok) {
-      const reason = aiResult.message ?? aiResult.reason;
-      await db.update(contentTranslations).set({
-        status: 'FAILED', failureReason: reason,
-        failedAt: sql`now()`, updatedAt: new Date(),
+        status: 'DRAFT',
+        body: translatedJson,
+        draftAt: sql`now()`,
+        updatedAt: new Date(),
+        updatedBy: session.adminId,
+        aiModel: aiResult.model,
+        aiPromptVersion: '2.0',
+        failureReason: null,
       }).where(eq(contentTranslations.id, jobId));
+
       await db.insert(auditLogs).values({
-        adminUserId: session.adminId, action: 'HOMEPAGE_TRANSLATION_FAILED',
+        adminUserId: session.adminId, action: 'HOMEPAGE_TRANSLATION_DRAFT',
         entityType: 'content_translation', entityId: jobId,
-        metadata: { locale: targetLocale, reason },
+        metadata: { locale: targetLocale, model: aiResult.model, status: 'DRAFT' },
       });
-      syncResults[targetLocale] = { status: 'failed', reason, jobId };
-      continue;
+
+      syncResults[targetLocale] = { status: 'translated', jobId, aiModel: aiResult.model };
     }
 
-    // Apply translated text fields onto shared-synced base
-    const translatedSections = applyTranslatedFields(sharedSynced, aiResult.translated);
-    const translatedJson = JSON.stringify(translatedSections);
+    const jobsCreated = Object.values(syncResults).filter(r => r.status !== 'skipped').length;
+    const activeTargets = Object.entries(syncResults)
+      .filter(([, r]) => r.status !== 'skipped')
+      .map(([locale]) => locale);
 
-    await db.update(contentTranslations).set({
-      status: 'DRAFT',
-      body: translatedJson,
-      draftAt: sql`now()`,
-      updatedAt: new Date(),
-      updatedBy: session.adminId,
-      aiModel: aiResult.model,
-      aiPromptVersion: '2.0',
-      failureReason: null,
-    }).where(eq(contentTranslations.id, jobId));
+    const hasAiProvider = hasOpenAI;
+    if (!hasAiProvider && jobsCreated > 0) {
+      return NextResponse.json({
+        success: true,
+        draftSaved: true,
+        translationJobsCreated: jobsCreated,
+        targetLocales: activeTargets,
+        code: 'AI_PROVIDER_NOT_CONFIGURED',
+        message: `Türkçe taslak kaydedildi. AI sağlayıcısı yapılandırılmamış — ${jobsCreated} dil sıraya alındı.`,
+        syncResults,
+      });
+    }
 
-    await db.insert(auditLogs).values({
-      adminUserId: session.adminId, action: 'HOMEPAGE_TRANSLATION_DRAFT',
-      entityType: 'content_translation', entityId: jobId,
-      metadata: { locale: targetLocale, model: aiResult.model, status: 'DRAFT' },
+    return NextResponse.json({
+      success: true,
+      draftSaved: true,
+      translationJobsCreated: jobsCreated,
+      targetLocales: activeTargets,
+      trHash,
+      syncResults,
     });
 
-    syncResults[targetLocale] = { status: 'translated', jobId, aiModel: aiResult.model };
+  } catch (err) {
+    console.error('[PATCH /admin/api/homepage/:locale] Unhandled error:', err);
+    const message = err instanceof Error ? err.message : 'Beklenmeyen bir hata oluştu.';
+    return NextResponse.json(
+      { success: false, code: 'INTERNAL_ERROR', message },
+      { status: 500 },
+    );
   }
-
-  return NextResponse.json({ ok: true, contentId, trHash, syncResults });
 }

@@ -99,7 +99,12 @@ export async function POST(
       status: 'FAILED', failureReason: reason,
       failedAt: sql`now()`, updatedAt: new Date(),
     }).where(eq(contentTranslations.id, jobId));
-    return NextResponse.json({ ok: false, error: reason, jobId }, { status: 207 });
+    // Use 500 (not 207) so the browser's res.ok is false and the client
+    // can correctly surface the error rather than showing a false-success toast.
+    return NextResponse.json(
+      { ok: false, success: false, error: reason, message: reason, jobId },
+      { status: 500 },
+    );
   }
 
   const translatedSections = applyTranslatedFields(sharedSynced, aiResult.translated);

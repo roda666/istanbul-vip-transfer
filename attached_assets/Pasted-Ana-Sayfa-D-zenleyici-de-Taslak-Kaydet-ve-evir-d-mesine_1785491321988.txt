@@ -1,0 +1,58 @@
+Ana Sayfa Düzenleyici’de “Taslak Kaydet ve Çevir” düğmesine basıldığında şu hata çıkıyor:
+
+Failed to execute 'json' on 'Response': Unexpected end of JSON input
+
+Bu görevde yalnızca bu hatayı geçici olarak gizleme. Kök nedeni bul, API yanıt sözleşmesini düzelt ve gerçek otomatik çeviri akışını çalışır hale getir.
+
+Yapılacaklar:
+
+1. “Taslak Kaydet ve Çevir” düğmesinin çağırdığı frontend fonksiyonunu ve tüm ilgili API route dosyalarını tespit et.
+
+2. İlgili API route’un her kod yolunda JSON döndürmesini sağla:
+   - başarılı sonuç
+   - doğrulama hatası
+   - eksik API anahtarı
+   - çeviri sağlayıcısı hatası
+   - timeout
+   - catch bloğu
+   - beklenmeyen sunucu hatası
+
+   Bütün yanıtlar uygun HTTP status koduyla şu yapıda olmalı:
+   {
+     "success": true veya false,
+     "message": "Açıklayıcı mesaj"
+   }
+
+   Hiçbir kod yolu boş Response, HTML hata sayfası veya gövdesiz yanıt döndürmemeli.
+
+3. Frontend tarafında doğrudan response.json() çağırma. Önce:
+   - response.ok
+   - content-type
+   - response body’nin boş olup olmadığı
+   kontrollerini yap.
+
+   Yanıt boşsa veya JSON değilse JSON parse exception oluşturma; kullanıcıya anlaşılır Türkçe hata göster.
+
+4. Çeviri sağlayıcısının API anahtarı veya gerekli environment variable eksikse gereken değişkenin gerçek adını tespit edip raporla. Secret değerini uydurma ve koda yazma.
+
+5. Türkçe ana sayfa içeriğini EN, DE, RU ve AR dillerine çevirecek işleri gerçekten oluştur. Başarılı işlemden sonra bu sekmeler “BAŞLAMADI” durumunda kalmamalı; “TASLAK”, “İNCELEME” veya sistemin kullandığı doğru iş akışı durumuna geçmeli.
+
+6. Türkçe kaynak içeriği değiştirme. Mevcut yayın durumlarını ve daha önce kaydedilen içerikleri bozma.
+
+7. Düğmeye çift tıklanmasıyla aynı işlemin iki kez başlamasını engelle. İşlem sürerken düğmeyi devre dışı bırak ve görünür bir “Çeviriliyor…” durumu göster.
+
+8. Endpoint’i gerçek HTTP isteğiyle test et. Son raporda şunları göster:
+   - endpoint adresi
+   - HTTP status
+   - content-type
+   - dönen örnek JSON
+   - hatanın kök nedeni
+   - değiştirilen dosyalar
+   - EN/DE/RU/AR sekmelerinin yeni durumu
+
+9. Ardından çalıştır:
+   - TypeScript typecheck
+   - ESLint
+   - production build
+
+10. Test verisi oluşturma, production domainine bağlanma, deploy veya publish yapma.

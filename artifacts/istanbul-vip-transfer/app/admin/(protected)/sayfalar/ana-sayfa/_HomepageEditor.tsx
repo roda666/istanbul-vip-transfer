@@ -452,11 +452,11 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
     setLoading(true);
     try {
       const res = await fetch(`/admin/api/homepage/${locale}`);
-      if (!res.ok) throw new Error('Load failed');
-      const data: HomepageAdminRecord = await res.json();
+      const data = await safeJson<HomepageAdminRecord>(res);
+      if (!res.ok) throw new Error((data as { error?: string }).error ?? 'Yükleme başarısız.');
       setRecords(prev => ({ ...prev, [locale]: data }));
-    } catch {
-      setMessage({ type: 'err', text: `${locale.toUpperCase()} içeriği yüklenemedi.` });
+    } catch (err) {
+      setMessage({ type: 'err', text: err instanceof Error ? err.message : `${locale.toUpperCase()} içeriği yüklenemedi.` });
     } finally { setLoading(false); }
   }, [records]);
 
@@ -467,9 +467,9 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
     try {
       const res = await fetch(`/admin/api/homepage/${locale}`);
       if (!res.ok) return;
-      const data: HomepageAdminRecord = await res.json();
+      const data = await safeJson<HomepageAdminRecord>(res);
       setRecords(prev => ({ ...prev, [locale]: data }));
-    } catch { /* ignore */ }
+    } catch { /* silent — refresh failures don't block the user */ }
   }, []);
 
   // ── Update sections locally ──────────────────────────────────────────────
@@ -503,9 +503,13 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
       if (!res.ok) throw new Error(data.message ?? data.code ?? 'Kaydetme başarısız.');
 
       // Refresh all target locale records
-      // AI_PROVIDER_NOT_CONFIGURED is a soft warning — draft IS saved
+      // AI_PROVIDER_NOT_CONFIGURED is a soft warning — draft IS saved, locales are QUEUED
       if (data.code === 'AI_PROVIDER_NOT_CONFIGURED') {
         setMessage({ type: 'info', text: data.message ?? 'Taslak kaydedildi. AI sağlayıcısı yapılandırılmamış.' });
+        // syncResults contains the queued locales — refresh their tabs so they show QUEUED
+        if (data.syncResults) {
+          await Promise.all(Object.keys(data.syncResults).map(l => refreshLocale(l)));
+        }
       } else if (data.syncResults) {
         const refreshPromises = Object.keys(data.syncResults).map(l => refreshLocale(l));
         await Promise.all(refreshPromises);

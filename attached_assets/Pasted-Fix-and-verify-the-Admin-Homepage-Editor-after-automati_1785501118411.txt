@@ -1,0 +1,81 @@
+Fix and verify the Admin Homepage Editor after automatic translation and publishing.
+
+Current observations:
+- EN, DE, RU and AR show as published.
+- On mobile, every language tab shows the same problematic layout.
+- The section menu and editing form remain side-by-side, causing the form to be clipped and horizontal overflow.
+- We must also confirm that each language tab actually contains its own translated content, not duplicated Turkish content.
+
+Requirements:
+
+1. Verify translation data
+- Open TR, EN, DE, RU and AR tabs individually.
+- Confirm each language loads its own database record.
+- EN must contain English content.
+- DE must contain German content.
+- RU must contain Russian content.
+- AR must contain Arabic content with RTL direction.
+- Do not consider status badges alone as proof.
+- If translated records contain Turkish text or all tabs load the same record, find and fix the locale/query/state key bug.
+- Changing language tabs must immediately reload the correct localized values without stale React state.
+
+2. Fix mobile Admin Homepage Editor
+At widths below 768px, stack the page in this order:
+- Language tabs
+- Section selector
+- Editor form
+- Save/translate/review/publish actions
+
+3. On phones, replace the A–J vertical section navigation with a full-width select/dropdown.
+- Keep the desktop side navigation unchanged.
+- Selecting a section must preserve the currently selected language.
+
+4. Responsive field layout
+- Convert every two-column field group to one column below 768px.
+- Apply width: 100%, max-width: 100%, min-width: 0 and box-sizing: border-box to forms, inputs, textareas, cards and action areas.
+- Language buttons may wrap cleanly.
+- No field or button may be clipped.
+- Action buttons must be touch-friendly and fully visible.
+
+5. RTL
+- Arabic editor content must use RTL where appropriate.
+- URLs, image paths, phone numbers, IST/SAW and technical values must remain LTR.
+
+6. Do not change:
+- Translation provider or translation workflow
+- Published content unless correcting wrongly duplicated translations
+- Public website design
+- Database schema unless a confirmed schema defect requires it
+- Production domain or deployment settings
+
+7. Verification
+Test at:
+- 320px
+- 375px
+- 390px
+- 430px
+- 768px
+- 1440px
+
+For every width verify:
+document.documentElement.scrollWidth === document.documentElement.clientWidth
+
+Also verify:
+- Every language tab loads different localized content.
+- Switching sections does not reset the language.
+- Saving one language does not overwrite another.
+- Arabic layout is RTL.
+- No browser console, hydration or runtime errors.
+
+8. Run:
+- TypeScript typecheck
+- ESLint
+- Production build
+
+Provide:
+- A language-by-language content verification table
+- Mobile screenshots at 390px for TR, EN and AR
+- Exact files changed
+- TypeScript, ESLint and build results
+
+Do not publish or connect the production domain.

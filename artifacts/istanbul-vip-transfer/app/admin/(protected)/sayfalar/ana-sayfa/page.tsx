@@ -14,7 +14,7 @@ export default async function HomepageAdminPage() {
   const trRecord = await getHomepageAdminRecord('tr');
 
   return (
-    <div style={{ padding: '28px 24px' }}>
+    <div style={{ padding: 'clamp(16px, 4vw, 28px) clamp(12px, 4vw, 24px)' }}>
       <HomepageEditor initialTrRecord={trRecord} />
     </div>
   );

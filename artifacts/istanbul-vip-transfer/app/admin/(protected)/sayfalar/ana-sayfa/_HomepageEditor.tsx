@@ -111,13 +111,13 @@ function HeroEditor({ data, onChange, dir, ro }: { data: HeroSection; onChange: 
   return (
     <div>
       <Field name="Badge / Rozet" value={data.badge} onChange={v => set('badge', v)} dir={dir} readOnly={ro} />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+      <div className="hpe-fg2">
         <Field name="Başlık 1" value={data.headline1} onChange={v => set('headline1', v)} dir={dir} readOnly={ro} />
         <Field name="Vurgulanan Kelime" value={data.headlineAccent} onChange={v => set('headlineAccent', v)} dir={dir} readOnly={ro} />
       </div>
       <Field name="Başlık 2" value={data.headline2} onChange={v => set('headline2', v)} dir={dir} readOnly={ro} />
       <Field name="Alt Başlık" value={data.subheadline} onChange={v => set('subheadline', v)} multiline rows={3} dir={dir} readOnly={ro} />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+      <div className="hpe-fg2">
         <Field name="CTA Rezervasyon" value={data.ctaBookingText} onChange={v => set('ctaBookingText', v)} dir={dir} readOnly={ro} />
         <Field name="CTA Ara" value={data.ctaCallText} onChange={v => set('ctaCallText', v)} dir={dir} readOnly={ro} />
       </div>
@@ -154,7 +154,7 @@ function ServicesSectionEditor({ data, onChange, dir, ro }: { data: ServicesSect
       <Field name="Üst Etiket" value={data.eyebrow} onChange={v => set('eyebrow', v)} dir={dir} readOnly={ro} />
       <Field name="Bölüm Başlığı" value={data.heading} onChange={v => set('heading', v)} dir={dir} readOnly={ro} />
       <Field name="Açıklama" value={data.description} onChange={v => set('description', v)} multiline dir={dir} readOnly={ro} />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+      <div className="hpe-fg2">
         <Field name="Tüm Hizmetler Buton Metni" value={data.allServicesText} onChange={v => set('allServicesText', v)} dir={dir} readOnly={ro} />
         <Field name="Tüm Hizmetler Yolu" value={data.allServicesRoute} onChange={v => set('allServicesRoute', v)} hint="Paylaşılan alan" readOnly={ro} />
       </div>
@@ -190,7 +190,7 @@ function VehiclesEditor({ data, onChange, dir, ro }: { data: VehiclesSectionData
     <div>
       <Field name="Bölüm Başlığı" value={data.heading} onChange={v => set('heading', v)} dir={dir} readOnly={ro} />
       <Field name="Açıklama" value={data.description} onChange={v => set('description', v)} multiline dir={dir} readOnly={ro} />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+      <div className="hpe-fg2">
         <Field name="Buton Metni" value={data.ctaText} onChange={v => set('ctaText', v)} dir={dir} readOnly={ro} />
         <Field name="Buton Yolu" value={data.ctaRoute} onChange={v => set('ctaRoute', v)} hint="Paylaşılan alan" readOnly={ro} />
       </div>
@@ -242,7 +242,7 @@ function FooterEditor({ data, onChange, dir, ro }: { data: FooterSectionData; on
     <div>
       <Field name="Marka Sloganı (kısa)" value={data.premiumTagline} onChange={v => set('premiumTagline', v)} dir={dir} readOnly={ro} />
       <Field name="Alt Satır Açıklama" value={data.tagline} onChange={v => set('tagline', v)} multiline dir={dir} readOnly={ro} />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+      <div className="hpe-fg3">
         <Field name="Sütun 1 Başlığı" value={data.col1Heading} onChange={v => set('col1Heading', v)} dir={dir} readOnly={ro} />
         <Field name="Sütun 2 Başlığı" value={data.col2Heading} onChange={v => set('col2Heading', v)} dir={dir} readOnly={ro} />
         <Field name="Sütun 3 Başlığı" value={data.col3Heading} onChange={v => set('col3Heading', v)} dir={dir} readOnly={ro} />
@@ -658,6 +658,32 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
 
   return (
     <div style={{ fontFamily: 'Inter, sans-serif' }}>
+      {/* ── Responsive CSS ─────────────────────────────────────────────────── */}
+      <style>{`
+        .hpe-grid { display: grid; grid-template-columns: 190px 1fr; gap: 18px; }
+        .hpe-fg2  { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .hpe-fg3  { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+        .hpe-sec-desktop { display: block; }
+        .hpe-sec-mobile  { display: none; }
+        .hpe-abar {
+          margin-top: 18px; padding: 14px 18px;
+          background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px;
+          display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+        }
+        .hpe-ml-auto { margin-left: auto; }
+        @media (max-width: 767px) {
+          .hpe-grid { grid-template-columns: 1fr; gap: 12px; }
+          .hpe-fg2, .hpe-fg3 { grid-template-columns: 1fr; }
+          .hpe-sec-desktop { display: none !important; }
+          .hpe-sec-mobile  { display: block !important; }
+          .hpe-abar { flex-direction: column; align-items: stretch; }
+          .hpe-abar button, .hpe-abar a {
+            width: 100%; box-sizing: border-box; text-align: center;
+            min-height: 44px; display: flex; align-items: center; justify-content: center;
+          }
+          .hpe-ml-auto { margin-left: 0; margin-top: 4px; }
+        }
+      `}</style>
       {/* Page header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
@@ -729,26 +755,45 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
       )}
 
       {/* Two-column layout: section nav + content */}
-      <div style={{ display: 'grid', gridTemplateColumns: '190px 1fr', gap: '18px', alignItems: 'start' }}>
-        {/* Section nav */}
-        <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '10px', overflow: 'hidden' }}>
-          {SECTIONS.map(sec => (
-            <button key={sec.key} onClick={() => setActiveSection(sec.key)}
-              style={{
-                width: '100%', textAlign: 'left', padding: '10px 14px',
-                background: activeSection === sec.key ? '#EFF6FF' : 'transparent',
-                color: activeSection === sec.key ? '#2563EB' : '#374151',
-                fontSize: '12px', fontWeight: activeSection === sec.key ? 700 : 500,
-                border: 'none', borderBottom: '1px solid #F1F5F9', cursor: 'pointer',
-                fontFamily: 'Inter, sans-serif',
-              }}>
-              {sec.label}
-            </button>
-          ))}
+      <div className="hpe-grid" style={{ alignItems: 'start' }}>
+        {/* Section nav — desktop list + mobile dropdown */}
+        <div>
+          {/* Mobile dropdown (hidden on desktop) */}
+          <select
+            className="hpe-sec-mobile"
+            value={activeSection}
+            onChange={e => setActiveSection(e.target.value)}
+            style={{
+              width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB',
+              borderRadius: '8px', fontSize: '13px', fontFamily: 'Inter, sans-serif',
+              color: '#374151', background: '#fff', boxSizing: 'border-box', marginBottom: '12px',
+            }}
+          >
+            {SECTIONS.map(sec => (
+              <option key={sec.key} value={sec.key}>{sec.label}</option>
+            ))}
+          </select>
+
+          {/* Desktop vertical nav (hidden on mobile) */}
+          <div className="hpe-sec-desktop" style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '10px', overflow: 'hidden' }}>
+            {SECTIONS.map(sec => (
+              <button key={sec.key} onClick={() => setActiveSection(sec.key)}
+                style={{
+                  width: '100%', textAlign: 'left', padding: '10px 14px',
+                  background: activeSection === sec.key ? '#EFF6FF' : 'transparent',
+                  color: activeSection === sec.key ? '#2563EB' : '#374151',
+                  fontSize: '12px', fontWeight: activeSection === sec.key ? 700 : 500,
+                  border: 'none', borderBottom: '1px solid #F1F5F9', cursor: 'pointer',
+                  fontFamily: 'Inter, sans-serif',
+                }}>
+                {sec.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Section editor */}
-        <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '22px' }}>
+        <div dir={dir} style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '22px', boxSizing: 'border-box', minWidth: 0 }}>
           {!isSource && (
             <div style={{ padding: '8px 12px', background: '#EFF6FF', borderRadius: '7px', marginBottom: '16px', fontSize: '12px', color: '#2563EB', fontFamily: 'Inter, sans-serif', border: '1px solid #BFDBFE' }}>
               ℹ Çevrilmiş içerik — salt okunur. Düzenlemek için Türkçe kaynağı değiştirin veya &quot;Manuel düzenleme&quot; moduna geçin.
@@ -761,11 +806,7 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
       </div>
 
       {/* Action bar */}
-      <div style={{
-        marginTop: '18px', padding: '14px 18px',
-        background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '10px',
-        display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
-      }}>
+      <div className="hpe-abar">
         {/* Primary save button */}
         {isSource && (
           <button onClick={saveDraft} disabled={saving}
@@ -814,7 +855,7 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
           {bulkPublishing ? '⏳…' : '📦 Onaylanan Dilleri Toplu Yayınla'}
         </button>
 
-        <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#94A3B8' }}>
+        <span className="hpe-ml-auto" style={{ fontSize: '11px', color: '#94A3B8' }}>
           {currentRecord?.updatedAt ? `Son güncelleme: ${new Date(currentRecord.updatedAt).toLocaleString('tr-TR')}` : '—'}
         </span>
       </div>

@@ -202,6 +202,19 @@
   border-color: var(--pub-blue);
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
+/* iOS Safari: input[type="date"] ships with -webkit-appearance:auto which
+   applies platform-level intrinsic-size constraints that override CSS
+   box-sizing:border-box + width:100%, causing the input to render wider
+   than its grid cell and be clipped at the panel's overflow:hidden boundary
+   (making the right edge appear flush with the card border).
+   appearance:none removes that platform sizing while keeping the native
+   date-picker popup fully functional on all iOS versions. */
+.pub-form input[type="date"] {
+  display: block;
+  width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+}
 
 /* ── Booking form panels ── */
 /* Blue-tinted panel (contact, notice) */

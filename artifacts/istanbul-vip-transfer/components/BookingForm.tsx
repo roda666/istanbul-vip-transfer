@@ -656,7 +656,7 @@ export default function BookingForm() {
                       {activeService === 'ALLOCATION' ? b.waStartDate : b.date}
                     </label>
                     <input type="date" {...register('tarih')} className="vip-input" min={today}
-                      style={{ colorScheme: 'light', boxSizing: 'border-box', maxWidth: '100%', minWidth: 0 }}
+                      style={{ colorScheme: 'light' }}
                       data-testid="input-tarih" />
                     {errors.tarih && <p role="alert" style={errorStyle}>{errors.tarih.message}</p>}
                   </div>

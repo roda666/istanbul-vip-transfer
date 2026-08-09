@@ -124,22 +124,11 @@ const hintStyle: React.CSSProperties = {
   fontFamily: 'Inter, sans-serif',
 };
 
-// Alternating content panels
-const panelA: React.CSSProperties = {
-  background:    'rgba(235,244,255,0.85)',
-  border:        '1px solid rgba(147,197,253,0.5)',
-  borderRadius:  '16px',
-  padding:       '20px 24px',
-  marginBottom:  '12px',
-};
-
-const panelB: React.CSSProperties = {
-  background:    'rgba(243,239,253,0.85)',
-  border:        '1px solid rgba(196,181,253,0.45)',
-  borderRadius:  '16px',
-  padding:       '20px 24px',
-  marginBottom:  '12px',
-};
+// Alternating content panels — colours kept as inline; layout/spacing in globals.css
+// (.ivt-bk-panel-a / .ivt-bk-panel-b) so media-queries can override padding on narrow screens.
+// These objects are intentionally empty; className carries the full visual treatment.
+const panelA = 'ivt-bk-panel-a';
+const panelB = 'ivt-bk-panel-b';
 
 const durationRowStyle: React.CSSProperties = {
   display:    'flex',
@@ -391,7 +380,7 @@ export default function BookingForm() {
   return (
     <section
       id="rezervasyon"
-      className="py-24 relative scroll-mt-20"
+      className="py-24 relative scroll-mt-24"
       style={{ background: 'linear-gradient(160deg, #FDFBF6 0%, #EBF4FF 50%, #F3EFFD 100%)' }}
       data-testid="booking-section"
     >
@@ -425,7 +414,7 @@ export default function BookingForm() {
           <div className="p-5 sm:p-6 md:p-10 pub-form">
 
             {/* Panel — Service type */}
-            <div style={panelB} data-testid="service-panel">
+            <div className={panelB} data-testid="service-panel">
               <p className="text-xs tracking-[0.18em] uppercase mb-3 font-semibold" style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}>
                 {b.serviceTypeLabel}
               </p>
@@ -475,7 +464,7 @@ export default function BookingForm() {
               />
 
               {/* Panel A — Service-specific fields */}
-              <div style={panelA} data-testid="service-fields-panel">
+              <div className={panelA} data-testid="service-fields-panel">
                 <p className="text-xs tracking-[0.15em] uppercase mb-4 font-semibold" style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}>
                   {activeService === 'AIRPORT_TRANSFER' ? b.routeFieldsLabel
                     : activeService === 'INTERCITY'     ? b.routeFieldsLabel
@@ -655,7 +644,7 @@ export default function BookingForm() {
               </div>
 
               {/* Panel B — Date / Time / Passengers */}
-              <div style={panelB} data-testid="datetime-panel">
+              <div className={panelB} data-testid="datetime-panel">
                 <p className="text-xs tracking-[0.15em] uppercase mb-4 font-semibold" style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}>
                   {activeService === 'ALLOCATION' ? b.startPanel : b.datetimePanel}
                 </p>
@@ -667,7 +656,8 @@ export default function BookingForm() {
                       {activeService === 'ALLOCATION' ? b.waStartDate : b.date}
                     </label>
                     <input type="date" {...register('tarih')} className="vip-input" min={today}
-                      style={{ colorScheme: 'light' }} data-testid="input-tarih" />
+                      style={{ colorScheme: 'light', boxSizing: 'border-box', maxWidth: '100%', minWidth: 0 }}
+                      data-testid="input-tarih" />
                     {errors.tarih && <p role="alert" style={errorStyle}>{errors.tarih.message}</p>}
                   </div>
 
@@ -707,7 +697,7 @@ export default function BookingForm() {
               </div>
 
               {/* Panel A — Contact */}
-              <div style={panelA} data-testid="contact-panel">
+              <div className={panelA} data-testid="contact-panel">
                 <p className="text-xs tracking-[0.15em] uppercase mb-4 font-semibold" style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}>
                   {b.contactPanel}
                 </p>
@@ -730,7 +720,7 @@ export default function BookingForm() {
               </div>
 
               {/* Panel B — Email + Newsletter */}
-              <div style={panelB} data-testid="email-panel">
+              <div className={panelB} data-testid="email-panel">
                 <div className="grid grid-cols-1 gap-4">
                   <div data-testid="field-email">
                     <label style={labelStyle}><Mail size={12} aria-hidden="true" /> {b.email} {optionalBadge}</label>

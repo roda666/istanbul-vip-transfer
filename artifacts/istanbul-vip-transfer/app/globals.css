@@ -190,6 +190,10 @@
   font-size: 1rem;
   /* Ensure comfortable touch target height */
   min-height: 48px;
+  /* Prevent any input from escaping its container */
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
 }
 .pub-form .vip-input::placeholder {
   color: var(--pub-muted);
@@ -197,6 +201,40 @@
 .pub-form .vip-input:focus {
   border-color: var(--pub-blue);
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+/* ── Booking form panels ── */
+/* Blue-tinted panel (contact, notice) */
+.ivt-bk-panel-a {
+  background:    rgba(235,244,255,0.85);
+  border:        1px solid rgba(147,197,253,0.5);
+  border-radius: 16px;
+  padding:       20px 24px;
+  margin-bottom: 12px;
+  /* Clip any input that exceeds panel bounds */
+  overflow:      hidden;
+}
+/* Purple-tinted panel (service, datetime, email) */
+.ivt-bk-panel-b {
+  background:    rgba(243,239,253,0.85);
+  border:        1px solid rgba(196,181,253,0.45);
+  border-radius: 16px;
+  padding:       20px 24px;
+  margin-bottom: 12px;
+  overflow:      hidden;
+}
+/* Reduce side padding on very narrow screens (< 360px) */
+@media (max-width: 359px) {
+  .ivt-bk-panel-a,
+  .ivt-bk-panel-b {
+    padding-left:  12px;
+    padding-right: 12px;
+  }
+}
+/* Grid cells inside panels must not push past their column */
+.ivt-bk-panel-a > .grid > *,
+.ivt-bk-panel-b > .grid > * {
+  min-width: 0;
 }
 .pub-form .vip-input option {
   background-color: #FFFFFF;

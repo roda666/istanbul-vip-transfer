@@ -1,11 +1,27 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { SITE } from '@/lib/site-config';
 import { useLang } from '@/lib/i18n/context';
 
 export default function WhatsAppFloat() {
   const { dict } = useLang();
+  // Hide while the booking form section is visible so the button never overlaps
+  // passenger fields, helper text, consent checkboxes, or the submit button.
+  const [hiddenByForm, setHiddenByForm] = useState(false);
+
+  useEffect(() => {
+    const section = document.getElementById('rezervasyon');
+    if (!section || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setHiddenByForm(entry.isIntersecting),
+      // Fire as soon as even 3 % of the section enters the viewport
+      { threshold: 0.03 },
+    );
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <motion.a
@@ -22,6 +38,11 @@ export default function WhatsAppFloat() {
         bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
         right:  'calc(1.25rem + env(safe-area-inset-right, 0px))',
         touchAction: 'manipulation',
+        // Fade out / non-interactive while form is visible; pointer-events:none
+        // prevents accidental taps on the invisible element.
+        opacity:       hiddenByForm ? 0 : 1,
+        pointerEvents: hiddenByForm ? 'none' : 'auto',
+        transition:    'opacity 0.25s ease',
       }}
       initial={{ opacity: 0, scale: 0, y: 20 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}

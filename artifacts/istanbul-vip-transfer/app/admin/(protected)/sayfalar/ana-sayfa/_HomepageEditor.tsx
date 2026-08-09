@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import type { HomepageAdminRecord } from '@/lib/homepage-cms';
 import type {
@@ -447,8 +447,14 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
   const sections: HomepageSections = currentRecord?.sections ?? (HOMEPAGE_FALLBACK[activeLocale] as HomepageSections);
 
   // ── Load locale ──────────────────────────────────────────────────────────
+  // Use a ref to track which locales have been requested so loadLocale does not
+  // depend on the `records` state value (which would recreate the callback on
+  // every records update and retrigger the effect unnecessarily).
+  const loadedLocales = useRef<Set<string>>(new Set(['tr']));
+
   const loadLocale = useCallback(async (locale: string) => {
-    if (records[locale]) return;
+    if (loadedLocales.current.has(locale)) return;
+    loadedLocales.current.add(locale); // mark immediately to prevent parallel duplicates
     setLoading(true);
     try {
       const res = await fetch(`/admin/api/homepage/${locale}`);
@@ -456,9 +462,17 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
       if (!res.ok) throw new Error((data as { error?: string }).error ?? 'Yükleme başarısız.');
       setRecords(prev => ({ ...prev, [locale]: data }));
     } catch (err) {
+      loadedLocales.current.delete(locale); // allow retry on next click
       setMessage({ type: 'err', text: err instanceof Error ? err.message : `${locale.toUpperCase()} içeriği yüklenemedi.` });
     } finally { setLoading(false); }
-  }, [records]);
+  }, []); // stable — no state deps; loadedLocales ref is always current
+
+  // Pre-load all non-TR locale records on mount so status badges immediately
+  // reflect the real DB status (PUBLISHED, APPROVED, etc.) rather than the
+  // default NOT_STARTED fallback that appears before the first tab click.
+  useEffect(() => {
+    LOCALES.filter(l => !l.isSource).forEach(l => loadLocale(l.code as string));
+  }, [loadLocale]);
 
   useEffect(() => { if (activeLocale !== 'tr') loadLocale(activeLocale); }, [activeLocale, loadLocale]);
 

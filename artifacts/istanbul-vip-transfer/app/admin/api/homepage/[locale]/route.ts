@@ -28,6 +28,8 @@ const patchSchema = z.object({
   sections: z.record(z.unknown()),
   autoTranslate: z.boolean().default(true),
   targetLocales: z.array(z.enum(['en', 'de', 'ru', 'ar'])).default(['en', 'de', 'ru', 'ar']),
+  /** When true (homepage default), immediately publish TR + all translated locales. */
+  autoPublish: z.boolean().default(true),
 });
 
 /** GET — admin fetch for editor */
@@ -78,7 +80,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Missing or invalid sections payload' }, { status: 422 });
   }
 
-  const { sections: rawSections, autoTranslate, targetLocales } = parsed.data;
+  const { sections: rawSections, autoTranslate, targetLocales, autoPublish } = parsed.data;
   if (!isHomepageSections(rawSections)) {
     return NextResponse.json({ error: 'Invalid sections structure' }, { status: 422 });
   }
@@ -134,15 +136,20 @@ export async function PATCH(
     // ── TR save ────────────────────────────────────────────────────────────
     const [existing] = await db.select({ id: content.id }).from(content).where(eq(content.slug, HOMEPAGE_SLUG)).limit(1);
 
+    const trStatus = autoPublish ? 'PUBLISHED' : 'DRAFT';
+    const trNow = new Date();
     let contentId: string;
     if (existing) {
-      // Reset to DRAFT so that a previously-published page requires re-approval after edits.
-  await db.update(content).set({ body: sectionsJson, updatedAt: new Date(), title: 'Ana Sayfa', status: 'DRAFT' }).where(eq(content.id, existing.id));
+      await db.update(content).set({
+        body: sectionsJson, updatedAt: trNow, title: 'Ana Sayfa', status: trStatus,
+        ...(autoPublish ? { publishedAt: trNow } : {}),
+      }).where(eq(content.id, existing.id));
       contentId = existing.id;
     } else {
       const [inserted] = await db.insert(content).values({
         contentType: 'PAGE', title: 'Ana Sayfa', slug: HOMEPAGE_SLUG,
-        body: sectionsJson, status: 'DRAFT',
+        body: sectionsJson, status: trStatus,
+        ...(autoPublish ? { publishedAt: trNow } : {}),
       }).returning({ id: content.id });
       contentId = inserted.id;
     }
@@ -180,7 +187,7 @@ export async function PATCH(
     const txByLocale = Object.fromEntries(existingTx.map(r => [r.targetLanguageCode, r]));
 
     type SyncResult = {
-      status: 'skipped' | 'queued' | 'translated' | 'locked_outdated' | 'failed';
+      status: 'skipped' | 'queued' | 'translated' | 'published' | 'locked_outdated' | 'failed';
       reason?: string;
       jobId?: string;
       aiModel?: string;
@@ -296,13 +303,15 @@ export async function PATCH(
       const translatedSections = applyTranslatedFields(sharedSynced, aiResult.translated);
       const translatedJson = JSON.stringify(translatedSections);
 
+      const txStatus = autoPublish ? 'PUBLISHED' : 'DRAFT';
       // Use a try-catch so a deleted session admin (FK violation) degrades
       // gracefully: retry without updatedBy rather than throwing a 500.
       try {
         await db.update(contentTranslations).set({
-          status: 'DRAFT',
+          status: txStatus,
           body: translatedJson,
           draftAt: sql`now()`,
+          ...(autoPublish ? { publishedAt: sql`now()` } : {}),
           updatedAt: new Date(),
           updatedBy: session.adminId,
           aiModel: aiResult.model,
@@ -314,9 +323,10 @@ export async function PATCH(
         const isFk = (fkErr instanceof Error) && fkErr.message.includes('updated_by_fkey');
         if (!isFk) throw fkErr;
         await db.update(contentTranslations).set({
-          status: 'DRAFT',
+          status: txStatus,
           body: translatedJson,
           draftAt: sql`now()`,
+          ...(autoPublish ? { publishedAt: sql`now()` } : {}),
           updatedAt: new Date(),
           updatedBy: null,
           aiModel: aiResult.model,
@@ -326,12 +336,13 @@ export async function PATCH(
       }
 
       await db.insert(auditLogs).values({
-        adminUserId: session.adminId, action: 'HOMEPAGE_TRANSLATION_DRAFT',
+        adminUserId: session.adminId,
+        action: autoPublish ? 'HOMEPAGE_TRANSLATION_PUBLISHED' : 'HOMEPAGE_TRANSLATION_DRAFT',
         entityType: 'content_translation', entityId: jobId,
-        metadata: { locale: targetLocale, model: aiResult.model, status: 'DRAFT' },
+        metadata: { locale: targetLocale, model: aiResult.model, status: txStatus },
       });
 
-      syncResults[targetLocale] = { status: 'translated', jobId, aiModel: aiResult.model };
+      syncResults[targetLocale] = { status: autoPublish ? 'published' : 'translated', jobId, aiModel: aiResult.model };
     }
 
     const jobsCreated = Object.values(syncResults).filter(r => r.status !== 'skipped').length;

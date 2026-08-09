@@ -56,16 +56,16 @@ const SECTIONS = [
 
 // Translation status display config
 const TX_STATUS: Record<string, { label: string; color: string; bg: string }> = {
-  NOT_STARTED:  { label: 'Başlamadı',        color: '#94A3B8', bg: '#F8FAFC' },
-  QUEUED:       { label: 'Çeviri bekliyor',  color: '#D97706', bg: '#FFFBEB' },
-  TRANSLATING:  { label: 'Çevriliyor…',      color: '#2563EB', bg: '#EFF6FF' },
-  DRAFT:        { label: 'İnceleme gerekli', color: '#9333EA', bg: '#FAF5FF' },
-  REVIEW:       { label: 'İnceleme gerekli', color: '#9333EA', bg: '#FAF5FF' },
-  APPROVED:     { label: 'Onaylandı',        color: '#16A34A', bg: '#F0FDF4' },
-  PUBLISHED:    { label: 'Yayında',          color: '#059669', bg: '#ECFDF5' },
-  FAILED:       { label: 'Hata',             color: '#DC2626', bg: '#FEF2F2' },
-  OUTDATED:     { label: 'Kaynak değişti',   color: '#EA580C', bg: '#FFF7ED' },
-  ARCHIVED:     { label: 'Arşiv',            color: '#64748B', bg: '#F1F5F9' },
+  NOT_STARTED:  { label: 'Başlamadı',       color: '#94A3B8', bg: '#F8FAFC' },
+  QUEUED:       { label: 'Çeviri bekliyor', color: '#D97706', bg: '#FFFBEB' },
+  TRANSLATING:  { label: 'Çevriliyor…',     color: '#2563EB', bg: '#EFF6FF' },
+  DRAFT:        { label: 'Taslak',          color: '#9333EA', bg: '#FAF5FF' },
+  REVIEW:       { label: 'Taslak',          color: '#9333EA', bg: '#FAF5FF' },
+  APPROVED:     { label: 'Taslak',          color: '#9333EA', bg: '#FAF5FF' },
+  PUBLISHED:    { label: 'Yayında',         color: '#059669', bg: '#ECFDF5' },
+  FAILED:       { label: 'Hata',            color: '#DC2626', bg: '#FEF2F2' },
+  OUTDATED:     { label: 'Kaynak değişti',  color: '#EA580C', bg: '#FFF7ED' },
+  ARCHIVED:     { label: 'Arşiv',           color: '#64748B', bg: '#F1F5F9' },
 };
 
 // ── Shared style helpers ───────────────────────────────────────────────────
@@ -285,16 +285,16 @@ function TxStatusBadge({ status }: { status: string }) {
 }
 
 // ── Per-locale translation info panel ────────────────────────────────────────
+// Simplified for homepage auto-publish flow: no manual review/approve steps.
 
 function TranslationInfoPanel({
-  record, onRetry, onLock, onUnlock, onSubmitReview, onApprove, onPublish, onUnpublish, busy,
+  record, onRetry, onLock, onUnlock, onPublish, onUnpublish, busy,
 }: {
   record: HomepageAdminRecord;
   onRetry: () => void;
   onLock: () => void;
   onUnlock: () => void;
-  onSubmitReview: () => void;
-  onApprove: () => void;
+  /** Edge-case manual publish (e.g. after a retry that left status DRAFT). */
   onPublish: () => void;
   onUnpublish: () => void;
   busy: boolean;
@@ -303,12 +303,11 @@ function TranslationInfoPanel({
   const locked = record.isManuallyLocked;
   const lastAt = record.lastTranslatedAt;
 
-  const btn = (label: string, onClick: () => void, variant: 'primary' | 'danger' | 'ghost' | 'gold' = 'ghost') => {
+  const btn = (label: string, onClick: () => void, variant: 'primary' | 'danger' | 'ghost' = 'ghost') => {
     const styles: Record<string, React.CSSProperties> = {
       primary: { background: '#2563EB', color: '#FFF', border: 'none' },
       danger:  { background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' },
       ghost:   { background: '#F8FAFC', color: '#334155', border: '1px solid #CBD5E1' },
-      gold:    { background: '#C79A35', color: '#102A43', border: 'none' },
     };
     return (
       <button onClick={onClick} disabled={busy} style={{
@@ -355,76 +354,23 @@ function TranslationInfoPanel({
 
       {/* Action buttons */}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        {/* Re-translate for failed/outdated/not-started */}
         {(status === 'FAILED' || status === 'OUTDATED' || status === 'NOT_STARTED' || status === 'QUEUED') && !locked && (
           btn('🔄 Yeniden Çevir', onRetry, 'primary')
         )}
-        {(status === 'OUTDATED') && locked && (
+        {status === 'OUTDATED' && locked && (
           btn('🔓 Kilidi Kaldır ve Yeniden Çevir', onUnlock, 'primary')
         )}
-        {/* Workflow: DRAFT → REVIEW → APPROVED → PUBLISHED */}
-        {status === 'DRAFT'    && btn('📤 İncelemeye Gönder', onSubmitReview, 'ghost')}
-        {status === 'REVIEW'   && btn('✓ Onayla',             onApprove,      'gold')}
-        {status === 'APPROVED' && btn('🚀 Yayınla',           onPublish,      'primary')}
-        {status === 'PUBLISHED' && btn('Yayından Kaldır',     onUnpublish,    'danger')}
+        {/* Manual publish for edge cases (e.g. retry left locale as DRAFT) */}
+        {(status === 'DRAFT' || status === 'REVIEW' || status === 'APPROVED') && (
+          btn('🚀 Yayımla', onPublish, 'primary')
+        )}
+        {status === 'PUBLISHED' && btn('Yayından Kaldır', onUnpublish, 'danger')}
         {locked
           ? btn('🔓 Kilidi Kaldır', onUnlock, 'ghost')
           : btn('🔒 Manuel Kilitli Yap', onLock, 'ghost')
         }
       </div>
-    </div>
-  );
-}
-
-// ── Otomatik Çeviri Settings Panel ──────────────────────────────────────────
-
-function AutoTranslatePanel({
-  enabled, targetLocales, onToggle, onLocaleToggle,
-}: {
-  enabled: boolean;
-  targetLocales: string[];
-  onToggle: () => void;
-  onLocaleToggle: (locale: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div style={{ border: '1px solid #E2E8F0', borderRadius: '10px', overflow: 'hidden', marginBottom: '16px' }}>
-      <button onClick={() => setOpen(p => !p)} style={{
-        width: '100%', padding: '12px 16px', background: '#FFFFFF',
-        border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', fontFamily: 'Inter, sans-serif',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 700, color: '#102A43' }}>🤖 Otomatik Çeviri</span>
-          <span style={{
-            fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '999px',
-            background: enabled ? '#F0FDF4' : '#F1F5F9', color: enabled ? '#16A34A' : '#64748B',
-            border: `1px solid ${enabled ? '#BBF7D0' : '#CBD5E1'}`,
-          }}>{enabled ? 'Etkin' : 'Devre Dışı'}</span>
-        </div>
-        <span style={{ color: '#64748B', fontSize: '12px' }}>{open ? '▲' : '▼'}</span>
-      </button>
-      {open && (
-        <div style={{ padding: '16px', borderTop: '1px solid #E2E8F0', background: '#FAFBFC' }}>
-          <p style={{ fontSize: '12px', color: '#64748B', marginBottom: '12px', fontFamily: 'Inter, sans-serif' }}>
-            Türkçe taslak kaydedildiğinde, seçili diller otomatik olarak AI ile çevrilir.
-            Çeviriler her zaman Taslak olarak kaydedilir — onay gerektirir.
-          </p>
-          <Checkbox name="Otomatik çeviriyi etkinleştir" checked={enabled} onChange={onToggle} />
-          {enabled && (
-            <div>
-              <p style={{ ...lbl, marginBottom: '8px', color: '#374151' }}>Hedef Diller:</p>
-              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                {LOCALES.filter(l => !l.isSource).map(l => (
-                  <label key={l.code} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: '#374151' }}>
-                    <input type="checkbox" checked={targetLocales.includes(l.code)} onChange={() => onLocaleToggle(l.code)} style={{ width: '15px', height: '15px' }} />
-                    {l.label}
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
@@ -438,11 +384,8 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const [bulkPublishing, setBulkPublishing] = useState(false);
   const [localeBusy, setLocaleBusy] = useState<Record<string, boolean>>({});
   const [isDirty, setIsDirty] = useState(false);
-  const [autoTranslate, setAutoTranslate] = useState(true);
-  const [targetLocales, setTargetLocales] = useState(['en', 'de', 'ru', 'ar']);
   const [message, setMessage] = useState<{ type: 'ok' | 'err' | 'info'; text: string } | null>(null);
 
   const currentRecord = records[activeLocale];
@@ -500,115 +443,65 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
     updateSections({ ...sections, [key]: value });
   };
 
-  // ── Save draft (TR: + auto-translate) ────────────────────────────────────
-  const saveDraft = async () => {
+  // ── Save TR + AI-translate all locales + publish immediately ────────────
+  const saveAndPublish = async () => {
     setSaving(true);
     setMessage(null);
-    const isTranslating = isSource && autoTranslate && targetLocales.length > 0;
-    if (isTranslating) {
-      setMessage({ type: 'info', text: '⏳ Türkçe kaydediliyor ve çeviri başlatılıyor…' });
-    }
+    setMessage({ type: 'info', text: '⏳ Türkçe kaydediliyor, tüm diller AI ile çevriliyor ve yayımlanıyor…' });
     try {
-      const res = await fetch(`/admin/api/homepage/${activeLocale}`, {
+      const res = await fetch('/admin/api/homepage/tr', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sections, autoTranslate: isTranslating, targetLocales }),
+        body: JSON.stringify({ sections, autoPublish: true }),
       });
       const data = await safeJson<{
-        success: boolean; draftSaved?: boolean;
-        translationJobsCreated?: number; targetLocales?: string[];
+        success: boolean;
         code?: string; message?: string;
         syncResults?: Record<string, { status: string; reason?: string }>;
       }>(res);
       if (!res.ok) throw new Error(data.message ?? data.code ?? 'Kaydetme başarısız.');
 
-      // Refresh all target locale records
-      // AI_PROVIDER_NOT_CONFIGURED is a soft warning — draft IS saved, locales are QUEUED
+      // Refresh all locales from server to reflect real DB status
+      await Promise.all(['tr', 'en', 'de', 'ru', 'ar'].map(l => refreshLocale(l)));
+
       if (data.code === 'AI_PROVIDER_NOT_CONFIGURED') {
-        setMessage({ type: 'info', text: data.message ?? 'Taslak kaydedildi. AI sağlayıcısı yapılandırılmamış.' });
-        // syncResults contains the queued locales — refresh their tabs so they show QUEUED
-        if (data.syncResults) {
-          await Promise.all(Object.keys(data.syncResults).map(l => refreshLocale(l)));
-        }
+        setMessage({ type: 'info', text: data.message ?? 'Türkçe kaydedildi. AI sağlayıcısı yapılandırılmamış.' });
       } else if (data.syncResults) {
-        const refreshPromises = Object.keys(data.syncResults).map(l => refreshLocale(l));
-        await Promise.all(refreshPromises);
-
-        const translated = Object.entries(data.syncResults).filter(([, r]) => r.status === 'translated').length;
-        const failed    = Object.entries(data.syncResults).filter(([, r]) => r.status === 'failed').length;
-        const skipped   = Object.entries(data.syncResults).filter(([, r]) => r.status === 'skipped').length;
-        const queued    = Object.entries(data.syncResults).filter(([, r]) => r.status === 'queued').length;
-
-        let msg = 'Türkçe taslak kaydedildi.';
-        if (translated > 0) msg += ` ${translated} dil çevrildi (inceleme gerekli).`;
-        if (queued > 0) msg += ` ⚠ ${queued} dil sıraya alındı — AI sağlayıcısı yapılandırılmamış.`;
-        if (skipped > 0) msg += ` ${skipped} dil atlandı (değişiklik yok).`;
-        if (failed > 0) msg += ` ⚠ ${failed} dilde hata — sekme detaylarını kontrol edin.`;
-        setMessage({ type: failed > 0 ? 'err' : 'ok', text: msg });
+        const results = data.syncResults;
+        const published = Object.entries(results).filter(([, r]) => r.status === 'published').map(([k]) => k.toUpperCase());
+        const skipped   = Object.entries(results).filter(([, r]) => r.status === 'skipped').map(([k]) => k.toUpperCase());
+        const failed    = Object.entries(results).filter(([, r]) => r.status === 'failed').map(([k, r]) => `${k.toUpperCase()}${r.reason ? ' (' + r.reason.slice(0, 40) + ')' : ''}`);
+        const queued    = Object.entries(results).filter(([, r]) => r.status === 'queued').map(([k]) => k.toUpperCase());
+        const parts: string[] = [];
+        if (published.length) parts.push(`🌐 Yayımlandı: TR, ${published.join(', ')}`);
+        if (skipped.length)   parts.push(`↩ Değişiklik yok: ${skipped.join(', ')}`);
+        if (failed.length)    parts.push(`⚠ Başarısız: ${failed.join(', ')}`);
+        if (queued.length)    parts.push(`⏳ Sırada: ${queued.join(', ')}`);
+        setMessage({ type: failed.length > 0 ? 'err' : 'ok', text: parts.join(' · ') || 'Tamamlandı.' });
       } else {
-        setMessage({ type: 'ok', text: 'Taslak kaydedildi.' });
+        setMessage({ type: 'ok', text: '🌐 Türkçe ve tüm diller yayımlandı.' });
       }
-      // After a successful save the record is always DRAFT — re-approval required.
-      setRecords(prev => ({
-        ...prev,
-        [activeLocale]: { ...prev[activeLocale]!, status: 'DRAFT' },
-      }));
       setIsDirty(false);
     } catch (err) {
       setMessage({ type: 'err', text: err instanceof Error ? err.message : 'Kaydetme hatası.' });
     } finally { setSaving(false); }
   };
 
-  // ── Publish / Unpublish ──────────────────────────────────────────────────
+  // ── Manual publish / unpublish (edge-cases and per-locale removal) ──────
   const publish = async (action: 'publish' | 'unpublish') => {
-    if (action === 'publish') {
-      const lang = activeLocale.toUpperCase();
-      if (!window.confirm(
-        `${lang} içeriğini yayınlamak istediğinizden emin misiniz?\n\n` +
-        'Bu işlem içeriği herkese açık hale getirir. İstediğiniz zaman "Yayından Kaldır" ile geri alabilirsiniz.'
-      )) return;
-    }
     setPublishing(true);
     setMessage(null);
     try {
       const res = await fetch(`/admin/api/homepage/${activeLocale}/publish?action=${action}`, { method: 'POST' });
       const pubData = await safeJson<{ error?: string; message?: string; currentStatus?: string }>(res);
       if (!res.ok) throw new Error(pubData.message ?? pubData.error ?? 'Yayın işlemi başarısız.');
-      setMessage({ type: 'ok', text: action === 'publish' ? `${activeLocale.toUpperCase()} yayınlandı!` : 'Yayından kaldırıldı.' });
+      setMessage({ type: 'ok', text: action === 'publish' ? `${activeLocale.toUpperCase()} yayımlandı.` : `${activeLocale.toUpperCase()} yayından kaldırıldı.` });
       await refreshLocale(activeLocale);
     } catch (err) {
       setMessage({ type: 'err', text: err instanceof Error ? err.message : 'Yayın hatası.' });
     } finally { setPublishing(false); }
   };
 
-  // ── Bulk publish ─────────────────────────────────────────────────────────
-  const bulkPublish = async () => {
-    if (!window.confirm(
-      'Onaylanan tüm çevirileri yayınlamak istediğinizden emin misiniz?\n\n' +
-      'Yalnızca ONAYLANMIŞ (✓ Onaylı) diller yayınlanır. ' +
-      'Taslak, incelemede veya başarısız durumundaki diller atlanır.'
-    )) return;
-    setBulkPublishing(true);
-    setMessage(null);
-    try {
-      const res = await fetch('/admin/api/homepage/bulk-publish', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ locales: ['en', 'de', 'ru', 'ar'] }),
-      });
-      const data = await safeJson<{ results: Record<string, string>; error?: string; message?: string }>(res);
-      if (!res.ok) throw new Error(data.message ?? data.error ?? 'Toplu yayın başarısız.');
-      const published = Object.entries(data.results).filter(([, v]) => v === 'published').map(([k]) => k.toUpperCase());
-      const skipped  = Object.entries(data.results).filter(([, v]) => v === 'skipped').map(([k]) => k.toUpperCase());
-      let msg = '';
-      if (published.length) msg += `Yayınlandı: ${published.join(', ')}.`;
-      if (skipped.length)  msg += ` Atlandı (onaylı değil): ${skipped.join(', ')}.`;
-      setMessage({ type: 'ok', text: msg || 'İşlem tamamlandı.' });
-      await Promise.all(['en', 'de', 'ru', 'ar'].map(l => refreshLocale(l)));
-    } catch (err) {
-      setMessage({ type: 'err', text: err instanceof Error ? err.message : 'Toplu yayın hatası.' });
-    } finally { setBulkPublishing(false); }
-  };
 
   // ── Per-locale actions ───────────────────────────────────────────────────
   const setLocaleBusyFor = (locale: string, val: boolean) => setLocaleBusy(prev => ({ ...prev, [locale]: val }));
@@ -645,38 +538,6 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
     } finally { setLocaleBusyFor(locale, false); }
   };
 
-  // DRAFT → REVIEW (submit for editorial review)
-  const submitForReview = async (locale: string) => {
-    setLocaleBusyFor(locale, true);
-    setMessage(null);
-    try {
-      const res = await fetch(`/admin/api/homepage/${locale}/publish?action=submit_review`, { method: 'POST' });
-      const data = await safeJson<{ error?: string; message?: string; currentStatus?: string }>(res);
-      if (!res.ok) throw new Error(data.message ?? data.error ?? 'İncelemeye gönderme başarısız.');
-      setMessage({ type: 'ok', text: `${locale.toUpperCase()} incelemeye gönderildi.` });
-      await refreshLocale(locale);
-    } catch (err) {
-      setMessage({ type: 'err', text: err instanceof Error ? err.message : 'İncelemeye gönderme hatası.' });
-    } finally { setLocaleBusyFor(locale, false); }
-  };
-
-  // REVIEW → APPROVED
-  const approveTranslation = async (locale: string) => {
-    setLocaleBusyFor(locale, true);
-    try {
-      const res = await fetch(`/admin/api/homepage/${locale}/publish?action=approve`, { method: 'POST' });
-      const approveData = await safeJson<{ error?: string; message?: string; currentStatus?: string }>(res);
-      if (!res.ok) throw new Error(approveData.message ?? approveData.error ?? 'Onaylama başarısız.');
-      setMessage({ type: 'ok', text: `${locale.toUpperCase()} onaylandı — yayınlamak için "🚀 Yayınla" butonunu kullanın.` });
-      await refreshLocale(locale);
-    } catch (err) {
-      setMessage({ type: 'err', text: err instanceof Error ? err.message : 'Onay hatası.' });
-    } finally { setLocaleBusyFor(locale, false); }
-  };
-
-  const toggleLocale = (lc: string) => {
-    setTargetLocales(prev => prev.includes(lc) ? prev.filter(x => x !== lc) : [...prev, lc]);
-  };
 
   // ── Locale tab switch — guard against unsaved TR changes ─────────────────
   const handleLocaleSwitch = (code: string) => {
@@ -734,26 +595,37 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
           display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
         }
         .hpe-ml-auto { margin-left: auto; }
-        @media (max-width: 767px) {
-          .hpe-grid { grid-template-columns: 1fr; gap: 12px; }
-          .hpe-fg2, .hpe-fg3 { grid-template-columns: 1fr; }
+        /* ── Mobile ≤ 900px ──────────────────────────────────────── */
+        @media (max-width: 900px) {
+          /* Main grid: sidebar + form → single column stack */
+          .hpe-grid {
+            display: block !important;
+            gap: 12px;
+          }
+          .hpe-grid > * { width: 100%; box-sizing: border-box; }
+          /* Field grids → single column */
+          .hpe-fg2, .hpe-fg3 {
+            display: block !important;
+          }
+          .hpe-fg2 > *, .hpe-fg3 > * { width: 100%; }
+          /* Desktop nav list hidden; dropdown shown */
           .hpe-sec-desktop { display: none !important; }
-          .hpe-sec-mobile  { display: block !important; }
+          .hpe-sec-mobile  { display: block !important; margin-bottom: 12px; }
+          /* Action bar */
           .hpe-abar { flex-direction: column; align-items: stretch; }
           .hpe-abar button, .hpe-abar a {
             width: 100%; box-sizing: border-box; text-align: center;
             min-height: 44px; display: flex; align-items: center; justify-content: center;
           }
           .hpe-ml-auto { margin-left: 0; margin-top: 4px; }
-          /* Prevent iOS Safari auto-zoom: inputs must be ≥16px on mobile.
-             !important overrides the 13px inline style from inp()/ta(). */
+          /* Prevent iOS Safari auto-zoom: inputs ≥16px */
           .hpe-field-input, .hpe-field-ta { font-size: 16px !important; }
-          /* Locale tabs: horizontal scroll instead of wrap on narrow screens */
+          /* Locale tabs: scrollable, never wrap */
           .hpe-locale-tabs {
             flex-wrap: nowrap !important;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
-            padding-bottom: 4px; /* room for scrollbar */
+            padding-bottom: 4px;
           }
           .hpe-locale-tabs button { flex-shrink: 0; }
         }
@@ -779,16 +651,6 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
           {message.text}
           <button onClick={() => setMessage(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', lineHeight: 1, color: 'inherit', padding: '0 4px' }}>×</button>
         </div>
-      )}
-
-      {/* Auto-translate settings — only shown on TR tab */}
-      {isSource && (
-        <AutoTranslatePanel
-          enabled={autoTranslate}
-          targetLocales={targetLocales}
-          onToggle={() => setAutoTranslate(p => !p)}
-          onLocaleToggle={toggleLocale}
-        />
       )}
 
       {/* Locale tabs */}
@@ -821,8 +683,6 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
           onRetry={() => retryTranslate(activeLocale)}
           onLock={() => toggleLock(activeLocale, true)}
           onUnlock={() => toggleLock(activeLocale, false)}
-          onSubmitReview={() => submitForReview(activeLocale)}
-          onApprove={() => approveTranslation(activeLocale)}
           onPublish={() => publish('publish')}
           onUnpublish={() => publish('unpublish')}
           busy={!!localeBusy[activeLocale]}
@@ -882,53 +742,36 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
 
       {/* Action bar */}
       <div className="hpe-abar">
-        {/* Primary save button */}
+        {/* TR tab: single button — saves, translates all 4 languages, publishes all immediately */}
         {isSource && (
-          <button onClick={saveDraft} disabled={saving}
+          <button onClick={saveAndPublish} disabled={saving}
             style={{
               padding: '9px 18px', borderRadius: '8px',
               background: '#C79A35', border: 'none', color: '#102A43',
               fontSize: '13px', fontWeight: 600, cursor: saving ? 'wait' : 'pointer',
               opacity: saving ? 0.7 : 1, fontFamily: 'Inter, sans-serif',
             }}>
-            {saving ? '⏳ İşleniyor…' : (autoTranslate && targetLocales.length > 0 ? '💾 Taslak Kaydet ve Çevir' : '💾 Taslak Kaydet')}
+            {saving ? '⏳ İşleniyor…' : '🌐 Kaydet ve Tüm Dillerde Yayımla'}
           </button>
         )}
 
-        {/* Publish / Unpublish current locale */}
-        {currentRecord?.status === 'APPROVED' && (
-          <button onClick={() => publish('publish')} disabled={publishing}
-            style={{ padding: '9px 18px', borderRadius: '8px', background: '#16A34A', border: 'none', color: '#FFF', fontSize: '13px', fontWeight: 600, cursor: 'pointer', opacity: publishing ? 0.7 : 1 }}>
-            🚀 Yayınla
-          </button>
-        )}
-        {currentRecord?.status === 'PUBLISHED' && (
+        {/* TR Yayından kaldır */}
+        {isSource && currentRecord?.status === 'PUBLISHED' && (
           <button onClick={() => publish('unpublish')} disabled={publishing}
-            style={{ padding: '9px 18px', borderRadius: '8px', background: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+            style={{ padding: '9px 18px', borderRadius: '8px', background: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
             Yayından Kaldır
           </button>
         )}
 
-        {/* Review all translations */}
+        {/* Translation log */}
         <Link href="/admin/ceviriler" style={{
           padding: '9px 18px', borderRadius: '8px', background: '#F8FAFC',
           border: '1px solid #CBD5E1', color: '#334155',
           fontSize: '13px', fontWeight: 600, textDecoration: 'none',
           fontFamily: 'Inter, sans-serif',
         }}>
-          🔍 Tüm Çevirileri İncele
+          🔍 Çeviri Günlüğü
         </Link>
-
-        {/* Bulk publish approved */}
-        <button onClick={bulkPublish} disabled={bulkPublishing}
-          style={{
-            padding: '9px 18px', borderRadius: '8px', background: '#F8FAFC',
-            border: '1px solid #CBD5E1', color: '#334155',
-            fontSize: '13px', fontWeight: 600, cursor: bulkPublishing ? 'wait' : 'pointer',
-            opacity: bulkPublishing ? 0.7 : 1, fontFamily: 'Inter, sans-serif',
-          }}>
-          {bulkPublishing ? '⏳…' : '📦 Onaylanan Dilleri Toplu Yayınla'}
-        </button>
 
         <span className="hpe-ml-auto" style={{ fontSize: '11px', color: '#94A3B8' }}>
           {currentRecord?.updatedAt ? `Son güncelleme: ${new Date(currentRecord.updatedAt).toLocaleString('tr-TR')}` : '—'}

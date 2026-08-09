@@ -87,8 +87,8 @@ function Field({ name, value, onChange, multiline, rows, dir, hint, readOnly }: 
     <div style={{ marginBottom: '14px' }}>
       <label style={lbl}>{name}</label>
       {multiline
-        ? <textarea style={{ ...ta(dir, rows), opacity: readOnly ? 0.6 : 1 }} value={value} onChange={e => onChange?.(e.target.value)} dir={dir} readOnly={readOnly} />
-        : <input style={{ ...inp(dir), opacity: readOnly ? 0.6 : 1 }} value={value} onChange={e => onChange?.(e.target.value)} dir={dir} readOnly={readOnly} />
+        ? <textarea className="hpe-field-ta" style={{ ...ta(dir, rows), opacity: readOnly ? 0.6 : 1 }} value={value} onChange={e => onChange?.(e.target.value)} dir={dir} readOnly={readOnly} />
+        : <input className="hpe-field-input" style={{ ...inp(dir), opacity: readOnly ? 0.6 : 1 }} value={value} onChange={e => onChange?.(e.target.value)} dir={dir} readOnly={readOnly} />
       }
       {hint && <p style={{ fontSize: '11px', color: '#94A3B8', marginTop: '3px', fontFamily: 'Inter, sans-serif' }}>{hint}</p>}
     </div>
@@ -437,6 +437,7 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
   const [publishing, setPublishing] = useState(false);
   const [bulkPublishing, setBulkPublishing] = useState(false);
   const [localeBusy, setLocaleBusy] = useState<Record<string, boolean>>({});
+  const [isDirty, setIsDirty] = useState(false);
   const [autoTranslate, setAutoTranslate] = useState(true);
   const [targetLocales, setTargetLocales] = useState(['en', 'de', 'ru', 'ar']);
   const [message, setMessage] = useState<{ type: 'ok' | 'err' | 'info'; text: string } | null>(null);
@@ -489,6 +490,8 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
   // ── Update sections locally ──────────────────────────────────────────────
   const updateSections = (updated: HomepageSections) => {
     setRecords(prev => ({ ...prev, [activeLocale]: { ...prev[activeLocale]!, sections: updated } }));
+    // Mark dirty only when the TR (editable) tab is modified
+    if (activeLocale === 'tr') setIsDirty(true);
   };
   const updateSection = <K extends keyof HomepageSections>(key: K, value: HomepageSections[K]) => {
     updateSections({ ...sections, [key]: value });
@@ -542,10 +545,12 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
       } else {
         setMessage({ type: 'ok', text: 'Taslak kaydedildi.' });
       }
+      // After a successful save the record is always DRAFT — re-approval required.
       setRecords(prev => ({
         ...prev,
-        [activeLocale]: { ...prev[activeLocale]!, status: prev[activeLocale]?.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT' },
+        [activeLocale]: { ...prev[activeLocale]!, status: 'DRAFT' },
       }));
+      setIsDirty(false);
     } catch (err) {
       setMessage({ type: 'err', text: err instanceof Error ? err.message : 'Kaydetme hatası.' });
     } finally { setSaving(false); }
@@ -642,6 +647,19 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
     setTargetLocales(prev => prev.includes(lc) ? prev.filter(x => x !== lc) : [...prev, lc]);
   };
 
+  // ── Locale tab switch — guard against unsaved TR changes ─────────────────
+  const handleLocaleSwitch = (code: string) => {
+    if (code === activeLocale) return;
+    if (isDirty && activeLocale === 'tr') {
+      if (!window.confirm(
+        'Türkçe içerikte kaydedilmemiş değişiklikler var.\n\n' +
+        'Sekmeyi değiştirirseniz bu değişiklikler kaybolur. Devam etmek istiyor musunuz?'
+      )) return;
+    }
+    setIsDirty(false);
+    setActiveLocale(code);
+  };
+
   const statusForLocale = (code: string) => {
     if (code === 'tr') return records.tr?.status ?? 'DRAFT';
     return records[code]?.status ?? 'NOT_STARTED';
@@ -696,6 +714,17 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
             min-height: 44px; display: flex; align-items: center; justify-content: center;
           }
           .hpe-ml-auto { margin-left: 0; margin-top: 4px; }
+          /* Prevent iOS Safari auto-zoom: inputs must be ≥16px on mobile.
+             !important overrides the 13px inline style from inp()/ta(). */
+          .hpe-field-input, .hpe-field-ta { font-size: 16px !important; }
+          /* Locale tabs: horizontal scroll instead of wrap on narrow screens */
+          .hpe-locale-tabs {
+            flex-wrap: nowrap !important;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 4px; /* room for scrollbar */
+          }
+          .hpe-locale-tabs button { flex-shrink: 0; }
         }
       `}</style>
       {/* Page header */}
@@ -732,13 +761,13 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
       )}
 
       {/* Locale tabs */}
-      <div style={{ display: 'flex', gap: '6px', marginBottom: '18px', flexWrap: 'wrap' }}>
+      <div className="hpe-locale-tabs" style={{ display: 'flex', gap: '6px', marginBottom: '18px', flexWrap: 'wrap' }}>
         {LOCALES.map(l => {
           const s = statusForLocale(l.code);
           const isActive = activeLocale === l.code;
           const locked = records[l.code]?.isManuallyLocked ?? false;
           return (
-            <button key={l.code} onClick={() => setActiveLocale(l.code)}
+            <button key={l.code} onClick={() => handleLocaleSwitch(l.code)}
               style={{
                 padding: '8px 14px', borderRadius: '8px',
                 border: `2px solid ${isActive ? '#2563EB' : '#E2E8F0'}`,

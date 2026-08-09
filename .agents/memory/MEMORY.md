@@ -10,3 +10,4 @@
 - [Public i18n system](public-i18n-system.md) — locale persistence via catch-all [lang]/[...slug] route; LocaleLink + PageHero + HizmetlerServiceGrid locale-aware; middleware only stamps tr on root /.
 - [Homepage CMS architecture](homepage-cms-architecture.md) — Phase 1: content/contentTranslations tables + google_reviews; HomepageCmsProvider pattern; admin editor at /admin/sayfalar/ana-sayfa; drizzle migration DDL quirk.
 - [Homepage translation sync](homepage-translation-sync.md) — auto AI sync on TR save; shared vs translatable field split; manual lock; 8 status states; migration 0007 adds source_hash/isManuallyLocked.
+- [Admin editor — mobile + locale isolation fixes](admin-editor-mobile-locale.md) — isDirty guard on TR tab; handleLocaleSwitch confirm dialog; hpe-locale-tabs overflow-x:auto; hpe-field-input/ta 16px on mobile; FK violation fallback in translation update; entity_id is TEXT not UUID (use id::text in joins).

@@ -1,0 +1,114 @@
+Continue the existing Istanbul Transfer Pro project.
+
+TASK: Fix and fully verify the Homepage Editor mobile responsiveness and multilingual content workflow.
+
+Do not redesign the public website. Do not publish the app or connect the production domain.
+
+1. MOBILE ADMIN EDITOR
+
+Fix /admin/sayfalar/ana-sayfa for:
+
+- 390px mobile
+- 768px tablet
+- 1024px and larger desktop
+
+Requirements:
+
+- No horizontal overflow anywhere.
+- On screens below 768px, the A–J section navigation and editing form must not remain side by side.
+- Replace the A–J sidebar with a full-width dropdown, accordion or horizontally scrollable section selector on mobile.
+- The selected section’s form must appear below it at full width.
+- All two-column form fields must become a single column on mobile.
+- Language tabs TR, EN, DE, RU and AR must wrap or scroll horizontally without clipping.
+- Bottom action buttons must stack vertically or fit safely on mobile.
+- Buttons and controls must have at least a 44px touch target.
+- Form input font size must be at least 16px on mobile to prevent iOS automatic zoom.
+- Support iPhone Safari, Android Chrome, tablets and desktop browsers.
+- Respect safe-area insets.
+- Opening the admin menu must not create page overflow.
+- Preserve the existing desktop design and visual theme.
+
+2. MULTILINGUAL DATA ISOLATION
+
+Verify that TR, EN, DE, RU and AR tabs do not display the same shared form state.
+
+Requirements:
+
+- Every locale must load its own saved database record.
+- Switching language tabs must replace the form with that locale’s actual content.
+- Do not overwrite one locale when another locale is edited.
+- Show a warning before switching tabs if the current language contains unsaved changes.
+- Shared non-translatable fields such as image paths may remain identical.
+- Text fields, SEO fields, CTA labels, headings, descriptions, alt text, statistics, services, trust cards, reviews, reservation, contact and footer content must be stored separately per locale.
+- Arabic editor fields must use RTL where appropriate.
+- Phone numbers, URLs, email addresses, IST, SAW, Mercedes Vito and Sprinter must remain LTR.
+
+3. SAVE, TRANSLATE AND PUBLISH WORKFLOW
+
+Repair and verify these actions:
+
+- Taslak Kaydet
+- Taslak Kaydet ve Çevir
+- Tüm Çevirileri İncele
+- Onaylanan Dilleri Toplu Yayınla
+- Yayından Kaldır
+
+When Turkish content changes and “Taslak Kaydet ve Çevir” is clicked:
+
+- Save the Turkish source first.
+- Generate separate EN, DE, RU and AR draft translations.
+- Do not immediately publish translations without approval.
+- Mark translation statuses accurately: Not Started, Draft, Review, Approved, Published or Failed.
+- Review and approval must work independently for every language.
+- Bulk publish only approved languages.
+- A failed language must not prevent successful languages from being saved.
+- Display per-language errors clearly.
+
+4. API ERROR HANDLING
+
+Fix the previous error:
+
+“Failed to execute 'json' on 'Response': Unexpected end of JSON input”
+
+Requirements:
+
+- All homepage CMS API endpoints must always return valid JSON, including validation errors, authentication errors and server errors.
+- Client code must check response.ok and content-type before parsing JSON.
+- Never call response.json() on an empty response.
+- Show a useful Turkish error message instead of crashing the editor.
+- Do not expose secrets, database URLs or stack traces to the browser.
+
+5. REAL VERIFICATION
+
+Do not rely only on status badges. Perform this test:
+
+- Change one Turkish Hero sentence temporarily.
+- Save and translate it.
+- Confirm EN, DE, RU and AR contain genuine translated sentences and are not copies of Turkish.
+- Switch between every language and confirm data does not leak between tabs.
+- Restore the intended Turkish text after the test.
+- Verify all A–J sections for all five languages.
+- Verify Arabic RTL.
+- Verify mobile widths 390px and 430px.
+- Verify tablet width 768px.
+- Verify desktop widths 1366px and 1920px.
+- Check browser console for runtime, hydration and overflow errors.
+
+6. QUALITY CHECKS
+
+Run and report separately:
+
+- TypeScript typecheck
+- ESLint
+- Production build
+- Browser console checks
+- Mobile screenshots at 390px
+- Tablet screenshot at 768px
+- Desktop screenshot at 1440px
+- Proof that at least one translated field differs correctly across TR, EN, DE, RU and AR
+
+Do not publish.
+Do not connect or modify istanbulviptransfer.com.
+Do not change production credentials.
+Do not remove existing content.
+Report all changed files and test results.

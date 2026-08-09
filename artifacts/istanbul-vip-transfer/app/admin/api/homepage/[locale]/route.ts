@@ -136,7 +136,8 @@ export async function PATCH(
 
     let contentId: string;
     if (existing) {
-      await db.update(content).set({ body: sectionsJson, updatedAt: new Date(), title: 'Ana Sayfa' }).where(eq(content.id, existing.id));
+      // Reset to DRAFT so that a previously-published page requires re-approval after edits.
+  await db.update(content).set({ body: sectionsJson, updatedAt: new Date(), title: 'Ana Sayfa', status: 'DRAFT' }).where(eq(content.id, existing.id));
       contentId = existing.id;
     } else {
       const [inserted] = await db.insert(content).values({
@@ -217,7 +218,12 @@ export async function PATCH(
       }
 
       const fallback = (HOMEPAGE_FALLBACK[targetLocale] ?? HOMEPAGE_FALLBACK.en) as HomepageSections;
-      const existingTargetSections = tx?.body ? (JSON.parse(tx.body) as HomepageSections) : null;
+      // Safe parse — a malformed existing body must not crash the whole save operation
+      let existingTargetSections: HomepageSections | null = null;
+      if (tx?.body) {
+        try { existingTargetSections = JSON.parse(tx.body) as HomepageSections; }
+        catch { existingTargetSections = null; /* fallback to fresh build below */ }
+      }
       const baseTarget = existingTargetSections ?? buildInitialTargetSections(sections, fallback);
       const sharedSynced = syncSharedFields(baseTarget, sections);
 
@@ -290,16 +296,34 @@ export async function PATCH(
       const translatedSections = applyTranslatedFields(sharedSynced, aiResult.translated);
       const translatedJson = JSON.stringify(translatedSections);
 
-      await db.update(contentTranslations).set({
-        status: 'DRAFT',
-        body: translatedJson,
-        draftAt: sql`now()`,
-        updatedAt: new Date(),
-        updatedBy: session.adminId,
-        aiModel: aiResult.model,
-        aiPromptVersion: '2.0',
-        failureReason: null,
-      }).where(eq(contentTranslations.id, jobId));
+      // Use a try-catch so a deleted session admin (FK violation) degrades
+      // gracefully: retry without updatedBy rather than throwing a 500.
+      try {
+        await db.update(contentTranslations).set({
+          status: 'DRAFT',
+          body: translatedJson,
+          draftAt: sql`now()`,
+          updatedAt: new Date(),
+          updatedBy: session.adminId,
+          aiModel: aiResult.model,
+          aiPromptVersion: '2.0',
+          failureReason: null,
+        }).where(eq(contentTranslations.id, jobId));
+      } catch (fkErr: unknown) {
+        // FK violation: session admin was deleted before translation finished.
+        const isFk = (fkErr instanceof Error) && fkErr.message.includes('updated_by_fkey');
+        if (!isFk) throw fkErr;
+        await db.update(contentTranslations).set({
+          status: 'DRAFT',
+          body: translatedJson,
+          draftAt: sql`now()`,
+          updatedAt: new Date(),
+          updatedBy: null,
+          aiModel: aiResult.model,
+          aiPromptVersion: '2.0',
+          failureReason: null,
+        }).where(eq(contentTranslations.id, jobId));
+      }
 
       await db.insert(auditLogs).values({
         adminUserId: session.adminId, action: 'HOMEPAGE_TRANSLATION_DRAFT',

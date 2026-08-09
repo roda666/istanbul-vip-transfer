@@ -287,12 +287,13 @@ function TxStatusBadge({ status }: { status: string }) {
 // ── Per-locale translation info panel ────────────────────────────────────────
 
 function TranslationInfoPanel({
-  record, onRetry, onLock, onUnlock, onApprove, onPublish, onUnpublish, busy,
+  record, onRetry, onLock, onUnlock, onSubmitReview, onApprove, onPublish, onUnpublish, busy,
 }: {
   record: HomepageAdminRecord;
   onRetry: () => void;
   onLock: () => void;
   onUnlock: () => void;
+  onSubmitReview: () => void;
   onApprove: () => void;
   onPublish: () => void;
   onUnpublish: () => void;
@@ -360,9 +361,11 @@ function TranslationInfoPanel({
         {(status === 'OUTDATED') && locked && (
           btn('🔓 Kilidi Kaldır ve Yeniden Çevir', onUnlock, 'primary')
         )}
-        {status === 'DRAFT' && btn('✓ Onayla', onApprove, 'gold')}
-        {status === 'APPROVED' && btn('🚀 Yayınla', onPublish, 'primary')}
-        {status === 'PUBLISHED' && btn('Yayından Kaldır', onUnpublish, 'danger')}
+        {/* Workflow: DRAFT → REVIEW → APPROVED → PUBLISHED */}
+        {status === 'DRAFT'    && btn('📤 İncelemeye Gönder', onSubmitReview, 'ghost')}
+        {status === 'REVIEW'   && btn('✓ Onayla',             onApprove,      'gold')}
+        {status === 'APPROVED' && btn('🚀 Yayınla',           onPublish,      'primary')}
+        {status === 'PUBLISHED' && btn('Yayından Kaldır',     onUnpublish,    'danger')}
         {locked
           ? btn('🔓 Kilidi Kaldır', onUnlock, 'ghost')
           : btn('🔒 Manuel Kilitli Yap', onLock, 'ghost')
@@ -558,13 +561,20 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
 
   // ── Publish / Unpublish ──────────────────────────────────────────────────
   const publish = async (action: 'publish' | 'unpublish') => {
+    if (action === 'publish') {
+      const lang = activeLocale.toUpperCase();
+      if (!window.confirm(
+        `${lang} içeriğini yayınlamak istediğinizden emin misiniz?\n\n` +
+        'Bu işlem içeriği herkese açık hale getirir. İstediğiniz zaman "Yayından Kaldır" ile geri alabilirsiniz.'
+      )) return;
+    }
     setPublishing(true);
     setMessage(null);
     try {
       const res = await fetch(`/admin/api/homepage/${activeLocale}/publish?action=${action}`, { method: 'POST' });
-      const pubData = await safeJson<{ error?: string; message?: string }>(res);
+      const pubData = await safeJson<{ error?: string; message?: string; currentStatus?: string }>(res);
       if (!res.ok) throw new Error(pubData.message ?? pubData.error ?? 'Yayın işlemi başarısız.');
-      setMessage({ type: 'ok', text: action === 'publish' ? 'Yayınlandı!' : 'Yayından kaldırıldı.' });
+      setMessage({ type: 'ok', text: action === 'publish' ? `${activeLocale.toUpperCase()} yayınlandı!` : 'Yayından kaldırıldı.' });
       await refreshLocale(activeLocale);
     } catch (err) {
       setMessage({ type: 'err', text: err instanceof Error ? err.message : 'Yayın hatası.' });
@@ -573,6 +583,11 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
 
   // ── Bulk publish ─────────────────────────────────────────────────────────
   const bulkPublish = async () => {
+    if (!window.confirm(
+      'Onaylanan tüm çevirileri yayınlamak istediğinizden emin misiniz?\n\n' +
+      'Yalnızca ONAYLANMIŞ (✓ Onaylı) diller yayınlanır. ' +
+      'Taslak, incelemede veya başarısız durumundaki diller atlanır.'
+    )) return;
     setBulkPublishing(true);
     setMessage(null);
     try {
@@ -630,13 +645,29 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
     } finally { setLocaleBusyFor(locale, false); }
   };
 
+  // DRAFT → REVIEW (submit for editorial review)
+  const submitForReview = async (locale: string) => {
+    setLocaleBusyFor(locale, true);
+    setMessage(null);
+    try {
+      const res = await fetch(`/admin/api/homepage/${locale}/publish?action=submit_review`, { method: 'POST' });
+      const data = await safeJson<{ error?: string; message?: string; currentStatus?: string }>(res);
+      if (!res.ok) throw new Error(data.message ?? data.error ?? 'İncelemeye gönderme başarısız.');
+      setMessage({ type: 'ok', text: `${locale.toUpperCase()} incelemeye gönderildi.` });
+      await refreshLocale(locale);
+    } catch (err) {
+      setMessage({ type: 'err', text: err instanceof Error ? err.message : 'İncelemeye gönderme hatası.' });
+    } finally { setLocaleBusyFor(locale, false); }
+  };
+
+  // REVIEW → APPROVED
   const approveTranslation = async (locale: string) => {
     setLocaleBusyFor(locale, true);
     try {
       const res = await fetch(`/admin/api/homepage/${locale}/publish?action=approve`, { method: 'POST' });
-      const approveData = await safeJson<{ error?: string; message?: string }>(res);
+      const approveData = await safeJson<{ error?: string; message?: string; currentStatus?: string }>(res);
       if (!res.ok) throw new Error(approveData.message ?? approveData.error ?? 'Onaylama başarısız.');
-      setMessage({ type: 'ok', text: `${locale.toUpperCase()} onaylandı.` });
+      setMessage({ type: 'ok', text: `${locale.toUpperCase()} onaylandı — yayınlamak için "🚀 Yayınla" butonunu kullanın.` });
       await refreshLocale(locale);
     } catch (err) {
       setMessage({ type: 'err', text: err instanceof Error ? err.message : 'Onay hatası.' });
@@ -790,6 +821,7 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
           onRetry={() => retryTranslate(activeLocale)}
           onLock={() => toggleLock(activeLocale, true)}
           onUnlock={() => toggleLock(activeLocale, false)}
+          onSubmitReview={() => submitForReview(activeLocale)}
           onApprove={() => approveTranslation(activeLocale)}
           onPublish={() => publish('publish')}
           onUnpublish={() => publish('unpublish')}

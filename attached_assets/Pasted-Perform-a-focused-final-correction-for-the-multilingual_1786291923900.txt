@@ -1,0 +1,63 @@
+Perform a focused final correction for the multilingual Homepage CMS.
+
+Do not redesign the public website.
+Do not publish the app or connect the production domain.
+
+1. FIX MOBILE TRANSLATIONS PAGE
+
+Fix /admin/ceviriler at 390px and 430px.
+
+- The translations table must not be clipped on mobile.
+- Prefer a responsive card layout for each translation record below 768px.
+- Each card must show: content name, language, status, source, updated date and available actions.
+- If a table is retained, place it inside an obvious internal horizontal scroll container without causing page-level horizontal overflow.
+- Keep desktop table design unchanged.
+- All controls must have at least 44px touch targets.
+- Verify iPhone Safari and Android Chrome layouts.
+
+2. ENFORCE TRANSLATION APPROVAL WORKFLOW
+
+Translations generated from Turkish must never be published automatically.
+
+Required state flow:
+
+NOT_STARTED → DRAFT → REVIEW → APPROVED → PUBLISHED
+
+Rules:
+
+- “Taslak Kaydet ve Çevir” saves Turkish and creates EN, DE, RU and AR as DRAFT.
+- Generated translations must remain unpublished until reviewed.
+- Each language must be reviewed and approved independently.
+- “Onaylanan Dilleri Toplu Yayınla” may publish only APPROVED languages.
+- DRAFT, REVIEW, FAILED or NOT_STARTED records must never be published by bulk publish.
+- A failed language must not block other languages.
+- Editing an APPROVED or PUBLISHED translation must return it to REVIEW and clear approval.
+- Display an explicit confirmation before publishing.
+- Record approval and publication actions in the audit log.
+
+3. VERIFY WITH A REAL TEST
+
+- Make one temporary Turkish Hero text change.
+- Generate translations.
+- Prove that EN, DE, RU and AR initially remain DRAFT and are not visible publicly.
+- Approve only EN and DE.
+- Run bulk publish.
+- Prove that only EN and DE become PUBLISHED.
+- Prove RU and AR remain DRAFT or REVIEW.
+- Restore the intended Turkish content after testing.
+- Return all five languages to their intended final production state only through the approval workflow.
+
+4. QUALITY CHECKS
+
+Run and report:
+
+- TypeScript typecheck
+- ESLint
+- Production build
+- Browser console
+- 390px and 430px screenshots of /admin/ceviriler
+- Proof of the DRAFT → REVIEW → APPROVED → PUBLISHED state transitions
+- List of changed files
+
+Do not publish the Replit app.
+Do not modify production credentials or domain settings.

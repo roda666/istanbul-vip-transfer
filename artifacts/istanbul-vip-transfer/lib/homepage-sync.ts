@@ -12,7 +12,7 @@
 import 'server-only';
 import { createHash } from 'crypto';
 import type {
-  HomepageSections, HeroSection, HeroStat, ServicesSectionData,
+  HomepageSections, HeroSection, ServicesSectionData,
   TrustSectionData, VehiclesSectionData, ReviewsSectionData,
   ReservationSectionData, ContactSectionData, FooterSectionData,
   HomepageSeoData, TrustCard,

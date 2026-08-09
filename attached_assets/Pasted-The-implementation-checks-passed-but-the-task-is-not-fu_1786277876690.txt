@@ -1,0 +1,49 @@
+The implementation checks passed, but the task is not fully verified yet.
+
+Do not reset or change the admin password. Do not modify AUTH_SECRET, SESSION_SECRET, ADMIN_EMAIL, database credentials, deployment settings, or the production domain.
+
+Complete the missing verification:
+
+1. Fix the remaining pre-existing ESLint warning related to HeroStat without changing public-site behavior.
+
+2. Use the currently authenticated admin browser session and visually test the Admin Homepage Editor at:
+- 320px
+- 375px
+- 390px
+- 430px
+- 768px
+- 1440px
+
+3. At every width verify with an actual browser evaluation:
+document.documentElement.scrollWidth === document.documentElement.clientWidth
+
+Report the numerical clientWidth and scrollWidth values for every viewport.
+
+4. At 390px open and visually verify:
+- Turkish tab and at least two sections
+- English tab and at least two sections
+- Arabic tab and at least two sections
+
+5. Confirm from the visible input values—not only API responses or status badges—that:
+- TR contains Turkish text
+- EN contains English text
+- AR contains Arabic text
+- Arabic editor direction is RTL
+- Switching sections preserves the selected language
+- No form field, navigation item, button or action bar is clipped
+- The section selector appears as a full-width mobile dropdown
+- All field groups use a single-column mobile layout
+- There is no horizontal scrolling
+
+6. Save a harmless draft-only test in EN and confirm it does not overwrite TR, DE, RU or AR. Restore the original EN value afterward. Do not publish this test change.
+
+7. Provide:
+- 390px screenshots for TR, EN and AR
+- A viewport table containing clientWidth, scrollWidth and PASS/FAIL
+- A visible-content table for all five languages
+- Exact files changed
+- Final TypeScript, ESLint and production-build results
+- Browser-console and hydration results
+
+Do not mark the task complete unless the requested screenshots and viewport measurements are included.
+Do not publish or connect the production domain.

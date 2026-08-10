@@ -8,16 +8,30 @@
  * Usage:
  *   pnpm --filter @workspace/istanbul-vip-transfer generate:page-meta
  *   pnpm --filter @workspace/istanbul-vip-transfer generate:page-meta -- --force
+ *   pnpm --filter @workspace/istanbul-vip-transfer generate:page-meta -- --prune
+ *   pnpm --filter @workspace/istanbul-vip-transfer generate:page-meta -- --prune --force
+ *
+ * Flags:
+ *   --force   Re-translate all languages even if they appear up-to-date.
+ *   --prune   Remove orphaned entries (slugs in page-meta.json that are no
+ *             longer in PAGE_REGISTRY). Without this flag the script only
+ *             warns about orphans; it never deletes anything.
  *
  * Workflow:
  *  1. Reads PAGE_REGISTRY from lib/page-registry.ts (single source of truth)
  *  2. Reads the current page-meta.json
- *  3. For each slug:
+ *  3. Detects orphaned slugs (present in page-meta.json but absent from
+ *     PAGE_REGISTRY) and logs a warning for each one.
+ *     - If a registry slug has the same _sourceHash as an orphan, it is
+ *       treated as a rename: existing translations are carried forward so
+ *       no API calls are wasted on content that is already translated.
+ *     - With --prune, orphaned entries are removed from the output file.
+ *  4. For each registry slug:
  *     a. Computes a hash of the TR source (title + description)
  *     b. If the stored hash differs from the current hash (or --force is set),
  *        marks all target languages as stale → re-translates them
  *     c. Otherwise, only translates languages that are missing
- *  4. Writes the updated page-meta.json (including the new _sourceHash)
+ *  5. Writes the updated page-meta.json (including the new _sourceHash)
  *
  * Requires: OPENAI_API_KEY in environment (or .env.local)
  */
@@ -111,11 +125,65 @@ Description (TR): ${trDescription}`;
   return { title: parsed.title, description: parsed.description };
 }
 
+// ── Orphan detection & rename carry-forward ──────────────────────────────────
+/**
+ * Scans page-meta.json for slugs that are no longer in PAGE_REGISTRY.
+ *
+ * - Logs a warning for every orphan found.
+ * - If a registry slug shares the same _sourceHash as an orphan, it is
+ *   treated as a rename: existing translations are copied into the new slug
+ *   entry so the main translation loop can skip them.
+ * - Returns the set of orphan slugs so the caller can prune them if desired.
+ */
+function detectOrphans(
+  meta: PageMeta,
+  registryHashes: Map<string, string>, // hash → registry slug
+): Set<string> {
+  const registrySlugs = new Set(Object.keys(PAGE_REGISTRY));
+  const orphans = new Set<string>();
+
+  for (const metaSlug of Object.keys(meta)) {
+    if (registrySlugs.has(metaSlug)) continue;
+
+    orphans.add(metaSlug);
+
+    const orphanHash = meta[metaSlug]._sourceHash;
+    const renamedTo = orphanHash ? registryHashes.get(orphanHash) : undefined;
+
+    if (renamedTo) {
+      console.log(
+        `🔄  "${metaSlug}" → "${renamedTo}": source hash matches — treating as a rename. ` +
+          `Carrying forward existing translations.`,
+      );
+      // Copy translations into the target slug (create the entry if needed).
+      if (!meta[renamedTo]) meta[renamedTo] = {};
+      for (const [key, value] of Object.entries(meta[metaSlug])) {
+        // Only copy language translations that the target doesn't already have.
+        if (key !== '_sourceHash' && !meta[renamedTo][key]) {
+          (meta[renamedTo] as Record<string, unknown>)[key] = value;
+        }
+      }
+    } else {
+      console.warn(
+        `⚠  Orphan: "${metaSlug}" is in page-meta.json but not in PAGE_REGISTRY. ` +
+          `Run with --prune to remove it.`,
+      );
+    }
+  }
+
+  return orphans;
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
   const force = process.argv.includes('--force');
+  const prune = process.argv.includes('--prune');
+
   if (force) {
     console.log('⚡ --force mode: all translations will be regenerated.\n');
+  }
+  if (prune) {
+    console.log('🗑  --prune mode: orphaned entries will be removed.\n');
   }
 
   // Load existing metadata
@@ -123,6 +191,20 @@ async function main() {
     ? (JSON.parse(fs.readFileSync(PAGE_META_PATH, 'utf8')) as PageMeta)
     : {};
 
+  // Build a hash → registry-slug map for rename detection.
+  const registryHashes = new Map<string, string>();
+  for (const [slug, entry] of Object.entries(PAGE_REGISTRY)) {
+    const hash = hashTrSource(entry.tr.title, entry.tr.description);
+    registryHashes.set(hash, slug);
+  }
+
+  // ── Step 1: detect orphans and carry forward renamed translations ──────────
+  const orphans = detectOrphans(meta, registryHashes);
+  if (orphans.size > 0) {
+    console.log(''); // blank line after orphan block
+  }
+
+  // ── Step 2: process every registry slug ──────────────────────────────────
   let generated = 0;
   let skipped = 0;
   let staleDetected = 0;
@@ -195,17 +277,29 @@ async function main() {
     }
   }
 
-  // Write updated metadata back
+  // ── Step 3: prune orphans if requested ───────────────────────────────────
+  if (prune && orphans.size > 0) {
+    console.log('');
+    for (const orphanSlug of orphans) {
+      delete meta[orphanSlug];
+      console.log(`🗑  Pruned orphan: "${orphanSlug}"`);
+    }
+  }
+
+  // ── Step 4: write updated metadata ───────────────────────────────────────
   fs.writeFileSync(PAGE_META_PATH, JSON.stringify(meta, null, 2) + '\n', 'utf8');
 
-  const summary = [
-    `Generated ${generated} translations`,
-    staleDetected > 0 ? `re-translated ${staleDetected} stale slug(s)` : null,
-    `skipped ${skipped} up-to-date slugs`,
-  ]
-    .filter(Boolean)
-    .join(', ');
-  console.log(`\nDone. ${summary}.`);
+  const summaryParts: string[] = [`Generated ${generated} translations`];
+  if (staleDetected > 0) summaryParts.push(`re-translated ${staleDetected} stale slug(s)`);
+  summaryParts.push(`skipped ${skipped} up-to-date slugs`);
+  if (orphans.size > 0) {
+    summaryParts.push(
+      prune
+        ? `pruned ${orphans.size} orphan(s)`
+        : `found ${orphans.size} orphan(s) — run with --prune to remove`,
+    );
+  }
+  console.log(`\nDone. ${summaryParts.join(', ')}.`);
 }
 
 main().catch((err) => {

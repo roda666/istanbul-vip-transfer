@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { buildAlternates } from '@/lib/i18n/seo';
 import { getPublishedServicePageLangs } from '@/lib/service-page-cms';
-import PageHero from '@/components/PageHero';
+import TrServicePageHero from '@/components/TrServicePageHero';
 import BookingForm from '@/components/BookingForm';
 import VehicleFleet from '@/components/VehicleFleet';
 import Contact from '@/components/Contact';
@@ -60,7 +60,7 @@ const serviceSchema = {
 export default function SehirlerArasiTransferPage() {
   return (
     <>
-      <PageHero pageKey="sehirlerArasi" />
+      <TrServicePageHero slug="sehirler-arasi-transfer" pageKey="sehirlerArasi" />
       <BookingForm />
       <VehicleFleet />
       <Contact />

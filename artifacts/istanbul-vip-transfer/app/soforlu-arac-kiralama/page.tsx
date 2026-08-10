@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { buildAlternates } from '@/lib/i18n/seo';
 import { getPublishedServicePageLangs } from '@/lib/service-page-cms';
 import Link from 'next/link';
-import PageHero from '@/components/PageHero';
+import TrServicePageHero from '@/components/TrServicePageHero';
 import BookingForm from '@/components/BookingForm';
 import VehicleFleet from '@/components/VehicleFleet';
 import Contact from '@/components/Contact';
@@ -90,7 +90,7 @@ const faqs = [
 export default function SoforluAracKiralamaPage() {
   return (
     <>
-      <PageHero pageKey="soforlu" />
+      <TrServicePageHero slug="soforlu-arac-kiralama" pageKey="soforlu" />
 
       {/* ── Hizmet Tanımı ── */}
       <section className="py-16 md:py-20" style={{ background: '#EEF3F9' }}>

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { buildAlternates } from '@/lib/i18n/seo';
 import { getPublishedServicePageLangs } from '@/lib/service-page-cms';
 import LocaleLink from '@/components/LocaleLink';
-import PageHero from '@/components/PageHero';
+import TrServicePageHero from '@/components/TrServicePageHero';
 import BookingForm from '@/components/BookingForm';
 import VehicleFleet from '@/components/VehicleFleet';
 import Contact from '@/components/Contact';
@@ -61,7 +61,7 @@ const serviceSchema = {
 export default function IstanbulHavalimaniPage() {
   return (
     <>
-      <PageHero pageKey="istHava" />
+      <TrServicePageHero slug="istanbul-havalimani-transfer" pageKey="istHava" />
       <BookingForm />
       <VehicleFleet />
       <Contact />

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { buildAlternates } from '@/lib/i18n/seo';
 import { getPublishedServicePageLangs } from '@/lib/service-page-cms';
 import LocaleLink from '@/components/LocaleLink';
-import PageHero from '@/components/PageHero';
+import TrServicePageHero from '@/components/TrServicePageHero';
 import Services from '@/components/Services';
 import VehicleFleet from '@/components/VehicleFleet';
 import BookingForm from '@/components/BookingForm';
@@ -62,7 +62,7 @@ const serviceSchema = {
 export default function VipTransferPage() {
   return (
     <>
-      <PageHero pageKey="vipTransfer" />
+      <TrServicePageHero slug="vip-transfer" pageKey="vipTransfer" />
       <Services />
       <VehicleFleet />
       <BookingForm />

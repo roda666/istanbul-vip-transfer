@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { buildAlternates } from '@/lib/i18n/seo';
 import { getPublishedServicePageLangs } from '@/lib/service-page-cms';
-import PageHero from '@/components/PageHero';
+import TrServicePageHero from '@/components/TrServicePageHero';
 import BookingForm from '@/components/BookingForm';
 import Contact from '@/components/Contact';
 import { SITE } from '@/lib/site-config';
@@ -46,7 +46,7 @@ const breadcrumbSchema = {
 export default function IstanbulSapancaTransferPage() {
   return (
     <>
-      <PageHero pageKey="istSapanca" />
+      <TrServicePageHero slug="istanbul-sapanca-transfer" pageKey="istSapanca" />
 
       <section
         className="py-16 md:py-20 max-w-3xl mx-auto px-5 md:px-8"

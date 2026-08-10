@@ -24,23 +24,12 @@ import AraclarPage       from '@/app/araclar/page';
 import HakkimizdaPage    from '@/app/hakkimizda/page';
 import IletisimPage      from '@/app/iletisim/page';
 
-// ── SERVICE slug set (rendered via ServicePageRenderer) ───────────────────
-const SERVICE_SLUGS = new Set([
-  'istanbul-havalimani-transfer',
-  'sabiha-gokcen-havalimani-transfer',
-  'vip-transfer',
-  'sehirler-arasi-transfer',
-  'soforlu-arac-kiralama',
-  'otel-transfer',
-  'saglik-turizmi-transfer',
-  'kurumsal-vip-transfer',
-  'istanbul-bursa-transfer',
-  'istanbul-sapanca-transfer',
-  'istanbul-gunubirlik-turlar',
-  'sapanca-masukiye-turu',
-  'bursa-gunubirlik-tur',
-  'yalova-gunubirlik-tur',
-]);
+// ── SERVICE slug set (derived from PAGE_REGISTRY — no manual sync needed) ─
+const SERVICE_SLUGS = new Set(
+  Object.entries(PAGE_REGISTRY)
+    .filter(([, entry]) => entry.schemaType === 'Service')
+    .map(([slug]) => slug),
+);
 
 // ── Non-service static pages ─────────────────────────────────────────────
 const STATIC_PAGE_MAP: Record<string, React.ComponentType> = {

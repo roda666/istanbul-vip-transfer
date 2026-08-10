@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { SUPPORTED_LANGS } from '@/lib/i18n';
+import { buildAlternates } from '@/lib/i18n/seo';
 import Link from 'next/link';
 import PageHero from '@/components/PageHero';
 import { blogPosts, BLOG_LIVE } from '@/lib/blog-data';
@@ -33,23 +35,26 @@ const breadcrumbSchema = {
   ],
 };
 
-export const metadata: Metadata = {
-  title: 'Blog | İstanbul VIP Transfer Rehberleri',
-  description:
-    'İstanbul havalimanı transferi, VIP ulaşım, araç seçimi ve rezervasyon süreçleri hakkında faydalı rehberleri inceleyin.',
-  alternates: { canonical: PAGE },
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  const alts = await buildAlternates('/blog', [...SUPPORTED_LANGS]);
+  return {
     title: 'Blog | İstanbul VIP Transfer Rehberleri',
     description:
       'İstanbul havalimanı transferi, VIP ulaşım, araç seçimi ve rezervasyon süreçleri hakkında faydalı rehberleri inceleyin.',
-    url: PAGE,
-    siteName: 'VIP Transfer Istanbul',
-    locale: 'tr_TR',
-    type: 'website',
-    images: [SITE.ogImage],
-  },
-  robots: { index: true, follow: true },
-};
+    alternates: { canonical: PAGE, languages: alts.languages },
+    openGraph: {
+      title: 'Blog | İstanbul VIP Transfer Rehberleri',
+      description:
+        'İstanbul havalimanı transferi, VIP ulaşım, araç seçimi ve rezervasyon süreçleri hakkında faydalı rehberleri inceleyin.',
+      url: PAGE,
+      siteName: 'VIP Transfer Istanbul',
+      locale: 'tr_TR',
+      type: 'website',
+      images: [SITE.ogImage],
+    },
+    robots: { index: true, follow: true },
+  };
+}
 
 export default function BlogPage() {
   return (

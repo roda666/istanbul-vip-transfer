@@ -8,7 +8,7 @@ import { notFound } from 'next/navigation';
 import { db } from '@/db';
 import { contentTranslations, content } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { isValidLang, getDictionary } from '@/lib/i18n';
+import { isValidLang, getDictionary, SUPPORTED_LANGS } from '@/lib/i18n';
 import { buildAlternates, getOgLocale } from '@/lib/i18n/seo';
 import { SITE } from '@/lib/site-config';
 import { ArrowRight } from 'lucide-react';
@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { lang } = await params;
   if (!isValidLang(lang)) return {};
 
-  const alternates = await buildAlternates('/blog', [lang]);
+  const alternates = await buildAlternates('/blog', [...SUPPORTED_LANGS]);
   const titles: Record<string, string> = {
     en: 'Blog | Istanbul VIP Transfer',
     de: 'Blog | Istanbul VIP Transfer',

@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { buildAlternates } from '@/lib/i18n/seo';
+import { getPublishedServicePageLangs } from '@/lib/service-page-cms';
 import LocaleLink from '@/components/LocaleLink';
 import PageHero from '@/components/PageHero';
 import BookingForm from '@/components/BookingForm';
@@ -9,23 +11,27 @@ import { SITE } from '@/lib/site-config';
 const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/istanbul-havalimani-transfer`;
 
-export const metadata: Metadata = {
-  title: 'İstanbul Havalimanı Transfer | VIP Vito',
-  description:
-    'İstanbul Havalimanı transfer hizmetiyle Mercedes Vito ve Sprinter araçlarla otel, ev ve istediğiniz adrese özel ulaşım.',
-  alternates: { canonical: PAGE },
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  const publishedLangs = await getPublishedServicePageLangs('istanbul-havalimani-transfer');
+  const alts = await buildAlternates('/istanbul-havalimani-transfer', publishedLangs);
+  return {
     title: 'İstanbul Havalimanı Transfer | VIP Vito',
     description:
       'İstanbul Havalimanı transfer hizmetiyle Mercedes Vito ve Sprinter araçlarla otel, ev ve istediğiniz adrese özel ulaşım.',
-    url: PAGE,
-    siteName: 'VIP Transfer Istanbul',
-    locale: 'tr_TR',
-    type: 'website',
-    images: [SITE.ogImage],
-  },
-  robots: { index: true, follow: true },
-};
+    alternates: { canonical: PAGE, languages: alts.languages },
+    openGraph: {
+      title: 'İstanbul Havalimanı Transfer | VIP Vito',
+      description:
+        'İstanbul Havalimanı transfer hizmetiyle Mercedes Vito ve Sprinter araçlarla otel, ev ve istediğiniz adrese özel ulaşım.',
+      url: PAGE,
+      siteName: 'VIP Transfer Istanbul',
+      locale: 'tr_TR',
+      type: 'website',
+      images: [SITE.ogImage],
+    },
+    robots: { index: true, follow: true },
+  };
+}
 
 const breadcrumbSchema = {
   '@context': 'https://schema.org',

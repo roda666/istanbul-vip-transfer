@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { buildAlternates } from '@/lib/i18n/seo';
+import { getPublishedServicePageLangs } from '@/lib/service-page-cms';
 import Link from 'next/link';
 import PageHero from '@/components/PageHero';
 import BookingForm from '@/components/BookingForm';
@@ -12,25 +14,29 @@ const DRAFT = false;
 const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/kurumsal-vip-transfer`;
 
-export const metadata: Metadata = {
-  title: 'Kurumsal VIP Transfer İstanbul | Faturalı Şirket Transferi',
-  description:
-    'İstanbul\'da kurumsal VIP transfer hizmeti. Yönetici ve iş misafiri transferlerinde fatura düzenleme, karşılama tabelası ve Mercedes araç tahsisi.',
-  alternates: { canonical: PAGE },
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  const publishedLangs = await getPublishedServicePageLangs('kurumsal-vip-transfer');
+  const alts = await buildAlternates('/kurumsal-vip-transfer', publishedLangs);
+  return {
     title: 'Kurumsal VIP Transfer İstanbul | Faturalı Şirket Transferi',
     description:
       'İstanbul\'da kurumsal VIP transfer hizmeti. Yönetici ve iş misafiri transferlerinde fatura düzenleme, karşılama tabelası ve Mercedes araç tahsisi.',
-    url: PAGE,
-    siteName: 'VIP Transfer Istanbul',
-    locale: 'tr_TR',
-    type: 'website',
-    images: [SITE.ogImage],
-  },
-  robots: DRAFT
-    ? { index: false, follow: true }
-    : { index: true, follow: true },
-};
+    alternates: { canonical: PAGE, languages: alts.languages },
+    openGraph: {
+      title: 'Kurumsal VIP Transfer İstanbul | Faturalı Şirket Transferi',
+      description:
+        'İstanbul\'da kurumsal VIP transfer hizmeti. Yönetici ve iş misafiri transferlerinde fatura düzenleme, karşılama tabelası ve Mercedes araç tahsisi.',
+      url: PAGE,
+      siteName: 'VIP Transfer Istanbul',
+      locale: 'tr_TR',
+      type: 'website',
+      images: [SITE.ogImage],
+    },
+    robots: DRAFT
+      ? { index: false, follow: true }
+      : { index: true, follow: true },
+  };
+}
 
 const breadcrumbSchema = {
   '@context': 'https://schema.org',

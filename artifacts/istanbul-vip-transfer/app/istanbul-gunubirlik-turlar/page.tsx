@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { buildAlternates } from '@/lib/i18n/seo';
+import { getPublishedServicePageLangs } from '@/lib/service-page-cms';
 import PageHero from '@/components/PageHero';
 import BookingForm from '@/components/BookingForm';
 import Contact from '@/components/Contact';
@@ -10,22 +12,26 @@ const DRAFT = true;
 const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/istanbul-gunubirlik-turlar`;
 
-export const metadata: Metadata = {
-  title: 'İstanbul Günübirlik Turlar | VIP Özel Tur Aracı',
-  description:
-    'İstanbul\'un tarihi ve kültürel mekânlarını özel araçla günübirlik keşfedin. Mercedes Vito ve Sprinter ile kişiye özel şehir turu hizmeti.',
-  alternates: { canonical: PAGE },
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  const publishedLangs = await getPublishedServicePageLangs('istanbul-gunubirlik-turlar');
+  const alts = await buildAlternates('/istanbul-gunubirlik-turlar', publishedLangs);
+  return {
     title: 'İstanbul Günübirlik Turlar | VIP Özel Tur Aracı',
-    description: 'İstanbul\'un tarihi ve kültürel mekânlarını özel araçla günübirlik keşfedin. Mercedes Vito ve Sprinter ile kişiye özel şehir turu hizmeti.',
-    url: PAGE,
-    siteName: 'VIP Transfer Istanbul',
-    locale: 'tr_TR',
-    type: 'website',
-    images: [SITE.ogImage],
-  },
-  robots: DRAFT ? { index: false, follow: true } : { index: true, follow: true },
-};
+    description:
+      'İstanbul\'un tarihi ve kültürel mekânlarını özel araçla günübirlik keşfedin. Mercedes Vito ve Sprinter ile kişiye özel şehir turu hizmeti.',
+    alternates: { canonical: PAGE, languages: alts.languages },
+    openGraph: {
+      title: 'İstanbul Günübirlik Turlar | VIP Özel Tur Aracı',
+      description: 'İstanbul\'un tarihi ve kültürel mekânlarını özel araçla günübirlik keşfedin. Mercedes Vito ve Sprinter ile kişiye özel şehir turu hizmeti.',
+      url: PAGE,
+      siteName: 'VIP Transfer Istanbul',
+      locale: 'tr_TR',
+      type: 'website',
+      images: [SITE.ogImage],
+    },
+    robots: DRAFT ? { index: false, follow: true } : { index: true, follow: true },
+  };
+}
 
 const breadcrumbSchema = {
   '@context': 'https://schema.org',

@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { SUPPORTED_LANGS } from '@/lib/i18n';
+import { buildAlternates } from '@/lib/i18n/seo';
 import Hero from '@/components/Hero';
 import BookingForm from '@/components/BookingForm';
 import VehicleFleet from '@/components/VehicleFleet';
@@ -14,23 +16,26 @@ import { getPublishedHomepageData } from '@/lib/homepage-cms';
 
 const BASE = SITE.siteUrl;
 
-export const metadata: Metadata = {
-  title: 'İstanbul VIP Transfer | Vito ve Sprinter Hizmeti',
-  description:
-    'İstanbul VIP transfer hizmeti; İstanbul Havalimanı, Sabiha Gökçen, şehir içi ve şehirler arası Mercedes Vito ve Sprinter ulaşımı.',
-  alternates: { canonical: BASE },
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  const alts = await buildAlternates('/', [...SUPPORTED_LANGS]);
+  return {
     title: 'İstanbul VIP Transfer | Vito ve Sprinter Hizmeti',
     description:
       'İstanbul VIP transfer hizmeti; İstanbul Havalimanı, Sabiha Gökçen, şehir içi ve şehirler arası Mercedes Vito ve Sprinter ulaşımı.',
-    url: BASE,
-    siteName: 'VIP Transfer Istanbul',
-    locale: 'tr_TR',
-    type: 'website',
-    images: [SITE.ogImage],
-  },
-  robots: { index: true, follow: true },
-};
+    alternates: { canonical: BASE, languages: alts.languages },
+    openGraph: {
+      title: 'İstanbul VIP Transfer | Vito ve Sprinter Hizmeti',
+      description:
+        'İstanbul VIP transfer hizmeti; İstanbul Havalimanı, Sabiha Gökçen, şehir içi ve şehirler arası Mercedes Vito ve Sprinter ulaşımı.',
+      url: BASE,
+      siteName: 'VIP Transfer Istanbul',
+      locale: 'tr_TR',
+      type: 'website',
+      images: [SITE.ogImage],
+    },
+    robots: { index: true, follow: true },
+  };
+}
 
 const localBusinessSchema = {
   '@context': 'https://schema.org',

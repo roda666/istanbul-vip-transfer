@@ -96,13 +96,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (isService) {
     const dbMeta = await getDbMeta(pathKey, lang);
-    if (dbMeta) {
-      title       = dbMeta.title;
-      description = dbMeta.description;
-      if (dbMeta.ogImage) {
-        const abs = dbMeta.ogImage.startsWith('http') ? dbMeta.ogImage : `${SITE.siteUrl}${dbMeta.ogImage}`;
-        ogImages = [abs];
-      }
+    if (!dbMeta) {
+      // No published translation for this service page in this locale —
+      // return noindex so Google doesn't index fallback/missing content.
+      return { robots: { index: false, follow: false } };
+    }
+    title       = dbMeta.title;
+    description = dbMeta.description;
+    if (dbMeta.ogImage) {
+      const abs = dbMeta.ogImage.startsWith('http') ? dbMeta.ogImage : `${SITE.siteUrl}${dbMeta.ogImage}`;
+      ogImages = [abs];
     }
   }
 
@@ -113,7 +116,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description = description ?? meta?.description;
   }
 
-  const alternates = await buildAlternates(canonicalPath, [...SUPPORTED_LANGS]);
+  // For service pages: only emit hreflang for languages with a published
+  // DB translation so we never advertise a URL that serves fallback content.
+  // For static non-service pages the locale routes always exist, so we
+  // include all supported languages.
+  let publishedLangs: string[];
+  if (isService) {
+    const { getPublishedServicePageLangs } = await import('@/lib/service-page-cms');
+    publishedLangs = await getPublishedServicePageLangs(pathKey);
+  } else {
+    publishedLangs = [...SUPPORTED_LANGS];
+  }
+  const alternates = await buildAlternates(canonicalPath, publishedLangs);
 
   return {
     title,

@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { buildAlternates } from '@/lib/i18n/seo';
+import { getPublishedServicePageLangs } from '@/lib/service-page-cms';
 import PageHero from '@/components/PageHero';
 import BookingForm from '@/components/BookingForm';
 import VehicleFleet from '@/components/VehicleFleet';
@@ -8,23 +10,27 @@ import { SITE } from '@/lib/site-config';
 const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/sehirler-arasi-transfer`;
 
-export const metadata: Metadata = {
-  title: 'Şehirler Arası VIP Transfer | İstanbul',
-  description:
-    'İstanbul çıkışlı şehirler arası VIP transfer hizmeti. Mercedes Vito ve Sprinter araçlarla konforlu ve kapıdan kapıya özel ulaşım.',
-  alternates: { canonical: PAGE },
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  const publishedLangs = await getPublishedServicePageLangs('sehirler-arasi-transfer');
+  const alts = await buildAlternates('/sehirler-arasi-transfer', publishedLangs);
+  return {
     title: 'Şehirler Arası VIP Transfer | İstanbul',
     description:
       'İstanbul çıkışlı şehirler arası VIP transfer hizmeti. Mercedes Vito ve Sprinter araçlarla konforlu ve kapıdan kapıya özel ulaşım.',
-    url: PAGE,
-    siteName: 'VIP Transfer Istanbul',
-    locale: 'tr_TR',
-    type: 'website',
-    images: [SITE.ogImage],
-  },
-  robots: { index: true, follow: true },
-};
+    alternates: { canonical: PAGE, languages: alts.languages },
+    openGraph: {
+      title: 'Şehirler Arası VIP Transfer | İstanbul',
+      description:
+        'İstanbul çıkışlı şehirler arası VIP transfer hizmeti. Mercedes Vito ve Sprinter araçlarla konforlu ve kapıdan kapıya özel ulaşım.',
+      url: PAGE,
+      siteName: 'VIP Transfer Istanbul',
+      locale: 'tr_TR',
+      type: 'website',
+      images: [SITE.ogImage],
+    },
+    robots: { index: true, follow: true },
+  };
+}
 
 const breadcrumbSchema = {
   '@context': 'https://schema.org',

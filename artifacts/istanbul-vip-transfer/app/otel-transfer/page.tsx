@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { buildAlternates } from '@/lib/i18n/seo';
+import { getPublishedServicePageLangs } from '@/lib/service-page-cms';
 import Link from 'next/link';
 import PageHero from '@/components/PageHero';
 import BookingForm from '@/components/BookingForm';
@@ -12,25 +14,29 @@ const DRAFT = false;
 const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/otel-transfer`;
 
-export const metadata: Metadata = {
-  title: 'Otel Transfer İstanbul | Havalimanı–Otel VIP Ulaşım',
-  description:
-    'İstanbul\'da havalimanından otele, otelden havalimanına ve oteller arası Mercedes VIP transfer hizmeti. Karşılama tabelası ile kapıdan kapıya özel ulaşım.',
-  alternates: { canonical: PAGE },
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  const publishedLangs = await getPublishedServicePageLangs('otel-transfer');
+  const alts = await buildAlternates('/otel-transfer', publishedLangs);
+  return {
     title: 'Otel Transfer İstanbul | Havalimanı–Otel VIP Ulaşım',
     description:
       'İstanbul\'da havalimanından otele, otelden havalimanına ve oteller arası Mercedes VIP transfer hizmeti. Karşılama tabelası ile kapıdan kapıya özel ulaşım.',
-    url: PAGE,
-    siteName: 'VIP Transfer Istanbul',
-    locale: 'tr_TR',
-    type: 'website',
-    images: [SITE.ogImage],
-  },
-  robots: DRAFT
-    ? { index: false, follow: true }
-    : { index: true, follow: true },
-};
+    alternates: { canonical: PAGE, languages: alts.languages },
+    openGraph: {
+      title: 'Otel Transfer İstanbul | Havalimanı–Otel VIP Ulaşım',
+      description:
+        'İstanbul\'da havalimanından otele, otelden havalimanına ve oteller arası Mercedes VIP transfer hizmeti. Karşılama tabelası ile kapıdan kapıya özel ulaşım.',
+      url: PAGE,
+      siteName: 'VIP Transfer Istanbul',
+      locale: 'tr_TR',
+      type: 'website',
+      images: [SITE.ogImage],
+    },
+    robots: DRAFT
+      ? { index: false, follow: true }
+      : { index: true, follow: true },
+  };
+}
 
 const breadcrumbSchema = {
   '@context': 'https://schema.org',

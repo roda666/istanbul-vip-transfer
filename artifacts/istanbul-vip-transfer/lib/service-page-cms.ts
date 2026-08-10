@@ -104,6 +104,45 @@ export async function getPublishedServicePage(
   }
 }
 
+/**
+ * Returns language codes that have a PUBLISHED version of this service page.
+ * Turkish ('tr') is always included when the source record is published + active.
+ * Falls back to ['tr'] if the DB is unavailable.
+ */
+export async function getPublishedServicePageLangs(slug: string): Promise<string[]> {
+  try {
+    const { db }                          = await import('@/db');
+    const { content, contentTranslations } = await import('@/db/schema');
+    const { eq, and }                     = await import('drizzle-orm');
+
+    const [src] = await db
+      .select({ id: content.id, status: content.status, isActive: content.isActive })
+      .from(content)
+      .where(and(eq(content.slug, slug), eq(content.contentType, 'SERVICE')))
+      .limit(1);
+
+    if (!src) return [];
+    if (!src.isActive || src.status !== 'PUBLISHED') return [];
+
+    const txRows = await db
+      .select({ lang: contentTranslations.targetLanguageCode })
+      .from(contentTranslations)
+      .where(
+        and(
+          eq(contentTranslations.entityType,   ENTITY_TYPE),
+          eq(contentTranslations.entityId,     src.id),
+          eq(contentTranslations.status,       'PUBLISHED'),
+        ),
+      );
+
+    const langs = ['tr', ...txRows.map((r) => r.lang)];
+    // Deduplicate (defensive; 'tr' should never appear as a translation lang)
+    return [...new Set(langs)];
+  } catch {
+    return ['tr'];
+  }
+}
+
 // ── Admin read (draft + published) ───────────────────────────────────────────
 
 /**

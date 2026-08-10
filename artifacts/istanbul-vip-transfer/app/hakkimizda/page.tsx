@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { SUPPORTED_LANGS } from '@/lib/i18n';
+import { buildAlternates } from '@/lib/i18n/seo';
 import PageHero from '@/components/PageHero';
 import TrustSignals from '@/components/TrustSignals';
 import Reviews from '@/components/Reviews';
@@ -9,23 +11,26 @@ import { SITE } from '@/lib/site-config';
 const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/hakkimizda`;
 
-export const metadata: Metadata = {
-  title: 'Hakkımızda | İstanbul VIP Transfer',
-  description:
-    'İstanbul VIP Transfer\'in hizmet anlayışı, araç seçenekleri, havalimanı ve şehirler arası özel ulaşım çözümleri hakkında bilgi alın.',
-  alternates: { canonical: PAGE },
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  const alts = await buildAlternates('/hakkimizda', [...SUPPORTED_LANGS]);
+  return {
     title: 'Hakkımızda | İstanbul VIP Transfer',
     description:
       'İstanbul VIP Transfer\'in hizmet anlayışı, araç seçenekleri, havalimanı ve şehirler arası özel ulaşım çözümleri hakkında bilgi alın.',
-    url: PAGE,
-    siteName: 'VIP Transfer Istanbul',
-    locale: 'tr_TR',
-    type: 'website',
-    images: [SITE.ogImage],
-  },
-  robots: { index: true, follow: true },
-};
+    alternates: { canonical: PAGE, languages: alts.languages },
+    openGraph: {
+      title: 'Hakkımızda | İstanbul VIP Transfer',
+      description:
+        'İstanbul VIP Transfer\'in hizmet anlayışı, araç seçenekleri, havalimanı ve şehirler arası özel ulaşım çözümleri hakkında bilgi alın.',
+      url: PAGE,
+      siteName: 'VIP Transfer Istanbul',
+      locale: 'tr_TR',
+      type: 'website',
+      images: [SITE.ogImage],
+    },
+    robots: { index: true, follow: true },
+  };
+}
 
 const breadcrumbSchema = {
   '@context': 'https://schema.org',

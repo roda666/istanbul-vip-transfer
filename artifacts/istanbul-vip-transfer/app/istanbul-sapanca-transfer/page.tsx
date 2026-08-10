@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { buildAlternates } from '@/lib/i18n/seo';
+import { getPublishedServicePageLangs } from '@/lib/service-page-cms';
 import PageHero from '@/components/PageHero';
 import BookingForm from '@/components/BookingForm';
 import Contact from '@/components/Contact';
@@ -10,22 +12,26 @@ const DRAFT = true;
 const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/istanbul-sapanca-transfer`;
 
-export const metadata: Metadata = {
-  title: 'İstanbul–Sapanca Transfer | VIP Özel Araç',
-  description:
-    'İstanbul\'dan Sapanca\'ya veya Sapanca\'dan İstanbul\'a Mercedes Vito ve Sprinter ile özel VIP transfer hizmeti. Kapıdan kapıya konforlu şehirler arası ulaşım.',
-  alternates: { canonical: PAGE },
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  const publishedLangs = await getPublishedServicePageLangs('istanbul-sapanca-transfer');
+  const alts = await buildAlternates('/istanbul-sapanca-transfer', publishedLangs);
+  return {
     title: 'İstanbul–Sapanca Transfer | VIP Özel Araç',
-    description: 'İstanbul\'dan Sapanca\'ya veya Sapanca\'dan İstanbul\'a Mercedes Vito ve Sprinter ile özel VIP transfer hizmeti. Kapıdan kapıya konforlu şehirler arası ulaşım.',
-    url: PAGE,
-    siteName: 'VIP Transfer Istanbul',
-    locale: 'tr_TR',
-    type: 'website',
-    images: [SITE.ogImage],
-  },
-  robots: DRAFT ? { index: false, follow: true } : { index: true, follow: true },
-};
+    description:
+      'İstanbul\'dan Sapanca\'ya veya Sapanca\'dan İstanbul\'a Mercedes Vito ve Sprinter ile özel VIP transfer hizmeti. Kapıdan kapıya konforlu şehirler arası ulaşım.',
+    alternates: { canonical: PAGE, languages: alts.languages },
+    openGraph: {
+      title: 'İstanbul–Sapanca Transfer | VIP Özel Araç',
+      description: 'İstanbul\'dan Sapanca\'ya veya Sapanca\'dan İstanbul\'a Mercedes Vito ve Sprinter ile özel VIP transfer hizmeti. Kapıdan kapıya konforlu şehirler arası ulaşım.',
+      url: PAGE,
+      siteName: 'VIP Transfer Istanbul',
+      locale: 'tr_TR',
+      type: 'website',
+      images: [SITE.ogImage],
+    },
+    robots: DRAFT ? { index: false, follow: true } : { index: true, follow: true },
+  };
+}
 
 const breadcrumbSchema = {
   '@context': 'https://schema.org',

@@ -11,7 +11,8 @@ import { db } from '@/db';
 import { contentTranslations, content } from '@/db/schema';
 import { eq, and, or } from 'drizzle-orm';
 import { isValidLang, getDictionary, getLangDir } from '@/lib/i18n';
-import { buildAlternates, getOgLocale } from '@/lib/i18n/seo';
+import { getOgLocale } from '@/lib/i18n/seo';
+import { buildBlogAlternates } from '@/lib/blog-hreflang';
 import { SITE } from '@/lib/site-config';
 
 interface Props {
@@ -64,14 +65,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const title = translation.metaTitle ?? translation.title ?? translation.sourceTitle;
   const description = translation.metaDescription ?? translation.excerpt ?? undefined;
-  const path = `/blog/${translation.slug ?? slug}`;
-  const alternates = await buildAlternates(path, [lang]);
-
   const canonicalUrl = `${SITE.siteUrl}/${lang}/blog/${translation.slug ?? slug}`;
+  const { languages } = await buildBlogAlternates(translation.sourceSlug);
+
   return {
     title: `${title} | VIP Transfer Istanbul`,
     description,
-    alternates: { canonical: alternates.canonical, languages: alternates.languages },
+    alternates: { canonical: canonicalUrl, languages },
     openGraph: {
       title: title ?? undefined,
       description: description,

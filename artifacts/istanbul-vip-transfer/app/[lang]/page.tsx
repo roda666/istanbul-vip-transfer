@@ -6,7 +6,7 @@
  */
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { isValidLang } from '@/lib/i18n';
+import { isValidLang, SUPPORTED_LANGS } from '@/lib/i18n';
 import { buildAlternates, getOgLocale } from '@/lib/i18n/seo';
 import { SITE } from '@/lib/site-config';
 import BookingForm from '@/components/BookingForm';
@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { lang } = await params;
   if (!isValidLang(lang)) return {};
 
-  const alternates = await buildAlternates('/', [lang]);
+  const alternates = await buildAlternates('/', [...SUPPORTED_LANGS]);
 
   // Try to read SEO from DB; fall back to hardcoded defaults
   let seoTitle: string;

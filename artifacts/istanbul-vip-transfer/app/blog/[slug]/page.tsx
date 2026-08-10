@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { buildBlogAlternates } from '@/lib/blog-hreflang';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import PageHero from '@/components/PageHero';
@@ -25,10 +26,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const PAGE = `${BASE}/blog/${post.slug}`;
   const title = post.metaTitle ?? post.title;
+  const { trCanonical, languages } = await buildBlogAlternates(post.slug);
   return {
     title,
     description: post.description,
-    alternates: { canonical: PAGE },
+    alternates: { canonical: trCanonical, languages },
     openGraph: {
       title,
       description: post.description,

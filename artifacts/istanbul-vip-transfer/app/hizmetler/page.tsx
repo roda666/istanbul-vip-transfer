@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { SUPPORTED_LANGS } from '@/lib/i18n';
+import { buildAlternates } from '@/lib/i18n/seo';
 import PageHero from '@/components/PageHero';
 import BookingForm from '@/components/BookingForm';
 import Contact from '@/components/Contact';
@@ -8,23 +10,26 @@ import { SITE } from '@/lib/site-config';
 const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/hizmetler`;
 
-export const metadata: Metadata = {
-  title: 'Hizmetlerimiz | İstanbul VIP Transfer',
-  description:
-    'İstanbul VIP Transfer hizmet kategorileri: havalimanı transferi, VIP özel transfer, şehirler arası ulaşım ve günübirlik turlar. Mercedes Vito ve Sprinter araçlar.',
-  alternates: { canonical: PAGE },
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  const alts = await buildAlternates('/hizmetler', [...SUPPORTED_LANGS]);
+  return {
     title: 'Hizmetlerimiz | İstanbul VIP Transfer',
     description:
-      'İstanbul VIP Transfer hizmet kategorileri: havalimanı transferi, VIP özel transfer, şehirler arası ulaşım ve günübirlik turlar.',
-    url: PAGE,
-    siteName: 'VIP Transfer Istanbul',
-    locale: 'tr_TR',
-    type: 'website',
-    images: [SITE.ogImage],
-  },
-  robots: { index: true, follow: true },
-};
+      'İstanbul VIP Transfer hizmet kategorileri: havalimanı transferi, VIP özel transfer, şehirler arası ulaşım ve günübirlik turlar. Mercedes Vito ve Sprinter araçlar.',
+    alternates: { canonical: PAGE, languages: alts.languages },
+    openGraph: {
+      title: 'Hizmetlerimiz | İstanbul VIP Transfer',
+      description:
+        'İstanbul VIP Transfer hizmet kategorileri: havalimanı transferi, VIP özel transfer, şehirler arası ulaşım ve günübirlik turlar.',
+      url: PAGE,
+      siteName: 'VIP Transfer Istanbul',
+      locale: 'tr_TR',
+      type: 'website',
+      images: [SITE.ogImage],
+    },
+    robots: { index: true, follow: true },
+  };
+}
 
 const breadcrumbSchema = {
   '@context': 'https://schema.org',

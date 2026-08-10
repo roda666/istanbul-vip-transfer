@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { buildAlternates } from '@/lib/i18n/seo';
+import { getPublishedServicePageLangs } from '@/lib/service-page-cms';
 import LocaleLink from '@/components/LocaleLink';
 import PageHero from '@/components/PageHero';
 import BookingForm from '@/components/BookingForm';
@@ -9,23 +11,27 @@ import { SITE } from '@/lib/site-config';
 const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/sabiha-gokcen-havalimani-transfer`;
 
-export const metadata: Metadata = {
-  title: 'Sabiha Gökçen Transfer | VIP Vito',
-  description:
-    'Sabiha Gökçen Havalimanı transfer hizmetiyle Mercedes Vito ve Sprinter araçlarla İstanbul\'un her noktasına özel ulaşım.',
-  alternates: { canonical: PAGE },
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  const publishedLangs = await getPublishedServicePageLangs('sabiha-gokcen-havalimani-transfer');
+  const alts = await buildAlternates('/sabiha-gokcen-havalimani-transfer', publishedLangs);
+  return {
     title: 'Sabiha Gökçen Transfer | VIP Vito',
     description:
       'Sabiha Gökçen Havalimanı transfer hizmetiyle Mercedes Vito ve Sprinter araçlarla İstanbul\'un her noktasına özel ulaşım.',
-    url: PAGE,
-    siteName: 'VIP Transfer Istanbul',
-    locale: 'tr_TR',
-    type: 'website',
-    images: [SITE.ogImage],
-  },
-  robots: { index: true, follow: true },
-};
+    alternates: { canonical: PAGE, languages: alts.languages },
+    openGraph: {
+      title: 'Sabiha Gökçen Transfer | VIP Vito',
+      description:
+        'Sabiha Gökçen Havalimanı transfer hizmetiyle Mercedes Vito ve Sprinter araçlarla İstanbul\'un her noktasına özel ulaşım.',
+      url: PAGE,
+      siteName: 'VIP Transfer Istanbul',
+      locale: 'tr_TR',
+      type: 'website',
+      images: [SITE.ogImage],
+    },
+    robots: { index: true, follow: true },
+  };
+}
 
 const breadcrumbSchema = {
   '@context': 'https://schema.org',

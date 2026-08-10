@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { buildAlternates } from '@/lib/i18n/seo';
+import { getPublishedServicePageLangs } from '@/lib/service-page-cms';
 import PageHero from '@/components/PageHero';
 import BookingForm from '@/components/BookingForm';
 import Contact from '@/components/Contact';
@@ -10,22 +12,26 @@ const DRAFT = true;
 const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/sapanca-masukiye-turu`;
 
-export const metadata: Metadata = {
-  title: 'Sapanca–Maşukiye Günübirlik Turu | VIP Transfer',
-  description:
-    'İstanbul\'dan Sapanca Gölü ve Maşukiye\'ye özel araçla günübirlik tur. Doğa içinde konforlu bir gün geçirmek için Mercedes ile VIP tur hizmeti.',
-  alternates: { canonical: PAGE },
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  const publishedLangs = await getPublishedServicePageLangs('sapanca-masukiye-turu');
+  const alts = await buildAlternates('/sapanca-masukiye-turu', publishedLangs);
+  return {
     title: 'Sapanca–Maşukiye Günübirlik Turu | VIP Transfer',
-    description: 'İstanbul\'dan Sapanca Gölü ve Maşukiye\'ye özel araçla günübirlik tur. Doğa içinde konforlu bir gün geçirmek için Mercedes ile VIP tur hizmeti.',
-    url: PAGE,
-    siteName: 'VIP Transfer Istanbul',
-    locale: 'tr_TR',
-    type: 'website',
-    images: [SITE.ogImage],
-  },
-  robots: DRAFT ? { index: false, follow: true } : { index: true, follow: true },
-};
+    description:
+      'İstanbul\'dan Sapanca Gölü ve Maşukiye\'ye özel araçla günübirlik tur. Doğa içinde konforlu bir gün geçirmek için Mercedes ile VIP tur hizmeti.',
+    alternates: { canonical: PAGE, languages: alts.languages },
+    openGraph: {
+      title: 'Sapanca–Maşukiye Günübirlik Turu | VIP Transfer',
+      description: 'İstanbul\'dan Sapanca Gölü ve Maşukiye\'ye özel araçla günübirlik tur. Doğa içinde konforlu bir gün geçirmek için Mercedes ile VIP tur hizmeti.',
+      url: PAGE,
+      siteName: 'VIP Transfer Istanbul',
+      locale: 'tr_TR',
+      type: 'website',
+      images: [SITE.ogImage],
+    },
+    robots: DRAFT ? { index: false, follow: true } : { index: true, follow: true },
+  };
+}
 
 const breadcrumbSchema = {
   '@context': 'https://schema.org',

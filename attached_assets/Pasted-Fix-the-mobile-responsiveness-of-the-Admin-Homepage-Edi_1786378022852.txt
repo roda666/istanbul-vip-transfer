@@ -1,0 +1,35 @@
+Fix the mobile responsiveness of the Admin Homepage Editor at /admin/sayfalar/ana-sayfa.
+
+Current problem:
+On mobile screens, the section navigation (A–J) and the editor form remain side by side, so the form is clipped and requires horizontal scrolling. The desktop layout is fine.
+
+Requirements:
+1. Preserve all existing homepage CMS functionality:
+   - Turkish is the source language.
+   - Automatic synchronization/translation to EN, DE, RU, and AR remains enabled.
+   - Published/draft statuses must remain correct.
+   - Do not overwrite or delete any existing homepage content or translations.
+
+2. Responsive layout:
+   - Desktop/tablet width >= 1024px: keep the current two-column section navigation + editor layout.
+   - Below 768px: render everything in one vertical column.
+   - On mobile, replace the long A–J side navigation with a compact accessible select/dropdown or stacked full-width section selector.
+   - Language cards must fit cleanly on 320px, 375px, 390px, and 430px screens, wrapping into rows when needed.
+   - All form fields, textareas, image-path fields, toggles, and action buttons must be fully visible and usable.
+   - Bottom actions such as “Taslak Kaydet ve Çevir” and bulk publish must stack or wrap cleanly on mobile.
+   - Avoid horizontal scrolling. Do not hide overflow as a workaround; fix the actual widths, grids, padding, and min-width rules.
+
+3. Accessibility:
+   - Touch targets at least 44px high where practical.
+   - Labels remain associated with inputs.
+   - Keyboard navigation must work for language selection and section selection.
+   - Preserve Arabic RTL behavior.
+
+4. Verification:
+   - Test at 320px, 375px, 390px, 430px, 768px, 1024px, and 1440px.
+   - Confirm document.documentElement.scrollWidth equals document.documentElement.clientWidth on mobile.
+   - Verify switching TR/EN/DE/RU/AR still loads the correct localized homepage content.
+   - Run TypeScript check, ESLint, and production build.
+   - Provide screenshots of the Homepage Editor at 390px and 1440px.
+
+Do not publish or connect a production domain.

@@ -597,53 +597,106 @@ export default function HomepageEditor({ initialTrRecord, locales }: { initialTr
   const toastBorder: Record<string, string> = { ok: '#BBF7D0', err: '#FECACA', info: '#BFDBFE' };
 
   return (
-    <div style={{ fontFamily: 'Inter, sans-serif' }}>
+    <div className="hpe-root" style={{ fontFamily: 'Inter, sans-serif' }}>
       {/* ── Responsive CSS ─────────────────────────────────────────────────── */}
       <style>{`
-        .hpe-grid { display: grid; grid-template-columns: 190px 1fr; gap: 18px; }
+        /* ── Base (all screens) ─────────────────────────────────────────── */
+        .hpe-root {
+          width: 100%;
+          box-sizing: border-box;
+          /* Prevent any child from pushing the page wider than the viewport */
+          max-width: 100%;
+          overflow-x: hidden;
+        }
+        .hpe-root * { box-sizing: border-box; }
+
+        .hpe-grid { display: grid; grid-template-columns: 190px 1fr; gap: 18px; align-items: start; }
         .hpe-fg2  { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .hpe-fg3  { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
         .hpe-sec-desktop { display: block; }
         .hpe-sec-mobile  { display: none; }
+
+        /* Section editor card — use class so mobile can override padding */
+        .hpe-sec-card {
+          background: #FFFFFF;
+          border: 1px solid #E2E8F0;
+          border-radius: 10px;
+          padding: 22px;
+          min-width: 0;
+          width: 100%;
+        }
+
+        /* Locale tabs — wrap by default so they never force horizontal scroll */
+        .hpe-locale-tabs { display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; }
+
         .hpe-abar {
           margin-top: 18px; padding: 14px 18px;
           background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px;
           display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
         }
         .hpe-ml-auto { margin-left: auto; }
-        /* ── Mobile ≤ 900px ──────────────────────────────────────── */
-        @media (max-width: 900px) {
-          /* Main grid: sidebar + form → single column stack */
+
+        /* ── Below 1024px: single-column (tablet + mobile) ─────────────── */
+        @media (max-width: 1023px) {
           .hpe-grid {
-            display: block !important;
+            display: flex !important;
+            flex-direction: column !important;
             gap: 12px;
           }
-          .hpe-grid > * { width: 100%; box-sizing: border-box; }
-          /* Field grids → single column */
-          .hpe-fg2, .hpe-fg3 {
-            display: block !important;
+          .hpe-grid > * {
+            width: 100% !important;
+            min-width: 0 !important;
           }
-          .hpe-fg2 > *, .hpe-fg3 > * { width: 100%; }
-          /* Desktop nav list hidden; dropdown shown */
+          .hpe-fg2 { grid-template-columns: 1fr !important; }
+          .hpe-fg3 { grid-template-columns: 1fr !important; }
           .hpe-sec-desktop { display: none !important; }
           .hpe-sec-mobile  { display: block !important; margin-bottom: 12px; }
-          /* Action bar */
-          .hpe-abar { flex-direction: column; align-items: stretch; }
-          .hpe-abar button, .hpe-abar a {
-            width: 100%; box-sizing: border-box; text-align: center;
-            min-height: 44px; display: flex; align-items: center; justify-content: center;
-          }
-          .hpe-ml-auto { margin-left: 0; margin-top: 4px; }
-          /* Prevent iOS Safari auto-zoom: inputs ≥16px */
-          .hpe-field-input, .hpe-field-ta { font-size: 16px !important; }
-          /* Locale tabs: scrollable, never wrap */
-          .hpe-locale-tabs {
-            flex-wrap: nowrap !important;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            padding-bottom: 4px;
-          }
+          .hpe-sec-card    { padding: 16px !important; }
+        }
+
+        /* ── Below 768px: tight mobile ──────────────────────────────────── */
+        @media (max-width: 767px) {
+          .hpe-sec-card { padding: 12px !important; }
+
+          /* Locale tabs wrap into multiple rows — no horizontal scroll */
+          .hpe-locale-tabs { flex-wrap: wrap !important; gap: 6px; }
           .hpe-locale-tabs button { flex-shrink: 0; }
+
+          /* Action bar: vertical stack, full-width touch targets */
+          .hpe-abar {
+            flex-direction: column;
+            align-items: stretch;
+            padding: 12px;
+            gap: 8px;
+          }
+          .hpe-abar > button,
+          .hpe-abar > a {
+            width: 100% !important;
+            min-height: 44px;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center;
+          }
+          /* Auto-publish checkbox — full row, left-aligned */
+          .hpe-abar-autopub {
+            display: flex !important;
+            width: 100% !important;
+            justify-content: flex-start !important;
+            min-height: 44px;
+            align-items: center !important;
+          }
+          .hpe-ml-auto { margin-left: 0 !important; }
+
+          /* Prevent iOS Safari auto-zoom: inputs ≥ 16 px */
+          .hpe-field-input, .hpe-field-ta { font-size: 16px !important; }
+        }
+
+        /* ── Very narrow (320 px) ───────────────────────────────────────── */
+        @media (max-width: 360px) {
+          .hpe-sec-card { padding: 10px !important; }
+          .hpe-abar     { padding: 10px !important; }
         }
       `}</style>
       {/* Page header */}
@@ -670,7 +723,7 @@ export default function HomepageEditor({ initialTrRecord, locales }: { initialTr
       )}
 
       {/* Locale tabs */}
-      <div className="hpe-locale-tabs" style={{ display: 'flex', gap: '6px', marginBottom: '18px', flexWrap: 'wrap' }}>
+      <div className="hpe-locale-tabs">
         {LOCALES.map(l => {
           const s = statusForLocale(l.code);
           const isActive = activeLocale === l.code;
@@ -744,7 +797,7 @@ export default function HomepageEditor({ initialTrRecord, locales }: { initialTr
         </div>
 
         {/* Section editor */}
-        <div dir={dir} style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '22px', boxSizing: 'border-box', minWidth: 0 }}>
+        <div dir={dir} className="hpe-sec-card">
           {!isSource && (
             <div style={{ padding: '8px 12px', background: '#EFF6FF', borderRadius: '7px', marginBottom: '16px', fontSize: '12px', color: '#2563EB', fontFamily: 'Inter, sans-serif', border: '1px solid #BFDBFE' }}>
               ℹ Çevrilmiş içerik — salt okunur. Düzenlemek için Türkçe kaynağı değiştirin veya &quot;Manuel düzenleme&quot; moduna geçin.
@@ -770,7 +823,7 @@ export default function HomepageEditor({ initialTrRecord, locales }: { initialTr
               }}>
               {saving ? '⏳ İşleniyor…' : autoPublish ? '🌐 Kaydet ve Tüm Dillerde Yayımla' : '💾 Kaydet ve Taslak Çevir'}
             </button>
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#334155', fontFamily: 'Inter, sans-serif', cursor: 'pointer', userSelect: 'none' }}>
+            <label className="hpe-abar-autopub" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#334155', fontFamily: 'Inter, sans-serif', cursor: 'pointer', userSelect: 'none' }}>
               <input type="checkbox" checked={autoPublish} onChange={(e) => setAutoPublish(e.target.checked)} disabled={saving} />
               Otomatik yayınla
             </label>

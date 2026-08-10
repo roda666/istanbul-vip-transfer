@@ -137,6 +137,12 @@
   }
 }
 
+/* ── Scroll padding: prevent sticky header from obscuring anchor targets ─── */
+html {
+  /* matches h-20 (80px) sticky header height */
+  scroll-padding-top: 80px;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--pub-page-bg); }

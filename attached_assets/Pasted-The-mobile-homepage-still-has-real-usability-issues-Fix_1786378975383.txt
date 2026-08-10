@@ -1,0 +1,37 @@
+The mobile homepage still has real usability issues. Fix them properly; do not mask layout problems.
+
+Evidence:
+- On iPhone mobile preview, the floating WhatsApp button overlaps the primary “Fiyat Al / Rezervasyon” CTA.
+- The hero badge is partially hidden behind the sticky mobile header.
+- The previous implementation added overflow-x: hidden on the root container. Remove this workaround and fix the real elements causing overflow.
+
+Requirements:
+
+1. Fix the mobile WhatsApp floating button:
+   - It must never cover or block any clickable primary CTA, reservation button, form submit button, input, or mobile navigation control.
+   - On mobile, use safe-area-aware positioning.
+   - Add appropriate content bottom spacing where needed.
+   - If the button would overlap the hero CTA or reservation form actions, intelligently hide it or reposition it until that CTA is out of view.
+   - Verify the primary CTA remains fully visible and clickable at 320px, 375px, 390px, and 430px.
+
+2. Fix the sticky header / hero overlap:
+   - The hero badge and all first-screen content must begin below the sticky mobile header.
+   - No text, badge, heading, or CTA may be clipped by the header after page load, refresh, or anchor navigation.
+
+3. Remove root-level overflow-x: hidden:
+   - Do not use html/body/root overflow-x hidden or clipping to conceal layout bugs.
+   - Identify and fix the actual overflowing widths, min-width values, grid columns, margins, gaps, 100vw usage, and fixed-position elements.
+   - Confirm document.documentElement.scrollWidth === document.documentElement.clientWidth without relying on hidden overflow.
+
+4. Preserve:
+   - Current bright ivory/blue/navy/gold visual design.
+   - Turkish, English, German, Russian, and Arabic routes and RTL behavior.
+   - Existing WhatsApp reservation flow and all homepage CMS/translation functionality.
+   - Desktop layout must not regress.
+
+5. Verify:
+   - Screenshots at 390px mobile and 1440px desktop.
+   - Test on iPhone safe-area simulation.
+   - Confirm no overlap between the floating WhatsApp button and any CTA.
+   - Run TypeScript, ESLint, and production build.
+   - Do not publish or connect a production domain.

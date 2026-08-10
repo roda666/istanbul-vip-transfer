@@ -30,8 +30,11 @@ export default function WhatsAppFloat() {
   // True after the initial entrance delay has elapsed.
   const [appeared, setAppeared] = useState(false);
 
-  // True while the #rezervasyon section is intersecting the viewport.
+  // True while the #rezervasyon booking form section is intersecting the viewport.
   const [formVisible, setFormVisible] = useState(false);
+
+  // True while the #hero section (and its primary CTAs) is intersecting the viewport.
+  const [heroVisible, setHeroVisible] = useState(true); // start true to prevent flash
 
   // Initial entrance delay — mirrors the previous 1.5 s spring delay.
   useEffect(() => {
@@ -51,8 +54,23 @@ export default function WhatsAppFloat() {
     return () => observer.disconnect();
   }, []);
 
-  // The button is visible only when it has appeared AND the form is off-screen.
-  const show = appeared && !formVisible;
+  // Hide while the hero section is on screen — its primary CTA overlaps the button.
+  useEffect(() => {
+    const hero = document.getElementById('hero');
+    if (!hero || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setHeroVisible(entry.isIntersecting),
+      // threshold 0: hides as soon as ANY part of hero is in view;
+      // button appears only once the user scrolls fully past the hero.
+      { threshold: 0 },
+    );
+    observer.observe(hero);
+    return () => observer.disconnect();
+  }, []);
+
+  // The button is visible only when it has appeared AND neither the hero
+  // section nor the booking form is currently on screen.
+  const show = appeared && !heroVisible && !formVisible;
 
   return (
     <a

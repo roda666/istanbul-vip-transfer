@@ -29,6 +29,14 @@ export const SITE = {
 
   /** Canonical base URL */
   siteUrl: 'https://www.istanbulviptransfer.com',
+
+  /** Default og:image used in social/AI previews (1600×1000 px) */
+  ogImage: {
+    url: 'https://www.istanbulviptransfer.com/images/istanbul-vip-transfer-hero.webp',
+    width: 1600,
+    height: 1000,
+    alt: 'İstanbul VIP Transfer — Mercedes Vito ve Sprinter',
+  },
 } as const;
 
 /** Returns a pre-filled WhatsApp URL for the booking form submission. */

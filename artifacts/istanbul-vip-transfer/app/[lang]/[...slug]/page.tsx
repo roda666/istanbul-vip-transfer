@@ -243,6 +243,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       siteName: 'VIP Transfer Istanbul',
       locale: getOgLocale(lang),
       type: 'website',
+      images: [SITE.ogImage],
     },
     robots: { index: true, follow: true },
   };

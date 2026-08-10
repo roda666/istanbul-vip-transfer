@@ -41,7 +41,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       images:
         post.image
           ? [{ url: post.image, alt: post.imageAlt ?? post.title }]
-          : undefined,
+          : [SITE.ogImage],
     },
     robots: { index: true, follow: true },
   };

@@ -79,6 +79,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       siteName: 'VIP Transfer Istanbul',
       locale: getOgLocale(lang),
       type: 'article',
+      images: [SITE.ogImage],
     },
     robots: { index: true, follow: true },
   };

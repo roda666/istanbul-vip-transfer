@@ -25,6 +25,7 @@ export const metadata: Metadata = {
     siteName: 'VIP Transfer Istanbul',
     locale: 'tr_TR',
     type: 'website',
+    images: [SITE.ogImage],
   },
   robots: DRAFT
     ? { index: false, follow: true }

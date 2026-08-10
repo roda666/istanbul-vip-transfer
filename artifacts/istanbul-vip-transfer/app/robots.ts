@@ -8,6 +8,15 @@ export default function robots(): MetadataRoute.Robots {
       { userAgent: 'GPTBot', allow: '/', disallow: ['/admin', '/data'] },
       { userAgent: 'OAI-SearchBot', allow: '/', disallow: ['/admin', '/data'] },
       { userAgent: 'ChatGPT-User', allow: '/', disallow: ['/admin', '/data'] },
+      // Explicit permission for Anthropic / Claude bots
+      { userAgent: 'ClaudeBot', allow: '/', disallow: ['/admin', '/data'] },
+      { userAgent: 'Claude-User', allow: '/', disallow: ['/admin', '/data'] },
+      { userAgent: 'Claude-SearchBot', allow: '/', disallow: ['/admin', '/data'] },
+      // Explicit permission for Perplexity bots
+      { userAgent: 'PerplexityBot', allow: '/', disallow: ['/admin', '/data'] },
+      { userAgent: 'Perplexity-User', allow: '/', disallow: ['/admin', '/data'] },
+      // Explicit permission for Google AI (Gemini / AI Overviews)
+      { userAgent: 'Google-Extended', allow: '/', disallow: ['/admin', '/data'] },
       // General crawlers
       { userAgent: '*', allow: '/', disallow: [] },
     ],

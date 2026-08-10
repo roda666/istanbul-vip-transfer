@@ -30,12 +30,12 @@ export const SITE = {
   /** Canonical base URL */
   siteUrl: 'https://www.istanbulviptransfer.com',
 
-  /** Default og:image used in social/AI previews (1600×1000 px) */
+  /** Default og:image used in social/AI previews (1200×630 px — canonical social card) */
   ogImage: {
-    url: 'https://www.istanbulviptransfer.com/images/istanbul-vip-transfer-hero.webp',
-    width: 1600,
-    height: 1000,
-    alt: 'İstanbul VIP Transfer — Mercedes Vito ve Sprinter',
+    url: 'https://www.istanbulviptransfer.com/images/og-card.jpg',
+    width: 1200,
+    height: 630,
+    alt: 'İstanbul VIP Transfer — Lüks Havalimanı Transferi',
   },
 } as const;
 

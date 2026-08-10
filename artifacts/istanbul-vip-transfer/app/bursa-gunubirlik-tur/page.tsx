@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { buildAlternates } from '@/lib/i18n/seo';
-import { getPublishedServicePageLangs } from '@/lib/service-page-cms';
+import { getPublishedServicePage, getPublishedServicePageLangs } from '@/lib/service-page-cms';
 import TrServicePageHero from '@/components/TrServicePageHero';
 import BookingForm from '@/components/BookingForm';
 import Contact from '@/components/Contact';
@@ -15,14 +15,15 @@ const PAGE = `${BASE}/bursa-gunubirlik-tur`;
 export async function generateMetadata(): Promise<Metadata> {
   const publishedLangs = await getPublishedServicePageLangs('bursa-gunubirlik-tur');
   const alts = await buildAlternates('/bursa-gunubirlik-tur', publishedLangs);
+  const cmsPage = await getPublishedServicePage('bursa-gunubirlik-tur', 'tr');
   return {
-    title: 'Bursa Günübirlik Tur | İstanbul\'dan VIP Transfer',
+    title: cmsPage?.title ?? 'Bursa Günübirlik Tur | İstanbul\'dan VIP Transfer',
     description:
-      'İstanbul\'dan Bursa\'ya özel araçla günübirlik tur. Yeşil Bursa\'yı kendi programınıza göre keşfetmek için Mercedes VIP tur transferi.',
+      cmsPage?.excerpt ?? 'İstanbul\'dan Bursa\'ya özel araçla günübirlik tur. Yeşil Bursa\'yı kendi programınıza göre keşfetmek için Mercedes VIP tur transferi.',
     alternates: { canonical: PAGE, languages: alts.languages },
     openGraph: {
-      title: 'Bursa Günübirlik Tur | İstanbul\'dan VIP Transfer',
-      description: 'İstanbul\'dan Bursa\'ya özel araçla günübirlik tur. Yeşil Bursa\'yı kendi programınıza göre keşfetmek için Mercedes VIP tur transferi.',
+      title: cmsPage?.title ?? 'Bursa Günübirlik Tur | İstanbul\'dan VIP Transfer',
+      description: cmsPage?.excerpt ?? 'İstanbul\'dan Bursa\'ya özel araçla günübirlik tur. Yeşil Bursa\'yı kendi programınıza göre keşfetmek için Mercedes VIP tur transferi.',
       url: PAGE,
       siteName: 'VIP Transfer Istanbul',
       locale: 'tr_TR',

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { buildAlternates } from '@/lib/i18n/seo';
-import { getPublishedServicePageLangs } from '@/lib/service-page-cms';
+import { getPublishedServicePage, getPublishedServicePageLangs } from '@/lib/service-page-cms';
 import Link from 'next/link';
 import TrServicePageHero from '@/components/TrServicePageHero';
 import BookingForm from '@/components/BookingForm';
@@ -17,15 +17,16 @@ const PAGE = `${BASE}/soforlu-arac-kiralama`;
 export async function generateMetadata(): Promise<Metadata> {
   const publishedLangs = await getPublishedServicePageLangs('soforlu-arac-kiralama');
   const alts = await buildAlternates('/soforlu-arac-kiralama', publishedLangs);
+  const cmsPage = await getPublishedServicePage('soforlu-arac-kiralama', 'tr');
   return {
-    title: 'Şoförlü Araç Kiralama İstanbul | Günlük VIP Şoför Hizmeti',
+    title: cmsPage?.title ?? 'Şoförlü Araç Kiralama İstanbul | Günlük VIP Şoför Hizmeti',
     description:
-      'İstanbul\'da şoförlü araç kiralama hizmeti. Saatlik veya günlük olarak Mercedes Vito veya Sprinter ile toplantı, alışveriş ve etkinlik transferleri.',
+      cmsPage?.excerpt ?? 'İstanbul\'da şoförlü araç kiralama hizmeti. Saatlik veya günlük olarak Mercedes Vito veya Sprinter ile toplantı, alışveriş ve etkinlik transferleri.',
     alternates: { canonical: PAGE, languages: alts.languages },
     openGraph: {
-      title: 'Şoförlü Araç Kiralama İstanbul | Günlük VIP Şoför Hizmeti',
+      title: cmsPage?.title ?? 'Şoförlü Araç Kiralama İstanbul | Günlük VIP Şoför Hizmeti',
       description:
-        'İstanbul\'da şoförlü araç kiralama hizmeti. Saatlik veya günlük olarak Mercedes Vito veya Sprinter ile toplantı, alışveriş ve etkinlik transferleri.',
+        cmsPage?.excerpt ?? 'İstanbul\'da şoförlü araç kiralama hizmeti. Saatlik veya günlük olarak Mercedes Vito veya Sprinter ile toplantı, alışveriş ve etkinlik transferleri.',
       url: PAGE,
       siteName: 'VIP Transfer Istanbul',
       locale: 'tr_TR',

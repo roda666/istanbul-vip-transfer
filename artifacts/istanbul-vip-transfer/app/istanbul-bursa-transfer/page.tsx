@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { buildAlternates } from '@/lib/i18n/seo';
-import { getPublishedServicePageLangs } from '@/lib/service-page-cms';
+import { getPublishedServicePage, getPublishedServicePageLangs } from '@/lib/service-page-cms';
 import TrServicePageHero from '@/components/TrServicePageHero';
 import BookingForm from '@/components/BookingForm';
 import Contact from '@/components/Contact';
@@ -15,14 +15,15 @@ const PAGE = `${BASE}/istanbul-bursa-transfer`;
 export async function generateMetadata(): Promise<Metadata> {
   const publishedLangs = await getPublishedServicePageLangs('istanbul-bursa-transfer');
   const alts = await buildAlternates('/istanbul-bursa-transfer', publishedLangs);
+  const cmsPage = await getPublishedServicePage('istanbul-bursa-transfer', 'tr');
   return {
-    title: 'İstanbul–Bursa Transfer | VIP Özel Araç',
+    title: cmsPage?.title ?? 'İstanbul–Bursa Transfer | VIP Özel Araç',
     description:
-      'İstanbul\'dan Bursa\'ya veya Bursa\'dan İstanbul\'a Mercedes Vito ve Sprinter ile özel VIP transfer hizmeti. Kapıdan kapıya konforlu şehirler arası ulaşım.',
+      cmsPage?.excerpt ?? 'İstanbul\'dan Bursa\'ya veya Bursa\'dan İstanbul\'a Mercedes Vito ve Sprinter ile özel VIP transfer hizmeti. Kapıdan kapıya konforlu şehirler arası ulaşım.',
     alternates: { canonical: PAGE, languages: alts.languages },
     openGraph: {
-      title: 'İstanbul–Bursa Transfer | VIP Özel Araç',
-      description: 'İstanbul\'dan Bursa\'ya veya Bursa\'dan İstanbul\'a Mercedes Vito ve Sprinter ile özel VIP transfer hizmeti. Kapıdan kapıya konforlu şehirler arası ulaşım.',
+      title: cmsPage?.title ?? 'İstanbul–Bursa Transfer | VIP Özel Araç',
+      description: cmsPage?.excerpt ?? 'İstanbul\'dan Bursa\'ya veya Bursa\'dan İstanbul\'a Mercedes Vito ve Sprinter ile özel VIP transfer hizmeti. Kapıdan kapıya konforlu şehirler arası ulaşım.',
       url: PAGE,
       siteName: 'VIP Transfer Istanbul',
       locale: 'tr_TR',

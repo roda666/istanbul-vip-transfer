@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { buildAlternates } from '@/lib/i18n/seo';
-import { getPublishedServicePageLangs } from '@/lib/service-page-cms';
+import { getPublishedServicePage, getPublishedServicePageLangs } from '@/lib/service-page-cms';
 import LocaleLink from '@/components/LocaleLink';
 import TrServicePageHero from '@/components/TrServicePageHero';
 import BookingForm from '@/components/BookingForm';
@@ -14,15 +14,16 @@ const PAGE = `${BASE}/sabiha-gokcen-havalimani-transfer`;
 export async function generateMetadata(): Promise<Metadata> {
   const publishedLangs = await getPublishedServicePageLangs('sabiha-gokcen-havalimani-transfer');
   const alts = await buildAlternates('/sabiha-gokcen-havalimani-transfer', publishedLangs);
+  const cmsPage = await getPublishedServicePage('sabiha-gokcen-havalimani-transfer', 'tr');
   return {
-    title: 'Sabiha Gökçen Transfer | VIP Vito',
+    title: cmsPage?.title ?? 'Sabiha Gökçen Transfer | VIP Vito',
     description:
-      'Sabiha Gökçen Havalimanı transfer hizmetiyle Mercedes Vito ve Sprinter araçlarla İstanbul\'un her noktasına özel ulaşım.',
+      cmsPage?.excerpt ?? 'Sabiha Gökçen Havalimanı transfer hizmetiyle Mercedes Vito ve Sprinter araçlarla İstanbul\'un her noktasına özel ulaşım.',
     alternates: { canonical: PAGE, languages: alts.languages },
     openGraph: {
-      title: 'Sabiha Gökçen Transfer | VIP Vito',
+      title: cmsPage?.title ?? 'Sabiha Gökçen Transfer | VIP Vito',
       description:
-        'Sabiha Gökçen Havalimanı transfer hizmetiyle Mercedes Vito ve Sprinter araçlarla İstanbul\'un her noktasına özel ulaşım.',
+        cmsPage?.excerpt ?? 'Sabiha Gökçen Havalimanı transfer hizmetiyle Mercedes Vito ve Sprinter araçlarla İstanbul\'un her noktasına özel ulaşım.',
       url: PAGE,
       siteName: 'VIP Transfer Istanbul',
       locale: 'tr_TR',

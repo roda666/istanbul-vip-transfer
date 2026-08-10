@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { buildAlternates } from '@/lib/i18n/seo';
-import { getPublishedServicePageLangs } from '@/lib/service-page-cms';
+import { getPublishedServicePage, getPublishedServicePageLangs } from '@/lib/service-page-cms';
 import TrServicePageHero from '@/components/TrServicePageHero';
 import BookingForm from '@/components/BookingForm';
 import Contact from '@/components/Contact';
@@ -15,14 +15,15 @@ const PAGE = `${BASE}/sapanca-masukiye-turu`;
 export async function generateMetadata(): Promise<Metadata> {
   const publishedLangs = await getPublishedServicePageLangs('sapanca-masukiye-turu');
   const alts = await buildAlternates('/sapanca-masukiye-turu', publishedLangs);
+  const cmsPage = await getPublishedServicePage('sapanca-masukiye-turu', 'tr');
   return {
-    title: 'Sapanca–Maşukiye Günübirlik Turu | VIP Transfer',
+    title: cmsPage?.title ?? 'Sapanca–Maşukiye Günübirlik Turu | VIP Transfer',
     description:
-      'İstanbul\'dan Sapanca Gölü ve Maşukiye\'ye özel araçla günübirlik tur. Doğa içinde konforlu bir gün geçirmek için Mercedes ile VIP tur hizmeti.',
+      cmsPage?.excerpt ?? 'İstanbul\'dan Sapanca Gölü ve Maşukiye\'ye özel araçla günübirlik tur. Doğa içinde konforlu bir gün geçirmek için Mercedes ile VIP tur hizmeti.',
     alternates: { canonical: PAGE, languages: alts.languages },
     openGraph: {
-      title: 'Sapanca–Maşukiye Günübirlik Turu | VIP Transfer',
-      description: 'İstanbul\'dan Sapanca Gölü ve Maşukiye\'ye özel araçla günübirlik tur. Doğa içinde konforlu bir gün geçirmek için Mercedes ile VIP tur hizmeti.',
+      title: cmsPage?.title ?? 'Sapanca–Maşukiye Günübirlik Turu | VIP Transfer',
+      description: cmsPage?.excerpt ?? 'İstanbul\'dan Sapanca Gölü ve Maşukiye\'ye özel araçla günübirlik tur. Doğa içinde konforlu bir gün geçirmek için Mercedes ile VIP tur hizmeti.',
       url: PAGE,
       siteName: 'VIP Transfer Istanbul',
       locale: 'tr_TR',

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { buildAlternates } from '@/lib/i18n/seo';
-import { getPublishedServicePageLangs } from '@/lib/service-page-cms';
+import { getPublishedServicePage, getPublishedServicePageLangs } from '@/lib/service-page-cms';
 import TrServicePageHero from '@/components/TrServicePageHero';
 import BookingForm from '@/components/BookingForm';
 import VehicleFleet from '@/components/VehicleFleet';
@@ -13,15 +13,16 @@ const PAGE = `${BASE}/sehirler-arasi-transfer`;
 export async function generateMetadata(): Promise<Metadata> {
   const publishedLangs = await getPublishedServicePageLangs('sehirler-arasi-transfer');
   const alts = await buildAlternates('/sehirler-arasi-transfer', publishedLangs);
+  const cmsPage = await getPublishedServicePage('sehirler-arasi-transfer', 'tr');
   return {
-    title: 'Şehirler Arası VIP Transfer | İstanbul',
+    title: cmsPage?.title ?? 'Şehirler Arası VIP Transfer | İstanbul',
     description:
-      'İstanbul çıkışlı şehirler arası VIP transfer hizmeti. Mercedes Vito ve Sprinter araçlarla konforlu ve kapıdan kapıya özel ulaşım.',
+      cmsPage?.excerpt ?? 'İstanbul çıkışlı şehirler arası VIP transfer hizmeti. Mercedes Vito ve Sprinter araçlarla konforlu ve kapıdan kapıya özel ulaşım.',
     alternates: { canonical: PAGE, languages: alts.languages },
     openGraph: {
-      title: 'Şehirler Arası VIP Transfer | İstanbul',
+      title: cmsPage?.title ?? 'Şehirler Arası VIP Transfer | İstanbul',
       description:
-        'İstanbul çıkışlı şehirler arası VIP transfer hizmeti. Mercedes Vito ve Sprinter araçlarla konforlu ve kapıdan kapıya özel ulaşım.',
+        cmsPage?.excerpt ?? 'İstanbul çıkışlı şehirler arası VIP transfer hizmeti. Mercedes Vito ve Sprinter araçlarla konforlu ve kapıdan kapıya özel ulaşım.',
       url: PAGE,
       siteName: 'VIP Transfer Istanbul',
       locale: 'tr_TR',

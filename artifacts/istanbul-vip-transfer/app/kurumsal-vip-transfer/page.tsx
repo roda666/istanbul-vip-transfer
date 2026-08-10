@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { buildAlternates } from '@/lib/i18n/seo';
-import { getPublishedServicePageLangs } from '@/lib/service-page-cms';
+import { getPublishedServicePage, getPublishedServicePageLangs } from '@/lib/service-page-cms';
 import Link from 'next/link';
 import TrServicePageHero from '@/components/TrServicePageHero';
 import BookingForm from '@/components/BookingForm';
@@ -17,15 +17,16 @@ const PAGE = `${BASE}/kurumsal-vip-transfer`;
 export async function generateMetadata(): Promise<Metadata> {
   const publishedLangs = await getPublishedServicePageLangs('kurumsal-vip-transfer');
   const alts = await buildAlternates('/kurumsal-vip-transfer', publishedLangs);
+  const cmsPage = await getPublishedServicePage('kurumsal-vip-transfer', 'tr');
   return {
-    title: 'Kurumsal VIP Transfer İstanbul | Faturalı Şirket Transferi',
+    title: cmsPage?.title ?? 'Kurumsal VIP Transfer İstanbul | Faturalı Şirket Transferi',
     description:
-      'İstanbul\'da kurumsal VIP transfer hizmeti. Yönetici ve iş misafiri transferlerinde fatura düzenleme, karşılama tabelası ve Mercedes araç tahsisi.',
+      cmsPage?.excerpt ?? 'İstanbul\'da kurumsal VIP transfer hizmeti. Yönetici ve iş misafiri transferlerinde fatura düzenleme, karşılama tabelası ve Mercedes araç tahsisi.',
     alternates: { canonical: PAGE, languages: alts.languages },
     openGraph: {
-      title: 'Kurumsal VIP Transfer İstanbul | Faturalı Şirket Transferi',
+      title: cmsPage?.title ?? 'Kurumsal VIP Transfer İstanbul | Faturalı Şirket Transferi',
       description:
-        'İstanbul\'da kurumsal VIP transfer hizmeti. Yönetici ve iş misafiri transferlerinde fatura düzenleme, karşılama tabelası ve Mercedes araç tahsisi.',
+        cmsPage?.excerpt ?? 'İstanbul\'da kurumsal VIP transfer hizmeti. Yönetici ve iş misafiri transferlerinde fatura düzenleme, karşılama tabelası ve Mercedes araç tahsisi.',
       url: PAGE,
       siteName: 'VIP Transfer Istanbul',
       locale: 'tr_TR',

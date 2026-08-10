@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { buildAlternates } from '@/lib/i18n/seo';
-import { getPublishedServicePageLangs } from '@/lib/service-page-cms';
+import { getPublishedServicePage, getPublishedServicePageLangs } from '@/lib/service-page-cms';
 import Link from 'next/link';
 import TrServicePageHero from '@/components/TrServicePageHero';
 import BookingForm from '@/components/BookingForm';
@@ -17,15 +17,16 @@ const PAGE = `${BASE}/saglik-turizmi-transfer`;
 export async function generateMetadata(): Promise<Metadata> {
   const publishedLangs = await getPublishedServicePageLangs('saglik-turizmi-transfer');
   const alts = await buildAlternates('/saglik-turizmi-transfer', publishedLangs);
+  const cmsPage = await getPublishedServicePage('saglik-turizmi-transfer', 'tr');
   return {
-    title: 'Sağlık Turizmi Transfer İstanbul | Hastane VIP Ulaşım',
+    title: cmsPage?.title ?? 'Sağlık Turizmi Transfer İstanbul | Hastane VIP Ulaşım',
     description:
-      'İstanbul\'a sağlık turizmi amacıyla gelen hastalar için havalimanından hastaneye, klinikten otele ve randevular arası özel Mercedes transfer hizmeti.',
+      cmsPage?.excerpt ?? 'İstanbul\'a sağlık turizmi amacıyla gelen hastalar için havalimanından hastaneye, klinikten otele ve randevular arası özel Mercedes transfer hizmeti.',
     alternates: { canonical: PAGE, languages: alts.languages },
     openGraph: {
-      title: 'Sağlık Turizmi Transfer İstanbul | Hastane VIP Ulaşım',
+      title: cmsPage?.title ?? 'Sağlık Turizmi Transfer İstanbul | Hastane VIP Ulaşım',
       description:
-        'İstanbul\'a sağlık turizmi amacıyla gelen hastalar için havalimanından hastaneye, klinikten otele ve randevular arası özel Mercedes transfer hizmeti.',
+        cmsPage?.excerpt ?? 'İstanbul\'a sağlık turizmi amacıyla gelen hastalar için havalimanından hastaneye, klinikten otele ve randevular arası özel Mercedes transfer hizmeti.',
       url: PAGE,
       siteName: 'VIP Transfer Istanbul',
       locale: 'tr_TR',

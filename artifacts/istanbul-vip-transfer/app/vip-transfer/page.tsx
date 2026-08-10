@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { buildAlternates } from '@/lib/i18n/seo';
-import { getPublishedServicePageLangs } from '@/lib/service-page-cms';
+import { getPublishedServicePage, getPublishedServicePageLangs } from '@/lib/service-page-cms';
 import LocaleLink from '@/components/LocaleLink';
 import TrServicePageHero from '@/components/TrServicePageHero';
 import Services from '@/components/Services';
@@ -15,15 +15,16 @@ const PAGE = `${BASE}/vip-transfer`;
 export async function generateMetadata(): Promise<Metadata> {
   const publishedLangs = await getPublishedServicePageLangs('vip-transfer');
   const alts = await buildAlternates('/vip-transfer', publishedLangs);
+  const cmsPage = await getPublishedServicePage('vip-transfer', 'tr');
   return {
-    title: 'VIP Transfer İstanbul | Vito ve Sprinter',
+    title: cmsPage?.title ?? 'VIP Transfer İstanbul | Vito ve Sprinter',
     description:
-      'İstanbul\'da Mercedes Vito ve Sprinter araçlarla havalimanı, otel, kurumsal ve şehirler arası VIP transfer hizmeti.',
+      cmsPage?.excerpt ?? 'İstanbul\'da Mercedes Vito ve Sprinter araçlarla havalimanı, otel, kurumsal ve şehirler arası VIP transfer hizmeti.',
     alternates: { canonical: PAGE, languages: alts.languages },
     openGraph: {
-      title: 'VIP Transfer İstanbul | Vito ve Sprinter',
+      title: cmsPage?.title ?? 'VIP Transfer İstanbul | Vito ve Sprinter',
       description:
-        'İstanbul\'da Mercedes Vito ve Sprinter araçlarla havalimanı, otel, kurumsal ve şehirler arası VIP transfer hizmeti.',
+        cmsPage?.excerpt ?? 'İstanbul\'da Mercedes Vito ve Sprinter araçlarla havalimanı, otel, kurumsal ve şehirler arası VIP transfer hizmeti.',
       url: PAGE,
       siteName: 'VIP Transfer Istanbul',
       locale: 'tr_TR',

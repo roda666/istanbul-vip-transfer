@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { buildAlternates } from '@/lib/i18n/seo';
-import { getPublishedServicePageLangs } from '@/lib/service-page-cms';
+import { getPublishedServicePage, getPublishedServicePageLangs } from '@/lib/service-page-cms';
 import LocaleLink from '@/components/LocaleLink';
 import TrServicePageHero from '@/components/TrServicePageHero';
 import BookingForm from '@/components/BookingForm';
@@ -14,15 +14,16 @@ const PAGE = `${BASE}/istanbul-havalimani-transfer`;
 export async function generateMetadata(): Promise<Metadata> {
   const publishedLangs = await getPublishedServicePageLangs('istanbul-havalimani-transfer');
   const alts = await buildAlternates('/istanbul-havalimani-transfer', publishedLangs);
+  const cmsPage = await getPublishedServicePage('istanbul-havalimani-transfer', 'tr');
   return {
-    title: 'İstanbul Havalimanı Transfer | VIP Vito',
+    title: cmsPage?.title ?? 'İstanbul Havalimanı Transfer | VIP Vito',
     description:
-      'İstanbul Havalimanı transfer hizmetiyle Mercedes Vito ve Sprinter araçlarla otel, ev ve istediğiniz adrese özel ulaşım.',
+      cmsPage?.excerpt ?? 'İstanbul Havalimanı transfer hizmetiyle Mercedes Vito ve Sprinter araçlarla otel, ev ve istediğiniz adrese özel ulaşım.',
     alternates: { canonical: PAGE, languages: alts.languages },
     openGraph: {
-      title: 'İstanbul Havalimanı Transfer | VIP Vito',
+      title: cmsPage?.title ?? 'İstanbul Havalimanı Transfer | VIP Vito',
       description:
-        'İstanbul Havalimanı transfer hizmetiyle Mercedes Vito ve Sprinter araçlarla otel, ev ve istediğiniz adrese özel ulaşım.',
+        cmsPage?.excerpt ?? 'İstanbul Havalimanı transfer hizmetiyle Mercedes Vito ve Sprinter araçlarla otel, ev ve istediğiniz adrese özel ulaşım.',
       url: PAGE,
       siteName: 'VIP Transfer Istanbul',
       locale: 'tr_TR',

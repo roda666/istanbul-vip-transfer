@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { buildAlternates } from '@/lib/i18n/seo';
-import { getPublishedServicePageLangs } from '@/lib/service-page-cms';
+import { getPublishedServicePage, getPublishedServicePageLangs } from '@/lib/service-page-cms';
 import TrServicePageHero from '@/components/TrServicePageHero';
 import BookingForm from '@/components/BookingForm';
 import Contact from '@/components/Contact';
@@ -15,14 +15,15 @@ const PAGE = `${BASE}/istanbul-gunubirlik-turlar`;
 export async function generateMetadata(): Promise<Metadata> {
   const publishedLangs = await getPublishedServicePageLangs('istanbul-gunubirlik-turlar');
   const alts = await buildAlternates('/istanbul-gunubirlik-turlar', publishedLangs);
+  const cmsPage = await getPublishedServicePage('istanbul-gunubirlik-turlar', 'tr');
   return {
-    title: 'İstanbul Günübirlik Turlar | VIP Özel Tur Aracı',
+    title: cmsPage?.title ?? 'İstanbul Günübirlik Turlar | VIP Özel Tur Aracı',
     description:
-      'İstanbul\'un tarihi ve kültürel mekânlarını özel araçla günübirlik keşfedin. Mercedes Vito ve Sprinter ile kişiye özel şehir turu hizmeti.',
+      cmsPage?.excerpt ?? 'İstanbul\'un tarihi ve kültürel mekânlarını özel araçla günübirlik keşfedin. Mercedes Vito ve Sprinter ile kişiye özel şehir turu hizmeti.',
     alternates: { canonical: PAGE, languages: alts.languages },
     openGraph: {
-      title: 'İstanbul Günübirlik Turlar | VIP Özel Tur Aracı',
-      description: 'İstanbul\'un tarihi ve kültürel mekânlarını özel araçla günübirlik keşfedin. Mercedes Vito ve Sprinter ile kişiye özel şehir turu hizmeti.',
+      title: cmsPage?.title ?? 'İstanbul Günübirlik Turlar | VIP Özel Tur Aracı',
+      description: cmsPage?.excerpt ?? 'İstanbul\'un tarihi ve kültürel mekânlarını özel araçla günübirlik keşfedin. Mercedes Vito ve Sprinter ile kişiye özel şehir turu hizmeti.',
       url: PAGE,
       siteName: 'VIP Transfer Istanbul',
       locale: 'tr_TR',

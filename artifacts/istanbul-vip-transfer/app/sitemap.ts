@@ -5,26 +5,28 @@ import { blogPosts, getAllSlugs as getBlogSlugs } from '@/lib/blog-data';
 const BASE = SITE.siteUrl;
 
 /**
- * Indexed static Turkish slugs with their priorities.
- *
- * Intentionally omitted (noindex until content is approved):
- *   istanbul-bursa-transfer, istanbul-sapanca-transfer,
- *   istanbul-gunubirlik-turlar, sapanca-masukiye-turu,
- *   bursa-gunubirlik-tur, yalova-gunubirlik-tur
+ * Non-service static slugs always included in the sitemap.
  */
-const INDEXED_SERVICE_SLUGS: { slug: string; priority: number }[] = [
+const STATIC_SLUGS: { slug: string; priority: number }[] = [
+  { slug: 'hizmetler',  priority: 0.8  },
+  { slug: 'araclar',    priority: 0.7  },
+  { slug: 'hakkimizda', priority: 0.6  },
+  { slug: 'iletisim',   priority: 0.6  },
+];
+
+/**
+ * Fallback service slugs (used when DB is unavailable).
+ * The live sitemap query replaces this with the DB list.
+ */
+const FALLBACK_SERVICE_SLUGS: { slug: string; priority: number }[] = [
   { slug: 'istanbul-havalimani-transfer',       priority: 0.9  },
   { slug: 'sabiha-gokcen-havalimani-transfer',  priority: 0.9  },
   { slug: 'vip-transfer',                       priority: 0.8  },
-  { slug: 'hizmetler',                          priority: 0.8  },
   { slug: 'sehirler-arasi-transfer',            priority: 0.8  },
   { slug: 'soforlu-arac-kiralama',              priority: 0.75 },
   { slug: 'otel-transfer',                      priority: 0.75 },
   { slug: 'saglik-turizmi-transfer',            priority: 0.75 },
   { slug: 'kurumsal-vip-transfer',              priority: 0.75 },
-  { slug: 'araclar',                            priority: 0.7  },
-  { slug: 'hakkimizda',                         priority: 0.6  },
-  { slug: 'iletisim',                           priority: 0.6  },
 ];
 
 /**
@@ -67,28 +69,52 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  // ── 3. Turkish static service / info pages ────────────────────────────────
-  for (const { slug, priority } of INDEXED_SERVICE_SLUGS) {
-    entries.push({
-      url: `${BASE}/${slug}`,
-      lastModified: now,
-      changeFrequency: 'monthly',
-      priority,
-    });
+  // ── 3. Static (non-service) info pages ───────────────────────────────────
+  for (const { slug, priority } of STATIC_SLUGS) {
+    entries.push({ url: `${BASE}/${slug}`, lastModified: now, changeFrequency: 'monthly', priority });
+  }
+  for (const lang of nonTrLangs) {
+    for (const { slug, priority } of STATIC_SLUGS) {
+      entries.push({ url: `${BASE}/${lang.code}/${slug}`, lastModified: now, changeFrequency: 'monthly', priority: Math.max(priority - 0.05, 0.5) });
+    }
   }
 
-  // ── 4. Locale-prefixed static service / info pages ────────────────────────
-  // These pages are rendered by app/[lang]/[...slug]/page.tsx which re-uses
-  // the Turkish page component but wraps it in a LangProvider so all UI
-  // strings, metadata, and hreflang tags are emitted in the correct language.
-  for (const lang of nonTrLangs) {
-    for (const { slug, priority } of INDEXED_SERVICE_SLUGS) {
-      entries.push({
-        url: `${BASE}/${lang.code}/${slug}`,
-        lastModified: now,
-        changeFrequency: 'monthly',
-        priority: Math.max(priority - 0.05, 0.5),
-      });
+  // ── 4. DB-driven service pages (active + indexable) ───────────────────────
+  let serviceSlugList: { slug: string; priority: number; updatedAt?: Date }[] = [];
+  try {
+    const { db }       = await import('@/db');
+    const { content }  = await import('@/db/schema');
+    const { eq, and }  = await import('drizzle-orm');
+
+    const rows = await db
+      .select({ slug: content.slug, displayOrder: content.displayOrder, updatedAt: content.updatedAt })
+      .from(content)
+      .where(and(
+        eq(content.contentType, 'SERVICE'),
+        eq(content.status,      'PUBLISHED'),
+        eq(content.indexable,   true),
+        eq(content.isActive,    true),
+      ));
+
+    // Priority based on display_order: first 4 get 0.9/0.8, rest 0.75
+    serviceSlugList = rows
+      .sort((a, b) => (a.displayOrder ?? 99) - (b.displayOrder ?? 99))
+      .map((r, i) => ({
+        slug:      r.slug,
+        priority:  i < 2 ? 0.9 : i < 4 ? 0.8 : 0.75,
+        updatedAt: r.updatedAt,
+      }));
+  } catch {
+    // DB unavailable — use static fallback list
+    serviceSlugList = FALLBACK_SERVICE_SLUGS;
+  }
+
+  for (const { slug, priority, updatedAt } of serviceSlugList) {
+    // TR root
+    entries.push({ url: `${BASE}/${slug}`, lastModified: updatedAt ?? now, changeFrequency: 'monthly', priority });
+    // Locale prefixes
+    for (const lang of nonTrLangs) {
+      entries.push({ url: `${BASE}/${lang.code}/${slug}`, lastModified: updatedAt ?? now, changeFrequency: 'monthly', priority: Math.max(priority - 0.05, 0.5) });
     }
   }
 

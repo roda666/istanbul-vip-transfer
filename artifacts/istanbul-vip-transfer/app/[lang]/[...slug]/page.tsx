@@ -3,16 +3,12 @@
  *
  * Handles routes like /en/hizmetler, /de/istanbul-havalimani-transfer, etc.
  * The parent [lang]/layout.tsx already wraps children in <LangProvider forceLang={lang}>,
- * and PublicLayoutWrapper's outer LangProvider detects the lang from the URL pathname.
- * This means Header, Footer, and all client components automatically render in the
- * correct language even though the page content is Turkish.
+ * so Header, Footer, and all client components automatically render in the correct language.
  *
- * SEO: generateMetadata emits full Open Graph, hreflang alternates, and JSON-LD
- * (Service or WebPage) so AI crawlers and search engines understand each page's
- * content type, language, and publisher.
+ * SEO: generateMetadata emits full Open Graph, hreflang alternates, and JSON-LD.
+ * For SERVICE pages, metadata is DB-driven when a published record exists.
  *
  * NOTE: The param is named `slug` to match app/[lang]/blog/[slug]/page.tsx.
- * Next.js requires overlapping catch-all and named dynamic segments use the same name.
  */
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
@@ -22,78 +18,101 @@ import { SITE } from '@/lib/site-config';
 import rawPageMeta from '@/lib/page-meta.json';
 import { PAGE_REGISTRY } from '@/lib/page-registry';
 
-// ── Turkish page components ─────────────────────────────────────────────────
-import HizmetlerPage          from '@/app/hizmetler/page';
-import AraclarPage            from '@/app/araclar/page';
-import HakkimizdaPage         from '@/app/hakkimizda/page';
-import IletisimPage           from '@/app/iletisim/page';
-import IstHavaPage            from '@/app/istanbul-havalimani-transfer/page';
-import SabihaPage             from '@/app/sabiha-gokcen-havalimani-transfer/page';
-import VipTransferPage        from '@/app/vip-transfer/page';
-import SehirlerArasiPage      from '@/app/sehirler-arasi-transfer/page';
-import SoforluPage            from '@/app/soforlu-arac-kiralama/page';
-import OtelPage               from '@/app/otel-transfer/page';
-import SaglikPage             from '@/app/saglik-turizmi-transfer/page';
-import KurumPage              from '@/app/kurumsal-vip-transfer/page';
-import IstBursaPage           from '@/app/istanbul-bursa-transfer/page';
-import IstSapancaPage         from '@/app/istanbul-sapanca-transfer/page';
-import IstGunubirlikPage      from '@/app/istanbul-gunubirlik-turlar/page';
-import SapancaPage            from '@/app/sapanca-masukiye-turu/page';
-import BursaPage              from '@/app/bursa-gunubirlik-tur/page';
-import YalovaPage             from '@/app/yalova-gunubirlik-tur/page';
+// ── Turkish page components (non-SERVICE pages use these directly) ─────────
+import HizmetlerPage     from '@/app/hizmetler/page';
+import AraclarPage       from '@/app/araclar/page';
+import HakkimizdaPage    from '@/app/hakkimizda/page';
+import IletisimPage      from '@/app/iletisim/page';
 
-// ── Route map ───────────────────────────────────────────────────────────────
-const PAGE_MAP: Record<string, React.ComponentType> = {
-  'hizmetler':                         HizmetlerPage,
-  'araclar':                           AraclarPage,
-  'hakkimizda':                        HakkimizdaPage,
-  'iletisim':                          IletisimPage,
-  'istanbul-havalimani-transfer':      IstHavaPage,
-  'sabiha-gokcen-havalimani-transfer': SabihaPage,
-  'vip-transfer':                      VipTransferPage,
-  'sehirler-arasi-transfer':           SehirlerArasiPage,
-  'soforlu-arac-kiralama':             SoforluPage,
-  'otel-transfer':                     OtelPage,
-  'saglik-turizmi-transfer':           SaglikPage,
-  'kurumsal-vip-transfer':             KurumPage,
-  'istanbul-bursa-transfer':           IstBursaPage,
-  'istanbul-sapanca-transfer':         IstSapancaPage,
-  'istanbul-gunubirlik-turlar':        IstGunubirlikPage,
-  'sapanca-masukiye-turu':             SapancaPage,
-  'bursa-gunubirlik-tur':              BursaPage,
-  'yalova-gunubirlik-tur':             YalovaPage,
+// ── SERVICE slug set (rendered via ServicePageRenderer) ───────────────────
+const SERVICE_SLUGS = new Set([
+  'istanbul-havalimani-transfer',
+  'sabiha-gokcen-havalimani-transfer',
+  'vip-transfer',
+  'sehirler-arasi-transfer',
+  'soforlu-arac-kiralama',
+  'otel-transfer',
+  'saglik-turizmi-transfer',
+  'kurumsal-vip-transfer',
+  'istanbul-bursa-transfer',
+  'istanbul-sapanca-transfer',
+  'istanbul-gunubirlik-turlar',
+  'sapanca-masukiye-turu',
+  'bursa-gunubirlik-tur',
+  'yalova-gunubirlik-tur',
+]);
+
+// ── Non-service static pages ─────────────────────────────────────────────
+const STATIC_PAGE_MAP: Record<string, React.ComponentType> = {
+  'hizmetler':  HizmetlerPage,
+  'araclar':    AraclarPage,
+  'hakkimizda': HakkimizdaPage,
+  'iletisim':   IletisimPage,
 };
 
-// ── Page metadata (translated) ──────────────────────────────────────────────
-// Loaded from lib/page-meta.json — generated/updated via:
-//   pnpm generate:page-meta   (reads lib/page-registry.ts as source of truth)
-// The prebuild step (check:page-meta) enforces full coverage before every build.
+// ── Page metadata (translated) ─────────────────────────────────────────────
 type LangMeta = Record<string, { title: string; description: string }>;
 const PAGE_META: Record<string, LangMeta> = rawPageMeta as Record<string, LangMeta>;
 
-// ── Types ────────────────────────────────────────────────────────────────────
 interface Props {
   params: Promise<{ lang: string; slug: string[] }>;
 }
 
-// ── generateMetadata ─────────────────────────────────────────────────────────
+// ── Helper: fetch DB metadata for a service page ───────────────────────────
+async function getDbMeta(slug: string, lang: string): Promise<{ title?: string; description?: string; ogImage?: string } | null> {
+  try {
+    const { getPublishedServicePage } = await import('@/lib/service-page-cms');
+    const page = await getPublishedServicePage(slug, lang);
+    if (!page) return null;
+    return {
+      title:       page.seoTitle ?? page.title ?? undefined,
+      description: page.seoDescription ?? undefined,
+      ogImage:     page.ogImage ?? undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ── generateMetadata ──────────────────────────────────────────────────────
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { lang, slug } = await params;
   if (!isValidLang(lang)) return {};
 
   const pathKey = slug.join('/');
-  // Both PAGE_REGISTRY and COMPONENT_MAP must have the slug; registry is the authority.
-  if (!PAGE_REGISTRY[pathKey] || !PAGE_MAP[pathKey]) return {};
+  const inRegistry = PAGE_REGISTRY[pathKey];
+  const isService = SERVICE_SLUGS.has(pathKey);
+  const isStatic  = Boolean(STATIC_PAGE_MAP[pathKey]);
 
-  const meta = PAGE_META[pathKey]?.[lang];
-  const title = meta?.title ?? 'VIP Transfer Istanbul';
-  const description = meta?.description ?? undefined;
+  if (!inRegistry && !isService && !isStatic) return {};
 
-  // Canonical is the Turkish root path; this page is the lang-prefixed alternate.
   const canonicalPath = `/${pathKey}`;
   const pageUrl = `${SITE.siteUrl}/${lang}${canonicalPath}`;
 
-  // All supported langs have static dictionaries → always published.
+  // Try DB metadata for service pages first
+  let title: string | undefined;
+  let description: string | undefined;
+  let ogImages: (typeof SITE.ogImage | string)[] = [SITE.ogImage];
+
+  if (isService) {
+    const dbMeta = await getDbMeta(pathKey, lang);
+    if (dbMeta) {
+      title       = dbMeta.title;
+      description = dbMeta.description;
+      if (dbMeta.ogImage) {
+        const abs = dbMeta.ogImage.startsWith('http') ? dbMeta.ogImage : `${SITE.siteUrl}${dbMeta.ogImage}`;
+        ogImages = [abs];
+      }
+    }
+  }
+
+  // Fall back to page-meta.json
+  if (!title) {
+    const meta = PAGE_META[pathKey]?.[lang];
+    title       = meta?.title ?? 'VIP Transfer Istanbul';
+    description = description ?? meta?.description;
+  }
+
   const alternates = await buildAlternates(canonicalPath, [...SUPPORTED_LANGS]);
 
   return {
@@ -110,36 +129,46 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       siteName: 'VIP Transfer Istanbul',
       locale: getOgLocale(lang),
       type: 'website',
-      images: [SITE.ogImage],
+      images: ogImages,
     },
     robots: { index: true, follow: true },
   };
 }
 
-// ── Page component ───────────────────────────────────────────────────────────
+// ── Page component ────────────────────────────────────────────────────────
 export default async function LocalizedPassthrough({ params }: Props) {
   const { lang, slug } = await params;
-
   if (!isValidLang(lang)) notFound();
 
   const pathKey = slug.join('/');
-  const Page = PAGE_MAP[pathKey];
 
-  if (!Page || !PAGE_REGISTRY[pathKey]) notFound();
+  // Validate route exists
+  const inRegistry = PAGE_REGISTRY[pathKey];
+  const isService  = SERVICE_SLUGS.has(pathKey);
+  const StaticPage = STATIC_PAGE_MAP[pathKey];
 
-  // Build JSON-LD for this locale-prefixed page.
-  // schemaType comes from PAGE_REGISTRY — the single source of truth.
-  const schemaType = PAGE_REGISTRY[pathKey].schemaType;
-  const meta = PAGE_META[pathKey]?.[lang];
-  const pageUrl = `${SITE.siteUrl}/${lang}/${pathKey}`;
+  if (!inRegistry && !isService && !StaticPage) notFound();
+
+  const schemaType = inRegistry?.schemaType ?? (isService ? 'Service' : 'WebPage');
+  const meta       = PAGE_META[pathKey]?.[lang];
+  const pageUrl    = `${SITE.siteUrl}/${lang}/${pathKey}`;
+
+  // For SERVICE pages, also get DB metadata for JSON-LD
+  let jsonLdTitle = meta?.title ?? 'VIP Transfer Istanbul';
+  let jsonLdDesc  = meta?.description;
+  if (isService) {
+    const dbMeta = await getDbMeta(pathKey, lang).catch(() => null);
+    if (dbMeta?.title)       jsonLdTitle = dbMeta.title;
+    if (dbMeta?.description) jsonLdDesc  = dbMeta.description;
+  }
 
   const jsonLd =
     schemaType === 'Service'
       ? {
           '@context': 'https://schema.org',
           '@type': 'Service',
-          name: meta?.title ?? 'VIP Transfer Istanbul',
-          description: meta?.description,
+          name: jsonLdTitle,
+          description: jsonLdDesc,
           url: pageUrl,
           inLanguage: lang,
           provider: {
@@ -154,8 +183,8 @@ export default async function LocalizedPassthrough({ params }: Props) {
       : {
           '@context': 'https://schema.org',
           '@type': 'WebPage',
-          name: meta?.title ?? 'VIP Transfer Istanbul',
-          description: meta?.description,
+          name: jsonLdTitle,
+          description: jsonLdDesc,
           url: pageUrl,
           inLanguage: lang,
           publisher: {
@@ -172,21 +201,36 @@ export default async function LocalizedPassthrough({ params }: Props) {
     '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'VIP Transfer Istanbul', item: SITE.siteUrl },
-      { '@type': 'ListItem', position: 2, name: meta?.title ?? pathKey, item: pageUrl },
+      { '@type': 'ListItem', position: 2, name: jsonLdTitle, item: pageUrl },
     ],
   };
+
+  const scripts = (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+    </>
+  );
+
+  // SERVICE pages — rendered via DB-aware ServicePageRenderer
+  if (isService) {
+    const { default: ServicePageRenderer } = await import('@/components/ServicePageRenderer');
+    return (
+      <>
+        <ServicePageRenderer slug={pathKey} lang={lang} />
+        {scripts}
+      </>
+    );
+  }
+
+  // Non-service static page
+  const Page = StaticPage;
+  if (!Page) notFound();
 
   return (
     <>
       <Page />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
-      />
+      {scripts}
     </>
   );
 }

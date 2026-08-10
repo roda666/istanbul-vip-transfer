@@ -1,102 +1,180 @@
 import type { MetadataRoute } from 'next';
 import { SITE } from '@/lib/site-config';
+import { blogPosts, getAllSlugs as getBlogSlugs } from '@/lib/blog-data';
 
 const BASE = SITE.siteUrl;
 
 /**
- * Static sitemap entries — Turkish root pages.
+ * Indexed static Turkish slugs with their priorities.
  *
- * Excluded intentionally:
- *  - /istanbul-bursa-transfer, /istanbul-sapanca-transfer,
- *    /istanbul-gunubirlik-turlar, /sapanca-masukiye-turu,
- *    /bursa-gunubirlik-tur, /yalova-gunubirlik-tur  — noindex until content approved
+ * Intentionally omitted (noindex until content is approved):
+ *   istanbul-bursa-transfer, istanbul-sapanca-transfer,
+ *   istanbul-gunubirlik-turlar, sapanca-masukiye-turu,
+ *   bursa-gunubirlik-tur, yalova-gunubirlik-tur
  */
-const STATIC_ENTRIES: MetadataRoute.Sitemap = [
-  { url: BASE, lastModified: new Date(), changeFrequency: 'weekly', priority: 1 },
-
-  // Airport transfer pages
-  { url: `${BASE}/istanbul-havalimani-transfer`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.9 },
-  { url: `${BASE}/sabiha-gokcen-havalimani-transfer`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.9 },
-
-  // Service pages
-  { url: `${BASE}/vip-transfer`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
-  { url: `${BASE}/hizmetler`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
-  { url: `${BASE}/sehirler-arasi-transfer`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
-  { url: `${BASE}/soforlu-arac-kiralama`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.75 },
-  { url: `${BASE}/otel-transfer`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.75 },
-  { url: `${BASE}/saglik-turizmi-transfer`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.75 },
-  { url: `${BASE}/kurumsal-vip-transfer`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.75 },
-
-  // Info pages
-  { url: `${BASE}/araclar`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.7 },
-  { url: `${BASE}/hakkimizda`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
-  { url: `${BASE}/iletisim`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
-
-  // Blog index
-  { url: `${BASE}/blog`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.65 },
-
-  // Blog articles (Turkish)
-  { url: `${BASE}/blog/istanbul-havalimani-transfer-rehberi`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
-  { url: `${BASE}/blog/sabiha-gokcen-transfer-rehberi`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
-  { url: `${BASE}/blog/vip-transfer-ile-taksi-arasindaki-farklar`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
+const INDEXED_SERVICE_SLUGS: { slug: string; priority: number }[] = [
+  { slug: 'istanbul-havalimani-transfer',       priority: 0.9  },
+  { slug: 'sabiha-gokcen-havalimani-transfer',  priority: 0.9  },
+  { slug: 'vip-transfer',                       priority: 0.8  },
+  { slug: 'hizmetler',                          priority: 0.8  },
+  { slug: 'sehirler-arasi-transfer',            priority: 0.8  },
+  { slug: 'soforlu-arac-kiralama',              priority: 0.75 },
+  { slug: 'otel-transfer',                      priority: 0.75 },
+  { slug: 'saglik-turizmi-transfer',            priority: 0.75 },
+  { slug: 'kurumsal-vip-transfer',              priority: 0.75 },
+  { slug: 'araclar',                            priority: 0.7  },
+  { slug: 'hakkimizda',                         priority: 0.6  },
+  { slug: 'iletisim',                           priority: 0.6  },
 ];
 
+/**
+ * Dynamic sitemap — regenerated on every request (Next.js revalidates via ISR).
+ *
+ * Coverage:
+ *  1. TR homepage + non-TR homepage aliases (/en, /de, /ru, /ar)
+ *  2. TR static service & info pages (12 indexed slugs)
+ *  3. Locale-prefixed versions of the same 12 slugs for every non-TR public lang
+ *  4. TR blog index + all static Turkish blog articles
+ *  5. DB-driven: published blog translations → locale blog index + article URLs
+ *
+ * Language source of truth: the `languages` table (is_enabled + isPublished flags).
+ * Only the 5 publicly visible languages (tr, en, de, ru, ar) ever appear here;
+ * passive catalog entries are filtered out automatically.
+ */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const entries: MetadataRoute.Sitemap = [...STATIC_ENTRIES];
+  const entries: MetadataRoute.Sitemap = [];
+  const now = new Date();
 
-  // Translated homepages — one per active+published language (single source
-  // of truth: the languages table; falls back to tr/en/de/ru/ar).
-  const { getPublicLangCodes } = await import('@/lib/i18n/active-locales');
-  const publicLangs = await getPublicLangCodes();
-  const translatedHomepageLangs = publicLangs.filter((l) => l !== 'tr');
+  // ── 1. Resolve active public language set ────────────────────────────────
+  const { getPublicLanguages } = await import('@/lib/i18n/active-locales');
+  const publicLangs = await getPublicLanguages();          // tr, en, de, ru, ar
+  const publicCodes = new Set(publicLangs.map((l) => l.code));
+  const nonTrLangs  = publicLangs.filter((l) => l.code !== 'tr');
 
-  for (const lang of translatedHomepageLangs) {
+  // ── 2. Homepages ──────────────────────────────────────────────────────────
+  entries.push({
+    url: BASE,
+    lastModified: now,
+    changeFrequency: 'weekly',
+    priority: 1,
+  });
+  for (const lang of nonTrLangs) {
     entries.push({
-      url: `${BASE}/${lang}`,
-      lastModified: new Date(),
+      url: `${BASE}/${lang.code}`,
+      lastModified: now,
       changeFrequency: 'weekly',
       priority: 0.85,
     });
   }
 
-  // Dynamically add PUBLISHED translations from the database
-  try {
-    const { db } = await import('@/db');
-    const { contentTranslations } = await import('@/db/schema');
-    const { eq } = await import('drizzle-orm');
+  // ── 3. Turkish static service / info pages ────────────────────────────────
+  for (const { slug, priority } of INDEXED_SERVICE_SLUGS) {
+    entries.push({
+      url: `${BASE}/${slug}`,
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority,
+    });
+  }
 
-    const published = await db
+  // ── 4. Locale-prefixed static service / info pages ────────────────────────
+  // These pages are rendered by app/[lang]/[...slug]/page.tsx which re-uses
+  // the Turkish page component but wraps it in a LangProvider so all UI
+  // strings, metadata, and hreflang tags are emitted in the correct language.
+  for (const lang of nonTrLangs) {
+    for (const { slug, priority } of INDEXED_SERVICE_SLUGS) {
+      entries.push({
+        url: `${BASE}/${lang.code}/${slug}`,
+        lastModified: now,
+        changeFrequency: 'monthly',
+        priority: Math.max(priority - 0.05, 0.5),
+      });
+    }
+  }
+
+  // ── 5. Turkish blog index + static articles ───────────────────────────────
+  const blogSlugs = getBlogSlugs();
+  if (blogSlugs.length > 0) {
+    entries.push({
+      url: `${BASE}/blog`,
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.65,
+    });
+    for (const post of blogPosts) {
+      entries.push({
+        url: `${BASE}/blog/${post.slug}`,
+        lastModified: post.updatedAt
+          ? new Date(post.updatedAt)
+          : new Date(post.publishedAt),
+        changeFrequency: 'monthly',
+        priority: 0.6,
+      });
+    }
+  }
+
+  // ── 6. DB-driven: published BLOG_POST translations ────────────────────────
+  // When a translated blog article is published (content_translations where
+  // entity_type = 'content' AND status = 'PUBLISHED'), add:
+  //  • the translated article URL:  /{lang}/blog/{slug}
+  //  • the locale blog index:       /{lang}/blog  (once per lang, if any article exists)
+  try {
+    const { db }                  = await import('@/db');
+    const { contentTranslations, content } = await import('@/db/schema');
+    const { eq, and }             = await import('drizzle-orm');
+
+    const rows = await db
       .select({
-        slug: contentTranslations.slug,
         targetLanguageCode: contentTranslations.targetLanguageCode,
-        publishedAt: contentTranslations.publishedAt,
-        entityType: contentTranslations.entityType,
+        slug:               contentTranslations.slug,
+        sourceSlug:         content.slug,
+        publishedAt:        contentTranslations.publishedAt,
+        updatedAt:          contentTranslations.updatedAt,
       })
       .from(contentTranslations)
-      .where(eq(contentTranslations.status, 'PUBLISHED'));
+      .leftJoin(content, eq(contentTranslations.entityId, content.id))
+      .where(
+        and(
+          eq(contentTranslations.status,     'PUBLISHED'),
+          eq(contentTranslations.entityType, 'content'),
+        ),
+      );
 
-    for (const row of published) {
-      if (!row.slug) continue;
+    // Collect which non-TR languages have ≥1 published blog translation
+    // so we can emit their /lang/blog index exactly once.
+    const langsWithBlog = new Set<string>();
+
+    for (const row of rows) {
       const lang = row.targetLanguageCode;
-      // Never leak a translation whose language is not publicly active
-      if (!publicLangs.includes(lang)) continue;
-      let url: string | null = null;
+      if (!publicCodes.has(lang)) continue; // guard against passive catalog leaks
 
-      if (row.entityType === 'content') {
-        url = `${BASE}/${lang}/blog/${row.slug}`;
-      }
+      // Use the translated slug when present; fall back to the source content slug.
+      const slug = row.slug ?? row.sourceSlug;
+      if (!slug) continue;
 
-      if (url) {
+      langsWithBlog.add(lang);
+      entries.push({
+        url: `${BASE}/${lang}/blog/${slug}`,
+        lastModified: row.publishedAt ?? row.updatedAt ?? now,
+        changeFrequency: 'monthly',
+        priority: 0.55,
+      });
+    }
+
+    // Locale blog index pages — only for languages that actually have articles
+    for (const lang of nonTrLangs) {
+      if (langsWithBlog.has(lang.code)) {
         entries.push({
-          url,
-          lastModified: row.publishedAt ?? new Date(),
-          changeFrequency: 'monthly',
-          priority: 0.55,
+          url: `${BASE}/${lang.code}/blog`,
+          lastModified: now,
+          changeFrequency: 'weekly',
+          priority: 0.6,
         });
       }
     }
   } catch {
-    // DB not yet available (first deploy, migration not run) — silently skip translations
+    // DB unavailable (first deploy, migration not yet applied) — skip silently.
+    // Static entries above are always emitted regardless.
   }
 
   return entries;

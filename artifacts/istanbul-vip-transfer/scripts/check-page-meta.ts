@@ -3,6 +3,8 @@
  *
  * Build-time guard: exits with code 1 if any slug registered in
  * lib/page-registry.ts is missing translated metadata in lib/page-meta.json,
+ * OR if any slug's stored _sourceHash is missing or out of date (meaning the
+ * Turkish source changed but generate:page-meta was not re-run),
  * OR if any WebPage slug is missing a component entry in lib/static-page-slugs.ts.
  *
  * Run via:  pnpm --filter @workspace/istanbul-vip-transfer check:page-meta
@@ -13,11 +15,24 @@
  * For WebPage slugs, you must also update lib/static-page-slugs.ts and
  * add the component to app/[lang]/[...slug]/page.tsx STATIC_PAGE_MAP.
  */
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PAGE_REGISTRY } from '../lib/page-registry.js';
 import { STATIC_PAGE_SLUGS } from '../lib/static-page-slugs.js';
+
+/**
+ * Returns a short SHA-256 digest (first 16 hex chars) of the combined
+ * Turkish title and description — must stay in sync with generate-page-meta.ts.
+ */
+function hashTrSource(title: string, description: string): string {
+  return crypto
+    .createHash('sha256')
+    .update(`${title}\n${description}`)
+    .digest('hex')
+    .slice(0, 16);
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -46,6 +61,27 @@ function main() {
       errors.push(`[page-meta] slug "${slug}" is missing entirely from page-meta.json`);
       continue;
     }
+
+    // ── Hash staleness check ──────────────────────────────────────────────
+    const { tr: trSource } = PAGE_REGISTRY[slug];
+    const currentHash = hashTrSource(trSource.title, trSource.description);
+    const storedEntry = meta[slug] as Record<string, unknown>;
+    const storedHash = storedEntry._sourceHash as string | undefined;
+
+    if (!storedHash) {
+      errors.push(
+        `[stale-hash] slug "${slug}" has no _sourceHash in page-meta.json — ` +
+          `run generate:page-meta to record the current hash`,
+      );
+    } else if (storedHash !== currentHash) {
+      errors.push(
+        `[stale-hash] slug "${slug}" Turkish source changed ` +
+          `(stored: ${storedHash}, current: ${currentHash}) — ` +
+          `run generate:page-meta to refresh translations`,
+      );
+    }
+
+    // ── Translation coverage check ────────────────────────────────────────
     for (const lang of REQUIRED_LANGS) {
       const entry = meta[slug][lang];
       if (!entry?.title) {
@@ -90,9 +126,13 @@ function main() {
       console.error(`   • ${err}`);
     }
     console.error(`
-[page-meta] Fix: run  pnpm --filter @workspace/istanbul-vip-transfer generate:page-meta
-            to auto-generate missing translations via AI, then commit the updated
-            lib/page-meta.json.
+[stale-hash] Fix: run  pnpm --filter @workspace/istanbul-vip-transfer generate:page-meta
+             to re-translate stale slugs and update their _sourceHash in
+             lib/page-meta.json, then commit the result.
+
+[page-meta]  Fix: run  pnpm --filter @workspace/istanbul-vip-transfer generate:page-meta
+             to auto-generate missing translations via AI, then commit the updated
+             lib/page-meta.json.
 
 [components] Fix: update lib/static-page-slugs.ts and STATIC_PAGE_MAP in
              app/[lang]/[...slug]/page.tsx to stay in sync with PAGE_REGISTRY.

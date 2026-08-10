@@ -41,16 +41,16 @@ const STATIC_ENTRIES: MetadataRoute.Sitemap = [
   { url: `${BASE}/blog/vip-transfer-ile-taksi-arasindaki-farklar`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
 ];
 
-/**
- * Translated homepage entries for each enabled language.
- */
-const TRANSLATED_HOMEPAGE_LANGS = ['en', 'de', 'ru', 'ar'];
-
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const entries: MetadataRoute.Sitemap = [...STATIC_ENTRIES];
 
-  // Translated homepages (always present regardless of DB state)
-  for (const lang of TRANSLATED_HOMEPAGE_LANGS) {
+  // Translated homepages — one per active+published language (single source
+  // of truth: the languages table; falls back to tr/en/de/ru/ar).
+  const { getPublicLangCodes } = await import('@/lib/i18n/active-locales');
+  const publicLangs = await getPublicLangCodes();
+  const translatedHomepageLangs = publicLangs.filter((l) => l !== 'tr');
+
+  for (const lang of translatedHomepageLangs) {
     entries.push({
       url: `${BASE}/${lang}`,
       lastModified: new Date(),
@@ -78,6 +78,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (const row of published) {
       if (!row.slug) continue;
       const lang = row.targetLanguageCode;
+      // Never leak a translation whose language is not publicly active
+      if (!publicLangs.includes(lang)) continue;
       let url: string | null = null;
 
       if (row.entityType === 'content') {

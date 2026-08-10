@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { lang } = await params;
   if (!isValidLang(lang)) return {};
 
-  const alternates = buildAlternates('/', [lang]);
+  const alternates = await buildAlternates('/', [lang]);
 
   // Try to read SEO from DB; fall back to hardcoded defaults
   let seoTitle: string;

@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { lang } = await params;
   if (!isValidLang(lang)) return {};
 
-  const alternates = buildAlternates('/blog', [lang]);
+  const alternates = await buildAlternates('/blog', [lang]);
   const titles: Record<string, string> = {
     en: 'Blog | Istanbul VIP Transfer',
     de: 'Blog | Istanbul VIP Transfer',

@@ -23,15 +23,12 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 
+import { getPublicLangCodes } from '@/lib/i18n/active-locales';
+
 const LANG_PREF_COOKIE = 'ivt_lang_pref';
-const VALID_LANGS      = ['tr', 'en', 'de', 'ru', 'ar'] as const;
 
 /** Legacy paths on which stale cookies may still exist — expire them. */
 const LEGACY_COOKIE_PATHS = ['/en', '/de', '/ru', '/ar', '/tr'];
-
-function isValidLang(s: unknown): s is typeof VALID_LANGS[number] {
-  return typeof s === 'string' && (VALID_LANGS as readonly string[]).includes(s);
-}
 
 /**
  * Accepts only root-relative same-site paths such as "/", "/hizmetler",
@@ -56,9 +53,11 @@ export async function GET(request: NextRequest) {
   const locale = searchParams.get('locale') ?? '';
   const rawNext = searchParams.get('next') ?? '/';
 
-  if (!isValidLang(locale)) {
+  // Validate against the active + published locale set (single source of truth).
+  const publicLangs = await getPublicLangCodes();
+  if (!publicLangs.includes(locale)) {
     return NextResponse.json(
-      { error: 'locale must be one of: tr, en, de, ru, ar' },
+      { error: `locale must be one of: ${publicLangs.join(', ')}` },
       { status: 400 },
     );
   }

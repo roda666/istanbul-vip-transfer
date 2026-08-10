@@ -33,13 +33,21 @@ async function safeJson<T = Record<string, unknown>>(res: Response): Promise<T> 
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
-const LOCALES = [
-  { code: 'tr', label: 'Türkçe 🇹🇷', dir: 'ltr', isSource: true },
-  { code: 'en', label: 'English 🇬🇧', dir: 'ltr', isSource: false },
-  { code: 'de', label: 'Deutsch 🇩🇪', dir: 'ltr', isSource: false },
-  { code: 'ru', label: 'Русский 🇷🇺', dir: 'ltr', isSource: false },
-  { code: 'ar', label: 'العربية 🇸🇦', dir: 'rtl', isSource: false },
-] as const;
+export interface EditorLocale {
+  code: string;
+  label: string;
+  dir: 'ltr' | 'rtl';
+  isSource: boolean;
+}
+
+/** Static fallback — used only if the server passes no catalog locales. */
+const FALLBACK_LOCALES: EditorLocale[] = [
+  { code: 'tr', label: 'Türkçe', dir: 'ltr', isSource: true },
+  { code: 'en', label: 'English', dir: 'ltr', isSource: false },
+  { code: 'de', label: 'Deutsch', dir: 'ltr', isSource: false },
+  { code: 'ru', label: 'Русский', dir: 'ltr', isSource: false },
+  { code: 'ar', label: 'العربية', dir: 'rtl', isSource: false },
+];
 
 const SECTIONS = [
   { key: 'hero',        label: 'A · Hero' },
@@ -377,7 +385,8 @@ function TranslationInfoPanel({
 
 // ── Main editor ────────────────────────────────────────────────────────────
 
-export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: HomepageAdminRecord }) {
+export default function HomepageEditor({ initialTrRecord, locales }: { initialTrRecord: HomepageAdminRecord; locales?: EditorLocale[] }) {
+  const LOCALES: EditorLocale[] = locales && locales.length > 0 ? locales : FALLBACK_LOCALES;
   const [activeLocale, setActiveLocale] = useState<string>('tr');
   const [activeSection, setActiveSection] = useState<string>('hero');
   const [records, setRecords] = useState<Record<string, HomepageAdminRecord>>({ tr: initialTrRecord });
@@ -386,6 +395,7 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
   const [publishing, setPublishing] = useState(false);
   const [localeBusy, setLocaleBusy] = useState<Record<string, boolean>>({});
   const [isDirty, setIsDirty] = useState(false);
+  const [autoPublish, setAutoPublish] = useState(true);
   const [message, setMessage] = useState<{ type: 'ok' | 'err' | 'info'; text: string } | null>(null);
 
   const currentRecord = records[activeLocale];
@@ -419,6 +429,7 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
   // default NOT_STARTED fallback that appears before the first tab click.
   useEffect(() => {
     LOCALES.filter(l => !l.isSource).forEach(l => loadLocale(l.code as string));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadLocale]);
 
   useEffect(() => { if (activeLocale !== 'tr') loadLocale(activeLocale); }, [activeLocale, loadLocale]);
@@ -447,12 +458,17 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
   const saveAndPublish = async () => {
     setSaving(true);
     setMessage(null);
-    setMessage({ type: 'info', text: '⏳ Türkçe kaydediliyor, tüm diller AI ile çevriliyor ve yayımlanıyor…' });
+    setMessage({
+      type: 'info',
+      text: autoPublish
+        ? '⏳ Türkçe kaydediliyor, etkin diller AI ile çevriliyor ve yayımlanıyor…'
+        : '⏳ Türkçe kaydediliyor, etkin diller AI ile taslak olarak çevriliyor…',
+    });
     try {
       const res = await fetch('/admin/api/homepage/tr', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sections, autoPublish: true }),
+        body: JSON.stringify({ sections, autoPublish }),
       });
       const data = await safeJson<{
         success: boolean;
@@ -462,7 +478,7 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
       if (!res.ok) throw new Error(data.message ?? data.code ?? 'Kaydetme başarısız.');
 
       // Refresh all locales from server to reflect real DB status
-      await Promise.all(['tr', 'en', 'de', 'ru', 'ar'].map(l => refreshLocale(l)));
+      await Promise.all(LOCALES.map(l => refreshLocale(l.code)));
 
       if (data.code === 'AI_PROVIDER_NOT_CONFIGURED') {
         setMessage({ type: 'info', text: data.message ?? 'Türkçe kaydedildi. AI sağlayıcısı yapılandırılmamış.' });
@@ -742,17 +758,23 @@ export default function HomepageEditor({ initialTrRecord }: { initialTrRecord: H
 
       {/* Action bar */}
       <div className="hpe-abar">
-        {/* TR tab: single button — saves, translates all 4 languages, publishes all immediately */}
+        {/* TR tab: saves + AI-translates to enabled languages; publish is admin-controlled */}
         {isSource && (
-          <button onClick={saveAndPublish} disabled={saving}
-            style={{
-              padding: '9px 18px', borderRadius: '8px',
-              background: '#C79A35', border: 'none', color: '#102A43',
-              fontSize: '13px', fontWeight: 600, cursor: saving ? 'wait' : 'pointer',
-              opacity: saving ? 0.7 : 1, fontFamily: 'Inter, sans-serif',
-            }}>
-            {saving ? '⏳ İşleniyor…' : '🌐 Kaydet ve Tüm Dillerde Yayımla'}
-          </button>
+          <>
+            <button onClick={saveAndPublish} disabled={saving}
+              style={{
+                padding: '9px 18px', borderRadius: '8px',
+                background: '#C79A35', border: 'none', color: '#102A43',
+                fontSize: '13px', fontWeight: 600, cursor: saving ? 'wait' : 'pointer',
+                opacity: saving ? 0.7 : 1, fontFamily: 'Inter, sans-serif',
+              }}>
+              {saving ? '⏳ İşleniyor…' : autoPublish ? '🌐 Kaydet ve Tüm Dillerde Yayımla' : '💾 Kaydet ve Taslak Çevir'}
+            </button>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#334155', fontFamily: 'Inter, sans-serif', cursor: 'pointer', userSelect: 'none' }}>
+              <input type="checkbox" checked={autoPublish} onChange={(e) => setAutoPublish(e.target.checked)} disabled={saving} />
+              Otomatik yayınla
+            </label>
+          </>
         )}
 
         {/* TR Yayından kaldır */}

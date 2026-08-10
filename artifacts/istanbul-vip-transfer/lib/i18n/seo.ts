@@ -18,12 +18,16 @@ interface AlternatesResult {
 /**
  * Builds the full alternate/canonical object for Next.js `metadata.alternates`.
  *
+ * Async and catalog-aware: hreflang entries are emitted only for languages
+ * that are in the PUBLIC locale set (enabled + published + renderable), so a
+ * passive or unrenderable catalog language can never leak into hreflang.
+ *
  * @param path - The canonical path, WITHOUT lang prefix (e.g. '/blog/my-slug').
  *               Pass '/' for the homepage.
  * @param publishedLangs - Target lang codes that have a PUBLISHED translation.
  *                         Turkish (root) is always included.
  */
-export function buildAlternates(path: string, publishedLangs: string[] = []): AlternatesResult {
+export async function buildAlternates(path: string, publishedLangs: string[] = []): Promise<AlternatesResult> {
   const base = SITE.siteUrl;
   const canonical = `${base}${path === '/' ? '' : path}`;
 
@@ -35,13 +39,17 @@ export function buildAlternates(path: string, publishedLangs: string[] = []): Al
   // Turkish is always present (it's the source)
   languages[LANG_LOCALES.tr] = canonical;
 
-  // Add entries for each published translation
+  // Public locale set — single source of truth (DB, with static fallback)
+  const { getPublicLanguages } = await import('./active-locales');
+  const publicLangs = await getPublicLanguages();
+
+  // Add entries for each published translation that is also publicly active
   for (const lang of publishedLangs) {
     if (lang === 'tr') continue;
-    const locale = LANG_LOCALES[lang as SiteLang];
-    if (!locale) continue;
+    const entry = publicLangs.find((l) => l.code === lang);
+    if (!entry) continue;
     const translatedPath = path === '/' ? `/${lang}` : `/${lang}${path}`;
-    languages[locale] = `${base}${translatedPath}`;
+    languages[entry.locale] = `${base}${translatedPath}`;
   }
 
   return { canonical, languages };

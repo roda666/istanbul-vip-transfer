@@ -14,7 +14,9 @@ import { requireAdminSession } from '@/lib/auth/session';
 const requestSchema = z.object({
   entityType: z.literal('content'),
   entityId: z.string().uuid(),
-  targetLanguageCodes: z.array(z.string().min(2).max(10)).min(1).max(5),
+  targetLanguageCodes: z.array(z.string().min(2).max(10)).min(1).max(80),
+  /** When true, manually edited / locked translations may be overwritten. */
+  force: z.boolean().default(false),
 });
 
 // Simple in-memory rate limiting (resets on server restart)
@@ -62,13 +64,34 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid input', details: parsed.error.issues }, { status: 400 });
   }
 
-  const { entityType, entityId, targetLanguageCodes } = parsed.data;
+  const { entityType, entityId, targetLanguageCodes, force } = parsed.data;
 
   const { db } = await import('@/db');
-  const { content, contentTranslations, auditLogs } = await import('@/db/schema');
-  const { eq, and } = await import('drizzle-orm');
+  const { content, contentTranslations, auditLogs, languages } = await import('@/db/schema');
+  const { eq, and, inArray } = await import('drizzle-orm');
   const { sql } = await import('drizzle-orm');
   const { translateContent, PROMPT_VERSION } = await import('@/lib/ai/translate');
+
+  // ── Catalog validation: language must exist and be provider-supported ────
+  // (Passive languages ARE allowed — drafts can be prepared before activation.)
+  const catalogRows = await db
+    .select({ code: languages.code, providerSupported: languages.providerSupported })
+    .from(languages)
+    .where(inArray(languages.code, targetLanguageCodes));
+  const catalog = new Map(catalogRows.map((r) => [r.code, r]));
+  const invalid = targetLanguageCodes.filter((c) => c === 'tr' || !catalog.has(c));
+  const unsupported = targetLanguageCodes.filter((c) => catalog.get(c)?.providerSupported === false);
+  if (invalid.length > 0 || unsupported.length > 0) {
+    return NextResponse.json(
+      {
+        error: [
+          invalid.length > 0 ? `Katalogda olmayan/geçersiz diller: ${invalid.join(', ')}` : null,
+          unsupported.length > 0 ? `Sağlayıcının desteklemediği diller: ${unsupported.join(', ')}` : null,
+        ].filter(Boolean).join(' — '),
+      },
+      { status: 400 },
+    );
+  }
 
   // Fetch source content
   const [sourceContent] = await db.select().from(content).where(eq(content.id, entityId)).limit(1).catch(() => []);
@@ -82,7 +105,12 @@ export async function POST(request: NextRequest) {
     try {
       // Check if a translation job already exists for this entity+lang
       const [existing] = await db
-        .select({ id: contentTranslations.id })
+        .select({
+          id: contentTranslations.id,
+          isAiGenerated: contentTranslations.isAiGenerated,
+          isManuallyLocked: contentTranslations.isManuallyLocked,
+          status: contentTranslations.status,
+        })
         .from(contentTranslations)
         .where(
           and(
@@ -92,6 +120,22 @@ export async function POST(request: NextRequest) {
           ),
         )
         .limit(1);
+
+      // Manually edited or locked translations are never overwritten silently.
+      if (
+        existing &&
+        !force &&
+        (existing.isManuallyLocked ||
+          (!existing.isAiGenerated && !['NOT_STARTED', 'FAILED'].includes(existing.status)))
+      ) {
+        results.push({
+          lang: targetLang,
+          status: 'needs_confirmation',
+          jobId: existing.id,
+          error: 'Elle düzenlenmiş çeviri — üzerine yazmak için onay gerekli.',
+        });
+        continue;
+      }
 
       let jobId: string;
 
@@ -204,9 +248,14 @@ export async function POST(request: NextRequest) {
 
   const allOk = results.every((r) => r.status === 'draft');
   const anyFailed = results.some((r) => ['error', 'failed'].includes(r.status));
+  const needsConfirmation = results.filter((r) => r.status === 'needs_confirmation').map((r) => r.lang);
 
   return NextResponse.json(
-    { results, summary: allOk ? 'all_ok' : anyFailed ? 'partial_failure' : 'processing' },
+    {
+      results,
+      needsConfirmation,
+      summary: allOk ? 'all_ok' : anyFailed ? 'partial_failure' : needsConfirmation.length > 0 ? 'needs_confirmation' : 'processing',
+    },
     { status: anyFailed ? 207 : 200 },
   );
 }

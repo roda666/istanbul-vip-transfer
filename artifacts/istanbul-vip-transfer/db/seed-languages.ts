@@ -1,6 +1,13 @@
 /**
- * Idempotent seed: insert 5 languages (tr as default, en/de/ru/ar as enabled targets).
- * Safe to re-run — uses INSERT ... ON CONFLICT DO NOTHING.
+ * Idempotent language-catalog seed.
+ *
+ * - First run (bootstrap): core 5 inserted active+published (tr default), every
+ *   other catalog language inserted PASSIVE (isEnabled=false, isPublished=false).
+ * - Re-runs never duplicate rows and NEVER flip isEnabled/isPublished/isDefault
+ *   on existing rows — admin-managed visibility state survives re-seeding; only
+ *   catalog metadata (names, script, locale, direction, order) is refreshed.
+ *   Sole exception: TR is re-asserted as default+enabled+published (source-language
+ *   invariant that must hold regardless of any state drift).
  *
  * Usage: pnpm --filter @workspace/istanbul-vip-transfer tsx db/seed-languages.ts
  */
@@ -9,6 +16,7 @@ import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import * as schema from './schema';
 import { sql } from 'drizzle-orm';
+import { LANGUAGE_CATALOG, CORE_LANGS } from './language-catalog';
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL is not set');
@@ -16,80 +24,64 @@ if (!databaseUrl) throw new Error('DATABASE_URL is not set');
 const client = postgres(databaseUrl, { max: 1 });
 const db = drizzle(client, { schema });
 
-const LANGUAGES = [
-  {
-    code: 'tr',
-    locale: 'tr-TR',
-    name: 'Turkish',
-    nativeName: 'Türkçe',
-    direction: 'ltr' as const,
-    isDefault: true,
-    isEnabled: true,
-    displayOrder: 0,
-  },
-  {
-    code: 'en',
-    locale: 'en-GB',
-    name: 'English',
-    nativeName: 'English',
-    direction: 'ltr' as const,
-    isDefault: false,
-    isEnabled: true,
-    displayOrder: 1,
-  },
-  {
-    code: 'de',
-    locale: 'de-DE',
-    name: 'German',
-    nativeName: 'Deutsch',
-    direction: 'ltr' as const,
-    isDefault: false,
-    isEnabled: true,
-    displayOrder: 2,
-  },
-  {
-    code: 'ru',
-    locale: 'ru-RU',
-    name: 'Russian',
-    nativeName: 'Русский',
-    direction: 'ltr' as const,
-    isDefault: false,
-    isEnabled: true,
-    displayOrder: 3,
-  },
-  {
-    code: 'ar',
-    locale: 'ar-SA',
-    name: 'Arabic',
-    nativeName: 'العربية',
-    direction: 'rtl' as const,
-    isDefault: false,
-    isEnabled: true,
-    displayOrder: 4,
-  },
-] satisfies (typeof schema.languages.$inferInsert)[];
-
 async function seed() {
-  console.log('Seeding languages...');
-  for (const lang of LANGUAGES) {
-    await db
+  console.log(`Seeding ${LANGUAGE_CATALOG.length} catalog languages...`);
+  let inserted = 0;
+  let updated = 0;
+
+  for (const [i, lang] of LANGUAGE_CATALOG.entries()) {
+    const isCore = (CORE_LANGS as readonly string[]).includes(lang.code);
+    const values: typeof schema.languages.$inferInsert = {
+      code: lang.code,
+      locale: lang.locale,
+      name: lang.name,
+      nativeName: lang.nativeName,
+      turkishName: lang.turkishName,
+      script: lang.script,
+      direction: lang.direction,
+      providerSupported: lang.providerSupported ?? true,
+      isDefault: lang.code === 'tr',
+      isEnabled: isCore, // core 5 active, everything else passive
+      isPublished: isCore, // only core 5 publicly visible
+      displayOrder: i,
+    };
+
+    const res = await db
       .insert(schema.languages)
-      .values(lang)
+      .values(values)
       .onConflictDoUpdate({
         target: schema.languages.code,
         set: {
+          // Refresh catalog metadata only — never touch isEnabled/isPublished/isDefault
+          // for existing rows (admin-controlled state must survive re-seeding)...
           locale: sql`EXCLUDED.locale`,
           name: sql`EXCLUDED.name`,
           nativeName: sql`EXCLUDED.native_name`,
+          turkishName: sql`EXCLUDED.turkish_name`,
+          script: sql`EXCLUDED.script`,
           direction: sql`EXCLUDED.direction`,
-          isDefault: sql`EXCLUDED.is_default`,
+          providerSupported: sql`EXCLUDED.provider_supported`,
           displayOrder: sql`EXCLUDED.display_order`,
           updatedAt: sql`now()`,
+          // ...sole exception: TR must always remain default+active+published.
+          // en/de/ru/ar keep whatever state the admin last set (disable/unpublish
+          // actions survive re-seeding).
+          ...(lang.code === 'tr'
+            ? {
+                isDefault: sql`true`,
+                isEnabled: sql`true`,
+                isPublished: sql`true`,
+              }
+            : {}),
         },
-      });
-    console.log(`  ✓ ${lang.code} (${lang.nativeName})`);
+      })
+      .returning({ createdAt: schema.languages.createdAt, updatedAt: schema.languages.updatedAt });
+
+    if (res[0] && res[0].createdAt.getTime() === res[0].updatedAt.getTime()) inserted++;
+    else updated++;
   }
-  console.log('Languages seeded successfully.');
+
+  console.log(`Done. ~${inserted} inserted, ~${updated} updated. Total catalog: ${LANGUAGE_CATALOG.length}`);
   await client.end();
 }
 

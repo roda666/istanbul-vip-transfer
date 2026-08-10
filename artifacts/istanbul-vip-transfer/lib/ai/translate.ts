@@ -43,14 +43,7 @@ export type TranslateResult =
   | { ok: true; data: TranslationOutput; model: string }
   | { ok: false; reason: 'not_configured' | 'rate_limited' | 'api_error' | 'parse_error'; message?: string };
 
-const LANG_NAMES: Record<string, string> = {
-  en: 'English',
-  de: 'German',
-  ru: 'Russian',
-  ar: 'Arabic',
-};
-
-const PROMPT_VERSION = '1.0';
+const PROMPT_VERSION = '1.1';
 
 /**
  * Translates a content entity from Turkish to the target language.
@@ -67,7 +60,19 @@ export async function translateContent(
   }
 
   const model = process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-4o-mini';
-  const targetLangName = LANG_NAMES[targetLang] ?? targetLang;
+
+  // Resolve the target language from the catalog (name + provider support).
+  const { getTranslationTargets, promptLangName } = await import('./lang-catalog');
+  const targets = await getTranslationTargets([targetLang]);
+  const info = targets[targetLang];
+  if (info && !info.providerSupported) {
+    return {
+      ok: false,
+      reason: 'api_error',
+      message: `Çeviri sağlayıcısı bu dili desteklemiyor: ${targetLang}`,
+    };
+  }
+  const targetLangName = promptLangName(info, targetLang);
 
   const systemPrompt = `You are an expert translation engine specializing in luxury transportation and tourism content.
 Your task is to translate Turkish content about Istanbul VIP Transfer into ${targetLangName}.

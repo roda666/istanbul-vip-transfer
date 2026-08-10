@@ -14,13 +14,6 @@ export type HomepageTranslateResult =
   | { ok: true; translated: Record<string, string>; model: string }
   | { ok: false; reason: 'not_configured' | 'rate_limited' | 'api_error' | 'parse_error'; message?: string };
 
-const LANG_NAMES: Record<string, string> = {
-  en: 'English',
-  de: 'German',
-  ru: 'Russian',
-  ar: 'Arabic (Modern Standard Arabic, RTL)',
-};
-
 /** Fields that must NEVER be translated, regardless of content. */
 const PRESERVED_VERBATIM = [
   'VIP Transfer Istanbul', 'Istanbul VIP Transfer', 'IST', 'SAW',
@@ -39,7 +32,20 @@ export async function translateHomepageFields(
   }
 
   const model = process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-4o-mini';
-  const langName = LANG_NAMES[targetLang] ?? targetLang;
+
+  // Resolve the target language from the catalog (name + provider support).
+  const { getTranslationTargets, promptLangName } = await import('./lang-catalog');
+  const targets = await getTranslationTargets([targetLang]);
+  const info = targets[targetLang];
+  if (info && !info.providerSupported) {
+    return {
+      ok: false,
+      reason: 'api_error',
+      message: `Çeviri sağlayıcısı bu dili desteklemiyor: ${targetLang}`,
+    };
+  }
+  const langName =
+    targetLang === 'ar' ? 'Arabic (Modern Standard Arabic, RTL)' : promptLangName(info, targetLang);
 
   const systemPrompt = `You are an expert translation engine specializing in luxury VIP transportation content.
 Translate the provided JSON field map from Turkish to ${langName}.

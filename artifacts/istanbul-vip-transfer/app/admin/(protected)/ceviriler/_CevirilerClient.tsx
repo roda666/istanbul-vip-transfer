@@ -38,6 +38,7 @@ type Job = {
 interface Props {
   jobs: Job[];
   langs: Language[];
+  sources: Array<{ id: string; title: string; slug: string }>;
   page: number;
   total: number;
   limit: number;
@@ -114,10 +115,65 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export default function CevirilerClient({ jobs: initialJobs, page, total, limit }: Props) {
+export default function CevirilerClient({ jobs: initialJobs, langs, sources, page, total, limit }: Props) {
   const [jobs, setJobs] = useState(initialJobs);
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // ── Bulk AI-translate toolbar state ─────────────────────────────────────
+  const [sourceId, setSourceId] = useState(sources[0]?.id ?? '');
+  const [selectedLangs, setSelectedLangs] = useState<string[]>([]);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkMsg, setBulkMsg] = useState<string | null>(null);
+  const [overwriteConfirm, setOverwriteConfirm] = useState<{ codes: string[]; pendingLangs: string[] } | null>(null);
+
+  const translatableLangs = langs.filter((l) => l.code !== 'tr' && l.providerSupported);
+  const enabledLangCodes = translatableLangs.filter((l) => l.isEnabled).map((l) => l.code);
+
+  function toggleLang(code: string) {
+    setSelectedLangs((prev) => (prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]));
+  }
+
+  async function runBulkTranslate(codes: string[], force = false) {
+    if (!sourceId) { setBulkMsg('Önce bir içerik seçin.'); return; }
+    if (codes.length === 0) { setBulkMsg('En az bir dil seçin.'); return; }
+    setBulkBusy(true);
+    setBulkMsg(null);
+    setError(null);
+    try {
+      const res = await fetch('/admin/api/translations/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entityType: 'content', entityId: sourceId, targetLanguageCodes: codes, force }),
+      });
+      const data = await res.json().catch(() => ({})) as {
+        error?: string;
+        results?: Array<{ lang: string; status: string; error?: string }>;
+        needsConfirmation?: string[];
+      };
+      if (!res.ok && res.status !== 207) throw new Error(data.error ?? 'Çeviri isteği başarısız');
+
+      const results = data.results ?? [];
+      const ok = results.filter((r) => r.status === 'draft').map((r) => r.lang);
+      const failed = results.filter((r) => ['error', 'failed'].includes(r.status));
+      const needs = data.needsConfirmation ?? [];
+
+      const parts: string[] = [];
+      if (ok.length) parts.push(`Taslak oluşturuldu: ${ok.join(', ')}`);
+      if (failed.length) parts.push(`Başarısız: ${failed.map((f) => `${f.lang} (${f.error ?? 'hata'})`).join(', ')}`);
+      setBulkMsg(parts.join(' · ') || null);
+
+      if (needs.length > 0) {
+        setOverwriteConfirm({ codes: needs, pendingLangs: needs });
+      } else if (ok.length > 0) {
+        window.location.reload();
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBulkBusy(false);
+    }
+  }
 
   async function doAction(jobId: string, action: string) {
     setLoading(jobId);
@@ -151,11 +207,102 @@ export default function CevirilerClient({ jobs: initialJobs, page, total, limit 
     </div>
   );
 
-  if (jobs.length === 0) return <>{emptyState}</>;
+  const bulkToolbar = (
+    <div style={{ background: '#FFFFFF', border: '1px solid #E8EDF3', borderRadius: '12px', padding: '16px', marginBottom: '16px', fontFamily: 'Inter, sans-serif', boxShadow: '0 1px 4px rgba(16,42,67,0.05)' }}>
+      <div style={{ fontSize: '13px', fontWeight: 700, color: '#1A2B3C', marginBottom: '10px' }}>AI Çeviri Üret</div>
+      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '10px' }}>
+        <select
+          value={sourceId}
+          onChange={(e) => setSourceId(e.target.value)}
+          disabled={bulkBusy}
+          style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid #D9E2EC', fontSize: '13px', fontFamily: 'Inter, sans-serif', background: '#FFF', color: '#1A2B3C', maxWidth: '100%' }}
+        >
+          {sources.length === 0 && <option value="">İçerik bulunamadı</option>}
+          {sources.map((s) => <option key={s.id} value={s.id}>{s.title} ({s.slug})</option>)}
+        </select>
+      </div>
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '12px' }}>
+        {translatableLangs.map((l) => {
+          const active = selectedLangs.includes(l.code);
+          return (
+            <button key={l.code} type="button" disabled={bulkBusy} onClick={() => toggleLang(l.code)}
+              title={`${l.turkishName ?? l.name}${l.isEnabled ? '' : ' (pasif — taslak hazırlanır, kamuya açılmaz)'}`}
+              style={{
+                padding: '4px 10px', borderRadius: '9999px', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
+                fontFamily: 'Inter, sans-serif',
+                background: active ? '#1A2B3C' : '#FFF',
+                color: active ? '#FFF' : l.isEnabled ? '#263F55' : '#8899AA',
+                border: `1px solid ${active ? '#1A2B3C' : '#D9E2EC'}`,
+              }}>
+              {l.code}{!l.isEnabled && ' ·pasif'}
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <button type="button" disabled={bulkBusy || selectedLangs.length === 0} onClick={() => runBulkTranslate(selectedLangs)}
+          style={{ padding: '8px 14px', borderRadius: '8px', border: 'none', background: '#2563EB', color: '#FFF', fontSize: '12px', fontWeight: 600, cursor: bulkBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif', opacity: bulkBusy || selectedLangs.length === 0 ? 0.6 : 1 }}>
+          {bulkBusy ? 'Çevriliyor…' : `Seçili Dillere Çevir (${selectedLangs.length})`}
+        </button>
+        <button type="button" disabled={bulkBusy || enabledLangCodes.length === 0} onClick={() => runBulkTranslate(enabledLangCodes)}
+          style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #2563EB', background: '#EFF6FF', color: '#1D4ED8', fontSize: '12px', fontWeight: 600, cursor: bulkBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif', opacity: bulkBusy ? 0.6 : 1 }}>
+          Tüm Etkin Dillere Çevir ({enabledLangCodes.length})
+        </button>
+        {bulkBusy && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite', color: '#2563EB' }} />}
+      </div>
+      {bulkMsg && (
+        <p style={{ fontSize: '12px', color: '#50677A', marginTop: '10px', marginBottom: 0 }}>{bulkMsg}</p>
+      )}
+      <p style={{ fontSize: '11px', color: '#8899AA', marginTop: '8px', marginBottom: 0 }}>
+        AI çevirileri her zaman TASLAK olarak kaydedilir — inceleme ve yayın adımları adminde kalır. Pasif dillerin taslakları kamuya görünmez.
+      </p>
+    </div>
+  );
+
+  const overwriteDialog = overwriteConfirm && (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+      <div style={{ background: '#FFF', borderRadius: '16px', padding: '24px', maxWidth: '440px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)', fontFamily: 'Inter, sans-serif' }}>
+        <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#1A2B3C', marginBottom: '10px' }}>Elle Düzenlenmiş Çeviriler</h3>
+        <p style={{ fontSize: '13px', color: '#50677A', lineHeight: 1.6, marginBottom: '20px' }}>
+          Şu dillerde elle düzenlenmiş/kilitli çeviriler var: <strong>{overwriteConfirm.codes.join(', ')}</strong>.
+          AI çevirisiyle üzerine yazılsın mı? Bu işlem mevcut düzenlemeleri değiştirir.
+        </p>
+        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+          <button onClick={() => setOverwriteConfirm(null)}
+            style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #D9E2EC', background: '#FFF', cursor: 'pointer', fontSize: '13px' }}>
+            Hayır, Koru
+          </button>
+          <button onClick={() => { const codes = overwriteConfirm.codes; setOverwriteConfirm(null); void runBulkTranslate(codes, true); }}
+            style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#DC2626', color: '#FFF', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
+            Evet, Üzerine Yaz
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (jobs.length === 0) {
+    return (
+      <div>
+        <style>{STYLE}</style>
+        {bulkToolbar}
+        {error && (
+          <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#991B1B', fontFamily: 'Inter, sans-serif', fontSize: '13px', padding: '10px 14px', borderRadius: '8px', marginBottom: '12px' }}>
+            {error}
+          </div>
+        )}
+        {emptyState}
+        {overwriteDialog}
+      </div>
+    );
+  }
 
   return (
     <div>
       <style>{STYLE}</style>
+
+      {bulkToolbar}
+      {overwriteDialog}
 
       {error && (
         <div className="mb-4 px-4 py-3 rounded-lg text-sm"

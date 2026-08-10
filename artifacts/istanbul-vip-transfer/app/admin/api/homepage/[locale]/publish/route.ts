@@ -15,12 +15,30 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/auth/session';
 import { revalidatePath } from 'next/cache';
 
-const VALID_LOCALES = ['tr', 'en', 'de', 'ru', 'ar'] as const;
 const HOMEPAGE_SLUG = 'ana-sayfa';
 
-const LOCALE_PATHS: Record<string, string> = {
-  tr: '/', en: '/en', de: '/de', ru: '/ru', ar: '/ar',
-};
+/** Catalog-driven locale validation: TR (source) or any catalog language. */
+async function isManageableLocale(locale: string): Promise<boolean> {
+  if (locale === 'tr') return true;
+  if (!/^[a-zA-Z-]{2,10}$/.test(locale)) return false;
+  try {
+    const { db } = await import('@/db');
+    const { languages } = await import('@/db/schema');
+    const { eq } = await import('drizzle-orm');
+    const [row] = await db
+      .select({ code: languages.code })
+      .from(languages)
+      .where(eq(languages.code, locale))
+      .limit(1);
+    return Boolean(row);
+  } catch {
+    return ['en', 'de', 'ru', 'ar'].includes(locale);
+  }
+}
+
+function localePathOf(locale: string): string {
+  return locale === 'tr' ? '/' : `/${locale}`;
+}
 
 type WorkflowAction = 'submit_review' | 'approve' | 'publish' | 'unpublish';
 
@@ -42,7 +60,7 @@ export async function POST(
   }
 
   const { locale } = await params;
-  if (!(VALID_LOCALES as readonly string[]).includes(locale)) {
+  if (!(await isManageableLocale(locale))) {
     return NextResponse.json({ error: 'Invalid locale' }, { status: 400 });
   }
 
@@ -90,7 +108,7 @@ export async function POST(
         metadata: { locale },
       });
 
-      revalidatePath(LOCALE_PATHS[locale] ?? '/');
+      revalidatePath(localePathOf(locale));
       return NextResponse.json({ ok: true, action, locale });
     }
 
@@ -168,8 +186,7 @@ export async function POST(
       metadata: { locale, previousStatus: tx.status, newStatus: update.status },
     });
 
-    const path = LOCALE_PATHS[locale] ?? '/';
-    revalidatePath(path);
+    revalidatePath(localePathOf(locale));
 
     return NextResponse.json({ ok: true, action, locale, newStatus: update.status });
   } catch (err) {

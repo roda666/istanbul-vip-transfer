@@ -17,18 +17,34 @@ import {
 import { translateHomepageFields } from '@/lib/ai/translate-homepage';
 import 'server-only';
 
-const VALID_LOCALES = ['tr', 'en', 'de', 'ru', 'ar'] as const;
-type Locale = typeof VALID_LOCALES[number];
-
-function isValidLocale(l: string): l is Locale {
-  return (VALID_LOCALES as readonly string[]).includes(l);
+/**
+ * A locale is manageable by the homepage editor if it is Turkish (the source)
+ * or any language present in the catalog. Catalog-driven — no hardcoded list.
+ */
+async function isManageableLocale(locale: string): Promise<boolean> {
+  if (locale === 'tr') return true;
+  if (!/^[a-zA-Z-]{2,10}$/.test(locale)) return false;
+  try {
+    const { db } = await import('@/db');
+    const { languages } = await import('@/db/schema');
+    const { eq } = await import('drizzle-orm');
+    const [row] = await db
+      .select({ code: languages.code })
+      .from(languages)
+      .where(eq(languages.code, locale))
+      .limit(1);
+    return Boolean(row);
+  } catch {
+    return ['en', 'de', 'ru', 'ar'].includes(locale);
+  }
 }
 
 const patchSchema = z.object({
   sections: z.record(z.unknown()),
   autoTranslate: z.boolean().default(true),
-  targetLocales: z.array(z.enum(['en', 'de', 'ru', 'ar'])).default(['en', 'de', 'ru', 'ar']),
-  /** When true (homepage default), immediately publish TR + all translated locales. */
+  /** Target locales — validated against ENABLED catalog languages at runtime. */
+  targetLocales: z.array(z.string().min(2).max(10)).optional(),
+  /** When true, immediately publish TR + all translated locales. Admin-controlled from the editor. */
   autoPublish: z.boolean().default(true),
 });
 
@@ -42,7 +58,7 @@ export async function GET(
   }
 
   const { locale } = await params;
-  if (!isValidLocale(locale)) {
+  if (!(await isManageableLocale(locale))) {
     return NextResponse.json({ error: 'Invalid locale' }, { status: 400 });
   }
 
@@ -66,7 +82,7 @@ export async function PATCH(
   }
 
   const { locale } = await params;
-  if (!isValidLocale(locale)) {
+  if (!(await isManageableLocale(locale))) {
     return NextResponse.json({ error: 'Invalid locale' }, { status: 400 });
   }
 
@@ -80,7 +96,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Missing or invalid sections payload' }, { status: 422 });
   }
 
-  const { sections: rawSections, autoTranslate, targetLocales, autoPublish } = parsed.data;
+  const { sections: rawSections, autoTranslate, autoPublish } = parsed.data;
   if (!isHomepageSections(rawSections)) {
     return NextResponse.json({ error: 'Invalid sections structure' }, { status: 422 });
   }
@@ -90,8 +106,23 @@ export async function PATCH(
   try {
     const { db } = await import('@/db');
     const { content, contentTranslations, auditLogs } = await import('@/db/schema');
+    const { languages } = await import('@/db/schema');
     const { eq, and, inArray } = await import('drizzle-orm');
     const { sql } = await import('drizzle-orm');
+
+    // ── Resolve auto-translate targets from the language catalog ──────────
+    // Only ENABLED, provider-supported, non-TR languages are auto-translated.
+    // Passive languages are skipped even if explicitly requested.
+    const enabledRows = await db
+      .select({ code: languages.code })
+      .from(languages)
+      .where(and(
+        eq(languages.isEnabled, true),
+        eq(languages.providerSupported, true),
+      ));
+    const enabledCodes = enabledRows.map((r) => r.code).filter((c) => c !== 'tr');
+    const targetLocales = (parsed.data.targetLocales ?? enabledCodes)
+      .filter((c) => enabledCodes.includes(c));
 
     // ── Non-TR save (manual edit) ──────────────────────────────────────────
     if (locale !== 'tr') {

@@ -22,7 +22,21 @@ import { useLang } from '@/lib/i18n/context';
 import { SUPPORTED_LANGS, LANG_NATIVE_NAMES, type SiteLang } from '@/lib/i18n';
 import { localePath } from '@/lib/locale-path';
 
-const ALL_SITE_LANGS: SiteLang[] = ['tr', ...SUPPORTED_LANGS];
+interface PublicLang {
+  code: string;
+  nativeName: string;
+  direction: 'ltr' | 'rtl';
+}
+
+/** Static fallback — mirrors the launched languages (used until /data/languages loads). */
+const FALLBACK_LANGS: PublicLang[] = (['tr', ...SUPPORTED_LANGS] as SiteLang[]).map((code) => ({
+  code,
+  nativeName: LANG_NATIVE_NAMES[code],
+  direction: code === 'ar' ? 'rtl' : 'ltr',
+}));
+
+/** Module-level cache so the selector fetches the DB-driven list only once per page load. */
+let cachedLangs: PublicLang[] | null = null;
 
 interface Props {
   /** Visual variant — dark background or light background. */
@@ -34,8 +48,27 @@ export default function LanguageSelector({ variant = 'light', className = '' }: 
   const { lang, dict } = useLang();
   const pathname = usePathname() ?? '/';
   const [open, setOpen]       = useState(false);
-  const [pending, setPending] = useState<SiteLang | null>(null);
+  const [pending, setPending] = useState<string | null>(null);
+  const [siteLangs, setSiteLangs] = useState<PublicLang[]>(cachedLangs ?? FALLBACK_LANGS);
   const wrapRef = useRef<HTMLDivElement>(null);
+
+  // Load the active + published language set from the DB (single source of truth).
+  useEffect(() => {
+    if (cachedLangs) return;
+    let cancelled = false;
+    fetch('/data/languages')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { items?: PublicLang[] } | null) => {
+        if (cancelled || !data?.items?.length) return;
+        cachedLangs = data.items;
+        setSiteLangs(data.items);
+      })
+      .catch(() => { /* keep fallback */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  const nativeNameOf = (code: string) =>
+    siteLangs.find((l) => l.code === code)?.nativeName ?? LANG_NATIVE_NAMES.tr;
 
   // Close on outside click or Escape
   useEffect(() => {
@@ -52,7 +85,7 @@ export default function LanguageSelector({ variant = 'light', className = '' }: 
     };
   }, [open]);
 
-  function switchLocale(targetLang: SiteLang) {
+  function switchLocale(targetLang: string) {
     if (targetLang === lang || pending !== null) return;
     setOpen(false);
     setPending(targetLang);
@@ -101,9 +134,7 @@ export default function LanguageSelector({ variant = 'light', className = '' }: 
       >
         <Globe size={13} aria-hidden="true" style={{ flexShrink: 0 }} />
         <span>
-          {pending
-            ? (LANG_NATIVE_NAMES[pending] ?? LANG_NATIVE_NAMES.tr)
-            : (LANG_NATIVE_NAMES[lang as SiteLang] ?? LANG_NATIVE_NAMES.tr)}
+          {pending ? nativeNameOf(pending) : nativeNameOf(lang)}
         </span>
         <ChevronDown
           size={11}
@@ -129,7 +160,8 @@ export default function LanguageSelector({ variant = 'light', className = '' }: 
             boxShadow:      '0 8px 32px rgba(16,42,67,0.15)',
           }}
         >
-          {ALL_SITE_LANGS.map((l) => {
+          {siteLangs.map((entry) => {
+            const l = entry.code;
             const isActive = l === lang;
             return (
               <button
@@ -166,8 +198,8 @@ export default function LanguageSelector({ variant = 'light', className = '' }: 
                     border:     isActive ? 'none' : `1px solid ${isDark ? 'rgba(255,255,255,0.2)' : '#D9E2EC'}`,
                   }}
                 />
-                {LANG_NATIVE_NAMES[l]}
-                {l === 'ar' && (
+                {entry.nativeName}
+                {entry.direction === 'rtl' && (
                   <span
                     className="text-[9px] ml-auto"
                     style={{ color: isDark ? 'rgba(255,255,255,0.4)' : '#8899AA' }}

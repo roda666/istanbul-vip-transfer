@@ -5,7 +5,7 @@
 import type { Metadata } from 'next';
 import { db } from '@/db';
 import { contentTranslations, content, languages } from '@/db/schema';
-import { desc, asc, eq, sql } from 'drizzle-orm';
+import { desc, asc, sql } from 'drizzle-orm';
 import AdminPageHeader from '../../_components/AdminPageHeader';
 import CevirilerClient from './_CevirilerClient';
 
@@ -39,15 +39,20 @@ export default async function CevirilerPage({
   let total = 0;
   let dbError = false;
   let langs: (typeof languages.$inferSelect)[] = [];
+  let sources: Array<{ id: string; title: string; slug: string }> = [];
 
   try {
     const { count: drizzleCount } = await import('drizzle-orm');
-    const [langRows, [totalRow]] = await Promise.all([
-      db.select().from(languages).where(eq(languages.isEnabled, true)).orderBy(asc(languages.displayOrder)),
+    // All catalog languages — including passive ones (drafts can be prepared
+    // before a language is activated/published).
+    const [langRows, [totalRow], sourceRows] = await Promise.all([
+      db.select().from(languages).orderBy(asc(languages.displayOrder)),
       db.select({ count: drizzleCount() }).from(contentTranslations),
+      db.select({ id: content.id, title: content.title, slug: content.slug }).from(content).orderBy(asc(content.title)),
     ]);
     langs = langRows;
     total = Number(totalRow?.count ?? 0);
+    sources = sourceRows;
   } catch {
     // ignore
   }
@@ -94,7 +99,7 @@ export default async function CevirilerPage({
           Veritabanı bağlantı hatası. Migration çalıştırıldı mı?
         </p>
       ) : (
-        <CevirilerClient jobs={jobs} langs={langs} page={page} total={total} limit={limit} />
+        <CevirilerClient jobs={jobs} langs={langs} sources={sources} page={page} total={total} limit={limit} />
       )}
     </div>
   );

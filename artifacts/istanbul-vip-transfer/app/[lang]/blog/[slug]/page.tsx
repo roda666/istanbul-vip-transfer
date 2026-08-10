@@ -64,7 +64,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = translation.metaTitle ?? translation.title ?? translation.sourceTitle;
   const description = translation.metaDescription ?? translation.excerpt ?? undefined;
   const path = `/blog/${translation.slug ?? slug}`;
-  const alternates = buildAlternates(path, [lang]);
+  const alternates = await buildAlternates(path, [lang]);
 
   return {
     title: `${title} | VIP Transfer Istanbul`,

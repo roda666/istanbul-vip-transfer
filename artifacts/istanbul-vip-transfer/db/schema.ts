@@ -285,6 +285,14 @@ export const languages = pgTable('languages', {
   /** Native name: 'English', 'Deutsch', 'Русский', 'العربية' */
   nativeName: text('native_name').notNull(),
   direction: textDirectionEnum('direction').default('ltr').notNull(),
+  /** Turkish display name shown in the admin UI: 'İngilizce', 'Almanca' */
+  turkishName: text('turkish_name'),
+  /** ISO 15924 writing system: 'Latn', 'Cyrl', 'Arab', ... */
+  script: text('script').default('Latn').notNull(),
+  /** Whether the AI translation provider (OpenAI) reliably supports this language. */
+  providerSupported: boolean('provider_supported').default(true).notNull(),
+  /** Whether the language is publicly visible (selector, sitemap, hreflang). */
+  isPublished: boolean('is_published').default(false).notNull(),
   isDefault: boolean('is_default').default(false).notNull(),
   isEnabled: boolean('is_enabled').default(true).notNull(),
   displayOrder: integer('display_order').default(0).notNull(),

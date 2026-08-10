@@ -16,8 +16,6 @@ import { translateHomepageFields } from '@/lib/ai/translate-homepage';
 import { parseHomepageSections, HOMEPAGE_FALLBACK } from '@/lib/homepage-types';
 import 'server-only';
 
-const VALID_TARGETS = ['en', 'de', 'ru', 'ar'] as const;
-
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ locale: string }> },
@@ -28,8 +26,27 @@ export async function POST(
   }
 
   const { locale } = await params;
-  if (!(VALID_TARGETS as readonly string[]).includes(locale)) {
-    return NextResponse.json({ error: 'Invalid locale — must be en, de, ru, or ar' }, { status: 400 });
+
+  // Validate against the language catalog: must exist, be enabled, be
+  // provider-supported, and not be the TR source itself.
+  {
+    const { db } = await import('@/db');
+    const { languages } = await import('@/db/schema');
+    const { eq } = await import('drizzle-orm');
+    const [langRow] = await db
+      .select({ isEnabled: languages.isEnabled, providerSupported: languages.providerSupported })
+      .from(languages)
+      .where(eq(languages.code, locale))
+      .limit(1);
+    if (locale === 'tr' || !langRow) {
+      return NextResponse.json({ error: 'Geçersiz hedef dil' }, { status: 400 });
+    }
+    if (!langRow.providerSupported) {
+      return NextResponse.json({ error: 'Çeviri sağlayıcısı bu dili desteklemiyor.' }, { status: 400 });
+    }
+    if (!langRow.isEnabled) {
+      return NextResponse.json({ error: 'Bu dil etkin değil — önce Dil Yönetimi sayfasından etkinleştirin.' }, { status: 400 });
+    }
   }
 
   if (!process.env.OPENAI_API_KEY) {

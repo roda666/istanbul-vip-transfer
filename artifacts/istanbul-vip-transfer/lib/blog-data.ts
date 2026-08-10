@@ -55,7 +55,7 @@ export const blogPosts: BlogPost[] = [
       'İstanbul Havalimanı\'nda özel transfer nasıl çalışır? Rezervasyon adımları, karşılama süreci, bagaj planlaması ve araç seçimi hakkında kapsamlı rehber.',
     publishedAt: '2026-07-27',
     category: 'Transfer Rehberi',
-    image: '/images/istanbul-hero.jpg',
+    image: '/images/blog/istanbul-havalimani-transfer-rehberi.jpg',
     imageAlt: 'İstanbul gece manzarası ve Boğaziçi Köprüsü — İstanbul Havalimanı Transfer Rehberi',
     relatedServices: [
       { label: 'İstanbul Havalimanı Transfer', href: '/istanbul-havalimani-transfer' },
@@ -163,7 +163,7 @@ Her iki terminalden de karşılama yapılmaktadır. Rezervasyon sırasında term
       'Sabiha Gökçen Havalimanı\'nda ön rezervasyon, yolcu karşılama, uçuş bilgisi paylaşımı, bagaj gereksinimleri ve kapıdan kapıya transfer planlaması rehberi.',
     publishedAt: '2026-07-27',
     category: 'Transfer Rehberi',
-    image: '/images/mercedes-sprinter.jpg',
+    image: '/images/blog/sabiha-gokcen-transfer-rehberi.jpg',
     imageAlt: 'Mercedes Sprinter VIP transfer aracı — Sabiha Gökçen Havalimanı transfer planlaması',
     relatedServices: [
       { label: 'Sabiha Gökçen Transfer', href: '/sabiha-gokcen-havalimani-transfer' },
@@ -262,7 +262,7 @@ Mümkün olduğunca erkenden rezervasyon yapılması önerilir. Sabah erken veya
       'İstanbul\'da VIP özel transfer ile taksi arasındaki temel farklar: ön rezervasyon, araç planlaması, grup ve bagaj kapasitesi, havalimanı karşılaması.',
     publishedAt: '2026-07-27',
     category: 'VIP Ulaşım',
-    image: '/images/mercedes-vito.jpg',
+    image: '/images/blog/vip-transfer-ile-taksi-arasindaki-farklar.jpg',
     imageAlt: 'Mercedes Vito VIP araç iç mekanı — özel transfer ve taksi karşılaştırması',
     relatedServices: [
       { label: 'VIP Transfer', href: '/vip-transfer' },

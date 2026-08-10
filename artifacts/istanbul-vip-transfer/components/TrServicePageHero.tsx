@@ -9,14 +9,7 @@
 import type { PageKey } from '@/components/PageHero';
 import PageHero from '@/components/PageHero';
 import { getPublishedServicePage } from '@/lib/service-page-cms';
-
-/** Slugs that use 2-crumb breadcrumb (Ana Sayfa → Page) instead of 3-crumb. */
-const TWO_CRUMB_SLUGS = new Set([
-  'istanbul-havalimani-transfer',
-  'sabiha-gokcen-havalimani-transfer',
-  'vip-transfer',
-  'sehirler-arasi-transfer',
-]);
+import { TWO_CRUMB_SLUGS } from '@/lib/service-page-config';
 
 interface Props {
   slug: string;

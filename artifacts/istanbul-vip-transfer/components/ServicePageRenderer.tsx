@@ -14,32 +14,7 @@ import BookingForm from '@/components/BookingForm';
 import VehicleFleet from '@/components/VehicleFleet';
 import Contact from '@/components/Contact';
 import { getPublishedServicePage } from '@/lib/service-page-cms';
-
-/** Slug → PageHero pageKey mapping (for static fallback). */
-const SLUG_TO_PAGE_KEY: Record<string, PageKey> = {
-  'istanbul-havalimani-transfer':      'istHava',
-  'sabiha-gokcen-havalimani-transfer': 'sabiha',
-  'vip-transfer':                      'vipTransfer',
-  'sehirler-arasi-transfer':           'sehirlerArasi',
-  'soforlu-arac-kiralama':             'soforlu',
-  'otel-transfer':                     'otel',
-  'saglik-turizmi-transfer':           'saglik',
-  'kurumsal-vip-transfer':             'kurumsal',
-  'istanbul-bursa-transfer':           'istBursa',
-  'istanbul-sapanca-transfer':         'istSapanca',
-  'istanbul-gunubirlik-turlar':        'istGunubirlik',
-  'sapanca-masukiye-turu':             'sapanca',
-  'bursa-gunubirlik-tur':              'bursa',
-  'yalova-gunubirlik-tur':             'yalova',
-};
-
-/** Slugs that use 2-crumb breadcrumb (Home → Page) instead of 3-crumb. */
-const TWO_CRUMB_SLUGS = new Set([
-  'istanbul-havalimani-transfer',
-  'sabiha-gokcen-havalimani-transfer',
-  'vip-transfer',
-  'sehirler-arasi-transfer',
-]);
+import { SLUG_TO_PAGE_KEY, TWO_CRUMB_SLUGS } from '@/lib/service-page-config';
 
 interface Props {
   slug: string;

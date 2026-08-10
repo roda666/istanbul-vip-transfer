@@ -12,6 +12,7 @@ import { contentTranslations, content } from '@/db/schema';
 import { eq, and, or } from 'drizzle-orm';
 import { isValidLang, getDictionary, getLangDir } from '@/lib/i18n';
 import { buildAlternates, getOgLocale } from '@/lib/i18n/seo';
+import { SITE } from '@/lib/site-config';
 
 interface Props {
   params: Promise<{ lang: string; slug: string }>;
@@ -66,6 +67,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const path = `/blog/${translation.slug ?? slug}`;
   const alternates = await buildAlternates(path, [lang]);
 
+  const canonicalUrl = `${SITE.siteUrl}/${lang}/blog/${translation.slug ?? slug}`;
   return {
     title: `${title} | VIP Transfer Istanbul`,
     description,
@@ -73,6 +75,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title: title ?? undefined,
       description: description,
+      url: canonicalUrl,
+      siteName: 'VIP Transfer Istanbul',
       locale: getOgLocale(lang),
       type: 'article',
     },
@@ -150,6 +154,46 @@ export default async function TranslatedBlogPost({ params }: Props) {
           </div>
         </div>
       </div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'BlogPosting',
+            headline: translation.title ?? translation.sourceTitle,
+            description: translation.excerpt ?? undefined,
+            url: `${SITE.siteUrl}/${lang}/blog/${translation.slug ?? slug}`,
+            inLanguage: lang,
+            datePublished: translation.publishedAt?.toISOString(),
+            author: {
+              '@type': 'Organization',
+              name: 'VIP Transfer Istanbul',
+              url: SITE.siteUrl,
+            },
+            publisher: {
+              '@type': 'Organization',
+              name: 'VIP Transfer Istanbul',
+              url: SITE.siteUrl,
+              telephone: SITE.phoneE164,
+              email: SITE.email,
+            },
+          }),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Home', item: SITE.siteUrl },
+              { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE.siteUrl}/${lang}/blog` },
+              { '@type': 'ListItem', position: 3, name: translation.title ?? translation.sourceTitle, item: `${SITE.siteUrl}/${lang}/blog/${translation.slug ?? slug}` },
+            ],
+          }),
+        }}
+      />
     </article>
   );
 }

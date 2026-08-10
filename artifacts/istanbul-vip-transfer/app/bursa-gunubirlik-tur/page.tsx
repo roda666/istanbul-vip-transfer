@@ -15,6 +15,14 @@ export const metadata: Metadata = {
   description:
     'İstanbul\'dan Bursa\'ya özel araçla günübirlik tur. Yeşil Bursa\'yı kendi programınıza göre keşfetmek için Mercedes VIP tur transferi.',
   alternates: { canonical: PAGE },
+  openGraph: {
+    title: 'Bursa Günübirlik Tur | İstanbul\'dan VIP Transfer',
+    description: 'İstanbul\'dan Bursa\'ya özel araçla günübirlik tur. Yeşil Bursa\'yı kendi programınıza göre keşfetmek için Mercedes VIP tur transferi.',
+    url: PAGE,
+    siteName: 'VIP Transfer Istanbul',
+    locale: 'tr_TR',
+    type: 'website',
+  },
   robots: DRAFT ? { index: false, follow: true } : { index: true, follow: true },
 };
 

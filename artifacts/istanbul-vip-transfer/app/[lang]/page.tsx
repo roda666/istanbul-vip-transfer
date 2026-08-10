@@ -8,6 +8,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { isValidLang } from '@/lib/i18n';
 import { buildAlternates, getOgLocale } from '@/lib/i18n/seo';
+import { SITE } from '@/lib/site-config';
 import BookingForm from '@/components/BookingForm';
 import Hero from '@/components/Hero';
 import VehicleFleet from '@/components/VehicleFleet';
@@ -61,7 +62,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       languages: alternates.languages,
     },
     openGraph: {
+      title: seoTitle,
+      description: seoDescription,
+      url: `${SITE.siteUrl}/${lang}`,
+      siteName: 'VIP Transfer Istanbul',
       locale: getOgLocale(lang),
+      type: 'website',
     },
     robots: { index: true, follow: true },
   };
@@ -74,6 +80,28 @@ export default async function TranslatedHomePage({ params }: Props) {
   // Read published CMS data server-side; falls back to static i18n if DB unavailable
   const cmsData = await getPublishedHomepageData(lang);
 
+  const pageUrl = `${SITE.siteUrl}/${lang}`;
+  const inLanguage: Record<string, string> = {
+    en: 'en', de: 'de', ru: 'ru', ar: 'ar',
+  };
+
+  const webPageSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: cmsData.seo.metaTitle,
+    description: cmsData.seo.metaDescription,
+    url: pageUrl,
+    inLanguage: inLanguage[lang] ?? lang,
+    publisher: {
+      '@type': 'Organization',
+      name: 'VIP Transfer Istanbul',
+      url: SITE.siteUrl,
+      telephone: SITE.phoneE164,
+      email: SITE.email,
+      sameAs: [SITE.googleBusinessUrl],
+    },
+  };
+
   return (
     <HomepageCmsProvider data={cmsData}>
       <Hero />
@@ -84,6 +112,10 @@ export default async function TranslatedHomePage({ params }: Props) {
       <Reviews />
       <FAQ />
       <Contact />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageSchema) }}
+      />
     </HomepageCmsProvider>
   );
 }

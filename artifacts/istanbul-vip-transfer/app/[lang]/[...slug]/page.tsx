@@ -8,7 +8,9 @@
  * correct language even though the page content is Turkish.
  *
  * SEO: these locale-prefixed paths are not indexed (noindex). The canonical Turkish
- * URL (e.g. /hizmetler) remains the indexed version.
+ * URL (e.g. /hizmetler) remains the indexed version. Locale-specific structured data
+ * is intentionally omitted because the rendered content is Turkish regardless of prefix.
+ * Indexable translated pages are served via [lang]/blog/[slug] and [lang]/page.tsx (homepage).
  *
  * NOTE: The param is named `slug` to match app/[lang]/blog/[slug]/page.tsx.
  * Next.js requires overlapping catch-all and named dynamic segments use the same name.

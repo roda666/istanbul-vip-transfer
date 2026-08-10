@@ -15,6 +15,14 @@ export const metadata: Metadata = {
   description:
     'İstanbul\'un tarihi ve kültürel mekânlarını özel araçla günübirlik keşfedin. Mercedes Vito ve Sprinter ile kişiye özel şehir turu hizmeti.',
   alternates: { canonical: PAGE },
+  openGraph: {
+    title: 'İstanbul Günübirlik Turlar | VIP Özel Tur Aracı',
+    description: 'İstanbul\'un tarihi ve kültürel mekânlarını özel araçla günübirlik keşfedin. Mercedes Vito ve Sprinter ile kişiye özel şehir turu hizmeti.',
+    url: PAGE,
+    siteName: 'VIP Transfer Istanbul',
+    locale: 'tr_TR',
+    type: 'website',
+  },
   robots: DRAFT ? { index: false, follow: true } : { index: true, follow: true },
 };
 

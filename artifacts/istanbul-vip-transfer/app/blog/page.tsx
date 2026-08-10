@@ -7,6 +7,32 @@ import { SITE } from '@/lib/site-config';
 const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/blog`;
 
+const blogListingSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: 'Blog | İstanbul VIP Transfer Rehberleri',
+  description:
+    'İstanbul havalimanı transferi, VIP ulaşım, araç seçimi ve rezervasyon süreçleri hakkında faydalı rehberler.',
+  url: PAGE,
+  inLanguage: 'tr',
+  publisher: {
+    '@type': 'Organization',
+    name: 'VIP Transfer Istanbul',
+    url: BASE,
+    telephone: SITE.phoneE164,
+    email: SITE.email,
+  },
+};
+
+const breadcrumbSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Ana Sayfa', item: BASE },
+    { '@type': 'ListItem', position: 2, name: 'Blog', item: PAGE },
+  ],
+};
+
 export const metadata: Metadata = {
   title: 'Blog | İstanbul VIP Transfer Rehberleri',
   description:
@@ -114,6 +140,14 @@ export default function BlogPage() {
           </div>
         )}
       </section>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogListingSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
     </>
   );
 }

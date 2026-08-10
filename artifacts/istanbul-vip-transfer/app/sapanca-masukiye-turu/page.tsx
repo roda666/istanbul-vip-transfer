@@ -15,6 +15,14 @@ export const metadata: Metadata = {
   description:
     'İstanbul\'dan Sapanca Gölü ve Maşukiye\'ye özel araçla günübirlik tur. Doğa içinde konforlu bir gün geçirmek için Mercedes ile VIP tur hizmeti.',
   alternates: { canonical: PAGE },
+  openGraph: {
+    title: 'Sapanca–Maşukiye Günübirlik Turu | VIP Transfer',
+    description: 'İstanbul\'dan Sapanca Gölü ve Maşukiye\'ye özel araçla günübirlik tur. Doğa içinde konforlu bir gün geçirmek için Mercedes ile VIP tur hizmeti.',
+    url: PAGE,
+    siteName: 'VIP Transfer Istanbul',
+    locale: 'tr_TR',
+    type: 'website',
+  },
   robots: DRAFT ? { index: false, follow: true } : { index: true, follow: true },
 };
 

@@ -15,6 +15,14 @@ export const metadata: Metadata = {
   description:
     'İstanbul\'dan Bursa\'ya veya Bursa\'dan İstanbul\'a Mercedes Vito ve Sprinter ile özel VIP transfer hizmeti. Kapıdan kapıya konforlu şehirler arası ulaşım.',
   alternates: { canonical: PAGE },
+  openGraph: {
+    title: 'İstanbul–Bursa Transfer | VIP Özel Araç',
+    description: 'İstanbul\'dan Bursa\'ya veya Bursa\'dan İstanbul\'a Mercedes Vito ve Sprinter ile özel VIP transfer hizmeti. Kapıdan kapıya konforlu şehirler arası ulaşım.',
+    url: PAGE,
+    siteName: 'VIP Transfer Istanbul',
+    locale: 'tr_TR',
+    type: 'website',
+  },
   robots: DRAFT ? { index: false, follow: true } : { index: true, follow: true },
 };
 

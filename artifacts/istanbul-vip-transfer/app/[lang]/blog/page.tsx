@@ -10,6 +10,7 @@ import { contentTranslations, content } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { isValidLang, getDictionary } from '@/lib/i18n';
 import { buildAlternates, getOgLocale } from '@/lib/i18n/seo';
+import { SITE } from '@/lib/site-config';
 import { ArrowRight } from 'lucide-react';
 
 interface Props {
@@ -27,10 +28,27 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     ru: 'Блог | Стамбул VIP Трансфер',
     ar: 'المدونة | إسطنبول VIP ترانسفير',
   };
+  const descriptions: Record<string, string> = {
+    en: 'Guides and articles on Istanbul airport transfers, VIP transportation and vehicle selection.',
+    de: 'Ratgeber und Artikel zu Flughafentransfers, VIP-Transport und Fahrzeugauswahl in Istanbul.',
+    ru: 'Руководства и статьи о трансферах из аэропорта Стамбула, VIP-перевозках и выборе автомобиля.',
+    ar: 'أدلة ومقالات حول نقل المطار في إسطنبول والنقل الفاخر واختيار المركبات.',
+  };
+  const pageTitle = titles[lang] ?? titles.en;
+  const pageDesc  = descriptions[lang] ?? descriptions.en;
+  const pageUrl   = `${SITE.siteUrl}/${lang}/blog`;
   return {
-    title: titles[lang] ?? titles.en,
+    title: pageTitle,
+    description: pageDesc,
     alternates: { canonical: alternates.canonical, languages: alternates.languages },
-    openGraph: { locale: getOgLocale(lang) },
+    openGraph: {
+      title: pageTitle,
+      description: pageDesc,
+      url: pageUrl,
+      siteName: 'VIP Transfer Istanbul',
+      locale: getOgLocale(lang),
+      type: 'website',
+    },
     robots: { index: true, follow: true },
   };
 }
@@ -79,6 +97,7 @@ export default async function TranslatedBlogPage({ params }: Props) {
   const isRtl = lang === 'ar';
 
   return (
+    <>
     <section
       className="py-20 min-h-screen"
       style={{ background: '#F7F8FC' }}
@@ -153,5 +172,40 @@ export default async function TranslatedBlogPage({ params }: Props) {
         )}
       </div>
     </section>
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          name: lang === 'ru' ? 'Блог | Стамбул VIP Трансфер'
+            : lang === 'ar' ? 'المدونة | إسطنبول VIP ترانسفير'
+            : 'Blog | Istanbul VIP Transfer',
+          url: `${SITE.siteUrl}/${lang}/blog`,
+          inLanguage: lang,
+          publisher: {
+            '@type': 'Organization',
+            name: 'VIP Transfer Istanbul',
+            url: SITE.siteUrl,
+            telephone: SITE.phoneE164,
+            email: SITE.email,
+          },
+        }),
+      }}
+    />
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home', item: SITE.siteUrl },
+            { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE.siteUrl}/${lang}/blog` },
+          ],
+        }),
+      }}
+    />
+    </>
   );
 }

@@ -15,6 +15,14 @@ export const metadata: Metadata = {
   description:
     'İstanbul\'dan Yalova\'ya özel araçla günübirlik tur. Termal tatil bölgelerini ve doğal güzellikleri keşfetmek için Mercedes VIP tur transferi.',
   alternates: { canonical: PAGE },
+  openGraph: {
+    title: 'Yalova Günübirlik Tur | İstanbul\'dan VIP Transfer',
+    description: 'İstanbul\'dan Yalova\'ya özel araçla günübirlik tur. Termal tatil bölgelerini ve doğal güzellikleri keşfetmek için Mercedes VIP tur transferi.',
+    url: PAGE,
+    siteName: 'VIP Transfer Istanbul',
+    locale: 'tr_TR',
+    type: 'website',
+  },
   robots: DRAFT ? { index: false, follow: true } : { index: true, follow: true },
 };
 

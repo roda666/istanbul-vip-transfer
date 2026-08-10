@@ -38,7 +38,13 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- **Social card (og-card.jpg)** — regenerate after any hero image or brand colour change:
+  ```
+  pnpm --filter @workspace/istanbul-vip-transfer generate:og-card
+  ```
+  The script lives at `artifacts/istanbul-vip-transfer/scripts/generate-og-card.sh`.
+  Brand tokens (colours, text) are at the top of the script — edit them before running.
+  Requires ImageMagick 7 (`magick` on PATH, already present in the Replit environment).
 
 ## Pointers
 

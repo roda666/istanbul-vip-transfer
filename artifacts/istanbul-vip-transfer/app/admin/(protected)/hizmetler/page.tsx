@@ -4,6 +4,12 @@ import { db } from '@/db';
 import { content } from '@/db/schema';
 import { eq, asc } from 'drizzle-orm';
 import AdminPageHeader from '../../_components/AdminPageHeader';
+import {
+  computeServiceHealthIssues,
+  getRegisteredServiceSlugs,
+  type ServiceDbRow,
+  type ServiceHealthItem,
+} from '@/lib/service-page-health';
 
 export const metadata: Metadata = { title: 'Hizmetler | Admin', robots: { index: false } };
 
@@ -13,9 +19,18 @@ const STATUS_STYLE: Record<string, { label: string; color: string; bg: string }>
   ARCHIVED:  { label: 'Arşiv',   color: '#64748B', bg: '#F1F5F9' },
 };
 
+const ISSUE_LABELS: Record<string, string> = {
+  missing_record:      'Veritabanında kayıt yok',
+  inactive:            'Pasif (is_active=false)',
+  not_published:       'Yayında değil',
+  body_missing:        'Gövde içeriği eksik',
+  body_invalid_schema: 'Gövde şema hatası (ServicePageBody değil)',
+};
+
 export default async function HizmetlerPage() {
   let items: (typeof content.$inferSelect & { isActive: boolean; displayOrder: number })[] = [];
   let dbError = false;
+  let healthIssues: ServiceHealthItem[] = [];
 
   try {
     const rows = await db
@@ -23,8 +38,22 @@ export default async function HizmetlerPage() {
       .from(content)
       .where(eq(content.contentType, 'SERVICE'))
       .orderBy(asc(content.displayOrder), asc(content.createdAt));
+
     items = rows as typeof items;
-  } catch { dbError = true; }
+
+    // Health check: cross-reference all registered SERVICE slugs against DB rows
+    const dbRows: ServiceDbRow[] = (rows as (typeof rows[number] & { isActive: boolean })[]).map(r => ({
+      id:       r.id,
+      slug:     r.slug,
+      title:    r.title,
+      status:   r.status,
+      isActive: r.isActive,
+      body:     r.body ?? null,
+    }));
+    healthIssues = computeServiceHealthIssues(getRegisteredServiceSlugs(), dbRows);
+  } catch {
+    dbError = true;
+  }
 
   return (
     <div style={{ padding: '28px 24px' }}>
@@ -32,6 +61,31 @@ export default async function HizmetlerPage() {
         title="Hizmet Sayfaları"
         description="CMS ile tüm hizmet sayfalarını yönetin. Türkçe kaydedin — EN/DE/RU/AR otomatik çevrilir."
       />
+
+      {/* ── Health warning banner ─────────────────────────────────────── */}
+      {healthIssues.length > 0 && (
+        <div style={{
+          marginBottom: '20px', padding: '14px 18px',
+          background: '#FFF7ED', border: '1px solid #FBBF24',
+          borderRadius: '10px', fontFamily: 'Inter, sans-serif',
+        }}>
+          <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 700, color: '#92400E' }}>
+            ⚠️ {healthIssues.length} hizmet sayfasında sorun tespit edildi
+          </p>
+          <ul style={{ margin: 0, paddingLeft: '18px' }}>
+            {healthIssues.map(h => (
+              <li key={h.slug} style={{ fontSize: '12px', color: '#B45309', marginBottom: '4px' }}>
+                <strong>{h.title ?? h.slug}</strong>{h.title ? ` (${h.slug})` : ''} —{' '}
+                {h.issues.map(code => ISSUE_LABELS[code] ?? code).join(', ')}
+              </li>
+            ))}
+          </ul>
+          <p style={{ margin: '10px 0 0', fontSize: '11px', color: '#92400E' }}>
+            Bu sayfalar ziyaretçilere hata (404/boş sayfa) gösterebilir.
+            İlgili sayfayı düzenleyip aktif &amp; yayında duruma getirin.
+          </p>
+        </div>
+      )}
 
       {dbError ? (
         <p style={{ color: '#f87171', fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>

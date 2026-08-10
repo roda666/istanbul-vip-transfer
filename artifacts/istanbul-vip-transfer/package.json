@@ -16,7 +16,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "create-admin": "tsx scripts/create-admin.ts",
-    "reset-admin-password": "tsx scripts/reset-admin-password.ts"
+    "reset-admin-password": "tsx scripts/reset-admin-password.ts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.21.0",
@@ -30,6 +31,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.6",
     "@hookform/resolvers": "^3.10.0",
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4.1.14",
     "@tailwindcss/typography": "^0.5.15",
     "@tanstack/react-query": "catalog:",

@@ -40,8 +40,12 @@ const STATIC_PAGE_MAP: Record<string, React.ComponentType> = {
 };
 
 // ── Page metadata (translated) ─────────────────────────────────────────────
+// Each slug entry contains language keys ({ title, description }) plus an
+// internal `_sourceHash` string used by the generate:page-meta script.
+// The double cast suppresses the TypeScript structural mismatch — runtime
+// access always uses a valid BCP-47 lang code, never "_sourceHash".
 type LangMeta = Record<string, { title: string; description: string }>;
-const PAGE_META: Record<string, LangMeta> = rawPageMeta as Record<string, LangMeta>;
+const PAGE_META: Record<string, LangMeta> = rawPageMeta as unknown as Record<string, LangMeta>;
 
 interface Props {
   params: Promise<{ lang: string; slug: string[] }>;

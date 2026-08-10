@@ -40,15 +40,7 @@ const breadcrumbSchema = {
 export default function IstanbulBursaTransferPage() {
   return (
     <>
-      <PageHero
-        breadcrumbs={[
-          { label: 'Ana Sayfa', href: '/' },
-          { label: 'Hizmetler', href: '/hizmetler' },
-          { label: 'İstanbul–Bursa Transfer' },
-        ]}
-        title="İstanbul–Bursa Transfer"
-        subtitle="İstanbul ile Bursa arasında kapıdan kapıya özel Mercedes transfer hizmeti."
-      />
+      <PageHero pageKey="istBursa" />
 
       <section
         className="py-16 md:py-20 max-w-3xl mx-auto px-5 md:px-8"

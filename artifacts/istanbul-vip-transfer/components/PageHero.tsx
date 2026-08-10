@@ -12,15 +12,33 @@ import type { Dictionary } from '@/lib/i18n/types';
 // strings as props, they pass a `pageKey` and PageHero resolves the correct
 // title / subtitle / breadcrumbs from the active locale dictionary.
 
-export type PageKey = 'services' | 'vehicles' | 'about' | 'contact';
+/** General page keys (hizmetler / araclar / hakkimizda / iletisim). */
+type GeneralPageKey = 'services' | 'vehicles' | 'about' | 'contact';
 
-/** Maps a PageKey to the nav dict key used as the breadcrumb current-page label. */
-const PAGE_NAV_KEY: Record<PageKey, keyof Dictionary['nav']> = {
+/** Service/tour page keys — one per route in PAGE_MAP. */
+type ServicePageKey =
+  | 'istHava' | 'sabiha' | 'vipTransfer' | 'sehirlerArasi'
+  | 'soforlu' | 'otel' | 'saglik' | 'kurumsal'
+  | 'istBursa' | 'istSapanca' | 'istGunubirlik'
+  | 'sapanca' | 'bursa' | 'yalova';
+
+export type PageKey = GeneralPageKey | ServicePageKey;
+
+/** Maps a GeneralPageKey to the nav dict key used as the breadcrumb label. */
+const GENERAL_NAV_KEY: Record<GeneralPageKey, keyof Dictionary['nav']> = {
   services: 'services',
   vehicles: 'vehicles',
   about:    'about',
   contact:  'contact',
 };
+
+/**
+ * Service page keys that use a 2-crumb breadcrumb (Home → Page).
+ * All other service keys use 3 crumbs (Home → Services → Page).
+ */
+const TWO_CRUMB_KEYS: ReadonlySet<ServicePageKey> = new Set([
+  'istHava', 'sabiha', 'vipTransfer', 'sehirlerArasi',
+]);
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -55,12 +73,35 @@ export default function PageHero(props: PageHeroProps) {
 
   if (props.pageKey) {
     const k = props.pageKey;
-    title      = dict.pages[`${k}Title`   as keyof Dictionary['pages']];
-    subtitle   = dict.pages[`${k}Subtitle` as keyof Dictionary['pages']];
-    breadcrumbs = [
-      { label: dict.nav.home,                            href: '/' },
-      { label: dict.nav[PAGE_NAV_KEY[k]] as string },
-    ];
+
+    if (k === 'services' || k === 'vehicles' || k === 'about' || k === 'contact') {
+      // General page — title/subtitle from pages dict, breadcrumb from nav dict.
+      title      = dict.pages[`${k}Title`   as keyof Dictionary['pages']];
+      subtitle   = dict.pages[`${k}Subtitle` as keyof Dictionary['pages']];
+      breadcrumbs = [
+        { label: dict.nav.home,                                  href: '/' },
+        { label: dict.nav[GENERAL_NAV_KEY[k]] as string },
+      ];
+    } else {
+      // Service/tour page — title, subtitle, and crumb all from pages dict.
+      const sk = k as ServicePageKey;
+      title    = dict.pages[`${sk}Title`    as keyof Dictionary['pages']];
+      subtitle = dict.pages[`${sk}Subtitle` as keyof Dictionary['pages']];
+      const crumb = dict.pages[`${sk}Crumb` as keyof Dictionary['pages']];
+
+      if (TWO_CRUMB_KEYS.has(sk)) {
+        breadcrumbs = [
+          { label: dict.nav.home,     href: '/' },
+          { label: crumb },
+        ];
+      } else {
+        breadcrumbs = [
+          { label: dict.nav.home,     href: '/' },
+          { label: dict.nav.services, href: '/hizmetler' },
+          { label: crumb },
+        ];
+      }
+    }
   } else {
     title       = props.title;
     subtitle    = props.subtitle;

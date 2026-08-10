@@ -54,14 +54,7 @@ const serviceSchema = {
 export default function SehirlerArasiTransferPage() {
   return (
     <>
-      <PageHero
-        breadcrumbs={[
-          { label: 'Ana Sayfa', href: '/' },
-          { label: 'Şehirler Arası Transfer' },
-        ]}
-        title="Şehirler Arası VIP Transfer"
-        subtitle="İstanbul'dan Türkiye'nin farklı şehirlerine Mercedes Vito ve Sprinter araçlarla konforlu, güvenli ve kapıdan kapıya özel ulaşım."
-      />
+      <PageHero pageKey="sehirlerArasi" />
       <BookingForm />
       <VehicleFleet />
       <Contact />

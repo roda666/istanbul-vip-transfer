@@ -84,15 +84,7 @@ const faqs = [
 export default function SoforluAracKiralamaPage() {
   return (
     <>
-      <PageHero
-        breadcrumbs={[
-          { label: 'Ana Sayfa', href: '/' },
-          { label: 'Hizmetler', href: '/hizmetler' },
-          { label: 'Şoförlü Araç Kiralama' },
-        ]}
-        title="Şoförlü Araç Kiralama İstanbul"
-        subtitle="İstanbul'da birden fazla noktaya uğrayan günlerde, saatlik veya tam gün için size özel sürücü ve Mercedes araç tahsisi."
-      />
+      <PageHero pageKey="soforlu" />
 
       {/* ── Hizmet Tanımı ── */}
       <section className="py-16 md:py-20" style={{ background: '#EEF3F9' }}>

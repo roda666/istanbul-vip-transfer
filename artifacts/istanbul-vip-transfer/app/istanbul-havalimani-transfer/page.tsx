@@ -55,14 +55,7 @@ const serviceSchema = {
 export default function IstanbulHavalimaniPage() {
   return (
     <>
-      <PageHero
-        breadcrumbs={[
-          { label: 'Ana Sayfa', href: '/' },
-          { label: 'İstanbul Havalimanı Transfer' },
-        ]}
-        title="İstanbul Havalimanı (IST) VIP Transfer"
-        subtitle="İstanbul Havalimanı'ndan her destinasyona Mercedes Vito ve Sprinter VIP ile profesyonel karşılama ve transfer hizmeti."
-      />
+      <PageHero pageKey="istHava" />
       <BookingForm />
       <VehicleFleet />
       <Contact />

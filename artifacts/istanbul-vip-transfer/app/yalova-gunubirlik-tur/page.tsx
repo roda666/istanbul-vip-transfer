@@ -40,15 +40,7 @@ const breadcrumbSchema = {
 export default function YalovaGunubirlikTurPage() {
   return (
     <>
-      <PageHero
-        breadcrumbs={[
-          { label: 'Ana Sayfa', href: '/' },
-          { label: 'Hizmetler', href: '/hizmetler' },
-          { label: 'Yalova Günübirlik Tur' },
-        ]}
-        title="Yalova Günübirlik Tur"
-        subtitle="İstanbul'dan Yalova'ya özel araçla konforlu günübirlik tur hizmeti."
-      />
+      <PageHero pageKey="yalova" />
 
       <section
         className="py-16 md:py-20 max-w-3xl mx-auto px-5 md:px-8"

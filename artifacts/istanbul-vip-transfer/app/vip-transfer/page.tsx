@@ -56,14 +56,7 @@ const serviceSchema = {
 export default function VipTransferPage() {
   return (
     <>
-      <PageHero
-        breadcrumbs={[
-          { label: 'Ana Sayfa', href: '/' },
-          { label: 'VIP Transfer Hizmetleri' },
-        ]}
-        title="İstanbul VIP Transfer Hizmetleri"
-        subtitle="Havalimanı transferinden kurumsal transfere, otel transferinden özel etkinliklere — tüm ihtiyaçlarınız için lüks Mercedes araçlarla hizmetinizdeyiz."
-      />
+      <PageHero pageKey="vipTransfer" />
       <Services />
       <VehicleFleet />
       <BookingForm />

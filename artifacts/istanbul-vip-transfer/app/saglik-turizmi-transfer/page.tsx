@@ -84,15 +84,7 @@ const faqs = [
 export default function SaglikTurizmiTransferPage() {
   return (
     <>
-      <PageHero
-        breadcrumbs={[
-          { label: 'Ana Sayfa', href: '/' },
-          { label: 'Hizmetler', href: '/hizmetler' },
-          { label: 'Sağlık Turizmi Transfer' },
-        ]}
-        title="Sağlık Turizmi Transfer İstanbul"
-        subtitle="Hastane, klinik ve tedavi merkezlerine havalimanından karşılama, randevular arası ve otel–hastane gidiş-dönüş transferleri."
-      />
+      <PageHero pageKey="saglik" />
 
       {/* ── Hizmet Tanımı ── */}
       <section className="py-16 md:py-20" style={{ background: '#EEF3F9' }}>

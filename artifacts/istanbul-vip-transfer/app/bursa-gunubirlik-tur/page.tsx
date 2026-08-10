@@ -40,15 +40,7 @@ const breadcrumbSchema = {
 export default function BursaGunubirlikTurPage() {
   return (
     <>
-      <PageHero
-        breadcrumbs={[
-          { label: 'Ana Sayfa', href: '/' },
-          { label: 'Hizmetler', href: '/hizmetler' },
-          { label: 'Bursa Günübirlik Tur' },
-        ]}
-        title="Bursa Günübirlik Tur"
-        subtitle="İstanbul'dan Bursa'ya özel araçla konforlu günübirlik tur hizmeti."
-      />
+      <PageHero pageKey="bursa" />
 
       <section
         className="py-16 md:py-20 max-w-3xl mx-auto px-5 md:px-8"

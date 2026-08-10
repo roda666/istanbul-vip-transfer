@@ -84,15 +84,7 @@ const faqs = [
 export default function OtelTransferPage() {
   return (
     <>
-      <PageHero
-        breadcrumbs={[
-          { label: 'Ana Sayfa', href: '/' },
-          { label: 'Hizmetler', href: '/hizmetler' },
-          { label: 'Otel Transfer' },
-        ]}
-        title="Otel Transfer İstanbul"
-        subtitle="Havalimanından otelinize, otelinizden havalimanına ve İstanbul içi otel transferlerinde isim tabelası ile karşılama ve kapıdan kapıya hizmet."
-      />
+      <PageHero pageKey="otel" />
 
       {/* ── Hizmet Tanımı ── */}
       <section className="py-16 md:py-20" style={{ background: '#EEF3F9' }}>

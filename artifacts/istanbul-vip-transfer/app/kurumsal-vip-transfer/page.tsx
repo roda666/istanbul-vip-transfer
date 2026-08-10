@@ -84,15 +84,7 @@ const faqs = [
 export default function KurumsalVipTransferPage() {
   return (
     <>
-      <PageHero
-        breadcrumbs={[
-          { label: 'Ana Sayfa', href: '/' },
-          { label: 'Hizmetler', href: '/hizmetler' },
-          { label: 'Kurumsal VIP Transfer' },
-        ]}
-        title="Kurumsal VIP Transfer İstanbul"
-        subtitle="Yöneticiler ve iş misafirleri için fatura desteği, karşılama tabelası ve çoklu rezervasyon koordinasyonuyla profesyonel transfer hizmeti."
-      />
+      <PageHero pageKey="kurumsal" />
 
       {/* ── Hizmet Tanımı ── */}
       <section className="py-16 md:py-20" style={{ background: '#EEF3F9' }}>

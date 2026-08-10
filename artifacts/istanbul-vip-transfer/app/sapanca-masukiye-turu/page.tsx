@@ -40,15 +40,7 @@ const breadcrumbSchema = {
 export default function SapancaMasukiyeTuruPage() {
   return (
     <>
-      <PageHero
-        breadcrumbs={[
-          { label: 'Ana Sayfa', href: '/' },
-          { label: 'Hizmetler', href: '/hizmetler' },
-          { label: 'Sapanca–Maşukiye Turu' },
-        ]}
-        title="Sapanca–Maşukiye Günübirlik Turu"
-        subtitle="İstanbul'dan Sapanca Gölü ve Maşukiye ormanlarına özel araçla rahat ve güvenli günübirlik tur."
-      />
+      <PageHero pageKey="sapanca" />
 
       <section
         className="py-16 md:py-20 max-w-3xl mx-auto px-5 md:px-8"

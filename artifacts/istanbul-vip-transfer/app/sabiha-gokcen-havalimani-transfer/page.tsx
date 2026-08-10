@@ -55,14 +55,7 @@ const serviceSchema = {
 export default function SabihaGokcenPage() {
   return (
     <>
-      <PageHero
-        breadcrumbs={[
-          { label: 'Ana Sayfa', href: '/' },
-          { label: 'Sabiha Gökçen Havalimanı Transfer' },
-        ]}
-        title="Sabiha Gökçen Havalimanı (SAW) VIP Transfer"
-        subtitle="Sabiha Gökçen Havalimanı'ndan her destinasyona Mercedes Vito ve Sprinter VIP ile profesyonel karşılama ve transfer hizmeti."
-      />
+      <PageHero pageKey="sabiha" />
       <BookingForm />
       <VehicleFleet />
       <Contact />

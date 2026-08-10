@@ -292,10 +292,11 @@ export interface Dictionary {
     sectionLabel: string;
     heading: string;
   };
-  /** Static page-intro strings for hizmetler / araclar / hakkimizda / iletisim.
-   *  Resolved inside PageHero via useLang() when a pageKey prop is supplied,
-   *  allowing Server-Component pages to remain locale-neutral. */
+  /** Static page-intro strings for hizmetler / araclar / hakkimizda / iletisim,
+   *  plus all service/tour pages. Resolved inside PageHero via useLang() when a
+   *  pageKey prop is supplied, allowing Server-Component pages to remain locale-neutral. */
   pages: {
+    // General pages
     servicesTitle: string;
     servicesSubtitle: string;
     vehiclesTitle: string;
@@ -304,5 +305,61 @@ export interface Dictionary {
     aboutSubtitle: string;
     contactTitle: string;
     contactSubtitle: string;
+    // Istanbul Airport Transfer
+    istHavaTitle: string;
+    istHavaSubtitle: string;
+    istHavaCrumb: string;
+    // Sabiha Gökçen Airport Transfer
+    sabihaTitle: string;
+    sabihaSubtitle: string;
+    sabihaCrumb: string;
+    // VIP Transfer (general)
+    vipTransferTitle: string;
+    vipTransferSubtitle: string;
+    vipTransferCrumb: string;
+    // Intercity Transfer
+    sehirlerArasiTitle: string;
+    sehirlerArasiSubtitle: string;
+    sehirlerArasiCrumb: string;
+    // Chauffeured Vehicle Hire
+    soforluTitle: string;
+    soforluSubtitle: string;
+    soforluCrumb: string;
+    // Hotel Transfer
+    otelTitle: string;
+    otelSubtitle: string;
+    otelCrumb: string;
+    // Medical Tourism Transfer
+    saglikTitle: string;
+    saglikSubtitle: string;
+    saglikCrumb: string;
+    // Corporate VIP Transfer
+    kurumsalTitle: string;
+    kurumsalSubtitle: string;
+    kurumsalCrumb: string;
+    // Istanbul–Bursa Transfer
+    istBursaTitle: string;
+    istBursaSubtitle: string;
+    istBursaCrumb: string;
+    // Istanbul–Sapanca Transfer
+    istSapancaTitle: string;
+    istSapancaSubtitle: string;
+    istSapancaCrumb: string;
+    // Istanbul Day Tours
+    istGunubirlikTitle: string;
+    istGunubirlikSubtitle: string;
+    istGunubirlikCrumb: string;
+    // Sapanca–Maşukiye Day Tour
+    sapancaTitle: string;
+    sapancaSubtitle: string;
+    sapancaCrumb: string;
+    // Bursa Day Tour
+    bursaTitle: string;
+    bursaSubtitle: string;
+    bursaCrumb: string;
+    // Yalova Day Tour
+    yalovaTitle: string;
+    yalovaSubtitle: string;
+    yalovaCrumb: string;
   };
 }

@@ -10,9 +10,20 @@
  * 1. Add an entry here (slug, schemaType, Turkish title + description).
  * 2. Run `pnpm generate:page-meta` to AI-translate the new entry into
  *    en / de / ru / ar and update lib/page-meta.json.
- * 3. Import the page component in app/[lang]/[...slug]/page.tsx and add
- *    it to COMPONENT_MAP there.
- * 4. Commit both page-meta.json and this file.
+ * 3. For WebPage slugs only:
+ *    a. Create the React component (e.g. app/yeni-sayfa/page.tsx).
+ *    b. Add the slug to lib/static-page-slugs.ts.
+ *    c. Import the component and add it to STATIC_PAGE_MAP in
+ *       app/[lang]/[...slug]/page.tsx.
+ *    Service slugs are handled automatically by ServicePageRenderer.
+ * 4. Commit page-meta.json, static-page-slugs.ts, and this file.
+ *
+ * The prebuild step (`check:page-meta`) will fail the build if:
+ *   • page-meta.json is missing translations for any registered slug.
+ *   • lib/static-page-slugs.ts is out of sync with WebPage slugs here.
+ * The page router itself also throws at startup if STATIC_PAGE_MAP and
+ * lib/static-page-slugs.ts disagree, giving an explicit error instead of
+ * a silent blank page.
  *
  * The prebuild step (`check:page-meta`) reads PAGE_REGISTRY and fails the
  * build if page-meta.json is missing any language for any registered slug.

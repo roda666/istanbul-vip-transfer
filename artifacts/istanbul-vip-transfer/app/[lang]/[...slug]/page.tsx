@@ -17,6 +17,7 @@ import { buildAlternates, getOgLocale } from '@/lib/i18n/seo';
 import { SITE } from '@/lib/site-config';
 import rawPageMeta from '@/lib/page-meta.json';
 import { PAGE_REGISTRY } from '@/lib/page-registry';
+import { STATIC_PAGE_SLUGS } from '@/lib/static-page-slugs';
 
 // ── Turkish page components (non-SERVICE pages use these directly) ─────────
 import HizmetlerPage     from '@/app/hizmetler/page';
@@ -32,12 +33,42 @@ const SERVICE_SLUGS = new Set(
 );
 
 // ── Non-service static pages ─────────────────────────────────────────────
+// When adding a new WebPage slug:
+//   1. Import the component above.
+//   2. Add it to STATIC_PAGE_MAP below.
+//   3. Add the slug to lib/static-page-slugs.ts.
+//   4. Add the entry to PAGE_REGISTRY in lib/page-registry.ts.
+// `check:page-meta` (prebuild) will catch a mismatch before it ships.
 const STATIC_PAGE_MAP: Record<string, React.ComponentType> = {
   'hizmetler':  HizmetlerPage,
   'araclar':    AraclarPage,
   'hakkimizda': HakkimizdaPage,
   'iletisim':   IletisimPage,
 };
+
+// ── Build-time / startup guard ────────────────────────────────────────────
+// Verify STATIC_PAGE_MAP and lib/static-page-slugs.ts are in sync.
+// This throws at module load time (caught by both `next build` and `next dev`
+// startup), giving an explicit error instead of a silent blank page.
+(function assertComponentCoverage() {
+  const missing = STATIC_PAGE_SLUGS.filter((slug) => !(slug in STATIC_PAGE_MAP));
+  const extra   = Object.keys(STATIC_PAGE_MAP).filter(
+    (slug) => !STATIC_PAGE_SLUGS.includes(slug),
+  );
+  if (missing.length > 0 || extra.length > 0) {
+    const lines: string[] = [
+      'STATIC_PAGE_MAP and lib/static-page-slugs.ts are out of sync:',
+    ];
+    if (missing.length > 0)
+      lines.push(`  Missing components for: ${missing.join(', ')}`);
+    if (extra.length > 0)
+      lines.push(`  Extra STATIC_PAGE_MAP entries not in static-page-slugs.ts: ${extra.join(', ')}`);
+    lines.push(
+      'Fix: keep STATIC_PAGE_MAP, lib/static-page-slugs.ts, and PAGE_REGISTRY in sync.',
+    );
+    throw new Error(lines.join('\n'));
+  }
+})();
 
 // ── Page metadata (translated) ─────────────────────────────────────────────
 // Each slug entry contains language keys ({ title, description }) plus an

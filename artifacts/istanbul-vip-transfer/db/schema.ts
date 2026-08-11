@@ -510,3 +510,38 @@ export type ServiceHealthRun    = typeof serviceHealthRuns.$inferSelect;
 export type NewServiceHealthRun = typeof serviceHealthRuns.$inferInsert;
 export type ServiceHealthAlert    = typeof serviceHealthAlerts.$inferSelect;
 export type NewServiceHealthAlert = typeof serviceHealthAlerts.$inferInsert;
+
+// ── Chatbot ──────────────────────────────────────────────────────────────────
+
+/**
+ * One chat session per visitor browser tab (UUID generated client-side).
+ * adminActiveUntil: while in the future, admin is "owning" this conversation
+ * and AI will not auto-respond; expires after 5 minutes of admin inactivity.
+ */
+export const chatbotSessions = pgTable('chatbot_sessions', {
+  id:               text('id').primaryKey(),
+  visitorLang:      text('visitor_lang').notNull().default('tr'),
+  adminActiveUntil: timestamp('admin_active_until', { withTimezone: true }),
+  createdAt:        timestamp('created_at',      { withTimezone: true }).defaultNow().notNull(),
+  lastMessageAt:    timestamp('last_message_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+/**
+ * Individual messages in a chatbot session.
+ * role: 'user' (visitor), 'assistant' (AI), 'admin' (operator reply).
+ * contentTr: Turkish translation of user messages for the admin panel.
+ *            Null for assistant/admin messages (already Turkish-facing).
+ */
+export const chatbotMessages = pgTable('chatbot_messages', {
+  id:        uuid('id').primaryKey().defaultRandom(),
+  sessionId: text('session_id').notNull().references(() => chatbotSessions.id, { onDelete: 'cascade' }),
+  role:      text('role').notNull(),
+  content:   text('content').notNull(),
+  contentTr: text('content_tr'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type ChatbotSession    = typeof chatbotSessions.$inferSelect;
+export type NewChatbotSession = typeof chatbotSessions.$inferInsert;
+export type ChatbotMessage    = typeof chatbotMessages.$inferSelect;
+export type NewChatbotMessage = typeof chatbotMessages.$inferInsert;

@@ -36,7 +36,13 @@ export default async function ServicePageRenderer({ slug, lang }: Props) {
     return (
       <>
         {/* PageHero with DB content — explicit props mode */}
-        <PageHero breadcrumbs={breadcrumbs} title={hero.title} subtitle={hero.subtitle} />
+        <PageHero
+          breadcrumbs={breadcrumbs}
+          title={hero.title}
+          subtitle={hero.subtitle}
+          heroImage={dbPage.heroImage}
+          heroImageAlt={dbPage.heroImageAlt}
+        />
         <BookingForm />
         <VehicleFleet />
         <Contact />

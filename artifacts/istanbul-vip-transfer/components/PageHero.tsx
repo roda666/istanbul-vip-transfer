@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
@@ -47,24 +48,34 @@ interface Crumb {
   href?: string;
 }
 
-type PageHeroProps =
-  | {
-      pageKey: PageKey;
-      breadcrumbs?: never;
-      title?: never;
-      subtitle?: never;
-    }
-  | {
-      pageKey?: never;
-      breadcrumbs: Crumb[];
-      title: string;
-      subtitle?: string;
-    };
+type PageHeroBase = {
+  /** Uploaded or legacy static hero image path. Renders below the subtitle when present. */
+  heroImage?: string | null;
+  /** Alt text for the hero image. */
+  heroImageAlt?: string | null;
+};
+
+type PageHeroProps = PageHeroBase &
+  (
+    | {
+        pageKey: PageKey;
+        breadcrumbs?: never;
+        title?: never;
+        subtitle?: never;
+      }
+    | {
+        pageKey?: never;
+        breadcrumbs: Crumb[];
+        title: string;
+        subtitle?: string;
+      }
+  );
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function PageHero(props: PageHeroProps) {
   const { lang, dict } = useLang();
+  const { heroImage, heroImageAlt } = props;
 
   // Resolve strings — either from pageKey (locale-aware) or from explicit props.
   let title: string;
@@ -178,6 +189,25 @@ export default function PageHero(props: PageHeroProps) {
           >
             {subtitle}
           </motion.p>
+        )}
+
+        {heroImage && (
+          <motion.div
+            className="mt-10 mx-auto overflow-hidden rounded-2xl shadow-lg"
+            style={{ maxWidth: '720px', aspectRatio: '16/9', position: 'relative' }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.5 }}
+          >
+            <Image
+              src={heroImage}
+              alt={heroImageAlt ?? title}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 720px"
+              priority
+            />
+          </motion.div>
         )}
       </div>
 

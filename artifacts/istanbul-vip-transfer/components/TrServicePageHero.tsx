@@ -36,6 +36,8 @@ export default async function TrServicePageHero({ slug, pageKey }: Props) {
         breadcrumbs={breadcrumbs}
         title={hero.title}
         subtitle={hero.subtitle}
+        heroImage={dbPage.heroImage}
+        heroImageAlt={dbPage.heroImageAlt}
       />
     );
   }

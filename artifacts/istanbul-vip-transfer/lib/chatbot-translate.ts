@@ -15,15 +15,26 @@ const LANG_NAMES: Record<string, string> = {
   tr: 'Turkish', en: 'English', de: 'German', ru: 'Russian', ar: 'Arabic',
 };
 
-/** Translate any text → Turkish (for admin panel display). */
+/** Translate any text → Turkish (for admin panel display).
+ *  Always calls the LLM regardless of source language — the model returns
+ *  the text unchanged when it is already in Turkish.  This ensures that a
+ *  visitor on the Turkish-locale page who types in English (or any other
+ *  language) still has their message translated for the admin.
+ */
 export async function translateToTurkish(text: string, sourceLang = 'en'): Promise<string> {
-  if (!text.trim() || sourceLang === 'tr') return text;
+  if (!text.trim()) return text;
   const openai = getClient();
   const res = await openai.chat.completions.create({
     model: 'gpt-5.6-luna',
     max_completion_tokens: 400,
     messages: [
-      { role: 'system', content: 'Translate the following text to Turkish. Return only the translation.' },
+      {
+        role: 'system',
+        content:
+          'Translate the following text to Turkish. ' +
+          'If the text is already in Turkish, return it exactly as-is. ' +
+          'Return only the translation — no explanations.',
+      },
       { role: 'user', content: text },
     ],
   });

@@ -51,9 +51,28 @@ export default function ChatWidget() {
     return () => clearTimeout(t);
   }, []);
 
-  // Restore session ID from sessionStorage
+  // Restore session ID from sessionStorage and load history
   useEffect(() => {
-    sessionIdRef.current = sessionStorage.getItem(SESSION_KEY);
+    const sid = sessionStorage.getItem(SESSION_KEY);
+    if (!sid) return;
+    sessionIdRef.current = sid;
+
+    // Load full conversation history so page-refresh doesn't wipe the chat
+    fetch(`/data/chatbot/${sid}/poll?after=${encodeURIComponent('1970-01-01T00:00:00.000Z')}`)
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { messages: Array<{ id: string; role: string; content: string; createdAt: string }> } | null) => {
+        if (!data?.messages?.length) return;
+        const lastMsg = data.messages[data.messages.length - 1];
+        // Advance 1 ms past the last loaded message so the live poll
+        // doesn't re-fetch messages we already have.
+        lastPollTime.current = new Date(new Date(lastMsg.createdAt).getTime() + 1).toISOString();
+        setMessages(data.messages.map(m => ({
+          id: m.id,
+          role: m.role as 'user' | 'assistant' | 'admin',
+          content: m.content,
+        })));
+      })
+      .catch(() => {/* ignore — fresh start is fine */});
   }, []);
 
   // Scroll to bottom
@@ -86,7 +105,10 @@ export default function ChatWidget() {
               messages: Array<{ id: string; role: string; content: string; createdAt: string }>;
             };
             if (data.messages.length > 0) {
-              lastPollTime.current = data.messages[data.messages.length - 1].createdAt;
+              // Advance 1 ms past the last returned message to prevent the
+              // boundary record from being re-fetched on the next poll.
+              const lastCreatedAt = data.messages[data.messages.length - 1].createdAt;
+              lastPollTime.current = new Date(new Date(lastCreatedAt).getTime() + 1).toISOString();
               const adminMsgs = data.messages.filter(m => m.role === 'admin');
               if (adminMsgs.length > 0) {
                 setMessages(prev => {

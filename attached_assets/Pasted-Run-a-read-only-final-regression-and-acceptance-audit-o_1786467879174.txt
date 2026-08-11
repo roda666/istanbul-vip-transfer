@@ -1,0 +1,66 @@
+Run a read-only final regression and acceptance audit of the current project.
+
+Do not modify code during the first audit.
+Do not publish or connect the production domain.
+
+Verify:
+
+1. Public website
+- Turkish: /
+- English: /en
+- German: /de
+- Russian: /ru
+- Arabic: /ar
+- Test homepage, services, vehicles, blog, about, contact and service-detail pages.
+- Confirm every page remains in the selected language.
+- Confirm Arabic uses RTL correctly.
+- Confirm there are no untranslated Turkish strings in EN, DE, RU or AR.
+
+2. Homepage CMS
+- Confirm TR, EN, DE, RU and AR load different localized homepage records.
+- Confirm translated content is actually displayed on the public website.
+- Confirm shared image paths remain identical while ALT text is localized.
+- Confirm changing one locale does not overwrite another.
+
+3. Mobile and tablet
+Test 320px, 375px, 390px, 430px, 768px and 1440px.
+- No horizontal overflow
+- No clipped content
+- Header and mobile menu work
+- Language selector works
+- Admin Homepage Editor is usable
+- Forms and buttons fit the viewport
+- Arabic mobile layout is correctly mirrored
+
+4. Reservation form
+- Test all four service types.
+- Confirm direct WhatsApp redirection works.
+- Confirm date appears as DD/MM/YYYY in the WhatsApp message.
+- Confirm passenger count ends at 30.
+- Confirm vehicle allocation starts at minimum 4 hours.
+- Confirm email consent is saved correctly.
+- Confirm removed fields do not appear.
+
+5. Admin panel
+- Login and protected routes work.
+- Requests, newsletter subscribers, homepage editor, pages, services, vehicles, reservation settings, blog, languages and translations load without errors.
+- Confirm the translation/publish workflow returns valid JSON and does not create duplicate records.
+
+6. Quality checks
+- TypeScript
+- ESLint
+- Production build
+- Browser console
+- Hydration/runtime errors
+- Broken internal links
+- Missing images and image 404s
+
+Report only:
+- PASS/FAIL table for each test group
+- Exact failed routes and reproduction steps
+- Browser widths tested
+- TypeScript, ESLint and build results
+- Any remaining blocker before production
+
+Do not mark the audit complete unless every claimed result was actually tested.
+Do not make code changes until the audit report is presented.

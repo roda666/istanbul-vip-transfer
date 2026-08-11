@@ -327,6 +327,16 @@ const de: Dictionary = {
     yalovaSubtitle: 'Komfortabler privater Tagesausflug von Istanbul nach Yalova.',
     yalovaCrumb: 'Yalova Tagestour',
   },
+  chatbot: {
+    aria: 'Mit KI-Assistent chatten',
+    title: 'Istanbul VIP Assistent',
+    welcome: 'Hallo! Ich beantworte gerne Ihre Fragen zu unseren Transferservices, Routen oder Buchungen.',
+    placeholder: 'Frage stellen…',
+    send: 'Senden',
+    close: 'Chat schließen',
+    typing: 'Schreibt…',
+    error: 'Ein Fehler ist aufgetreten. Bitte erneut versuchen.',
+  },
 };
 
 export default de;

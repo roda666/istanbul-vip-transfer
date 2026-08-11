@@ -327,6 +327,16 @@ const tr: Dictionary = {
     yalovaSubtitle: 'İstanbul\'dan Yalova\'ya özel araçla konforlu günübirlik tur hizmeti.',
     yalovaCrumb: 'Yalova Günübirlik Tur',
   },
+  chatbot: {
+    aria: 'AI asistanla sohbet et',
+    title: 'Istanbul VIP Asistan',
+    welcome: 'Merhaba! Transfer hizmetlerimiz, rotalar veya rezervasyon hakkında sorularınızı yanıtlamaktan mutluluk duyarım.',
+    placeholder: 'Bir soru sorun…',
+    send: 'Gönder',
+    close: 'Sohbeti kapat',
+    typing: 'Yazıyor…',
+    error: 'Bir hata oluştu. Lütfen tekrar deneyin.',
+  },
 };
 
 export default tr;

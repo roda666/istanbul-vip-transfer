@@ -10,6 +10,7 @@ import { usePathname } from 'next/navigation';
 import Header from './Header';
 import Footer from './Footer';
 import WhatsAppFloat from './WhatsAppFloat';
+import ChatWidget from './ChatWidget';
 import LangProvider from './LangProvider';
 
 export default function PublicLayoutWrapper({
@@ -31,6 +32,7 @@ export default function PublicLayoutWrapper({
       <main>{children}</main>
       <Footer />
       <WhatsAppFloat />
+      <ChatWidget />
     </LangProvider>
   );
 }

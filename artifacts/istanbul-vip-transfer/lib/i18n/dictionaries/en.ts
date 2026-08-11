@@ -327,6 +327,16 @@ const en: Dictionary = {
     yalovaSubtitle: 'Comfortable private day tour service from Istanbul to Yalova.',
     yalovaCrumb: 'Yalova Day Tour',
   },
+  chatbot: {
+    aria: 'Chat with AI assistant',
+    title: 'Istanbul VIP Assistant',
+    welcome: 'Hello! I\'m happy to answer your questions about our transfer services, routes, or booking.',
+    placeholder: 'Ask a question…',
+    send: 'Send',
+    close: 'Close chat',
+    typing: 'Typing…',
+    error: 'Something went wrong. Please try again.',
+  },
 };
 
 export default en;

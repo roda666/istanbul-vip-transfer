@@ -327,6 +327,16 @@ const ar: Dictionary = {
     yalovaSubtitle: 'خدمة جولة يومية خاصة ومريحة من إسطنبول إلى يالوفا.',
     yalovaCrumb: 'رحلة يالوفا اليومية',
   },
+  chatbot: {
+    aria: 'الدردشة مع المساعد الذكي',
+    title: 'مساعد Istanbul VIP',
+    welcome: 'مرحباً! يسعدني الإجابة على أسئلتك حول خدمات النقل والمسارات والحجز.',
+    placeholder: 'اطرح سؤالاً…',
+    send: 'إرسال',
+    close: 'إغلاق الدردشة',
+    typing: 'يكتب…',
+    error: 'حدث خطأ. يرجى المحاولة مرة أخرى.',
+  },
 };
 
 export default ar;

@@ -362,4 +362,22 @@ export interface Dictionary {
     yalovaSubtitle: string;
     yalovaCrumb: string;
   };
+  chatbot: {
+    /** Floating button aria label */
+    aria: string;
+    /** Panel header title */
+    title: string;
+    /** Welcome message shown before first user message */
+    welcome: string;
+    /** Input placeholder */
+    placeholder: string;
+    /** Send button label */
+    send: string;
+    /** Close panel button aria label */
+    close: string;
+    /** Typing indicator text */
+    typing: string;
+    /** Error message when request fails */
+    error: string;
+  };
 }

@@ -545,3 +545,16 @@ export type ChatbotSession    = typeof chatbotSessions.$inferSelect;
 export type NewChatbotSession = typeof chatbotSessions.$inferInsert;
 export type ChatbotMessage    = typeof chatbotMessages.$inferSelect;
 export type NewChatbotMessage = typeof chatbotMessages.$inferInsert;
+
+/**
+ * Single-row settings table (id always = 1).
+ * aiTimeoutSeconds: how long after admin's last reply before AI resumes.
+ */
+export const chatbotSettings = pgTable('chatbot_settings', {
+  id:               integer('id').primaryKey().default(1),
+  aiTimeoutSeconds: integer('ai_timeout_seconds').notNull().default(60),
+  updatedAt:        timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type ChatbotSettings    = typeof chatbotSettings.$inferSelect;
+export type NewChatbotSettings = typeof chatbotSettings.$inferInsert;

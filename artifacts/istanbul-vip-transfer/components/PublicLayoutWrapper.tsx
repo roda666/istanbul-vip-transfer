@@ -11,6 +11,7 @@ import Header from './Header';
 import Footer from './Footer';
 import WhatsAppFloat from './WhatsAppFloat';
 import ChatWidget from './ChatWidget';
+import AdminChatOverlay from './AdminChatOverlay';
 import LangProvider from './LangProvider';
 
 export default function PublicLayoutWrapper({
@@ -33,6 +34,7 @@ export default function PublicLayoutWrapper({
       <Footer />
       <WhatsAppFloat />
       <ChatWidget />
+      <AdminChatOverlay />
     </LangProvider>
   );
 }

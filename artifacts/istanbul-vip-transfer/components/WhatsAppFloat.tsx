@@ -87,7 +87,7 @@ export default function WhatsAppFloat() {
         boxShadow:     '0 4px 20px rgba(37,211,102,0.4)',
         /* iOS notch / home-bar safe area */
         bottom:        'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
-        right:         'calc(1.25rem + env(safe-area-inset-right, 0px))',
+        left:          'calc(1.25rem + env(safe-area-inset-left, 0px))',
         touchAction:   'manipulation',
         /* Visibility — React owns all three properties, no FM conflict */
         opacity:       show ? 1 : 0,

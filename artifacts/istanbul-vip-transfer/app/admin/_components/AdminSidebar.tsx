@@ -25,6 +25,7 @@ import {
   Languages,
   ClipboardList,
   Mail,
+  MessageSquare,
 } from 'lucide-react';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -44,6 +45,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { href: '/admin/dashboard',        label: 'Dashboard',             icon: <LayoutDashboard size={18} /> },
   { href: '/admin/talepler',         label: 'Talepler',              icon: <ClipboardList size={18} /> },
+  { href: '/admin/sohbet',           label: 'Canlı Sohbet',          icon: <MessageSquare size={18} /> },
   { href: '/admin/bulten-aboneleri', label: 'Bülten Aboneleri',      icon: <Mail size={18} /> },
   { href: '/admin/sayfalar/ana-sayfa', label: 'Ana Sayfa Düzenleyici', icon: <LayoutDashboard size={18} /> },
   { href: '/admin/sayfalar',         label: 'Sayfalar',              icon: <FileText size={18} /> },

@@ -66,54 +66,54 @@ export default function ChatWidget() {
     if (open) setTimeout(() => inputRef.current?.focus(), 80);
   }, [open]);
 
-  // ── Admin reply polling ──────────────────────────────────────────────────
-  const stopPolling = useCallback(() => {
-    if (pollTimerRef.current) {
-      clearTimeout(pollTimerRef.current);
-      pollTimerRef.current = null;
-    }
-  }, []);
-
-  const pollForAdminReply = useCallback(async () => {
-    const sid = sessionIdRef.current;
-    if (!sid) return;
-
-    try {
-      const res = await fetch(
-        `/data/chatbot/${sid}/poll?after=${encodeURIComponent(lastPollTime.current)}`,
-      );
-      if (res.ok) {
-        const data = await res.json() as { messages: Array<{ id: string; role: string; content: string; createdAt: string }> };
-        if (data.messages.length > 0) {
-          lastPollTime.current = data.messages[data.messages.length - 1].createdAt;
-          setMessages(prev => {
-            const existingIds = new Set(prev.map(m => m.id).filter(Boolean));
-            const newMsgs = data.messages.filter(m => !existingIds.has(m.id));
-            if (newMsgs.length === 0) return prev;
-            const hasAdminMsg = newMsgs.some(m => m.role === 'admin');
-            return [
-              ...prev,
-              ...newMsgs.map(m => ({ id: m.id, role: m.role as Message['role'], content: m.content })),
-            ];
-          });
-        }
-      }
-    } catch {
-      // ignore poll errors
-    }
-
-    // Keep polling while in admin mode
-    pollTimerRef.current = setTimeout(pollForAdminReply, ADMIN_POLL_INTERVAL);
-  }, []);
-
+  // ── Persistent admin-reply polling ──────────────────────────────────────
+  // Runs continuously once the component mounts. If there is no sessionId yet
+  // the fetch is skipped. Only 'admin' role messages are applied here —
+  // AI messages arrive via SSE streaming and are already in local state.
   useEffect(() => {
-    if (adminMode) {
-      pollTimerRef.current = setTimeout(pollForAdminReply, ADMIN_POLL_INTERVAL);
-    } else {
-      stopPolling();
-    }
-    return stopPolling;
-  }, [adminMode, pollForAdminReply, stopPolling]);
+    let cancelled = false;
+
+    const poll = async () => {
+      if (cancelled) return;
+      const sid = sessionIdRef.current;
+      if (sid) {
+        try {
+          const res = await fetch(
+            `/data/chatbot/${sid}/poll?after=${encodeURIComponent(lastPollTime.current)}`,
+          );
+          if (res.ok && !cancelled) {
+            const data = await res.json() as {
+              messages: Array<{ id: string; role: string; content: string; createdAt: string }>;
+            };
+            if (data.messages.length > 0) {
+              lastPollTime.current = data.messages[data.messages.length - 1].createdAt;
+              const adminMsgs = data.messages.filter(m => m.role === 'admin');
+              if (adminMsgs.length > 0) {
+                setMessages(prev => {
+                  const existingIds = new Set(prev.map(m => m.id).filter(Boolean));
+                  const newMsgs = adminMsgs.filter(m => !existingIds.has(m.id));
+                  if (newMsgs.length === 0) return prev;
+                  // Drop any pending "..." bubble and append real admin messages
+                  return [
+                    ...prev.filter(m => !m.pending),
+                    ...newMsgs.map(m => ({ id: m.id, role: 'admin' as const, content: m.content })),
+                  ];
+                });
+                setAdminMode(false);
+              }
+            }
+          }
+        } catch { /* ignore */ }
+      }
+      if (!cancelled) pollTimerRef.current = setTimeout(poll, ADMIN_POLL_INTERVAL);
+    };
+
+    pollTimerRef.current = setTimeout(poll, ADMIN_POLL_INTERVAL);
+    return () => {
+      cancelled = true;
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+    };
+  }, []); // mount-once, reads sessionIdRef dynamically
 
   // ── Send message ─────────────────────────────────────────────────────────
   const sendMessage = useCallback(async () => {

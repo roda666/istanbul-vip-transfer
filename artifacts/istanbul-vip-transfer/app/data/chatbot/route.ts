@@ -68,23 +68,20 @@ export async function POST(request: NextRequest) {
       session = { id: sid, visitorLang: lang ?? 'tr', adminActiveUntil: null, createdAt: new Date(), lastMessageAt: new Date() };
     }
 
-    // ── 2. Save user message + translate to TR (fire-and-forget for speed) ───
+    // ── 2. Save user message + translate to TR (awaited so admin always sees TR) ─
     const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
     if (lastUserMsg) {
-      const saveAndTranslate = async () => {
-        const contentTr = await translateToTurkish(lastUserMsg.content, session!.visitorLang).catch(() => lastUserMsg.content);
-        await db.insert(chatbotMessages).values({
-          sessionId: sid,
-          role: 'user',
-          content: lastUserMsg.content,
-          contentTr,
-        });
-        await db.update(chatbotSessions)
-          .set({ lastMessageAt: new Date() })
-          .where(eq(chatbotSessions.id, sid));
-      };
-      // Don't await — let it run in background while we check admin status
-      saveAndTranslate().catch(console.error);
+      const contentTr = await translateToTurkish(lastUserMsg.content, session.visitorLang)
+        .catch(() => lastUserMsg.content);
+      await db.insert(chatbotMessages).values({
+        sessionId: sid,
+        role: 'user',
+        content: lastUserMsg.content,
+        contentTr,
+      });
+      await db.update(chatbotSessions)
+        .set({ lastMessageAt: new Date() })
+        .where(eq(chatbotSessions.id, sid));
     }
 
     // ── 3. Admin handoff check ───────────────────────────────────────────────

@@ -57,6 +57,20 @@
       "when": 1785520000000,
       "tag": "0007_homepage_translation_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786300000000,
+      "tag": "0008_language_catalog",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786396994515,
+      "tag": "0009_service_health_monitoring",
+      "breakpoints": true
     }
   ]
 }

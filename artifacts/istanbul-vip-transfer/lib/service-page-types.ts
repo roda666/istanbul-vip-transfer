@@ -2,6 +2,11 @@
  * Structured type definitions for service page CMS content.
  * These types define the JSONB shape stored in content.body and
  * content_translations.body for service page records (contentType='SERVICE').
+ *
+ * NOTE: This module is intentionally NOT marked `server-only` — it contains
+ * pure type definitions and JSON parsing used both in server-side health checks
+ * and in Playwright tests. Server-only boundaries are enforced by the modules
+ * that import DB/SMTP utilities, not here.
  */
 
 export interface ServicePageHero {
@@ -88,7 +93,12 @@ export function applyTranslatedFields(
 
 /** Stable SHA-256 hash of all translatable fields. */
 export function computeTranslatableHash(b: ServicePageBody): string {
-  const { createHash } = require('crypto') as typeof import('crypto');
+  // eval('require') bypasses webpack's static import analysis so this file
+  // can be included in server bundles (instrumentation, scheduler) without
+  // triggering "can't resolve 'crypto'" warnings in the fallback bundle.
+  // At runtime, this always runs in Node.js where `crypto` is available.
+  // eslint-disable-next-line no-eval, @typescript-eslint/no-unsafe-assignment
+  const { createHash } = eval('require')('crypto') as typeof import('crypto');
   const fields = extractTranslatableFields(b);
   const sorted = Object.fromEntries(Object.entries(fields).sort(([a], [b]) => a.localeCompare(b)));
   return createHash('sha256').update(JSON.stringify(sorted)).digest('hex');

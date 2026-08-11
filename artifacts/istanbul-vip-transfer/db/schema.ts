@@ -480,3 +480,33 @@ export const googleReviews = pgTable('google_reviews', {
 
 export type GoogleReview    = typeof googleReviews.$inferSelect;
 export type NewGoogleReview = typeof googleReviews.$inferInsert;
+
+// ── Service Health Monitoring ─────────────────────────────────────────────────
+
+/**
+ * Records each scheduled health check run so the admin dashboard can display
+ * "last checked at" without guessing.
+ */
+export const serviceHealthRuns = pgTable('service_health_runs', {
+  id:             uuid('id').primaryKey().defaultRandom(),
+  checkedAt:      timestamp('checked_at', { withTimezone: true }).defaultNow().notNull(),
+  unhealthyCount: integer('unhealthy_count').notNull().default(0),
+  /** Full JSON report from computeServiceHealthIssues — kept for audit trail. */
+  result:         jsonb('result'),
+});
+
+/**
+ * Tracks when the last alert email was sent for each slug so we can
+ * rate-limit to at most one email per 6 hours per slug.
+ */
+export const serviceHealthAlerts = pgTable('service_health_alerts', {
+  id:          uuid('id').primaryKey().defaultRandom(),
+  slug:        text('slug').notNull().unique(),
+  lastAlertAt: timestamp('last_alert_at', { withTimezone: true }).defaultNow().notNull(),
+  issues:      jsonb('issues').$type<string[]>().notNull(),
+});
+
+export type ServiceHealthRun    = typeof serviceHealthRuns.$inferSelect;
+export type NewServiceHealthRun = typeof serviceHealthRuns.$inferInsert;
+export type ServiceHealthAlert    = typeof serviceHealthAlerts.$inferSelect;
+export type NewServiceHealthAlert = typeof serviceHealthAlerts.$inferInsert;

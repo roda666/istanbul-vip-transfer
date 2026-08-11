@@ -26,8 +26,10 @@
     "dotenv": "^17.4.2",
     "drizzle-orm": "catalog:",
     "iron-session": "^8.0.4",
+    "nodemailer": "^9.0.5",
     "openai": "^6.49.0",
-    "postgres": "^3.4.4"
+    "postgres": "^3.4.4",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.6",
@@ -38,6 +40,7 @@
     "@tanstack/react-query": "catalog:",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "catalog:",
+    "@types/nodemailer": "^8.0.1",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "class-variance-authority": "catalog:",

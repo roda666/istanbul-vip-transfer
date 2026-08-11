@@ -3,6 +3,36 @@ import type { NextConfig } from 'next';
 const isDev = process.env.NODE_ENV === 'development';
 
 const nextConfig: NextConfig = {
+  // Treat nodemailer as a server-external package so Next.js doesn't attempt
+  // to bundle it into any browser/fallback bundle.
+  serverExternalPackages: ['nodemailer'],
+
+  webpack(config, { isServer }) {
+    if (!isServer) {
+      // When webpack compiles the client / edge / client-development-fallback
+      // bundles it follows the instrumentation.ts import chain and tries to
+      // bundle server-only packages (nodemailer, postgres) — which depend on
+      // Node.js built-ins (stream, crypto, net, tls…) that don't exist in
+      // those bundles.
+      //
+      // Adding these packages as `externals` tells webpack to stop tracing
+      // their dependency graph and instead emit `module.exports = require(…)`
+      // at runtime. At runtime these bundles are NEVER executed in a browser —
+      // the NEXT_RUNTIME guard in register() ensures they only run in Node.js —
+      // so the require() calls succeed.
+      const serverOnlyPackages = [
+        'nodemailer',
+        'postgres',
+      ];
+      for (const pkg of serverOnlyPackages) {
+        config.externals = [
+          ...(Array.isArray(config.externals) ? config.externals : []),
+          { [pkg]: `commonjs ${pkg}` },
+        ];
+      }
+    }
+    return config;
+  },
   // Isolate dev and production build output so that running `next build`
   // while the dev server is active never overwrites the dev chunks — which
   // previously caused missing vendor-chunk errors and the "[object Event]"

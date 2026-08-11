@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { db } from '@/db';
-import { content } from '@/db/schema';
-import { eq, asc } from 'drizzle-orm';
+import { content, serviceHealthRuns } from '@/db/schema';
+import { eq, asc, desc } from 'drizzle-orm';
 import AdminPageHeader from '../../_components/AdminPageHeader';
 import {
   computeServiceHealthIssues,
@@ -10,6 +10,7 @@ import {
   type ServiceDbRow,
   type ServiceHealthItem,
 } from '@/lib/service-page-health';
+import RunHealthCheckButton from './_RunHealthCheckButton';
 
 export const metadata: Metadata = { title: 'Hizmetler | Admin', robots: { index: false } };
 
@@ -31,6 +32,7 @@ export default async function HizmetlerPage() {
   let items: (typeof content.$inferSelect & { isActive: boolean; displayOrder: number })[] = [];
   let dbError = false;
   let healthIssues: ServiceHealthItem[] = [];
+  let lastCheckedAt: Date | null = null;
 
   try {
     const rows = await db
@@ -51,6 +53,14 @@ export default async function HizmetlerPage() {
       body:     r.body ?? null,
     }));
     healthIssues = computeServiceHealthIssues(getRegisteredServiceSlugs(), dbRows);
+
+    // Fetch most recent scheduled health-check run timestamp
+    const lastRun = await db
+      .select({ checkedAt: serviceHealthRuns.checkedAt })
+      .from(serviceHealthRuns)
+      .orderBy(desc(serviceHealthRuns.checkedAt))
+      .limit(1);
+    lastCheckedAt = lastRun[0]?.checkedAt ?? null;
   } catch {
     dbError = true;
   }
@@ -86,6 +96,35 @@ export default async function HizmetlerPage() {
           </p>
         </div>
       )}
+
+      {/* ── Scheduler status bar ──────────────────────────────────────── */}
+      <div style={{
+        marginBottom: '20px', padding: '12px 16px',
+        background: '#F8FAFC', border: '1px solid #E2E8F0',
+        borderRadius: '10px', fontFamily: 'Inter, sans-serif',
+        display: 'flex', alignItems: 'center', gap: '12px',
+        flexWrap: 'wrap',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1 }}>
+          <span style={{ fontSize: '13px', color: '#64748B' }}>
+            🕐 Otomatik kontrol:
+          </span>
+          {lastCheckedAt ? (
+            <span style={{ fontSize: '13px', fontWeight: 600, color: '#1E293B' }}>
+              {new Intl.DateTimeFormat('tr-TR', {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+                timeZone: 'Europe/Istanbul',
+              }).format(lastCheckedAt)}
+            </span>
+          ) : (
+            <span style={{ fontSize: '13px', color: '#94A3B8' }}>
+              Henüz çalışmadı — sunucu başladıktan ~30 saniye sonra ilk kontrol yapılır.
+            </span>
+          )}
+        </div>
+        <RunHealthCheckButton />
+      </div>
 
       {dbError ? (
         <p style={{ color: '#f87171', fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>

@@ -18,7 +18,10 @@ export async function GET() {
 
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  // Get sessions with message count and last message preview
+  // Get sessions with message count and last message preview.
+  // Use unquoted table-qualified column references in subqueries so PostgreSQL
+  // resolves them against the outer chatbot_sessions row (TEXT id), not the
+  // inner chatbot_messages.id column (UUID) which would cause a type error.
   const sessions = await db
     .select({
       id:               chatbotSessions.id,
@@ -27,16 +30,16 @@ export async function GET() {
       createdAt:        chatbotSessions.createdAt,
       lastMessageAt:    chatbotSessions.lastMessageAt,
       messageCount: sql<number>`(
-        SELECT COUNT(*) FROM chatbot_messages WHERE session_id = ${chatbotSessions.id}
+        SELECT COUNT(*) FROM chatbot_messages WHERE session_id = chatbot_sessions.id
       )`.mapWith(Number),
       lastMessageTr: sql<string | null>`(
         SELECT content_tr FROM chatbot_messages
-        WHERE session_id = ${chatbotSessions.id}
+        WHERE session_id = chatbot_sessions.id
         ORDER BY created_at DESC LIMIT 1
       )`,
       lastMessageRole: sql<string | null>`(
         SELECT role FROM chatbot_messages
-        WHERE session_id = ${chatbotSessions.id}
+        WHERE session_id = chatbot_sessions.id
         ORDER BY created_at DESC LIMIT 1
       )`,
     })

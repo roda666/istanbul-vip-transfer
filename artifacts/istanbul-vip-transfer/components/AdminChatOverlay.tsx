@@ -128,13 +128,16 @@ export default function AdminChatOverlay() {
   // ── Auth check ─────────────────────────────────────────────────────────────
   const checkAuth = useCallback(async () => {
     const res = await fetch('/admin/api/chatbot/sessions').catch(() => null);
-    if (!res) return;
+    if (!res) { setAuth('out'); return; }
     if (res.status === 401) { setAuth('out'); return; }
     if (res.ok) {
       setAuth('in');
       const data = await res.json() as { sessions: Session[] };
       setSessions(data.sessions);
+      return;
     }
+    // Any other error (500 etc.) → treat as not logged in so UI doesn't hang
+    setAuth('out');
   }, []);
 
   useEffect(() => {

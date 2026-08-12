@@ -1,28 +1,42 @@
 /**
- * Drizzle ORM client — singleton postgres.js connection.
- * Only imported in server-side code (Server Components, Route Handlers, Server Actions).
+ * Drizzle ORM client — singleton postgres.js connection (lazy initialisation).
+ *
+ * The client is created on first access rather than at module load time so that
+ * `next build` does not crash when DATABASE_URL is absent in CI. All routes
+ * that touch the DB declare `export const dynamic = 'force-dynamic'`, which
+ * prevents Next.js from executing them during the build step.
  */
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import * as schema from './schema';
 
-const databaseUrl = process.env.DATABASE_URL;
+export type DB = ReturnType<typeof drizzle<typeof schema>>;
 
-if (!databaseUrl) {
-  throw new Error(
-    'DATABASE_URL environment variable is not set.\n' +
-      'Please add DATABASE_URL to Replit Secrets and restart the server.\n' +
-      'See ADMIN_SETUP.md for setup instructions.',
-  );
+let _db: DB | null = null;
+
+function createDb(): DB {
+  const databaseUrl = process.env.DATABASE_URL;
+
+  if (!databaseUrl) {
+    throw new Error(
+      'DATABASE_URL environment variable is not set.\n' +
+        'Please add DATABASE_URL to Replit Secrets and restart the server.\n' +
+        'See ADMIN_SETUP.md for setup instructions.',
+    );
+  }
+
+  const client = postgres(databaseUrl, {
+    max: 10,
+    idle_timeout: 30,
+    connect_timeout: 10,
+  });
+
+  return drizzle(client, { schema });
 }
 
-// postgres.js client — pooled, handles sslmode from the URL automatically
-const client = postgres(databaseUrl, {
-  max: 10,
-  idle_timeout: 30,
-  connect_timeout: 10,
+export const db: DB = new Proxy({} as DB, {
+  get(_target, prop) {
+    if (!_db) _db = createDb();
+    return (_db as unknown as Record<string | symbol, unknown>)[prop];
+  },
 });
-
-export const db = drizzle(client, { schema });
-
-export type DB = typeof db;

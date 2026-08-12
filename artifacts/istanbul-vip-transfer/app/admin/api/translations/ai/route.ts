@@ -5,7 +5,14 @@
  * Creates or resets jobs to QUEUED, processes them, stores results as DRAFT.
  * AI translations NEVER advance past DRAFT automatically.
  *
- * Supported entity types: content, service_page, faq, vehicle, navigation
+ * Supported entity types:
+ *  • content       — generic content rows (PAGE, BLOG_POST); uses translateContent()
+ *  • service_page  — structured JSON body (ServicePageBody); uses translateServicePageFields()
+ *                    with field extraction, translation, reconstruction, and validation.
+ *  • faq           — question/answer pairs; uses translateContent()
+ *  • vehicle       — name/description/meta; uses translateContent()
+ *  • navigation    — label text; uses translateContent()
+ *
  * Rate limit: 10 requests per minute per admin (in-memory, resets on server restart).
  */
 import { NextRequest, NextResponse } from 'next/server';
@@ -73,8 +80,7 @@ export async function POST(request: NextRequest) {
   const { sql } = await import('drizzle-orm');
   const { translateContent, PROMPT_VERSION } = await import('@/lib/ai/translate');
 
-  // ── Catalog validation: language must exist and be provider-supported ────
-  // (Passive languages ARE allowed — drafts can be prepared before activation.)
+  // ── Catalog validation ────────────────────────────────────────────────────
   const catalogRows = await db
     .select({ code: languages.code, providerSupported: languages.providerSupported })
     .from(languages)
@@ -96,9 +102,16 @@ export async function POST(request: NextRequest) {
 
   // ── Entity-type-specific source fetching ─────────────────────────────────
   type TranslateInput = Parameters<typeof translateContent>[0];
+
+  // Generic content input (used for content / faq / vehicle / navigation)
   let sourceInput: TranslateInput | null = null;
 
-  if (entityType === 'content' || entityType === 'service_page') {
+  // Service-page specific (structured JSON body, translated separately)
+  let spFields: Record<string, string> | null = null;
+  let spRawBody: string | null = null; // Turkish source body JSON for hash + reconstruction
+  let spAuxRow: { seoTitle: string | null; seoDescription: string | null; heroImageAlt: string | null } | null = null;
+
+  if (entityType === 'content') {
     const [row] = await db.select().from(content).where(eq(content.id, entityId)).limit(1);
     if (row) {
       sourceInput = {
@@ -111,6 +124,38 @@ export async function POST(request: NextRequest) {
         imageAlt: row.heroImageAlt,
       };
     }
+
+  } else if (entityType === 'service_page') {
+    // Service pages use a structured JSON body — must not be fed to the generic HTML translator.
+    const [row] = await db
+      .select({
+        id: content.id,
+        seoTitle: content.seoTitle,
+        seoDescription: content.seoDescription,
+        heroImageAlt: content.heroImageAlt,
+        body: content.body,
+      })
+      .from(content)
+      .where(eq(content.id, entityId))
+      .limit(1);
+
+    if (row) {
+      const { parseServicePageBody, extractTranslatableFields } = await import('@/lib/service-page-types');
+      const parsedBody = parseServicePageBody(row.body);
+      if (!parsedBody) {
+        return NextResponse.json(
+          {
+            error:
+              'Hizmet sayfası body yapısı geçersiz ya da eksik. Hizmet sayfası editöründen kaydedip tekrar deneyin.',
+          },
+          { status: 422 },
+        );
+      }
+      spFields = extractTranslatableFields(parsedBody);
+      spRawBody = row.body;
+      spAuxRow = { seoTitle: row.seoTitle, seoDescription: row.seoDescription, heroImageAlt: row.heroImageAlt };
+    }
+
   } else if (entityType === 'faq') {
     const [row] = await db
       .select({ id: faqs.id, question: faqs.question, answer: faqs.answer })
@@ -118,16 +163,9 @@ export async function POST(request: NextRequest) {
       .where(eq(faqs.id, entityId))
       .limit(1);
     if (row) {
-      sourceInput = {
-        title: row.question,
-        slug: '',
-        excerpt: null,
-        body: row.answer,
-        metaTitle: null,
-        metaDescription: null,
-        imageAlt: null,
-      };
+      sourceInput = { title: row.question, slug: '', excerpt: null, body: row.answer, metaTitle: null, metaDescription: null, imageAlt: null };
     }
+
   } else if (entityType === 'vehicle') {
     const [row] = await db.select().from(vehicles).where(eq(vehicles.id, entityId)).limit(1);
     if (row) {
@@ -141,6 +179,7 @@ export async function POST(request: NextRequest) {
         imageAlt: row.coverImageAlt,
       };
     }
+
   } else if (entityType === 'navigation') {
     const [row] = await db
       .select({ id: navigationItems.id, label: navigationItems.label })
@@ -148,27 +187,30 @@ export async function POST(request: NextRequest) {
       .where(eq(navigationItems.id, entityId))
       .limit(1);
     if (row) {
-      sourceInput = {
-        title: row.label,
-        slug: '',
-        excerpt: null,
-        body: null,
-        metaTitle: null,
-        metaDescription: null,
-        imageAlt: null,
-      };
+      sourceInput = { title: row.label, slug: '', excerpt: null, body: null, metaTitle: null, metaDescription: null, imageAlt: null };
     }
   }
 
-  if (!sourceInput) {
+  // Not-found guard
+  const entityFound = entityType === 'service_page' ? spFields !== null : sourceInput !== null;
+  if (!entityFound) {
     return NextResponse.json({ error: 'Source entity not found' }, { status: 404 });
   }
 
+  // ── Pre-load service-page utilities (outside loop for module cache efficiency) ─
+  const spUtils = entityType === 'service_page'
+    ? await import('@/lib/service-page-types').then(async (types) => ({
+        types,
+        translator: await import('@/lib/ai/translate-service-page'),
+      }))
+    : null;
+
+  // ── Per-language translation loop ────────────────────────────────────────
   const results: Array<{ lang: string; status: string; jobId?: string; error?: string }> = [];
 
   for (const targetLang of targetLanguageCodes) {
     try {
-      // Check if a translation job already exists for this entity+lang
+      // Check if a job already exists
       const [existing] = await db
         .select({
           id: contentTranslations.id,
@@ -186,7 +228,7 @@ export async function POST(request: NextRequest) {
         )
         .limit(1);
 
-      // Manually edited or locked translations are never overwritten silently.
+      // Manually edited or locked translations are never overwritten silently
       if (
         existing &&
         !force &&
@@ -205,34 +247,15 @@ export async function POST(request: NextRequest) {
       let jobId: string;
 
       if (existing) {
-        // Reset existing job to QUEUED
         await db
           .update(contentTranslations)
-          .set({
-            status: 'QUEUED',
-            isAiGenerated: true,
-            queuedAt: sql`now()`,
-            updatedAt: sql`now()`,
-            updatedBy: session.adminId,
-            failureReason: null,
-          })
+          .set({ status: 'QUEUED', isAiGenerated: true, queuedAt: sql`now()`, updatedAt: sql`now()`, updatedBy: session.adminId, failureReason: null })
           .where(eq(contentTranslations.id, existing.id));
         jobId = existing.id;
       } else {
-        // Insert new job
         const [inserted] = await db
           .insert(contentTranslations)
-          .values({
-            entityType,
-            entityId,
-            targetLanguageCode: targetLang,
-            sourceLanguageCode: 'tr',
-            status: 'QUEUED',
-            isAiGenerated: true,
-            queuedAt: sql`now()`,
-            createdBy: session.adminId,
-            updatedBy: session.adminId,
-          })
+          .values({ entityType, entityId, targetLanguageCode: targetLang, sourceLanguageCode: 'tr', status: 'QUEUED', isAiGenerated: true, queuedAt: sql`now()`, createdBy: session.adminId, updatedBy: session.adminId })
           .returning({ id: contentTranslations.id });
         if (!inserted) {
           results.push({ lang: targetLang, status: 'error', error: 'Failed to create job' });
@@ -241,31 +264,87 @@ export async function POST(request: NextRequest) {
         jobId = inserted.id;
       }
 
-      // Mark as TRANSLATING
-      await db
-        .update(contentTranslations)
-        .set({ status: 'TRANSLATING', updatedAt: sql`now()` })
-        .where(eq(contentTranslations.id, jobId));
+      await db.update(contentTranslations).set({ status: 'TRANSLATING', updatedAt: sql`now()` }).where(eq(contentTranslations.id, jobId));
 
-      // Call OpenAI
-      const aiResult = await translateContent(sourceInput, targetLang);
+      // ── SERVICE PAGE: structured JSON body translation ──────────────────
+      if (entityType === 'service_page' && spUtils && spFields && spRawBody && spAuxRow) {
+        const { parseServicePageBody, applyTranslatedFields, isServicePageBody, computeTranslatableHash } = spUtils.types;
+        const { translateServicePageFields } = spUtils.translator;
+
+        const spResult = await translateServicePageFields(spFields, targetLang);
+
+        if (!spResult.ok) {
+          await db.update(contentTranslations)
+            .set({ status: 'FAILED', failureReason: spResult.message ?? spResult.reason, updatedAt: sql`now()` })
+            .where(eq(contentTranslations.id, jobId));
+          results.push({ lang: targetLang, status: 'failed', jobId, error: spResult.message });
+          continue;
+        }
+
+        // Reconstruct and validate the structured body
+        const sourceBodyParsed = parseServicePageBody(spRawBody)!;
+        const translatedBody = applyTranslatedFields(sourceBodyParsed, spResult.translated);
+
+        if (!isServicePageBody(translatedBody)) {
+          await db.update(contentTranslations)
+            .set({ status: 'FAILED', failureReason: 'AI yanıtı geçerli ServicePageBody yapısı döndürmedi', updatedAt: sql`now()` })
+            .where(eq(contentTranslations.id, jobId));
+          results.push({ lang: targetLang, status: 'failed', jobId, error: 'Invalid body structure from AI' });
+          continue;
+        }
+
+        const sourceHash = computeTranslatableHash(sourceBodyParsed);
+
+        await db.update(contentTranslations)
+          .set({
+            status: 'DRAFT',
+            updatedAt: sql`now()`,
+            // Structured body stored as JSON string (consistent with service-page-cms.ts)
+            body: JSON.stringify(translatedBody),
+            title: translatedBody.hero.title || null,
+            // Service pages don't have a standalone excerpt or slug in translations
+            excerpt: null,
+            slug: null,
+            // Meta fields pass through from source (not in ServicePageBody)
+            metaTitle: spAuxRow.seoTitle ?? null,
+            metaDescription: spAuxRow.seoDescription ?? null,
+            imageAlt: spAuxRow.heroImageAlt ?? null,
+            focusKeyword: null,
+            supportingKeywords: null,
+            imageTitle: null,
+            imageCaption: null,
+            sourceHash,
+            isAiGenerated: true,
+            aiModel: spResult.model,
+            aiPromptVersion: 'sp-1.1',
+          })
+          .where(eq(contentTranslations.id, jobId));
+
+        await db.insert(auditLogs).values({
+          adminUserId: session.adminId,
+          action: 'translation.ai_complete',
+          entityType: 'content_translation',
+          entityId: jobId,
+          metadata: { targetLang, entityType, entityId, model: spResult.model, status: 'DRAFT' },
+        });
+
+        results.push({ lang: targetLang, status: 'draft', jobId });
+        continue;
+      }
+
+      // ── GENERIC path: content / faq / vehicle / navigation ───────────────
+      const aiResult = await translateContent(sourceInput!, targetLang);
 
       if (!aiResult.ok) {
-        await db
-          .update(contentTranslations)
-          .set({
-            status: 'FAILED',
-            failureReason: aiResult.message ?? aiResult.reason,
-            updatedAt: sql`now()`,
-          })
+        await db.update(contentTranslations)
+          .set({ status: 'FAILED', failureReason: aiResult.message ?? aiResult.reason, updatedAt: sql`now()` })
           .where(eq(contentTranslations.id, jobId));
         results.push({ lang: targetLang, status: 'failed', jobId, error: aiResult.message });
         continue;
       }
 
       // Save as DRAFT — NEVER APPROVED or PUBLISHED
-      await db
-        .update(contentTranslations)
+      await db.update(contentTranslations)
         .set({
           status: 'DRAFT',
           updatedAt: sql`now()`,

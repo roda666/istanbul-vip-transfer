@@ -74,6 +74,7 @@ export async function POST(request: NextRequest) {
 
   const { entityType, entityId, targetLanguageCodes, force } = parsed.data;
 
+  try {
   const { db } = await import('@/db');
   const { content, contentTranslations, auditLogs, languages, faqs, vehicles, navigationItems } = await import('@/db/schema');
   const { eq, and, inArray } = await import('drizzle-orm');
@@ -393,4 +394,11 @@ export async function POST(request: NextRequest) {
     },
     { status: anyFailed ? 207 : 200 },
   );
+  } catch (err) {
+    console.error('[AI translation route] Unhandled error:', err);
+    return NextResponse.json(
+      { error: `Çeviri işlemi sırasında beklenmedik bir hata oluştu: ${err instanceof Error ? err.message : String(err)}` },
+      { status: 500 },
+    );
+  }
 }

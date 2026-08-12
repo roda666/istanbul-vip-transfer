@@ -370,29 +370,51 @@ export default function CevirilerClient({
       </div>
 
       {/* Language selector */}
-      <div style={{ marginBottom: '12px' }}>
-        <div style={{ fontSize: '11px', color: '#60758A', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>
-          Hedef Diller
-        </div>
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-          {translatableLangs.map((l) => {
-            const active = selectedLangs.includes(l.code);
-            return (
-              <button key={l.code} type="button" disabled={bulkBusy} onClick={() => toggleLang(l.code)}
-                title={`${l.turkishName ?? l.name}${l.isEnabled ? '' : ' (pasif — taslak hazırlanır, kamuya açılmaz)'}`}
-                style={{
-                  padding: '4px 10px', borderRadius: '9999px', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
-                  fontFamily: 'Inter, sans-serif',
-                  background: active ? '#1A2B3C' : '#FFF',
-                  color: active ? '#FFF' : l.isEnabled ? '#263F55' : '#8899AA',
-                  border: `1px solid ${active ? '#1A2B3C' : '#D9E2EC'}`,
-                }}>
-                {l.turkishName ?? l.name}{!l.isEnabled && ' ·pasif'}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      {(() => {
+        const activeLangs  = translatableLangs.filter((l) => l.isEnabled);
+        const passiveLangs = translatableLangs.filter((l) => !l.isEnabled);
+        const LangBtn = ({ l }: { l: (typeof translatableLangs)[number] }) => {
+          const active = selectedLangs.includes(l.code);
+          return (
+            <button key={l.code} type="button" disabled={bulkBusy} onClick={() => toggleLang(l.code)}
+              title={`${l.turkishName ?? l.name}${l.isEnabled ? '' : ' (pasif — taslak hazırlanır, kamuya açılmaz)'}`}
+              style={{
+                padding: '4px 10px', borderRadius: '9999px', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
+                fontFamily: 'Inter, sans-serif',
+                background: active ? '#1A2B3C' : '#FFF',
+                color: active ? '#FFF' : l.isEnabled ? '#263F55' : '#8899AA',
+                border: `1px solid ${active ? '#1A2B3C' : '#D9E2EC'}`,
+              }}>
+              {l.turkishName ?? l.name}
+            </button>
+          );
+        };
+        return (
+          <div style={{ marginBottom: '12px' }}>
+            {/* Active languages */}
+            <div style={{ fontSize: '11px', color: '#60758A', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>
+              Aktif Diller
+            </div>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: passiveLangs.length ? '10px' : 0 }}>
+              {activeLangs.length === 0
+                ? <span style={{ fontSize: '12px', color: '#8899AA', fontFamily: 'Inter, sans-serif' }}>Etkin dil yok — Dil Yönetimi'nden aktifleştirin.</span>
+                : activeLangs.map((l) => <LangBtn key={l.code} l={l} />)}
+            </div>
+            {/* Passive languages */}
+            {passiveLangs.length > 0 && (
+              <>
+                <div style={{ fontSize: '11px', color: '#8899AA', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>Pasif Diller</span>
+                  <span style={{ fontSize: '10px', fontWeight: 400, textTransform: 'none', color: '#A0AEC0' }}>taslak oluşturulur, kamuya açılmaz</span>
+                </div>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {passiveLangs.map((l) => <LangBtn key={l.code} l={l} />)}
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Action buttons */}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>

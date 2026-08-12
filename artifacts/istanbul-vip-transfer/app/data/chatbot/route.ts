@@ -4,10 +4,12 @@ import { translateToTurkish } from '@/lib/chatbot-translate';
 
 export const dynamic = 'force-dynamic';
 
-const openai = new OpenAI({
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  apiKey:   process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-});
+function getOpenAI() {
+  return new OpenAI({
+    baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+    apiKey:   process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? '',
+  });
+}
 
 function getSystemPrompt(lang: string): string {
   const prompts: Record<string, string> = {
@@ -94,7 +96,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ── 4. Stream AI response ────────────────────────────────────────────────
-    const aiStream = await openai.chat.completions.create({
+    const aiStream = await getOpenAI().chat.completions.create({
       model: 'gpt-5.6-luna',
       max_completion_tokens: 512,
       messages: [

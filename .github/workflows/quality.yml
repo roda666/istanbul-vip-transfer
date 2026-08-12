@@ -46,11 +46,14 @@ jobs:
       - name: Build
         run: pnpm --filter @workspace/istanbul-vip-transfer build
         env:
-          # Provide a syntactically valid but non-connectable DATABASE_URL so
-          # the connection pool initialises without a real DB. All API routes
-          # have `export const dynamic = 'force-dynamic'` which prevents
-          # Next.js from executing them during the build step.
+          # Dummy values so module-level initialisers don't crash during build.
+          # Routes use force-dynamic so handlers never actually run at build time.
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci_placeholder
+          AUTH_SECRET: ci-placeholder-secret-32-chars-long
+          SESSION_SECRET: ci-placeholder-session-secret-32
+          OPENAI_API_KEY: sk-ci-placeholder
+          AI_INTEGRATIONS_OPENAI_API_KEY: sk-ci-placeholder
+          AI_INTEGRATIONS_OPENAI_BASE_URL: https://ci.placeholder.invalid/v1
 
   playwright:
     name: Smoke Tests (Playwright)

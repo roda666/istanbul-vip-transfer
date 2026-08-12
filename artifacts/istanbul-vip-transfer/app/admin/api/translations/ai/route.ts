@@ -1,10 +1,11 @@
 /**
  * POST /admin/api/translations/ai
  *
- * Triggers AI translation for one content entity across one or more languages.
+ * Triggers AI translation for one entity across one or more languages.
  * Creates or resets jobs to QUEUED, processes them, stores results as DRAFT.
  * AI translations NEVER advance past DRAFT automatically.
  *
+ * Supported entity types: content, service_page, faq, vehicle, navigation
  * Rate limit: 10 requests per minute per admin (in-memory, resets on server restart).
  */
 import { NextRequest, NextResponse } from 'next/server';
@@ -12,7 +13,7 @@ import { z } from 'zod';
 import { requireAdminSession } from '@/lib/auth/session';
 
 const requestSchema = z.object({
-  entityType: z.literal('content'),
+  entityType: z.enum(['content', 'service_page', 'faq', 'vehicle', 'navigation']),
   entityId: z.string().uuid(),
   targetLanguageCodes: z.array(z.string().min(2).max(10)).min(1).max(80),
   /** When true, manually edited / locked translations may be overwritten. */
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
   const { entityType, entityId, targetLanguageCodes, force } = parsed.data;
 
   const { db } = await import('@/db');
-  const { content, contentTranslations, auditLogs, languages } = await import('@/db/schema');
+  const { content, contentTranslations, auditLogs, languages, faqs, vehicles, navigationItems } = await import('@/db/schema');
   const { eq, and, inArray } = await import('drizzle-orm');
   const { sql } = await import('drizzle-orm');
   const { translateContent, PROMPT_VERSION } = await import('@/lib/ai/translate');
@@ -93,10 +94,74 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Fetch source content
-  const [sourceContent] = await db.select().from(content).where(eq(content.id, entityId)).limit(1).catch(() => []);
-  if (!sourceContent) {
-    return NextResponse.json({ error: 'Source content not found' }, { status: 404 });
+  // ── Entity-type-specific source fetching ─────────────────────────────────
+  type TranslateInput = Parameters<typeof translateContent>[0];
+  let sourceInput: TranslateInput | null = null;
+
+  if (entityType === 'content' || entityType === 'service_page') {
+    const [row] = await db.select().from(content).where(eq(content.id, entityId)).limit(1);
+    if (row) {
+      sourceInput = {
+        title: row.title,
+        slug: row.slug,
+        excerpt: row.excerpt,
+        body: row.body,
+        metaTitle: row.seoTitle,
+        metaDescription: row.seoDescription,
+        imageAlt: row.heroImageAlt,
+      };
+    }
+  } else if (entityType === 'faq') {
+    const [row] = await db
+      .select({ id: faqs.id, question: faqs.question, answer: faqs.answer })
+      .from(faqs)
+      .where(eq(faqs.id, entityId))
+      .limit(1);
+    if (row) {
+      sourceInput = {
+        title: row.question,
+        slug: '',
+        excerpt: null,
+        body: row.answer,
+        metaTitle: null,
+        metaDescription: null,
+        imageAlt: null,
+      };
+    }
+  } else if (entityType === 'vehicle') {
+    const [row] = await db.select().from(vehicles).where(eq(vehicles.id, entityId)).limit(1);
+    if (row) {
+      sourceInput = {
+        title: row.name,
+        slug: row.slug,
+        excerpt: row.shortDescription,
+        body: row.fullDescription,
+        metaTitle: row.metaTitle,
+        metaDescription: row.metaDescription,
+        imageAlt: row.coverImageAlt,
+      };
+    }
+  } else if (entityType === 'navigation') {
+    const [row] = await db
+      .select({ id: navigationItems.id, label: navigationItems.label })
+      .from(navigationItems)
+      .where(eq(navigationItems.id, entityId))
+      .limit(1);
+    if (row) {
+      sourceInput = {
+        title: row.label,
+        slug: '',
+        excerpt: null,
+        body: null,
+        metaTitle: null,
+        metaDescription: null,
+        imageAlt: null,
+      };
+    }
+  }
+
+  if (!sourceInput) {
+    return NextResponse.json({ error: 'Source entity not found' }, { status: 404 });
   }
 
   const results: Array<{ lang: string; status: string; jobId?: string; error?: string }> = [];
@@ -183,18 +248,7 @@ export async function POST(request: NextRequest) {
         .where(eq(contentTranslations.id, jobId));
 
       // Call OpenAI
-      const aiResult = await translateContent(
-        {
-          title: sourceContent.title,
-          slug: sourceContent.slug,
-          excerpt: sourceContent.excerpt,
-          body: sourceContent.body,
-          metaTitle: sourceContent.seoTitle,
-          metaDescription: sourceContent.seoDescription,
-          imageAlt: sourceContent.heroImageAlt,
-        },
-        targetLang,
-      );
+      const aiResult = await translateContent(sourceInput, targetLang);
 
       if (!aiResult.ok) {
         await db
@@ -216,16 +270,16 @@ export async function POST(request: NextRequest) {
           status: 'DRAFT',
           updatedAt: sql`now()`,
           title: aiResult.data.title,
-          slug: aiResult.data.slug,
-          excerpt: aiResult.data.excerpt,
-          body: aiResult.data.body,
-          metaTitle: aiResult.data.metaTitle,
-          metaDescription: aiResult.data.metaDescription,
-          focusKeyword: aiResult.data.focusKeyword,
-          supportingKeywords: aiResult.data.supportingKeywords,
-          imageAlt: aiResult.data.imageAlt,
-          imageTitle: aiResult.data.imageTitle,
-          imageCaption: aiResult.data.imageCaption,
+          slug: aiResult.data.slug || null,
+          excerpt: aiResult.data.excerpt || null,
+          body: aiResult.data.body || null,
+          metaTitle: aiResult.data.metaTitle || null,
+          metaDescription: aiResult.data.metaDescription || null,
+          focusKeyword: aiResult.data.focusKeyword || null,
+          supportingKeywords: aiResult.data.supportingKeywords?.length ? aiResult.data.supportingKeywords : null,
+          imageAlt: aiResult.data.imageAlt || null,
+          imageTitle: aiResult.data.imageTitle || null,
+          imageCaption: aiResult.data.imageCaption || null,
           aiModel: aiResult.model,
           aiPromptVersion: PROMPT_VERSION,
         })
@@ -236,7 +290,7 @@ export async function POST(request: NextRequest) {
         action: 'translation.ai_complete',
         entityType: 'content_translation',
         entityId: jobId,
-        metadata: { targetLang, entityId, model: aiResult.model, status: 'DRAFT' },
+        metadata: { targetLang, entityType, entityId, model: aiResult.model, status: 'DRAFT' },
       });
 
       results.push({ lang: targetLang, status: 'draft', jobId });

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Globe, Loader2, Archive, Brain, AlertTriangle } from 'lucide-react';
 import type { Language } from '@/db/schema';
+import type { EntitySources } from './page';
 
 /* ── Status config ─────────────────────────────────────────────────────── */
 const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; border: string }> = {
@@ -18,6 +19,35 @@ const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; b
   OUTDATED:    { label: 'Güncel Değil', bg: '#FFFBEB', text: '#92400E', border: '#FDE68A' },
   ARCHIVED:    { label: 'Arşivlendi',  bg: '#F1F5F9', text: '#64748B', border: '#CBD5E1' },
 };
+
+/* ── Entity type configuration ─────────────────────────────────────────── */
+type ToolbarEntityType = 'content' | 'blog' | 'service_page' | 'faq' | 'vehicle' | 'navigation';
+
+const ENTITY_TYPE_LABELS: Record<ToolbarEntityType, string> = {
+  content:      'Sayfa (Statik)',
+  blog:         'Blog Yazısı',
+  service_page: 'Hizmet Sayfası',
+  faq:          'SSS',
+  vehicle:      'Araç',
+  navigation:   'Navigasyon',
+};
+
+/** Maps UI entity type to the entityType string sent to the AI API. */
+function getApiEntityType(toolbarType: ToolbarEntityType): string {
+  // 'blog' posts are stored as entityType='content' in content_translations
+  return toolbarType === 'blog' ? 'content' : toolbarType;
+}
+
+/* ── Filter tab config ──────────────────────────────────────────────────── */
+const FILTER_TABS = [
+  { value: '',             label: 'Tümü' },
+  { value: 'page',         label: 'Sayfa' },
+  { value: 'blog',         label: 'Blog' },
+  { value: 'service_page', label: 'Hizmet' },
+  { value: 'faq',          label: 'SSS' },
+  { value: 'vehicle',      label: 'Araç' },
+  { value: 'navigation',   label: 'Navigasyon' },
+] as const;
 
 type Job = {
   id: string;
@@ -38,10 +68,12 @@ type Job = {
 interface Props {
   jobs: Job[];
   langs: Language[];
-  sources: Array<{ id: string; title: string; slug: string }>;
+  entitySources: EntitySources;
   page: number;
   total: number;
   limit: number;
+  /** Current URL filter value ('page' | 'blog' | 'service_page' | 'faq' | 'vehicle' | 'navigation' | '') */
+  entityTypeFilter: string;
 }
 
 /* ── Responsive CSS injected once ─────────────────────────────────────── */
@@ -97,6 +129,13 @@ const STYLE = `
     font-size: 11px; font-weight: 600; font-family: Inter, sans-serif;
     display: flex; align-items: center; gap: 3px; cursor: pointer;
   }
+  /* Filter tabs scroll on mobile */
+  .ct-filter-tabs {
+    display: flex; gap: 4px; flex-wrap: nowrap; overflow-x: auto;
+    padding-bottom: 4px; margin-bottom: 12px;
+    scrollbar-width: none;
+  }
+  .ct-filter-tabs::-webkit-scrollbar { display: none; }
 `;
 
 function StatusBadge({ status }: { status: string }) {
@@ -115,13 +154,46 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export default function CevirilerClient({ jobs: initialJobs, langs, sources, page, total, limit }: Props) {
+/** Human-readable label for entityType stored in the DB. */
+function EntityTypeLabel({ type }: { type: string }) {
+  const labels: Record<string, string> = {
+    content:      'İçerik',
+    service_page: 'Hizmet',
+    faq:          'SSS',
+    vehicle:      'Araç',
+    navigation:   'Nav',
+  };
+  return (
+    <span style={{
+      fontSize: '10px', fontWeight: 600, padding: '1px 6px', borderRadius: '4px',
+      background: '#F3F6FA', color: '#50677A', border: '1px solid #DDE5EF',
+      fontFamily: 'Inter, sans-serif',
+    }}>
+      {labels[type] ?? type}
+    </span>
+  );
+}
+
+export default function CevirilerClient({
+  jobs: initialJobs,
+  langs,
+  entitySources,
+  page,
+  total,
+  limit,
+  entityTypeFilter,
+}: Props) {
   const [jobs, setJobs] = useState(initialJobs);
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // ── Bulk AI-translate toolbar state ─────────────────────────────────────
-  const [sourceId, setSourceId] = useState(sources[0]?.id ?? '');
+  // ── Toolbar state ────────────────────────────────────────────────────────
+  const [toolbarEntityType, setToolbarEntityType] = useState<ToolbarEntityType>('content');
+
+  // Resolve sources for the currently selected toolbar entity type
+  const currentSources = entitySources[toolbarEntityType] ?? [];
+  const [sourceId, setSourceId] = useState(() => entitySources.content[0]?.id ?? '');
+
   const [selectedLangs, setSelectedLangs] = useState<string[]>([]);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkMsg, setBulkMsg] = useState<string | null>(null);
@@ -129,6 +201,13 @@ export default function CevirilerClient({ jobs: initialJobs, langs, sources, pag
 
   const translatableLangs = langs.filter((l) => l.code !== 'tr' && l.providerSupported);
   const enabledLangCodes = translatableLangs.filter((l) => l.isEnabled).map((l) => l.code);
+
+  function handleToolbarEntityTypeChange(type: ToolbarEntityType) {
+    setToolbarEntityType(type);
+    const srcs = entitySources[type] ?? [];
+    setSourceId(srcs[0]?.id ?? '');
+    setBulkMsg(null);
+  }
 
   function toggleLang(code: string) {
     setSelectedLangs((prev) => (prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]));
@@ -141,10 +220,11 @@ export default function CevirilerClient({ jobs: initialJobs, langs, sources, pag
     setBulkMsg(null);
     setError(null);
     try {
+      const apiEntityType = getApiEntityType(toolbarEntityType);
       const res = await fetch('/admin/api/translations/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entityType: 'content', entityId: sourceId, targetLanguageCodes: codes, force }),
+        body: JSON.stringify({ entityType: apiEntityType, entityId: sourceId, targetLanguageCodes: codes, force }),
       });
       const data = await res.json().catch(() => ({})) as {
         error?: string;
@@ -197,55 +277,130 @@ export default function CevirilerClient({ jobs: initialJobs, langs, sources, pag
     }
   }
 
-  const emptyState = (
-    <div className="rounded-2xl p-12 text-center"
-      style={{ background: '#FFFFFF', border: '1px solid #E8EDF3' }}>
-      <Globe size={32} style={{ color: '#C99A32', margin: '0 auto 12px' }} />
-      <p style={{ color: '#50677A', fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
-        Henüz çeviri işi yok.
-      </p>
+  // ── Filter tabs (URL-based) ──────────────────────────────────────────────
+  const filterTabs = (
+    <div className="ct-filter-tabs">
+      {FILTER_TABS.map((tab) => {
+        const isActive = entityTypeFilter === tab.value;
+        const href = tab.value ? `/admin/ceviriler?entityType=${tab.value}` : '/admin/ceviriler';
+        return (
+          <a
+            key={tab.value}
+            href={href}
+            style={{
+              padding: '5px 12px', borderRadius: '9999px', fontSize: '12px', fontWeight: 600,
+              fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', textDecoration: 'none',
+              background: isActive ? '#1A2B3C' : '#FFFFFF',
+              color: isActive ? '#FFFFFF' : '#50677A',
+              border: `1px solid ${isActive ? '#1A2B3C' : '#D9E2EC'}`,
+              flexShrink: 0,
+            }}
+          >
+            {tab.label}
+          </a>
+        );
+      })}
     </div>
   );
 
+  // ── Bulk AI-translate toolbar ────────────────────────────────────────────
   const bulkToolbar = (
     <div style={{ background: '#FFFFFF', border: '1px solid #E8EDF3', borderRadius: '12px', padding: '16px', marginBottom: '16px', fontFamily: 'Inter, sans-serif', boxShadow: '0 1px 4px rgba(16,42,67,0.05)' }}>
-      <div style={{ fontSize: '13px', fontWeight: 700, color: '#1A2B3C', marginBottom: '10px' }}>AI Çeviri Üret</div>
-      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '10px' }}>
+      <div style={{ fontSize: '13px', fontWeight: 700, color: '#1A2B3C', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <Brain size={14} style={{ color: '#7C3AED' }} />
+        AI Çeviri Üret
+      </div>
+
+      {/* Entity type selector */}
+      <div style={{ marginBottom: '10px' }}>
+        <div style={{ fontSize: '11px', color: '#60758A', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>
+          İçerik Türü
+        </div>
+        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+          {(Object.keys(ENTITY_TYPE_LABELS) as ToolbarEntityType[]).map((type) => {
+            const srcs = entitySources[type] ?? [];
+            const active = toolbarEntityType === type;
+            return (
+              <button
+                key={type}
+                type="button"
+                disabled={bulkBusy}
+                onClick={() => handleToolbarEntityTypeChange(type)}
+                title={`${srcs.length} kayıt`}
+                style={{
+                  padding: '4px 10px', borderRadius: '9999px', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
+                  fontFamily: 'Inter, sans-serif',
+                  background: active ? '#1A2B3C' : '#FFF',
+                  color: active ? '#FFF' : '#263F55',
+                  border: `1px solid ${active ? '#1A2B3C' : '#D9E2EC'}`,
+                  opacity: bulkBusy ? 0.6 : 1,
+                }}
+              >
+                {ENTITY_TYPE_LABELS[type]}
+                {srcs.length > 0 && (
+                  <span style={{ marginLeft: '4px', opacity: 0.6, fontSize: '10px' }}>({srcs.length})</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Source entity selector */}
+      <div style={{ marginBottom: '10px' }}>
+        <div style={{ fontSize: '11px', color: '#60758A', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>
+          Kaynak
+        </div>
         <select
           value={sourceId}
           onChange={(e) => setSourceId(e.target.value)}
           disabled={bulkBusy}
-          style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid #D9E2EC', fontSize: '13px', fontFamily: 'Inter, sans-serif', background: '#FFF', color: '#1A2B3C', maxWidth: '100%' }}
+          style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid #D9E2EC', fontSize: '13px', fontFamily: 'Inter, sans-serif', background: '#FFF', color: '#1A2B3C', maxWidth: '100%', minWidth: '240px' }}
         >
-          {sources.length === 0 && <option value="">İçerik bulunamadı</option>}
-          {sources.map((s) => <option key={s.id} value={s.id}>{s.title} ({s.slug})</option>)}
+          {currentSources.length === 0 && (
+            <option value="">{ENTITY_TYPE_LABELS[toolbarEntityType]} kaydı bulunamadı</option>
+          )}
+          {currentSources.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.title}{s.slug ? ` (${s.slug})` : ''}
+            </option>
+          ))}
         </select>
       </div>
-      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '12px' }}>
-        {translatableLangs.map((l) => {
-          const active = selectedLangs.includes(l.code);
-          return (
-            <button key={l.code} type="button" disabled={bulkBusy} onClick={() => toggleLang(l.code)}
-              title={`${l.turkishName ?? l.name}${l.isEnabled ? '' : ' (pasif — taslak hazırlanır, kamuya açılmaz)'}`}
-              style={{
-                padding: '4px 10px', borderRadius: '9999px', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
-                fontFamily: 'Inter, sans-serif',
-                background: active ? '#1A2B3C' : '#FFF',
-                color: active ? '#FFF' : l.isEnabled ? '#263F55' : '#8899AA',
-                border: `1px solid ${active ? '#1A2B3C' : '#D9E2EC'}`,
-              }}>
-              {l.code}{!l.isEnabled && ' ·pasif'}
-            </button>
-          );
-        })}
+
+      {/* Language selector */}
+      <div style={{ marginBottom: '12px' }}>
+        <div style={{ fontSize: '11px', color: '#60758A', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>
+          Hedef Diller
+        </div>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          {translatableLangs.map((l) => {
+            const active = selectedLangs.includes(l.code);
+            return (
+              <button key={l.code} type="button" disabled={bulkBusy} onClick={() => toggleLang(l.code)}
+                title={`${l.turkishName ?? l.name}${l.isEnabled ? '' : ' (pasif — taslak hazırlanır, kamuya açılmaz)'}`}
+                style={{
+                  padding: '4px 10px', borderRadius: '9999px', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
+                  fontFamily: 'Inter, sans-serif',
+                  background: active ? '#1A2B3C' : '#FFF',
+                  color: active ? '#FFF' : l.isEnabled ? '#263F55' : '#8899AA',
+                  border: `1px solid ${active ? '#1A2B3C' : '#D9E2EC'}`,
+                }}>
+                {l.code}{!l.isEnabled && ' ·pasif'}
+              </button>
+            );
+          })}
+        </div>
       </div>
+
+      {/* Action buttons */}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-        <button type="button" disabled={bulkBusy || selectedLangs.length === 0} onClick={() => runBulkTranslate(selectedLangs)}
-          style={{ padding: '8px 14px', borderRadius: '8px', border: 'none', background: '#2563EB', color: '#FFF', fontSize: '12px', fontWeight: 600, cursor: bulkBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif', opacity: bulkBusy || selectedLangs.length === 0 ? 0.6 : 1 }}>
+        <button type="button" disabled={bulkBusy || selectedLangs.length === 0 || currentSources.length === 0} onClick={() => runBulkTranslate(selectedLangs)}
+          style={{ padding: '8px 14px', borderRadius: '8px', border: 'none', background: '#2563EB', color: '#FFF', fontSize: '12px', fontWeight: 600, cursor: bulkBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif', opacity: bulkBusy || selectedLangs.length === 0 || currentSources.length === 0 ? 0.6 : 1 }}>
           {bulkBusy ? 'Çevriliyor…' : `Seçili Dillere Çevir (${selectedLangs.length})`}
         </button>
-        <button type="button" disabled={bulkBusy || enabledLangCodes.length === 0} onClick={() => runBulkTranslate(enabledLangCodes)}
-          style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #2563EB', background: '#EFF6FF', color: '#1D4ED8', fontSize: '12px', fontWeight: 600, cursor: bulkBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif', opacity: bulkBusy ? 0.6 : 1 }}>
+        <button type="button" disabled={bulkBusy || enabledLangCodes.length === 0 || currentSources.length === 0} onClick={() => runBulkTranslate(enabledLangCodes)}
+          style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #2563EB', background: '#EFF6FF', color: '#1D4ED8', fontSize: '12px', fontWeight: 600, cursor: bulkBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif', opacity: bulkBusy || currentSources.length === 0 ? 0.6 : 1 }}>
           Tüm Etkin Dillere Çevir ({enabledLangCodes.length})
         </button>
         {bulkBusy && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite', color: '#2563EB' }} />}
@@ -281,10 +436,21 @@ export default function CevirilerClient({ jobs: initialJobs, langs, sources, pag
     </div>
   );
 
+  const emptyState = (
+    <div className="rounded-2xl p-12 text-center"
+      style={{ background: '#FFFFFF', border: '1px solid #E8EDF3' }}>
+      <Globe size={32} style={{ color: '#C99A32', margin: '0 auto 12px' }} />
+      <p style={{ color: '#50677A', fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
+        Bu filtre için çeviri işi bulunamadı.
+      </p>
+    </div>
+  );
+
   if (jobs.length === 0) {
     return (
       <div>
         <style>{STYLE}</style>
+        {filterTabs}
         {bulkToolbar}
         {error && (
           <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#991B1B', fontFamily: 'Inter, sans-serif', fontSize: '13px', padding: '10px 14px', borderRadius: '8px', marginBottom: '12px' }}>
@@ -301,6 +467,7 @@ export default function CevirilerClient({ jobs: initialJobs, langs, sources, pag
     <div>
       <style>{STYLE}</style>
 
+      {filterTabs}
       {bulkToolbar}
       {overwriteDialog}
 
@@ -316,7 +483,7 @@ export default function CevirilerClient({ jobs: initialJobs, langs, sources, pag
         <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Inter, sans-serif' }}>
           <thead>
             <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E8EDF3' }}>
-              {['İçerik', 'Dil', 'Durum', 'Kaynak', 'Güncelleme', 'İşlemler'].map((h) => (
+              {['İçerik', 'Tür', 'Dil', 'Durum', 'Kaynak', 'Güncelleme', 'İşlemler'].map((h) => (
                 <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#60758A', fontWeight: 600 }}>
                   {h}
                 </th>
@@ -329,13 +496,16 @@ export default function CevirilerClient({ jobs: initialJobs, langs, sources, pag
               const isLoading = loading === job.id;
               return (
                 <tr key={job.id} style={{ borderBottom: isLast ? 'none' : '1px solid #F1F4F8', background: isLoading ? '#FAFBFC' : '#FFFFFF', opacity: isLoading ? 0.6 : 1 }}>
-                  <td style={{ padding: '12px 14px', maxWidth: '260px' }}>
+                  <td style={{ padding: '12px 14px', maxWidth: '220px' }}>
                     <div style={{ fontWeight: 500, fontSize: '13px', color: '#1A2B3C', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {job.title ?? job.sourceTitle}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#8899AA', marginTop: '2px' }}>
-                      {job.entityType} · {job.sourceSlug}
+                    <div style={{ fontSize: '11px', color: '#8899AA', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {job.sourceSlug || job.entityId.slice(0, 8)}
                     </div>
+                  </td>
+                  <td style={{ padding: '12px 14px' }}>
+                    <EntityTypeLabel type={job.entityType} />
                   </td>
                   <td style={{ padding: '12px 14px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -375,7 +545,11 @@ export default function CevirilerClient({ jobs: initialJobs, langs, sources, pag
               <div className="ct-card-header">
                 <div style={{ minWidth: 0 }}>
                   <div className="ct-card-title">{job.title ?? job.sourceTitle}</div>
-                  <div className="ct-card-meta">{job.entityType} · {job.sourceSlug}</div>
+                  <div className="ct-card-meta">
+                    <EntityTypeLabel type={job.entityType} />
+                    {' '}
+                    {job.sourceSlug || job.entityId.slice(0, 8)}
+                  </div>
                 </div>
                 <StatusBadge status={job.status} />
               </div>
@@ -448,13 +622,13 @@ export default function CevirilerClient({ jobs: initialJobs, langs, sources, pag
           <span>{total} kayıt</span>
           <div style={{ display: 'flex', gap: '8px' }}>
             {page > 1 && (
-              <a href={`/admin/ceviriler?page=${page - 1}`}
+              <a href={`/admin/ceviriler?page=${page - 1}${entityTypeFilter ? `&entityType=${entityTypeFilter}` : ''}`}
                 style={{ padding: '4px 12px', borderRadius: '6px', border: '1px solid #D9E2EC', textDecoration: 'none', color: '#263F55', minHeight: '36px', display: 'flex', alignItems: 'center' }}>
                 ← Önceki
               </a>
             )}
             {page * limit < total && (
-              <a href={`/admin/ceviriler?page=${page + 1}`}
+              <a href={`/admin/ceviriler?page=${page + 1}${entityTypeFilter ? `&entityType=${entityTypeFilter}` : ''}`}
                 style={{ padding: '4px 12px', borderRadius: '6px', border: '1px solid #D9E2EC', textDecoration: 'none', color: '#263F55', minHeight: '36px', display: 'flex', alignItems: 'center' }}>
                 Sonraki →
               </a>

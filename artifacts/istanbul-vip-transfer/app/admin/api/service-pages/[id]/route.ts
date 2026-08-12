@@ -76,7 +76,6 @@ async function translateAndSave(
   srcBody: ServicePageBody,
   srcHash: string,
   locale: string,
-  adminId: string,
 ): Promise<{ ok: boolean; error?: string }> {
   const { db }                = await import('@/db');
   const { contentTranslations } = await import('@/db/schema');
@@ -196,8 +195,7 @@ const patchSchema = z.object({
 });
 
 export async function PATCH(req: NextRequest, { params }: Params) {
-  let session;
-  try { session = await requireAdminSession(); } catch {
+  try { await requireAdminSession(); } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -252,11 +250,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const translationResults: Record<string, string> = {};
   if (data.autoTranslate) {
     const targetLocales = data.targetLocales ?? await getActiveTargetLocales();
-    const adminId = (session as unknown as { id: string }).id ?? 'system';
 
     await Promise.allSettled(
       targetLocales.map(async (locale) => {
-        const r = await translateAndSave(id, bodyObj, srcHash, locale, adminId);
+        const r = await translateAndSave(id, bodyObj, srcHash, locale);
         translationResults[locale] = r.ok ? 'queued' : (r.error ?? 'error');
       }),
     );
@@ -270,8 +267,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 // ── POST /approve ─────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest, { params }: Params) {
-  let session;
-  try { session = await requireAdminSession(); } catch {
+  try { await requireAdminSession(); } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -298,7 +294,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const { db }                = await import('@/db');
   const { contentTranslations } = await import('@/db/schema');
-  const { eq, and }           = await import('drizzle-orm');
+  const { eq }                = await import('drizzle-orm');
 
   const existing = await getTranslation(id, locale);
 
@@ -307,7 +303,6 @@ export async function POST(req: NextRequest, { params }: Params) {
     const srcBody = parseServicePageBody(row.body);
     if (!srcBody) return NextResponse.json({ error: 'TR içerik bulunamadı.' }, { status: 400 });
     const srcHash = computeTranslatableHash(srcBody);
-    const adminId = (session as unknown as { id: string }).id ?? 'system';
 
     // Force re-translate by temporarily clearing source hash
     if (existing) {
@@ -317,7 +312,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         .where(eq(contentTranslations.id, existing.id));
     }
 
-    const result = await translateAndSave(id, srcBody, srcHash, locale, adminId);
+    const result = await translateAndSave(id, srcBody, srcHash, locale);
     if (!result.ok) return NextResponse.json({ error: result.error ?? 'Çeviri hatası.' }, { status: 500 });
 
     const record = await getServicePageAdminRecord(id);

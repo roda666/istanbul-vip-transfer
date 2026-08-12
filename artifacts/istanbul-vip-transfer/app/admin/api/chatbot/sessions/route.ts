@@ -4,8 +4,8 @@
  * Protected: only callable from authenticated admin context.
  */
 import { db } from '@/db';
-import { chatbotSessions, chatbotMessages } from '@/db/schema';
-import { desc, eq, gte, sql } from 'drizzle-orm';
+import { chatbotSessions } from '@/db/schema';
+import { desc, gte, sql } from 'drizzle-orm';
 import { getSession } from '@/lib/auth/session';
 
 export const dynamic = 'force-dynamic';

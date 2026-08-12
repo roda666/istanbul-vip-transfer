@@ -8,7 +8,6 @@
  *
  * Shared components (BookingForm, VehicleFleet, Contact) are always rendered.
  */
-import type { PageKey } from '@/components/PageHero';
 import PageHero from '@/components/PageHero';
 import BookingForm from '@/components/BookingForm';
 import VehicleFleet from '@/components/VehicleFleet';

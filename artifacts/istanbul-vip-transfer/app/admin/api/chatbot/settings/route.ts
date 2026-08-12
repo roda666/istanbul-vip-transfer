@@ -5,7 +5,6 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/db';
 import { chatbotSettings } from '@/db/schema';
-import { eq } from 'drizzle-orm';
 import { getSession } from '@/lib/auth/session';
 
 export const dynamic = 'force-dynamic';

@@ -97,7 +97,6 @@ export function computeTranslatableHash(b: ServicePageBody): string {
   // can be included in server bundles (instrumentation, scheduler) without
   // triggering "can't resolve 'crypto'" warnings in the fallback bundle.
   // At runtime, this always runs in Node.js where `crypto` is available.
-  // eslint-disable-next-line no-eval, @typescript-eslint/no-unsafe-assignment
   const { createHash } = eval('require')('crypto') as typeof import('crypto');
   const fields = extractTranslatableFields(b);
   const sorted = Object.fromEntries(Object.entries(fields).sort(([a], [b]) => a.localeCompare(b)));

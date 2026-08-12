@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     // ── 2. Save user message + translate to TR (awaited so admin always sees TR) ─
     const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
     if (lastUserMsg) {
-      const contentTr = await translateToTurkish(lastUserMsg.content, session.visitorLang)
+      const contentTr = await translateToTurkish(lastUserMsg.content)
         .catch(() => lastUserMsg.content);
       await db.insert(chatbotMessages).values({
         sessionId: sid,

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import type { ServicePageRecord, ServicePageBody, ServicePageTranslation } from '@/lib/service-page-types';
 
 // ── Image upload widget ────────────────────────────────────────────────────
@@ -111,19 +112,14 @@ function ImageUploadField({
       )}
       {/* Preview thumbnail if value looks like an image URL */}
       {value && (value.startsWith('/') || value.startsWith('http')) && (
-        <div style={{ marginTop: '8px' }}>
-          <img
+        <div style={{ marginTop: '8px', width: '160px', height: '90px', position: 'relative', borderRadius: '6px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+          <Image
             src={value}
             alt="Önizleme"
-            style={{
-              maxWidth: '160px',
-              maxHeight: '90px',
-              objectFit: 'cover',
-              borderRadius: '6px',
-              border: '1px solid #E2E8F0',
-              display: 'block',
-            }}
-            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            fill
+            sizes="160px"
+            style={{ objectFit: 'cover' }}
+            unoptimized
           />
         </div>
       )}
@@ -276,7 +272,7 @@ function FeaturesEditor({ features, onChange, dir, readOnly }: {
 // ── Translation locale panel ────────────────────────────────────────────────
 
 function TranslationPanel({
-  tx, locale, dir, contentId,
+  tx, locale, dir,
   onAction,
 }: {
   tx: ServicePageTranslation | undefined;

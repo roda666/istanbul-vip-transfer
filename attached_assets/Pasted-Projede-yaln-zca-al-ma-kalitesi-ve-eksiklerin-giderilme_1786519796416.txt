@@ -1,0 +1,42 @@
+Projede yalnızca çalışma kalitesi ve eksiklerin giderilmesine odaklan. Security, token, domain bağlama veya production publish konularına dokunma.
+
+Son GitHub push’taki güncellemeleri ve mevcut projeyi incele. Aşağıdaki işleri uygula:
+
+1. Production doğrulaması
+- artifacts/istanbul-vip-transfer/package.json içindeki doğru komutları kullan.
+- TypeScript typecheck, ESLint ve Next.js production build çalıştır.
+- Hata varsa gerçek kod düzeltmesiyle çöz.
+- Sonuç: typecheck 0 hata, lint 0 hata/0 uyarı, production build başarılı.
+
+2. Kalan lint uyarıları
+Aşağıdaki 4 ESLint uyarısını kodu temizleyerek kaldır:
+- sourceLang: chatbot-translate.ts
+- adminId: service-pages
+- PageKey: ServicePageRenderer
+- gereksiz eslint-disable
+Yeni eslint-disable ekleme; uyarıları bastırma.
+
+3. GitHub Actions
+- .github/workflows/quality.yml dosyasını kontrol et.
+- main branch’e push olduğunda ve pull request’lerde typecheck + lint + production build çalışacak şekilde düzelt.
+- Playwright/tarayıcı testi çalışmıyorsa bunu build sürecini bozmayacak şekilde koşullu yap; typecheck, lint ve build her zaman çalışsın.
+- Son commit sonrası GitHub Actions run oluştuğunu ve sonucunu raporla.
+
+4. Uygulama kontrolü
+Aşağıdaki alanları hızlıca doğrula:
+- Türkçe, İngilizce, Almanca, Rusça ve Arapça arasında dil geçişi; dil sayfa değiştirince korunmalı.
+- Arapça RTL düzeni; telefon numarası, IST/SAW ve araç isimleri LTR kalmalı.
+- Rezervasyon formunda tarih DD/MM/YYYY, saatler 5 dakika aralıklı, kişi sayısı en fazla 30, tahsis süresi en az 4 saat.
+- Form tamamlanınca kullanıcı doğrudan WhatsApp’a yönlendirilmeli; “Talebiniz Alındı” sayfası görünmemeli.
+- Mobil 390px, tablet 768px ve masaüstü görünümünde menü, form ve CTA butonlarında taşma olmamalı.
+- Ana Sayfa Düzenleyici’nde Türkçe değişiklikleri otomatik çevirip EN/DE/RU/AR için yayınlama akışını bozmadığını kontrol et.
+
+5. Sonuç
+- Yapılan değişiklikleri GitHub’a push et.
+- Bana kısa, somut rapor ver:
+  - TypeScript sonucu
+  - ESLint sonucu
+  - Production build sonucu
+  - GitHub Actions sonucu
+  - Kontrol edilen ekranlar ve kalan bir sorun varsa tam açıklaması
+- Production publish veya domain bağlantısı yapma.

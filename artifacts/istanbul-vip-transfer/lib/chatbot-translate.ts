@@ -21,7 +21,7 @@ const LANG_NAMES: Record<string, string> = {
  *  visitor on the Turkish-locale page who types in English (or any other
  *  language) still has their message translated for the admin.
  */
-export async function translateToTurkish(text: string, sourceLang = 'en'): Promise<string> {
+export async function translateToTurkish(text: string): Promise<string> {
   if (!text.trim()) return text;
   const openai = getClient();
   const res = await openai.chat.completions.create({

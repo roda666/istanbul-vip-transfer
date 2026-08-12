@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
 import { translateToTurkish } from '@/lib/chatbot-translate';
 
+export const dynamic = 'force-dynamic';
+
 const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
   apiKey:   process.env.AI_INTEGRATIONS_OPENAI_API_KEY,

@@ -46,9 +46,11 @@ jobs:
       - name: Build
         run: pnpm --filter @workspace/istanbul-vip-transfer build
         env:
-          # Build must not crash when secrets are absent in CI.
-          # Routes that import DB are server-only and not statically analysed.
-          SKIP_ENV_VALIDATION: '1'
+          # Provide a syntactically valid but non-connectable DATABASE_URL so
+          # the connection pool initialises without a real DB. All API routes
+          # have `export const dynamic = 'force-dynamic'` which prevents
+          # Next.js from executing them during the build step.
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci_placeholder
 
   playwright:
     name: Smoke Tests (Playwright)

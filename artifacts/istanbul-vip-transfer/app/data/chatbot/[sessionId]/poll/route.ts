@@ -8,6 +8,8 @@ import { db } from '@/db';
 import { chatbotMessages, chatbotSessions } from '@/db/schema';
 import { eq, gt, and } from 'drizzle-orm';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ sessionId: string }> },

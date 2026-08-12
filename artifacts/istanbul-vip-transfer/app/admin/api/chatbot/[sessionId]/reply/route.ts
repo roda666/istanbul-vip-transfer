@@ -10,6 +10,8 @@ import { eq } from 'drizzle-orm';
 import { getSession } from '@/lib/auth/session';
 import { translateFromTurkish } from '@/lib/chatbot-translate';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ sessionId: string }> },

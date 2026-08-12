@@ -1,0 +1,94 @@
+name: Quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  quality:
+    name: Typecheck · Lint · Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10'
+          run_install: false
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm --filter @workspace/istanbul-vip-transfer typecheck
+
+      - name: Lint
+        run: pnpm --filter @workspace/istanbul-vip-transfer lint
+
+      - name: Build
+        run: pnpm --filter @workspace/istanbul-vip-transfer build
+        env:
+          # Build must not crash when secrets are absent in CI.
+          # Routes that import DB are server-only and not statically analysed.
+          SKIP_ENV_VALIDATION: '1'
+
+  playwright:
+    name: Smoke Tests (Playwright)
+    runs-on: ubuntu-latest
+    # Only run when DATABASE_URL is available (set as a repo secret).
+    # Typecheck / lint / build above always run.
+    if: ${{ vars.RUN_PLAYWRIGHT == 'true' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10'
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @workspace/istanbul-vip-transfer exec playwright install chromium --with-deps
+
+      - name: Start dev server
+        working-directory: artifacts/istanbul-vip-transfer
+        run: pnpm dev &
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+
+      - name: Wait for server
+        run: npx wait-on http://localhost:3000 --timeout 60000
+
+      - name: Run smoke tests
+        working-directory: artifacts/istanbul-vip-transfer
+        run: pnpm test:e2e
+        env:
+          BASE_URL: http://localhost:3000
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}

@@ -17,8 +17,8 @@ export default function robots(): MetadataRoute.Robots {
       { userAgent: 'Perplexity-User', allow: '/', disallow: ['/admin', '/data'] },
       // Explicit permission for Google AI (Gemini / AI Overviews)
       { userAgent: 'Google-Extended', allow: '/', disallow: ['/admin', '/data'] },
-      // General crawlers
-      { userAgent: '*', allow: '/', disallow: [] },
+      // General crawlers — block internal/API paths from all bots
+      { userAgent: '*', allow: '/', disallow: ['/admin', '/admin/', '/admin/api', '/data', '/data/', '/api'] },
     ],
     sitemap: `${SITE.siteUrl}/sitemap.xml`,
   };

@@ -45,7 +45,14 @@ const FALLBACK_SERVICE_SLUGS: { slug: string; priority: number }[] = [
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const entries: MetadataRoute.Sitemap = [];
-  const now = new Date();
+
+  // Tracks emitted URLs so we never emit the same URL twice.
+  const seen = new Set<string>();
+  function push(entry: MetadataRoute.Sitemap[number]) {
+    if (seen.has(entry.url)) return;
+    seen.add(entry.url);
+    entries.push(entry);
+  }
 
   // ── 1. Resolve active public language set ────────────────────────────────
   const { getPublicLanguages } = await import('@/lib/i18n/active-locales');
@@ -54,28 +61,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const nonTrLangs  = publicLangs.filter((l) => l.code !== 'tr');
 
   // ── 2. Homepages ──────────────────────────────────────────────────────────
-  entries.push({
+  // No lastModified — there is no real updatedAt for the root route.
+  push({
     url: BASE,
-    lastModified: now,
     changeFrequency: 'weekly',
     priority: 1,
   });
   for (const lang of nonTrLangs) {
-    entries.push({
+    push({
       url: `${BASE}/${lang.code}`,
-      lastModified: now,
       changeFrequency: 'weekly',
       priority: 0.85,
     });
   }
 
   // ── 3. Static (non-service) info pages ───────────────────────────────────
+  // No lastModified — these pages have no real updatedAt.
   for (const { slug, priority } of STATIC_SLUGS) {
-    entries.push({ url: `${BASE}/${slug}`, lastModified: now, changeFrequency: 'monthly', priority });
+    push({ url: `${BASE}/${slug}`, changeFrequency: 'monthly', priority });
   }
   for (const lang of nonTrLangs) {
     for (const { slug, priority } of STATIC_SLUGS) {
-      entries.push({ url: `${BASE}/${lang.code}/${slug}`, lastModified: now, changeFrequency: 'monthly', priority: Math.max(priority - 0.05, 0.5) });
+      push({ url: `${BASE}/${lang.code}/${slug}`, changeFrequency: 'monthly', priority: Math.max(priority - 0.05, 0.5) });
     }
   }
 
@@ -110,25 +117,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   for (const { slug, priority, updatedAt } of serviceSlugList) {
-    // TR root
-    entries.push({ url: `${BASE}/${slug}`, lastModified: updatedAt ?? now, changeFrequency: 'monthly', priority });
+    // TR root — use real updatedAt when available; omit lastModified otherwise.
+    push({ url: `${BASE}/${slug}`, ...(updatedAt ? { lastModified: updatedAt } : {}), changeFrequency: 'monthly', priority });
     // Locale prefixes
     for (const lang of nonTrLangs) {
-      entries.push({ url: `${BASE}/${lang.code}/${slug}`, lastModified: updatedAt ?? now, changeFrequency: 'monthly', priority: Math.max(priority - 0.05, 0.5) });
+      push({ url: `${BASE}/${lang.code}/${slug}`, ...(updatedAt ? { lastModified: updatedAt } : {}), changeFrequency: 'monthly', priority: Math.max(priority - 0.05, 0.5) });
     }
   }
 
   // ── 5. Turkish blog index + static articles ───────────────────────────────
+  // Blog index has no real updatedAt — omit lastModified.
   const blogSlugs = getBlogSlugs();
   if (blogSlugs.length > 0) {
-    entries.push({
+    push({
       url: `${BASE}/blog`,
-      lastModified: now,
       changeFrequency: 'weekly',
       priority: 0.65,
     });
     for (const post of blogPosts) {
-      entries.push({
+      push({
         url: `${BASE}/blog/${post.slug}`,
         lastModified: post.updatedAt
           ? new Date(post.updatedAt)
@@ -140,10 +147,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   // ── 6. DB-driven: published BLOG_POST translations ────────────────────────
-  // When a translated blog article is published (content_translations where
-  // entity_type = 'content' AND status = 'PUBLISHED'), add:
-  //  • the translated article URL:  /{lang}/blog/{slug}
-  //  • the locale blog index:       /{lang}/blog  (once per lang, if any article exists)
+  // Only BLOG_POST source content that is itself PUBLISHED generates translated
+  // blog URLs.  Service/Page translations must never appear under /lang/blog/.
   try {
     const { db }                  = await import('@/db');
     const { contentTranslations, content } = await import('@/db/schema');
@@ -158,11 +163,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         updatedAt:          contentTranslations.updatedAt,
       })
       .from(contentTranslations)
-      .leftJoin(content, eq(contentTranslations.entityId, content.id))
+      // innerJoin ensures the source content row exists; leftJoin would allow
+      // orphaned translations to generate URLs with null sourceSlug.
+      .innerJoin(content, eq(contentTranslations.entityId, content.id))
       .where(
         and(
           eq(contentTranslations.status,     'PUBLISHED'),
           eq(contentTranslations.entityType, 'content'),
+          // Only original blog posts — never service or static page translations.
+          eq(content.contentType, 'BLOG_POST'),
+          // Source must itself be published (no drafts leaking through).
+          eq(content.status, 'PUBLISHED'),
         ),
       );
 
@@ -172,6 +183,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     for (const row of rows) {
       const lang = row.targetLanguageCode;
+      // No /tr/blog/… URLs — TR is served at /blog/…
+      if (lang === 'tr') continue;
       if (!publicCodes.has(lang)) continue; // guard against passive catalog leaks
 
       // Use the translated slug when present; fall back to the source content slug.
@@ -179,20 +192,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       if (!slug) continue;
 
       langsWithBlog.add(lang);
-      entries.push({
+      push({
         url: `${BASE}/${lang}/blog/${slug}`,
-        lastModified: row.publishedAt ?? row.updatedAt ?? now,
+        // Use real timestamps — no new Date() fallback for dynamic content.
+        ...(row.publishedAt || row.updatedAt
+          ? { lastModified: row.publishedAt ?? row.updatedAt! }
+          : {}),
         changeFrequency: 'monthly',
         priority: 0.55,
       });
     }
 
-    // Locale blog index pages — only for languages that actually have articles
+    // Locale blog index pages — no lastModified (no reliable updatedAt).
     for (const lang of nonTrLangs) {
       if (langsWithBlog.has(lang.code)) {
-        entries.push({
+        push({
           url: `${BASE}/${lang.code}/blog`,
-          lastModified: now,
           changeFrequency: 'weekly',
           priority: 0.6,
         });

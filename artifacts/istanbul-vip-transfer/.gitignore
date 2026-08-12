@@ -3,3 +3,7 @@
 # next build → .next      (NODE_ENV=production)
 .next/
 .next-dev/
+
+# Playwright test artifacts
+test-results/
+playwright-report/

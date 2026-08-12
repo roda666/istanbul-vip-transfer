@@ -74,9 +74,15 @@ export default async function CevirilerPage({
     navigation: [],
   };
 
+  // Fetch languages independently so a broken source query can't leave langs empty.
+  try {
+    langs = await db.select().from(languages).orderBy(asc(languages.displayOrder));
+  } catch {
+    // ignore — langNameByCode will fall back to raw codes
+  }
+
   try {
     const [
-      langRows,
       contentSrcs,
       serviceSrcs,
       blogSrcs,
@@ -84,7 +90,6 @@ export default async function CevirilerPage({
       vehicleSrcs,
       navSrcs,
     ] = await Promise.all([
-      db.select().from(languages).orderBy(asc(languages.displayOrder)),
       // Static pages (PAGE)
       db.select({ id: content.id, title: content.title, slug: content.slug })
         .from(content)
@@ -114,7 +119,6 @@ export default async function CevirilerPage({
         .orderBy(asc(navigationItems.sortOrder)),
     ]);
 
-    langs = langRows;
     entitySources = {
       content: contentSrcs,
       service_page: serviceSrcs,

@@ -199,7 +199,7 @@ export default function CevirilerClient({
   const [bulkMsg, setBulkMsg] = useState<string | null>(null);
   const [overwriteConfirm, setOverwriteConfirm] = useState<{ codes: string[]; pendingLangs: string[] } | null>(null);
 
-  const langNameByCode = Object.fromEntries(langs.map((l) => [l.code, l.name]));
+  const langNameByCode = Object.fromEntries(langs.map((l) => [l.code, l.turkishName ?? l.name]));
   const translatableLangs = langs.filter((l) => l.code !== 'tr' && l.providerSupported);
   const enabledLangCodes = translatableLangs.filter((l) => l.isEnabled).map((l) => l.code);
 

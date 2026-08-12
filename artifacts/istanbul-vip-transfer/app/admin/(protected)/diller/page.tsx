@@ -5,7 +5,7 @@
 import type { Metadata } from 'next';
 import { db } from '@/db';
 import { languages, contentTranslations } from '@/db/schema';
-import { asc, sql } from 'drizzle-orm';
+import { asc, desc, sql } from 'drizzle-orm';
 import AdminPageHeader from '../../_components/AdminPageHeader';
 import DillerClient from './_DillerClient';
 
@@ -20,7 +20,7 @@ export default async function DillerPage() {
 
   try {
     const [langRows, statRows] = await Promise.all([
-      db.select().from(languages).orderBy(asc(languages.displayOrder)),
+      db.select().from(languages).orderBy(desc(languages.isEnabled), asc(languages.displayOrder)),
       db
         .select({
           lang: contentTranslations.targetLanguageCode,

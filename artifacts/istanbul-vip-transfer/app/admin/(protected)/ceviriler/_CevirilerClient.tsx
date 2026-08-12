@@ -199,6 +199,7 @@ export default function CevirilerClient({
   const [bulkMsg, setBulkMsg] = useState<string | null>(null);
   const [overwriteConfirm, setOverwriteConfirm] = useState<{ codes: string[]; pendingLangs: string[] } | null>(null);
 
+  const langNameByCode = Object.fromEntries(langs.map((l) => [l.code, l.name]));
   const translatableLangs = langs.filter((l) => l.code !== 'tr' && l.providerSupported);
   const enabledLangCodes = translatableLangs.filter((l) => l.isEnabled).map((l) => l.code);
 
@@ -510,9 +511,9 @@ export default function CevirilerClient({
                   <td style={{ padding: '12px 14px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       {job.isAiGenerated && <span title="AI tarafından çevrildi"><Brain size={12} style={{ color: '#7C3AED', flexShrink: 0 }} /></span>}
-                      <code style={{ fontSize: '12px', background: '#F3F6FA', padding: '2px 6px', borderRadius: '4px', color: '#2D5FA3' }}>
-                        {job.targetLanguageCode}
-                      </code>
+                      <span style={{ fontSize: '12px', color: '#2D5FA3' }}>
+                        {langNameByCode[job.targetLanguageCode] ?? job.targetLanguageCode}
+                      </span>
                     </div>
                   </td>
                   <td style={{ padding: '12px 14px' }}>
@@ -558,9 +559,9 @@ export default function CevirilerClient({
                 <span className="ct-card-label">Dil</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   {job.isAiGenerated && <Brain size={12} style={{ color: '#7C3AED' }} />}
-                  <code style={{ fontSize: '12px', background: '#F3F6FA', padding: '2px 6px', borderRadius: '4px', color: '#2D5FA3' }}>
-                    {job.targetLanguageCode}
-                  </code>
+                  <span style={{ fontSize: '12px', color: '#2D5FA3' }}>
+                    {langNameByCode[job.targetLanguageCode] ?? job.targetLanguageCode}
+                  </span>
                 </div>
               </div>
 

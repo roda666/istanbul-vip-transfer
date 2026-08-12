@@ -237,7 +237,31 @@ export default function BookingForm() {
   const [newsletterError, setNewsletterError]     = useState('');
   const honeypotRef = useRef<HTMLInputElement>(null);
 
-  const today = new Date().toISOString().split('T')[0];
+  // Returns today's date as YYYY-MM-DD in the Europe/Istanbul timezone.
+  // formatToParts() is used instead of trusting the output order of format(),
+  // so the result is always a well-formed ISO date regardless of runtime locale.
+  const today = (() => {
+    function getIstanbulToday(): string {
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Europe/Istanbul',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).formatToParts(new Date());
+
+      const year  = parts.find((part) => part.type === 'year')?.value;
+      const month = parts.find((part) => part.type === 'month')?.value;
+      const day   = parts.find((part) => part.type === 'day')?.value;
+
+      if (!year || !month || !day) {
+        throw new Error('Istanbul tarihi oluşturulamadı.');
+      }
+
+      return `${year}-${month}-${day}`;
+    }
+
+    return getIstanbulToday();
+  })();
 
   // Load service types once on mount
   useEffect(() => {

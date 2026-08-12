@@ -305,9 +305,11 @@ export async function POST(request: NextRequest) {
             // Service pages don't have a standalone excerpt or slug in translations
             excerpt: null,
             slug: null,
-            // Meta fields pass through from source (not in ServicePageBody)
-            metaTitle: spAuxRow.seoTitle ?? null,
-            metaDescription: spAuxRow.seoDescription ?? null,
+            // seo.ogTitle / seo.ogDescription are translated inside ServicePageBody
+            // and must be mirrored into metaTitle / metaDescription so that
+            // getPublishedServicePage() serves translated SEO metadata.
+            metaTitle: translatedBody.seo.ogTitle || spAuxRow.seoTitle || null,
+            metaDescription: translatedBody.seo.ogDescription || spAuxRow.seoDescription || null,
             imageAlt: spAuxRow.heroImageAlt ?? null,
             focusKeyword: null,
             supportingKeywords: null,

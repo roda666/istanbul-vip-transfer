@@ -387,7 +387,7 @@ export default function CevirilerClient({
                   color: active ? '#FFF' : l.isEnabled ? '#263F55' : '#8899AA',
                   border: `1px solid ${active ? '#1A2B3C' : '#D9E2EC'}`,
                 }}>
-                {l.code}{!l.isEnabled && ' ·pasif'}
+                {l.turkishName ?? l.name}{!l.isEnabled && ' ·pasif'}
               </button>
             );
           })}

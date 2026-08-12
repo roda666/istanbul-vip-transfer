@@ -1,0 +1,121 @@
+Expand the multilingual system into a complete, production-safe language management system.
+
+Current public languages must remain exactly:
+- Turkish (tr) — default/source language
+- English (en)
+- German (de)
+- Russian (ru)
+- Arabic (ar, RTL)
+
+Do not publish or expose any other language on the public website yet.
+
+Goal:
+Add a comprehensive language catalog to the Admin “Dil Yönetimi” and “Çeviriler” areas. Every supported language must be ready to use the same capabilities currently implemented for TR/EN/DE/RU/AR, but remain passive until an admin activates and publishes it.
+
+Important scope:
+- Do not create a fake “all languages” list.
+- Use a comprehensive catalog of all languages actually supported by the configured translation provider, identified with valid BCP 47 / ISO locale codes.
+- Store native name, Turkish display name, locale code, script, writing direction (LTR/RTL), provider-support status, activation state and publication state.
+- If a language is not supported by the real translation provider, show it as unavailable and do not allow publishing fake translations.
+
+1. Admin Language Management
+Improve /admin/dil-yonetimi with:
+- Search by language name, native name or locale code.
+- Filters: All, Active Public, Passive, Draft Translation, Published, LTR, RTL, Provider Unsupported.
+- Pagination or virtualized list so a large language catalog remains fast.
+- Columns:
+  - Language
+  - Native name
+  - Locale code
+  - Direction
+  - Translation support
+  - Public status
+  - Translation status
+  - Actions
+- Turkish must always remain active and cannot be disabled.
+- EN, DE, RU and AR must remain active and published.
+- All other languages must initially be passive and not publicly visible.
+- Add a safe activate/deactivate action with confirmation dialogs.
+- Deactivating a language must remove it from the public language picker, sitemap and hreflang output, but must not delete its translations.
+- If an inactive locale URL is visited directly, redirect safely to the current active locale or Turkish; do not show a broken page.
+
+2. Admin Translations
+Upgrade /admin/ceviriler:
+- Show every catalog language, including passive ones.
+- Allow generating translations only for selected languages.
+- Support “Translate this content to selected languages” and “Translate all enabled draft languages”.
+- Support content types currently available in the project:
+  - Homepage sections
+  - Static pages
+  - Services
+  - Vehicles
+  - Blog posts
+  - FAQs
+  - Navigation
+  - Reservation form labels/messages
+  - Newsletter and request messages
+  - SEO title, meta description, Open Graph fields and alt text
+- Preserve Turkish as the source of truth.
+- Do not overwrite manually edited translations without a confirmation.
+- Translation workflow must be:
+  Turkish source → AI translation draft → admin review/edit → publish
+- A passive language may have prepared translations in the admin, but must not be visible publicly until it is both activated and published.
+- Keep Arabic and every RTL locale fully RTL. Phone numbers, URLs, IST/SAW, vehicle model names and technical values must remain LTR.
+
+3. Homepage Editor Synchronization
+Keep the existing automatic homepage workflow:
+- When Turkish homepage content is saved, allow automatic translation into selected enabled languages.
+- Do not automatically publish translations unless the admin explicitly uses “Publish approved languages”.
+- Existing TR, EN, DE, RU and AR published content must remain intact.
+- Do not replace correct human-edited translations with Turkish text or duplicate records.
+
+4. Public Website Behaviour
+On the public website:
+- The language selector must show only TR, EN, DE, RU and AR for now.
+- No other catalog language may appear in menus, footer, sitemap or hreflang tags.
+- Locale-aware navigation must retain the selected language across every page.
+- Canonical URLs, hreflang output and sitemap must include only active + published public locales.
+- Root / remains Turkish.
+- Active language routes continue using /en, /de, /ru and /ar.
+- Public pages, reservation forms, WhatsApp messages and confirmation copy must keep using the selected locale.
+
+5. Translation Provider Safety
+- Reuse the existing real translation integration if present.
+- If no real server-side translation API is configured, create a provider adapter and a clear admin configuration/error state.
+- Never pretend that a translation succeeded when no provider response was received.
+- Never expose API keys in browser code, logs or admin screens.
+- Do not change Secrets, production domain or deployment settings.
+
+6. Data and Migration Safety
+- Inspect the existing language and translation schema before changing it.
+- Use a backward-compatible migration only.
+- Preserve all current content, translations, requests, subscribers and admin accounts.
+- Seed the full provider-supported language catalog idempotently.
+- Running the seed repeatedly must not create duplicate language rows.
+
+7. Verification
+Verify all of the following:
+- Public language selector contains exactly TR, EN, DE, RU and AR.
+- Language management contains the full provider-supported catalog.
+- A passive language can be prepared in admin but cannot appear on the public site.
+- An active/published language appears in language selector, sitemap and hreflang.
+- EN, DE, RU and AR remain translated and functional.
+- Arabic remains RTL; phone numbers and technical names remain LTR.
+- Locale navigation persists across pages.
+- Mobile admin language list is usable at 390px without horizontal overflow.
+- No hydration, runtime or browser-console errors.
+
+Run:
+- TypeScript typecheck
+- ESLint
+- Production build
+
+Report:
+- Total number of provider-supported languages added
+- Which five languages are publicly active
+- Exact files changed
+- Migration/seed result
+- Verification table
+- TypeScript, ESLint and build results
+
+Do not publish or connect the production domain.

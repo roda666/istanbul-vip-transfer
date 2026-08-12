@@ -41,16 +41,27 @@ export async function translateToTurkish(text: string, sourceLang = 'en'): Promi
   return res.choices[0]?.message?.content?.trim() ?? text;
 }
 
-/** Translate Turkish admin reply → visitor language. */
+/** Translate Turkish admin reply → visitor language.
+ *  Always calls the LLM — even when targetLang is 'tr' — because the
+ *  session locale ('tr') does not guarantee the visitor types in Turkish.
+ *  A visitor on the Turkish-locale page might write in English; the LLM
+ *  returns the text as-is when the target matches the source language.
+ */
 export async function translateFromTurkish(text: string, targetLang: string): Promise<string> {
-  if (!text.trim() || targetLang === 'tr') return text;
+  if (!text.trim()) return text;
   const targetName = LANG_NAMES[targetLang] ?? 'English';
   const openai = getClient();
   const res = await openai.chat.completions.create({
     model: 'gpt-5.6-luna',
     max_completion_tokens: 400,
     messages: [
-      { role: 'system', content: `Translate the following text to ${targetName}. Return only the translation.` },
+      {
+        role: 'system',
+        content:
+          `Translate the following text to ${targetName}. ` +
+          `If the text is already in ${targetName}, return it exactly as-is. ` +
+          `Return only the translation — no explanations.`,
+      },
       { role: 'user', content: text },
     ],
   });

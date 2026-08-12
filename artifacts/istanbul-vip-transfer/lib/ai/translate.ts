@@ -8,19 +8,46 @@
 import 'server-only';
 import { z } from 'zod';
 
+/**
+ * Coerce a value to a plain string.
+ * Handles cases where OpenAI json_object mode returns an object/array for a field
+ * that should be a string (e.g. body returned as a nested HTML object).
+ */
+const coerceString = z
+  .any()
+  .transform((v: unknown) =>
+    v == null ? '' : typeof v === 'string' ? v : JSON.stringify(v),
+  );
+
+/**
+ * Coerce supportingKeywords: model sometimes returns a comma-separated string
+ * instead of an array.
+ */
+const coerceStringArray = z
+  .union([
+    z.array(z.any()).transform((arr) => arr.map(String)),
+    z.string().transform((s) =>
+      s
+        .split(',')
+        .map((k) => k.trim())
+        .filter(Boolean),
+    ),
+  ])
+  .catch([]);
+
 /** Schema for structured translation output from OpenAI. */
 export const TranslationOutputSchema = z.object({
-  title: z.string().describe('Translated title'),
-  slug: z.string().describe('URL-safe slug in the target language, lowercase, hyphens only, no special chars'),
-  excerpt: z.string().describe('Translated excerpt/summary (2-3 sentences)'),
-  body: z.string().describe('Translated full body content, preserving HTML structure exactly'),
-  metaTitle: z.string().describe('SEO meta title in target language (50-60 chars)'),
-  metaDescription: z.string().describe('SEO meta description in target language (150-160 chars)'),
-  focusKeyword: z.string().describe('Primary SEO focus keyword in target language'),
-  supportingKeywords: z.array(z.string()).describe('2-5 supporting SEO keywords in target language'),
-  imageAlt: z.string().describe('Translated image alt text'),
-  imageTitle: z.string().describe('Translated image title attribute'),
-  imageCaption: z.string().describe('Translated image caption'),
+  title: coerceString.describe('Translated title'),
+  slug: coerceString.describe('URL-safe slug in the target language, lowercase, hyphens only, no special chars'),
+  excerpt: coerceString.describe('Translated excerpt/summary (2-3 sentences)'),
+  body: coerceString.describe('Translated full body content, preserving HTML structure exactly'),
+  metaTitle: coerceString.describe('SEO meta title in target language (50-60 chars)'),
+  metaDescription: coerceString.describe('SEO meta description in target language (150-160 chars)'),
+  focusKeyword: coerceString.describe('Primary SEO focus keyword in target language'),
+  supportingKeywords: coerceStringArray.describe('2-5 supporting SEO keywords in target language'),
+  imageAlt: coerceString.describe('Translated image alt text'),
+  imageTitle: coerceString.describe('Translated image title attribute'),
+  imageCaption: coerceString.describe('Translated image caption'),
 });
 
 export type TranslationOutput = z.infer<typeof TranslationOutputSchema>;

@@ -1,0 +1,189 @@
+GitHub main dalındaki en güncel kodu kullanarak teknik denetim ve düzeltme çalışması yap.
+
+Repository:
+roda666/istanbul-vip-transfer
+
+Uygulama:
+artifacts/istanbul-vip-transfer
+
+Amaç:
+Mevcut çalışan özellikleri bozmadan doğrulanmış SEO, sitemap, kalite kontrol, çoklu dil, CMS ve regresyon testi eksiklerini gider.
+
+ÖNEMLİ SINIRLAR:
+- Production domain bağlama.
+- Publish/Deploy işlemi yapma.
+- Mevcut veritabanı kayıtlarını silme veya sıfırlama.
+- Mevcut tasarımı yeniden tasarlama.
+- Çalışan dil geçişi, rezervasyon, admin, chatbot veya CMS akışını kaldırma.
+- Fiyat, mesafe, süre veya garanti uydurma.
+- Secret değerlerini loglama veya GitHub’a gönderme.
+- Önce mevcut kodu incele; dosya ve route adlarını tahmin ederek çalışma.
+
+1. ROBOTS.TS DÜZELTMESİ
+
+app/robots.ts dosyasını kontrol et.
+
+Genel User-Agent "*" için en az şu yolları taramaya kapat:
+
+- /admin
+- /admin/
+- /admin/api
+- /data
+- /data/
+- /api
+
+Googlebot ve diğer bot kurallarında çelişki oluşturma.
+Public sayfalar, hizmetler, blog, araçlar ve çoklu dil rotaları taranabilir kalmalı.
+robots.txt’nin güvenlik katmanı olmadığını kod yorumunda belirtme gereği yok; sadece doğru SEO çıktısını üret.
+
+2. SITEMAP DÜZELTMESİ
+
+app/sitemap.ts içindeki çevrilmiş blog sorgusunu düzelt.
+
+Çevrilmiş bir kayıt yalnızca şu koşullarda blog URL’si oluşturabilsin:
+
+- Kaynak içerikle doğru şekilde ilişkilendirilmiş olmalı.
+- Kaynak içerik türü BLOG_POST olmalı.
+- Kaynak içerik yayınlanmış olmalı.
+- Çeviri PUBLISHED olmalı.
+- Dil aktif ve public olmalı.
+- Türkçe için /tr/blog/... URL’si üretilmemeli.
+- Hizmet, sayfa veya başka içerik çevirileri yanlışlıkla /{lang}/blog/{slug} URL’sine dönüşmemeli.
+
+Gerekirse contentTranslations ile content tablosunu join et.
+
+Statik sayfalarda her sitemap çağrısında `new Date()` kullanarak bütün sayfaları yeni güncellenmiş gösterme.
+Gerçek güncelleme tarihi mevcutsa onu kullan; yoksa statik URL’lerde lastModified alanını kaldır.
+Dinamik içeriklerde gerçek updatedAt/publishedAt değerini kullan.
+
+Sitemap URL’lerini doğrula:
+- Aynı URL tekrarlanmamalı.
+- Hatalı dil prefix’i olmamalı.
+- Sitemapteki URL’ler 200 dönmeli.
+- Admin, API, data ve taslak içerikler sitemapte bulunmamalı.
+
+3. CMS ÇEVİRİ API HATA YÖNETİMİ
+
+Ana Sayfa Düzenleyici içindeki “Taslak Kaydet ve Çevir” akışını denetle.
+
+Daha önce görülen:
+`Failed to execute 'json' on 'Response': Unexpected end of JSON input`
+hatasının tekrar oluşmamasını sağla.
+
+Kurallar:
+- İlgili API bütün success ve error yollarında geçerli JSON dönmeli.
+- 204/boş response dönmemeli.
+- Content-Type application/json olmalı.
+- İstemci response.json() çağırmadan önce response content-type ve body durumunu güvenli kontrol etmeli.
+- Kullanıcıya ham İngilizce JavaScript hatası yerine anlaşılır Türkçe hata gösterilmeli.
+- Kısmi çeviri başarısında hangi dillerin başarılı, hangilerinin başarısız olduğu gösterilmeli.
+- Türkçe kaynak içerik başarısız çeviri nedeniyle kaybolmamalı.
+- Çeviriler doğrudan kontrolsüz yayınlanmamalı; mevcut onay/yayın akışını koru.
+- Paylaşılan görsel yolu gibi çevrilmemesi gereken alanları bütün dillerde aynı tut.
+
+Bu akışı gerçek Replit veritabanıyla test et:
+TR kaydet → EN/DE/RU/AR çevir → çevirileri incele → onaylanan dilleri toplu yayınla.
+
+4. REGRESYON TESTLERİ
+
+Playwright testleri ekle veya mevcut testleri genişlet.
+
+Aşağıdaki senaryoları otomatik test et:
+
+A. Dil sistemi:
+- TR → EN → iç sayfa → EN olarak kalır.
+- EN → TR → ana sayfa → Türkçe olur.
+- DE, RU ve AR için sayfa değiştirildiğinde dil korunur.
+- Arabic sayfalarda dir="rtl" doğrudur.
+- Telefon, IST/SAW, Mercedes Vito/Sprinter gibi içerikler gerektiğinde LTR kalır.
+- Dil değişiminde 0.0.0.0 adresine yönlendirme olmaz.
+- `/data/locale/switch` geçerli dilde 303 ve güvenli göreli Location döndürür.
+- Harici veya `//evil.example` gibi next değerleri kabul edilmez.
+
+B. Rezervasyon:
+- Beş aktif dilde rezervasyon formu açılır.
+- Dört hizmet türünün başlıkları seçili dile çevrilir; Türkçe metin sızıntısı olmaz.
+- Form gönderimi ara “Talebiniz alındı” ekranı göstermeden WhatsApp’a yönlendirir.
+- WhatsApp mesajındaki tarih `gg.aa.yyyy`, saat `SS:DD` formatındadır.
+- E-posta newsletter onayı mevcut kurallarla kaydedilir.
+- Tahsis süresi 4 saatten başlar.
+- Yolcu sayısı en fazla 30’dur.
+- Kaldırılan alanlar geri gelmez: bagaj, çocuk koltuğu, araç tercihi, ek notlar, uçuş numarası ve seyahat yönü.
+- Mobil 390 px, tablet 768 px ve masaüstü 1440 px’de yatay taşma olmaz.
+
+C. CMS:
+- Ana sayfa taslağı kaydetme.
+- Çoklu dile çevirme.
+- Çevirileri inceleme.
+- Onaylanan dilleri toplu yayınlama.
+- API’nin bütün hata yollarında geçerli JSON dönmesi.
+- Bir dil başarısız olduğunda diğer başarılı dillerin sonucu açıkça gösterilir.
+
+5. GITHUB ACTIONS
+
+Repository root altında şu workflow’u oluştur:
+
+.github/workflows/quality.yml
+
+Şu durumlarda çalışsın:
+- main dalına push
+- pull_request
+
+Node ve pnpm sürümlerini projedeki mevcut ayarlardan al.
+pnpm cache kullan.
+
+En az şu kontrolleri çalıştır:
+
+pnpm install --frozen-lockfile
+pnpm --filter @workspace/istanbul-vip-transfer typecheck
+pnpm --filter @workspace/istanbul-vip-transfer lint
+pnpm --filter @workspace/istanbul-vip-transfer build
+
+Playwright testlerinin CI ortamında güvenli biçimde çalışması mümkünse gerekli Chromium kurulumunu yapıp kritik smoke testlerini de çalıştır.
+DATABASE_URL veya diğer Secrets yoksa secret gerektiren testleri anlaşılır biçimde ayır; typecheck/lint/build kontrollerini atlama.
+
+6. GÖRSEL/PERFORMANS KONTROLÜ
+
+next.config.ts içindeki `images.unoptimized: true` ayarını incele.
+
+- Statik export kullanılmıyorsa Next.js image optimization kullanmanın güvenli olup olmadığını değerlendir.
+- Replit ortamında görüntü kırılmasına neden olacaksa ayarı körlemesine kaldırma.
+- Kullanılan görsellerin gerçek boyutlarını, WebP/AVIF durumunu ve sayfadaki render ölçülerini raporla.
+- Hero görselinde width/height veya fill+sizes doğru olsun.
+- Gereksiz eager loading yapma.
+- CLS, LCP ve mobil performansı olumsuz etkileyen somut sorunları düzelt.
+- Tasarımı veya görselleri değiştirme.
+
+7. VERİTABANI VE ORTAM
+
+Mevcut migration durumunu kontrol et.
+Bekleyen migration varsa yalnızca mevcut Replit DATABASE_URL üzerinde güvenli biçimde çalıştır.
+DROP TABLE, veri silme veya database reset yapma.
+Secrets değerlerini hiçbir çıktıda gösterme.
+
+8. SON DOĞRULAMA
+
+Şunları çalıştır ve gerçek sonuçları raporla:
+
+- typecheck
+- lint
+- production build
+- Playwright kritik testleri
+- sitemap URL kontrolü
+- robots.txt kontrolü
+- TR/EN/DE/RU/AR dil geçişi
+- 390, 768 ve 1440 px ekran kontrolü
+- Arabic RTL kontrolü
+- rezervasyon → WhatsApp mesaj kontrolü
+- CMS kaydet → çevir → incele → toplu yayın kontrolü
+
+Başarısız testi “başarılı” diye raporlama.
+Test yapılmadıysa açıkça “test edilmedi” yaz.
+
+Çalışma sonunda:
+1. Değiştirilen dosyaları listele.
+2. Bulunan hata → uygulanan düzeltme tablosu oluştur.
+3. Komutların gerçek exit code sonuçlarını yaz.
+4. Kalan riskleri belirt.
+5. Production publish veya domain bağlantısı yapmadığını doğrula.
+6. Bütün kontroller geçerse değişiklikleri açıklayıcı tek veya mantıklı birkaç commit ile GitHub main dalına gönder.

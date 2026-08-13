@@ -20,10 +20,10 @@ import { LANGUAGE_CATALOG, CORE_LANGS } from './language-catalog';
 
 /**
  * Languages with complete static UI dictionaries that may be publicly published.
- * CORE_LANGS (all 9) controls isEnabled; PUBLISHED_LANGS controls isPublished.
- * Separate because es/fr/it/nl are enabled-but-not-published until dictionaries ship.
+ * Task #103 shipped es/fr/it/nl dictionaries, so every enabled language is now
+ * also published on bootstrap.  PUBLISHED_LANGS === CORE_LANGS (all 9).
  */
-const PUBLISHED_LANGS = ['tr', 'en', 'de', 'ru', 'ar'] as const;
+const PUBLISHED_LANGS = CORE_LANGS;
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL is not set');

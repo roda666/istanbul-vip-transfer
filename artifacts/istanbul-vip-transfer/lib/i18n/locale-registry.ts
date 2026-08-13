@@ -52,9 +52,9 @@ export const NON_SOURCE_LOCALES: readonly string[] = LOCALE_REGISTRY
 
 /**
  * Locale codes that have complete static UI dictionaries and can serve public pages.
- * Expanded by task "Complete UI dictionaries for Spanish, French, Italian, Dutch".
+ * All 9 registry locales now have dictionaries (task #103 shipped es/fr/it/nl).
  */
-export const RENDERABLE_LOCALES: readonly string[] = ['tr', 'en', 'de', 'ru', 'ar'];
+export const RENDERABLE_LOCALES: readonly string[] = LOCALE_REGISTRY.map((l) => l.code);
 
 /** Locale codes with RTL text direction. */
 export const RTL_LOCALES: readonly string[] = LOCALE_REGISTRY

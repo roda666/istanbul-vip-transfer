@@ -29,16 +29,17 @@ export interface PublicLanguage {
 }
 
 /**
- * Static fallback — mirrors the currently renderable (dictionary-backed) languages.
- * Updated automatically once RENDERABLE_LOCALES grows.
+ * Static fallback — mirrors all 9 renderable (dictionary-backed) languages.
+ * Derived from the registry so adding a new locale to locale-registry.ts is the only change needed.
  */
-export const FALLBACK_PUBLIC_LANGUAGES: PublicLanguage[] = [
-  { code: 'tr', locale: 'tr-TR', nativeName: 'Türkçe',   direction: 'ltr', isDefault: true  },
-  { code: 'en', locale: 'en-GB', nativeName: 'English',  direction: 'ltr', isDefault: false },
-  { code: 'de', locale: 'de-DE', nativeName: 'Deutsch',  direction: 'ltr', isDefault: false },
-  { code: 'ru', locale: 'ru-RU', nativeName: 'Русский',  direction: 'ltr', isDefault: false },
-  { code: 'ar', locale: 'ar-SA', nativeName: 'العربية',  direction: 'rtl', isDefault: false },
-];
+import { LOCALE_REGISTRY as _REG } from './locale-registry';
+export const FALLBACK_PUBLIC_LANGUAGES: PublicLanguage[] = _REG.map((l) => ({
+  code:       l.code,
+  locale:     l.locale,
+  nativeName: l.nativeName,
+  direction:  l.dir,
+  isDefault:  l.isSource,
+}));
 
 const CACHE_TTL_MS = 60_000;
 let cache: { at: number; langs: PublicLanguage[] } | null = null;

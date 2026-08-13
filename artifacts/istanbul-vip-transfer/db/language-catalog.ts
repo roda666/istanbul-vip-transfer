@@ -8,7 +8,13 @@
  * Shared between the seed script and (indirectly, via the DB) the admin UI.
  */
 
-export const CORE_LANGS = ['tr', 'en', 'de', 'ru', 'ar'] as const;
+import { LOCALE_REGISTRY } from '../lib/i18n/locale-registry';
+
+/**
+ * The 9 supported locale codes — derived from the registry so adding a new
+ * locale to locale-registry.ts is the ONLY change required.
+ */
+export const CORE_LANGS: readonly string[] = LOCALE_REGISTRY.map((l) => l.code);
 
 export interface CatalogLanguage {
   code: string;

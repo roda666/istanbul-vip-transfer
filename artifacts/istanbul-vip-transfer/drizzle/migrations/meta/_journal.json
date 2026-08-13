@@ -78,6 +78,13 @@
       "when": 1786600000000,
       "tag": "0010_email_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1786800000000,
+      "tag": "0011_nine_language_registry",
+      "breakpoints": true
     }
   ]
 }

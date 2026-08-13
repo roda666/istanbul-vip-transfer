@@ -2,21 +2,23 @@
  * Single source of truth for the publicly visible locale set.
  *
  * A language is PUBLIC when it is both enabled AND published in the languages
- * table. Today that set is exactly: tr, en, de, ru, ar. Passive catalog
- * languages must never leak into the selector, sitemap, or hreflang output.
+ * table AND has a static UI dictionary (RENDERABLE_LOCALES).  The 4 new
+ * languages es/fr/it/nl are enabled in the DB but isPublished=false until
+ * their UI dictionaries ship (task "Complete UI dictionaries for es/fr/it/nl").
  *
  * Server-only — uses the database with a short in-memory cache and a static
  * fallback so public pages never break if the DB is unavailable.
  */
 import 'server-only';
-import { SUPPORTED_LANGS } from './index';
+import { RENDERABLE_LOCALES } from './locale-registry';
 
 /**
  * Languages the public site can actually RENDER (static UI dictionaries exist).
  * A language outside this set must never go public, whatever the DB says —
- * publishing it would produce broken pages. Grows only when dictionaries are added.
+ * publishing it would produce broken pages.
+ * Source: locale-registry.ts RENDERABLE_LOCALES — not duplicated here.
  */
-export const RENDERABLE_LANGS: readonly string[] = ['tr', ...SUPPORTED_LANGS];
+export const RENDERABLE_LANGS: readonly string[] = RENDERABLE_LOCALES;
 
 export interface PublicLanguage {
   code: string;
@@ -26,13 +28,16 @@ export interface PublicLanguage {
   isDefault: boolean;
 }
 
-/** Static fallback — mirrors the launched languages. */
+/**
+ * Static fallback — mirrors the currently renderable (dictionary-backed) languages.
+ * Updated automatically once RENDERABLE_LOCALES grows.
+ */
 export const FALLBACK_PUBLIC_LANGUAGES: PublicLanguage[] = [
-  { code: 'tr', locale: 'tr-TR', nativeName: 'Türkçe', direction: 'ltr', isDefault: true },
-  { code: 'en', locale: 'en-GB', nativeName: 'English', direction: 'ltr', isDefault: false },
-  { code: 'de', locale: 'de-DE', nativeName: 'Deutsch', direction: 'ltr', isDefault: false },
-  { code: 'ru', locale: 'ru-RU', nativeName: 'Русский', direction: 'ltr', isDefault: false },
-  { code: 'ar', locale: 'ar-SA', nativeName: 'العربية', direction: 'rtl', isDefault: false },
+  { code: 'tr', locale: 'tr-TR', nativeName: 'Türkçe',   direction: 'ltr', isDefault: true  },
+  { code: 'en', locale: 'en-GB', nativeName: 'English',  direction: 'ltr', isDefault: false },
+  { code: 'de', locale: 'de-DE', nativeName: 'Deutsch',  direction: 'ltr', isDefault: false },
+  { code: 'ru', locale: 'ru-RU', nativeName: 'Русский',  direction: 'ltr', isDefault: false },
+  { code: 'ar', locale: 'ar-SA', nativeName: 'العربية',  direction: 'rtl', isDefault: false },
 ];
 
 const CACHE_TTL_MS = 60_000;
@@ -58,7 +63,7 @@ export async function getPublicLanguages(): Promise<PublicLanguage[]> {
       .orderBy(asc(languages.displayOrder));
     // Defense in depth: only renderable languages (with UI dictionaries) may
     // ever be exposed publicly, regardless of DB state.
-    const renderable = rows.filter((r) => RENDERABLE_LANGS.includes(r.code));
+    const renderable = rows.filter((r) => (RENDERABLE_LANGS as string[]).includes(r.code));
     if (renderable.length === 0) return FALLBACK_PUBLIC_LANGUAGES;
     // Turkish must always be present, whatever the DB says.
     const langs = renderable.some((r) => r.code === 'tr')

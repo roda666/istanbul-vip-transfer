@@ -3,6 +3,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Download, RefreshCw, Search } from 'lucide-react';
 import { SOURCE_FILTER_OPTIONS, formatSource } from '@/lib/source-labels';
+import { LOCALE_REGISTRY } from '@/lib/i18n/locale-registry';
+
+/** Registry-derived: automatically updated when locales change. */
+const LOCALE_REGISTRY_CODES = LOCALE_REGISTRY.map((l) => l.code);
 
 interface Subscriber {
   id: string;
@@ -161,7 +165,7 @@ export default function AbonelerClient() {
 
         <select value={lang} onChange={(e) => { setLang(e.target.value); setPage(1); }} style={inputStyle}>
           <option value="">Tüm Diller</option>
-          {['tr', 'en', 'de', 'ru', 'ar'].map((l) => <option key={l} value={l}>{l.toUpperCase()}</option>)}
+          {LOCALE_REGISTRY_CODES.map((l) => <option key={l} value={l}>{l.toUpperCase()}</option>)}
         </select>
 
         <select value={source} onChange={(e) => { setSource(e.target.value); setPage(1); }} style={inputStyle}>

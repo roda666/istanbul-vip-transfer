@@ -28,7 +28,7 @@ import { getPublicLangCodes } from '@/lib/i18n/active-locales';
 const LANG_PREF_COOKIE = 'ivt_lang_pref';
 
 /** Legacy paths on which stale cookies may still exist — expire them. */
-const LEGACY_COOKIE_PATHS = ['/en', '/de', '/ru', '/ar', '/tr'];
+const LEGACY_COOKIE_PATHS = ['/en', '/de', '/ru', '/ar', '/tr', '/es', '/fr', '/it', '/nl'];
 
 /**
  * Accepts only root-relative same-site paths such as "/", "/hizmetler",

@@ -9,22 +9,43 @@
  *    - Visiting / when the cookie says e.g. "de" redirects to /de
  *    - Never redirects: /admin, /api, /_next, /data, static assets
  *
+ * Locale sets used:
+ *   NON_SOURCE_LOCALES  — all 8 non-TR registry codes (used for prefix
+ *                         recognition so /es/foo is not treated as Turkish)
+ *   RENDERABLE_LOCALES  — currently dict-backed set: en, de, ru, ar
+ *                         (used for cookie stamping and root redirect; prevents
+ *                         redirect loops for locales without dictionaries yet)
+ *
  * Note: admin API routes live at /admin/api/* (not /api/admin/*) to avoid
  * the Replit proxy routing /api/* to the separate api-server artifact.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import type { SessionData } from '@/lib/auth/session';
+import {
+  NON_SOURCE_LOCALES,
+  RENDERABLE_LOCALES,
+} from '@/lib/i18n/locale-registry';
 
 const COOKIE_NAME      = 'ivt_admin_session';
 const LANG_PREF_COOKIE = 'ivt_lang_pref';
 
-/** Languages that live at a /{lang} prefix (Turkish is at root). */
-const NON_TR_LANGS = ['en', 'de', 'ru', 'ar'] as const;
-type NonTrLang = typeof NON_TR_LANGS[number];
+/**
+ * All 8 non-TR locale prefixes from the registry.
+ * Used for URL prefix detection only — lets the route layer (layout.tsx) handle
+ * 404s for locales that don't have dictionaries yet.
+ */
+function isNonTrLang(s: string): boolean {
+  return (NON_SOURCE_LOCALES as string[]).includes(s);
+}
 
-function isNonTrLang(s: string): s is NonTrLang {
-  return (NON_TR_LANGS as readonly string[]).includes(s);
+/**
+ * Non-TR locales that currently have complete UI dictionaries.
+ * Only these may be stored in the lang_pref cookie and trigger root redirects.
+ * Expands automatically once RENDERABLE_LOCALES in locale-registry.ts grows.
+ */
+function isRenderableNonTrLang(s: string): boolean {
+  return s !== 'tr' && (RENDERABLE_LOCALES as string[]).includes(s);
 }
 
 function tryGetOptions() {
@@ -114,8 +135,13 @@ export async function middleware(request: NextRequest) {
   };
 
   if (urlLang) {
-    // Non-Turkish page visited → stamp/update the cookie with the URL lang
-    response.cookies.set(LANG_PREF_COOKIE, urlLang, cookieOpts);
+    // Non-Turkish page visited.
+    // Only stamp the cookie for renderable locales (those with UI dictionaries).
+    // For es/fr/it/nl (not yet renderable) we recognise the prefix but don't
+    // set a preference — visiting '/' will not redirect them to a 404 page.
+    if (isRenderableNonTrLang(urlLang)) {
+      response.cookies.set(LANG_PREF_COOKIE, urlLang, cookieOpts);
+    }
     return response;
   }
 
@@ -125,8 +151,8 @@ export async function middleware(request: NextRequest) {
   // content link from a non-Turkish session doesn't bounce the user back.
   const pref = request.cookies.get(LANG_PREF_COOKIE)?.value;
 
-  if ((pathname === '/' || pathname === '') && pref && isNonTrLang(pref)) {
-    // Fresh root visit with a non-TR cookie → send them to their preferred locale
+  if ((pathname === '/' || pathname === '') && pref && isRenderableNonTrLang(pref)) {
+    // Fresh root visit with a renderable non-TR cookie → send them to their preferred locale
     const target = new URL(`/${pref}`, request.url);
     const redirect = NextResponse.redirect(target);
     redirect.cookies.set(LANG_PREF_COOKIE, pref, cookieOpts);

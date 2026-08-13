@@ -11,12 +11,12 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Globe, Search, Lock } from 'lucide-react';
-import { SUPPORTED_LANGS } from '@/lib/i18n';
+import { RENDERABLE_LOCALES } from '@/lib/i18n/locale-registry';
 import type { Language } from '@/db/schema';
 import type { LangTranslationStats } from './page';
 
 /** Languages whose public UI dictionaries exist — only these can be published. */
-const RENDERABLE_LANGS: readonly string[] = ['tr', ...SUPPORTED_LANGS];
+const RENDERABLE_LANGS: readonly string[] = RENDERABLE_LOCALES;
 
 type FilterKey = 'all' | 'active' | 'passive' | 'draft' | 'published' | 'ltr' | 'rtl' | 'unsupported';
 

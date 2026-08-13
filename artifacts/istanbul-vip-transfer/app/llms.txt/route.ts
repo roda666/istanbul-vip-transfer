@@ -15,7 +15,7 @@ const BODY = `# Istanbul VIP Transfer
 
 ## Languages
 
-Website available in Turkish (default), English (/en), German (/de), Russian (/ru) and Arabic (/ar).
+Website available in Turkish (default), English (/en), German (/de), Russian (/ru), Arabic (/ar), Spanish (/es), French (/fr), Italian (/it) and Dutch (/nl).
 
 ## Key pages
 

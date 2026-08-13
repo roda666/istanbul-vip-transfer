@@ -18,6 +18,13 @@ import * as schema from './schema';
 import { sql } from 'drizzle-orm';
 import { LANGUAGE_CATALOG, CORE_LANGS } from './language-catalog';
 
+/**
+ * Languages with complete static UI dictionaries that may be publicly published.
+ * CORE_LANGS (all 9) controls isEnabled; PUBLISHED_LANGS controls isPublished.
+ * Separate because es/fr/it/nl are enabled-but-not-published until dictionaries ship.
+ */
+const PUBLISHED_LANGS = ['tr', 'en', 'de', 'ru', 'ar'] as const;
+
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL is not set');
 
@@ -25,7 +32,7 @@ const client = postgres(databaseUrl, { max: 1 });
 const db = drizzle(client, { schema });
 
 async function seed() {
-  console.log(`Seeding ${LANGUAGE_CATALOG.length} catalog languages...`);
+  console.log(`Seeding ${LANGUAGE_CATALOG.length} catalog languages (${CORE_LANGS.length} enabled, ${PUBLISHED_LANGS.length} published)...`);
   let inserted = 0;
   let updated = 0;
 
@@ -41,8 +48,8 @@ async function seed() {
       direction: lang.direction,
       providerSupported: lang.providerSupported ?? true,
       isDefault: lang.code === 'tr',
-      isEnabled: isCore, // core 5 active, everything else passive
-      isPublished: isCore, // only core 5 publicly visible
+      isEnabled: isCore, // all 9 registry languages are enabled
+      isPublished: (PUBLISHED_LANGS as readonly string[]).includes(lang.code), // only dictionary-backed 5
       displayOrder: i,
     };
 

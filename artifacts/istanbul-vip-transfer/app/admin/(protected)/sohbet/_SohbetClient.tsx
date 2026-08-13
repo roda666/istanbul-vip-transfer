@@ -34,9 +34,12 @@ interface Message {
   createdAt: string;
 }
 
-const LANG_LABELS: Record<string, string> = {
-  tr: '🇹🇷 TR', en: '🇬🇧 EN', de: '🇩🇪 DE', ru: '🇷🇺 RU', ar: '🇸🇦 AR',
-};
+import { LOCALE_REGISTRY } from '@/lib/i18n/locale-registry';
+
+/** Registry-derived: automatically includes any new locale added to locale-registry.ts */
+const LANG_LABELS: Record<string, string> = Object.fromEntries(
+  LOCALE_REGISTRY.map((l) => [l.code, `${l.flagEmoji} ${l.code.toUpperCase()}`])
+);
 
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();

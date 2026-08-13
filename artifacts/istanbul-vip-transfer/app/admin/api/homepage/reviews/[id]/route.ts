@@ -5,12 +5,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdminSession } from '@/lib/auth/session';
+import { ALL_LOCALE_CODES } from '@/lib/i18n/locale-registry';
 
 const updateSchema = z.object({
   reviewerName:   z.string().min(1).max(120).optional(),
   reviewText:     z.string().min(1).max(1000).optional(),
   rating:         z.number().int().min(1).max(5).optional(),
-  reviewLanguage: z.enum(['tr', 'en', 'de', 'ru', 'ar']).optional(),
+  reviewLanguage: z.enum(ALL_LOCALE_CODES).optional(),
   reviewDate:     z.string().datetime().optional().nullable(),
   isVisible:      z.boolean().optional(),
   sortOrder:      z.number().int().optional(),

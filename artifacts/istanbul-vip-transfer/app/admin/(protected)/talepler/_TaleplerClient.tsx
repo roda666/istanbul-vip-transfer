@@ -67,9 +67,12 @@ const INTENT_LABELS: Record<string, string> = {
   RESERVATION: 'Rezervasyon',
 };
 
-const LOCALE_LABELS: Record<string, string> = {
-  tr: 'TR', en: 'EN', de: 'DE', ru: 'RU', ar: 'AR',
-};
+import { LOCALE_REGISTRY } from '@/lib/i18n/locale-registry';
+
+/** Registry-derived: automatically includes any new locale added to locale-registry.ts */
+const LOCALE_LABELS: Record<string, string> = Object.fromEntries(
+  LOCALE_REGISTRY.map((l) => [l.code, l.code.toUpperCase()])
+);
 
 const td: React.CSSProperties = {
   padding: '12px 14px',

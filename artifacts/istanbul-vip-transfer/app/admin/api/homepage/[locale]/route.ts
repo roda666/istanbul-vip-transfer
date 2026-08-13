@@ -36,7 +36,9 @@ async function isManageableLocale(locale: string): Promise<boolean> {
       .limit(1);
     return Boolean(row);
   } catch {
-    return ['en', 'de', 'ru', 'ar'].includes(locale);
+    // Fallback: accept any code from the 9-locale registry
+    const { isNonSourceLocale } = await import('@/lib/i18n/locale-registry');
+    return locale === 'tr' || isNonSourceLocale(locale);
   }
 }
 

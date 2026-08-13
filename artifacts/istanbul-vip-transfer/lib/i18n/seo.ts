@@ -3,7 +3,8 @@
  * Generates canonical URL, hreflang alternates, and Open Graph locale.
  */
 import { SITE } from '@/lib/site-config';
-import { SUPPORTED_LANGS, LANG_LOCALES, type SiteLang } from './index';
+import { LANG_LOCALES, SUPPORTED_LANGS, type SiteLang } from './index';
+import { LOCALE_BCP47 } from './locale-registry';
 
 export interface HreflangEntry {
   hrefLang: string;
@@ -57,13 +58,15 @@ export async function buildAlternates(path: string, publishedLangs: string[] = [
 
 /**
  * Returns the Open Graph locale string for a given language code.
+ * Falls back to LOCALE_BCP47 for the full registry, then Turkish.
  */
 export function getOgLocale(lang: string): string {
-  return LANG_LOCALES[lang as SiteLang] ?? LANG_LOCALES.tr;
+  return LOCALE_BCP47[lang] ?? LANG_LOCALES.tr;
 }
 
 /**
- * Returns alternate locales (all supported locales except current) for OG.
+ * Returns alternate locales (all dictionary-backed locales except current) for OG.
+ * Uses SUPPORTED_LANGS so only locales with actual dictionaries are included.
  */
 export function getOgAlternateLocales(currentLang: string): string[] {
   return (['tr', ...SUPPORTED_LANGS] as SiteLang[])

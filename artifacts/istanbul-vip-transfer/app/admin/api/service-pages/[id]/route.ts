@@ -65,7 +65,9 @@ async function getActiveTargetLocales(): Promise<string[]> {
       .where(eq(languages.isEnabled, true));
     return rows.map(r => r.code).filter(c => c !== 'tr');
   } catch {
-    return ['en', 'de', 'ru', 'ar'];
+    // Fallback: non-source locales from the registry
+    const { NON_SOURCE_LOCALES } = await import('@/lib/i18n/locale-registry');
+    return [...NON_SOURCE_LOCALES];
   }
 }
 

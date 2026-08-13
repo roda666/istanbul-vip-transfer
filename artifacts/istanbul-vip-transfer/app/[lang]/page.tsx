@@ -84,6 +84,7 @@ export default async function TranslatedHomePage({ params }: Props) {
   const pageUrl = `${SITE.siteUrl}/${lang}`;
   const inLanguage: Record<string, string> = {
     en: 'en', de: 'de', ru: 'ru', ar: 'ar',
+    es: 'es', fr: 'fr', it: 'it', nl: 'nl',
   };
 
   const webPageSchema = {

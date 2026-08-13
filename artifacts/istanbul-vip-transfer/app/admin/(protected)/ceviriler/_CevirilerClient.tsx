@@ -397,7 +397,7 @@ export default function CevirilerClient({
             </div>
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: passiveLangs.length ? '10px' : 0 }}>
               {activeLangs.length === 0
-                ? <span style={{ fontSize: '12px', color: '#8899AA', fontFamily: 'Inter, sans-serif' }}>Etkin dil yok — Dil Yönetimi'nden aktifleştirin.</span>
+                ? <span style={{ fontSize: '12px', color: '#8899AA', fontFamily: 'Inter, sans-serif' }}>{'Etkin dil yok — Dil Yönetimi\u2019nden aktifleştirin.'}</span>
                 : activeLangs.map((l) => <LangBtn key={l.code} l={l} />)}
             </div>
             {/* Passive languages */}

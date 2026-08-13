@@ -558,3 +558,30 @@ export const chatbotSettings = pgTable('chatbot_settings', {
 
 export type ChatbotSettings    = typeof chatbotSettings.$inferSelect;
 export type NewChatbotSettings = typeof chatbotSettings.$inferInsert;
+
+// ── Email Settings ───────────────────────────────────────────────────────────
+
+/**
+ * Singleton SMTP settings row — always upsert with id = 1.
+ * smtp_pass_encrypted holds AES-256-GCM ciphertext from lib/email-crypto.ts.
+ * The plaintext password is NEVER returned to the client.
+ */
+export const emailSettings = pgTable('email_settings', {
+  id:                 integer('id').primaryKey().default(1),
+  enabled:            boolean('enabled').default(false).notNull(),
+  providerType:       text('provider_type').default('custom').notNull(),
+  smtpHost:           text('smtp_host'),
+  smtpPort:           integer('smtp_port').default(587),
+  smtpSecure:         text('smtp_secure').default('tls').notNull(),
+  smtpUser:           text('smtp_user'),
+  smtpPassEncrypted:  text('smtp_pass_encrypted'),
+  fromName:           text('from_name'),
+  fromEmail:          text('from_email'),
+  replyToEmail:       text('reply_to_email'),
+  adminNotifyEmails:  text('admin_notify_emails'),
+  updatedAt:          timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedBy:          uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+});
+
+export type EmailSettings    = typeof emailSettings.$inferSelect;
+export type NewEmailSettings = typeof emailSettings.$inferInsert;

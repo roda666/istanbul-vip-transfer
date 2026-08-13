@@ -207,17 +207,19 @@ export async function runServiceHealthCheck(): Promise<void> {
     }
 
     // 4. Send alert email — only advance cooldown if delivery is confirmed.
-    const adminEmail = process.env.ADMIN_EMAIL;
-    if (!adminEmail) {
+    // getAdminNotifyEmails() checks DB email_settings first, falls back to ADMIN_EMAIL env.
+    const { getAdminNotifyEmails } = await import('@/lib/email');
+    const adminEmails = await getAdminNotifyEmails();
+    if (adminEmails.length === 0) {
       // No recipient configured: log but do NOT record cooldown so the next
-      // run will attempt again once ADMIN_EMAIL is set.
-      console.warn('[health-check] ADMIN_EMAIL not set — skipping email. Cooldown NOT recorded.');
+      // run will attempt again once email addresses are configured.
+      console.warn('[health-check] No admin notification emails configured — skipping email. Cooldown NOT recorded.');
       return;
     }
 
     const { html, text } = buildAlertEmail(toAlert);
     const delivered = await sendEmail({
-      to:      adminEmail,
+      to:      adminEmails.join(', '),
       subject: `⚠️ ${toAlert.length} Service Page${toAlert.length > 1 ? 's' : ''} Offline — Action Required`,
       html,
       text,

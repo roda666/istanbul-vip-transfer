@@ -71,6 +71,13 @@
       "when": 1786396994515,
       "tag": "0009_service_health_monitoring",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786600000000,
+      "tag": "0010_email_settings",
+      "breakpoints": true
     }
   ]
 }

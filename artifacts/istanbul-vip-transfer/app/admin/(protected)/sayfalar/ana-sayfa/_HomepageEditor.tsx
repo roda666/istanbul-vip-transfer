@@ -68,8 +68,8 @@ const TX_STATUS: Record<string, { label: string; color: string; bg: string }> = 
   QUEUED:       { label: 'Çeviri bekliyor', color: '#D97706', bg: '#FFFBEB' },
   TRANSLATING:  { label: 'Çevriliyor…',     color: '#2563EB', bg: '#EFF6FF' },
   DRAFT:        { label: 'Taslak',          color: '#9333EA', bg: '#FAF5FF' },
-  REVIEW:       { label: 'Taslak',          color: '#9333EA', bg: '#FAF5FF' },
-  APPROVED:     { label: 'Taslak',          color: '#9333EA', bg: '#FAF5FF' },
+  REVIEW:       { label: 'İncelemede',      color: '#7C3AED', bg: '#F5F3FF' },
+  APPROVED:     { label: 'Onaylandı',       color: '#0D9488', bg: '#F0FDFA' },
   PUBLISHED:    { label: 'Yayında',         color: '#059669', bg: '#ECFDF5' },
   FAILED:       { label: 'Hata',            color: '#DC2626', bg: '#FEF2F2' },
   OUTDATED:     { label: 'Kaynak değişti',  color: '#EA580C', bg: '#FFF7ED' },
@@ -296,13 +296,17 @@ function TxStatusBadge({ status }: { status: string }) {
 // Simplified for homepage auto-publish flow: no manual review/approve steps.
 
 function TranslationInfoPanel({
-  record, onRetry, onLock, onUnlock, onPublish, onUnpublish, busy,
+  record, onRetry, onLock, onUnlock, onUnlockAndRetry, onPublish, onUnpublish, busy,
 }: {
   record: HomepageAdminRecord;
+  /** Re-translate without unlocking (for FAILED / OUTDATED / NOT_STARTED / QUEUED / DRAFT). */
   onRetry: () => void;
   onLock: () => void;
+  /** Unlock only — does NOT trigger re-translation. */
   onUnlock: () => void;
-  /** Edge-case manual publish (e.g. after a retry that left status DRAFT). */
+  /** Combined: unlock then immediately re-translate. Used for locked rows that need refresh. */
+  onUnlockAndRetry: () => void;
+  /** Publish from DRAFT / REVIEW / APPROVED. */
   onPublish: () => void;
   onUnpublish: () => void;
   busy: boolean;
@@ -353,29 +357,41 @@ function TranslationInfoPanel({
         </div>
       )}
 
-      {/* Source changed warning */}
-      {status === 'OUTDATED' && (
+      {/* Source changed warning — shown for OUTDATED and for PUBLISHED rows locked due to source change */}
+      {(status === 'OUTDATED' || (status === 'PUBLISHED' && locked && record.failureReason)) && (
         <div style={{ padding: '8px 10px', background: '#FFF7ED', borderRadius: '6px', fontSize: '12px', color: '#EA580C', fontFamily: 'Inter, sans-serif', marginBottom: '10px' }}>
-          ⚠ Kaynak değişti — güncelleme gerekli. Kilidi kaldırın ve yeniden çevirin.
+          ⚠ {status === 'PUBLISHED'
+            ? 'Kaynak değişti — yayındaki çeviri korunuyor. Kilidi kaldırın, ardından yeniden çevirin.'
+            : 'Kaynak değişti — güncelleme gerekli. Kilidi kaldırın ve yeniden çevirin.'
+          }
         </div>
       )}
 
       {/* Action buttons */}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-        {/* Re-translate for failed/outdated/not-started */}
-        {(status === 'FAILED' || status === 'OUTDATED' || status === 'NOT_STARTED' || status === 'QUEUED') && !locked && (
+        {/* Re-translate when unlocked and in a retriable state (includes DRAFT) */}
+        {(status === 'FAILED' || status === 'OUTDATED' || status === 'NOT_STARTED' ||
+          status === 'QUEUED' || status === 'DRAFT') && !locked && (
           btn('🔄 Yeniden Çevir', onRetry, 'primary')
         )}
+        {/* Locked + OUTDATED: combined unlock-and-retranslate to reach a fresh DRAFT */}
         {status === 'OUTDATED' && locked && (
-          btn('🔓 Kilidi Kaldır ve Yeniden Çevir', onUnlock, 'primary')
+          btn('🔓 Kilidi Kaldır ve Yeniden Çevir', onUnlockAndRetry, 'primary')
         )}
-        {/* Manual publish for edge cases (e.g. retry left locale as DRAFT) */}
+        {/* PUBLISHED + locked (source changed): live content is preserved;
+            combined unlock-and-retranslate produces a DRAFT for admin review before publish */}
+        {status === 'PUBLISHED' && locked && record.failureReason && (
+          btn('🔓 Kilidi Kaldır ve Yeniden Çevir', onUnlockAndRetry, 'primary')
+        )}
+        {/* Publish: available from DRAFT, REVIEW, or APPROVED */}
         {(status === 'DRAFT' || status === 'REVIEW' || status === 'APPROVED') && (
           btn('🚀 Yayımla', onPublish, 'primary')
         )}
+        {/* Unpublish */}
         {status === 'PUBLISHED' && btn('Yayından Kaldır', onUnpublish, 'danger')}
+        {/* Manual lock / unlock (ghost — secondary action) */}
         {locked
-          ? btn('🔓 Kilidi Kaldır', onUnlock, 'ghost')
+          ? btn('🔓 Yalnızca Kilidi Kaldır', onUnlock, 'ghost')
           : btn('🔒 Manuel Kilitli Yap', onLock, 'ghost')
         }
       </div>
@@ -551,6 +567,36 @@ export default function HomepageEditor({ initialTrRecord, locales }: { initialTr
       await refreshLocale(locale);
     } catch (err) {
       setMessage({ type: 'err', text: err instanceof Error ? err.message : 'Kilit hatası.' });
+    } finally { setLocaleBusyFor(locale, false); }
+  };
+
+  // Combined: unlock then immediately re-translate.
+  // Used when a protected (APPROVED/PUBLISHED) translation was locked because source changed.
+  // After unlock the row is in a state where the admin has explicitly acknowledged the change;
+  // the translate call produces a DRAFT for review. Admin then clicks "🚀 Yayımla" to go live.
+  const unlockAndRetry = async (locale: string) => {
+    setLocaleBusyFor(locale, true);
+    setMessage({ type: 'info', text: `⏳ ${locale.toUpperCase()} kilidi kaldırılıyor ve yeniden çevriliyor…` });
+    try {
+      // Step 1: unlock (also advances sourceHash so future auto-saves don't re-lock)
+      const unlockRes = await fetch(`/admin/api/homepage/${locale}/lock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locked: false }),
+      });
+      const unlockData = await safeJson<{ error?: string; message?: string }>(unlockRes);
+      if (!unlockRes.ok) throw new Error(unlockData.message ?? unlockData.error ?? 'Kilit kaldırılamadı.');
+
+      // Step 2: re-translate → always saves as DRAFT (admin must publish explicitly)
+      const txRes = await fetch(`/admin/api/homepage/${locale}/translate`, { method: 'POST' });
+      const txData = await safeJson<{ error?: string; message?: string }>(txRes);
+      if (!txRes.ok) throw new Error(txData.message ?? txData.error ?? 'Çeviri başarısız.');
+
+      setMessage({ type: 'ok', text: `${locale.toUpperCase()} yeniden çevrildi — taslak kaydedildi. İnceleyip yayımlayın.` });
+      await refreshLocale(locale);
+    } catch (err) {
+      setMessage({ type: 'err', text: `${locale.toUpperCase()} işlem hatası: ${err instanceof Error ? err.message : String(err)}` });
+      await refreshLocale(locale);
     } finally { setLocaleBusyFor(locale, false); }
   };
 
@@ -752,6 +798,7 @@ export default function HomepageEditor({ initialTrRecord, locales }: { initialTr
           onRetry={() => retryTranslate(activeLocale)}
           onLock={() => toggleLock(activeLocale, true)}
           onUnlock={() => toggleLock(activeLocale, false)}
+          onUnlockAndRetry={() => unlockAndRetry(activeLocale)}
           onPublish={() => publish('publish')}
           onUnpublish={() => publish('unpublish')}
           busy={!!localeBusy[activeLocale]}

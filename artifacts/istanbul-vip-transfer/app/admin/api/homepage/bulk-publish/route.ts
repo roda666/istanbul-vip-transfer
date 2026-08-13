@@ -5,7 +5,8 @@
  * Skips locales that are not APPROVED.
  * Calls revalidatePath for each published locale.
  *
- * Body: { locales?: string[] }  (defaults to all 4 target locales)
+ * Locale list is catalog-driven (isEnabled + providerSupported non-TR rows).
+ * Body: { locales?: string[] }  — if omitted defaults to all catalog targets.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -15,10 +16,8 @@ import { revalidatePath } from 'next/cache';
 import 'server-only';
 
 const schema = z.object({
-  locales: z.array(z.enum(['en', 'de', 'ru', 'ar'])).default(['en', 'de', 'ru', 'ar']),
+  locales: z.array(z.string().min(2).max(10)).optional(),
 });
-
-const LOCALE_PATHS: Record<string, string> = { en: '/en', de: '/de', ru: '/ru', ar: '/ar' };
 
 export async function POST(req: NextRequest) {
   let session;
@@ -28,11 +27,23 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const parsed = schema.safeParse(body);
-  const targetLocales = parsed.success ? parsed.data.locales : ['en', 'de', 'ru', 'ar'] as const;
 
   const { db } = await import('@/db');
-  const { content, contentTranslations, auditLogs } = await import('@/db/schema');
+  const { content, contentTranslations, auditLogs, languages } = await import('@/db/schema');
   const { eq, and, inArray } = await import('drizzle-orm');
+
+  // Catalog-driven target locale list
+  const enabledRows = await db
+    .select({ code: languages.code })
+    .from(languages)
+    .where(and(eq(languages.isEnabled, true), eq(languages.providerSupported, true)));
+  const catalogLocales = enabledRows.map(r => r.code).filter(c => c !== 'tr');
+
+  // If caller provided explicit list, intersect with catalog (prevents arbitrary locale injection)
+  const targetLocales =
+    parsed.success && parsed.data.locales
+      ? parsed.data.locales.filter(c => catalogLocales.includes(c))
+      : catalogLocales;
 
   const [src] = await db.select({ id: content.id }).from(content).where(eq(content.slug, HOMEPAGE_SLUG)).limit(1);
   if (!src) return NextResponse.json({ error: 'Source record not found' }, { status: 404 });
@@ -45,7 +56,7 @@ export async function POST(req: NextRequest) {
     and(
       eq(contentTranslations.entityType, 'homepage'),
       eq(contentTranslations.entityId, src.id),
-      inArray(contentTranslations.targetLanguageCode, [...targetLocales]),
+      inArray(contentTranslations.targetLanguageCode, targetLocales.length > 0 ? targetLocales : ['']),
     ),
   );
 
@@ -73,8 +84,7 @@ export async function POST(req: NextRequest) {
         metadata: { locale: tx.targetLanguageCode, bulkPublish: true },
       });
 
-      const path = LOCALE_PATHS[tx.targetLanguageCode];
-      if (path) revalidatePath(path);
+      revalidatePath(`/${tx.targetLanguageCode}`);
 
       results[tx.targetLanguageCode] = 'published';
     } catch {

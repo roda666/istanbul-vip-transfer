@@ -45,8 +45,8 @@ type WorkflowAction = 'submit_review' | 'approve' | 'publish' | 'unpublish';
 /** Allowed current statuses for each action (locale translations) */
 const ALLOWED_FROM: Record<WorkflowAction, string[]> = {
   submit_review: ['DRAFT'],
-  approve:       ['REVIEW'],
-  publish:       ['APPROVED'],
+  approve:       ['REVIEW', 'DRAFT'],
+  publish:       ['APPROVED', 'REVIEW', 'DRAFT'],
   unpublish:     ['PUBLISHED', 'APPROVED', 'REVIEW', 'DRAFT'],
 };
 

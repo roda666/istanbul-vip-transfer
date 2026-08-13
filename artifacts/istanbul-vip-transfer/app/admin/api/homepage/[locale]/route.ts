@@ -15,6 +15,7 @@ import {
   buildInitialTargetSections,
 } from '@/lib/homepage-sync';
 import { translateHomepageFields } from '@/lib/ai/translate-homepage';
+import { revalidatePath } from 'next/cache';
 import 'server-only';
 
 /**
@@ -191,6 +192,9 @@ export async function PATCH(
       metadata: { locale: 'tr', autoTranslate, targetLocales },
     });
 
+    // Revalidate TR homepage cache immediately after save
+    if (autoPublish) revalidatePath('/');
+
     // ── If autoTranslate disabled, return early ────────────────────────────
     if (!autoTranslate || targetLocales.length === 0) {
       return NextResponse.json({ success: true, draftSaved: true, translationJobsCreated: 0, targetLocales: [] });
@@ -232,8 +236,12 @@ export async function PATCH(
 
       if (tx?.isManuallyLocked) {
         if (tx.sourceHash !== trHash) {
+          // Hash changed while locked. Keep PUBLISHED rows serving live content (status stays
+          // PUBLISHED); only non-PUBLISHED locked rows are moved to OUTDATED. Either way the
+          // row stays locked so subsequent saves also skip it.
+          const lockedStatus = tx.status === 'PUBLISHED' ? 'PUBLISHED' : 'OUTDATED';
           await db.update(contentTranslations).set({
-            status: 'OUTDATED',
+            status: lockedStatus,
             failureReason: 'Kaynak değişti — güncelleme gerekli',
             updatedAt: new Date(), updatedBy: session.adminId,
           }).where(eq(contentTranslations.id, tx.id));
@@ -252,6 +260,31 @@ export async function PATCH(
       // Skip if hash unchanged and already in a good state
       if (tx && tx.sourceHash === trHash && !['NOT_STARTED', 'FAILED', 'OUTDATED'].includes(tx.status ?? '')) {
         syncResults[targetLocale] = { status: 'skipped', reason: 'Hash unchanged' };
+        continue;
+      }
+
+      // Guard: hash changed but translation is APPROVED or PUBLISHED.
+      // Never silently overwrite a human-reviewed translation — lock it and require an
+      // explicit admin retry. PUBLISHED rows keep their status so the public page keeps
+      // serving the last reviewed content. sourceHash is intentionally NOT updated here
+      // so that the lock check above continues to detect "hash changed" on future saves.
+      if (tx && tx.sourceHash !== trHash && ['APPROVED', 'PUBLISHED'].includes(tx.status ?? '')) {
+        const guardStatus = tx.status === 'PUBLISHED' ? 'PUBLISHED' : 'OUTDATED';
+        await db.update(contentTranslations).set({
+          status: guardStatus,
+          isManuallyLocked: true,
+          lockedAt: new Date(),
+          lockedBy: session.adminId,
+          failureReason: 'Kaynak değişti — kilidi kaldırın ve yeniden çevirin.',
+          updatedAt: new Date(), updatedBy: session.adminId,
+          // sourceHash intentionally left unchanged: lock check needs old≠new to keep skipping
+        }).where(eq(contentTranslations.id, tx.id));
+        await db.insert(auditLogs).values({
+          adminUserId: session.adminId, action: 'HOMEPAGE_TRANSLATION_OUTDATED',
+          entityType: 'content_translation', entityId: tx.id,
+          metadata: { locale: targetLocale, reason: 'approved_source_changed', keptStatus: guardStatus },
+        });
+        syncResults[targetLocale] = { status: 'skipped', reason: `Protected: ${guardStatus.toLowerCase()} translation locked as outdated` };
         continue;
       }
 
@@ -373,6 +406,7 @@ export async function PATCH(
         metadata: { locale: targetLocale, model: aiResult.model, status: txStatus },
       });
 
+      if (autoPublish) revalidatePath(`/${targetLocale}`);
       syncResults[targetLocale] = { status: autoPublish ? 'published' : 'translated', jobId, aiModel: aiResult.model };
     }
 

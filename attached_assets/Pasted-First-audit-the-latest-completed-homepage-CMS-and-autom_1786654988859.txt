@@ -1,0 +1,322 @@
+First audit the latest completed homepage CMS and automatic-translation work before making new changes.
+
+IMPORTANT:
+- The preview currently shows “Run this app to see the results here.” Start/restart the development server first.
+- Do not assume the previous task is correct merely because it was marked complete.
+- Do not publish the app or connect/change the production domain.
+- Do not delete Turkish source content or existing valid translations.
+- Make database migrations idempotent and safe.
+- Do not report completion without functional verification.
+
+PART 1 — AUDIT AND REPAIR THE LAST CHANGE
+
+Audit the latest Homepage Editor automatic-translation and bulk-publish implementation.
+
+Verify all of these:
+
+1. Turkish homepage content can be edited and saved as a draft.
+2. “Taslak Kaydet ve Çevir”:
+   - saves Turkish content,
+   - generates translation jobs,
+   - returns valid JSON for success and error responses,
+   - never causes:
+     “Failed to execute 'json' on 'Response': Unexpected end of JSON input”.
+3. Translation generation does not overwrite existing approved translations without an explicit admin decision.
+4. “Tüm Çevirileri İncele” opens the correct review interface.
+5. “Onaylanan Dilleri Toplu Yayınla” publishes only approved translations.
+6. Shared, non-translatable fields such as image path, section visibility and layout settings remain synchronized.
+7. Mobile admin layout at 390px:
+   - uses one column,
+   - section navigation and form do not appear side by side,
+   - fields are not clipped,
+   - no horizontal page overflow,
+   - buttons remain fully visible and usable.
+8. Verify the public homepage actually receives the newly published localized CMS content.
+9. Check browser console and network responses during every action.
+
+If any audit item fails, repair it before continuing.
+
+PART 2 — CONSOLIDATE LANGUAGE MANAGEMENT
+
+The current “Dil Yönetimi” and “Çeviriler” areas are confusing and separated. Redesign them as one unified admin module.
+
+Use only one sidebar item:
+
+“Dil ve Çeviri Yönetimi”
+
+Preferred admin route:
+
+/admin/dil-ve-ceviri
+
+The unified module must contain these clearly separated tabs:
+
+1. Genel Bakış
+   - active languages
+   - default/source language
+   - translation coverage percentages
+   - missing, draft, review, approved and published counts
+
+2. Diller
+   - language name
+   - locale code
+   - native name
+   - direction: LTR/RTL
+   - active status
+   - display order
+   - source/default indicator
+   - public route status
+
+3. Çeviri İşleri
+   - queued/running/failed/completed jobs
+   - content type
+   - source content
+   - target language
+   - retry action
+   - error details
+
+4. İçerik Çevirileri
+   - homepage
+   - static pages
+   - services
+   - blog posts
+   - FAQs
+   - vehicles
+   - menus
+   - booking-form texts
+   - site settings and shared public components
+   - filter by language, content type and translation status
+   - edit, preview, approve, reject and publish actions
+
+5. Ayarlar
+   - Turkish as source language
+   - AI translation provider/model settings
+   - automatic translation on/off
+   - target-language selection
+   - approval required before publication
+   - fallback policy
+
+Remove the duplicate language/translation sidebar entries. Redirect old admin language routes to the new unified route so bookmarks do not break.
+
+PART 3 — EXACT ACTIVE LANGUAGE LIST
+
+The website must support exactly these nine active public languages, in this order:
+
+1. Türkçe — tr — Turkish — LTR — source/default language
+2. English — en — English — LTR
+3. Deutsch — de — German — LTR
+4. Русский — ru — Russian — LTR
+5. العربية — ar — Arabic — RTL
+6. Español — es — Spanish — LTR
+7. Français — fr — French — LTR
+8. Italiano — it — Italian — LTR
+9. Nederlands — nl — Dutch — LTR
+
+No other public languages may remain.
+
+Use a single source of truth for this list. Do not duplicate hard-coded locale arrays across components.
+
+Apply the same locale registry to:
+
+- middleware
+- locale validation
+- public language switcher
+- Header and mobile navigation
+- Footer
+- homepage
+- services
+- service detail pages
+- vehicles
+- blog and blog detail pages
+- about page
+- contact page
+- FAQs
+- booking form
+- WhatsApp message templates
+- CMS editors
+- translation queues
+- newsletter language filters
+- menus
+- metadata
+- sitemap
+- canonical URLs
+- hreflang tags
+- x-default
+- robots-related URL generation
+
+Remove every unsupported locale from:
+
+- public switchers
+- admin selectors
+- route generation
+- sitemap
+- hreflang
+- dictionaries
+- translation target lists
+- translation-job creation
+- CMS language tabs
+
+If database records exist for unsupported languages, archive/deactivate them safely rather than performing an irreversible destructive delete. They must not appear publicly or in normal admin language selectors.
+
+PART 4 — ADD THE FOUR NEW LANGUAGES
+
+Add complete support for:
+
+- Spanish: es
+- French: fr
+- Italian: it
+- Dutch: nl
+
+Create complete dictionaries and localized public routes. Do not translate only the header.
+
+Every visible public string must use the locale system, including:
+
+- navigation
+- homepage sections
+- buttons
+- service names and descriptions
+- trust cards
+- vehicle content
+- reviews headings
+- booking-form headings, service types, labels, placeholders, validation and WhatsApp output
+- footer
+- contact text
+- empty states
+- blog messages
+- cookie/privacy-related UI where present
+- accessibility labels
+- metadata
+
+Existing database content without translations must enter the translation workflow. Do not silently publish low-quality placeholder translations.
+
+PART 5 — TRANSLATION WORKFLOW
+
+Turkish remains the canonical source language.
+
+When Turkish homepage or other CMS content changes:
+
+1. Save the Turkish version.
+2. Detect exactly which translatable fields changed.
+3. Create translation jobs for the selected target languages.
+4. Preserve approved translations whose source fields did not change.
+5. Mark affected translations as needing review.
+6. Allow:
+   - translate all eight target languages,
+   - or manually select target languages.
+7. Require approval before public publication by default.
+8. Support bulk approval and bulk publication only for reviewed translations.
+9. Show clear progress and useful per-language errors.
+10. Never return an empty response body where the frontend expects JSON.
+
+Shared fields such as media path, visibility, ordering, IDs and layout options must be synchronized without translation.
+
+PART 6 — LOCALE NAVIGATION AND FALLBACK
+
+Language switching must:
+
+- preserve the equivalent current route,
+- persist across internal navigation,
+- work when switching back to Turkish,
+- never redirect to 0.0.0.0 or a fixed development host,
+- use relative URLs or the current request origin,
+- preserve query parameters and hash where appropriate.
+
+Fallback rules:
+
+- Never display a mixed-language public page.
+- If a localized page is unavailable, use a controlled Turkish fallback or redirect with correct locale behavior.
+- Admin must visibly identify missing translations.
+- Public UI must not display internal translation-status information.
+
+Arabic requirements:
+
+- full RTL layout,
+- navigation and grids mirrored correctly,
+- phone numbers, email addresses, IST, SAW, URLs, Mercedes Vito, Sprinter and other technical tokens remain LTR.
+
+PART 7 — SEO
+
+For every published locale:
+
+- localized title and meta description
+- self-referencing canonical
+- reciprocal hreflang links
+- x-default pointing to Turkish
+- Open Graph locale
+- correct html lang and dir
+- localized sitemap URLs
+
+Only published, indexable locale pages belong in the sitemap.
+
+Do not produce nine identical machine-translated pages with unchanged metadata.
+
+PART 8 — RESPONSIVE ADMIN AND PUBLIC QA
+
+Test these viewport widths:
+
+- 390px mobile
+- 430px mobile
+- 768px tablet
+- 1024px tablet/desktop
+- 1440px desktop
+
+The unified language module and homepage editor must:
+
+- have no document-level horizontal overflow,
+- use stacked forms on mobile,
+- use responsive tabs or a mobile selector,
+- keep all buttons and inputs within the viewport,
+- provide at least 44px touch targets,
+- work on iOS Safari and Android Chrome,
+- preserve Arabic RTL behavior.
+
+PART 9 — VERIFICATION
+
+Run:
+
+- TypeScript typecheck
+- ESLint
+- production build
+- database migration verification
+
+Functionally test all nine homepage routes:
+
+/
+/en
+/de
+/ru
+/ar
+/es
+/fr
+/it
+/nl
+
+Also test at least one interior page and the booking form in every locale.
+
+Verify:
+
+- language switching from every locale to Turkish,
+- switching between all other locales,
+- locale persistence across navigation,
+- localized booking-form output,
+- no mixed Turkish labels in non-Turkish forms,
+- no empty JSON-response errors,
+- no hydration warnings,
+- no runtime errors,
+- no horizontal overflow,
+- correct Arabic RTL,
+- successful Turkish CMS save → translate → review → approve → publish flow.
+
+At the end report:
+
+1. Audit findings from the previous implementation.
+2. Bugs found and fixed.
+3. Database migrations applied.
+4. Old admin routes redirected.
+5. Exact nine-language registry.
+6. Translation coverage for each language.
+7. Typecheck, lint and build results.
+8. Route-by-route functional test results.
+9. Desktop/tablet/mobile visual verification results.
+10. Any remaining untranslated content or blockers.
+
+Do not publish or connect the production domain.

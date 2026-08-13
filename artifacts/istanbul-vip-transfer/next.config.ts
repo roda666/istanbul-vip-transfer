@@ -56,6 +56,22 @@ const nextConfig: NextConfig = {
   // "**.replit.dev" covers all Replit preview subdomains (recursive wildcard).
   // "127.0.0.1" is needed because Next.js only auto-allows "localhost", not the IP.
   allowedDevOrigins: ['**.replit.dev', '127.0.0.1'],
+
+  // Permanent redirects: old admin routes → unified Dil ve Çeviri module
+  async redirects() {
+    return [
+      {
+        source: '/admin/diller',
+        destination: '/admin/dil-ve-ceviri?tab=diller',
+        permanent: true,
+      },
+      {
+        source: '/admin/ceviriler',
+        destination: '/admin/dil-ve-ceviri?tab=icerik-cevirileri',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

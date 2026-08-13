@@ -40,7 +40,7 @@ const FALLBACK_SERVICE_SLUGS: { slug: string; priority: number }[] = [
  *  5. DB-driven: published blog translations → locale blog index + article URLs
  *
  * Language source of truth: the `languages` table (is_enabled + isPublished flags).
- * Only the 5 publicly visible languages (tr, en, de, ru, ar) ever appear here;
+ * All publicly visible languages (tr, en, de, ru, ar, es, fr, it, nl) appear here;
  * passive catalog entries are filtered out automatically.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

@@ -43,12 +43,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       de: 'Istanbul VIP Transfer | Luxus Flughafen & Stadttransfers',
       ru: 'Стамбул VIP Трансфер | Трансфер из аэропорта и по городу',
       ar: 'إسطنبول VIP ترانسفير | نقل فاخر من المطار والمدينة',
+      es: 'Istanbul VIP Transfer | Traslados de lujo al aeropuerto y ciudad',
+      fr: 'Istanbul VIP Transfer | Transferts luxe aéroport et ville',
+      it: 'Istanbul VIP Transfer | Trasferimenti di lusso aeroporto e città',
+      nl: 'Istanbul VIP Transfer | Luxe luchthaven- en stadstransfers',
     };
     const descriptions: Record<string, string> = {
       en: 'Premium airport transfers, intercity transport and private tours in Istanbul with luxury Mercedes Vito & Sprinter. 24/7 service.',
       de: 'Premiumtransfers vom Flughafen, Stadtfahrten und Privattouren in Istanbul mit luxuriösen Mercedes Vito & Sprinter. 24/7 Service.',
       ru: 'Премиальные трансферы из аэропорта, городские перевозки и частные туры в Стамбуле на люксовых Mercedes Vito и Sprinter. Работаем 24/7.',
       ar: 'خدمة نقل فاخرة من المطار والمدينة وجولات خاصة في إسطنبول بسيارات مرسيدس فيتو وسبرينتر. خدمة 24/7.',
+      es: 'Traslados premium al aeropuerto, transporte interurbano y tours privados en Estambul con Mercedes Vito y Sprinter de lujo. Servicio 24/7.',
+      fr: "Transferts premium depuis l\u2019a\u00E9roport, transport interurbain et tours priv\u00E9s \u00E0 Istanbul avec des Mercedes Vito & Sprinter de luxe. Service 24/7.",
+      it: "Trasferimenti premium dall\u2019aeroporto, trasporto intercitt\u00E0 e tour privati a Istanbul con Mercedes Vito e Sprinter di lusso. Servizio 24/7.",
+      nl: 'Premium luchthaventransfers, intercity vervoer en privérondleidingen in Istanbul met luxe Mercedes Vito & Sprinter. 24/7 service.',
     };
     seoTitle       = titles[lang] ?? titles.en;
     seoDescription = descriptions[lang] ?? descriptions.en;

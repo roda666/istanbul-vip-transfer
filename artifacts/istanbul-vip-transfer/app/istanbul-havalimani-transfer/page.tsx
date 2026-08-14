@@ -1,11 +1,8 @@
 import type { Metadata } from 'next';
 import { buildAlternates } from '@/lib/i18n/seo';
 import { getPublishedServicePage, getPublishedServicePageLangs } from '@/lib/service-page-cms';
+import ServicePageRenderer from '@/components/ServicePageRenderer';
 import LocaleLink from '@/components/LocaleLink';
-import TrServicePageHero from '@/components/TrServicePageHero';
-import BookingForm from '@/components/BookingForm';
-import VehicleFleet from '@/components/VehicleFleet';
-import Contact from '@/components/Contact';
 import { SITE } from '@/lib/site-config';
 
 const BASE = SITE.siteUrl;
@@ -22,8 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
     alternates: { canonical: PAGE, languages: alts.languages },
     openGraph: {
       title: cmsPage?.title ?? 'İstanbul Havalimanı Transfer | VIP Vito',
-      description:
-        cmsPage?.excerpt ?? 'İstanbul Havalimanı transfer hizmetiyle Mercedes Vito ve Sprinter araçlarla otel, ev ve istediğiniz adrese özel ulaşım.',
+      description: cmsPage?.excerpt ?? 'İstanbul Havalimanı transfer hizmetiyle Mercedes Vito ve Sprinter araçlarla otel, ev ve istediğiniz adrese özel ulaşım.',
       url: PAGE,
       siteName: 'VIP Transfer Istanbul',
       locale: 'tr_TR',
@@ -34,38 +30,10 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-const breadcrumbSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'BreadcrumbList',
-  itemListElement: [
-    { '@type': 'ListItem', position: 1, name: 'Ana Sayfa', item: BASE },
-    { '@type': 'ListItem', position: 2, name: 'İstanbul Havalimanı Transfer', item: PAGE },
-  ],
-};
-
-const serviceSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'Service',
-  name: 'İstanbul Havalimanı (IST) VIP Transfer',
-  description:
-    'İstanbul Havalimanı\'ndan şehir merkezine ve tüm destinasyonlara Mercedes VIP araçlarla karşılama ve transfer hizmeti.',
-  provider: {
-    '@type': 'LocalBusiness',
-    name: 'VIP Transfer Istanbul',
-    telephone: SITE.phoneE164,
-    email: SITE.email,
-  },
-  areaServed: { '@type': 'City', name: 'İstanbul' },
-  serviceType: 'Airport Transfer',
-};
-
-export default function IstanbulHavalimaniPage() {
+export default async function IstanbulHavalimaniPage() {
   return (
     <>
-      <TrServicePageHero slug="istanbul-havalimani-transfer" pageKey="istHava" />
-      <BookingForm />
-      <VehicleFleet />
-      <Contact />
+      <ServicePageRenderer slug="istanbul-havalimani-transfer" lang="tr" canonicalPath="/istanbul-havalimani-transfer" />
 
       {/* İlgili Blog Yazıları */}
       <section className="py-16 bg-gray-50">
@@ -95,15 +63,6 @@ export default function IstanbulHavalimaniPage() {
           </div>
         </div>
       </section>
-
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceSchema) }}
-      />
     </>
   );
 }

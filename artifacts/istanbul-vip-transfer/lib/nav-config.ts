@@ -8,6 +8,8 @@ import { localePath } from '@/lib/locale-path';
 export interface NavItem {
   label: string;
   href: string;
+  /** DB slug of the service page — used to filter items where showInNav=false. */
+  slug?: string;
 }
 
 export interface NavGroup {
@@ -29,50 +31,64 @@ export interface NavEntry {
 /**
  * Returns the full navigation config for the given language.
  * All hrefs are locale-prefixed via localePath.
+ *
+ * @param hiddenNavSlugs — slugs whose showInNav flag is false in the CMS.
+ *   Pass the result of getServiceVisibilityMap() filtered by !flags.showInNav.
+ *   When absent, all items are shown (safe fallback for static callers).
  */
-export function getNav(lang: string, dict: Dictionary): NavEntry[] {
+export function getNav(lang: string, dict: Dictionary, hiddenNavSlugs?: Set<string>): NavEntry[] {
   const p = (path: string) => localePath(path, lang);
+  const show = (slug: string) => !hiddenNavSlugs?.has(slug);
+
+  const filterItems = (items: NavItem[]) =>
+    items.filter(item => !item.slug || show(item.slug));
+
+  const filterGroups = (groups: NavGroup[]) =>
+    groups
+      .map(g => ({ ...g, items: filterItems(g.items) }))
+      .filter(g => g.items.length > 0);
+
   return [
     { label: dict.nav.home, href: p('/') },
     {
       label: dict.nav.services,
       href: p('/hizmetler'),
-      groups: [
+      groups: filterGroups([
         {
           groupLabel: dict.nav.groupAirport,
           items: [
-            { label: dict.nav.istTransfer, href: p('/istanbul-havalimani-transfer') },
-            { label: dict.nav.sawTransfer, href: p('/sabiha-gokcen-havalimani-transfer') },
+            { slug: 'istanbul-havalimani-transfer',    label: dict.nav.istTransfer, href: p('/istanbul-havalimani-transfer') },
+            { slug: 'sabiha-gokcen-havalimani-transfer', label: dict.nav.sawTransfer, href: p('/sabiha-gokcen-havalimani-transfer') },
           ],
         },
         {
           groupLabel: dict.nav.groupSpecial,
           items: [
-            { label: dict.nav.vipTransfer,       href: p('/vip-transfer') },
-            { label: dict.nav.intercityTransfer, href: p('/sehirler-arasi-transfer') },
-            { label: dict.nav.chauffeur,         href: p('/soforlu-arac-kiralama') },
-            { label: dict.nav.hotelTransfer,     href: p('/otel-transfer') },
-            { label: dict.nav.healthTransfer,    href: p('/saglik-turizmi-transfer') },
-            { label: dict.nav.corporateTransfer, href: p('/kurumsal-vip-transfer') },
+            { slug: 'vip-transfer',           label: dict.nav.vipTransfer,       href: p('/vip-transfer') },
+            { slug: 'sehirler-arasi-transfer', label: dict.nav.intercityTransfer, href: p('/sehirler-arasi-transfer') },
+            { slug: 'soforlu-arac-kiralama',  label: dict.nav.chauffeur,         href: p('/soforlu-arac-kiralama') },
+            { slug: 'otel-transfer',          label: dict.nav.hotelTransfer,     href: p('/otel-transfer') },
+            { slug: 'saglik-turizmi-transfer', label: dict.nav.healthTransfer,   href: p('/saglik-turizmi-transfer') },
+            { slug: 'kurumsal-vip-transfer',  label: dict.nav.corporateTransfer, href: p('/kurumsal-vip-transfer') },
           ],
         },
         {
           groupLabel: dict.nav.groupRoutes,
           items: [
-            { label: dict.nav.istBursaRoute,   href: p('/istanbul-bursa-transfer') },
-            { label: dict.nav.istSapancaRoute, href: p('/istanbul-sapanca-transfer') },
+            { slug: 'istanbul-bursa-transfer',   label: dict.nav.istBursaRoute,   href: p('/istanbul-bursa-transfer') },
+            { slug: 'istanbul-sapanca-transfer',  label: dict.nav.istSapancaRoute, href: p('/istanbul-sapanca-transfer') },
           ],
         },
         {
           groupLabel: dict.nav.groupTours,
           items: [
-            { label: dict.nav.istDayTours, href: p('/istanbul-gunubirlik-turlar') },
-            { label: dict.nav.sapancaTour, href: p('/sapanca-masukiye-turu') },
-            { label: dict.nav.bursaTour,   href: p('/bursa-gunubirlik-tur') },
-            { label: dict.nav.yalovaTour,  href: p('/yalova-gunubirlik-tur') },
+            { slug: 'istanbul-gunubirlik-turlar', label: dict.nav.istDayTours, href: p('/istanbul-gunubirlik-turlar') },
+            { slug: 'sapanca-masukiye-turu',      label: dict.nav.sapancaTour, href: p('/sapanca-masukiye-turu') },
+            { slug: 'bursa-gunubirlik-tur',       label: dict.nav.bursaTour,   href: p('/bursa-gunubirlik-tur') },
+            { slug: 'yalova-gunubirlik-tur',      label: dict.nav.yalovaTour,  href: p('/yalova-gunubirlik-tur') },
           ],
         },
-      ],
+      ]),
     },
     { label: dict.nav.vehicles, href: p('/araclar') },
     { label: dict.nav.blog,     href: p('/blog') },

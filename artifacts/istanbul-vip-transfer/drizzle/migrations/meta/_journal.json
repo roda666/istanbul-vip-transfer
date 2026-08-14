@@ -85,6 +85,13 @@
       "when": 1786800000000,
       "tag": "0011_nine_language_registry",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1786900000000,
+      "tag": "0012_service_page_cms_columns",
+      "breakpoints": true
     }
   ]
 }

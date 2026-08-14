@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import PublicLayoutWrapper from '@/components/PublicLayoutWrapper';
 import { SITE } from '@/lib/site-config';
+import { getServiceVisibilityMap } from '@/lib/service-page-cms';
 
 export const viewport: Viewport = {
   width:        'device-width',
@@ -21,9 +22,20 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+// Force-dynamic ensures the root layout re-runs on every request so that
+// showInNav visibility changes take effect in Header/Footer immediately.
+export const dynamic = 'force-dynamic';
+
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // Fetch nav visibility server-side so Header can filter showInNav=false items.
+  // Gracefully falls back to an empty array (all nav items shown) if DB is unavailable.
+  const visibilityMap = await getServiceVisibilityMap().catch(() => new Map<string, { showOnHomepage: boolean; showInNav: boolean }>());
+  const hiddenNavSlugs = [...visibilityMap.entries()]
+    .filter(([, flags]) => !flags.showInNav)
+    .map(([slug]) => slug);
+
   return (
     /*
      * suppressHydrationWarning is required because [lang]/layout.tsx
@@ -38,7 +50,7 @@ export default function RootLayout({
       >
         {/* PublicLayoutWrapper conditionally adds Header/Footer for public routes.
             Admin routes render their own layout without public chrome. */}
-        <PublicLayoutWrapper>{children}</PublicLayoutWrapper>
+        <PublicLayoutWrapper hiddenNavSlugs={hiddenNavSlugs}>{children}</PublicLayoutWrapper>
       </body>
     </html>
   );

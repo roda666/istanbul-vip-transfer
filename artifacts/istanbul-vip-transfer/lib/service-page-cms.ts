@@ -10,6 +10,33 @@ import { parseServicePageBody, type ServicePageBody, type ServicePageRecord, typ
 
 export const ENTITY_TYPE = 'service_page';
 
+// ── Visibility map (for public consumers) ────────────────────────────────────
+
+/**
+ * Returns a map of slug → { showOnHomepage, showInNav } for all active
+ * PUBLISHED service pages.  Public components (homepage service grid, nav)
+ * should call this to honour admin visibility toggles.
+ *
+ * Gracefully returns an empty map on DB error so public pages continue to
+ * render from their static fallback list.
+ */
+export async function getServiceVisibilityMap(): Promise<Map<string, { showOnHomepage: boolean; showInNav: boolean }>> {
+  try {
+    const { db }                  = await import('@/db');
+    const { content }             = await import('@/db/schema');
+    const { eq, and }             = await import('drizzle-orm');
+
+    const rows = await db
+      .select({ slug: content.slug, showOnHomepage: content.showOnHomepage, showInNav: content.showInNav })
+      .from(content)
+      .where(and(eq(content.contentType, 'SERVICE'), eq(content.status, 'PUBLISHED'), eq(content.isActive, true)));
+
+    return new Map(rows.map(r => [r.slug, { showOnHomepage: r.showOnHomepage, showInNav: r.showInNav }]));
+  } catch {
+    return new Map();
+  }
+}
+
 // ── Public read (published content) ──────────────────────────────────────────
 
 export interface PublishedServicePage {
@@ -24,6 +51,7 @@ export interface PublishedServicePage {
   seoDescription: string | null;
   indexable: boolean;
   isActive: boolean;
+  category: string | null;
   body: ServicePageBody | null;
 }
 
@@ -50,9 +78,7 @@ export async function getPublishedServicePage(
       .limit(1);
 
     if (!src) return null;
-    // Cast to access new columns (schema already updated)
-    const srcAny = src as typeof src & { isActive: boolean; displayOrder: number; ogImage: string | null };
-    if (!srcAny.isActive || src.status !== 'PUBLISHED') return null;
+    if (!src.isActive || src.status !== 'PUBLISHED') return null;
 
     if (locale === 'tr') {
       return {
@@ -62,11 +88,12 @@ export async function getPublishedServicePage(
         excerpt:        src.excerpt ?? null,
         heroImage:      src.heroImage ?? null,
         heroImageAlt:   src.heroImageAlt ?? null,
-        ogImage:        srcAny.ogImage,
+        ogImage:        src.ogImage ?? null,
         seoTitle:       src.seoTitle ?? null,
         seoDescription: src.seoDescription ?? null,
         indexable:      src.indexable,
-        isActive:       srcAny.isActive,
+        isActive:       src.isActive,
+        category:       src.category ?? null,
         body:           parseServicePageBody(src.body),
       };
     }
@@ -92,11 +119,12 @@ export async function getPublishedServicePage(
       excerpt:        tx.excerpt ?? src.excerpt ?? null,
       heroImage:      src.heroImage ?? null,
       heroImageAlt:   tx.imageAlt ?? src.heroImageAlt ?? null,
-      ogImage:        srcAny.ogImage,
+      ogImage:        src.ogImage ?? null,
       seoTitle:       tx.metaTitle ?? src.seoTitle ?? null,
       seoDescription: tx.metaDescription ?? src.seoDescription ?? null,
       indexable:      src.indexable,
-      isActive:       srcAny.isActive,
+      isActive:       src.isActive,
+      category:       src.category ?? null,
       body:           parseServicePageBody(tx.body) ?? parseServicePageBody(src.body),
     };
   } catch {
@@ -162,8 +190,6 @@ export async function getServicePageAdminRecord(id: string): Promise<ServicePage
 
   if (!row) throw new Error('Not found');
 
-  const rowAny = row as typeof row & { isActive: boolean; displayOrder: number; ogImage: string | null };
-
   // All active enabled non-TR languages
   const langs = await db
     .select({ code: languages.code })
@@ -211,17 +237,21 @@ export async function getServicePageAdminRecord(id: string): Promise<ServicePage
     excerpt:        row.excerpt ?? null,
     heroImage:      row.heroImage ?? null,
     heroImageAlt:   row.heroImageAlt ?? null,
-    ogImage:        rowAny.ogImage,
+    ogImage:        row.ogImage ?? null,
     seoTitle:       row.seoTitle ?? null,
     seoDescription: row.seoDescription ?? null,
     canonicalUrl:   row.canonicalUrl ?? null,
     indexable:      row.indexable,
-    isActive:       rowAny.isActive,
-    displayOrder:   rowAny.displayOrder,
+    isActive:       row.isActive,
+    displayOrder:   row.displayOrder,
+    category:       row.category ?? null,
+    showOnHomepage: row.showOnHomepage,
+    showInNav:      row.showInNav,
     status:         row.status,
     publishedAt:    row.publishedAt?.toISOString() ?? null,
     updatedAt:      row.updatedAt.toISOString(),
     body:           parseServicePageBody(row.body),
+    draftBody:      parseServicePageBody(row.draftBody ?? null),
     translations,
   };
 }

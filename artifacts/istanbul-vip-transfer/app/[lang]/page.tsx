@@ -19,6 +19,10 @@ import FAQ from '@/components/FAQ';
 import Contact from '@/components/Contact';
 import { HomepageCmsProvider } from '@/lib/homepage-cms-context';
 import { getPublishedHomepageData } from '@/lib/homepage-cms';
+import { getServiceVisibilityMap } from '@/lib/service-page-cms';
+
+// Force dynamic rendering so visibility toggle changes take effect immediately.
+export const dynamic = 'force-dynamic';
 
 interface Props {
   params: Promise<{ lang: string }>;
@@ -86,8 +90,17 @@ export default async function TranslatedHomePage({ params }: Props) {
   const { lang } = await params;
   if (!isValidLang(lang)) notFound();
 
-  // Read published CMS data server-side; falls back to static i18n if DB unavailable
-  const cmsData = await getPublishedHomepageData(lang);
+  // Read published CMS data and service visibility server-side
+  const [cmsData, visibilityMap] = await Promise.all([
+    getPublishedHomepageData(lang),
+    getServiceVisibilityMap(),
+  ]);
+
+  const hiddenServiceSlugs = new Set(
+    [...visibilityMap.entries()]
+      .filter(([, flags]) => !flags.showOnHomepage)
+      .map(([slug]) => slug)
+  );
 
   const pageUrl = `${SITE.siteUrl}/${lang}`;
   const inLanguage: Record<string, string> = {
@@ -117,7 +130,7 @@ export default async function TranslatedHomePage({ params }: Props) {
       <Hero />
       <BookingForm />
       <VehicleFleet />
-      <Services />
+      <Services hiddenSlugs={hiddenServiceSlugs} />
       <TrustSignals />
       <Reviews />
       <FAQ />

@@ -8,9 +8,15 @@ import { useLang } from '@/lib/i18n/context';
 import { localePath } from '@/lib/locale-path';
 import LanguageSelector from './LanguageSelector';
 
-export default function Footer() {
+interface FooterProps {
+  /** Slugs where admin set showInNav=false — passed from the root server layout. */
+  hiddenNavSlugs?: string[];
+}
+
+export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
   const { lang, dict } = useLang();
   const p = (path: string) => localePath(path, lang);
+  const hidden = new Set(hiddenNavSlugs ?? []);
 
   const quickLinks = [
     { label: dict.footer.homeLink,        href: p('/') },
@@ -23,14 +29,14 @@ export default function Footer() {
   ];
 
   const services = [
-    { label: dict.nav.istTransfer,       href: p('/istanbul-havalimani-transfer') },
-    { label: dict.nav.sawTransfer,       href: p('/sabiha-gokcen-havalimani-transfer') },
-    { label: dict.nav.vipTransfer,       href: p('/vip-transfer') },
-    { label: dict.nav.hotelTransfer,     href: p('/otel-transfer') },
-    { label: dict.nav.intercityTransfer, href: p('/sehirler-arasi-transfer') },
-    { label: dict.nav.chauffeur,         href: p('/soforlu-arac-kiralama') },
-    { label: dict.nav.corporateTransfer, href: p('/kurumsal-vip-transfer') },
-  ];
+    { slug: 'istanbul-havalimani-transfer',       label: dict.nav.istTransfer,       href: p('/istanbul-havalimani-transfer') },
+    { slug: 'sabiha-gokcen-havalimani-transfer',  label: dict.nav.sawTransfer,       href: p('/sabiha-gokcen-havalimani-transfer') },
+    { slug: 'vip-transfer',                       label: dict.nav.vipTransfer,       href: p('/vip-transfer') },
+    { slug: 'otel-transfer',                      label: dict.nav.hotelTransfer,     href: p('/otel-transfer') },
+    { slug: 'sehirler-arasi-transfer',            label: dict.nav.intercityTransfer, href: p('/sehirler-arasi-transfer') },
+    { slug: 'soforlu-arac-kiralama',              label: dict.nav.chauffeur,         href: p('/soforlu-arac-kiralama') },
+    { slug: 'kurumsal-vip-transfer',              label: dict.nav.corporateTransfer, href: p('/kurumsal-vip-transfer') },
+  ].filter(s => !hidden.has(s.slug));
 
   return (
     <footer

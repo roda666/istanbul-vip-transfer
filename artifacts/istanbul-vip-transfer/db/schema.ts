@@ -113,6 +113,19 @@ export const content = pgTable('content', {
   indexable: boolean('indexable').default(true).notNull(),
   isActive: boolean('is_active').default(true).notNull(),
   displayOrder: integer('display_order').default(0).notNull(),
+  /** Service category — e.g. 'airport', 'intercity', 'tour', 'corporate', 'health', 'vip', 'rental' */
+  category: text('category'),
+  /** Whether to show this service on the public homepage service cards grid. */
+  showOnHomepage: boolean('show_on_homepage').default(true).notNull(),
+  /** Whether to show this service in the site navigation (header/footer/mobile menu). */
+  showInNav: boolean('show_in_nav').default(true).notNull(),
+  /**
+   * Pending draft body for a PUBLISHED service page.
+   * When an admin saves changes without publishing, the live `body` is preserved
+   * and edits are stored here. On "Kaydet ve Yayımla", this is promoted to `body`
+   * and cleared. NULL when no unpublished changes are pending.
+   */
+  draftBody: text('draft_body'),
   approvedAt: timestamp('approved_at', { withTimezone: true }),
   approvedBy: uuid('approved_by').references(() => adminUsers.id),
   scheduledAt: timestamp('scheduled_at', { withTimezone: true }),

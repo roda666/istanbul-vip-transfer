@@ -13,6 +13,11 @@ import { faqs } from '@/lib/faq-data';
 import { SITE } from '@/lib/site-config';
 import { HomepageCmsProvider } from '@/lib/homepage-cms-context';
 import { getPublishedHomepageData } from '@/lib/homepage-cms';
+import { getServiceVisibilityMap } from '@/lib/service-page-cms';
+
+// Force dynamic rendering so visibility toggle changes take effect immediately
+// without requiring a redeploy.
+export const dynamic = 'force-dynamic';
 
 const BASE = SITE.siteUrl;
 
@@ -63,14 +68,24 @@ const faqSchema = {
 
 export default async function HomePage() {
   // Read published CMS data server-side; falls back to static i18n if DB unavailable
-  const cmsData = await getPublishedHomepageData('tr');
+  const [cmsData, visibilityMap] = await Promise.all([
+    getPublishedHomepageData('tr'),
+    getServiceVisibilityMap(),
+  ]);
+
+  // Build the set of service slugs the admin has hidden from the homepage
+  const hiddenServiceSlugs = new Set(
+    [...visibilityMap.entries()]
+      .filter(([, flags]) => !flags.showOnHomepage)
+      .map(([slug]) => slug)
+  );
 
   return (
     <HomepageCmsProvider data={cmsData}>
       <Hero />
       <BookingForm />
       <VehicleFleet />
-      <Services />
+      <Services hiddenSlugs={hiddenServiceSlugs} />
       <TrustSignals />
       <Reviews />
       <FAQ />

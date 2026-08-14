@@ -6,7 +6,16 @@ import { Plane, Hotel, Map, Briefcase, PartyPopper, Route, ArrowRight } from 'lu
 import { useLang } from '@/lib/i18n/context';
 import { localePath } from '@/lib/locale-path';
 
-export default function Services() {
+interface Props {
+  /**
+   * Slugs of service pages that the admin has set showOnHomepage=false.
+   * Cards whose slug appears here are hidden from the grid.
+   * Passed from the parent server component after a DB visibility fetch.
+   */
+  hiddenSlugs?: Set<string>;
+}
+
+export default function Services({ hiddenSlugs }: Props = {}) {
   const { lang, dict } = useLang();
   const s = dict.services;
   const p = (path: string) => localePath(path, lang);
@@ -20,6 +29,7 @@ export default function Services() {
 
   const services = [
     {
+      slug: 'istanbul-havalimani-transfer',
       icon: Plane,
       title: dict.nav.istTransfer,
       description: t({
@@ -49,9 +59,11 @@ export default function Services() {
         it: "Transfer VIP dall'aeroporto Sabiha Gökçen verso ogni punto di Istanbul con Mercedes Vito e Sprinter.",
         nl: 'VIP-transfer van de luchthaven Sabiha Gökçen naar elk punt in Istanbul met Mercedes Vito en Sprinter.',
       }),
+      slug: 'sabiha-gokcen-havalimani-transfer',
       href: p('/sabiha-gokcen-havalimani-transfer'),
     },
     {
+      slug: 'otel-transfer',
       icon: Hotel,
       title: dict.nav.hotelTransfer,
       description: t({
@@ -67,6 +79,7 @@ export default function Services() {
       }),
     },
     {
+      slug: 'istanbul-gunubirlik-turlar',
       icon: Map,
       title: t({
         tr: 'Şehir Turu',
@@ -92,6 +105,7 @@ export default function Services() {
       }),
     },
     {
+      slug: 'kurumsal-vip-transfer',
       icon: Briefcase,
       title: dict.nav.corporateTransfer,
       description: t({
@@ -107,6 +121,7 @@ export default function Services() {
       }),
     },
     {
+      slug: 'vip-transfer',
       icon: PartyPopper,
       title: t({
         tr: 'Özel Etkinlik Transferi',
@@ -132,6 +147,7 @@ export default function Services() {
       }),
     },
     {
+      slug: 'sehirler-arasi-transfer',
       icon: Route,
       title: dict.nav.intercityTransfer,
       description: t({
@@ -147,7 +163,8 @@ export default function Services() {
       }),
       href: p('/sehirler-arasi-transfer'),
     },
-  ];
+  // Filter out services hidden by admin (showOnHomepage=false in CMS)
+  ].filter(svc => !svc.slug || !hiddenSlugs?.has(svc.slug));
 
   return (
     <section

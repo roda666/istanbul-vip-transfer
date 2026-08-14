@@ -243,10 +243,20 @@ export default async function LocalizedPassthrough({ params }: Props) {
     ],
   };
 
+  // safeJsonLd: escapes </script> and Unicode line/paragraph separators so
+  // admin-controlled title/description values cannot inject arbitrary markup.
+  const safeJsonLd = (obj: unknown) =>
+    JSON.stringify(obj)
+      .replace(/</g, '\\u003c')
+      .replace(/>/g, '\\u003e')
+      .replace(/&/g, '\\u0026')
+      .replace(/\u2028/g, '\\u2028')
+      .replace(/\u2029/g, '\\u2029');
+
   const scripts = (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbLd) }} />
     </>
   );
 

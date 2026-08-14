@@ -9,14 +9,18 @@
 import { usePathname } from 'next/navigation';
 import Header from './Header';
 import Footer from './Footer';
+
 import WhatsAppFloat from './WhatsAppFloat';
 import ChatWidget from './ChatWidget';
 import LangProvider from './LangProvider';
 
 export default function PublicLayoutWrapper({
   children,
+  hiddenNavSlugs,
 }: {
   children: React.ReactNode;
+  /** Slugs where admin set showInNav=false — fetched by root server layout. */
+  hiddenNavSlugs?: string[];
 }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith('/admin');
@@ -28,9 +32,9 @@ export default function PublicLayoutWrapper({
 
   return (
     <LangProvider>
-      <Header />
+      <Header hiddenNavSlugs={hiddenNavSlugs} />
       <main>{children}</main>
-      <Footer />
+      <Footer hiddenNavSlugs={hiddenNavSlugs} />
       <WhatsAppFloat />
       <ChatWidget />
     </LangProvider>

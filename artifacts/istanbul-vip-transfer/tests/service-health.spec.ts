@@ -126,8 +126,28 @@ test.describe('computeServiceHealthIssues — fixture-based unit tests', () => {
     expect(result[0].hasValidBody).toBe(false);
   });
 
-  test('flags body_invalid_schema when body has wrong version number', () => {
-    const badBody = JSON.stringify({ version: 2, hero: {}, features: [], seo: {} });
+  test('accepts version:2 body as valid (v2 is a backward-compat superset of v1)', () => {
+    // isServicePageBody now accepts both v1 and v2 — a fully-formed v2 body
+    // with all required fields must be treated as healthy.
+    const v2Body = JSON.stringify({
+      version: 2,
+      hero: {
+        badge: 'VIP', title: 'Test', subtitle: 'Sub',
+        crumb: 'Crumb', ctaPrimary: 'Book', ctaSecondary: 'Call',
+      },
+      features: ['Feature A'],
+      seo: { ogTitle: 'OG', ogDescription: 'Desc' },
+    });
+    const result = computeServiceHealthIssues(
+      ['slug-a'],
+      [healthyRow('slug-a', { body: v2Body })],
+    );
+    expect(result).toHaveLength(0);
+  });
+
+  test('flags body_invalid_schema when body has an unknown version number', () => {
+    // Version 3 is not a valid schema version — guard must reject it.
+    const badBody = JSON.stringify({ version: 3, hero: {}, features: [], seo: {} });
     const result  = computeServiceHealthIssues(
       ['slug-a'],
       [healthyRow('slug-a', { body: badBody })],

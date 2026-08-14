@@ -11,9 +11,15 @@ import { useLang } from '@/lib/i18n/context';
 import { localePath } from '@/lib/locale-path';
 import LanguageSelector from './LanguageSelector';
 
-export default function Header() {
+interface HeaderProps {
+  /** Slugs where admin set showInNav=false — passed from the root server layout. */
+  hiddenNavSlugs?: string[];
+}
+
+export default function Header({ hiddenNavSlugs }: HeaderProps = {}) {
   const { lang, dict } = useLang();
-  const nav = getNav(lang, dict);
+  const hiddenSet = hiddenNavSlugs && hiddenNavSlugs.length > 0 ? new Set(hiddenNavSlugs) : undefined;
+  const nav = getNav(lang, dict, hiddenSet);
 
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);

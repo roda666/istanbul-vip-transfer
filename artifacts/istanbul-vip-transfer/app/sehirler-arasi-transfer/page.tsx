@@ -1,10 +1,7 @@
 import type { Metadata } from 'next';
 import { buildAlternates } from '@/lib/i18n/seo';
 import { getPublishedServicePage, getPublishedServicePageLangs } from '@/lib/service-page-cms';
-import TrServicePageHero from '@/components/TrServicePageHero';
-import BookingForm from '@/components/BookingForm';
-import VehicleFleet from '@/components/VehicleFleet';
-import Contact from '@/components/Contact';
+import ServicePageRenderer from '@/components/ServicePageRenderer';
 import { SITE } from '@/lib/site-config';
 
 const BASE = SITE.siteUrl;
@@ -21,8 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
     alternates: { canonical: PAGE, languages: alts.languages },
     openGraph: {
       title: cmsPage?.title ?? 'Şehirler Arası VIP Transfer | İstanbul',
-      description:
-        cmsPage?.excerpt ?? 'İstanbul çıkışlı şehirler arası VIP transfer hizmeti. Mercedes Vito ve Sprinter araçlarla konforlu ve kapıdan kapıya özel ulaşım.',
+      description: cmsPage?.excerpt ?? 'İstanbul çıkışlı şehirler arası VIP transfer hizmeti. Mercedes Vito ve Sprinter araçlarla konforlu ve kapıdan kapıya özel ulaşım.',
       url: PAGE,
       siteName: 'VIP Transfer Istanbul',
       locale: 'tr_TR',
@@ -33,46 +29,6 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-const breadcrumbSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'BreadcrumbList',
-  itemListElement: [
-    { '@type': 'ListItem', position: 1, name: 'Ana Sayfa', item: BASE },
-    { '@type': 'ListItem', position: 2, name: 'Şehirler Arası Transfer', item: PAGE },
-  ],
-};
-
-const serviceSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'Service',
-  name: 'Şehirler Arası VIP Transfer',
-  description:
-    'İstanbul\'dan Türkiye\'nin farklı şehirlerine Mercedes Vito ve Sprinter araçlarla konforlu, kapıdan kapıya özel transfer.',
-  provider: {
-    '@type': 'LocalBusiness',
-    name: 'VIP Transfer Istanbul',
-    telephone: SITE.phoneE164,
-    email: SITE.email,
-  },
-  areaServed: { '@type': 'Country', name: 'Türkiye' },
-  serviceType: 'Intercity Transfer',
-};
-
-export default function SehirlerArasiTransferPage() {
-  return (
-    <>
-      <TrServicePageHero slug="sehirler-arasi-transfer" pageKey="sehirlerArasi" />
-      <BookingForm />
-      <VehicleFleet />
-      <Contact />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceSchema) }}
-      />
-    </>
-  );
+export default async function SehirlerArasiTransferPage() {
+  return <ServicePageRenderer slug="sehirler-arasi-transfer" lang="tr" canonicalPath="/sehirler-arasi-transfer" />;
 }

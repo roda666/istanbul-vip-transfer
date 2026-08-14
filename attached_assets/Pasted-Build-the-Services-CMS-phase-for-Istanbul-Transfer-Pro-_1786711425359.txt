@@ -1,0 +1,141 @@
+Build the Services CMS phase for Istanbul Transfer Pro.
+
+Goal:
+Make all service cards and service-detail pages manageable from the admin panel, using the same Turkish-source → AI translation → review → publish workflow already implemented in “Ana Sayfa Düzenleyici”.
+
+Requirements:
+
+1. Preserve existing content and URLs
+- Do not delete or overwrite existing public service content.
+- Import existing service pages into the database safely.
+- Preserve all current routes, internal links, canonicals, hreflang tags, metadata and sitemap entries.
+- Do not publish or connect the production domain.
+
+Include at least these existing services:
+- /istanbul-havalimani-transfer
+- /sabiha-gokcen-havalimani-transfer
+- /sehirler-arasi-transfer
+- /vip-transfer
+- /soforlu-arac-kiralama
+- /otel-transfer
+- /saglik-turizmi-transfer
+- /kurumsal-vip-transfer
+
+Also detect any other existing service or tour pages and include them without creating duplicates.
+
+2. Admin Services list
+Upgrade /admin/hizmetler with:
+- Search
+- Category filter
+- Language filter
+- Publication-status filter
+- Sort order
+- Homepage visibility
+- Navigation visibility
+- Edit
+- Preview
+- Archive
+- Duplicate as draft
+- Create new service
+
+Display translation and publication status for:
+- Turkish
+- English
+- German
+- Russian
+- Arabic
+
+3. Service editor fields
+Each service must support:
+- Service name
+- Slug
+- Category
+- Short card description
+- Full page title/H1
+- Hero subtitle
+- Hero image
+- Image ALT text
+- Introductory content
+- Structured content sections with H2/H3 headings
+- Benefits/features
+- Service area information
+- CTA text
+- FAQ questions and answers
+- Homepage card visibility and order
+- Header/footer/menu visibility
+- SEO meta title
+- SEO meta description
+- OG title
+- OG description
+- OG image
+- Structured-data fields
+
+Canonical URLs and hreflang URLs must be generated automatically and must not be manually editable.
+
+4. Multilingual workflow
+- Turkish is always the source language.
+- Add a “Taslak Kaydet ve Çevir” action.
+- Translate Turkish content automatically into EN, DE, RU and AR.
+- Each translation must be independently editable, reviewable, approvable and publishable.
+- Shared assets such as image paths may stay synchronized across languages.
+- Arabic pages must use correct RTL layout.
+- Phone numbers, email addresses, IST, SAW, Mercedes Vito, Sprinter and URLs must remain LTR where required.
+- Never silently overwrite an approved translation after Turkish content changes. Mark it as “Çeviri Güncellemesi Gerekli”.
+
+5. Workflow
+Use the existing workflow:
+DRAFT → RESEARCH → REVIEW → APPROVED → PUBLISHED
+
+Also support:
+- ARCHIVED
+- Scheduled publishing if the existing workflow already supports it
+- Audit log for create, edit, translate, approve, publish, unpublish and archive operations
+- No automatic public publishing without admin approval
+
+6. Public website integration
+- Public service cards and service-detail pages must read PUBLISHED database content.
+- During migration, use the current static content as a safe fallback if no published database record exists.
+- Never display drafts, incomplete translations or empty pages publicly.
+- Keep the current visual design and responsive layout.
+- Maintain internal links between relevant services.
+- Update sitemap only for published and indexable pages.
+- Generate correct localized routes for TR, EN, DE, RU and AR.
+
+7. SEO and content safety
+- Do not invent prices, distances, travel times, guarantees, fleet quantities or customer claims.
+- Preserve the existing Google review implementation.
+- Avoid duplicate titles, duplicate descriptions and thin pages.
+- Add Service, BreadcrumbList and FAQPage schema only where the page content supports them.
+- Keep existing URLs stable.
+
+8. Mobile admin usability
+Verify the service list and editor at:
+- 390px
+- 768px
+- 1440px
+
+On mobile:
+- No horizontal overflow
+- Editor navigation must stack cleanly
+- Form fields must remain usable
+- Action buttons must remain visible
+- Language tabs must wrap correctly
+
+9. Migration and verification
+- Make database migrations idempotent and safe.
+- Import existing services without duplicate rows.
+- Confirm every existing route still returns 200.
+- Test one complete Turkish → EN/DE/RU/AR translation workflow.
+- Test preview, approval, publish, unpublish and archive.
+- Run TypeScript, ESLint and production build.
+- Report:
+  - Files changed
+  - Database migrations
+  - Imported services
+  - Route-by-route results
+  - Language status
+  - Mobile test results
+  - TypeScript, lint and build results
+  - Any intentionally deferred work
+
+Do not start Blog CMS, social-media publishing, email campaign sending or production deployment in this task.

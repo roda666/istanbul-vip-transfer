@@ -58,7 +58,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/menu',        label: 'Menü Yönetimi',       icon: <MenuIcon size={18} /> },
   { href: '/admin/e-posta-ayarlari', label: 'E-posta Ayarları', icon: <MailOpen size={18} /> },
   { href: '/admin/ayarlar',     label: 'Site Ayarları',       icon: <Settings size={18} /> },
-  { href: '/admin/ai-oneriler', label: 'AI İçerik Önerileri', icon: <Sparkles size={18} /> },
+  { href: '/admin/ayarlar/icerik-entegrasyonlari', label: 'İçerik Entegrasyonları', icon: <Settings size={18} /> },
+  { href: '/admin/ai-oneriler', label: 'AI İçerik Merkezi',  icon: <Sparkles size={18} /> },
   { href: '/admin/gecmis',      label: 'İşlem Geçmişi',       icon: <History size={18} /> },
   { href: '/admin/hesabim',     label: 'Hesabım',             icon: <UserCircle size={18} /> },
 ];

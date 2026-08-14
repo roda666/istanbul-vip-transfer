@@ -193,17 +193,81 @@ export const navigationItems = pgTable('navigation_items', {
   active: boolean('active').default(true).notNull(),
 });
 
+export const topicClusters = pgTable('topic_clusters', {
+  id:               uuid('id').primaryKey().defaultRandom(),
+  pillarSlug:       text('pillar_slug').notNull(),
+  pillarTitle:      text('pillar_title').notNull(),
+  /** Array of {id, slug, title, publishedAt?, suggestionId?} */
+  clusterArticles:  jsonb('cluster_articles').$type<Array<{
+    id: string; slug: string; title: string;
+    publishedAt?: string | null; suggestionId?: string | null;
+  }>>().default([]).notNull(),
+  /** Suggested internal link anchors for cluster articles */
+  suggestedLinks:   jsonb('suggested_links').$type<Array<{ from: string; to: string; anchor: string }>>().default([]).notNull(),
+  createdBy:        uuid('created_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+  createdAt:        timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:        timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const aiContentSuggestions = pgTable('ai_content_suggestions', {
   id: uuid('id').primaryKey().defaultRandom(),
-  suggestedTitle: text('suggested_title'),
-  suggestedSlug: text('suggested_slug'),
-  primaryKeyword: text('primary_keyword'),
-  secondaryKeywords: text('secondary_keywords'),
-  searchIntent: text('search_intent'),
-  suggestedOutline: text('suggested_outline'),
-  targetService: text('target_service'),
-  targetLocation: text('target_location'),
-  articleType: text('article_type'),
+  suggestedTitle:       text('suggested_title'),
+  suggestedSlug:        text('suggested_slug'),
+  primaryKeyword:       text('primary_keyword'),
+  secondaryKeywords:    text('secondary_keywords'),
+  /** Structured keyword data from AI: { keywords: [{term, intent}] } */
+  suggestedKeywordsJson: jsonb('suggested_keywords_json').$type<{
+    keywords: Array<{ term: string; intent: string; isPrimary: boolean }>;
+    dataSourceNote: string;
+  }>(),
+  searchIntent:         text('search_intent'),
+  suggestedOutline:     text('suggested_outline'),
+  /** AI-generated article summary (before full draft) */
+  aiSummary:            text('ai_summary'),
+  /** Full generated article draft (Markdown/HTML) */
+  contentDraft:         text('content_draft'),
+  /** Error details if generation failed */
+  draftError:           text('draft_error'),
+  targetService:        text('target_service'),
+  targetLocation:       text('target_location'),
+  articleType:          text('article_type'),
+  /** Customer profile, e.g. "business travelers, families with children" */
+  customerProfile:      text('customer_profile'),
+  /** Target country for geo-tailored SEO */
+  targetCountry:        text('target_country'),
+  /** Language for the content (defaults to tr) */
+  targetLanguage:       text('target_language').default('tr').notNull(),
+  /** Content brief: { tone, wordCountTarget, competitorContext } */
+  contentBrief:         jsonb('content_brief').$type<{
+    tone: string;
+    wordCountTarget: number;
+    competitorContext?: string;
+  }>(),
+  /** Quality score results from the quality analysis pass */
+  qualityScore:         jsonb('quality_score').$type<{
+    intentAlignment: number;
+    uniqueness: number;
+    titleHierarchy: number;
+    readability: number;
+    metaLengths: number;
+    altTextPresent: boolean;
+    internalLinkCount: number;
+    sourcesCoverage: number;
+    forbiddenClaims: { found: boolean; examples: string[] };
+    overallScore: number;
+  }>(),
+  /** Cannibalization check result */
+  cannibalWarning:      jsonb('cannibalization_warning').$type<{
+    hasConflict: boolean;
+    conflictingPages: Array<{ slug: string; title: string; url: string; updatedAt?: string }>;
+  }>(),
+  /** Topic cluster this article belongs to */
+  topicClusterId:       uuid('topic_cluster_id').references(() => topicClusters.id, { onDelete: 'set null' }),
+  /** Blog post created from this suggestion */
+  draftBlogPostId:      uuid('draft_blog_post_id').references(() => content.id, { onDelete: 'set null' }),
+  /** Whether content contains time-sensitive claims (needs periodic review) */
+  timeSensitive:        boolean('time_sensitive').default(false).notNull(),
+  lastReviewedAt:       timestamp('last_reviewed_at', { withTimezone: true }),
   suggestedPublishDate: timestamp('suggested_publish_date', { withTimezone: true }),
   status: aiSuggestionStatusEnum('status').default('PENDING').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -213,13 +277,18 @@ export const aiContentSuggestions = pgTable('ai_content_suggestions', {
 export const researchSources = pgTable('research_sources', {
   id: uuid('id').primaryKey().defaultRandom(),
   suggestionId: uuid('suggestion_id')
-    .notNull()
     .references(() => aiContentSuggestions.id, { onDelete: 'cascade' }),
-  title: text('title'),
-  url: text('url'),
-  sourceName: text('source_name'),
-  accessedAt: timestamp('accessed_at', { withTimezone: true }),
-  notes: text('notes'),
+  /** Optional link to a blog post if this source was used during article generation */
+  contentId:    uuid('content_id').references(() => content.id, { onDelete: 'cascade' }),
+  title:        text('title'),
+  url:          text('url'),
+  sourceName:   text('source_name'),
+  accessedAt:   timestamp('accessed_at', { withTimezone: true }),
+  /** The specific claim or section this source supports */
+  claimSupported: text('claim_supported'),
+  /** 'web' | 'manual' | 'ai_context' */
+  sourceType:   text('source_type').default('manual').notNull(),
+  notes:        text('notes'),
 });
 
 export const auditLogs = pgTable('audit_logs', {
@@ -670,3 +739,6 @@ export type TranslationJob    = typeof translationJobs.$inferSelect;
 export type NewTranslationJob = typeof translationJobs.$inferInsert;
 export type TranslationJobTask    = typeof translationJobTasks.$inferSelect;
 export type NewTranslationJobTask = typeof translationJobTasks.$inferInsert;
+
+export type TopicCluster    = typeof topicClusters.$inferSelect;
+export type NewTopicCluster = typeof topicClusters.$inferInsert;

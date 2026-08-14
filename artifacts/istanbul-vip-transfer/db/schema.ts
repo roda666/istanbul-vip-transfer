@@ -598,3 +598,54 @@ export const emailSettings = pgTable('email_settings', {
 
 export type EmailSettings    = typeof emailSettings.$inferSelect;
 export type NewEmailSettings = typeof emailSettings.$inferInsert;
+
+// ── Translation Jobs ──────────────────────────────────────────────────────────
+
+/**
+ * Parent job for a bulk AI translation request.
+ * One job = one entity translated into N languages.
+ * Status: QUEUED → RUNNING → COMPLETED | PARTIAL | FAILED | CANCELLED
+ */
+export const translationJobs = pgTable('translation_jobs', {
+  id:             uuid('id').primaryKey().defaultRandom(),
+  entityType:     text('entity_type').notNull(),
+  entityId:       uuid('entity_id').notNull(),
+  /** QUEUED | RUNNING | COMPLETED | PARTIAL | FAILED | CANCELLED */
+  status:         text('status').notNull().default('QUEUED'),
+  /** When true, manually-locked translations may be overwritten. */
+  force:          boolean('force').notNull().default(false),
+  totalTasks:     integer('total_tasks').notNull().default(0),
+  completedTasks: integer('completed_tasks').notNull().default(0),
+  failedTasks:    integer('failed_tasks').notNull().default(0),
+  createdBy:      uuid('created_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+  createdAt:      timestamp('created_at',   { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:      timestamp('updated_at',   { withTimezone: true }).defaultNow().notNull(),
+  completedAt:    timestamp('completed_at', { withTimezone: true }),
+});
+
+/**
+ * One task per target language within a translation job.
+ * Status lifecycle: QUEUED → RUNNING → COMPLETED | FAILED | RETRYING | CANCELLED
+ */
+export const translationJobTasks = pgTable('translation_job_tasks', {
+  id:                 uuid('id').primaryKey().defaultRandom(),
+  jobId:              uuid('job_id').notNull().references(() => translationJobs.id, { onDelete: 'cascade' }),
+  targetLanguageCode: text('target_language_code').notNull(),
+  /** QUEUED | RUNNING | COMPLETED | FAILED | RETRYING | CANCELLED */
+  status:             text('status').notNull().default('QUEUED'),
+  /** Number of run attempts (includes retries). */
+  attempts:           integer('attempts').notNull().default(0),
+  /** Turkish-safe error message shown to the admin. */
+  errorMessage:       text('error_message'),
+  /** The contentTranslations row ID created/updated by this task. */
+  translationId:      uuid('translation_id'),
+  startedAt:          timestamp('started_at',   { withTimezone: true }),
+  completedAt:        timestamp('completed_at', { withTimezone: true }),
+  createdAt:          timestamp('created_at',   { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:          timestamp('updated_at',   { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type TranslationJob    = typeof translationJobs.$inferSelect;
+export type NewTranslationJob = typeof translationJobs.$inferInsert;
+export type TranslationJobTask    = typeof translationJobTasks.$inferSelect;
+export type NewTranslationJobTask = typeof translationJobTasks.$inferInsert;

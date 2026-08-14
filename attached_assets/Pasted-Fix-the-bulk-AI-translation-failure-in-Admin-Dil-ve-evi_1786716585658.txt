@@ -1,0 +1,124 @@
+Fix the bulk AI translation failure in Admin > Dil ve Çeviri > Çeviri İşleri.
+
+Observed production-preview error:
+SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+
+This occurred after translating one blog post into 8 target languages and waiting a long time.
+
+Root issue to investigate:
+The frontend calls response.json() unconditionally, but the translation endpoint sometimes returns an HTML error page, proxy timeout, 404, 500, 502, 503 or 504 response. Translating 8 languages in a single long-running request may exceed the Replit/Next.js request timeout.
+
+Requirements:
+
+1. Diagnose before changing
+- Identify the exact frontend request URL, HTTP method and API route used by “Yapay Zeka ile Çevir”.
+- Inspect server logs for the failed request.
+- Confirm the actual HTTP status and response Content-Type.
+- Verify that the route exists in the current Next.js App Router structure.
+- Check whether the request timed out, crashed, exceeded an AI-provider limit or returned an authentication/configuration error.
+- Do not claim the fix is complete without reproducing and testing it.
+
+2. Safe frontend response parsing
+Never call response.json() blindly.
+
+Implement a shared safe response parser:
+- Read response.headers.get("content-type").
+- If JSON, parse JSON safely.
+- If HTML or plain text, read response.text().
+- Handle empty responses.
+- Display a Turkish user-friendly message such as:
+  “Çeviri sunucusu geçerli bir yanıt vermedi. İşlem zaman aşımına uğramış olabilir.”
+- Log the HTTP status and a short sanitized response excerpt for debugging.
+- Never display a raw HTML document, API key, secret or stack trace to the admin.
+- Handle network errors, AbortError, 401, 403, 404, 408, 429, 500, 502, 503 and 504 separately.
+
+3. Replace the single long request with a persistent translation job
+Do not translate all selected languages inside one browser request.
+
+Create a database-backed translation job/queue:
+- One parent job for the selected content.
+- One child task for each target language.
+- Process target languages individually or with maximum concurrency 2.
+- Store these statuses:
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  RETRYING
+  CANCELLED
+- Store progress, attempts, safe error message, startedAt and completedAt.
+- Make jobs idempotent so clicking twice does not create duplicate translations.
+- Before creating a translation, check whether that language already has a completed/current translation.
+- Preserve any translation completed before another language fails.
+- Do not roll back successful languages because one language failed.
+
+4. Admin progress interface
+After clicking “Yapay Zeka ile Çevir”:
+- Return immediately after creating the job.
+- Show progress such as “3/8 dil tamamlandı”.
+- Show each language separately with its status.
+- Poll job status at a reasonable interval, or use the project’s existing job-update mechanism.
+- Allow retrying only failed languages.
+- Add “Başarısızları Yeniden Dene”.
+- Add a cancel action for queued tasks.
+- Disable the main button while an active job exists.
+- Refreshing or closing the browser must not lose job progress.
+- Never leave the interface indefinitely in a loading state.
+
+5. AI output validation
+For each language:
+- Require structured JSON matching a defined schema.
+- Validate all required translated fields before saving.
+- Strip accidental Markdown code fences before JSON parsing.
+- If AI returns truncated or invalid JSON, retry that language with a repair prompt, maximum 2 retries.
+- Preserve headings, paragraphs, links, lists and SEO fields.
+- Do not translate brand names, URLs, email addresses, phone numbers, IST, SAW, Mercedes Vito, Sprinter or schema identifiers incorrectly.
+- Arabic must remain RTL; technical strings and phone numbers must remain LTR where appropriate.
+- Save generated translations as DRAFT only. Do not automatically publish them.
+
+6. Timeouts and rate limits
+- Add an explicit per-language timeout with AbortController.
+- Use exponential backoff for 429, 502, 503 and 504 responses.
+- Respect Retry-After when provided.
+- Do not increase a single HTTP request timeout as the primary solution.
+- Limit concurrency to avoid AI-provider and Replit resource limits.
+- If the required AI API key/model configuration is missing or invalid, report the exact configuration name that is missing without exposing its value.
+
+7. Existing failed job
+- Check whether the failed attempt created any valid translations.
+- Keep valid completed translations.
+- Mark incomplete/invalid ones FAILED.
+- Prevent duplicate translation records.
+- Report which of EN, DE, RU, AR, NL, FR, IT and ES were actually saved.
+
+8. Verification
+Test with the blog post:
+“VIP Transfer ile Taksi Arasındaki Farklar”
+
+Run these tests:
+- One target language
+- Two target languages
+- All eight target languages
+- Simulated HTML 502/504 response
+- Empty response
+- Invalid JSON AI response
+- Rate-limit response
+- Browser refresh while job is running
+- Retry failed languages
+- Double-click/idempotency test
+
+Run:
+- TypeScript
+- ESLint
+- Production build
+
+Report:
+- Confirmed root cause
+- Failed request status and route
+- Files changed
+- Database migration details
+- Per-language test results
+- Whether any translations from the original failed attempt were recovered
+- TypeScript, lint and build results
+
+Do not publish translations, deploy the production site or connect/change the production domain.

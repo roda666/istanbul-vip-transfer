@@ -14,3 +14,4 @@
 - [Language catalog system](language-catalog-system.md) — DB-driven public locale set via getPublicLanguages(); static middleware; passive-locale redirect in [lang] layout; idempotent 67-lang seed.
 - [Homepage CMS auto-publish](homepage-cms-autopublish.md) — TR save → AI translate EN/DE/RU/AR → all directly PUBLISHED; no approval flow for homepage; /publish/route.ts state machine still used only for manual unpublish/edge-case publish; mobile CSS breakpoint at 900px with display:block.
 - [Email settings system](email-settings-system.md) — AES-256-GCM SMTP password storage; DB config priority over env vars; EMAIL_ENCRYPTION_KEY set as Replit Secret; password never returned to client.
+- [Translation job queue](translation-job-queue.md) — DB-backed per-language AI translation queue; 5 API routes; concurrency 2 frontend; 45s AbortController; safe-fetch-json utility; replaces old synchronous /admin/api/translations/ai.

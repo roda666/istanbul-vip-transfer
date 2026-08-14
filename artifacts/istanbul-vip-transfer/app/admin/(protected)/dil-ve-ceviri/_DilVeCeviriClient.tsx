@@ -14,13 +14,14 @@
  * from /admin/diller and /admin/ceviriler land on the correct tab.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Globe, ChevronDown, Search, CheckCircle2, XCircle, RefreshCw,
   Loader2, Archive, BarChart3, Settings, FileText,
-  AlertCircle, Sparkles, ArrowRight,
+  AlertCircle, Sparkles, ArrowRight, X as XIcon,
 } from 'lucide-react';
+import { safeFetch, safeJson } from '@/lib/safe-fetch-json';
 import { LOCALE_FLAG_EMOJIS } from '@/lib/i18n/locale-registry';
 import type {
   LangTranslationStats, CoverageStats, EntitySources, Job, DbLang,
@@ -448,13 +449,36 @@ function DillerTab({ langs, stats }: { langs: Lang[]; stats: LangTranslationStat
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Tab 3 — Çeviri İşleri (Bulk AI translate)
+   Tab 3 — Çeviri İşleri (Bulk AI translate — job queue system)
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Drizzle entity type values accepted by the AI endpoint */
 type AiEntityType = 'content' | 'service_page' | 'faq' | 'vehicle' | 'navigation';
 
-type AiResult = { lang: string; status: string; jobId?: string; error?: string };
+interface TjTask {
+  id:                 string;
+  targetLanguageCode: string;
+  status:             string;
+  errorMessage:       string | null;
+  attempts:           number;
+}
+
+interface TjJob {
+  id:             string;
+  status:         string;
+  totalTasks:     number;
+  completedTasks: number;
+  failedTasks:    number;
+}
+
+async function concurrentForEach<T>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<void>,
+): Promise<void> {
+  let idx = 0;
+  const worker = async () => { while (idx < items.length) { const it = items[idx++]; await fn(it); } };
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
+}
 
 function CevirilerIsleriTab({ langs, entitySources }: { langs: Lang[]; entitySources: EntitySources }) {
   const [entityType, setEntityType] = useState<AiEntityType>('content');
@@ -462,15 +486,14 @@ function CevirilerIsleriTab({ langs, entitySources }: { langs: Lang[]; entitySou
   const [selectedLangs, setSelectedLangs] = useState<string[]>(
     langs.filter((l) => l.code !== 'tr' && l.isEnabled).map((l) => l.code),
   );
-  const [loading, setLoading] = useState(false);
-  const [perLangResults, setPerLangResults] = useState<AiResult[]>([]);
-  /* langs that need force-confirm before overwriting manually edited translations */
-  const [confirmLangs, setConfirmLangs] = useState<string[]>([]);
-  const [forceLoading, setForceLoading] = useState(false);
+  const [running,  setRunning]  = useState(false);
+  const [job,      setJob]      = useState<TjJob | null>(null);
+  const [tasks,    setTasks]    = useState<TjTask[]>([]);
+  const [topError, setTopError] = useState<string | null>(null);
+  const jobIdRef = useRef<string | null>(null);
 
   const activeLangs = langs.filter((l) => l.code !== 'tr' && l.isEnabled);
 
-  /* The AI endpoint uses 'content' for both page and blog rows */
   const ENTITY_TYPES: Array<{ key: AiEntityType; sourceKey: keyof EntitySources; label: string }> = [
     { key: 'content',      sourceKey: 'content',      label: 'Sayfalar (İçerik)' },
     { key: 'service_page', sourceKey: 'service_page', label: 'Servis Sayfaları' },
@@ -483,72 +506,87 @@ function CevirilerIsleriTab({ langs, entitySources }: { langs: Lang[]; entitySou
   const [sourceKey, setSourceKey] = useState<keyof EntitySources>('content');
 
   function handleEntityTypeChange(et: AiEntityType, sk: keyof EntitySources) {
-    setEntityType(et);
-    setSourceKey(sk);
-    setSelectedEntityId('');
-    setPerLangResults([]);
-    setConfirmLangs([]);
+    setEntityType(et); setSourceKey(sk); setSelectedEntityId('');
+    setJob(null); setTasks([]); setTopError(null);
   }
 
   const currentSources = entitySources[sourceKey] ?? [];
+  const toggleLang = (code: string) =>
+    setSelectedLangs((prev) => prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]);
 
-  const toggleLang = (code: string) => {
-    setSelectedLangs((prev) =>
-      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code],
-    );
-  };
+  /* ── Refresh job from server ────────────────────────────────────────────── */
+  const refreshJob = useCallback(async (id: string) => {
+    const r = await safeFetch<{ job: TjJob; tasks: TjTask[] }>(`/admin/api/translations/jobs/${id}`, {}, 'CevirilerIsleri/refresh');
+    if (r.ok && r.data) { setJob(r.data.job); setTasks(r.data.tasks); }
+  }, []);
 
-  async function callAiEndpoint(codes: string[], force = false) {
-    const res = await fetch('/admin/api/translations/ai', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        entityType,
-        entityId: selectedEntityId,
-        targetLanguageCodes: codes,
-        force,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok && res.status !== 207) throw new Error(data.error ?? 'İstek başarısız');
-    return data as { results: AiResult[]; needsConfirmation: string[]; summary: string };
-  }
+  /* ── Run one task ───────────────────────────────────────────────────────── */
+  const runTask = useCallback(async (jid: string, tid: string) => {
+    setTasks(prev => prev.map(t => t.id === tid ? { ...t, status: 'RUNNING' } : t));
+    const res = await fetch(`/admin/api/translations/jobs/${jid}/tasks/${tid}/run`, { method: 'POST' });
+    await safeJson(res, 'CevirilerIsleri/runTask');
+    await refreshJob(jid);
+  }, [refreshJob]);
 
+  /* ── Create job + process queue ─────────────────────────────────────────── */
   async function runTranslate() {
     if (!selectedLangs.length || !selectedEntityId) return;
-    setLoading(true);
-    setPerLangResults([]);
-    setConfirmLangs([]);
-    try {
-      const data = await callAiEndpoint(selectedLangs, false);
-      setPerLangResults(data.results ?? []);
-      if (data.needsConfirmation?.length) {
-        setConfirmLangs(data.needsConfirmation);
-      }
-    } catch (e) {
-      setPerLangResults([{ lang: '—', status: 'error', error: String(e) }]);
-    } finally {
-      setLoading(false);
-    }
+    setRunning(true); setTopError(null); setJob(null); setTasks([]);
+
+    const r = await safeFetch<{ job: TjJob; tasks: TjTask[] }>(
+      '/admin/api/translations/jobs',
+      { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entityType, entityId: selectedEntityId, targetLanguageCodes: selectedLangs, force: false }) },
+      'CevirilerIsleri/createJob',
+    );
+
+    if (!r.ok || !r.data) { setTopError(r.error || 'İş oluşturulamadı.'); setRunning(false); return; }
+
+    const { job: newJob, tasks: newTasks } = r.data;
+    jobIdRef.current = newJob.id;
+    setJob(newJob); setTasks(newTasks);
+
+    await concurrentForEach(newTasks.filter(t => t.status === 'QUEUED'), 2, async (task) => {
+      await runTask(newJob.id, task.id);
+    });
+
+    await refreshJob(newJob.id);
+    setRunning(false);
   }
 
-  async function runForce() {
-    if (!confirmLangs.length || !selectedEntityId) return;
-    setForceLoading(true);
-    try {
-      const data = await callAiEndpoint(confirmLangs, true);
-      setPerLangResults((prev) => {
-        const map = new Map(prev.map((r) => [r.lang, r]));
-        for (const r of data.results ?? []) map.set(r.lang, r);
-        return Array.from(map.values());
-      });
-      setConfirmLangs([]);
-    } catch (e) {
-      alert('Zorla çeviri hatası: ' + String(e));
-    } finally {
-      setForceLoading(false);
-    }
+  /* ── Cancel queued tasks ────────────────────────────────────────────────── */
+  async function cancelJob() {
+    if (!jobIdRef.current) return;
+    await safeFetch(`/admin/api/translations/jobs/${jobIdRef.current}/cancel`, { method: 'POST' }, 'CevirilerIsleri/cancel');
+    await refreshJob(jobIdRef.current);
   }
+
+  /* ── Retry failed tasks ─────────────────────────────────────────────────── */
+  async function retryFailed(force = false) {
+    if (!jobIdRef.current) return;
+    setRunning(true); setTopError(null);
+    const r = await safeFetch<{ ok: boolean; tasks: TjTask[] }>(
+      `/admin/api/translations/jobs/${jobIdRef.current}/retry-failed`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ force }) },
+      'CevirilerIsleri/retry',
+    );
+    if (!r.ok || !r.data) { setTopError(r.error || 'Yeniden deneme başlatılamadı.'); setRunning(false); return; }
+    setTasks(r.data.tasks);
+    await concurrentForEach(r.data.tasks.filter(t => t.status === 'QUEUED'), 2, async (task) => {
+      await runTask(jobIdRef.current!, task.id);
+    });
+    await refreshJob(jobIdRef.current);
+    setRunning(false);
+  }
+
+  /* ── Derived state ──────────────────────────────────────────────────────── */
+  const completed  = tasks.filter(t => t.status === 'COMPLETED').length;
+  const failedCnt  = tasks.filter(t => t.status === 'FAILED').length;
+  const pendingCnt = tasks.filter(t => ['QUEUED', 'RUNNING', 'RETRYING'].includes(t.status)).length;
+  const isDone     = job && !running && pendingCnt === 0;
+  const hasNeedsConfirmation = failedCnt > 0 &&
+    tasks.some(t => t.status === 'FAILED' && (t.errorMessage?.includes('elle') || t.errorMessage?.includes('onay')));
+  const canStart = !running && !!selectedEntityId && selectedLangs.length > 0;
 
   return (
     <div>
@@ -557,31 +595,19 @@ function CevirilerIsleriTab({ langs, entitySources }: { langs: Lang[]; entitySou
           Toplu Yapay Zeka Çevirisi
         </h3>
         <p style={{ margin: '0 0 20px', fontSize: '13px', color: '#60748A', fontFamily: 'Inter, sans-serif' }}>
-          Seçili içerik türü ve diller için eksik çevirileri AI ile otomatik oluşturun.
+          Seçili içerik için tüm dillere AI ile çeviri oluşturun. Her dil ayrı istek olarak işlenir.
         </p>
 
-        {/* Entity type */}
+        {/* Entity type buttons */}
         <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: '12px', fontWeight: 600, color: '#4B6375', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            İçerik Türü
-          </label>
+          <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: '12px', fontWeight: 600, color: '#4B6375', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>İçerik Türü</label>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             {ENTITY_TYPES.map((et) => (
-              <button key={et.sourceKey}
-                onClick={() => handleEntityTypeChange(et.key, et.sourceKey)}
-                style={{
-                  padding: '7px 14px', borderRadius: '7px',
-                  border: `1px solid ${sourceKey === et.sourceKey ? '#3B82F6' : '#D0D9E0'}`,
-                  background: sourceKey === et.sourceKey ? '#EFF6FF' : '#fff',
-                  color: sourceKey === et.sourceKey ? '#1D4ED8' : '#4B6375',
-                  cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px',
-                  fontWeight: sourceKey === et.sourceKey ? 600 : 400,
-                }}
+              <button key={et.sourceKey} onClick={() => handleEntityTypeChange(et.key, et.sourceKey)}
+                style={{ padding: '7px 14px', borderRadius: '7px', border: `1px solid ${sourceKey === et.sourceKey ? '#3B82F6' : '#D0D9E0'}`, background: sourceKey === et.sourceKey ? '#EFF6FF' : '#fff', color: sourceKey === et.sourceKey ? '#1D4ED8' : '#4B6375', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: sourceKey === et.sourceKey ? 600 : 400 }}
               >
                 {et.label}
-                <span style={{ marginLeft: '6px', fontSize: '11px', color: '#8AA0B0' }}>
-                  ({entitySources[et.sourceKey].length})
-                </span>
+                <span style={{ marginLeft: '6px', fontSize: '11px', color: '#8AA0B0' }}>({entitySources[et.sourceKey].length})</span>
               </button>
             ))}
           </div>
@@ -589,29 +615,16 @@ function CevirilerIsleriTab({ langs, entitySources }: { langs: Lang[]; entitySou
 
         {/* Entity selector */}
         <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: '12px', fontWeight: 600, color: '#4B6375', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            İçerik Seç
-          </label>
+          <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: '12px', fontWeight: 600, color: '#4B6375', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>İçerik Seç</label>
           {currentSources.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '13px', color: '#8AA0B0', fontFamily: 'Inter, sans-serif' }}>
-              Bu türde içerik bulunamadı.
-            </p>
+            <p style={{ margin: 0, fontSize: '13px', color: '#8AA0B0', fontFamily: 'Inter, sans-serif' }}>Bu türde içerik bulunamadı.</p>
           ) : (
             <div style={{ position: 'relative' }}>
-              <select
-                value={selectedEntityId}
-                onChange={(e) => setSelectedEntityId(e.target.value)}
-                style={{
-                  width: '100%', padding: '9px 36px 9px 12px', borderRadius: '8px',
-                  border: `1px solid ${selectedEntityId ? '#3B82F6' : '#D0D9E0'}`,
-                  fontFamily: 'Inter, sans-serif', fontSize: '13px', color: '#1A2B3C',
-                  background: '#fff', cursor: 'pointer', appearance: 'none',
-                }}
+              <select value={selectedEntityId} onChange={(e) => { setSelectedEntityId(e.target.value); setJob(null); setTasks([]); setTopError(null); }}
+                style={{ width: '100%', padding: '9px 36px 9px 12px', borderRadius: '8px', border: `1px solid ${selectedEntityId ? '#3B82F6' : '#D0D9E0'}`, fontFamily: 'Inter, sans-serif', fontSize: '13px', color: '#1A2B3C', background: '#fff', cursor: 'pointer', appearance: 'none' }}
               >
                 <option value="">— İçerik seçin —</option>
-                {currentSources.map((src) => (
-                  <option key={src.id} value={src.id}>{src.title || src.slug || src.id}</option>
-                ))}
+                {currentSources.map((src) => (<option key={src.id} value={src.id}>{src.title || src.slug || src.id}</option>))}
               </select>
               <ChevronDown size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#8AA0B0', pointerEvents: 'none' }} />
             </div>
@@ -620,21 +633,11 @@ function CevirilerIsleriTab({ langs, entitySources }: { langs: Lang[]; entitySou
 
         {/* Language selection */}
         <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: '12px', fontWeight: 600, color: '#4B6375', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Hedef Diller
-          </label>
+          <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: '12px', fontWeight: 600, color: '#4B6375', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Hedef Diller</label>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             {activeLangs.map((lang) => (
-              <button key={lang.code}
-                onClick={() => toggleLang(lang.code)}
-                style={{
-                  padding: '6px 12px', borderRadius: '7px',
-                  border: `1px solid ${selectedLangs.includes(lang.code) ? '#16A34A' : '#D0D9E0'}`,
-                  background: selectedLangs.includes(lang.code) ? '#ECFDF5' : '#fff',
-                  color: selectedLangs.includes(lang.code) ? '#065F46' : '#60748A',
-                  cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px',
-                  display: 'flex', alignItems: 'center', gap: '6px',
-                }}
+              <button key={lang.code} onClick={() => { if (!running) toggleLang(lang.code); }}
+                style={{ padding: '6px 12px', borderRadius: '7px', border: `1px solid ${selectedLangs.includes(lang.code) ? '#16A34A' : '#D0D9E0'}`, background: selectedLangs.includes(lang.code) ? '#ECFDF5' : '#fff', color: selectedLangs.includes(lang.code) ? '#065F46' : '#60748A', cursor: running ? 'default' : 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', opacity: running ? 0.6 : 1 }}
               >
                 <span>{flag(lang.code)}</span>
                 {lang.code.toUpperCase()}
@@ -644,97 +647,105 @@ function CevirilerIsleriTab({ langs, entitySources }: { langs: Lang[]; entitySou
           </div>
         </div>
 
-        {/* Run button */}
-        <button
-          onClick={runTranslate}
-          disabled={loading || !selectedLangs.length || !selectedEntityId}
-          style={{
-            padding: '10px 20px', borderRadius: '8px', border: 'none',
-            background: (loading || !selectedEntityId) ? '#93C5FD' : '#3B82F6',
-            color: '#fff', cursor: (loading || !selectedEntityId) ? 'not-allowed' : 'pointer',
-            fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 600,
-            display: 'inline-flex', alignItems: 'center', gap: '8px',
-          }}
-        >
-          {loading
-            ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Çeviriliyor…</>
-            : <><Sparkles size={14} /> Yapay Zeka ile Çevir</>}
-        </button>
+        {/* Error banner */}
+        {topError && (
+          <div style={{ marginBottom: '16px', padding: '10px 14px', borderRadius: '8px', background: '#FEF2F2', border: '1px solid #FECACA', fontSize: '13px', color: '#991B1B', fontFamily: 'Inter, sans-serif', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+            <AlertCircle size={14} style={{ flexShrink: 0, marginTop: '1px', color: '#DC2626' }} />
+            {topError}
+          </div>
+        )}
+
+        {/* Action buttons */}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <button onClick={runTranslate} disabled={!canStart}
+            style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: !canStart ? '#93C5FD' : '#3B82F6', color: '#fff', cursor: !canStart ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+          >
+            {running
+              ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Çevriliyor&hellip;</>
+              : <><Sparkles size={14} /> Yapay Zeka ile Çevir</>}
+          </button>
+
+          {running && pendingCnt > 0 && (
+            <button onClick={cancelJob} style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #FCA5A5', background: '#FFF', color: '#DC2626', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <XIcon size={13} /> Durdur
+            </button>
+          )}
+
+          {isDone && failedCnt > 0 && (
+            <>
+              <button onClick={() => retryFailed(false)} style={{ padding: '10px 16px', borderRadius: '8px', border: 'none', background: '#F59E0B', color: '#fff', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <RefreshCw size={13} /> Başarısızları Yeniden Dene
+              </button>
+              {hasNeedsConfirmation && (
+                <button onClick={() => retryFailed(true)} style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #DC2626', background: '#FFF', color: '#DC2626', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 600 }}>
+                  Zorla Üzerine Yaz
+                </button>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Per-language results */}
-      {perLangResults.length > 0 && (
+      {/* Progress + per-language results */}
+      {tasks.length > 0 && (
         <div style={{ ...card }}>
-          <h4 style={{ margin: '0 0 12px', fontSize: '13px', fontWeight: 700, color: '#1A2B3C', fontFamily: 'Inter, sans-serif' }}>
-            Çeviri Sonuçları
-          </h4>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: '#1A2B3C', fontFamily: 'Inter, sans-serif' }}>
+              {running
+                ? `${completed} / ${job?.totalTasks ?? tasks.length} dil tamamlandı\u2026`
+                : job?.status === 'COMPLETED'
+                ? `\u2713 Tüm ${completed} dil başarıyla çevrildi`
+                : job?.status === 'PARTIAL'
+                ? `${completed} başarılı, ${failedCnt} başarısız`
+                : job?.status === 'FAILED'
+                ? `Çeviri başarısız (${failedCnt} hata)`
+                : `${completed} / ${tasks.length} tamamlandı`}
+            </h4>
+            {running && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite', color: '#3B82F6' }} />}
+          </div>
+
+          {/* Progress bar */}
+          <div style={{ height: '5px', borderRadius: '3px', background: '#F0F4F8', marginBottom: '14px' }}>
+            <div style={{ height: '5px', borderRadius: '3px', background: failedCnt > 0 ? '#F59E0B' : '#3B82F6', width: `${job?.totalTasks ? ((completed + failedCnt) / job.totalTasks) * 100 : 0}%`, transition: 'width 0.4s' }} />
+          </div>
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {perLangResults.map((r) => {
-              const isDraft = r.status === 'draft';
-              const isFailed = ['error', 'failed'].includes(r.status);
-              const isNeedsConfirm = r.status === 'needs_confirmation';
+            {tasks.map((task) => {
+              const isOk       = task.status === 'COMPLETED';
+              const isFailed   = task.status === 'FAILED';
+              const isRunning  = task.status === 'RUNNING';
+              const isRetry    = task.status === 'RETRYING';
+              const isCancelled = task.status === 'CANCELLED';
               return (
-                <div key={r.lang} style={{
-                  display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
-                  padding: '8px 12px', borderRadius: '8px',
-                  background: isDraft ? '#F0FDF4' : isFailed ? '#FFF1F2' : '#FFFBEB',
-                  border: `1px solid ${isDraft ? '#86EFAC' : isFailed ? '#FECDD3' : '#FDE68A'}`,
-                }}>
-                  <span style={{ fontSize: '16px' }}>{flag(r.lang)}</span>
-                  <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', fontWeight: 600, color: '#1A2B3C', minWidth: '32px' }}>
-                    {r.lang.toUpperCase()}
+                <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', borderRadius: '8px', background: isOk ? '#F0FDF4' : isFailed ? '#FFF1F2' : isCancelled ? '#F8FAFC' : '#FAFBFC', border: `1px solid ${isOk ? '#86EFAC' : isFailed ? '#FECDD3' : isCancelled ? '#E2E8F0' : '#E8EDF3'}` }}>
+                  {isRunning || isRetry
+                    ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite', color: '#3B82F6', flexShrink: 0 }} />
+                    : isOk
+                    ? <CheckCircle2 size={13} style={{ color: '#16A34A', flexShrink: 0 }} />
+                    : isFailed
+                    ? <AlertCircle size={13} style={{ color: '#DC2626', flexShrink: 0 }} />
+                    : isCancelled
+                    ? <XCircle size={13} style={{ color: '#94A3B8', flexShrink: 0 }} />
+                    : <span style={{ width: 13, height: 13, borderRadius: '50%', background: '#CBD5E1', flexShrink: 0, display: 'inline-block' }} />}
+                  <span style={{ fontSize: '14px' }}>{flag(task.targetLanguageCode)}</span>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#1A2B3C', minWidth: '28px' }}>
+                    {task.targetLanguageCode.toUpperCase()}
                   </span>
-                  {isDraft && <CheckCircle2 size={13} style={{ color: '#16A34A' }} />}
-                  {isFailed && <AlertCircle size={13} style={{ color: '#DC2626' }} />}
-                  <span style={{
-                    fontFamily: 'Inter, sans-serif', fontSize: '12px',
-                    color: isDraft ? '#15803D' : isFailed ? '#BE123C' : '#B45309',
-                    flex: 1,
-                  }}>
-                    {isDraft ? 'Taslak oluşturuldu' :
-                     isNeedsConfirm ? 'Elle düzenlenmiş — onay bekliyor' :
-                     (r.error ?? r.status)}
+                  <span style={{ fontSize: '12px', color: isOk ? '#15803D' : isFailed ? '#BE123C' : '#60748A', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {isOk ? 'Taslak oluşturuldu'
+                     : isFailed ? (task.errorMessage ?? 'Başarısız')
+                     : isRunning ? 'Çevriliyor\u2026'
+                     : isRetry ? `Yeniden deneniyor (${task.attempts}/2)\u2026`
+                     : isCancelled ? 'İptal edildi'
+                     : 'Sırada bekliyor'}
                   </span>
+                  {task.attempts > 1 && !isOk && (
+                    <span style={{ fontSize: '10px', color: '#94A3B8', flexShrink: 0 }}>deneme {task.attempts}/2</span>
+                  )}
                 </div>
               );
             })}
           </div>
-
-          {/* Force-confirm section */}
-          {confirmLangs.length > 0 && (
-            <div style={{ marginTop: '14px', padding: '14px', borderRadius: '8px', background: '#FFFBEB', border: '1px solid #FDE68A' }}>
-              <p style={{ margin: '0 0 10px', fontFamily: 'Inter, sans-serif', fontSize: '13px', color: '#78350F' }}>
-                <strong>⚠ {confirmLangs.length} dil</strong> ({confirmLangs.map((c) => c.toUpperCase()).join(', ')}) için elle düzenlenmiş çeviriler mevcut. Bunların üzerine yazmak istiyor musunuz?
-              </p>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  onClick={runForce}
-                  disabled={forceLoading}
-                  style={{
-                    padding: '7px 14px', borderRadius: '6px', border: 'none',
-                    background: forceLoading ? '#FCA5A5' : '#DC2626',
-                    color: '#fff', cursor: forceLoading ? 'not-allowed' : 'pointer',
-                    fontFamily: 'Inter, sans-serif', fontSize: '12px', fontWeight: 600,
-                    display: 'inline-flex', alignItems: 'center', gap: '6px',
-                  }}
-                >
-                  {forceLoading
-                    ? <><Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> İşleniyor…</>
-                    : 'Üzerine Yaz'}
-                </button>
-                <button
-                  onClick={() => setConfirmLangs([])}
-                  style={{
-                    padding: '7px 14px', borderRadius: '6px', border: '1px solid #D0D9E0',
-                    background: '#fff', cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif', fontSize: '12px', color: '#4B6375',
-                  }}
-                >
-                  İptal
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -743,14 +754,13 @@ function CevirilerIsleriTab({ langs, entitySources }: { langs: Lang[]; entitySou
         <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
           <AlertCircle size={16} style={{ color: '#0284C7', flexShrink: 0, marginTop: '2px' }} />
           <div>
-            <p style={{ margin: '0 0 6px', fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 600, color: '#075985' }}>
-              Toplu çeviri nasıl çalışır?
-            </p>
+            <p style={{ margin: '0 0 6px', fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 600, color: '#075985' }}>Toplu çeviri nasıl çalışır?</p>
             <ul style={{ margin: 0, paddingLeft: '18px', fontFamily: 'Inter, sans-serif', fontSize: '12px', color: '#0369A1' }}>
-              <li>Eksik veya güncellenmesi gereken çeviriler tespit edilir</li>
+              <li>Her dil ayrı istek olarak işlenir &mdash; zaman aşımı riski yoktur</li>
+              <li>Aynı anda en fazla 2 dil çevrilir; iş kuyruğu veri tabanında saklanır</li>
               <li>OpenAI GPT ile kaynak Türkçe içerik hedef dile çevrilir</li>
-              <li>Oluşturulan çeviriler <strong>Taslak</strong> olarak eklenir</li>
-              <li>Onay sonrası &ldquo;İçerik Çevirileri&rdquo; sekmesinden yayına alabilirsiniz</li>
+              <li>Çeviriler <strong>Taslak</strong> olarak eklenir &mdash; otomatik yayınlanmaz</li>
+              <li>Başarısız diller için &ldquo;Yeniden Dene&rdquo; butonunu kullanın</li>
             </ul>
           </div>
         </div>

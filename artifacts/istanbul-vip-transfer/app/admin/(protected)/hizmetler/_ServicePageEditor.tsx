@@ -1,132 +1,9 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import Image from 'next/image';
 import type { ServicePageRecord, ServicePageBody, ServicePageTranslation } from '@/lib/service-page-types';
 import { LOCALE_REGISTRY } from '@/lib/i18n/locale-registry';
-
-// ── Image upload widget ────────────────────────────────────────────────────
-
-function ImageUploadField({
-  label,
-  value,
-  onChange,
-  slug,
-  hint,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  slug: string;
-  hint?: string;
-}) {
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    setUploadError(null);
-
-    try {
-      // Step 1: get presigned URL from admin route
-      const metaRes = await fetch('/admin/api/storage/request-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: file.name,
-          size: file.size,
-          contentType: file.type || 'image/jpeg',
-          slug,
-        }),
-      });
-      if (!metaRes.ok) {
-        const err = await metaRes.json().catch(() => ({ error: 'Sunucu hatası' }));
-        throw new Error(err.error ?? 'Yükleme URL alınamadı');
-      }
-      const { uploadURL, serveUrl, contentType } = await metaRes.json();
-
-      // Step 2: PUT file directly to GCS presigned URL
-      const putRes = await fetch(uploadURL, {
-        method: 'PUT',
-        body: file,
-        headers: { 'Content-Type': contentType || file.type || 'image/jpeg' },
-      });
-      if (!putRes.ok) throw new Error('Depolamaya yükleme başarısız');
-
-      // Step 3: auto-fill the path field
-      onChange(serveUrl);
-    } catch (err) {
-      setUploadError(err instanceof Error ? err.message : 'Bilinmeyen hata');
-    } finally {
-      setUploading(false);
-      // reset input so same file can be re-selected
-      if (fileRef.current) fileRef.current.value = '';
-    }
-  };
-
-  return (
-    <div style={{ marginBottom: '14px' }}>
-      <label style={lbl}>{label}</label>
-      <div style={{ display: 'flex', gap: '8px', alignItems: 'stretch' }}>
-        <input
-          style={{ ...inp(), flex: 1 }}
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          placeholder="Örn: /images/hero.webp veya /api/storage/objects/…"
-        />
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          disabled={uploading}
-          style={{
-            border: '1px solid #D1D5DB',
-            background: uploading ? '#F1F5F9' : '#F8FAFC',
-            color: '#374151',
-            borderRadius: '6px',
-            padding: '0 14px',
-            cursor: uploading ? 'default' : 'pointer',
-            fontSize: '12px',
-            fontWeight: 600,
-            fontFamily: 'Inter, sans-serif',
-            whiteSpace: 'nowrap',
-            flexShrink: 0,
-          }}
-        >
-          {uploading ? '⏳ Yükleniyor…' : '⬆ Görsel Yükle'}
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
-          style={{ display: 'none' }}
-          onChange={handleFile}
-        />
-      </div>
-      {hint && <p style={{ fontSize: '11px', color: '#94A3B8', marginTop: '3px', fontFamily: 'Inter, sans-serif' }}>{hint}</p>}
-      {uploadError && (
-        <p style={{ fontSize: '11px', color: '#DC2626', marginTop: '3px', fontFamily: 'Inter, sans-serif' }}>
-          Hata: {uploadError}
-        </p>
-      )}
-      {/* Preview thumbnail if value looks like an image URL */}
-      {value && (value.startsWith('/') || value.startsWith('http')) && (
-        <div style={{ marginTop: '8px', width: '160px', height: '90px', position: 'relative', borderRadius: '6px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-          <Image
-            src={value}
-            alt="Önizleme"
-            fill
-            sizes="160px"
-            style={{ objectFit: 'cover' }}
-            unoptimized
-          />
-        </div>
-      )}
-    </div>
-  );
-}
+import { ImageUploadField } from '@/app/admin/_components/ImageUploadField';
 
 // ── Safe JSON fetch helper ─────────────────────────────────────────────────
 async function safeJson<T = Record<string, unknown>>(res: Response): Promise<T> {
@@ -574,16 +451,18 @@ export default function ServicePageEditor({ initialRecord }: Props) {
               label="Hero Görseli"
               value={heroImage}
               onChange={setHeroImage}
-              slug={record.slug}
-              hint="Sürükle-bırak veya bilgisayardan seçin — yüklemeden sonra yol otomatik doldurulur. Doğrudan yol da girebilirsiniz."
+              namespace={`service-pages/${record.slug}`}
+              hint="JPEG, PNG, WebP, GIF, AVIF — max 10 MB. Yüklemeden sonra yol otomatik doldurulur."
+              altValue={heroImageAlt}
+              onAltChange={setHeroImageAlt}
+              altLabel="Hero Görseli ALT Metni"
             />
-            <Field name="Hero Görseli ALT Metni" value={heroImageAlt} onChange={setHeroImageAlt} />
             <ImageUploadField
               label="OG / Sosyal Medya Görseli"
               value={ogImage}
               onChange={setOgImage}
-              slug={record.slug}
-              hint="Paylaşımlarda görünen görsel (1200×630 önerilir). Yüklemeden sonra yol otomatik doldurulur."
+              namespace={`service-pages/${record.slug}`}
+              hint="Sosyal paylaşımlarda görünen görsel — 1200×630 piksel önerilir."
             />
           </SectionCard>
 

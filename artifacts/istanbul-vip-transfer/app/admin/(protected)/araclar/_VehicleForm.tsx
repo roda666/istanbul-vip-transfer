@@ -6,6 +6,7 @@ import type { Vehicle } from '@/db/schema';
 import type { ContentStatus } from '@/lib/workflow';
 import { STATUS_LABELS } from '@/lib/workflow';
 import StatusBadge from '../../_components/StatusBadge';
+import { ImageUploadField } from '../../_components/ImageUploadField';
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 const GOLD = '#C9A84C';
@@ -631,19 +632,15 @@ export default function VehicleForm({ vehicle, userRole }: Props) {
       <SectionTitle>Kapak Görseli</SectionTitle>
 
       <div style={{ marginBottom: '16px' }}>
-        <Label>Görsel URL veya Yolu</Label>
-        <Input
+        <ImageUploadField
+          label="Kapak Görseli"
           value={form.coverImage}
           onChange={(v) => setForm((f) => ({ ...f, coverImage: v }))}
-          placeholder="/images/arac.jpg veya https://..."
-        />
-      </div>
-      <div style={{ marginBottom: '16px' }}>
-        <Label required={!!form.coverImage}>Görsel ALT Metni</Label>
-        <Input
-          value={form.coverImageAlt}
-          onChange={(v) => setForm((f) => ({ ...f, coverImageAlt: v }))}
-          placeholder="Görsel açıklaması (erişilebilirlik ve SEO)"
+          namespace={`vehicles/${form.slug || 'yeni'}`}
+          hint="JPEG, PNG, WebP, GIF veya AVIF — max 10 MB."
+          altValue={form.coverImageAlt}
+          onAltChange={(v) => setForm((f) => ({ ...f, coverImageAlt: v }))}
+          altLabel="Kapak Görseli ALT Metni"
         />
         {form.coverImage && !form.coverImageAlt && (
           <p style={{ color: '#f87171', fontSize: '11px', fontFamily: 'Inter, sans-serif', marginTop: '4px' }}>
@@ -735,19 +732,15 @@ export default function VehicleForm({ vehicle, userRole }: Props) {
             )}
           </div>
           <div style={{ marginBottom: '8px' }}>
-            <Label>URL veya Yol</Label>
-            <Input
+            <ImageUploadField
+              label="Görsel URL veya Yolu"
               value={item.url}
               onChange={(v) => setGalleryItem(i, 'url', v)}
-              placeholder="/images/galeri-1.jpg"
-            />
-          </div>
-          <div>
-            <Label>ALT Metni</Label>
-            <Input
-              value={item.alt}
-              onChange={(v) => setGalleryItem(i, 'alt', v)}
-              placeholder="Görsel açıklaması"
+              namespace={`vehicles/${form.slug || 'yeni'}/galeri`}
+              hint="JPEG, PNG, WebP, GIF veya AVIF — max 10 MB."
+              altValue={item.alt}
+              onAltChange={(v) => setGalleryItem(i, 'alt', v)}
+              altLabel="ALT Metni"
             />
           </div>
         </div>
@@ -841,11 +834,12 @@ export default function VehicleForm({ vehicle, userRole }: Props) {
       </div>
 
       <div style={{ marginBottom: '16px' }}>
-        <Label>OG Görsel URL</Label>
-        <Input
+        <ImageUploadField
+          label="OG / Sosyal Medya Görseli"
           value={form.ogImage}
           onChange={(v) => setForm((f) => ({ ...f, ogImage: v }))}
-          placeholder="https://... veya /images/og.jpg"
+          namespace={`vehicles/${form.slug || 'yeni'}`}
+          hint="Sosyal paylaşımlarda görünen görsel — 1200×630 piksel önerilir."
         />
       </div>
 

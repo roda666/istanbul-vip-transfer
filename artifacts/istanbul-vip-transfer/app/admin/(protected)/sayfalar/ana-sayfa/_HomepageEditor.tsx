@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import type { HomepageAdminRecord } from '@/lib/homepage-cms';
+import { ImageUploadField } from '@/app/admin/_components/ImageUploadField';
 import type {
   HomepageSections, HeroSection, HeroStat, ServicesSectionData,
   TrustSectionData, VehiclesSectionData, ReviewsSectionData,
@@ -129,7 +130,17 @@ function HeroEditor({ data, onChange, dir, ro }: { data: HeroSection; onChange: 
         <Field name="CTA Rezervasyon" value={data.ctaBookingText} onChange={v => set('ctaBookingText', v)} dir={dir} readOnly={ro} />
         <Field name="CTA Ara" value={data.ctaCallText} onChange={v => set('ctaCallText', v)} dir={dir} readOnly={ro} />
       </div>
-      <Field name="Hero Görseli Yolu" value={data.imagePath} onChange={v => set('imagePath', v)} hint="Paylaşılan alan — tüm dillerde aynıdır" readOnly={ro} />
+      {ro ? (
+        <Field name="Hero Görseli Yolu" value={data.imagePath} hint="Paylaşılan alan — tüm dillerde aynıdır" readOnly />
+      ) : (
+        <ImageUploadField
+          label="Hero Görseli"
+          value={data.imagePath}
+          onChange={v => set('imagePath', v)}
+          namespace="homepage/hero"
+          hint="Paylaşılan alan — tüm dillerde aynıdır. JPEG, PNG, WebP, GIF, AVIF — max 10 MB."
+        />
+      )}
       <Field name="Görsel ALT Metni" value={data.imageAlt} onChange={v => set('imageAlt', v)} dir={dir} readOnly={ro} />
       {!ro && <Checkbox name="Bölüm Etkin" checked={data.enabled} onChange={v => set('enabled', v)} />}
     </div>
@@ -269,7 +280,17 @@ function SeoEditor({ data, onChange, ro }: { data: HomepageSeoData; onChange: (d
       <hr style={{ border: 'none', borderTop: '1px solid #E2E8F0', margin: '16px 0' }} />
       <Field name="OG Başlık" value={data.ogTitle} onChange={v => set('ogTitle', v)} readOnly={ro} />
       <Field name="OG Açıklama" value={data.ogDescription} onChange={v => set('ogDescription', v)} multiline readOnly={ro} />
-      <Field name="OG Görsel URL" value={data.ogImage} onChange={v => set('ogImage', v)} hint="Paylaşılan alan" readOnly={ro} />
+      {ro ? (
+        <Field name="OG Görsel URL" value={data.ogImage} hint="Paylaşılan alan" readOnly />
+      ) : (
+        <ImageUploadField
+          label="OG / Sosyal Medya Görseli"
+          value={data.ogImage}
+          onChange={v => set('ogImage', v)}
+          namespace="homepage/og"
+          hint="Paylaşılan alan — sosyal paylaşımlarda görünür (1200×630 önerilir)."
+        />
+      )}
       <Field name="OG Görsel ALT" value={data.ogImageAlt} onChange={v => set('ogImageAlt', v)} readOnly={ro} />
       {!ro && <Checkbox name="Arama Motorlarında Göster (index)" checked={data.indexable} onChange={v => set('indexable', v)} />}
     </div>

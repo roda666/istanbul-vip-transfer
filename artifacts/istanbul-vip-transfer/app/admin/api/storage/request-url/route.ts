@@ -69,14 +69,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  let body: { name?: unknown; size?: unknown; contentType?: unknown; slug?: unknown };
+  let body: { name?: unknown; size?: unknown; contentType?: unknown; slug?: unknown; namespace?: unknown };
   try {
     body = (await req.json()) as typeof body;
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { name, size, contentType, slug } = body;
+  const { name, size, contentType, slug, namespace } = body;
 
   if (typeof name !== 'string' || !name) {
     return NextResponse.json({ error: 'name is required' }, { status: 400 });
@@ -106,13 +106,28 @@ export async function POST(req: NextRequest) {
   }
 
   const uuid = randomUUID();
-  const safeslug = (typeof slug === 'string' ? slug : 'service')
-    .replace(/[^a-z0-9-]/gi, '-')
-    .toLowerCase()
-    .slice(0, 60);
+
+  // Resolve storage path prefix:
+  //  1. `namespace` param (new, generic) — used by all editors
+  //  2. `slug` param (legacy) — kept for backward compat with old service-page calls
+  //  3. Fallback: 'uploads'
+  let safePrefix: string;
+  if (typeof namespace === 'string' && namespace.trim()) {
+    safePrefix = namespace.trim()
+      .replace(/[^a-z0-9-/]/gi, '-')
+      .toLowerCase()
+      .replace(/\/+/g, '/')
+      .replace(/^\/|\/$/g, '')
+      .slice(0, 80);
+  } else if (typeof slug === 'string' && slug.trim()) {
+    const safeslug = slug.replace(/[^a-z0-9-]/gi, '-').toLowerCase().slice(0, 60);
+    safePrefix = `service-pages/${safeslug}`;
+  } else {
+    safePrefix = 'uploads';
+  }
 
   // entityId is the path relative to PRIVATE_OBJECT_DIR — used in the serving URL
-  const entityId = `service-pages/${safeslug}/${uuid}${ext}`;
+  const entityId = `${safePrefix}/${uuid}${ext}`;
 
   const { bucketName, prefix } = parsePrivateObjectDir(privateObjectDir);
   // Full GCS object name = prefix + entityId  (prefix may be empty)

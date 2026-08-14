@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, CheckCircle, Globe, Archive, Save, Loader2 } from 'lucide-react';
 import { STATUS_LABELS, type ContentStatus } from '@/lib/workflow';
+import { ImageUploadField } from './ImageUploadField';
 
 type ContentType = 'PAGE' | 'SERVICE' | 'BLOG_POST';
 
@@ -310,16 +311,20 @@ export default function ContentForm({ mode, contentType, initialData, backUrl }:
       {/* Media */}
       <div style={sectionStyle}>
         <p style={sectionTitle}>Medya</p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-          <div>
-            <label style={labelStyle} htmlFor="heroImage">Hero Görsel Yolu</label>
-            <input id="heroImage" type="text" value={heroImage} onChange={(e) => setHeroImage(e.target.value)} style={inputStyle} placeholder="/images/ornek.jpg" maxLength={500} />
-          </div>
-          <div>
-            <label style={labelStyle} htmlFor="heroImageAlt">Hero Görsel Alt Metni</label>
-            <input id="heroImageAlt" type="text" value={heroImageAlt} onChange={(e) => setHeroImageAlt(e.target.value)} style={inputStyle} placeholder="Görseli tanımlayan metin" maxLength={200} />
-          </div>
-        </div>
+        <ImageUploadField
+          label="Hero Görseli"
+          value={heroImage}
+          onChange={setHeroImage}
+          namespace={
+            contentType === 'BLOG_POST'
+              ? `blog/${slug || 'yeni'}`
+              : `pages/${slug || 'yeni'}`
+          }
+          hint="JPEG, PNG, WebP, GIF veya AVIF — max 10 MB. URL yapıştırabilir veya dosya yükleyebilirsiniz."
+          altValue={heroImageAlt}
+          onAltChange={setHeroImageAlt}
+          altLabel="Hero Görseli ALT Metni"
+        />
       </div>
 
       {/* SEO */}

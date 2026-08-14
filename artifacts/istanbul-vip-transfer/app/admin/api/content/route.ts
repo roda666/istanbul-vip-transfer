@@ -1,6 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
+/**
+ * Slugs that must never be created via the generic content module.
+ * / and locale roots are structural routes.
+ * /ana-sayfa is managed exclusively by the homepage CMS editor.
+ * /admin and /api prefixes collide with Next.js route groups.
+ */
+const RESERVED_SLUGS = new Set([
+  'ana-sayfa',
+  'admin',
+  'api',
+  'data',
+  // Locale root paths — visitors navigate to /<lang> directly
+  'en', 'de', 'ru', 'ar', 'es', 'fr', 'it', 'nl', 'tr',
+]);
+
+function isReservedSlug(slug: string): boolean {
+  if (!slug) return false;
+  const lower = slug.toLowerCase().trim();
+  if (RESERVED_SLUGS.has(lower)) return true;
+  // Block slugs that START with reserved path segments
+  if (lower.startsWith('admin/') || lower.startsWith('api/') || lower.startsWith('data/')) return true;
+  return false;
+}
+
 const createSchema = z.object({
   contentType: z.enum(['PAGE', 'SERVICE', 'BLOG_POST']),
   title: z.string().min(1, 'Başlık gereklidir').max(200),
@@ -85,6 +109,14 @@ export async function POST(request: NextRequest) {
   }
 
   const data = parsed.data;
+
+  if (isReservedSlug(data.slug)) {
+    return NextResponse.json(
+      { error: `"${data.slug}" ayrılmış bir slug'dır ve bu modülde kullanılamaz.` },
+      { status: 422 },
+    );
+  }
+
   const { sanitizeHtml, sanitizeText } = await import('@/lib/sanitize');
 
   try {

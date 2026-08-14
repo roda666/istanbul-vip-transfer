@@ -93,10 +93,11 @@ export function getKnownBlogSlugs(): string[] {
 
 /**
  * The non-Turkish locales whose translated routes the site publicly exposes.
- * Mirrors SUPPORTED_LANGS in lib/i18n/index.ts.
+ * Mirrors SUPPORTED_LANGS in lib/i18n/index.ts (en, de, ru, ar, es, fr, it, nl).
+ * Automatically expands when new locales are added to the registry.
  */
 export function getTranslationLocales(): string[] {
-  return [...SUPPORTED_LANGS]; // ['en', 'de', 'ru', 'ar']
+  return [...SUPPORTED_LANGS]; // en, de, ru, ar, es, fr, it, nl
 }
 
 // ── Core health check (pure function) ────────────────────────────────────────

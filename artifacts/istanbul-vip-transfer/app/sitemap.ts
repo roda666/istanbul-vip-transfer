@@ -56,7 +56,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // ── 1. Resolve active public language set ────────────────────────────────
   const { getPublicLanguages } = await import('@/lib/i18n/active-locales');
-  const publicLangs = await getPublicLanguages();          // tr, en, de, ru, ar
+  const publicLangs = await getPublicLanguages();          // tr, en, de, ru, ar, es, fr, it, nl
   const publicCodes = new Set(publicLangs.map((l) => l.code));
   const nonTrLangs  = publicLangs.filter((l) => l.code !== 'tr');
 

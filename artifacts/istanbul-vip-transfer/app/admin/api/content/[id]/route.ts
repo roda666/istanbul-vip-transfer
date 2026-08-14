@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
+// Mirror the same reserved-slug list as POST /api/admin/content
+const RESERVED_SLUGS = new Set([
+  'ana-sayfa', 'admin', 'api', 'data',
+  'en', 'de', 'ru', 'ar', 'es', 'fr', 'it', 'nl', 'tr',
+]);
+function isReservedSlug(slug: string): boolean {
+  const lower = slug.toLowerCase().trim();
+  if (RESERVED_SLUGS.has(lower)) return true;
+  if (lower.startsWith('admin/') || lower.startsWith('api/') || lower.startsWith('data/')) return true;
+  return false;
+}
+
 const updateSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   slug: z.string().min(1).max(200).regex(/^[a-z0-9-]+$/).optional(),
@@ -67,6 +79,14 @@ export async function PUT(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: parsed.error.errors[0]?.message ?? 'Doğrulama hatası.' }, { status: 422 });
 
   const data = parsed.data;
+
+  if (data.slug !== undefined && isReservedSlug(data.slug)) {
+    return NextResponse.json(
+      { error: `"${data.slug}" ayrılmış bir slug'dır ve bu modülde kullanılamaz.` },
+      { status: 422 },
+    );
+  }
+
   const { db } = await import('@/db');
   const { content, auditLogs } = await import('@/db/schema');
   const { eq, and, or } = await import('drizzle-orm');

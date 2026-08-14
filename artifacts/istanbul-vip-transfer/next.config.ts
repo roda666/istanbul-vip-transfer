@@ -57,9 +57,10 @@ const nextConfig: NextConfig = {
   // "127.0.0.1" is needed because Next.js only auto-allows "localhost", not the IP.
   allowedDevOrigins: ['**.replit.dev', '127.0.0.1'],
 
-  // Permanent redirects: old admin routes → unified Dil ve Çeviri module
+  // Permanent redirects
   async redirects() {
     return [
+      // Old admin routes → unified Dil ve Çeviri module
       {
         source: '/admin/diller',
         destination: '/admin/dil-ve-ceviri?tab=diller',
@@ -68,6 +69,21 @@ const nextConfig: NextConfig = {
       {
         source: '/admin/ceviriler',
         destination: '/admin/dil-ve-ceviri?tab=icerik-cevirileri',
+        permanent: true,
+      },
+      // /ana-sayfa was accidentally created as a generic PAGE record.
+      // The real homepage is managed by the dedicated Ana Sayfa Düzenleyici.
+      // Redirect any public hits to the real root so search engines don't
+      // index the duplicate and existing bookmarks/links still work.
+      {
+        source: '/ana-sayfa',
+        destination: '/',
+        permanent: true,
+      },
+      // Locale-prefixed variants: /en/ana-sayfa → /en, etc.
+      {
+        source: '/:lang(en|de|ru|ar|es|fr|it|nl)/ana-sayfa',
+        destination: '/:lang',
         permanent: true,
       },
     ];

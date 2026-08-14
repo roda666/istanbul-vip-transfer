@@ -69,7 +69,7 @@ export default async function HizmetlerPage() {
     <div style={{ padding: '28px 24px' }}>
       <AdminPageHeader
         title="Hizmet Sayfaları"
-        description="CMS ile tüm hizmet sayfalarını yönetin. Türkçe kaydedin — EN/DE/RU/AR otomatik çevrilir."
+        description="CMS ile tüm hizmet sayfalarını yönetin. Türkçe kaydedin — EN, DE, RU, AR, ES, FR, IT, NL otomatik çevrilir."
       />
 
       {/* ── Health warning banner ─────────────────────────────────────── */}

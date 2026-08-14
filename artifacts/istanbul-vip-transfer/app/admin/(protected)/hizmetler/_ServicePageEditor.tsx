@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import type { ServicePageRecord, ServicePageBody, ServicePageTranslation } from '@/lib/service-page-types';
+import { LOCALE_REGISTRY } from '@/lib/i18n/locale-registry';
 
 // ── Image upload widget ────────────────────────────────────────────────────
 
@@ -145,13 +146,16 @@ interface EditorLocale {
   dir: 'ltr' | 'rtl';
 }
 
-const ALL_LOCALES: EditorLocale[] = [
-  { code: 'tr', label: 'Türkçe',   dir: 'ltr' },
-  { code: 'en', label: 'English',  dir: 'ltr' },
-  { code: 'de', label: 'Deutsch',  dir: 'ltr' },
-  { code: 'ru', label: 'Русский',  dir: 'ltr' },
-  { code: 'ar', label: 'العربية', dir: 'rtl' },
-];
+/**
+ * Editor locale list is derived from the single source of truth in
+ * lib/i18n/locale-registry.ts — adding/removing a locale there automatically
+ * updates the tabs here. Never hard-code this list.
+ */
+const ALL_LOCALES: EditorLocale[] = LOCALE_REGISTRY.map(l => ({
+  code:  l.code,
+  label: `${l.flagEmoji} ${l.nativeName}`,
+  dir:   l.dir,
+}));
 
 // ── Status badge config ────────────────────────────────────────────────────
 

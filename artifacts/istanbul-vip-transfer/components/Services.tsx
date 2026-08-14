@@ -11,88 +11,140 @@ export default function Services() {
   const s = dict.services;
   const p = (path: string) => localePath(path, lang);
 
-  const serviceDesc = (tr: string, en: string, de: string, ru: string, ar: string) =>
-    lang === 'tr' ? tr : lang === 'en' ? en : lang === 'de' ? de : lang === 'ru' ? ru : ar;
+  /**
+   * Pick the localised string for the current locale.
+   * Falls back to English — NEVER falls through to Arabic or Turkish
+   * for LTR locales that don't yet have a dedicated entry.
+   */
+  const t = (map: Record<string, string>): string => map[lang] ?? map.en ?? '';
 
   const services = [
     {
       icon: Plane,
       title: dict.nav.istTransfer,
-      description: serviceDesc(
-        "İstanbul Havalimanı'ndan her destinasyona Mercedes Vito ve Sprinter ile profesyonel karşılama ve transfer.",
-        "Professional meet & greet and transfer from Istanbul Airport to any destination with Mercedes Vito and Sprinter.",
-        "Professioneller Empfang und Transfer vom Istanbul Flughafen zu jedem Ziel mit Mercedes Vito und Sprinter.",
-        "Профессиональная встреча и трансфер из аэропорта Стамбула в любую точку на Mercedes Vito и Sprinter.",
-        "استقبال احترافي ونقل من مطار إسطنبول إلى أي وجهة بسيارات مرسيدس فيتو وسبرينتر.",
-      ),
+      description: t({
+        tr: "İstanbul Havalimanı'ndan her destinasyona Mercedes Vito ve Sprinter ile profesyonel karşılama ve transfer.",
+        en: 'Professional meet & greet and transfer from Istanbul Airport to any destination with Mercedes Vito and Sprinter.',
+        de: 'Professioneller Empfang und Transfer vom Istanbul Flughafen zu jedem Ziel mit Mercedes Vito und Sprinter.',
+        ru: 'Профессиональная встреча и трансфер из аэропорта Стамбула в любую точку на Mercedes Vito и Sprinter.',
+        ar: 'استقبال احترافي ونقل من مطار إسطنبول إلى أي وجهة بسيارات مرسيدس فيتو وسبرينتر.',
+        es: 'Recepción profesional y traslado desde el Aeropuerto de Estambul a cualquier destino con Mercedes Vito y Sprinter.',
+        fr: "Accueil professionnel et transfert depuis l'aéroport d'Istanbul vers toute destination avec Mercedes Vito et Sprinter.",
+        it: "Accoglienza professionale e trasferimento dall'Aeroporto di Istanbul verso qualsiasi destinazione con Mercedes Vito e Sprinter.",
+        nl: 'Professionele begroeting en transfer van de luchthaven Istanbul naar elke bestemming met Mercedes Vito en Sprinter.',
+      }),
       href: p('/istanbul-havalimani-transfer'),
     },
     {
       icon: Plane,
       title: dict.nav.sawTransfer,
-      description: serviceDesc(
-        "Sabiha Gökçen Havalimanı'ndan İstanbul'un her noktasına Mercedes Vito ve Sprinter ile VIP transfer.",
-        "VIP transfer from Sabiha Gökçen Airport to every point in Istanbul with Mercedes Vito and Sprinter.",
-        "VIP-Transfer vom Flughafen Sabiha Gökçen zu jedem Punkt in Istanbul mit Mercedes Vito und Sprinter.",
-        "VIP-трансфер из аэропорта Сабиха Гёкчен в любую точку Стамбула на Mercedes Vito и Sprinter.",
-        "نقل VIP من مطار صبيحة كوكجن إلى كل نقطة في إسطنبول بسيارات مرسيدس فيتو وسبرينتر.",
-      ),
+      description: t({
+        tr: "Sabiha Gökçen Havalimanı'ndan İstanbul'un her noktasına Mercedes Vito ve Sprinter ile VIP transfer.",
+        en: 'VIP transfer from Sabiha Gökçen Airport to every point in Istanbul with Mercedes Vito and Sprinter.',
+        de: 'VIP-Transfer vom Flughafen Sabiha Gökçen zu jedem Punkt in Istanbul mit Mercedes Vito und Sprinter.',
+        ru: 'VIP-трансфер из аэропорта Сабиха Гёкчен в любую точку Стамбула на Mercedes Vito и Sprinter.',
+        ar: 'نقل VIP من مطار صبيحة كوكجن إلى كل نقطة في إسطنبول بسيارات مرسيدس فيتو وسبرينتر.',
+        es: 'Traslado VIP desde el Aeropuerto de Sabiha Gökçen a todos los puntos de Estambul con Mercedes Vito y Sprinter.',
+        fr: "Transfert VIP depuis l'aéroport Sabiha Gökçen vers tous les points d'Istanbul avec Mercedes Vito et Sprinter.",
+        it: "Transfer VIP dall'aeroporto Sabiha Gökçen verso ogni punto di Istanbul con Mercedes Vito e Sprinter.",
+        nl: 'VIP-transfer van de luchthaven Sabiha Gökçen naar elk punt in Istanbul met Mercedes Vito en Sprinter.',
+      }),
       href: p('/sabiha-gokcen-havalimani-transfer'),
     },
     {
       icon: Hotel,
       title: dict.nav.hotelTransfer,
-      description: serviceDesc(
-        "İstanbul'un tüm otellerinden kapıdan kapıya sorunsuz transfer hizmeti.",
-        "Seamless door-to-door transfer service from all hotels in Istanbul.",
-        "Nahtloser Tür-zu-Tür-Transferservice von allen Hotels in Istanbul.",
-        "Беспроблемный трансфер «от двери до двери» из всех отелей Стамбула.",
-        "خدمة نقل سلسة من الباب إلى الباب من جميع فنادق إسطنبول.",
-      ),
+      description: t({
+        tr: "İstanbul'un tüm otellerinden kapıdan kapıya sorunsuz transfer hizmeti.",
+        en: 'Seamless door-to-door transfer service from all hotels in Istanbul.',
+        de: 'Nahtloser Tür-zu-Tür-Transferservice von allen Hotels in Istanbul.',
+        ru: 'Беспроблемный трансфер «от двери до двери» из всех отелей Стамбула.',
+        ar: 'خدمة نقل سلسة من الباب إلى الباب من جميع فنادق إسطنبول.',
+        es: 'Servicio de traslado puerta a puerta sin interrupciones desde todos los hoteles de Estambul.',
+        fr: "Service de transfert porte-à-porte sans interruption depuis tous les hôtels d'Istanbul.",
+        it: 'Servizio di trasferimento porta a porta senza interruzioni da tutti gli hotel di Istanbul.',
+        nl: 'Naadloze deur-tot-deur transferservice vanuit alle hotels in Istanbul.',
+      }),
     },
     {
       icon: Map,
-      title: serviceDesc("Şehir Turu", "City Tour", "Stadtführung", "Городской тур", "جولة المدينة"),
-      description: serviceDesc(
-        "İstanbul'un tarihi ve modern güzelliklerini özel şoförlü aracınızla keşfedin.",
-        "Explore Istanbul's historic and modern beauty with your private chauffeur.",
-        "Entdecken Sie Istanbuls historische und moderne Schönheiten mit Ihrem privaten Fahrer.",
-        "Откройте для себя историческую и современную красоту Стамбула с личным водителем.",
-        "استكشف جمال إسطنبول التاريخي والحديث مع سائقك الخاص.",
-      ),
+      title: t({
+        tr: 'Şehir Turu',
+        en: 'City Tour',
+        de: 'Stadtführung',
+        ru: 'Городской тур',
+        ar: 'جولة المدينة',
+        es: 'Tour por la ciudad',
+        fr: 'Visite de la ville',
+        it: 'Tour della città',
+        nl: 'Stadstour',
+      }),
+      description: t({
+        tr: "İstanbul'un tarihi ve modern güzelliklerini özel şoförlü aracınızla keşfedin.",
+        en: "Explore Istanbul's historic and modern beauty with your private chauffeur.",
+        de: "Entdecken Sie Istanbuls historische und moderne Schönheiten mit Ihrem privaten Fahrer.",
+        ru: 'Откройте для себя историческую и современную красоту Стамбула с личным водителем.',
+        ar: 'استكشف جمال إسطنبول التاريخي والحديث مع سائقك الخاص.',
+        es: 'Descubra la belleza histórica y moderna de Estambul con su conductor privado.',
+        fr: "Découvrez la beauté historique et moderne d'Istanbul avec votre chauffeur privé.",
+        it: 'Scopri la bellezza storica e moderna di Istanbul con il tuo autista privato.',
+        nl: 'Ontdek de historische en moderne schoonheid van Istanbul met uw privéchauffeur.',
+      }),
     },
     {
       icon: Briefcase,
       title: dict.nav.corporateTransfer,
-      description: serviceDesc(
-        "İş toplantıları, konferanslar ve kurumsal etkinlikler için güvenilir ve temsili transfer.",
-        "Reliable and representative transfer for business meetings, conferences and corporate events.",
-        "Zuverlässiger und repräsentativer Transfer für Geschäftsmeetings, Konferenzen und Firmenveranstaltungen.",
-        "Надёжный и представительный трансфер для деловых встреч, конференций и корпоративных мероприятий.",
-        "نقل موثوق ومميز لاجتماعات الأعمال والمؤتمرات والفعاليات المؤسسية.",
-      ),
+      description: t({
+        tr: 'İş toplantıları, konferanslar ve kurumsal etkinlikler için güvenilir ve temsili transfer.',
+        en: 'Reliable and representative transfer for business meetings, conferences and corporate events.',
+        de: 'Zuverlässiger und repräsentativer Transfer für Geschäftsmeetings, Konferenzen und Firmenveranstaltungen.',
+        ru: 'Надёжный и представительный трансфер для деловых встреч, конференций и корпоративных мероприятий.',
+        ar: 'نقل موثوق ومميز لاجتماعات الأعمال والمؤتمرات والفعاليات المؤسسية.',
+        es: 'Traslado fiable y representativo para reuniones de negocios, conferencias y eventos corporativos.',
+        fr: "Transfert fiable et représentatif pour les réunions d'affaires, conférences et événements d'entreprise.",
+        it: 'Trasferimento affidabile e rappresentativo per riunioni di lavoro, conferenze ed eventi aziendali.',
+        nl: 'Betrouwbare en representatieve transfer voor zakelijke vergaderingen, conferenties en bedrijfsevenementen.',
+      }),
     },
     {
       icon: PartyPopper,
-      title: serviceDesc("Özel Etkinlik Transferi", "Special Event Transfer", "Sonderveranstaltungs-Transfer", "Трансфер для особых мероприятий", "نقل للمناسبات الخاصة"),
-      description: serviceDesc(
-        "Düğün, gala ve özel davetler için lüks araç kiralama ve konvoy hizmeti.",
-        "Luxury vehicle hire and convoy service for weddings, galas and private events.",
-        "Luxusfahrzeugmiete und Konvoiservice für Hochzeiten, Galas und private Veranstaltungen.",
-        "Аренда роскошных автомобилей и кортеж для свадеб, гала-вечеров и частных мероприятий.",
-        "تأجير سيارات فاخرة وخدمة موكب للأعراس والحفلات الرسمية والفعاليات الخاصة.",
-      ),
+      title: t({
+        tr: 'Özel Etkinlik Transferi',
+        en: 'Special Event Transfer',
+        de: 'Sonderveranstaltungs-Transfer',
+        ru: 'Трансфер для особых мероприятий',
+        ar: 'نقل للمناسبات الخاصة',
+        es: 'Traslado para eventos especiales',
+        fr: 'Transfert pour événements spéciaux',
+        it: 'Transfer per eventi speciali',
+        nl: 'Transfer voor speciale evenementen',
+      }),
+      description: t({
+        tr: 'Düğün, gala ve özel davetler için lüks araç kiralama ve konvoy hizmeti.',
+        en: 'Luxury vehicle hire and convoy service for weddings, galas and private events.',
+        de: 'Luxusfahrzeugmiete und Konvoiservice für Hochzeiten, Galas und private Veranstaltungen.',
+        ru: 'Аренда роскошных автомобилей и кортеж для свадеб, гала-вечеров и частных мероприятий.',
+        ar: 'تأجير سيارات فاخرة وخدمة موكب للأعراس والحفلات الرسمية والفعاليات الخاصة.',
+        es: 'Alquiler de vehículos de lujo y servicio de convoy para bodas, galas y eventos privados.',
+        fr: 'Location de véhicules de luxe et service de convoi pour mariages, galas et événements privés.',
+        it: 'Noleggio di veicoli di lusso e servizio convoglio per matrimoni, gala e eventi privati.',
+        nl: "Luxe voertuigverhuur en konvooiservice voor bruiloften, gala's en privé-evenementen.",
+      }),
     },
     {
       icon: Route,
       title: dict.nav.intercityTransfer,
-      description: serviceDesc(
-        "İstanbul'dan Türkiye'nin farklı şehirlerine Mercedes Vito ve Sprinter araçlarla konforlu, kapıdan kapıya özel transfer.",
-        "Comfortable door-to-door private transfer from Istanbul to other Turkish cities with Mercedes Vito and Sprinter.",
-        "Komfortabler Tür-zu-Tür-Privattransfer von Istanbul in andere türkische Städte mit Mercedes Vito und Sprinter.",
-        "Комфортный частный трансфер «от двери до двери» из Стамбула в другие города Турции на Mercedes Vito и Sprinter.",
-        "نقل خاص مريح من الباب إلى الباب من إسطنبول إلى مدن تركية أخرى بسيارات مرسيدس فيتو وسبرينتر.",
-      ),
+      description: t({
+        tr: "İstanbul'dan Türkiye'nin farklı şehirlerine Mercedes Vito ve Sprinter araçlarla konforlu, kapıdan kapıya özel transfer.",
+        en: 'Comfortable door-to-door private transfer from Istanbul to other Turkish cities with Mercedes Vito and Sprinter.',
+        de: 'Komfortabler Tür-zu-Tür-Privattransfer von Istanbul in andere türkische Städte mit Mercedes Vito und Sprinter.',
+        ru: 'Комфортный частный трансфер «от двери до двери» из Стамбула в другие города Турции на Mercedes Vito и Sprinter.',
+        ar: 'نقل خاص مريح من الباب إلى الباب من إسطنبول إلى مدن تركية أخرى بسيارات مرسيدس فيتو وسبرينتر.',
+        es: 'Cómodo traslado privado puerta a puerta desde Estambul a otras ciudades de Turquía con Mercedes Vito y Sprinter.',
+        fr: "Transfert privé confortable de porte-à-porte depuis Istanbul vers d'autres villes de Turquie avec Mercedes Vito et Sprinter.",
+        it: 'Comodo trasferimento privato porta a porta da Istanbul ad altre città della Turchia con Mercedes Vito e Sprinter.',
+        nl: 'Comfortabele deur-tot-deur privétransfer van Istanbul naar andere Turkse steden met Mercedes Vito en Sprinter.',
+      }),
       href: p('/sehirler-arasi-transfer'),
     },
   ];

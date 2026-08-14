@@ -1,0 +1,125 @@
+Audit and repair the CMS database consistency shown in the attached admin screenshots.
+
+Do not publish or deploy the production site.
+
+A) BLOG SOURCE RECORD REPAIR
+
+The Blog admin page is empty but reports these orphaned slugs:
+
+- istanbul-havalimani-transfer-rehberi
+- sabiha-gokcen-transfer-rehberi
+- vip-transfer-ile-taksi-arasindaki-farklar
+
+Error: “Veritabanında kaynak kayıt yok”.
+
+Requirements:
+
+1. Inspect all blog source, translation and legacy/static content tables or files.
+2. Determine exactly why these three slugs exist without Turkish source records.
+3. Do not delete recoverable content.
+4. Reconstruct/import the Turkish source records when valid legacy content exists.
+5. Correctly associate every translation using source blog ID + locale code.
+6. If no recoverable article body exists, keep the item as an explicit draft requiring content instead of silently fabricating an article.
+7. The Blog list must show each repaired source item with:
+   - title
+   - slug
+   - status
+   - translation completeness
+   - updated date
+8. Localized blog routes must return 404 until that locale has an approved and published translation.
+9. Remove orphan warnings only after the records are genuinely repaired.
+
+B) REMOVE THE DUPLICATE HOMEPAGE RECORD SAFELY
+
+The generic “Sayfalar” module currently contains:
+
+- title: Ana Sayfa
+- slug: /ana-sayfa
+- status: published
+
+The real homepage is `/` and is already managed by “Ana Sayfa Düzenleyici”.
+
+Requirements:
+
+1. Identify how `/ana-sayfa` was created.
+2. Verify whether any unique content depends on this database record.
+3. Migrate any unique recoverable content to the real homepage CMS if needed.
+4. Remove or archive the duplicate `/ana-sayfa` record safely.
+5. Do not create a second homepage.
+6. Ensure `/ana-sayfa` does not enter sitemap, canonical URLs or navigation.
+7. If `/ana-sayfa` has ever been publicly accessible, create a permanent redirect to `/`.
+8. Prevent the generic Pages module from creating reserved slugs:
+   /, /ana-sayfa, /admin, /api and locale root paths.
+
+C) COMPLETE NINE-LANGUAGE SERVICE CMS SUPPORT
+
+The service editor currently supports only:
+TR, EN, DE, RU, AR
+
+But the site supports exactly these 9 locales:
+tr, en, de, ru, ar, es, fr, it, nl
+
+Requirements:
+
+1. Add ES, FR, IT and NL tabs to every service editor.
+2. Remove hard-coded language arrays from the service CMS.
+3. Read enabled locales from the central locale registry/database.
+4. Update the text “EN/DE/RU/AR otomatik çevrilir” so it dynamically lists all enabled target locales.
+5. “Kaydet ve Çevir” must:
+   - save Turkish source content first,
+   - generate separate translations for all selected enabled locales,
+   - store translations using service ID + exact locale code,
+   - never match languages by array order,
+   - never copy Arabic or another locale into the wrong language.
+6. Shared non-text fields such as ordering and activation must remain synchronized.
+7. Translatable fields, including title, excerpt, hero content, page content, FAQs, SEO metadata, image ALT text and CTA text, must remain locale-specific.
+8. Each language needs independent states:
+   missing, translating, draft, review, approved, published, failed.
+9. Do not mark a translation published merely because the Turkish source is published.
+10. Show translation completeness and failed fields in the service list.
+
+D) CONSISTENCY AND SAFETY
+
+1. Use a database transaction for repair/import operations.
+2. Make migrations idempotent and safe to rerun.
+3. Create a backup/report of affected record IDs before mutation.
+4. Do not invent translations, reviews, prices, guarantees or service facts.
+5. Add automated tests for:
+   - orphan blog detection
+   - duplicate/reserved page slugs
+   - all 9 service-language tabs
+   - exact locale-code data lookup
+   - cross-language contamination
+   - unpublished translations returning 404
+   - sitemap containing only valid published localized routes
+
+E) VERIFICATION
+
+Run:
+- database migration status
+- typecheck
+- ESLint
+- production build
+- automated CMS integrity tests
+
+Visually verify:
+- Blog admin list
+- generic Pages list
+- one service editor
+- public service page in TR, EN, ES, FR, IT, NL, DE, RU and AR
+- Arabic RTL and all other languages LTR
+- desktop, tablet and 390px mobile
+
+Final report must include:
+1. Root cause of each problem
+2. Database records repaired, migrated, archived or redirected
+3. Every changed file
+4. Per-language results for all 9 locales
+5. Exact test, lint, typecheck and build results
+6. Any remaining missing content
+7. Confirmation that production was not published
+
+Do not mark the task complete while:
+- the Blog list is empty due to broken source records,
+- `/ana-sayfa` remains a duplicate published homepage,
+- or the service editor still exposes only five languages.

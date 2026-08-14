@@ -1,0 +1,66 @@
+The Spanish public website is still mixing Arabic content into Spanish pages.
+
+Current visible problem:
+- On /es, the page heading is Spanish.
+- Several service-card descriptions are Arabic.
+- Some service-card titles are also Arabic.
+- A locale must never display content from another language.
+
+Fix the root cause throughout the entire public website and CMS translation system.
+
+Requirements:
+
+1. Audit all 9 locales:
+   tr, en, de, ru, ar, es, fr, it, nl.
+
+2. For every locale, verify:
+   - Header and mobile menu
+   - Homepage sections
+   - Services listing and service detail pages
+   - Vehicle pages
+   - Blog listing and posts
+   - About and contact pages
+   - Reservation form
+   - Footer
+   - SEO title, description, Open Graph and structured data
+
+3. Never fall back to Arabic for any non-Arabic locale.
+   - Turkish may be used only as the explicit source content inside the admin workflow.
+   - Do not silently show Turkish source text to visitors when a published translation is missing.
+   - Show a locale-appropriate “translation unavailable” state or prevent publishing that locale.
+
+4. Inspect the translation lookup queries and relations.
+   Confirm that every translation is selected using both:
+   - content/entity ID
+   - exact locale code
+
+5. Check for index/order-based language matching bugs.
+   Languages must be matched by locale code, never by array position.
+
+6. Correct all Spanish content currently containing Arabic or Turkish text.
+   Do the same audit for French, Italian and Dutch.
+
+7. Add an automated cross-locale contamination test.
+   It must detect Arabic-script text appearing in tr/en/de/ru/es/fr/it/nl fields.
+   Allow legitimate brand or proper-name exceptions only when explicitly documented.
+   Also detect Turkish UI labels remaining in non-Turkish public pages.
+
+8. Test desktop, tablet and 390px mobile.
+   Verify Arabic RTL separately without affecting LTR locales.
+
+9. Do not publish, deploy or connect the production domain.
+
+10. Run:
+   - TypeScript/typecheck
+   - ESLint
+   - production build
+   - locale contamination tests
+
+Report:
+- root cause
+- every changed file
+- results separately for all 9 languages
+- exact test/build output
+- any untranslated fields remaining
+
+Do not mark the task complete until /es is visually inspected and contains no Arabic or Turkish service-card text.

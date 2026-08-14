@@ -27,12 +27,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     de: 'Blog | Istanbul VIP Transfer',
     ru: 'Блог | Стамбул VIP Трансфер',
     ar: 'المدونة | إسطنبول VIP ترانسفير',
+    es: 'Blog | Istanbul VIP Transfer',
+    fr: 'Blog | Istanbul VIP Transfer',
+    it: 'Blog | Istanbul VIP Transfer',
+    nl: 'Blog | Istanbul VIP Transfer',
   };
   const descriptions: Record<string, string> = {
     en: 'Guides and articles on Istanbul airport transfers, VIP transportation and vehicle selection.',
     de: 'Ratgeber und Artikel zu Flughafentransfers, VIP-Transport und Fahrzeugauswahl in Istanbul.',
     ru: 'Руководства и статьи о трансферах из аэропорта Стамбула, VIP-перевозках и выборе автомобиля.',
     ar: 'أدلة ومقالات حول نقل المطار في إسطنبول والنقل الفاخر واختيار المركبات.',
+    es: 'Guías y artículos sobre traslados en el aeropuerto de Estambul, transporte VIP y selección de vehículo.',
+    fr: "Guides et articles sur les transferts aéroportuaires à Istanbul, le transport VIP et le choix de véhicule.",
+    it: 'Guide e articoli sui transfer aeroportuali a Istanbul, il trasporto VIP e la scelta del veicolo.',
+    nl: 'Gidsen en artikelen over luchthaventransfers in Istanbul, VIP-vervoer en voertuigselectie.',
   };
   const pageTitle = titles[lang] ?? titles.en;
   const pageDesc  = descriptions[lang] ?? descriptions.en;
@@ -110,10 +118,17 @@ export default async function TranslatedBlogPage({ params }: Props) {
             Blog
           </span>
           <h1 className="text-4xl md:text-5xl font-bold" style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}>
-            {lang === 'en' ? 'Articles & Guides'
-              : lang === 'de' ? 'Artikel & Ratgeber'
-              : lang === 'ru' ? 'Статьи и гиды'
-              : 'مقالات وأدلة'}
+            {({
+              tr: 'Makaleler & Rehberler',
+              en: 'Articles & Guides',
+              de: 'Artikel & Ratgeber',
+              ru: 'Статьи и гиды',
+              ar: 'مقالات وأدلة',
+              es: 'Artículos y guías',
+              fr: 'Articles et guides',
+              it: 'Articoli e guide',
+              nl: 'Artikelen & gidsen',
+            } as Record<string, string>)[lang] ?? 'Articles & Guides'}
           </h1>
         </div>
 
@@ -123,10 +138,17 @@ export default async function TranslatedBlogPage({ params }: Props) {
             style={{ background: '#FFFFFF', border: '1px solid #D9E2EC' }}
           >
             <p style={{ color: '#50677A', fontFamily: 'Inter, sans-serif', fontSize: '15px' }}>
-              {lang === 'en' ? 'Articles in English are coming soon.'
-                : lang === 'de' ? 'Artikel auf Deutsch folgen in Kürze.'
-                : lang === 'ru' ? 'Статьи на русском языке скоро появятся.'
-                : 'المقالات باللغة العربية ستكون متاحة قريباً.'}
+              {({
+                tr: 'İçerikler yakında Türkçe eklenecektir.',
+                en: 'Articles in English are coming soon.',
+                de: 'Artikel auf Deutsch folgen in Kürze.',
+                ru: 'Статьи на русском языке скоро появятся.',
+                ar: 'المقالات باللغة العربية ستكون متاحة قريباً.',
+                es: 'Los artículos en español estarán disponibles próximamente.',
+                fr: 'Les articles en français seront disponibles prochainement.',
+                it: 'Gli articoli in italiano saranno disponibili a breve.',
+                nl: 'Artikelen in het Nederlands zijn binnenkort beschikbaar.',
+              } as Record<string, string>)[lang] ?? 'Articles are coming soon.'}
             </p>
             <Link
               href="/blog"
@@ -134,10 +156,16 @@ export default async function TranslatedBlogPage({ params }: Props) {
               style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
             >
               {lang === 'ar' ? '← ' : ''}
-              {lang === 'en' ? 'Read in Turkish'
-                : lang === 'de' ? 'Auf Türkisch lesen'
-                : lang === 'ru' ? 'Читать на турецком'
-                : 'اقرأ باللغة التركية'}
+              {({
+                en: 'Read in Turkish',
+                de: 'Auf Türkisch lesen',
+                ru: 'Читать на турецком',
+                ar: 'اقرأ باللغة التركية',
+                es: 'Leer en turco',
+                fr: 'Lire en turc',
+                it: 'Leggi in turco',
+                nl: 'Lees in het Turks',
+              } as Record<string, string>)[lang] ?? 'Read in Turkish'}
               {lang !== 'ar' ? ' →' : ''}
             </Link>
           </div>

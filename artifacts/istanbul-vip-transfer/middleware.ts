@@ -6,8 +6,11 @@
  * 2. Locale pref — reads/writes ivt_lang_pref cookie so the user's
  *    last-chosen language persists across sessions.
  *    - URL locale always wins (visiting /en sets the cookie to "en")
- *    - Visiting / when the cookie says e.g. "de" redirects to /de
- *    - Never redirects: /admin, /api, /_next, /data, static assets
+ *    - "/" always serves Turkish — cookie is reset to "tr" on every root visit
+ *      so that client-side hydration also shows Turkish content regardless of
+ *      any prior non-TR cookie.  Language-specific URLs (/en, /de, /ru, /ar)
+ *      are the canonical home for those locales.
+ *    - Never touches: /admin, /api, /_next, /data, static assets
  *
  * Locale sets used:
  *   NON_SOURCE_LOCALES  — all 8 non-TR registry codes (used for prefix
@@ -151,20 +154,20 @@ export async function middleware(request: NextRequest) {
   // content link from a non-Turkish session doesn't bounce the user back.
   const pref = request.cookies.get(LANG_PREF_COOKIE)?.value;
 
-  if ((pathname === '/' || pathname === '') && pref && isRenderableNonTrLang(pref)) {
-    // Fresh root visit with a renderable non-TR cookie → send them to their preferred locale
-    const target = new URL(`/${pref}`, request.url);
-    const redirect = NextResponse.redirect(target);
-    redirect.cookies.set(LANG_PREF_COOKIE, pref, cookieOpts);
-    return redirect;
+  // Root "/" always serves Turkish.
+  // Reset the lang-pref cookie unconditionally so that client-side hydration
+  // also renders Turkish content, regardless of any prior non-TR preference.
+  // Language-specific URLs (/en, /de, /ru, /ar) are the canonical home for
+  // those locales; the language switcher always links to them directly.
+  if (pathname === '/' || pathname === '') {
+    response.cookies.set(LANG_PREF_COOKIE, 'tr', cookieOpts);
+    return response;
   }
 
   // Turkish sub-pages (e.g. /hizmetler, /blog, /araclar) do NOT carry an
-  // explicit locale in the URL.  We leave the existing cookie untouched so
-  // an English user who lands on a Turkish page (e.g. via a hardcoded link)
-  // does not lose their language preference.
-  // We only stamp "tr" on first contact at the root "/" so brand-new visitors
-  // get the default Turkish experience.
+  // explicit locale in the URL.  Stamp "tr" only on first contact so brand-new
+  // visitors get the default Turkish experience without overwriting a preference
+  // that was legitimately set by visiting /en, /de, etc.
   if (!pref) {
     response.cookies.set(LANG_PREF_COOKIE, 'tr', cookieOpts);
   }

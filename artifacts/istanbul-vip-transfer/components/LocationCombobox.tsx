@@ -71,6 +71,9 @@ interface Props {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  /** Translated "Loading…" text shown while options are being fetched.
+   *  Prevents the Turkish default from appearing in non-TR SSR output. */
+  loadingText?: string;
   error?: boolean;
   /** Exclude a specific location name (e.g. already-selected origin) */
   excludeName?: string;
@@ -82,6 +85,7 @@ export default function LocationCombobox({
   value,
   onChange,
   placeholder,
+  loadingText,
   error,
   excludeName,
 }: Props) {
@@ -192,7 +196,7 @@ export default function LocationCombobox({
           aria-autocomplete="list"
           aria-controls={open ? 'location-combobox-listbox' : undefined}
           value={displayValue}
-          placeholder={loading ? 'Yükleniyor…' : (placeholder ?? 'Lokasyon seçin veya yazın')}
+          placeholder={loading ? (loadingText ?? 'Yükleniyor…') : (placeholder ?? 'Lokasyon seçin veya yazın')}
           onChange={handleInputChange}
           onFocus={handleFocus}
           onKeyDown={handleKeyDown}

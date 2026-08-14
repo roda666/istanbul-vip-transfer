@@ -503,7 +503,7 @@ export default function BookingForm() {
                       <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.pickupLocation}</label>
                       <Controller control={control} name="alisLokasyonu" render={({ field }) => (
                         <LocationCombobox for="pickup" scope="local" value={field.value ?? ''} onChange={field.onChange}
-                          placeholder={b.pickupPlaceholder} error={!!errors.alisLokasyonu} excludeName={varisLokasyonuValue} />
+                          placeholder={b.pickupPlaceholder} loadingText={dict.common.loading} error={!!errors.alisLokasyonu} excludeName={varisLokasyonuValue} />
                       )} />
                       {errors.alisLokasyonu && <p role="alert" style={errorStyle}>{errors.alisLokasyonu.message}</p>}
                     </div>
@@ -511,7 +511,7 @@ export default function BookingForm() {
                       <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.dropoffLocation}</label>
                       <Controller control={control} name="varisLokasyonu" render={({ field }) => (
                         <LocationCombobox for="dropoff" scope="local" value={field.value ?? ''} onChange={field.onChange}
-                          placeholder={b.dropoffPlaceholder} error={!!errors.varisLokasyonu} excludeName={alisLokasyonuValue} />
+                          placeholder={b.dropoffPlaceholder} loadingText={dict.common.loading} error={!!errors.varisLokasyonu} excludeName={alisLokasyonuValue} />
                       )} />
                       {errors.varisLokasyonu && <p role="alert" style={errorStyle}>{errors.varisLokasyonu.message}</p>}
                     </div>
@@ -533,7 +533,7 @@ export default function BookingForm() {
                       <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.departureCity}</label>
                       <Controller control={control} name="kalkisIli" render={({ field }) => (
                         <LocationCombobox for="pickup" scope="intercity" value={field.value ?? ''} onChange={field.onChange}
-                          placeholder={b.departureCityPlaceholder} error={!!errors.kalkisIli} excludeName={varisIliValue} />
+                          placeholder={b.departureCityPlaceholder} loadingText={dict.common.loading} error={!!errors.kalkisIli} excludeName={varisIliValue} />
                       )} />
                       {errors.kalkisIli && <p role="alert" style={errorStyle}>{errors.kalkisIli.message}</p>}
                     </div>
@@ -541,7 +541,7 @@ export default function BookingForm() {
                       <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.arrivalCity}</label>
                       <Controller control={control} name="varisIli" render={({ field }) => (
                         <LocationCombobox for="dropoff" scope="intercity" value={field.value ?? ''} onChange={field.onChange}
-                          placeholder={b.arrivalCityPlaceholder} error={!!errors.varisIli} excludeName={kalkisIliValue} />
+                          placeholder={b.arrivalCityPlaceholder} loadingText={dict.common.loading} error={!!errors.varisIli} excludeName={kalkisIliValue} />
                       )} />
                       {errors.varisIli && <p role="alert" style={errorStyle}>{errors.varisIli.message}</p>}
                     </div>
@@ -563,7 +563,7 @@ export default function BookingForm() {
                       <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.allocationLocation}</label>
                       <Controller control={control} name="alisLokasyonu" render={({ field }) => (
                         <LocationCombobox for="pickup" scope="local" value={field.value ?? ''} onChange={field.onChange}
-                          placeholder={b.tourPickupPlaceholder} error={!!errors.alisLokasyonu} />
+                          placeholder={b.tourPickupPlaceholder} loadingText={dict.common.loading} error={!!errors.alisLokasyonu} />
                       )} />
                       {errors.alisLokasyonu && <p role="alert" style={errorStyle}>{errors.alisLokasyonu.message}</p>}
                     </div>
@@ -616,7 +616,7 @@ export default function BookingForm() {
                       <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.allocationLocation}</label>
                       <Controller control={control} name="alisLokasyonu" render={({ field }) => (
                         <LocationCombobox for="pickup" scope="local" value={field.value ?? ''} onChange={field.onChange}
-                          placeholder={b.tourPickupPlaceholder} error={!!errors.alisLokasyonu} />
+                          placeholder={b.tourPickupPlaceholder} loadingText={dict.common.loading} error={!!errors.alisLokasyonu} />
                       )} />
                       {errors.alisLokasyonu && <p role="alert" style={errorStyle}>{errors.alisLokasyonu.message}</p>}
                     </div>

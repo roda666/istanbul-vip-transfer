@@ -68,7 +68,6 @@ export default function AiTranslateButton({ contentId, enabledLangs }: Props) {
   const canTranslate = enabledLangs.length > 0;
   const completed = tasks.filter(t => t.status === 'COMPLETED').length;
   const failed    = tasks.filter(t => t.status === 'FAILED').length;
-  const pending   = tasks.filter(t => ['QUEUED', 'RUNNING', 'RETRYING'].length && ['QUEUED', 'RUNNING', 'RETRYING'].includes(t.status)).length;
   const isDone    = job && !running && !['QUEUED', 'RUNNING'].includes(job.status);
 
   const refreshJob = useCallback(async (id: string) => {

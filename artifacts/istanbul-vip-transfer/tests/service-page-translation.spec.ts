@@ -46,8 +46,6 @@ const SOURCE_BODY: ServicePageBody = {
   },
 };
 
-const SOURCE_BODY_JSON = JSON.stringify(SOURCE_BODY);
-
 /** Simulated "AI translated" output — values are English equivalents of the Turkish source. */
 function buildTranslatedMap(fields: Record<string, string>): Record<string, string> {
   const translations: Record<string, string> = {

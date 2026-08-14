@@ -12,7 +12,7 @@ import { createHash } from 'crypto';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-const TARGET_LOCALES = ['en', 'de', 'ru', 'ar'];
+const TARGET_LOCALES = ['en', 'de', 'ru', 'ar', 'es', 'fr', 'it', 'nl'];
 const SERVICE_CONCURRENCY = 2; // services processed in parallel
 const MODEL = process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-4o-mini';
 
@@ -21,6 +21,10 @@ const LANG_NAMES: Record<string, string> = {
   de: 'German (Deutsch)',
   ru: 'Russian (Русский)',
   ar: 'Arabic (Modern Standard Arabic, RTL)',
+  es: 'Spanish (Español, Spain)',
+  fr: 'French (Français)',
+  it: 'Italian (Italiano)',
+  nl: 'Dutch (Nederlands)',
 };
 
 const PRESERVED_VERBATIM = [

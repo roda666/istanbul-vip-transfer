@@ -34,7 +34,8 @@ description: Pattern and details for seeding EN/DE/RU/AR translations for all 14
 **How to apply:** Any time TR source is saved and published, PUBLISHED translations become OUTDATED. Admin must: Yeniden Çevir → review DRAFT → Onayla → Yayımla.
 
 ## DB state after seed (2026-08-14)
-- 14 services × 4 locales (en/de/ru/ar) = 56 rows
-- 63 PUBLISHED + 1 DRAFT (kurumsal-vip-transfer EN, pre-existing)
+- 14 services × 8 non-TR locales (en/de/ru/ar/es/fr/it/nl) = 112 rows
+- 111 PUBLISHED + 1 DRAFT (kurumsal-vip-transfer EN, pre-existing)
 - 0 duplicates, 0 missing title/body
 - 12 services have only basic body (hero + features + seo); no contentSections/FAQ
+- LANG_NAMES in seed script covers all 8 non-TR locales including es/fr/it/nl

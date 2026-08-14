@@ -83,17 +83,32 @@ const btnSecondary: React.CSSProperties = {
 
 // ── Reusable field components ───────────────────────────────────────────────
 
-function Field({ name, value, onChange, multiline, rows, dir, hint, readOnly }: {
+function Field({ name, value, onChange, multiline, rows, dir, hint, readOnly, maxLen }: {
   name: string; value: string; onChange?: (v: string) => void;
   multiline?: boolean; rows?: number; dir?: string; hint?: string; readOnly?: boolean;
+  /** When set, shows a live character count badge and a red border when exceeded. */
+  maxLen?: number;
 }) {
+  const over = maxLen !== undefined && value.length > maxLen;
+  const near = maxLen !== undefined && !over && value.length > Math.floor(maxLen * 0.85);
   return (
     <div style={{ marginBottom: '14px' }}>
-      <label style={lbl}>{name}</label>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '4px' }}>
+        <label style={{ ...lbl, marginBottom: 0 }}>{name}</label>
+        {maxLen !== undefined && (
+          <span style={{
+            fontSize: '11px', fontFamily: 'Inter, sans-serif', flexShrink: 0, marginLeft: '8px',
+            color: over ? '#DC2626' : near ? '#D97706' : '#94A3B8',
+            fontWeight: over ? 700 : 400,
+          }}>
+            {value.length}/{maxLen}
+          </span>
+        )}
+      </div>
       {multiline
-        ? <textarea style={{ ...ta(dir, rows), opacity: readOnly ? 0.6 : 1 }} value={value}
+        ? <textarea style={{ ...ta(dir, rows), opacity: readOnly ? 0.6 : 1, borderColor: over ? '#EF4444' : undefined }} value={value}
             onChange={e => onChange?.(e.target.value)} dir={dir} readOnly={readOnly} />
-        : <input style={{ ...inp(dir), opacity: readOnly ? 0.6 : 1 }} value={value}
+        : <input style={{ ...inp(dir), opacity: readOnly ? 0.6 : 1, borderColor: over ? '#EF4444' : undefined }} value={value}
             onChange={e => onChange?.(e.target.value)} dir={dir} readOnly={readOnly} />
       }
       {hint && <p style={{ fontSize: '11px', color: '#94A3B8', marginTop: '3px', fontFamily: 'Inter, sans-serif' }}>{hint}</p>}
@@ -423,12 +438,13 @@ function AuditLogSection({ contentId }: { contentId: string }) {
 // ── Translation locale panel ────────────────────────────────────────────────
 
 function TranslationPanel({
-  tx, locale, dir, onAction,
+  tx, locale, dir, slug, onAction,
 }: {
   tx: ServicePageTranslation | undefined;
   locale: string;
   dir: 'ltr' | 'rtl';
   contentId: string;
+  slug: string;
   onAction: (locale: string, action: string) => Promise<void>;
 }) {
   const status  = tx?.status ?? 'NOT_STARTED';
@@ -473,6 +489,19 @@ function TranslationPanel({
             {actionLoading === 'unpublish' ? '…' : '⏸ Yayından Al'}
           </button>
         )}
+        <a
+          href={`/${locale}/${slug}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            fontSize: '11px', fontWeight: 600, color: '#0891B2', textDecoration: 'none',
+            padding: '6px 12px', background: '#ECFEFF', borderRadius: '6px',
+            border: '1px solid #BAE6FD', fontFamily: 'Inter, sans-serif',
+            marginLeft: 'auto', flexShrink: 0, display: 'inline-flex', alignItems: 'center',
+          }}
+        >
+          Önizle ↗
+        </a>
       </div>
 
       {tx?.failureReason && (
@@ -489,7 +518,7 @@ function TranslationPanel({
             <Field name="Başlık" value={body.hero.title} dir={dir} readOnly />
             <Field name="Alt Başlık" value={body.hero.subtitle} multiline rows={3} dir={dir} readOnly />
             <Field name="Breadcrumb" value={body.hero.crumb} dir={dir} readOnly />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="spe-cols-2">
               <Field name="CTA Birincil" value={body.hero.ctaPrimary} dir={dir} readOnly />
               <Field name="CTA İkincil" value={body.hero.ctaSecondary} dir={dir} readOnly />
             </div>
@@ -599,6 +628,20 @@ export default function ServicePageEditor({ initialRecord }: Props) {
 
   // ── Save helper ──────────────────────────────────────────────────────────
   const doSave = async (saveAsDraft: boolean) => {
+    // ── Required-field validation ──────────────────────────────────────────
+    if (!title.trim()) {
+      showToast('error', 'Sayfa başlığı boş olamaz.');
+      return;
+    }
+    if (!body.hero.title.trim()) {
+      showToast('error', 'Hero başlığı (H1) boş olamaz.');
+      return;
+    }
+    if (!saveAsDraft && !seoTitle.trim()) {
+      showToast('error', 'Yayımlamak için meta başlık zorunludur (SEO bölümü).');
+      return;
+    }
+
     setSaving(true);
     try {
       const bodyV2: ServicePageBody = { ...body, version: 2 };
@@ -651,8 +694,42 @@ export default function ServicePageEditor({ initialRecord }: Props) {
   // Canonical URL (auto-generated, read-only)
   const canonicalUrl = `https://www.istanbulviptransfer.com/tr/${record.slug}`;
 
+  // Translations ready to bulk-publish (DRAFT / REVIEW / APPROVED)
+  const publishableTranslations = record.translations.filter(
+    t => ['APPROVED', 'DRAFT', 'REVIEW'].includes(t.status),
+  );
+
   return (
-    <div style={{ fontFamily: 'Inter, sans-serif' }}>
+    <div className="spe-root" style={{ fontFamily: 'Inter, sans-serif' }}>
+      {/* ── Responsive CSS ─────────────────────────────────────────────────── */}
+      <style>{`
+        .spe-root { width: 100%; max-width: 100%; box-sizing: border-box; overflow-x: hidden; }
+        .spe-root * { box-sizing: border-box; }
+        /* 2-column grids collapse to 1 column below 768 px */
+        .spe-cols-2    { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .spe-cols-2-16 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .spe-cols-2-8  { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+        /* Header / action bar */
+        .spe-header      { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        .spe-action-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+        /* Locale tabs — wrap, never horizontal scroll */
+        .spe-locale-tabs { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; }
+        /* Bulk-publish summary bar */
+        .spe-bulk-bar { display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+          background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px;
+          margin-bottom: 20px; flex-wrap: wrap; }
+        /* ── ≤ 767 px: tight mobile ──────────────────────────────────────── */
+        @media (max-width: 767px) {
+          .spe-cols-2    { grid-template-columns: 1fr !important; }
+          .spe-cols-2-16 { grid-template-columns: 1fr !important; }
+          .spe-cols-2-8  { grid-template-columns: 1fr !important; }
+          .spe-header { flex-direction: column; align-items: flex-start; }
+          .spe-action-btns { width: 100%; }
+          .spe-action-btns button { flex: 1; min-height: 44px; font-size: 13px !important; }
+          .spe-bulk-bar { flex-direction: column; align-items: stretch; }
+          .spe-bulk-bar button { width: 100% !important; min-height: 44px; }
+        }
+      `}</style>
       {/* Toast */}
       {toast && (
         <div style={{
@@ -685,16 +762,13 @@ export default function ServicePageEditor({ initialRecord }: Props) {
       )}
 
       {/* Header bar */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        marginBottom: '20px', flexWrap: 'wrap', gap: '10px',
-      }}>
+      <div className="spe-header">
         <div>
           <p style={{ fontSize: '12px', color: '#94A3B8', margin: 0 }}>/{record.slug}</p>
           <StatusBadge status={record.status} />
         </div>
         {activeLocale === 'tr' && (
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <div className="spe-action-btns">
             <button onClick={() => doSave(true)} disabled={saving} style={{ ...btnSecondary, opacity: saving ? 0.5 : 1 }}>
               {saving ? 'Kaydediliyor…' : (record.status === 'PUBLISHED' ? 'Taslak Kaydet' : 'Taslak Kaydet ve Çevir')}
             </button>
@@ -706,7 +780,7 @@ export default function ServicePageEditor({ initialRecord }: Props) {
       </div>
 
       {/* Locale tabs */}
-      <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', flexWrap: 'wrap', overflowX: 'auto', paddingBottom: '4px' }}>
+      <div className="spe-locale-tabs">
         {ALL_LOCALES.map(loc => {
           const tx     = record.translations.find(t => t.locale === loc.code);
           const status = loc.code === 'tr' ? record.status : (tx?.status ?? 'NOT_STARTED');
@@ -728,6 +802,52 @@ export default function ServicePageEditor({ initialRecord }: Props) {
         })}
       </div>
 
+      {/* ── Bulk-publish / translation summary bar (TR tab) ─────────────── */}
+      {activeLocale === 'tr' && (
+        <div className="spe-bulk-bar">
+          {/* Mini status dots for every translation locale */}
+          <div style={{ flex: 1, fontSize: '12px', fontFamily: 'Inter, sans-serif', color: '#374151', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            <strong style={{ flexShrink: 0 }}>Çeviri:</strong>
+            {record.translations.map(t => {
+              const s = TX_STATUS[t.status] ?? TX_STATUS.NOT_STARTED;
+              return (
+                <span key={t.locale} title={`${t.locale.toUpperCase()}: ${s.label}`}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px',
+                    padding: '2px 6px', borderRadius: '4px', background: s.bg, color: s.color, fontWeight: 600 }}>
+                  {t.locale.toUpperCase()}
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: s.color, display: 'inline-block', flexShrink: 0 }} />
+                </span>
+              );
+            })}
+          </div>
+          {publishableTranslations.length > 0 ? (
+            <button
+              onClick={async () => {
+                setSaving(true);
+                try {
+                  await Promise.allSettled(
+                    publishableTranslations.map(t => handleTranslationAction(t.locale, 'publish')),
+                  );
+                  showToast('success', `${publishableTranslations.length} çeviri yayımlandı.`);
+                } finally { setSaving(false); }
+              }}
+              disabled={saving}
+              style={{ ...btnPrimary, fontSize: '12px', padding: '8px 18px', flexShrink: 0, opacity: saving ? 0.5 : 1 }}
+            >
+              ▶ Onaylananları Toplu Yayımla ({publishableTranslations.length})
+            </button>
+          ) : (
+            <span style={{ fontSize: '11px', color: '#94A3B8', fontFamily: 'Inter, sans-serif', flexShrink: 0 }}>
+              {record.translations.every(t => t.status === 'PUBLISHED')
+                ? '✓ Tüm çeviriler yayında'
+                : record.translations.every(t => t.status === 'NOT_STARTED')
+                ? 'TR kaydet → çeviri otomatik başlar'
+                : 'Taslak çevirileri sekmelerde inceleyip yayımlayın'}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* ── TR editor pane ───────────────────────────────────────────────── */}
       {activeLocale === 'tr' && (
         <>
@@ -736,7 +856,7 @@ export default function ServicePageEditor({ initialRecord }: Props) {
             <Field name="Sayfa Başlığı (Admin)" value={title} onChange={setTitle} />
             <Field name="Kısa Açıklama (Excerpt)" value={excerpt} onChange={setExcerpt} multiline rows={3}
               hint="Hizmet kartlarında ve meta açıklamada kullanılabilir." />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div className="spe-cols-2-16">
               <div>
                 <label style={lbl}>Kategori</label>
                 <select value={category} onChange={e => setCategory(e.target.value)} style={{ ...inp(), cursor: 'pointer' }}>
@@ -751,7 +871,7 @@ export default function ServicePageEditor({ initialRecord }: Props) {
                   style={{ ...inp(), width: '100px' }} />
               </div>
             </div>
-            <div style={{ marginTop: '12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            <div className="spe-cols-2-8">
               <Checkbox name="Aktif (sitede göster)" checked={isActive} onChange={setIsActive} />
               <Checkbox name="Arama motorlarında dizinle" checked={indexable} onChange={setIndexable} />
             </div>
@@ -780,7 +900,7 @@ export default function ServicePageEditor({ initialRecord }: Props) {
             <Field name="Alt Başlık" value={body.hero.subtitle} onChange={v => setHero('subtitle', v)} multiline rows={3} />
             <Field name="Breadcrumb Etiketi" value={body.hero.crumb} onChange={v => setHero('crumb', v)}
               hint="Navigasyonda görünecek kısa etiket" />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="spe-cols-2">
               <Field name="CTA Birincil" value={body.hero.ctaPrimary} onChange={v => setHero('ctaPrimary', v)} />
               <Field name="CTA İkincil" value={body.hero.ctaSecondary} onChange={v => setHero('ctaSecondary', v)} />
             </div>
@@ -852,31 +972,41 @@ export default function ServicePageEditor({ initialRecord }: Props) {
               value={heroImage}
               onChange={setHeroImage}
               namespace={`service-pages/${record.slug}`}
-              hint="JPEG, PNG, WebP, GIF, AVIF — max 10 MB."
+              hint="Paylaşılan alan — tüm dillerde aynı görsel kullanılır. JPEG, PNG, WebP — max 10 MB."
               altValue={heroImageAlt}
               onAltChange={setHeroImageAlt}
-              altLabel="Hero Görseli ALT Metni"
+              altLabel="Hero Görseli ALT Metni (Türkçe — çeviride ayrıca lokalize edilir)"
             />
             <ImageUploadField
               label="OG / Sosyal Medya Görseli"
               value={ogImage}
               onChange={setOgImage}
               namespace={`service-pages/${record.slug}`}
-              hint="Sosyal paylaşımlarda görünen görsel — 1200×630 piksel önerilir."
+              hint="Paylaşılan alan — tüm dillerde aynı OG görseli. 1200×630 piksel önerilir."
             />
           </SectionCard>
 
           {/* SEO */}
           <SectionCard title="SEO">
-            <Field name="OG Başlık (Sosyal Paylaşım)" value={body.seo.ogTitle} onChange={v => setSeo('ogTitle', v)} />
-            <Field name="OG Açıklama" value={body.seo.ogDescription} onChange={v => setSeo('ogDescription', v)} multiline rows={3} />
-            <Field name="Meta Başlık (Tarayıcı Sekmesi)" value={seoTitle} onChange={setSeoTitle} />
-            <Field name="Meta Açıklama" value={seoDesc} onChange={setSeoDesc} multiline rows={3} />
+            <Field name="OG Başlık (Sosyal Paylaşım)" value={body.seo.ogTitle}
+              onChange={v => setSeo('ogTitle', v)} maxLen={60} />
+            <Field name="OG Açıklama" value={body.seo.ogDescription}
+              onChange={v => setSeo('ogDescription', v)} multiline rows={3} maxLen={160} />
+            <Field name="Meta Başlık (Tarayıcı Sekmesi)" value={seoTitle} onChange={setSeoTitle}
+              maxLen={60} hint="Tarayıcı sekmesi ve Google arama sonucu başlığı. Yayımlamak için zorunlu." />
+            <Field name="Meta Açıklama" value={seoDesc} onChange={setSeoDesc}
+              multiline rows={3} maxLen={160} hint="Google arama sonucu açıklama metni." />
             <div style={{ marginTop: '4px' }}>
-              <label style={lbl}>Canonical URL (otomatik)</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <label style={{ ...lbl, marginBottom: 0 }}>Canonical URL</label>
+                <span style={{ fontSize: '10px', fontWeight: 600, padding: '1px 6px', borderRadius: '4px',
+                  background: '#EFF6FF', color: '#2563EB', fontFamily: 'Inter, sans-serif' }}>
+                  Paylaşılan alan
+                </span>
+              </div>
               <input value={canonicalUrl} readOnly style={{ ...inp(), opacity: 0.6, background: '#F8FAFC' }} />
               <p style={{ fontSize: '11px', color: '#94A3B8', marginTop: '3px', fontFamily: 'Inter, sans-serif' }}>
-                Canonical URL otomatik olarak oluşturulur — düzenlenemez.
+                Sistem tarafından otomatik oluşturulur — düzenlenemez. Tüm dillerde aynı canonical kullanılır.
               </p>
             </div>
           </SectionCard>
@@ -893,6 +1023,7 @@ export default function ServicePageEditor({ initialRecord }: Props) {
           locale={activeLocale}
           dir={currentLocale.dir}
           contentId={record.id}
+          slug={record.slug}
           onAction={handleTranslationAction}
         />
       )}

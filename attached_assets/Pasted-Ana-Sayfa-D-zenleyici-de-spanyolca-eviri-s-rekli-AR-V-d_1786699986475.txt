@@ -1,0 +1,37 @@
+Ana Sayfa Düzenleyici’de İspanyolca çeviri sürekli ARŞİV durumunda kalıyor. Önceki görev tamamlandı denmesine rağmen sorun çözülmedi.
+
+Bu yalnızca görünüm sorunu olarak ele alınmasın. Veritabanındaki gerçek ES ana sayfa çeviri kaydını ve durum geçişlerini inceleyip düzelt.
+
+Gereksinimler:
+
+1. Türkçe ana sayfanın gerçek sourcePageId/contentId değerini tespit et.
+2. Bu kayda bağlı locale="es" çeviri kaydını bul.
+3. Aynı kaynak ve locale için birden fazla ES kayıt varsa:
+   - İçeriği dolu ve en güncel olan tek kaydı koru.
+   - Diğerlerini veri kaybetmeden ARCHIVED yap.
+   - Aktif kayıt için tekillik kuralını sağla.
+4. Korunan İspanyolca kaydı PUBLISHED durumuna getir:
+   - status=PUBLISHED
+   - publishedAt geçerli tarih
+   - archivedAt=null
+   - isActive=true (şemada varsa)
+   - indexable=true (şemada varsa)
+5. Ana sayfa senkronizasyonu, çeviri işlemi, seed script veya otomatik kontrolün ES kaydını tekrar ARCHIVED yapıp yapmadığını bul ve kalıcı olarak düzelt.
+6. “Değişiklik yok” durumunda bile mevcut ES kaydı ARCHIVED ise işlem bunu başarı saymasın. Açıkça:
+   - “İçerik aynı fakat durum PUBLISHED yapıldı”
+   sonucunu üretmeli.
+7. Admin sekmesindeki durum doğrudan veritabanındaki güncel kayıttan gelsin; önbellekte kalmış ARŞİV etiketi göstermesin.
+8. İşlemden sonra cache/revalidatePath/revalidateTag gereken yerlerde çalıştırılsın.
+9. /es ana sayfasının yayınlanmış İspanyolca CMS kaydını kullandığını doğrula; statik fallback ile başarı raporlama.
+10. Diğer sekmelerin yayın durumunu değiştirme.
+
+Zorunlu doğrulama:
+- DB sorgu sonucu: ES kaydının id, source id, locale, status, publishedAt, archivedAt alanlarını göster.
+- Admin ekranında Español = YAYINDA olduğunu doğrula.
+- Sayfa yenilendiğinde hâlâ YAYINDA kaldığını doğrula.
+- Sunucuyu yeniden başlattıktan sonra durumun tekrar ARŞİV olmadığını doğrula.
+- /es sayfasında Türkçe/Arapça/başka dil karışması olmadığını kontrol et.
+- TypeScript, ESLint ve production build çalıştır.
+- Production deploy/publish yapma.
+
+Sorun gerçekten çözülmeden task complete deme. Değiştirilen dosyaları, kök nedeni ve doğrulama sonuçlarını raporla.

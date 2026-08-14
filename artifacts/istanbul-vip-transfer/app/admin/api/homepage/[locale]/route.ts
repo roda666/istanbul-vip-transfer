@@ -259,8 +259,11 @@ export async function PATCH(
         continue;
       }
 
-      // Skip if hash unchanged and already in a good state
-      if (tx && tx.sourceHash === trHash && !['NOT_STARTED', 'FAILED', 'OUTDATED'].includes(tx.status ?? '')) {
+      // Skip if hash unchanged and already in a healthy terminal state.
+      // ARCHIVED is intentionally excluded: an archived translation must be
+      // re-published even when the source hash has not changed (e.g. after an
+      // external maintenance job incorrectly archived it).
+      if (tx && tx.sourceHash === trHash && !['NOT_STARTED', 'FAILED', 'OUTDATED', 'ARCHIVED'].includes(tx.status ?? '')) {
         syncResults[targetLocale] = { status: 'skipped', reason: 'Hash unchanged' };
         continue;
       }

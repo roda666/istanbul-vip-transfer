@@ -16,6 +16,10 @@ export const LOCALE_REVALIDATION_TAGS: Record<string, string> = {
   de: 'homepage-de',
   ru: 'homepage-ru',
   ar: 'homepage-ar',
+  es: 'homepage-es',
+  fr: 'homepage-fr',
+  it: 'homepage-it',
+  nl: 'homepage-nl',
 };
 
 // ── Read published content (public pages) ─────────────────────────────────

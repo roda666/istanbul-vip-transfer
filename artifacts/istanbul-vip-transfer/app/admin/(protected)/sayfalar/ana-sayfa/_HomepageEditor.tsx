@@ -448,8 +448,6 @@ export default function HomepageEditor({ initialTrRecord, locales }: { initialTr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadLocale]);
 
-  useEffect(() => { if (activeLocale !== 'tr') loadLocale(activeLocale); }, [activeLocale, loadLocale]);
-
   // ── Refresh a locale record from server ──────────────────────────────────
   const refreshLocale = useCallback(async (locale: string) => {
     try {
@@ -459,6 +457,12 @@ export default function HomepageEditor({ initialTrRecord, locales }: { initialTr
       setRecords(prev => ({ ...prev, [locale]: data }));
     } catch { /* silent — refresh failures don't block the user */ }
   }, []);
+
+  // Always refresh active locale on tab switch so the editor never shows stale status
+  // (e.g. ARCHIVED even after an external fix restored the record to PUBLISHED).
+  // The pre-load effect above does a one-time background fetch for all locales;
+  // this ensures the tab the admin actually looks at always has up-to-date server state.
+  useEffect(() => { if (activeLocale !== 'tr') void refreshLocale(activeLocale); }, [activeLocale, refreshLocale]);
 
   // ── Update sections locally ──────────────────────────────────────────────
   const updateSections = (updated: HomepageSections) => {

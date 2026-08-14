@@ -1,0 +1,41 @@
+İspanyolca ana sayfa çevirisi hâlâ ARCHIVED görünüyor. Sorun yalnızca arayüz etiketi değil; “Dil ve Çeviri > İçerik Çevirileri” ekranında homepage / ES kaydı da Arşiv durumunda.
+
+Bunu kalıcı olarak düzelt:
+
+1. Veritabanında contentType=homepage ve locale=es olan bütün kayıtları sorgula.
+2. Aynı Türkçe kaynak kayda bağlı birden fazla ES kaydı varsa:
+   - En güncel ve eksiksiz İspanyolca kaydı koru.
+   - Eski/kopya kayıtları güvenli biçimde arşivle.
+3. Korunan ES kaydını şu duruma getir:
+   - status = PUBLISHED
+   - publishedAt = geçerli tarih
+   - archivedAt = null
+   - isActive = true
+   - indexable = true
+   - needsConfirmation = false
+   Alan isimleri şemada farklıysa mevcut karşılıklarını kullan.
+4. Ana Sayfa Düzenleyici, Dil ve Çeviri ekranı ve public /es sayfasının aynı ES kayıt ID’sini kullandığını doğrula.
+5. Türkçe ana sayfa “değişiklik yok” durumunda tekrar kaydedildiğinde ES kaydı ARCHIVED yapılmamalı.
+6. Çeviri/senkronizasyon, toplu yayın, seed ve health-check kodlarında ES’yi yeniden arşivleyen koşulu bul ve düzelt.
+7. İspanyolca içeriğin eksiksiz olup olmadığını CMS şemasındaki zorunlu alanlara göre kontrol et. Eksik alan varsa Türkçe kaynaktan İspanyolcaya çevirerek tamamla; statik fallback kullanma.
+8. Cache/revalidation işlemini çalıştır. Geliştirme sunucusunu yeniden başlat ve sayfayı yenile.
+9. /es sayfasının yayımlanmış CMS kaydından geldiğini kanıtla; statik veya hardcoded fallback kabul edilmez.
+10. EN, DE, RU, AR, NL, FR ve IT kayıtlarının durumuna ve içeriğine dokunma.
+
+Tamamlandı demeden önce raporda şunları göster:
+
+- ES kayıt ID
+- Türkçe source ID
+- locale
+- status
+- publishedAt
+- archivedAt
+- isActive/indexable
+- duplicate ES kayıt sayısı ve yapılan işlem
+- Ana Sayfa Düzenleyici’de Español = YAYINDA
+- Dil ve Çeviri ekranında homepage ES = YAYINDA
+- Tarayıcı yenilemesi ve sunucu restart sonrasında hâlâ YAYINDA
+- /es HTTP 200 ve CMS kaynağından içerik
+- TypeScript, lint ve production build sonuçları
+
+Üretime yayınlama ve production domain bağlama. ES iki ayrı admin ekranında da YAYINDA görünmeden görevi tamamlandı işaretleme.

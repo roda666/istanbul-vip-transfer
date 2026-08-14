@@ -18,6 +18,8 @@ import { asc, desc, sql, eq, and, count as drizzleCount } from 'drizzle-orm';
 import AdminPageHeader from '../../_components/AdminPageHeader';
 import DilVeCeviriClient from './_DilVeCeviriClient';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Dil ve Çeviri Yönetimi | Admin',
   robots: { index: false },

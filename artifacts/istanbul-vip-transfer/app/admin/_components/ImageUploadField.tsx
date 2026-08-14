@@ -24,8 +24,8 @@ import { useState, useRef } from 'react';
 import Image from 'next/image';
 
 interface ImageUploadFieldProps {
-  /** Field label shown above the control. */
-  label: string;
+  /** Field label shown above the control. Omit when wrapping in an external label. */
+  label?: string;
   /** Current URL/path value. */
   value: string;
   /** Called when value changes (upload or manual input). */

@@ -29,12 +29,14 @@ export const contentTypeEnum = pgEnum('content_type', [
 ]);
 
 export const contentStatusEnum = pgEnum('content_status', [
+  'IDEA',
   'DRAFT',
   'RESEARCH',
   'REVIEW',
   'APPROVED',
   'SCHEDULED',
   'PUBLISHED',
+  'OUTDATED',
   'ARCHIVED',
 ]);
 
@@ -126,6 +128,14 @@ export const content = pgTable('content', {
    * and cleared. NULL when no unpublished changes are pending.
    */
   draftBody: text('draft_body'),
+  /** Blog-specific fields — NULL for SERVICE/PAGE content types */
+  author: text('author'),
+  tags: jsonb('tags').$type<string[]>(),
+  readTimeMinutes: integer('read_time_minutes'),
+  internalLinks: jsonb('internal_links').$type<Array<{ label: string; href: string; anchor?: string }>>(),
+  cta: jsonb('cta').$type<{ text: string; url: string } | null>(),
+  ogTitle: text('og_title'),
+  ogDescription: text('og_description'),
   approvedAt: timestamp('approved_at', { withTimezone: true }),
   approvedBy: uuid('approved_by').references(() => adminUsers.id),
   scheduledAt: timestamp('scheduled_at', { withTimezone: true }),
@@ -142,6 +152,15 @@ export const faqs = pgTable('faqs', {
   question: text('question').notNull(),
   answer: text('answer').notNull(),
   sortOrder: integer('sort_order').default(0).notNull(),
+});
+
+/** Revision snapshots for BLOG_POST content. Last 20 revisions shown in admin. */
+export const blogRevisions = pgTable('blog_revisions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  contentId: uuid('content_id').notNull().references(() => content.id, { onDelete: 'cascade' }),
+  snapshot: jsonb('snapshot').$type<Record<string, unknown>>().notNull(),
+  changedBy: uuid('changed_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
 /** Singleton settings row — always upsert with id = 1. */
@@ -413,6 +432,8 @@ export type Language = typeof languages.$inferSelect;
 export type NewLanguage = typeof languages.$inferInsert;
 export type ContentTranslation = typeof contentTranslations.$inferSelect;
 export type NewContentTranslation = typeof contentTranslations.$inferInsert;
+export type BlogRevision = typeof blogRevisions.$inferSelect;
+export type NewBlogRevision = typeof blogRevisions.$inferInsert;
 
 // ── Reservation requests ─────────────────────────────────────────────────────
 

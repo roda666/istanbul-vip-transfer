@@ -1,6 +1,5 @@
 import type { MetadataRoute } from 'next';
 import { SITE } from '@/lib/site-config';
-import { blogPosts, getAllSlugs as getBlogSlugs } from '@/lib/blog-data';
 
 const BASE = SITE.siteUrl;
 
@@ -125,25 +124,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
-  // ── 5. Turkish blog index + static articles ───────────────────────────────
-  // Blog index has no real updatedAt — omit lastModified.
-  const blogSlugs = getBlogSlugs();
-  if (blogSlugs.length > 0) {
-    push({
-      url: `${BASE}/blog`,
-      changeFrequency: 'weekly',
-      priority: 0.65,
-    });
-    for (const post of blogPosts) {
-      push({
-        url: `${BASE}/blog/${post.slug}`,
-        lastModified: post.updatedAt
-          ? new Date(post.updatedAt)
-          : new Date(post.publishedAt),
-        changeFrequency: 'monthly',
-        priority: 0.6,
-      });
+  // ── 5. DB-driven Turkish blog posts ──────────────────────────────────────
+  try {
+    const { getPublishedBlogPosts } = await import('@/lib/blog-cms');
+    const dbBlogPosts = await getPublishedBlogPosts();
+    if (dbBlogPosts.length > 0) {
+      push({ url: `${BASE}/blog`, changeFrequency: 'weekly', priority: 0.65 });
+      for (const post of dbBlogPosts) {
+        push({
+          url: `${BASE}/blog/${post.slug}`,
+          lastModified: post.updatedAt,
+          changeFrequency: 'monthly',
+          priority: 0.6,
+        });
+      }
     }
+  } catch {
+    // DB unavailable — omit TR blog entries from sitemap
   }
 
   // ── 6. DB-driven: published BLOG_POST translations ────────────────────────

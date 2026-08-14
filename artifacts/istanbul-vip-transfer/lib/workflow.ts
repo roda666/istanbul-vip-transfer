@@ -5,12 +5,14 @@
  */
 
 export type ContentStatus =
+  | 'IDEA'
   | 'DRAFT'
   | 'RESEARCH'
   | 'REVIEW'
   | 'APPROVED'
   | 'SCHEDULED'
   | 'PUBLISHED'
+  | 'OUTDATED'
   | 'ARCHIVED';
 
 /**
@@ -97,12 +99,14 @@ export function validateStatusTransition(
 }
 
 export const STATUS_LABELS: Record<ContentStatus, string> = {
+  IDEA: 'Fikir',
   DRAFT: 'Taslak',
   RESEARCH: 'Araştırma',
   REVIEW: 'İnceleme',
   APPROVED: 'Onaylandı',
   SCHEDULED: 'Zamanlandı',
   PUBLISHED: 'Yayınlandı',
+  OUTDATED: 'Güncellenmeli',
   ARCHIVED: 'Arşivlendi',
 };
 
@@ -110,11 +114,13 @@ export const STATUS_COLORS: Record<
   ContentStatus,
   { bg: string; text: string }
 > = {
+  IDEA:      { bg: '#FFF7ED', text: '#C2410C' },
   DRAFT:     { bg: '#F1F5F9', text: '#64748B' },
   RESEARCH:  { bg: '#EFF6FF', text: '#2563EB' },
   REVIEW:    { bg: '#FFFBEB', text: '#D97706' },
   APPROVED:  { bg: '#F0FDF4', text: '#168C5B' },
   SCHEDULED: { bg: '#F5F3FF', text: '#7C3AED' },
   PUBLISHED: { bg: '#ECFDF5', text: '#059669' },
+  OUTDATED:  { bg: '#FFF1F2', text: '#BE123C' },
   ARCHIVED:  { bg: '#F8FAFC', text: '#64748B' },
 };

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import PageHero from '@/components/PageHero';
 import BookingForm from '@/components/BookingForm';
 import ArticleBody from '@/components/ArticleBody';
-import { getBlogPost, getAllSlugs, blogPosts } from '@/lib/blog-data';
+import { getPublishedBlogPost, getPublishedBlogPosts } from '@/lib/blog-cms';
 import { SITE } from '@/lib/site-config';
 
 const BASE = SITE.siteUrl;
@@ -14,36 +14,37 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
-/** Static export compatibility: pre-render all published article slugs. */
 export async function generateStaticParams() {
-  return getAllSlugs().map((slug) => ({ slug }));
+  const posts = await getPublishedBlogPosts();
+  return posts.map(p => ({ slug: p.slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const post = getBlogPost(slug);
+  const post = await getPublishedBlogPost(slug);
   if (!post) return { title: 'Sayfa Bulunamadı', robots: { index: false, follow: false } };
 
   const PAGE = `${BASE}/blog/${post.slug}`;
-  const title = post.metaTitle ?? post.title;
+  const title = post.seoTitle ?? post.ogTitle ?? post.title;
+  const description = post.seoDescription ?? post.ogDescription ?? post.excerpt ?? undefined;
   const { trCanonical, languages } = await buildBlogAlternates(post.slug);
+
   return {
     title,
-    description: post.description,
+    description,
     alternates: { canonical: trCanonical, languages },
     openGraph: {
-      title,
-      description: post.description,
+      title: post.ogTitle ?? title,
+      description: post.ogDescription ?? description,
       url: PAGE,
       siteName: 'VIP Transfer Istanbul',
       locale: 'tr_TR',
       type: 'article',
-      publishedTime: post.publishedAt,
-      modifiedTime: post.updatedAt,
-      images:
-        post.image
-          ? [{ url: post.image, alt: post.imageAlt ?? post.title }]
-          : [SITE.ogImage],
+      publishedTime: post.publishedAt?.toISOString(),
+      modifiedTime: post.updatedAt.toISOString(),
+      images: post.heroImage
+        ? [{ url: post.heroImage, alt: post.heroImageAlt ?? post.title }]
+        : [SITE.ogImage],
     },
     robots: { index: true, follow: true },
   };
@@ -51,33 +52,42 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function BlogArticlePage({ params }: Props) {
   const { slug } = await params;
-  const post = getBlogPost(slug);
+  const post = await getPublishedBlogPost(slug);
   if (!post) notFound();
 
   const PAGE = `${BASE}/blog/${post.slug}`;
 
-  /** Other published articles, excluding the current one */
-  const otherPosts = blogPosts.filter((p) => p.slug !== post.slug);
+  // Fetch FAQs and other posts in parallel
+  const [faqs, allPosts] = await Promise.all([
+    (async () => {
+      try {
+        const { db }      = await import('@/db');
+        const { faqs: faqsTable } = await import('@/db/schema');
+        const { eq, asc } = await import('drizzle-orm');
+        return await db.select().from(faqsTable)
+          .where(eq(faqsTable.contentId, post.id))
+          .orderBy(asc(faqsTable.sortOrder));
+      } catch { return []; }
+    })(),
+    getPublishedBlogPosts(),
+  ]);
 
-  const blogPostingSchema = {
+  const otherPosts = allPosts.filter(p => p.slug !== post.slug);
+
+  const blogPostingSchema: Record<string, unknown> = {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
     headline: post.title,
-    description: post.description,
-    datePublished: post.publishedAt,
-    dateModified: post.updatedAt ?? post.publishedAt,
-    image: post.image ?? undefined,
+    description: post.excerpt ?? undefined,
+    datePublished: post.publishedAt?.toISOString(),
+    dateModified: post.updatedAt.toISOString(),
+    image: post.heroImage ?? undefined,
     url: PAGE,
-    author: {
-      '@type': 'Organization',
-      name: 'İstanbul VIP Transfer',
-      url: BASE,
-    },
-    publisher: {
-      '@type': 'Organization',
-      name: 'İstanbul VIP Transfer',
-      url: BASE,
-    },
+    author: post.author
+      ? { '@type': 'Person', name: post.author }
+      : { '@type': 'Organization', name: 'İstanbul VIP Transfer', url: BASE },
+    publisher: { '@type': 'Organization', name: 'İstanbul VIP Transfer', url: BASE },
+    keywords: post.tags.join(', ') || undefined,
   };
 
   const breadcrumbSchema = {
@@ -90,6 +100,16 @@ export default async function BlogArticlePage({ params }: Props) {
     ],
   };
 
+  const faqSchema = faqs.length > 0 ? {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map(f => ({
+      '@type': 'Question',
+      name: f.question,
+      acceptedAnswer: { '@type': 'Answer', text: f.answer },
+    })),
+  } : null;
+
   return (
     <>
       <PageHero
@@ -99,136 +119,105 @@ export default async function BlogArticlePage({ params }: Props) {
           { label: post.title },
         ]}
         title={post.title}
-        subtitle={`${post.category} · ${new Date(post.publishedAt).toLocaleDateString('tr-TR', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-        })}`}
+        subtitle={[
+          post.category,
+          post.author,
+          post.readTimeMinutes ? `${post.readTimeMinutes} dk okuma` : null,
+          post.publishedAt ? post.publishedAt.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }) : null,
+        ].filter(Boolean).join(' · ')}
       />
 
       {/* Article image */}
-      {post.image && (
+      {post.heroImage && (
         <div className="max-w-4xl mx-auto px-5 md:px-8 pt-10">
           <div className="aspect-video rounded-sm overflow-hidden">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={post.image}
-              alt={post.imageAlt ?? post.title}
-              className="w-full h-full object-cover"
-            />
+            <img src={post.heroImage} alt={post.heroImageAlt ?? post.title} className="w-full h-full object-cover" />
           </div>
         </div>
       )}
 
+      {/* Tags */}
+      {post.tags.length > 0 && (
+        <div className="max-w-3xl mx-auto px-5 md:px-8 pt-6 flex flex-wrap gap-2">
+          {post.tags.map(tag => (
+            <span key={tag} style={{ padding: '3px 10px', background: '#EFF6FF', color: '#1D4ED8', borderRadius: '4px', fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>
+              #{tag}
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Article body */}
-      <article
-        className="max-w-3xl mx-auto px-5 md:px-8 py-12 md:py-16"
-        aria-label={post.title}
-      >
-        <ArticleBody body={post.body} />
+      <article className="max-w-3xl mx-auto px-5 md:px-8 py-12 md:py-16" aria-label={post.title}>
+        <ArticleBody body={post.body ?? ''} />
 
         {/* Updated date */}
         {post.updatedAt && (
           <p className="mt-10 text-xs" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
             Son güncelleme:{' '}
-            <time dateTime={post.updatedAt}>
-              {new Date(post.updatedAt).toLocaleDateString('tr-TR', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
+            <time dateTime={post.updatedAt.toISOString()}>
+              {post.updatedAt.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' })}
             </time>
           </p>
         )}
 
         <div className="mt-8">
-          <Link
-            href="/blog"
-            className="text-sm tracking-wider uppercase transition-colors hover:text-[#E5C36A]"
-            style={{ color: '#C9A84C', fontFamily: 'Inter, sans-serif' }}
-          >
+          <Link href="/blog" className="text-sm tracking-wider uppercase transition-colors hover:text-[#E5C36A]" style={{ color: '#C9A84C', fontFamily: 'Inter, sans-serif' }}>
             ← Tüm Yazılar
           </Link>
         </div>
       </article>
 
-      <BookingForm />
-
-      {/* ── İlgili Hizmetler ── */}
-      {post.relatedServices && post.relatedServices.length > 0 && (
-        <section className="py-14 md:py-16" style={{ background: '#0D0D0D' }}>
-          <div className="max-w-3xl mx-auto px-5 md:px-8">
-            <p
-              className="text-xs tracking-[0.25em] uppercase mb-6 text-center"
-              style={{ color: '#C9A84C', fontFamily: 'Inter, sans-serif' }}
-            >
-              İlgili Hizmetler
-            </p>
-            <div className="flex flex-wrap justify-center gap-3">
-              {post.relatedServices.map((service) => (
-                <Link
-                  key={service.href}
-                  href={service.href}
-                  className="px-5 py-2.5 rounded text-xs tracking-wider uppercase transition-colors duration-200 hover:bg-[#C9A84C]/10"
-                  style={{
-                    border: '1px solid rgba(201,168,76,0.25)',
-                    color: '#C9A84C',
-                    fontFamily: 'Inter, sans-serif',
-                  }}
-                >
-                  {service.label}
-                </Link>
-              ))}
-            </div>
+      {/* FAQ section */}
+      {faqs.length > 0 && (
+        <section className="py-12 max-w-3xl mx-auto px-5 md:px-8">
+          <h2 className="text-xl font-bold mb-6" style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}>
+            Sık Sorulan Sorular
+          </h2>
+          <div className="space-y-4">
+            {faqs.map(faq => (
+              <details key={faq.id} className="group" style={{ border: '1px solid #E2E8F0', borderRadius: '8px', overflow: 'hidden' }}>
+                <summary style={{ padding: '14px 16px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '14px', fontWeight: 600, color: '#1E293B', background: '#F8FAFC' }}>
+                  {faq.question}
+                </summary>
+                <div style={{ padding: '14px 16px', fontSize: '14px', lineHeight: 1.7, color: '#374151', fontFamily: 'Inter, sans-serif' }}>
+                  {faq.answer}
+                </div>
+              </details>
+            ))}
           </div>
         </section>
       )}
 
-      {/* ── Diğer Yazılar ── */}
+      <BookingForm />
+
+      {/* Diğer Yazılar */}
       {otherPosts.length > 0 && (
         <section className="py-14 md:py-16" style={{ background: '#EDF3F7' }}>
           <div className="max-w-5xl mx-auto px-5 md:px-8">
-            <p
-              className="text-xs tracking-[0.25em] uppercase mb-8 text-center"
-              style={{ color: '#C9A84C', fontFamily: 'Inter, sans-serif' }}
-            >
+            <p className="text-xs tracking-[0.25em] uppercase mb-8 text-center" style={{ color: '#C9A84C', fontFamily: 'Inter, sans-serif' }}>
               Diğer Yazılar
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {otherPosts.map((other) => (
-                <Link
-                  key={other.slug}
-                  href={`/blog/${other.slug}`}
+              {otherPosts.slice(0, 4).map((other) => (
+                <Link key={other.slug} href={`/blog/${other.slug}`}
                   className="group flex gap-4 p-5 rounded transition-colors duration-200"
-                  style={{
-                    border: '1px solid #D8E1E8',
-                    background: '#FFFFFF',
-                  }}
-                >
-                  {other.image && (
-                    <div
-                      className="flex-shrink-0 rounded overflow-hidden"
-                      style={{ width: '80px', height: '60px' }}
-                    >
+                  style={{ border: '1px solid #D8E1E8', background: '#FFFFFF', textDecoration: 'none' }}>
+                  {other.heroImage && (
+                    <div className="flex-shrink-0 rounded overflow-hidden" style={{ width: '80px', height: '60px' }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={other.image}
-                        alt={other.imageAlt ?? other.title}
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={other.heroImage} alt={other.heroImageAlt ?? other.title} className="w-full h-full object-cover" />
                     </div>
                   )}
                   <div className="min-w-0">
-                    <p
-                      className="text-[10px] tracking-[0.15em] uppercase mb-1"
-                      style={{ color: '#C9A84C', fontFamily: 'Inter, sans-serif' }}
-                    >
-                      {other.category}
-                    </p>
-                    <p
-                      className="text-sm font-medium leading-snug transition-colors duration-200 group-hover:text-[#C9A84C]"
-                      style={{ color: '#263F55', fontFamily: 'Playfair Display, Georgia, serif' }}
-                    >
+                    {other.category && (
+                      <p className="text-[10px] tracking-[0.15em] uppercase mb-1" style={{ color: '#C9A84C', fontFamily: 'Inter, sans-serif' }}>
+                        {other.category}
+                      </p>
+                    )}
+                    <p className="text-sm font-medium leading-snug transition-colors duration-200 group-hover:text-[#C9A84C]"
+                      style={{ color: '#263F55', fontFamily: 'Playfair Display, Georgia, serif' }}>
                       {other.title}
                     </p>
                   </div>
@@ -239,14 +228,9 @@ export default async function BlogArticlePage({ params }: Props) {
         </section>
       )}
 
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogPostingSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
-      />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(blogPostingSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
+      {faqSchema && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />}
     </>
   );
 }

@@ -5,14 +5,12 @@
  * no database or server required. Each test simulates a specific failure
  * mode and asserts the correct BlogIssueCode is returned.
  *
- * The health check targets TRANSLATIONS, not source-record flags, because:
- *  - The Turkish source route (/blog/[slug]) reads from static blog-data.ts
- *    and cannot go offline regardless of DB state.
- *  - Localized routes (/en/blog/…, /de/blog/…, etc.) read from the
- *    contentTranslations table; a missing or unpublished translation silently
- *    returns 404 for non-Turkish visitors.
- *  - The source content row's is_active / status columns are NOT checked by
- *    the localized route, so checking them would be a false positive.
+ * NOTE (blog CMS upgrade): blog posts are now fully DB-driven.
+ * - `getKnownBlogSlugs()` returns [] — all slugs live in the DB, not static data.
+ * - `getTranslationLocales()` returns 8 locales (en, de, ru, ar, es, fr, it, nl).
+ * - All DB source rows are checked for translation completeness, regardless of
+ *   whether they appear in the (now empty) knownSlugs list.
+ * - Source rows that have full PUBLISHED translations for all 8 locales are healthy.
  */
 import { test, expect } from '@playwright/test';
 import {
@@ -25,6 +23,10 @@ import {
 
 // ── Fixture helpers ────────────────────────────────────────────────────────────
 
+/** All 8 non-TR locales the app currently exposes. */
+const ALL_LOCALES = ['en', 'de', 'ru', 'ar', 'es', 'fr', 'it', 'nl'];
+
+/** Legacy 4-locale subset used in tests that only check a subset. */
 const CHECK_LOCALES = ['en', 'de', 'ru', 'ar'];
 
 function sourceRow(slug: string, overrides: Partial<BlogSourceRow> = {}): BlogSourceRow {
@@ -39,18 +41,18 @@ function translationRow(
   return { entityId, targetLanguageCode: locale, status };
 }
 
-/** Returns translation rows for all CHECK_LOCALES for a given entity. */
-function allTranslations(entityId: string, status = 'PUBLISHED'): BlogTranslationRow[] {
-  return CHECK_LOCALES.map(l => translationRow(entityId, l, status));
+/** Returns translation rows for all provided locales for a given entity. */
+function allTranslations(entityId: string, locales = CHECK_LOCALES, status = 'PUBLISHED'): BlogTranslationRow[] {
+  return locales.map(l => translationRow(entityId, l, status));
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 test.describe('computeBlogHealthIssues — fixture-based unit tests', () => {
 
-  test('returns empty array when all known slugs have source records and PUBLISHED translations', () => {
+  test('returns empty array when a source row has PUBLISHED translations for all checked locales', () => {
     const src    = sourceRow('slug-a');
-    const result = computeBlogHealthIssues(['slug-a'], [src], allTranslations(src.id), CHECK_LOCALES);
+    const result = computeBlogHealthIssues([], [src], allTranslations(src.id), CHECK_LOCALES);
     expect(result).toHaveLength(0);
   });
 
@@ -70,7 +72,7 @@ test.describe('computeBlogHealthIssues — fixture-based unit tests', () => {
       .filter(l => l !== 'de')  // 'de' is missing
       .map(l => translationRow(src.id, l));
 
-    const result = computeBlogHealthIssues(['slug-a'], [src], translations, CHECK_LOCALES);
+    const result = computeBlogHealthIssues([], [src], translations, CHECK_LOCALES);
     expect(result).toHaveLength(1);
     expect(result[0].issues).toContain('missing_translation');
     expect(result[0].translationDetails).toContainEqual({ locale: 'de', problem: 'missing' });
@@ -80,7 +82,7 @@ test.describe('computeBlogHealthIssues — fixture-based unit tests', () => {
 
   test('flags missing_translation when ALL locale translations are absent', () => {
     const src    = sourceRow('slug-a');
-    const result = computeBlogHealthIssues(['slug-a'], [src], [], CHECK_LOCALES);
+    const result = computeBlogHealthIssues([], [src], [], CHECK_LOCALES);
     expect(result).toHaveLength(1);
     expect(result[0].issues).toContain('missing_translation');
     expect(result[0].translationDetails).toHaveLength(4); // one per locale
@@ -96,7 +98,7 @@ test.describe('computeBlogHealthIssues — fixture-based unit tests', () => {
       translationRow(src.id, 'ru', 'DRAFT'), // 'ru' not published
     ];
 
-    const result = computeBlogHealthIssues(['slug-a'], [src], translations, CHECK_LOCALES);
+    const result = computeBlogHealthIssues([], [src], translations, CHECK_LOCALES);
     expect(result).toHaveLength(1);
     expect(result[0].issues).toContain('translation_not_published');
     expect(result[0].issues).not.toContain('missing_translation');
@@ -113,7 +115,7 @@ test.describe('computeBlogHealthIssues — fixture-based unit tests', () => {
       // 'ru' and 'ar' missing (missing_translation)
     ];
 
-    const result = computeBlogHealthIssues(['slug-a'], [src], translations, CHECK_LOCALES);
+    const result = computeBlogHealthIssues([], [src], translations, CHECK_LOCALES);
     expect(result).toHaveLength(1);
     expect(result[0].issues).toContain('missing_translation');
     expect(result[0].issues).toContain('translation_not_published');
@@ -125,30 +127,41 @@ test.describe('computeBlogHealthIssues — fixture-based unit tests', () => {
     expect(details.map(d => d.locale)).not.toContain('en');
   });
 
-  test('reports issues for multiple unhealthy slugs in one call', () => {
+  test('reports issues for multiple unhealthy source rows in one call', () => {
     const srcA = sourceRow('ok');
     const srcB = sourceRow('no-translations');
     const result = computeBlogHealthIssues(
-      ['ok', 'no-translations', 'missing-source'],
+      ['missing-source'],         // one static-known slug with no DB row
       [srcA, srcB],
-      allTranslations(srcA.id), // only 'ok' has translations
+      allTranslations(srcA.id),   // only 'ok' has translations
       CHECK_LOCALES,
     );
+    // 'missing-source' → missing_source_record
+    // 'no-translations' → missing_translation (all 4 locales)
     expect(result).toHaveLength(2);
     const slugs = result.map(r => r.slug);
     expect(slugs).toContain('no-translations');
     expect(slugs).toContain('missing-source');
   });
 
-  test('extra source rows not in knownSlugs are ignored', () => {
-    const known = sourceRow('known');
-    const extra = sourceRow('extra-not-in-blog-data');
+  test('all DB source rows are now checked even when not listed in knownSlugs', () => {
+    // Post-CMS-upgrade: DB source rows are the authoritative set.
+    // An "extra" source row with missing translations WILL be flagged.
+    const extra = sourceRow('new-db-post');
     const result = computeBlogHealthIssues(
-      ['known'],
-      [known, extra],
-      allTranslations(known.id),
+      [],          // no static known slugs
+      [extra],     // a DB source row with no translations
+      [],
       CHECK_LOCALES,
     );
+    expect(result).toHaveLength(1);
+    expect(result[0].slug).toBe('new-db-post');
+    expect(result[0].issues).toContain('missing_translation');
+  });
+
+  test('a source row with full PUBLISHED translations for all 4 checked locales is healthy', () => {
+    const src    = sourceRow('slug-a');
+    const result = computeBlogHealthIssues([], [src], allTranslations(src.id), CHECK_LOCALES);
     expect(result).toHaveLength(0);
   });
 
@@ -159,52 +172,42 @@ test.describe('computeBlogHealthIssues — fixture-based unit tests', () => {
     expect(result[0].translationDetails).toEqual([]);
   });
 
-  test('a fully healthy slug (all locales PUBLISHED) produces no item', () => {
-    const src    = sourceRow('slug-a');
-    const result = computeBlogHealthIssues(['slug-a'], [src], allTranslations(src.id), CHECK_LOCALES);
-    expect(result).toHaveLength(0);
+});
+
+// ── getKnownBlogSlugs — DB-driven (returns empty list) ────────────────────────
+
+test.describe('getKnownBlogSlugs — DB-driven (returns empty list)', () => {
+
+  test('returns an empty array because all blog posts are now DB-driven', () => {
+    // Blog posts are seeded into the DB via db/seed-blog-posts.ts during `db:migrate`.
+    // There are no static slugs left in blog-data.ts that need health tracking.
+    expect(getKnownBlogSlugs()).toHaveLength(0);
+    expect(Array.isArray(getKnownBlogSlugs())).toBe(true);
   });
 
 });
 
-// ── Integration: known slugs and locales from static sources ──────────────────
-
-test.describe('getKnownBlogSlugs — blog-data.ts integration', () => {
-
-  test('returns at least one blog slug', () => {
-    expect(getKnownBlogSlugs().length).toBeGreaterThan(0);
-  });
-
-  test('includes all expected blog slugs', () => {
-    const slugs    = getKnownBlogSlugs();
-    const expected = [
-      'istanbul-havalimani-transfer-rehberi',
-      'sabiha-gokcen-transfer-rehberi',
-      'vip-transfer-ile-taksi-arasindaki-farklar',
-    ];
-    for (const s of expected) {
-      expect(slugs, `Expected '${s}' in known blog slugs`).toContain(s);
-    }
-  });
-
-  test('returns exactly 3 blog slugs matching the current blog-data.ts', () => {
-    expect(getKnownBlogSlugs()).toHaveLength(3);
-  });
-
-});
+// ── getTranslationLocales — 8 non-TR supported locales ───────────────────────
 
 test.describe('getTranslationLocales — i18n integration', () => {
 
-  test('returns the 4 non-TR supported locales', () => {
+  test('returns the 8 non-TR supported locales', () => {
     const locales = getTranslationLocales();
-    expect(locales).toHaveLength(4);
-    for (const l of ['en', 'de', 'ru', 'ar']) {
+    expect(locales).toHaveLength(8);
+    for (const l of ['en', 'de', 'ru', 'ar', 'es', 'fr', 'it', 'nl']) {
       expect(locales).toContain(l);
     }
   });
 
-  test('does not include Turkish (tr) since TR pages use static data', () => {
+  test('does not include Turkish (tr) since TR source pages are served directly', () => {
     expect(getTranslationLocales()).not.toContain('tr');
+  });
+
+  test('all 8 locales can be used to construct check_locales for computeBlogHealthIssues', () => {
+    const src    = sourceRow('slug-a');
+    const txRows = allTranslations(src.id, ALL_LOCALES);
+    const result = computeBlogHealthIssues([], [src], txRows, ALL_LOCALES);
+    expect(result).toHaveLength(0);  // all 8 locales present and PUBLISHED → healthy
   });
 
 });

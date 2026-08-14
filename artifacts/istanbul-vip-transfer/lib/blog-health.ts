@@ -24,7 +24,6 @@
  *   - missing_translation       → one or more non-TR locales have no translation row
  *   - translation_not_published → a translation row exists but status != 'PUBLISHED'
  */
-import { getAllSlugs } from './blog-data';
 import { SUPPORTED_LANGS } from './i18n';
 
 // ── Public types ─────────────────────────────────────────────────────────────
@@ -82,13 +81,15 @@ export interface BlogTranslationRow {
 // ── Known blog slugs ──────────────────────────────────────────────────────────
 
 /**
- * Returns all slugs declared in blog-data.ts.
- * Each slug here should have a corresponding source BLOG_POST DB record so
- * translations can be created and linked, and every non-TR locale should have
- * a PUBLISHED translation so localized routes serve content.
+ * Returns an empty list — all blog posts are now DB-driven.
+ * The health check cross-references the DB source rows directly (passed as
+ * `sourceRows` to `computeBlogHealthIssues`), so a static slug list is no
+ * longer needed for detecting missing_source_record issues.
+ *
+ * Kept as a named export for backward-compatibility with existing callers.
  */
 export function getKnownBlogSlugs(): string[] {
-  return getAllSlugs();
+  return [];
 }
 
 /**
@@ -139,11 +140,14 @@ export function computeBlogHealthIssues(
 
   const unhealthy: BlogHealthItem[] = [];
 
+  // 1. Check for known slugs that have no source record in the DB.
+  //    With all posts now DB-driven, knownSlugs is typically [] and this
+  //    loop is a no-op. Kept for backward compatibility / static-hybrid setups.
+  const reportedIds = new Set<string>();
+
   for (const slug of knownSlugs) {
     const source = sourceBySlug.get(slug);
-
     if (!source) {
-      // No source record → translations cannot be linked
       unhealthy.push({
         id:                 null,
         slug,
@@ -151,10 +155,15 @@ export function computeBlogHealthIssues(
         issues:             ['missing_source_record'],
         translationDetails: [],
       });
-      continue;
     }
+  }
 
-    const issues: BlogIssueCode[]         = [];
+  // 2. Check all DB source rows for translation completeness.
+  for (const source of sourceRows) {
+    if (reportedIds.has(source.id)) continue;
+    reportedIds.add(source.id);
+
+    const issues: BlogIssueCode[]          = [];
     const details: BlogTranslationDetail[] = [];
     const localeMap = translationMap.get(source.id) ?? new Map<string, string>();
 
@@ -167,21 +176,11 @@ export function computeBlogHealthIssues(
       }
     }
 
-    if (details.some(d => d.problem === 'missing')) {
-      issues.push('missing_translation');
-    }
-    if (details.some(d => d.problem === 'not_published')) {
-      issues.push('translation_not_published');
-    }
+    if (details.some(d => d.problem === 'missing'))        issues.push('missing_translation');
+    if (details.some(d => d.problem === 'not_published'))  issues.push('translation_not_published');
 
     if (issues.length > 0) {
-      unhealthy.push({
-        id:                 source.id,
-        slug,
-        title:              source.title,
-        issues,
-        translationDetails: details,
-      });
+      unhealthy.push({ id: source.id, slug: source.slug, title: source.title, issues, translationDetails: details });
     }
   }
 

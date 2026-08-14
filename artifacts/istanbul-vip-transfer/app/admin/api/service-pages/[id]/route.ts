@@ -111,6 +111,19 @@ async function translateAndSave(
 
   // Skip if manually locked
   if (existing?.isManuallyLocked) return { ok: true };
+
+  // If a PUBLISHED translation has a different source hash, mark it OUTDATED instead of
+  // silently re-translating. The admin must manually trigger retranslation so the
+  // review → approve → publish workflow is preserved and users cannot accidentally
+  // push a stale translation back to the public site.
+  if (existing?.status === 'PUBLISHED' && existing.sourceHash !== srcHash) {
+    await db
+      .update(contentTranslations)
+      .set({ status: 'OUTDATED', sourceHash: srcHash, updatedAt: new Date() })
+      .where(eq(contentTranslations.id, existing.id));
+    return { ok: true };
+  }
+
   // Skip if already translated from same source hash
   if (existing?.sourceHash === srcHash && existing.status !== 'FAILED') return { ok: true };
 
@@ -482,6 +495,11 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   if (action === 'approve') {
+    if (existing.status === 'OUTDATED') {
+      return NextResponse.json({
+        error: 'Güncelliğini yitirmiş çeviri onaylanamaz — önce "Yeniden Çevir" ile yenileyin.',
+      }, { status: 409 });
+    }
     if (!['DRAFT', 'REVIEW', 'FAILED'].includes(existing.status)) {
       return NextResponse.json({ error: 'Yalnızca DRAFT/REVIEW/FAILED çevirileri onaylanabilir.' }, { status: 400 });
     }
@@ -491,6 +509,11 @@ export async function POST(req: NextRequest, { params }: Params) {
       .where(eq(contentTranslations.id, existing.id));
     await writeAuditLog({ contentId: id, action: 'approve_translation', locale, adminUserId });
   } else if (action === 'publish') {
+    if (existing.status === 'OUTDATED') {
+      return NextResponse.json({
+        error: 'Güncelliğini yitirmiş çeviri yayımlanamaz — önce yeniden çevirin, ardından onaylayın.',
+      }, { status: 409 });
+    }
     if (!['APPROVED', 'DRAFT', 'REVIEW'].includes(existing.status)) {
       return NextResponse.json({ error: 'Önce onay gereklidir.' }, { status: 400 });
     }

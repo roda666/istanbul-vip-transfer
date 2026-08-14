@@ -504,6 +504,18 @@ function TranslationPanel({
         </a>
       </div>
 
+      {status === 'OUTDATED' && (
+        <div style={{
+          padding: '10px 14px', background: '#FFF7ED', border: '1px solid #FED7AA',
+          borderRadius: '8px', marginBottom: '16px', fontSize: '12px',
+          color: '#92400E', fontFamily: 'Inter, sans-serif', lineHeight: 1.6,
+        }}>
+          ⚠️ <strong>Güncel değil:</strong> Türkçe kaynak içerik değişti.{' '}
+          Bu çeviri public sayfada <em>eski içerikle</em> görünüyor.{' '}
+          <strong>↺ Yeniden Çevir</strong> ile yenileyin, ardından onaylayıp yayımlayın.
+          Onaylanmadan tekrar yayımlanamaz.
+        </div>
+      )}
       {tx?.failureReason && (
         <div style={{ padding: '10px 14px', background: '#FEF2F2', border: '1px solid #FECACA',
           borderRadius: '8px', marginBottom: '16px', fontSize: '12px', color: '#B91C1C', fontFamily: 'Inter, sans-serif' }}>

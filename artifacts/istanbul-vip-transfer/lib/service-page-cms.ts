@@ -68,7 +68,7 @@ export async function getPublishedServicePage(
   try {
     const { db }                     = await import('@/db');
     const { content, contentTranslations } = await import('@/db/schema');
-    const { eq, and }                = await import('drizzle-orm');
+    const { eq, and, inArray }       = await import('drizzle-orm');
 
     // Always fetch the source TR record first (to check is_active and get id)
     const [src] = await db
@@ -106,7 +106,9 @@ export async function getPublishedServicePage(
         eq(contentTranslations.entityType,          ENTITY_TYPE),
         eq(contentTranslations.entityId,            src.id),
         eq(contentTranslations.targetLanguageCode,  locale),
-        eq(contentTranslations.status,              'PUBLISHED'),
+        // OUTDATED translations are still publicly visible (content is stale but live).
+        // They will be retranslated and re-published via the admin workflow.
+        inArray(contentTranslations.status, ['PUBLISHED', 'OUTDATED']),
       ))
       .limit(1);
 
@@ -141,7 +143,7 @@ export async function getPublishedServicePageLangs(slug: string): Promise<string
   try {
     const { db }                          = await import('@/db');
     const { content, contentTranslations } = await import('@/db/schema');
-    const { eq, and }                     = await import('drizzle-orm');
+    const { eq, and, inArray }            = await import('drizzle-orm');
 
     const [src] = await db
       .select({ id: content.id, status: content.status, isActive: content.isActive })
@@ -159,7 +161,8 @@ export async function getPublishedServicePageLangs(slug: string): Promise<string
         and(
           eq(contentTranslations.entityType,   ENTITY_TYPE),
           eq(contentTranslations.entityId,     src.id),
-          eq(contentTranslations.status,       'PUBLISHED'),
+          // Include OUTDATED: translation is still live, just pending refresh
+          inArray(contentTranslations.status, ['PUBLISHED', 'OUTDATED']),
         ),
       );
 

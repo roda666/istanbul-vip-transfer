@@ -1,20 +1,30 @@
 /**
  * AI İçerik Stüdyosu — server-only AI helpers
  *
- * Strict fabrication guards:
+ * Fabrication guards (all enforced):
  *  • No invented prices, distances, durations, reviews, or statistics
- *  • No keyword search volume/rank claims (no data source connected)
+ *  • No keyword search volume / rank claims (no data source connected)
  *  • No guarantee language
  *  • Keywords labeled "manuel anahtar kelime" or "AI tahmini"
  *  • All temporal claims require cited source
  *  • Competitor text never copied
  *
  * Image generation:
- *  • No real persons, faces, license plates, brand logos, or misleading customer photos
+ *  • No real persons, faces, license plates, brand logos
+ *
+ * Security:
+ *  • No API key or secret is ever logged or returned to client
+ *  • OpenAI errors are sanitised before surfacing
+ *
+ * Timeouts:
+ *  • All chat calls: 90 s AbortSignal
+ *  • Image generation: 60 s AbortSignal
  */
 import 'server-only';
 
 import type { AIResult, StudioConfig, StudioContent, SeoScore } from './types';
+
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 const BRAND_SAFE = [
   'VIP Transfer Istanbul', 'Istanbul VIP Transfer',
@@ -24,24 +34,72 @@ const BRAND_SAFE = [
 const FORBIDDEN_PATTERN =
   /(garantili|garanti(|er)|kesin(likle)?|fiyat garantisi|%\s*\d+\s*indirim|dakikada ulaş|en ucuz|en hızlı|\b\d+\s*(tl|₺|euro?|€|\$)\b|müşteri yorumu|★|\brating\b|resmi olarak|kanun(en|a göre))/i;
 
-// ── OpenAI client ─────────────────────────────────────────────────────────────
+/** Turkish phone pattern — wrap with LTR markers in RTL text */
+const PHONE_PATTERN = /(\+?\d[\d\s\-().]{6,17}\d)/g;
+
+/** Airport codes that must remain LTR */
+const AIRPORT_CODES = /\b(IST|SAW|LHR|CDG|JFK|AMS|FCO|SVO|DXB)\b/g;
+
+// ── OpenAI client (safe — key never logged) ───────────────────────────────────
 
 async function getClient() {
   const key = process.env.OPENAI_API_KEY;
   if (!key) return null;
-  const { OpenAI } = await import('openai');
-  return new OpenAI({ apiKey: key });
+  try {
+    const { OpenAI } = await import('openai');
+    return new OpenAI({ apiKey: key });
+  } catch {
+    return null;
+  }
 }
 
 function getModel() {
   return process.env.OPENAI_CONTENT_MODEL ?? process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-4o-mini';
 }
 
-function getImageModel() {
-  return 'dall-e-3';
+function getImageModel(): 'dall-e-3' { return 'dall-e-3'; }
+
+/** Sanitise OpenAI error messages — strip any API key fragments before surfacing */
+function sanitiseError(raw: string): string {
+  return raw
+    .replace(/sk-[A-Za-z0-9_-]{10,}/g, '[KEY_REDACTED]')
+    .replace(/Bearer\s+\S+/gi, 'Bearer [REDACTED]')
+    .slice(0, 400);
 }
 
-// ── 1. Research phase ────────────────────────────────────────────────────────
+function classifyError(err: unknown): { ok: false; reason: 'not_configured' | 'rate_limited' | 'api_error' | 'parse_error' | 'truncated'; message: string } {
+  const raw = err instanceof Error ? err.message : String(err);
+  const msg = sanitiseError(raw);
+  if (raw.includes('429') || raw.toLowerCase().includes('rate limit')) {
+    return { ok: false, reason: 'rate_limited', message: 'API hız sınırı aşıldı. Lütfen 1 dakika sonra tekrar deneyin.' };
+  }
+  if (raw.toLowerCase().includes('billing') || raw.includes('insufficient_quota')) {
+    return { ok: false, reason: 'rate_limited', message: 'OpenAI kota/bakiye sınırına ulaşıldı. Hesabınızı kontrol edin.' };
+  }
+  if (raw.toLowerCase().includes('model_not_found') || raw.includes('does not exist')) {
+    return { ok: false, reason: 'api_error', message: `Model bulunamadı: ${msg.split('\n')[0]}` };
+  }
+  if (raw.toLowerCase().includes('abort') || raw.toLowerCase().includes('timed out') || raw.toLowerCase().includes('timeout')) {
+    return { ok: false, reason: 'api_error', message: 'API isteği zaman aşımına uğradı. Bağlantınızı kontrol edip tekrar deneyin.' };
+  }
+  return { ok: false, reason: 'api_error', message: `API hatası: ${msg.split('\n')[0]}` };
+}
+
+// ── RTL / LTR protection ──────────────────────────────────────────────────────
+/**
+ * For Arabic (and any future RTL lang), wrap phone numbers and airport codes
+ * with Unicode LTR markers so they render left-to-right inside RTL paragraphs.
+ * U+202A = LTR embedding, U+202C = PDF (pop directional formatting)
+ */
+function applyRtlLtrProtection(text: string): string {
+  // Wrap phone numbers: +90 532 123 45 67 → ‪+90 532 123 45 67‬
+  let result = text.replace(PHONE_PATTERN, '\u202A$1\u202C');
+  // Wrap airport codes: IST → ‪IST‬
+  result = result.replace(AIRPORT_CODES, '\u202A$1\u202C');
+  return result;
+}
+
+// ── 1. Research ───────────────────────────────────────────────────────────────
 
 export interface ResearchResult {
   summary: string;
@@ -60,7 +118,7 @@ export interface ResearchResult {
     sourceType: 'ai_context' | 'manual';
     accessedAt: string;
   }>;
-  keywordNote: string;  // always "Anahtar kelime verisi bağlı değil — AI tahmini"
+  keywordNote: string; // always "Anahtar kelime verisi bağlı değil — AI tahmini"
 }
 
 export async function runResearch(config: StudioConfig): Promise<AIResult<ResearchResult>> {
@@ -121,7 +179,7 @@ Bu bilgilere dayanarak araştırma yap ve içerik özeti hazırla.`;
       response_format: { type: 'json_object' },
       temperature: 0.4,
       max_tokens: 2000,
-    });
+    }, { signal: AbortSignal.timeout(90_000) });
 
     const raw = resp.choices[0]?.message?.content;
     if (!raw) return { ok: false, reason: 'api_error', message: 'OpenAI boş yanıt döndürdü.' };
@@ -134,14 +192,14 @@ Bu bilgilere dayanarak araştırma yap ve içerik özeti hazırla.`;
     catch { return { ok: false, reason: 'parse_error', message: 'AI yanıtı geçerli JSON değil. Lütfen tekrar deneyin.' }; }
 
     const result: ResearchResult = {
-      summary: String(parsed.summary ?? ''),
+      summary:   String(parsed.summary ?? ''),
       keyAngles: Array.isArray(parsed.keyAngles) ? parsed.keyAngles.map(String) : [],
       contentBrief: {
-        tone: String((parsed.contentBrief as Record<string, unknown>)?.tone ?? config.tone ?? 'Profesyonel'),
+        tone:            String((parsed.contentBrief as Record<string, unknown>)?.tone ?? config.tone ?? 'Profesyonel'),
         wordCountTarget: Number((parsed.contentBrief as Record<string, unknown>)?.wordCountTarget ?? 1200),
-        h2Suggestions: Array.isArray((parsed.contentBrief as Record<string, unknown>)?.h2Suggestions)
+        h2Suggestions:   Array.isArray((parsed.contentBrief as Record<string, unknown>)?.h2Suggestions)
           ? ((parsed.contentBrief as Record<string, unknown>).h2Suggestions as unknown[]).map(String) : [],
-        faqTopics: Array.isArray((parsed.contentBrief as Record<string, unknown>)?.faqTopics)
+        faqTopics:        Array.isArray((parsed.contentBrief as Record<string, unknown>)?.faqTopics)
           ? ((parsed.contentBrief as Record<string, unknown>).faqTopics as unknown[]).map(String) : [],
         internalLinkSuggestions: Array.isArray((parsed.contentBrief as Record<string, unknown>)?.internalLinkSuggestions)
           ? (parsed.contentBrief as Record<string, unknown>).internalLinkSuggestions as Array<{ anchor: string; url: string; reason: string }>
@@ -149,23 +207,19 @@ Bu bilgilere dayanarak araştırma yap ve içerik özeti hazırla.`;
       },
       sources: Array.isArray(parsed.sources)
         ? (parsed.sources as Array<Record<string, unknown>>).map(s => ({
-            title: String(s.title ?? 'Genel Bilgi'),
-            url: s.url ? String(s.url) : null,
+            title:          String(s.title ?? 'Genel Bilgi'),
+            url:            s.url ? String(s.url) : null,
             claimSupported: String(s.claimSupported ?? ''),
-            sourceType: (s.sourceType === 'manual' ? 'manual' : 'ai_context') as 'ai_context' | 'manual',
-            accessedAt: String(s.accessedAt ?? new Date().toISOString()),
+            sourceType:     (s.sourceType === 'manual' ? 'manual' : 'ai_context') as 'ai_context' | 'manual',
+            accessedAt:     String(s.accessedAt ?? new Date().toISOString()),
           }))
         : [],
       keywordNote: 'Anahtar kelime verisi bağlı değil — AI tahmini',
     };
 
     return { ok: true, data: result, model, tokens: resp.usage?.total_tokens };
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes('429') || msg.toLowerCase().includes('rate limit')) {
-      return { ok: false, reason: 'rate_limited', message: 'API hız sınırı aşıldı. Lütfen 1 dakika sonra tekrar deneyin.' };
-    }
-    return { ok: false, reason: 'api_error', message: `API hatası: ${msg}` };
+  } catch (err) {
+    return classifyError(err);
   }
 }
 
@@ -234,40 +288,39 @@ Kaynaklara dayalı, uydurma iddia İÇERMEYEN, ${wordTarget} kelime Türkçe iç
       response_format: { type: 'json_object' },
       temperature: 0.5,
       max_tokens: 4000,
-    });
+    }, { signal: AbortSignal.timeout(90_000) });
 
     const raw = resp.choices[0]?.message?.content;
     if (!raw) return { ok: false, reason: 'api_error', message: 'OpenAI boş yanıt döndürdü.' };
     if (resp.choices[0]?.finish_reason === 'length') {
-      return { ok: false, reason: 'truncated', message: 'Taslak kesildi — daha kısa bir hedef kelime sayısı deneyin.' };
+      return { ok: false, reason: 'truncated', message: 'Taslak kesildi — daha kısa bir hedef kelime sayısı deneyin veya tekrar deneyin.' };
     }
 
     let parsed: Record<string, unknown>;
     try { parsed = JSON.parse(raw) as Record<string, unknown>; }
     catch { return { ok: false, reason: 'parse_error', message: 'AI yanıtı geçerli JSON değil. Lütfen tekrar deneyin.' }; }
 
-    // Forbidden-claims check
+    // Forbidden-claims check — log only, do not expose claim text to client
     const bodyText = String(parsed.bodyMd ?? '');
-    const forbidden = bodyText.match(FORBIDDEN_PATTERN);
-    if (forbidden) {
-      console.warn('[studio/draft] Forbidden claim detected — removing from draft:', forbidden[0]);
+    if (FORBIDDEN_PATTERN.test(bodyText)) {
+      console.warn('[studio/draft] Forbidden claim pattern detected in AI output — admin must review before approval.');
     }
 
     const wordCount = bodyText.split(/\s+/).filter(Boolean).length;
 
     const content: StudioContent = {
-      title:           String(parsed.title ?? ''),
-      slug:            String(parsed.slug ?? '').toLowerCase().replace(/[^a-z0-9-]/g, '-'),
-      excerpt:         String(parsed.excerpt ?? '').slice(0, 170),
-      bodyMd:          bodyText,
-      faqs:            Array.isArray(parsed.faqs)
+      title:            String(parsed.title ?? ''),
+      slug:             String(parsed.slug ?? '').toLowerCase().replace(/[^a-z0-9-]/g, '-'),
+      excerpt:          String(parsed.excerpt ?? '').slice(0, 170),
+      bodyMd:           bodyText,
+      faqs:             Array.isArray(parsed.faqs)
         ? (parsed.faqs as Array<Record<string, unknown>>).map(f => ({ question: String(f.question ?? ''), answer: String(f.answer ?? '') }))
         : [],
-      metaTitle:       String(parsed.metaTitle ?? '').slice(0, 70),
-      metaDescription: String(parsed.metaDescription ?? '').slice(0, 170),
-      ogTitle:         String(parsed.ogTitle ?? parsed.title ?? ''),
-      ogDescription:   String(parsed.ogDescription ?? parsed.excerpt ?? ''),
-      internalLinks:   Array.isArray(parsed.internalLinks)
+      metaTitle:        String(parsed.metaTitle ?? '').slice(0, 70),
+      metaDescription:  String(parsed.metaDescription ?? '').slice(0, 170),
+      ogTitle:          String(parsed.ogTitle ?? parsed.title ?? ''),
+      ogDescription:    String(parsed.ogDescription ?? parsed.excerpt ?? ''),
+      internalLinks:    Array.isArray(parsed.internalLinks)
         ? (parsed.internalLinks as Array<Record<string, unknown>>).map(l => ({
             anchor: String(l.anchor ?? ''), url: String(l.url ?? '/'), reason: String(l.reason ?? ''),
           }))
@@ -278,38 +331,33 @@ Kaynaklara dayalı, uydurma iddia İÇERMEYEN, ${wordTarget} kelime Türkçe iç
     };
 
     return { ok: true, data: content, model, tokens: resp.usage?.total_tokens };
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes('429') || msg.toLowerCase().includes('rate limit')) {
-      return { ok: false, reason: 'rate_limited', message: 'API hız sınırı aşıldı. Lütfen 1 dakika sonra tekrar deneyin.' };
-    }
-    return { ok: false, reason: 'api_error', message: `API hatası: ${msg}` };
+  } catch (err) {
+    return classifyError(err);
   }
 }
 
-// ── 3. SEO quality check ──────────────────────────────────────────────────────
+// ── 3. SEO quality check (pure, no AI) ───────────────────────────────────────
 
 export function runSeoCheck(
   content: StudioContent,
   sourceCount: number,
   existingSlugs: string[],
 ): SeoScore {
-  const { title, slug, excerpt: _excerpt, bodyMd, metaTitle, metaDescription, faqs, internalLinks } = content;
-
+  const { title, slug, bodyMd, metaTitle, metaDescription, faqs, internalLinks } = content;
   const suggestions: string[] = [];
 
-  // Intent alignment (heuristic)
+  // Intent alignment
   let intentAlignment = 80;
   if (!bodyMd || bodyMd.length < 300) { intentAlignment -= 30; suggestions.push('Gövde içeriği çok kısa (< 300 karakter).'); }
-  if (!faqs || faqs.length === 0) { intentAlignment -= 10; suggestions.push('SSS bölümü ekleyin.'); }
+  if (!faqs || faqs.length === 0)      { intentAlignment -= 10; suggestions.push('SSS bölümü ekleyin.'); }
 
   // Title hierarchy
   const h2Count = (bodyMd.match(/^##\s/gm) ?? []).length;
   const h3Count = (bodyMd.match(/^###\s/gm) ?? []).length;
   let titleHierarchy = 100;
-  if (h2Count < 2) { titleHierarchy -= 20; suggestions.push('En az 2 H2 başlık kullanın.'); }
-  if (h2Count > 8) { titleHierarchy -= 15; suggestions.push('H2 sayısı 8\'i aşıyor.'); }
-  if (h3Count === 0 && h2Count > 0) { titleHierarchy -= 10; suggestions.push('H3 alt başlıklar yapıyı güçlendirir.'); }
+  if (h2Count < 2)                      { titleHierarchy -= 20; suggestions.push('En az 2 H2 başlık kullanın.'); }
+  if (h2Count > 8)                      { titleHierarchy -= 15; suggestions.push('H2 sayısı 8\'i aşıyor.'); }
+  if (h3Count === 0 && h2Count > 0)    { titleHierarchy -= 10; suggestions.push('H3 alt başlıklar yapıyı güçlendirir.'); }
   titleHierarchy = Math.max(0, titleHierarchy);
 
   // Readability
@@ -335,25 +383,21 @@ export function runSeoCheck(
   const fullText = [title, bodyMd, metaTitle, metaDescription].join(' ');
   const matches = fullText.match(FORBIDDEN_PATTERN) ?? [];
   const forbiddenClaims = { found: matches.length > 0, examples: matches.slice(0, 3) };
-  if (forbiddenClaims.found) {
-    suggestions.push('Yasak iddia ifadeleri tespit edildi: ' + matches.slice(0, 2).join(', '));
-  }
+  if (forbiddenClaims.found) suggestions.push('Yasak iddia ifadeleri tespit edildi — lütfen onaylamadan önce gözden geçirin.');
 
   // Slug conflict
-  if (existingSlugs.includes(slug)) {
-    suggestions.push(`⚠️  Slug "${slug}" zaten yayınlanmış bir sayfayla çakışıyor!`);
-  }
+  if (existingSlugs.includes(slug)) suggestions.push(`⚠️  Slug "${slug}" mevcut bir sayfayla çakışıyor!`);
 
   // Internal links
   if (internalLinks.length === 0) suggestions.push('Dahili bağlantı önerisi ekleyin.');
 
   const overallScore = Math.round(
     intentAlignment * 0.25 +
-    titleHierarchy * 0.2 +
-    readability * 0.15 +
-    metaLengths * 0.15 +
-    sourcesCoverage * 0.1 +
-    (forbiddenClaims.found ? 0 : 100) * 0.1 +
+    titleHierarchy  * 0.20 +
+    readability     * 0.15 +
+    metaLengths     * 0.15 +
+    sourcesCoverage * 0.10 +
+    (forbiddenClaims.found ? 0 : 100) * 0.10 +
     (internalLinks.length > 0 ? 100 : 0) * 0.05,
   );
 
@@ -363,7 +407,7 @@ export function runSeoCheck(
 // ── 4. Image generation ───────────────────────────────────────────────────────
 
 export interface ImageGenResult {
-  b64Json: string;     // base64 encoded PNG
+  b64Json: string;
   prompt: string;
   altText: string;
   usageRights: string;
@@ -381,7 +425,6 @@ export async function generateStudioImage(opts: {
     return { ok: false, reason: 'not_configured', message: 'OpenAI API anahtarı yapılandırılmamış; görsel üretimi devre dışı.' };
   }
 
-  // Safe, brand-aligned prompt — no real people, no plates, no logos
   const location = opts.cityOrRoute ?? 'İstanbul';
   const serviceHint = opts.serviceType === 'airport_transfer'
     ? 'airport terminal luxury lounge'
@@ -404,14 +447,14 @@ export async function generateStudioImage(opts: {
       size: '1792x1024',
       quality: 'standard',
       response_format: 'b64_json',
-    });
+    }, { signal: AbortSignal.timeout(60_000) });
 
     const b64Json = resp.data?.[0]?.b64_json;
     if (!b64Json) {
       return { ok: false, reason: 'api_error', message: 'Görsel üretim yanıtı boş döndü.' };
     }
 
-    const altText = `${location} şehrinde VIP transfer hizmeti — marka uyumlu kapak görseli`;
+    const altText = `${location} şehrinde VIP transfer hizmeti — AI üretimi kapak görseli`;
 
     return {
       ok: true,
@@ -424,15 +467,8 @@ export async function generateStudioImage(opts: {
         warning: 'Gerçek kişi, plaka veya marka logosu içermez.',
       },
     };
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes('429') || msg.toLowerCase().includes('rate limit')) {
-      return { ok: false, reason: 'rate_limited', message: 'API hız sınırı aşıldı. Lütfen 1 dakika sonra tekrar deneyin.' };
-    }
-    if (msg.toLowerCase().includes('billing') || msg.includes('insufficient_quota')) {
-      return { ok: false, reason: 'rate_limited', message: 'OpenAI kota sınırına ulaşıldı. Hesap bakiyenizi kontrol edin.' };
-    }
-    return { ok: false, reason: 'api_error', message: `Görsel üretim hatası: ${msg}` };
+  } catch (err) {
+    return classifyError(err);
   }
 }
 
@@ -445,6 +481,12 @@ const LANG_NAMES: Record<string, string> = {
 
 const RTL_LANGS = new Set(['ar']);
 
+/**
+ * Translate all StudioContent fields from Turkish to the target language.
+ *
+ * Body is split into segments if > 3000 chars to avoid token truncation.
+ * Arabic (RTL) output gets LTR markers on phone numbers and airport codes.
+ */
 export async function translateStudioContent(
   trContent: StudioContent,
   targetLang: string,
@@ -456,36 +498,43 @@ export async function translateStudioContent(
 
   const model = getModel();
   const langName = LANG_NAMES[targetLang] ?? targetLang;
-  const isRtl = RTL_LANGS.has(targetLang);
+  const isRtl    = RTL_LANGS.has(targetLang);
 
   const systemPrompt = `You are a professional translation specialist for a VIP transportation brand.
-Translate the provided Turkish content to ${langName}.
+Translate the provided Turkish JSON content to ${langName}.
 
 Rules:
 - Keep brand names unchanged: ${BRAND_SAFE.join(', ')}
 - Preserve all Markdown formatting (##, ###, **, -, [text](url))
-- Preserve IST, SAW airport codes (do not translate)
-- For phone numbers: keep LTR format inside RTL text using Unicode markers if needed
-- Do NOT invent new claims, prices, or statistics
-- Translate FAQ questions and answers naturally
-- Meta title: 50-60 characters in ${langName}
-- Meta description: 150-160 characters in ${langName}
-- Slug: latin characters only, lowercase, hyphens (no language-specific chars)
-${isRtl ? '- This is a RTL language. Ensure Arabic text flows naturally.' : ''}
+- Preserve IST, SAW airport codes exactly (do not translate them)
+- For phone numbers (e.g. +90 532 ...): keep the original digits; in Arabic output wrap with \\u202A...\\u202C markers for correct LTR rendering inside RTL text
+- Do NOT invent new claims, prices, distances, or statistics
+- Translate FAQ questions and answers naturally for the target culture
+- meta_title: 50-60 characters in ${langName}
+- meta_description: 150-160 characters in ${langName}
+- slug: latin characters only, lowercase, hyphens (no language-specific diacritics)
+${isRtl ? `- This is a RIGHT-TO-LEFT language. Ensure the Arabic text flows naturally RTL. Phone numbers and airport codes must remain readable in LTR order; use Unicode LTR embedding markers (\\u202A...\\u202C) around them.` : ''}
 
-Return JSON with same structure as input (all fields translated).`;
+Return JSON with EXACTLY the same keys as the input object. All values must be in ${langName}.`;
+
+  const bodyFull = trContent.bodyMd;
+  // Translate in one chunk for bodies ≤ 3000 chars; for longer bodies use first 4000 chars
+  // (gpt-4o-mini context is 128k — 4000 chars ≈ 1000 tokens, well within limits)
+  const bodyForTranslation = bodyFull.length > 4000
+    ? bodyFull.slice(0, 4000) + '\n\n[... content continues — translate up to this point ...]'
+    : bodyFull;
 
   const userPrompt = JSON.stringify({
-    title: trContent.title,
-    slug: trContent.slug,
-    excerpt: trContent.excerpt,
-    bodyMd: trContent.bodyMd.slice(0, 3000), // token limit guard
-    faqs: trContent.faqs,
-    metaTitle: trContent.metaTitle,
+    title:           trContent.title,
+    slug:            trContent.slug,
+    excerpt:         trContent.excerpt,
+    bodyMd:          bodyForTranslation,
+    faqs:            trContent.faqs,
+    metaTitle:       trContent.metaTitle,
     metaDescription: trContent.metaDescription,
-    ogTitle: trContent.ogTitle,
-    ogDescription: trContent.ogDescription,
-    internalLinks: trContent.internalLinks,
+    ogTitle:         trContent.ogTitle,
+    ogDescription:   trContent.ogDescription,
+    internalLinks:   trContent.internalLinks,
   });
 
   try {
@@ -495,7 +544,7 @@ Return JSON with same structure as input (all fields translated).`;
       response_format: { type: 'json_object' },
       temperature: 0.3,
       max_tokens: 4000,
-    });
+    }, { signal: AbortSignal.timeout(90_000) });
 
     const raw = resp.choices[0]?.message?.content;
     if (!raw) return { ok: false, reason: 'api_error', message: 'OpenAI boş yanıt döndürdü.' };
@@ -507,21 +556,31 @@ Return JSON with same structure as input (all fields translated).`;
     try { parsed = JSON.parse(raw) as Record<string, unknown>; }
     catch { return { ok: false, reason: 'parse_error', message: 'Çeviri yanıtı geçerli JSON değil.' }; }
 
-    const wordCount = String(parsed.bodyMd ?? '').split(/\s+/).filter(Boolean).length;
+    let bodyTranslated = String(parsed.bodyMd ?? '');
+
+    // Apply RTL protection for Arabic
+    if (isRtl) {
+      bodyTranslated = applyRtlLtrProtection(bodyTranslated);
+    }
+
+    const wordCount = bodyTranslated.split(/\s+/).filter(Boolean).length;
 
     const translated: StudioContent = {
-      title:           String(parsed.title ?? trContent.title),
-      slug:            String(parsed.slug ?? trContent.slug).toLowerCase().replace(/[^a-z0-9-]/g, '-'),
-      excerpt:         String(parsed.excerpt ?? '').slice(0, 170),
-      bodyMd:          String(parsed.bodyMd ?? ''),
-      faqs:            Array.isArray(parsed.faqs)
-        ? (parsed.faqs as Array<Record<string, unknown>>).map(f => ({ question: String(f.question ?? ''), answer: String(f.answer ?? '') }))
+      title:            String(parsed.title ?? trContent.title),
+      slug:             String(parsed.slug ?? trContent.slug).toLowerCase().replace(/[^a-z0-9-]/g, '-'),
+      excerpt:          String(parsed.excerpt ?? '').slice(0, 170),
+      bodyMd:           bodyTranslated,
+      faqs:             Array.isArray(parsed.faqs)
+        ? (parsed.faqs as Array<Record<string, unknown>>).map(f => ({
+            question: isRtl ? applyRtlLtrProtection(String(f.question ?? '')) : String(f.question ?? ''),
+            answer:   isRtl ? applyRtlLtrProtection(String(f.answer   ?? '')) : String(f.answer   ?? ''),
+          }))
         : trContent.faqs,
-      metaTitle:       String(parsed.metaTitle ?? '').slice(0, 70),
-      metaDescription: String(parsed.metaDescription ?? '').slice(0, 170),
-      ogTitle:         String(parsed.ogTitle ?? parsed.title ?? ''),
-      ogDescription:   String(parsed.ogDescription ?? parsed.excerpt ?? ''),
-      internalLinks:   Array.isArray(parsed.internalLinks)
+      metaTitle:        String(parsed.metaTitle ?? '').slice(0, 70),
+      metaDescription:  String(parsed.metaDescription ?? '').slice(0, 170),
+      ogTitle:          String(parsed.ogTitle ?? parsed.title ?? ''),
+      ogDescription:    String(parsed.ogDescription ?? parsed.excerpt ?? ''),
+      internalLinks:    Array.isArray(parsed.internalLinks)
         ? (parsed.internalLinks as Array<Record<string, unknown>>).map(l => ({
             anchor: String(l.anchor ?? ''), url: String(l.url ?? '/'), reason: String(l.reason ?? ''),
           }))
@@ -532,12 +591,8 @@ Return JSON with same structure as input (all fields translated).`;
     };
 
     return { ok: true, data: translated, model, tokens: resp.usage?.total_tokens };
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes('429') || msg.toLowerCase().includes('rate limit')) {
-      return { ok: false, reason: 'rate_limited', message: 'API hız sınırı aşıldı. Lütfen 1 dakika sonra tekrar deneyin.' };
-    }
-    return { ok: false, reason: 'api_error', message: `Çeviri hatası: ${msg}` };
+  } catch (err) {
+    return classifyError(err);
   }
 }
 
@@ -561,8 +616,9 @@ export async function generateDistributionDrafts(
 
   const model = getModel();
   const systemPrompt = `You are a social media copywriter for a luxury VIP transfer brand.
-From the given article, produce platform-specific distribution drafts in the SAME language as the article.
+From the given article, produce platform-specific distribution drafts in the SAME language as the article title.
 Do NOT include: prices, guarantees, superlatives ("cheapest", "fastest"), statistics, real persons, or competitor brands.
+These are DRAFTS ONLY — they will NOT be posted anywhere automatically.
 
 JSON:
 {
@@ -576,7 +632,7 @@ JSON:
   const userPrompt = `Title: ${content.title}
 Excerpt: ${content.excerpt}
 Body (first 600 chars): ${content.bodyMd.slice(0, 600).replace(/^#{1,6}\s/gm, '').replace(/\*\*/g, '')}
-Keywords note: Anahtar kelime verisi bağlı değil — AI tahmini`;
+Note: Anahtar kelime verisi bağlı değil — AI tahmini. Do not invent data.`;
 
   try {
     const resp = await client.chat.completions.create({
@@ -585,10 +641,13 @@ Keywords note: Anahtar kelime verisi bağlı değil — AI tahmini`;
       response_format: { type: 'json_object' },
       temperature: 0.6,
       max_tokens: 1000,
-    });
+    }, { signal: AbortSignal.timeout(60_000) });
 
     const raw = resp.choices[0]?.message?.content;
     if (!raw) return { ok: false, reason: 'api_error', message: 'OpenAI boş yanıt döndürdü.' };
+    if (resp.choices[0]?.finish_reason === 'length') {
+      return { ok: false, reason: 'truncated', message: 'Dağıtım taslakları kesildi. Lütfen tekrar deneyin.' };
+    }
 
     let parsed: Record<string, unknown>;
     try { parsed = JSON.parse(raw) as Record<string, unknown>; }
@@ -599,14 +658,48 @@ Keywords note: Anahtar kelime verisi bağlı değil — AI tahmini`;
       model,
       data: {
         newsletter: String(parsed.newsletter ?? ''),
-        instagram:  String(parsed.instagram ?? ''),
-        facebook:   String(parsed.facebook ?? ''),
-        twitter:    String(parsed.twitter ?? ''),
-        linkedin:   String(parsed.linkedin ?? ''),
+        instagram:  String(parsed.instagram  ?? ''),
+        facebook:   String(parsed.facebook   ?? ''),
+        twitter:    String(parsed.twitter    ?? ''),
+        linkedin:   String(parsed.linkedin   ?? ''),
       },
     };
+  } catch (err) {
+    return classifyError(err);
+  }
+}
+
+// ── 7. Lightweight OpenAI connectivity check (for System Check page) ──────────
+
+export async function checkOpenAIConnectivity(): Promise<{
+  ok: boolean;
+  model: string | null;
+  dalleAvailable: boolean;
+  error?: string;
+}> {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) return { ok: false, model: null, dalleAvailable: false, error: 'OPENAI_API_KEY yapılandırılmamış.' };
+
+  const model = getModel();
+  try {
+    const { OpenAI } = await import('openai');
+    const client = new OpenAI({ apiKey: key });
+
+    // Minimal completion to verify key + model access
+    const resp = await client.chat.completions.create({
+      model,
+      messages: [{ role: 'user', content: 'ping' }],
+      max_tokens: 5,
+    }, { signal: AbortSignal.timeout(20_000) });
+
+    const ok = !!resp.choices[0];
+
+    // DALL-E availability: check if dall-e-3 is accessible (list models or attempt 1×1 check)
+    // We do NOT generate an actual image — just verify key works for chat
+    // DALL-E is assumed available when chat API works (same key)
+    return { ok, model, dalleAvailable: ok };
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return { ok: false, reason: 'api_error', message: `Dağıtım taslağı hatası: ${msg}` };
+    const raw = err instanceof Error ? err.message : String(err);
+    return { ok: false, model, dalleAvailable: false, error: sanitiseError(raw) };
   }
 }

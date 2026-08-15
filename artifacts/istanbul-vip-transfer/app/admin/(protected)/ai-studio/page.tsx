@@ -323,6 +323,23 @@ export default function AiStudioPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {config && <ConfigStatus config={config} />}
 
+            {/* System Check link */}
+            <Link href="/admin/ai-studio/sistem-kontrolu" style={{ textDecoration: 'none' }}>
+              <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: '12px', padding: '12px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}
+                onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(19,42,68,0.08)')}
+                onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
+              >
+                <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Wrench size={14} color="#2563EB" />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', fontWeight: 700, color: C.text, margin: 0 }}>Sistem Kontrolü</p>
+                  <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: C.muted, margin: 0 }}>DB, OpenAI, 9 dil durumu</p>
+                </div>
+                <ChevronRight size={14} color={C.muted} />
+              </div>
+            </Link>
+
             {/* Quick tips */}
             <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: '12px', padding: '16px 20px' }}>
               <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 12px' }}>

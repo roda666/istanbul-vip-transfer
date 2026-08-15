@@ -60,7 +60,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 const TARGET_LOCALES = ['en', 'de', 'ru', 'ar', 'fr', 'es', 'it', 'nl'];
 
-// ── Styles ─────────────────────────────────────────────────────────────────
+// ── Base styles ─────────────────────────────────────────────────────────────
 
 const inp: React.CSSProperties = {
   padding: '7px 10px', border: '1px solid #D1D5DB', borderRadius: '6px',
@@ -69,7 +69,91 @@ const inp: React.CSSProperties = {
 };
 const sel: React.CSSProperties = { ...inp, cursor: 'pointer' };
 
-// ── Component ──────────────────────────────────────────────────────────────
+// ── Sub-components ─────────────────────────────────────────────────────────
+
+function LangDots({ translations }: { translations: Record<string, string> }) {
+  return (
+    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+      <span title="Türkçe — Kaynak" style={{
+        fontSize: '10px', fontWeight: 600, padding: '2px 5px',
+        borderRadius: '4px', background: '#ECFDF5', color: '#059669',
+      }}>TR</span>
+      {TARGET_LOCALES.map(lc => {
+        const txStatus = translations[lc] ?? 'NOT_STARTED';
+        const dotColor = TX_STATUS_DOT[txStatus] ?? '#CBD5E1';
+        const label    = TX_STATUS_LABEL[txStatus] ?? txStatus;
+        return (
+          <span key={lc} title={`${lc.toUpperCase()}: ${label}`} style={{
+            fontSize: '10px', fontWeight: 600, padding: '2px 5px',
+            borderRadius: '4px', background: '#F1F5F9', color: '#374151',
+            display: 'inline-flex', alignItems: 'center', gap: '3px',
+          }}>
+            {lc.toUpperCase()}
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+function ActionButtons({
+  item,
+  confirmArchive,
+  actionLoading,
+  onDuplicate,
+  onArchive,
+}: {
+  item: ServiceListItem;
+  confirmArchive: string | null;
+  actionLoading: string | null;
+  onDuplicate: (item: ServiceListItem) => void;
+  onArchive:   (item: ServiceListItem) => void;
+}) {
+  const isLoading = actionLoading?.endsWith(item.id);
+  return (
+    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+      <a href={`/admin/hizmetler/${item.id}`} style={{
+        fontSize: '11px', fontWeight: 600, color: '#C9A84C',
+        textDecoration: 'none', padding: '4px 8px',
+        background: '#FFFBEB', borderRadius: '5px', border: '1px solid #F59E0B',
+        whiteSpace: 'nowrap',
+      }}>Düzenle</a>
+      <a href={`/tr/${item.slug}`} target="_blank" rel="noopener noreferrer" style={{
+        fontSize: '11px', fontWeight: 600, color: '#0891B2',
+        textDecoration: 'none', padding: '4px 8px',
+        background: '#ECFEFF', borderRadius: '5px', border: '1px solid #BAE6FD',
+        whiteSpace: 'nowrap',
+      }}>Önizle ↗</a>
+      <button onClick={() => onDuplicate(item)} disabled={!!actionLoading || !!isLoading}
+        style={{
+          fontSize: '11px', fontWeight: 600, color: '#374151', padding: '4px 8px',
+          background: '#F1F5F9', borderRadius: '5px', border: '1px solid #D1D5DB',
+          cursor: 'pointer', whiteSpace: 'nowrap',
+          opacity: actionLoading === `dup-${item.id}` ? 0.5 : 1,
+        }}
+        title="Taslak olarak kopyala"
+      >Kopyala</button>
+      {item.status !== 'ARCHIVED' && (
+        <button onClick={() => onArchive(item)} disabled={!!actionLoading || !!isLoading}
+          style={{
+            fontSize: '11px', fontWeight: 600,
+            color: confirmArchive === item.id ? '#FFFFFF' : '#64748B',
+            padding: '4px 8px',
+            background: confirmArchive === item.id ? '#DC2626' : '#F8FAFC',
+            borderRadius: '5px',
+            border: `1px solid ${confirmArchive === item.id ? '#DC2626' : '#D1D5DB'}`,
+            cursor: 'pointer', whiteSpace: 'nowrap',
+            opacity: actionLoading === `archive-${item.id}` ? 0.5 : 1,
+          }}
+          title={confirmArchive === item.id ? 'Emin misiniz? Tekrar tıklayın.' : 'Arşivle'}
+        >{confirmArchive === item.id ? 'Emin misiniz?' : 'Arşivle'}</button>
+      )}
+    </div>
+  );
+}
+
+// ── Main component ──────────────────────────────────────────────────────────
 
 export default function HizmetlerList({ items }: Props) {
   const router        = useRouter();
@@ -83,29 +167,20 @@ export default function HizmetlerList({ items }: Props) {
   const [actionLoading,   setActionLoading]   = useState<string | null>(null);
   const [confirmArchive,  setConfirmArchive]  = useState<string | null>(null);
 
-  // ── Client-side filtering + sorting ────────────────────────────────────────
   const filtered = useMemo(() => {
     let result = [...items];
-
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(
-        i => i.title.toLowerCase().includes(q) || i.slug.includes(q),
-      );
+      result = result.filter(i => i.title.toLowerCase().includes(q) || i.slug.includes(q));
     }
-    if (categoryFilter) {
-      result = result.filter(i => i.category === categoryFilter);
-    }
-    if (statusFilter) {
-      result = result.filter(i => i.status === statusFilter);
-    }
+    if (categoryFilter) result = result.filter(i => i.category === categoryFilter);
+    if (statusFilter)   result = result.filter(i => i.status === statusFilter);
     if (langFilter) {
       result = result.filter(i => {
-        const txStatus = i.translations[langFilter];
-        return txStatus && txStatus !== 'NOT_STARTED';
+        const tx = i.translations[langFilter];
+        return tx && tx !== 'NOT_STARTED';
       });
     }
-
     result.sort((a, b) => {
       if (sortBy === 'displayOrder') return a.displayOrder - b.displayOrder;
       if (sortBy === 'title')        return a.title.localeCompare(b.title, 'tr');
@@ -113,11 +188,8 @@ export default function HizmetlerList({ items }: Props) {
       if (sortBy === 'updated')      return b.updatedAt.localeCompare(a.updatedAt);
       return 0;
     });
-
     return result;
   }, [items, searchQuery, categoryFilter, statusFilter, langFilter, sortBy]);
-
-  // ── Actions ────────────────────────────────────────────────────────────────
 
   async function handleArchive(item: ServiceListItem) {
     if (confirmArchive !== item.id) { setConfirmArchive(item.id); return; }
@@ -125,25 +197,21 @@ export default function HizmetlerList({ items }: Props) {
     setActionLoading(`archive-${item.id}`);
     try {
       const res = await fetch(`/admin/api/service-pages/${item.id}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'archiveSource' }),
       });
       if (!res.ok) throw new Error('Arşivleme başarısız.');
       startTransition(() => router.refresh());
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Hata oluştu.');
-    } finally {
-      setActionLoading(null);
-    }
+    } finally { setActionLoading(null); }
   }
 
   async function handleDuplicate(item: ServiceListItem) {
     setActionLoading(`dup-${item.id}`);
     try {
       const res = await fetch(`/admin/api/service-pages/${item.id}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'duplicate' }),
       });
       const data = await res.json() as { newId?: string; error?: string };
@@ -151,24 +219,106 @@ export default function HizmetlerList({ items }: Props) {
       router.push(`/admin/hizmetler/${data.newId}`);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Hata oluştu.');
-    } finally {
-      setActionLoading(null);
-    }
+    } finally { setActionLoading(null); }
   }
-
-  // ── Render ─────────────────────────────────────────────────────────────────
 
   const categoryOptions = [...new Set(items.map(i => i.category).filter(Boolean))] as string[];
 
   return (
     <div>
+      {/* ── Responsive styles ──────────────────────────────────────────── */}
+      <style>{`
+        /* Scrollable table wrapper — always present but only needed on narrow viewports */
+        .hl-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+        /* Mobile card grid — hidden on desktop */
+        .hl-cards { display: none; }
+
+        /* Table header + rows — visible on desktop */
+        .hl-table-header { display: grid; }
+        .hl-table-row    { display: grid; }
+
+        @media (max-width: 768px) {
+          /* Switch to card layout */
+          .hl-table-header { display: none !important; }
+          .hl-table-row    { display: none !important; }
+          .hl-cards        { display: flex; flex-direction: column; gap: 10px; }
+
+          /* Card item */
+          .hl-card {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 10px;
+            padding: 14px 16px;
+            font-family: Inter, sans-serif;
+          }
+          .hl-card-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 4px;
+          }
+          .hl-card-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1E293B;
+            margin: 0;
+            flex: 1;
+            min-width: 0;
+            word-break: break-word;
+          }
+          .hl-card-slug {
+            font-size: 11px;
+            color: #94A3B8;
+            margin: 0 0 8px 0;
+            word-break: break-all;
+          }
+          .hl-card-meta {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 8px;
+            font-size: 11px;
+            color: #64748B;
+          }
+          .hl-card-langs {
+            margin-bottom: 10px;
+          }
+          .hl-card-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+          }
+          .hl-card-actions a,
+          .hl-card-actions button {
+            flex: 1 1 auto;
+            text-align: center;
+            min-width: 72px;
+          }
+
+          /* Toolbar wraps well on mobile already, but ensure min sizing */
+          .hl-toolbar input, .hl-toolbar select {
+            min-width: 0 !important;
+            flex: 1 1 140px !important;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .hl-card-actions a,
+          .hl-card-actions button {
+            flex: 1 1 100%;
+          }
+        }
+      `}</style>
+
       {/* ── Toolbar ──────────────────────────────────────────────────────── */}
-      <div style={{
+      <div className="hl-toolbar" style={{
         display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center',
         marginBottom: '16px', padding: '14px 18px',
         background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '10px',
       }}>
-        {/* Search */}
         <input
           type="search"
           placeholder="Başlık veya slug ara…"
@@ -176,8 +326,6 @@ export default function HizmetlerList({ items }: Props) {
           onChange={e => setSearchQuery(e.target.value)}
           style={{ ...inp, minWidth: '180px', flex: 1 }}
         />
-
-        {/* Category filter */}
         <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} style={sel}>
           <option value="">Tüm kategoriler</option>
           {Object.entries(CATEGORY_LABELS).map(([v, l]) => (
@@ -187,24 +335,18 @@ export default function HizmetlerList({ items }: Props) {
             <option key={c} value={c}>{c}</option>
           ))}
         </select>
-
-        {/* Language filter */}
         <select value={langFilter} onChange={e => setLangFilter(e.target.value)} style={sel}>
           <option value="">Tüm diller</option>
           {TARGET_LOCALES.map(lc => (
             <option key={lc} value={lc}>{lc.toUpperCase()} çeviri var</option>
           ))}
         </select>
-
-        {/* Status filter */}
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={sel}>
           <option value="">Tüm durumlar</option>
           <option value="PUBLISHED">Yayında</option>
           <option value="DRAFT">Taslak</option>
           <option value="ARCHIVED">Arşiv</option>
         </select>
-
-        {/* Sort */}
         <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={sel}>
           <option value="displayOrder">Sıraya göre</option>
           <option value="title">Başlığa göre</option>
@@ -213,20 +355,20 @@ export default function HizmetlerList({ items }: Props) {
         </select>
       </div>
 
-      {/* ── Table ────────────────────────────────────────────────────────── */}
-      <div style={{
+      {/* ── Desktop table ────────────────────────────────────────────────── */}
+      <div className="hl-table-wrap" style={{
         background: '#FFFFFF', border: '1px solid #E2E8F0',
         borderRadius: '10px', overflow: 'hidden',
       }}>
-        {/* Table header */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '36px 1fr 110px 160px 90px 70px 70px 120px',
+        {/* Table header — desktop only */}
+        <div className="hl-table-header" style={{
+          gridTemplateColumns: '36px 1fr 110px 1fr 90px 60px 50px 140px',
           gap: '8px', padding: '10px 18px',
           background: '#F8FAFC', borderBottom: '1px solid #E2E8F0',
           fontFamily: 'Inter, sans-serif',
+          minWidth: '760px',
         }}>
-          {['#', 'Başlık / Slug', 'Kategori', 'Dil Durumu', 'Durum', 'Ana Sayfa', 'Nav', 'İşlem'].map(h => (
+          {['#', 'Başlık / Slug', 'Kategori', 'Dil Durumu (9 dil)', 'Durum', 'Ana', 'Nav', 'İşlem'].map(h => (
             <span key={h} style={{ fontSize: '11px', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase' }}>{h}</span>
           ))}
         </div>
@@ -238,138 +380,109 @@ export default function HizmetlerList({ items }: Props) {
         )}
 
         {filtered.map((item, idx) => {
-          const s     = STATUS_STYLE[item.status] ?? STATUS_STYLE.DRAFT;
-          const isLoading = actionLoading?.endsWith(item.id);
+          const s        = STATUS_STYLE[item.status] ?? STATUS_STYLE.DRAFT;
           const catLabel = item.category ? (CATEGORY_LABELS[item.category] ?? item.category) : '—';
 
           return (
-            <div key={item.id} style={{
-              display: 'grid',
-              gridTemplateColumns: '36px 1fr 110px 160px 90px 70px 70px 120px',
+            <div key={item.id} className="hl-table-row" style={{
+              gridTemplateColumns: '36px 1fr 110px 1fr 90px 60px 50px 140px',
               gap: '8px', padding: '12px 18px',
-              borderBottom: '1px solid #F1F5F9',
-              alignItems: 'center', fontFamily: 'Inter, sans-serif',
+              borderBottom: '1px solid #F1F5F9', alignItems: 'center',
+              fontFamily: 'Inter, sans-serif',
               background: !item.isActive ? '#FAFAFA' : undefined,
-              opacity: isLoading ? 0.6 : 1,
+              opacity: actionLoading?.endsWith(item.id) ? 0.6 : 1,
+              minWidth: '760px',
             }}>
-              {/* # */}
               <span style={{ fontSize: '11px', color: '#94A3B8' }}>{idx + 1}</span>
 
-              {/* Title + slug */}
               <div>
                 <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: '#1E293B' }}>
                   {item.title}
-                  {!item.isActive && (
-                    <span style={{ marginLeft: '6px', fontSize: '10px', color: '#94A3B8', fontWeight: 400 }}>(pasif)</span>
-                  )}
+                  {!item.isActive && <span style={{ marginLeft: '6px', fontSize: '10px', color: '#94A3B8', fontWeight: 400 }}>(pasif)</span>}
                 </p>
                 <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#94A3B8' }}>
                   /{item.slug.slice(0, 40)}{item.slug.length > 40 ? '…' : ''}
                 </p>
               </div>
 
-              {/* Category */}
               <span style={{ fontSize: '11px', color: '#64748B' }}>{catLabel}</span>
 
-              {/* Language status dots */}
-              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                {/* TR always shown */}
-                <span title="Türkçe — Kaynak" style={{
-                  fontSize: '10px', fontWeight: 600, padding: '2px 5px',
-                  borderRadius: '4px', background: '#ECFDF5', color: '#059669',
-                }}>
-                  TR
-                </span>
-                {TARGET_LOCALES.map(lc => {
-                  const txStatus = item.translations[lc] ?? 'NOT_STARTED';
-                  const dotColor = TX_STATUS_DOT[txStatus] ?? '#CBD5E1';
-                  const label    = TX_STATUS_LABEL[txStatus] ?? txStatus;
-                  return (
-                    <span key={lc} title={`${lc.toUpperCase()}: ${label}`} style={{
-                      fontSize: '10px', fontWeight: 600, padding: '2px 5px',
-                      borderRadius: '4px', background: '#F1F5F9', color: '#374151',
-                      display: 'inline-flex', alignItems: 'center', gap: '3px',
-                    }}>
-                      {lc.toUpperCase()}
-                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
-                    </span>
-                  );
-                })}
-              </div>
+              <LangDots translations={item.translations} />
 
-              {/* Status badge */}
               <span style={{
                 fontSize: '11px', fontWeight: 600, padding: '3px 8px',
                 borderRadius: '12px', color: s.color, background: s.bg, textAlign: 'center',
-              }}>
-                {s.label}
-              </span>
+              }}>{s.label}</span>
 
-              {/* showOnHomepage */}
               <span style={{ fontSize: '13px', textAlign: 'center' }}>{item.showOnHomepage ? '✓' : '—'}</span>
-
-              {/* showInNav */}
               <span style={{ fontSize: '13px', textAlign: 'center' }}>{item.showInNav ? '✓' : '—'}</span>
 
+              <ActionButtons
+                item={item}
+                confirmArchive={confirmArchive}
+                actionLoading={actionLoading}
+                onDuplicate={handleDuplicate}
+                onArchive={handleArchive}
+              />
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── Mobile card list ──────────────────────────────────────────────── */}
+      <div className="hl-cards" style={{ marginTop: '4px' }}>
+        {filtered.length === 0 && (
+          <p style={{ padding: '24px', textAlign: 'center', color: '#94A3B8', fontFamily: 'Inter, sans-serif', fontSize: '13px', margin: 0 }}>
+            {items.length === 0 ? 'Henüz hizmet sayfası eklenmemiş.' : 'Filtrelerle eşleşen hizmet bulunamadı.'}
+          </p>
+        )}
+
+        {filtered.map((item, idx) => {
+          const s        = STATUS_STYLE[item.status] ?? STATUS_STYLE.DRAFT;
+          const catLabel = item.category ? (CATEGORY_LABELS[item.category] ?? item.category) : null;
+
+          return (
+            <div key={item.id} className="hl-card"
+              style={{ opacity: actionLoading?.endsWith(item.id) ? 0.6 : 1 }}
+            >
+              {/* Title row */}
+              <div className="hl-card-top">
+                <p className="hl-card-title">
+                  <span style={{ color: '#94A3B8', fontWeight: 400, marginRight: '6px' }}>{idx + 1}.</span>
+                  {item.title}
+                  {!item.isActive && <span style={{ marginLeft: '6px', fontSize: '10px', color: '#94A3B8', fontWeight: 400 }}>(pasif)</span>}
+                </p>
+                <span style={{
+                  flexShrink: 0,
+                  fontSize: '11px', fontWeight: 600, padding: '3px 8px',
+                  borderRadius: '12px', color: s.color, background: s.bg,
+                }}>{s.label}</span>
+              </div>
+
+              {/* Slug */}
+              <p className="hl-card-slug">/{item.slug}</p>
+
+              {/* Meta row */}
+              <div className="hl-card-meta">
+                {catLabel && <span style={{ background: '#F1F5F9', borderRadius: '4px', padding: '1px 6px' }}>{catLabel}</span>}
+                {item.showOnHomepage && <span style={{ background: '#ECFDF5', color: '#059669', borderRadius: '4px', padding: '1px 6px' }}>Ana Sayfa</span>}
+                {item.showInNav      && <span style={{ background: '#EFF6FF', color: '#2563EB', borderRadius: '4px', padding: '1px 6px' }}>Menü</span>}
+              </div>
+
+              {/* Language status dots */}
+              <div className="hl-card-langs">
+                <LangDots translations={item.translations} />
+              </div>
+
               {/* Actions */}
-              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                <a
-                  href={`/admin/hizmetler/${item.id}`}
-                  style={{
-                    fontSize: '11px', fontWeight: 600, color: '#C9A84C',
-                    textDecoration: 'none', padding: '4px 8px',
-                    background: '#FFFBEB', borderRadius: '5px', border: '1px solid #F59E0B',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  Düzenle
-                </a>
-                <a
-                  href={`/tr/${item.slug}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    fontSize: '11px', fontWeight: 600, color: '#0891B2',
-                    textDecoration: 'none', padding: '4px 8px',
-                    background: '#ECFEFF', borderRadius: '5px', border: '1px solid #BAE6FD',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  Önizle ↗
-                </a>
-                <button
-                  onClick={() => handleDuplicate(item)}
-                  disabled={!!actionLoading}
-                  style={{
-                    fontSize: '11px', fontWeight: 600, color: '#374151',
-                    padding: '4px 8px', background: '#F1F5F9',
-                    borderRadius: '5px', border: '1px solid #D1D5DB',
-                    cursor: 'pointer', whiteSpace: 'nowrap',
-                    opacity: actionLoading === `dup-${item.id}` ? 0.5 : 1,
-                  }}
-                  title="Taslak olarak kopyala"
-                >
-                  Kopyala
-                </button>
-                {item.status !== 'ARCHIVED' && (
-                  <button
-                    onClick={() => handleArchive(item)}
-                    disabled={!!actionLoading}
-                    style={{
-                      fontSize: '11px', fontWeight: 600,
-                      color: confirmArchive === item.id ? '#FFFFFF' : '#64748B',
-                      padding: '4px 8px',
-                      background: confirmArchive === item.id ? '#DC2626' : '#F8FAFC',
-                      borderRadius: '5px',
-                      border: `1px solid ${confirmArchive === item.id ? '#DC2626' : '#D1D5DB'}`,
-                      cursor: 'pointer', whiteSpace: 'nowrap',
-                      opacity: actionLoading === `archive-${item.id}` ? 0.5 : 1,
-                    }}
-                    title={confirmArchive === item.id ? 'Emin misiniz? Tekrar tıklayın.' : 'Arşivle'}
-                  >
-                    {confirmArchive === item.id ? 'Emin misiniz?' : 'Arşivle'}
-                  </button>
-                )}
+              <div className="hl-card-actions">
+                <ActionButtons
+                  item={item}
+                  confirmArchive={confirmArchive}
+                  actionLoading={actionLoading}
+                  onDuplicate={handleDuplicate}
+                  onArchive={handleArchive}
+                />
               </div>
             </div>
           );

@@ -1,17 +1,17 @@
 import type { Metadata } from 'next';
-import { SUPPORTED_LANGS } from '@/lib/i18n';
+import { NON_SOURCE_LOCALES } from '@/lib/i18n/locale-registry';
 import { buildAlternates } from '@/lib/i18n/seo';
 import PageHero from '@/components/PageHero';
 import BookingForm from '@/components/BookingForm';
 import Contact from '@/components/Contact';
-import HizmetlerServiceGrid from '@/components/HizmetlerServiceGrid';
+import HizmetlerServiceGridCms from '@/components/HizmetlerServiceGridCms';
 import { SITE } from '@/lib/site-config';
 
 const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/hizmetler`;
 
 export async function generateMetadata(): Promise<Metadata> {
-  const alts = await buildAlternates('/hizmetler', [...SUPPORTED_LANGS]);
+  const alts = await buildAlternates('/hizmetler', NON_SOURCE_LOCALES as string[]);
   return {
     title: 'Hizmetlerimiz | İstanbul VIP Transfer',
     description:
@@ -40,14 +40,19 @@ const breadcrumbSchema = {
   ],
 };
 
-// Pull the Hizmetler groups from the single nav-config source
+/**
+ * Turkish service listing page — CMS-backed.
+ * Renders published SERVICE content rows from the database.
+ * The locale-prefixed variants (/en/hizmetler etc.) are handled by
+ * app/[lang]/hizmetler/page.tsx (specific route, overrides catch-all).
+ */
 export default function HizmetlerPage() {
   return (
     <>
       <PageHero pageKey="services" />
 
       <section className="py-16 md:py-20 max-w-7xl mx-auto px-5 md:px-8">
-        <HizmetlerServiceGrid />
+        <HizmetlerServiceGridCms locale="tr" />
       </section>
 
       <BookingForm />

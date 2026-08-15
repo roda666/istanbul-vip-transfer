@@ -85,15 +85,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
-  // ── 4. DB-driven service pages (active + indexable) ───────────────────────
-  let serviceSlugList: { slug: string; priority: number; updatedAt?: Date }[] = [];
+  // ── 4. DB-driven service pages — only emit locale URLs for PUBLISHED translations ──
+  //
+  // Design: Turkish root URL is always emitted for each published, active, indexable
+  // service page.  Non-TR locale URLs are only emitted when a PUBLISHED translation
+  // exists in content_translations (OUTDATED and DRAFT are intentionally excluded to
+  // avoid indexing pages that may show stale or unsatisfactory content).
+  //
+  // On DB failure we skip all service locale URLs (conservative: avoids indexing
+  // pages whose translation state we cannot verify).
+
+  let serviceSlugList: { slug: string; id: string; priority: number; updatedAt?: Date }[] = [];
+  // Map of content ID → Map of locale → published translation updatedAt
+  let publishedTxByContent = new Map<string, Map<string, Date | undefined>>();
+  // Map of content ID → slug (for joining)
+  const idToSlug = new Map<string, string>();
+
   try {
-    const { db }       = await import('@/db');
-    const { content }  = await import('@/db/schema');
-    const { eq, and }  = await import('drizzle-orm');
+    const { db }                             = await import('@/db');
+    const { content, contentTranslations }   = await import('@/db/schema');
+    const { eq, and }                        = await import('drizzle-orm');
 
     const rows = await db
-      .select({ slug: content.slug, displayOrder: content.displayOrder, updatedAt: content.updatedAt })
+      .select({ id: content.id, slug: content.slug, displayOrder: content.displayOrder, updatedAt: content.updatedAt })
       .from(content)
       .where(and(
         eq(content.contentType, 'SERVICE'),
@@ -102,25 +116,59 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         eq(content.isActive,    true),
       ));
 
-    // Priority based on display_order: first 4 get 0.9/0.8, rest 0.75
     serviceSlugList = rows
       .sort((a, b) => (a.displayOrder ?? 99) - (b.displayOrder ?? 99))
       .map((r, i) => ({
+        id:        r.id,
         slug:      r.slug,
         priority:  i < 2 ? 0.9 : i < 4 ? 0.8 : 0.75,
         updatedAt: r.updatedAt,
       }));
+
+    for (const r of serviceSlugList) idToSlug.set(r.id, r.slug);
+
+    // Fetch all PUBLISHED service translations in one query
+    if (serviceSlugList.length > 0) {
+      const txRows = await db
+        .select({
+          entityId:           contentTranslations.entityId,
+          targetLanguageCode: contentTranslations.targetLanguageCode,
+          updatedAt:          contentTranslations.updatedAt,
+        })
+        .from(contentTranslations)
+        .where(and(
+          eq(contentTranslations.entityType, 'service_page'),
+          eq(contentTranslations.status,     'PUBLISHED'),
+        ));
+
+      for (const tx of txRows) {
+        if (!idToSlug.has(tx.entityId)) continue; // skip non-indexable / archived sources
+        if (!publicCodes.has(tx.targetLanguageCode)) continue; // guard passive locales
+        if (!publishedTxByContent.has(tx.entityId)) publishedTxByContent.set(tx.entityId, new Map());
+        publishedTxByContent.get(tx.entityId)!.set(tx.targetLanguageCode, tx.updatedAt ?? undefined);
+      }
+    }
   } catch {
-    // DB unavailable — use static fallback list
-    serviceSlugList = FALLBACK_SERVICE_SLUGS;
+    // DB unavailable — fall back to static slug list; skip locale URLs (cannot verify)
+    serviceSlugList = FALLBACK_SERVICE_SLUGS.map((s) => ({ ...s, id: '' }));
+    publishedTxByContent = new Map(); // empty → no locale URLs emitted in fallback
   }
 
-  for (const { slug, priority, updatedAt } of serviceSlugList) {
-    // TR root — use real updatedAt when available; omit lastModified otherwise.
+  for (const { id, slug, priority, updatedAt } of serviceSlugList) {
+    // TR root — always emitted (no translation needed)
     push({ url: `${BASE}/${slug}`, ...(updatedAt ? { lastModified: updatedAt } : {}), changeFrequency: 'monthly', priority });
-    // Locale prefixes
+
+    // Non-TR: only emit when a PUBLISHED translation exists for this lang
+    const txLocales = publishedTxByContent.get(id);
     for (const lang of nonTrLangs) {
-      push({ url: `${BASE}/${lang.code}/${slug}`, ...(updatedAt ? { lastModified: updatedAt } : {}), changeFrequency: 'monthly', priority: Math.max(priority - 0.05, 0.5) });
+      if (!txLocales?.has(lang.code)) continue; // skip — no published translation
+      const txUpdatedAt = txLocales.get(lang.code) ?? updatedAt;
+      push({
+        url: `${BASE}/${lang.code}/${slug}`,
+        ...(txUpdatedAt ? { lastModified: txUpdatedAt } : {}),
+        changeFrequency: 'monthly',
+        priority: Math.max(priority - 0.05, 0.5),
+      });
     }
   }
 

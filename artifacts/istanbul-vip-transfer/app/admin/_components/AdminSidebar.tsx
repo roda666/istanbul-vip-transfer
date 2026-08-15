@@ -26,6 +26,7 @@ import {
   Mail,
   MailOpen,
   MessageSquare,
+  PenSquare,
 } from 'lucide-react';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -40,6 +41,7 @@ interface NavItem {
   href: string;
   label: string;
   icon: React.ReactNode;
+  badge?: string;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -49,19 +51,21 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/bulten-aboneleri', label: 'Bülten Aboneleri',      icon: <Mail size={18} /> },
   { href: '/admin/sayfalar/ana-sayfa', label: 'Ana Sayfa Düzenleyici', icon: <LayoutDashboard size={18} /> },
   { href: '/admin/sayfalar',         label: 'Sayfalar',              icon: <FileText size={18} /> },
-  { href: '/admin/hizmetler',   label: 'Hizmetler',           icon: <Wrench size={18} /> },
-  { href: '/admin/araclar',           label: 'Araçlar',              icon: <Car size={18} /> },
+  { href: '/admin/hizmetler',        label: 'Hizmetler',             icon: <Wrench size={18} /> },
+  { href: '/admin/araclar',          label: 'Araçlar',               icon: <Car size={18} /> },
   { href: '/admin/rezervasyon-ayarlari', label: 'Rezervasyon Ayarları', icon: <CalendarClock size={18} /> },
-  { href: '/admin/blog',              label: 'Blog',                 icon: <BookOpen size={18} /> },
-  { href: '/admin/dil-ve-ceviri', label: 'Dil ve Çeviri',      icon: <Languages size={18} /> },
-  { href: '/admin/sss',         label: 'SSS',                 icon: <HelpCircle size={18} /> },
-  { href: '/admin/menu',        label: 'Menü Yönetimi',       icon: <MenuIcon size={18} /> },
-  { href: '/admin/e-posta-ayarlari', label: 'E-posta Ayarları', icon: <MailOpen size={18} /> },
-  { href: '/admin/ayarlar',     label: 'Site Ayarları',       icon: <Settings size={18} /> },
+  { href: '/admin/blog',             label: 'Blog',                  icon: <BookOpen size={18} /> },
+  { href: '/admin/dil-ve-ceviri',    label: 'Dil ve Çeviri',         icon: <Languages size={18} /> },
+  { href: '/admin/sss',              label: 'SSS',                   icon: <HelpCircle size={18} /> },
+  { href: '/admin/menu',             label: 'Menü Yönetimi',         icon: <MenuIcon size={18} /> },
+  { href: '/admin/e-posta-ayarlari', label: 'E-posta Ayarları',      icon: <MailOpen size={18} /> },
+  { href: '/admin/ayarlar',          label: 'Site Ayarları',         icon: <Settings size={18} /> },
   { href: '/admin/ayarlar/icerik-entegrasyonlari', label: 'İçerik Entegrasyonları', icon: <Settings size={18} /> },
-  { href: '/admin/ai-oneriler', label: 'AI İçerik Merkezi',  icon: <Sparkles size={18} /> },
-  { href: '/admin/gecmis',      label: 'İşlem Geçmişi',       icon: <History size={18} /> },
-  { href: '/admin/hesabim',     label: 'Hesabım',             icon: <UserCircle size={18} /> },
+  // ── AI Studio (new) ──────────────────────────────────────────────────────
+  { href: '/admin/ai-studio',        label: 'İçerik Stüdyosu',      icon: <PenSquare size={18} />, badge: 'AI' },
+  { href: '/admin/ai-oneriler',      label: 'AI İçerik Merkezi',    icon: <Sparkles size={18} /> },
+  { href: '/admin/gecmis',           label: 'İşlem Geçmişi',        icon: <History size={18} /> },
+  { href: '/admin/hesabim',          label: 'Hesabım',              icon: <UserCircle size={18} /> },
 ];
 
 interface Props {
@@ -89,7 +93,6 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
       } catch { /* ignore */ }
     }
     fetchCount();
-    // Refresh every 60 s while the tab is visible
     const id = setInterval(fetchCount, 60_000);
     return () => { active = false; clearInterval(id); };
   }, []);
@@ -98,233 +101,129 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
     if (loggingOut) return;
     setLoggingOut(true);
     try {
-      await fetch('/admin/api/logout', { method: 'POST' });
+      await fetch('/admin/api/auth/logout', { method: 'POST' });
+    } finally {
       router.push('/admin/login');
-      router.refresh();
-    } catch {
-      setLoggingOut(false);
     }
   }
 
   function isActive(href: string) {
     if (href === '/admin/dashboard') return pathname === href;
-    return pathname.startsWith(href);
+    return pathname === href || pathname.startsWith(href + '/');
   }
 
   const sidebarContent = (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: SIDEBAR_BG }}>
-      {/* Logo */}
-      <div
-        style={{
-          padding: collapsed ? '20px 12px' : '20px 20px',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: collapsed ? 'center' : 'space-between',
-          minHeight: '64px',
-        }}
-      >
+    <div style={{
+      background: SIDEBAR_BG,
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      overflowY: 'auto',
+    }}>
+      {/* Logo row */}
+      <div style={{
+        padding: collapsed ? '20px 12px' : '20px 18px',
+        borderBottom: '1px solid rgba(255,255,255,0.07)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: collapsed ? 'center' : 'space-between',
+        flexShrink: 0,
+      }}>
         {!collapsed && (
           <div>
-            <div
-              style={{
-                fontFamily: 'Playfair Display, Georgia, serif',
-                color: GOLD,
-                fontSize: '15px',
-                fontWeight: 700,
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-              }}
-            >
+            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 700, color: GOLD, margin: 0, letterSpacing: '0.02em' }}>
               VIP Transfer
-            </div>
-            <div
-              style={{
-                color: 'rgba(255,255,255,0.35)',
-                fontSize: '10px',
-                letterSpacing: '0.2em',
-                textTransform: 'uppercase',
-                fontFamily: 'Inter, sans-serif',
-                marginTop: '2px',
-              }}
-            >
-              Admin
-            </div>
+            </p>
+            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', color: 'rgba(255,255,255,0.45)', margin: 0, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+              Admin Panel
+            </p>
           </div>
         )}
         <button
-          onClick={() => setCollapsed((v) => !v)}
-          aria-label={collapsed ? 'Menüyü genişlet' : 'Menüyü daralt'}
-          className="hidden lg:flex items-center justify-center"
-          style={{
-            background: 'rgba(255,255,255,0.07)',
-            border: 'none',
-            color: 'rgba(255,255,255,0.5)',
-            cursor: 'pointer',
-            padding: '5px',
-            borderRadius: '6px',
-          }}
+          onClick={() => setCollapsed(c => !c)}
+          style={{ background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: '6px', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '6px', display: 'flex' }}
+          aria-label={collapsed ? 'Genişlet' : 'Daralt'}
         >
-          {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
         </button>
       </div>
 
-      {/* Navigation */}
-      <nav style={{ flex: 1, overflowY: 'auto', padding: '10px 8px' }} aria-label="Admin menüsü">
-        {NAV_ITEMS.map((item) => {
+      {/* Nav */}
+      <nav style={{ flex: 1, padding: '12px 8px', overflowY: 'auto' }}>
+        {NAV_ITEMS.map(item => {
           const active = isActive(item.href);
+          const hasBadge = !!item.badge;
+          const count = item.href === '/admin/talepler' ? newCount : 0;
           return (
             <Link
               key={item.href}
               href={item.href}
               onClick={() => setMobileOpen(false)}
-              title={collapsed ? item.label : undefined}
-              style={{
+              style={{ textDecoration: 'none', display: 'block', marginBottom: '2px' }}
+            >
+              <div style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '10px',
-                padding: '9px 12px',
+                padding: collapsed ? '9px' : '9px 12px',
                 borderRadius: '8px',
-                marginBottom: '2px',
-                background: active ? NAV_ACTIVE_BG : 'transparent',
-                color: active ? GOLD : NAV_TEXT,
-                textDecoration: 'none',
-                fontSize: '13px',
-                fontFamily: 'Inter, sans-serif',
-                fontWeight: active ? 600 : 400,
-                transition: 'background 0.15s, color 0.15s',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
                 justifyContent: collapsed ? 'center' : 'flex-start',
-                borderLeft: active ? `3px solid ${GOLD}` : '3px solid transparent',
+                background: active ? NAV_ACTIVE_BG : 'transparent',
+                transition: 'background 0.15s',
+                position: 'relative',
               }}
-              onMouseEnter={(e) => {
-                if (!active) {
-                  (e.currentTarget as HTMLAnchorElement).style.background = NAV_HOVER_BG;
-                  (e.currentTarget as HTMLAnchorElement).style.color = '#fff';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!active) {
-                  (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
-                  (e.currentTarget as HTMLAnchorElement).style.color = NAV_TEXT;
-                }
-              }}
-            >
-              <span style={{ flexShrink: 0, color: active ? GOLD : 'rgba(255,255,255,0.55)' }}>
-                {item.icon}
-              </span>
-              {!collapsed && (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
-                  {item.href === '/admin/talepler' && newCount > 0 && (
-                    <span style={{
-                      marginLeft: 'auto',
-                      background: '#DC2626',
-                      color: '#FFFFFF',
-                      fontSize: '10px',
-                      fontWeight: 700,
-                      borderRadius: '999px',
-                      padding: '1px 6px',
-                      minWidth: '18px',
-                      textAlign: 'center',
-                      lineHeight: '16px',
-                      flexShrink: 0,
-                    }}>
-                      {newCount > 99 ? '99+' : newCount}
+                onMouseEnter={e => { if (!active) e.currentTarget.style.background = NAV_HOVER_BG; }}
+                onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
+              >
+                <span style={{ color: active ? GOLD : NAV_TEXT, flexShrink: 0 }}>{item.icon}</span>
+                {!collapsed && (
+                  <>
+                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: active ? '#fff' : NAV_TEXT, fontWeight: active ? 600 : 400, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {item.label}
                     </span>
-                  )}
-                </span>
-              )}
+                    {hasBadge && (
+                      <span style={{ fontSize: '9px', fontFamily: 'Inter, sans-serif', fontWeight: 700, background: GOLD, color: '#fff', padding: '1px 5px', borderRadius: '4px', letterSpacing: '0.05em' }}>
+                        {item.badge}
+                      </span>
+                    )}
+                    {count > 0 && (
+                      <span style={{ fontSize: '11px', fontFamily: 'Inter, sans-serif', fontWeight: 700, background: '#EF4444', color: '#fff', borderRadius: '10px', padding: '1px 6px', minWidth: '18px', textAlign: 'center' }}>
+                        {count > 99 ? '99+' : count}
+                      </span>
+                    )}
+                  </>
+                )}
+                {active && (
+                  <div style={{ position: 'absolute', left: 0, top: '6px', bottom: '6px', width: '3px', background: GOLD, borderRadius: '0 2px 2px 0' }} />
+                )}
+              </div>
             </Link>
           );
         })}
       </nav>
 
-      {/* User + Logout */}
-      <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', padding: '12px 8px 28px', flexShrink: 0 }}>
+      {/* User footer */}
+      <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', padding: collapsed ? '12px 8px' : '12px 14px', flexShrink: 0 }}>
         {!collapsed && (
-          <div
-            style={{
-              padding: '10px 12px',
-              marginBottom: '4px',
-              borderRadius: '8px',
-              background: SIDEBAR_BG2,
-            }}
-          >
-            <div
-              style={{
-                color: 'rgba(255,255,255,0.9)',
-                fontSize: '13px',
-                fontFamily: 'Inter, sans-serif',
-                fontWeight: 500,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {userName}
-            </div>
-            <div
-              style={{
-                color: 'rgba(255,255,255,0.4)',
-                fontSize: '11px',
-                fontFamily: 'Inter, sans-serif',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                marginTop: '2px',
-              }}
-            >
-              {userEmail}
-            </div>
-            <div
-              style={{
-                color: GOLD,
-                fontSize: '10px',
-                fontFamily: 'Inter, sans-serif',
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-                marginTop: '3px',
-                opacity: 0.8,
-              }}
-            >
-              {userRole.replace('_', ' ')}
-            </div>
+          <div style={{ marginBottom: '8px' }}>
+            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 600, color: '#fff', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userName}</p>
+            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: 'rgba(255,255,255,0.45)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userEmail}</p>
           </div>
         )}
-
         <button
           onClick={handleLogout}
           disabled={loggingOut}
-          title={collapsed ? 'Çıkış' : undefined}
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            width: '100%',
-            padding: '9px 12px',
-            borderRadius: '8px',
-            background: 'none',
-            border: 'none',
-            color: 'rgba(255,255,255,0.4)',
-            cursor: loggingOut ? 'not-allowed' : 'pointer',
-            fontSize: '13px',
-            fontFamily: 'Inter, sans-serif',
-            justifyContent: collapsed ? 'center' : 'flex-start',
-            transition: 'background 0.15s, color 0.15s',
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(214,69,69,0.15)';
-            (e.currentTarget as HTMLButtonElement).style.color = '#FCA5A5';
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = 'none';
-            (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.4)';
+            display: 'flex', alignItems: 'center', gap: '8px',
+            padding: collapsed ? '8px' : '8px 10px',
+            width: '100%', borderRadius: '7px', border: 'none',
+            background: 'rgba(255,255,255,0.06)', cursor: 'pointer',
+            color: 'rgba(255,255,255,0.6)', justifyContent: collapsed ? 'center' : 'flex-start',
           }}
         >
-          <LogOut size={18} style={{ flexShrink: 0 }} />
-          {!collapsed && <span>{loggingOut ? 'Çıkılıyor...' : 'Çıkış'}</span>}
+          <LogOut size={16} />
+          {!collapsed && <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>{loggingOut ? 'Çıkılıyor…' : 'Çıkış Yap'}</span>}
         </button>
       </div>
     </div>
@@ -334,104 +233,54 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
     <>
       {/* Desktop sidebar */}
       <div
-        className="hidden lg:flex"
         style={{
-          width: collapsed ? '60px' : '240px',
-          flexShrink: 0,
-          height: '100dvh',
+          width:    collapsed ? '60px' : '220px',
+          minWidth: collapsed ? '60px' : '220px',
+          height: '100vh',
           position: 'sticky',
           top: 0,
-          borderRight: '1px solid rgba(0,0,0,0.08)',
-          transition: 'width 0.2s ease',
-          overflowX: 'hidden',
-          overflowY: 'visible',
-          boxShadow: '2px 0 12px rgba(19,42,68,0.12)',
+          flexShrink: 0,
+          transition: 'width 0.2s',
+          display: 'none',
         }}
+        className="admin-sidebar-desktop"
       >
         {sidebarContent}
       </div>
 
-      {/* Mobile top bar */}
-      <div
-        className="lg:hidden flex items-center"
+      {/* Mobile hamburger */}
+      <button
+        onClick={() => setMobileOpen(true)}
+        aria-label="Menüyü aç"
+        className="admin-sidebar-hamburger"
         style={{
+          display: 'none',
           position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 50,
-          height: '56px',
+          top: '12px',
+          left: '12px',
+          zIndex: 70,
           background: SIDEBAR_BG,
-          borderBottom: '1px solid rgba(0,0,0,0.1)',
-          padding: '0 16px',
-          gap: '12px',
-          boxShadow: '0 2px 8px rgba(19,42,68,0.15)',
+          border: 'none',
+          borderRadius: '8px',
+          color: '#fff',
+          cursor: 'pointer',
+          padding: '8px',
         }}
       >
-        <button
-          onClick={() => setMobileOpen(true)}
-          aria-label="Menüyü aç"
-          style={{ background: 'none', border: 'none', color: GOLD, cursor: 'pointer', padding: '4px', display: 'flex' }}
-        >
-          <AlignLeft size={22} />
-        </button>
-        <span
-          style={{
-            fontFamily: 'Playfair Display, Georgia, serif',
-            color: GOLD,
-            fontSize: '14px',
-            fontWeight: 700,
-            letterSpacing: '0.12em',
-            textTransform: 'uppercase',
-          }}
-        >
-          VIP Transfer Admin
-        </span>
-      </div>
-
-      {/* Mobile offset */}
-      <div className="lg:hidden" style={{ height: '56px', flexShrink: 0 }} />
+        <AlignLeft size={20} />
+      </button>
 
       {/* Mobile drawer */}
       {mobileOpen && (
         <>
           <div
             onClick={() => setMobileOpen(false)}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              zIndex: 55,
-              background: 'rgba(19,42,68,0.6)',
-              backdropFilter: 'blur(4px)',
-            }}
+            style={{ position: 'fixed', inset: 0, zIndex: 55, background: 'rgba(19,42,68,0.6)', backdropFilter: 'blur(4px)' }}
             aria-hidden="true"
           />
-          <div
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              bottom: 0,
-              width: '260px',
-              zIndex: 60,
-              borderRight: '1px solid rgba(255,255,255,0.08)',
-              boxShadow: '4px 0 20px rgba(19,42,68,0.3)',
-            }}
-          >
+          <div style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: '260px', zIndex: 60, borderRight: '1px solid rgba(255,255,255,0.08)', boxShadow: '4px 0 20px rgba(19,42,68,0.3)' }}>
             <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 10 }}>
-              <button
-                onClick={() => setMobileOpen(false)}
-                aria-label="Menüyü kapat"
-                style={{
-                  background: 'rgba(255,255,255,0.1)',
-                  border: 'none',
-                  borderRadius: '6px',
-                  color: 'rgba(255,255,255,0.7)',
-                  cursor: 'pointer',
-                  padding: '6px',
-                  display: 'flex',
-                }}
-              >
+              <button onClick={() => setMobileOpen(false)} aria-label="Menüyü kapat" style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '6px', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', padding: '6px', display: 'flex' }}>
                 <X size={18} />
               </button>
             </div>
@@ -439,6 +288,11 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
           </div>
         </>
       )}
+
+      <style>{`
+        @media (min-width: 769px) { .admin-sidebar-desktop { display: block !important; } }
+        @media (max-width: 768px) { .admin-sidebar-hamburger { display: flex !important; } }
+      `}</style>
     </>
   );
 }

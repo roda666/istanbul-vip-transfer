@@ -742,3 +742,116 @@ export type NewTranslationJobTask = typeof translationJobTasks.$inferInsert;
 
 export type TopicCluster    = typeof topicClusters.$inferSelect;
 export type NewTopicCluster = typeof topicClusters.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AI İçerik Stüdyosu (Content Studio) — Migration 0016
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const studioProjects = pgTable('studio_projects', {
+  id:             uuid('id').primaryKey().defaultRandom(),
+  contentType:    text('content_type').notNull().default('blog'),
+  stage:          text('stage').notNull().default('setup'),
+  status:         text('status').notNull().default('draft'),
+  titleWorking:   text('title_working'),
+  config:         jsonb('config').$type<Record<string, unknown>>().notNull().default({} as never),
+  trContent:      jsonb('tr_content').$type<Record<string, unknown>>(),
+  coverImageUrl:  text('cover_image_url'),
+  coverImageAlt:  text('cover_image_alt'),
+  trApprovedAt:   timestamp('tr_approved_at', { withTimezone: true }),
+  trApprovedBy:   uuid('tr_approved_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+  seoScore:       jsonb('seo_score').$type<Record<string, unknown>>(),
+  cannibalization: jsonb('cannibalization').$type<Record<string, unknown>>(),
+  cmsEntityId:    text('cms_entity_id'),
+  cmsEntityType:  text('cms_entity_type'),
+  scheduledFor:   timestamp('scheduled_for', { withTimezone: true }),
+  publishedAt:    timestamp('published_at', { withTimezone: true }),
+  createdBy:      uuid('created_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+  createdAt:      timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:      timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const studioProjectTranslations = pgTable('studio_project_translations', {
+  id:          uuid('id').primaryKey().defaultRandom(),
+  projectId:   uuid('project_id').notNull().references(() => studioProjects.id, { onDelete: 'cascade' }),
+  lang:        text('lang').notNull(),
+  content:     jsonb('content').$type<Record<string, unknown>>(),
+  status:      text('status').notNull().default('pending'),
+  approvedAt:  timestamp('approved_at', { withTimezone: true }),
+  approvedBy:  uuid('approved_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+  publishedAt: timestamp('published_at', { withTimezone: true }),
+  aiModel:     text('ai_model'),
+  aiTokens:    integer('ai_tokens').default(0),
+  createdAt:   timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:   timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const studioImages = pgTable('studio_images', {
+  id:              uuid('id').primaryKey().defaultRandom(),
+  projectId:       uuid('project_id').notNull().references(() => studioProjects.id, { onDelete: 'cascade' }),
+  objectPath:      text('object_path'),
+  url:             text('url'),
+  prompt:          text('prompt'),
+  altText:         text('alt_text'),
+  usageRights:     text('usage_rights').notNull().default('ai_generated'),
+  status:          text('status').notNull().default('pending_approval'),
+  rejectionReason: text('rejection_reason'),
+  approvedAt:      timestamp('approved_at', { withTimezone: true }),
+  approvedBy:      uuid('approved_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+  createdAt:       timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const studioResearch = pgTable('studio_research', {
+  id:         uuid('id').primaryKey().defaultRandom(),
+  projectId:  uuid('project_id').notNull().references(() => studioProjects.id, { onDelete: 'cascade' }),
+  url:        text('url'),
+  title:      text('title'),
+  accessedAt: timestamp('accessed_at', { withTimezone: true }).defaultNow(),
+  claims:     jsonb('claims').$type<string[]>().notNull().default([]),
+  sourceType: text('source_type').notNull().default('ai_context'),
+  createdAt:  timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const studioDistribution = pgTable('studio_distribution', {
+  id:         uuid('id').primaryKey().defaultRandom(),
+  projectId:  uuid('project_id').notNull().references(() => studioProjects.id, { onDelete: 'cascade' }),
+  platform:   text('platform').notNull(),
+  content:    text('content').notNull().default(''),
+  status:     text('status').notNull().default('draft'),
+  createdAt:  timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:  timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const studioAudit = pgTable('studio_audit', {
+  id:         uuid('id').primaryKey().defaultRandom(),
+  projectId:  uuid('project_id').notNull().references(() => studioProjects.id, { onDelete: 'cascade' }),
+  adminId:    uuid('admin_id').references(() => adminUsers.id, { onDelete: 'set null' }),
+  action:     text('action').notNull(),
+  detail:     jsonb('detail').$type<Record<string, unknown>>().notNull().default({}),
+  createdAt:  timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const studioSchedules = pgTable('studio_schedules', {
+  id:              uuid('id').primaryKey().defaultRandom(),
+  projectId:       uuid('project_id').notNull().references(() => studioProjects.id, { onDelete: 'cascade' }),
+  scheduledFor:    timestamp('scheduled_for', { withTimezone: true }).notNull(),
+  langs:           text('langs').array().notNull().default([]),
+  idempotencyKey:  text('idempotency_key').notNull().unique(),
+  status:          text('status').notNull().default('pending'),
+  executedAt:      timestamp('executed_at', { withTimezone: true }),
+  error:           text('error'),
+  createdAt:       timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Type aliases for jsonb columns (avoid circular import, define inline)
+export type StudioConfigJson = Record<string, unknown>;
+export type StudioContentJson = Record<string, unknown>;
+
+export type StudioProject = typeof studioProjects.$inferSelect;
+export type NewStudioProject = typeof studioProjects.$inferInsert;
+export type StudioProjectTranslation = typeof studioProjectTranslations.$inferSelect;
+export type NewStudioProjectTranslation = typeof studioProjectTranslations.$inferInsert;
+export type StudioImage = typeof studioImages.$inferSelect;
+export type StudioResearch = typeof studioResearch.$inferSelect;
+export type StudioDistributionRow = typeof studioDistribution.$inferSelect;
+export type StudioAuditRow = typeof studioAudit.$inferSelect;
+export type StudioSchedule = typeof studioSchedules.$inferSelect;

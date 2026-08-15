@@ -104,7 +104,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const { db }                             = await import('@/db');
     const { content, contentTranslations }   = await import('@/db/schema');
-    const { eq, and }                        = await import('drizzle-orm');
+    const { eq, and, inArray }               = await import('drizzle-orm');
 
     const rows = await db
       .select({ id: content.id, slug: content.slug, displayOrder: content.displayOrder, updatedAt: content.updatedAt })
@@ -127,7 +127,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     for (const r of serviceSlugList) idToSlug.set(r.id, r.slug);
 
-    // Fetch all PUBLISHED service translations in one query
+    // Fetch all PUBLISHED or OUTDATED service translations in one query.
+    // OUTDATED means was previously published; the old content remains live until
+    // a new translation is approved and published. Exclude from sitemap only if
+    // the content has never been published (DRAFT/REVIEW/FAILED/NOT_STARTED).
     if (serviceSlugList.length > 0) {
       const txRows = await db
         .select({
@@ -138,7 +141,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .from(contentTranslations)
         .where(and(
           eq(contentTranslations.entityType, 'service_page'),
-          eq(contentTranslations.status,     'PUBLISHED'),
+          inArray(contentTranslations.status, ['PUBLISHED', 'OUTDATED']),
         ));
 
       for (const tx of txRows) {

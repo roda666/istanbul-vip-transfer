@@ -8,7 +8,6 @@ import type {
   ServicePageContentSection,
   ServicePageFaq,
   ServicePageServiceArea,
-  ServicePageSchemaExtras,
 } from '@/lib/service-page-types';
 import { LOCALE_REGISTRY } from '@/lib/i18n/locale-registry';
 import { ImageUploadField } from '@/app/admin/_components/ImageUploadField';
@@ -707,9 +706,10 @@ export default function ServicePageEditor({ initialRecord }: Props) {
   // Canonical URL (auto-generated, read-only)
   const canonicalUrl = `https://www.istanbulviptransfer.com/tr/${record.slug}`;
 
-  // Translations ready to bulk-publish (DRAFT / REVIEW / APPROVED)
+  // Only APPROVED translations may be bulk-published (spec: no AI-generated
+  // translation may be published without admin approval).
   const publishableTranslations = record.translations.filter(
-    t => ['APPROVED', 'DRAFT', 'REVIEW'].includes(t.status),
+    t => t.status === 'APPROVED',
   );
 
   return (

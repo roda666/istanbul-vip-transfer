@@ -1,7 +1,7 @@
 /**
  * Server-side utility for reading service page CMS content.
  * Uses the `content` table (contentType='SERVICE') for Turkish source,
- * and `content_translations` for EN/DE/RU/AR locales.
+ * and `content_translations` for EN/DE/RU/AR/FR/ES/IT/NL locales.
  *
  * entity_type = 'service_page'  (distinct from 'content' used by blog posts)
  */

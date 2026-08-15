@@ -1,7 +1,7 @@
 /**
  * Server-side utility for reading and writing homepage CMS content.
  * Uses the existing `content` table (slug='ana-sayfa') for the Turkish source,
- * and `content_translations` for EN/DE/RU/AR locales.
+ * and `content_translations` for EN/DE/RU/AR/FR/ES/IT/NL locales.
  */
 import type { HomepageSections } from './homepage-types';
 import { parseHomepageSections, HOMEPAGE_FALLBACK } from './homepage-types';

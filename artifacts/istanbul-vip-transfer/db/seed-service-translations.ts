@@ -1,5 +1,5 @@
 /**
- * Seed EN/DE/RU/AR translations for all service pages that currently lack them.
+ * Seed EN/DE/RU/AR/FR/ES/IT/NL translations for all service pages that currently lack them.
  *
  * Safe to run multiple times — uses ON CONFLICT DO NOTHING (idempotent).
  * Translations are seeded as PUBLISHED because the static content they replace
@@ -229,7 +229,7 @@ async function main() {
   }
 
   if (work.length === 0) {
-    console.log('✅ All EN/DE/RU/AR translations already exist. Nothing to do.\n');
+    console.log('✅ All EN/DE/RU/AR/FR/ES/IT/NL translations already exist. Nothing to do.\n');
     await sql.end();
     return;
   }

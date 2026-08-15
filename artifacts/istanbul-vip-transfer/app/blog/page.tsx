@@ -80,6 +80,10 @@ export default async function BlogPage() {
                       src={post.heroImage}
                       alt={post.heroImageAlt ?? post.title}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      loading="lazy"
+                      decoding="async"
+                      width={640}
+                      height={360}
                     />
                   </div>
                 )}

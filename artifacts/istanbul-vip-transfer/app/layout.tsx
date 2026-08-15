@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import PublicLayoutWrapper from '@/components/PublicLayoutWrapper';
+import WebVitalsReporter from '@/components/WebVitalsReporter';
 import { SITE } from '@/lib/site-config';
 import { getServiceVisibilityMap } from '@/lib/service-page-cms';
 
@@ -44,6 +45,15 @@ export default async function RootLayout({
      * React would warn about the attribute mismatch.
      */
     <html lang="tr" dir="ltr" suppressHydrationWarning>
+      {/*
+       * Preconnect to Google Fonts origins so the browser establishes TCP/TLS
+       * connections before the CSS @import in globals.css fires.
+       * This shaves ~200-400 ms off font TTFB without changing font-family names.
+       */}
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      </head>
       <body
         className="grain-overlay"
         style={{ backgroundColor: 'var(--pub-page-bg, #F7F5EF)', minHeight: '100dvh' }}
@@ -51,6 +61,11 @@ export default async function RootLayout({
         {/* PublicLayoutWrapper conditionally adds Header/Footer for public routes.
             Admin routes render their own layout without public chrome. */}
         <PublicLayoutWrapper hiddenNavSlugs={hiddenNavSlugs}>{children}</PublicLayoutWrapper>
+        {/*
+         * Privacy-friendly Core Web Vitals reporter — no external service or key.
+         * Fires web-vitals observers after hydration; beacons metrics to /api/vitals.
+         */}
+        <WebVitalsReporter />
       </body>
     </html>
   );

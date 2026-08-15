@@ -16,3 +16,4 @@
 - [Email settings system](email-settings-system.md) — AES-256-GCM SMTP password storage; DB config priority over env vars; EMAIL_ENCRYPTION_KEY set as Replit Secret; password never returned to client.
 - [Translation job queue](translation-job-queue.md) — DB-backed per-language AI translation queue; 5 API routes; concurrency 2 frontend; 45s AbortController; safe-fetch-json utility; replaces old synchronous /admin/api/translations/ai.
 - [Service page translation seed](service-page-translation-seed.md) — seed script for all 14 services × EN/DE/RU/AR; OUTDATED status flow; TR pages at /{slug} (no /tr/ prefix).
+- [Performance & image optimisation](perf-image-optimisation.md) — images.unoptimized removed; remotePatterns GCS+Replit; web-vitals→/api/vitals; perf-check.ts HTTP gate; AR dir set by inline script not SSR html attr.

@@ -43,12 +43,28 @@ const nextConfig: NextConfig = {
   //   next start →  reads from .next      (production, NODE_ENV=production)
   distDir: isDev ? '.next-dev' : '.next',
 
-  // Static-export ready: unoptimized images work with `output: 'export'`
-  // when deploying to a plain file server. To enable, add:
-  //   output: 'export',
-  // and update the artifact.toml publicDir to "out".
+  // ── Image optimisation ─────────────────────────────────────────────────────
+  // Next.js Image Optimisation is intentionally enabled (no `unoptimized: true`).
+  // This converts public/ images to WebP/AVIF, applies responsive sizing and
+  // automatic lazy-loading — directly improving LCP, CLS and bandwidth.
+  //
+  // remotePatterns covers:
+  //   • storage.googleapis.com — Replit Object Storage (admin-uploaded images)
+  //   • **.replit.dev          — Replit preview domains (dev/staging uploads)
+  //
+  // Blog hero images entered by admin as arbitrary external URLs are kept as
+  // plain <img> elements with loading="lazy" (see app/blog and app/[lang]/blog)
+  // so they are not subject to remotePatterns validation.
   images: {
-    unoptimized: true,
+    formats:     ['image/avif', 'image/webp'],
+    deviceSizes: [320, 390, 640, 768, 1024, 1280, 1440, 1920],
+    imageSizes:  [64, 128, 256, 384],
+    remotePatterns: [
+      // Replit Object Storage (GCS) — admin-uploaded hero/media images
+      { protocol: 'https', hostname: 'storage.googleapis.com' },
+      // Replit preview/dev domains
+      { protocol: 'https', hostname: '**.replit.dev' },
+    ],
   },
   // allowedDevOrigins expects bare hostnames (no scheme).
   // Next.js parses the incoming Origin header, extracts .hostname,

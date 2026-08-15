@@ -98,9 +98,19 @@ export default async function TranslatedBlogPost({ params }: Props) {
         {/* Cover image from source */}
         {translation.sourceHeroImage && (
           <div className="rounded-2xl overflow-hidden mb-8 aspect-video">
+            {/* External URL set by admin — domain unknown, served as-is.
+                fetchPriority="high" because this is the topmost visual on the page
+                (potential LCP candidate). No lazy-loading on detail pages. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={translation.sourceHeroImage} alt={translation.sourceHeroImageAlt ?? translation.title ?? translation.sourceTitle}
-              className="w-full h-full object-cover" />
+            <img
+              src={translation.sourceHeroImage}
+              alt={translation.sourceHeroImageAlt ?? translation.title ?? translation.sourceTitle}
+              className="w-full h-full object-cover"
+              decoding="async"
+              fetchPriority="high"
+              width={800}
+              height={450}
+            />
           </div>
         )}
 

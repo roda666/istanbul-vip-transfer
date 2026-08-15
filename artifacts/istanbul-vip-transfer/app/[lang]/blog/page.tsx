@@ -122,8 +122,15 @@ export default async function TranslatedBlogPage({ params }: Props) {
                     {post.sourceHeroImage && (
                       <div className="aspect-video overflow-hidden flex-shrink-0">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={post.sourceHeroImage} alt={post.sourceHeroImageAlt ?? post.title ?? post.sourceSlug}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        <img
+                          src={post.sourceHeroImage}
+                          alt={post.sourceHeroImageAlt ?? post.title ?? post.sourceSlug}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          loading="lazy"
+                          decoding="async"
+                          width={640}
+                          height={360}
+                        />
                       </div>
                     )}
                     <div className="p-6">

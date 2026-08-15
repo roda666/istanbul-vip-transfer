@@ -12,7 +12,8 @@ function getClient() {
 }
 
 const LANG_NAMES: Record<string, string> = {
-  tr: 'Turkish', en: 'English', de: 'German', ru: 'Russian', ar: 'Arabic',
+  tr: 'Turkish', en: 'English', de: 'German',  ru: 'Russian',  ar: 'Arabic',
+  fr: 'French',  es: 'Spanish', it: 'Italian', nl: 'Dutch',
 };
 
 /** Translate any text → Turkish (for admin panel display).

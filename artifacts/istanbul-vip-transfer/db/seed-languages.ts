@@ -1,7 +1,7 @@
 /**
  * Idempotent language-catalog seed.
  *
- * - First run (bootstrap): core 5 inserted active+published (tr default), every
+ * - First run (bootstrap): core 9 inserted active+published (tr default), every
  *   other catalog language inserted PASSIVE (isEnabled=false, isPublished=false).
  * - Re-runs never duplicate rows and NEVER flip isEnabled/isPublished/isDefault
  *   on existing rows — admin-managed visibility state survives re-seeding; only

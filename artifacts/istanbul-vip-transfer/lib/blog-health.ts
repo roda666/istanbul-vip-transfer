@@ -119,7 +119,7 @@ export function getTranslationLocales(): string[] {
  * @param knownSlugs    - Slugs from blog-data.ts (source of truth)
  * @param sourceRows    - All BLOG_POST rows from the content table
  * @param translationRows - All contentTranslations rows for BLOG_POST entities
- * @param checkLocales  - Non-TR locales to verify (default: en, de, ru, ar)
+ * @param checkLocales  - Non-TR locales to verify (default: all 8 non-TR registry locales)
  */
 export function computeBlogHealthIssues(
   knownSlugs: string[],

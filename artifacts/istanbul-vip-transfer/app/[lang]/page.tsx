@@ -1,5 +1,5 @@
 /**
- * Translated homepage for /en, /de, /ru, /ar
+ * Translated homepage for /en, /de, /ru, /ar, /fr, /es, /it, /nl
  *
  * Reads published CMS data server-side and provides it via HomepageCmsProvider.
  * Falls back to the static i18n dictionaries if the database is unavailable.

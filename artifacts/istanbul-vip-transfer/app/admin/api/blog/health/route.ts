@@ -6,7 +6,7 @@
  *
  *   - missing_source_record     → no BLOG_POST row in content table (translations
  *                                  cannot be linked without an entity_id)
- *   - missing_translation       → one or more non-TR locales (en/de/ru/ar) have
+ *   - missing_translation       → one or more non-TR locales (en/de/ru/ar/fr/es/it/nl) have
  *                                  no contentTranslations row for this post
  *   - translation_not_published → a translation row exists but status != 'PUBLISHED'
  *

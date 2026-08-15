@@ -58,7 +58,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   rental:    'Kiralama',
 };
 
-const TARGET_LOCALES = ['en', 'de', 'ru', 'ar'];
+const TARGET_LOCALES = ['en', 'de', 'ru', 'ar', 'fr', 'es', 'it', 'nl'];
 
 // ── Styles ─────────────────────────────────────────────────────────────────
 

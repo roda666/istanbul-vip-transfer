@@ -36,6 +36,7 @@ type AuthState = 'unknown' | 'in' | 'out';
 
 const LANG_FLAGS: Record<string, string> = {
   tr: '🇹🇷', en: '🇬🇧', de: '🇩🇪', ru: '🇷🇺', ar: '🇸🇦',
+  fr: '🇫🇷', es: '🇪🇸', it: '🇮🇹', nl: '🇳🇱',
 };
 
 function ago(iso: string) {

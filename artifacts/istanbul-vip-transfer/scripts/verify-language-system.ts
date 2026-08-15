@@ -3,7 +3,7 @@
  * Run against a live dev server:  npx tsx scripts/verify-language-system.ts
  *
  * Covers:
- *  - public language set is exactly tr/en/de/ru/ar
+ *  - public language set is exactly tr/en/de/ru/ar/fr/es/it/nl (9 languages)
  *  - passive locale URLs redirect safely (cookie reset, no loop)
  *  - sitemap contains only public locales
  *  - locale switch rejects passive locales
@@ -14,7 +14,10 @@ import 'dotenv/config';
 import postgres from 'postgres';
 
 const BASE = process.env.VERIFY_BASE_URL ?? 'http://localhost:26004';
-const EXPECTED_PUBLIC = ['tr', 'en', 'de', 'ru', 'ar'];
+/** All 9 registry languages — the full public set. */
+const EXPECTED_PUBLIC = ['tr', 'en', 'de', 'ru', 'ar', 'fr', 'es', 'it', 'nl'];
+/** A catalog language that is definitely passive (not in CORE_LANGS). */
+const PASSIVE_LOCALE = 'zh';
 
 let failures = 0;
 function check(name: string, ok: boolean, detail = '') {
@@ -25,27 +28,32 @@ function check(name: string, ok: boolean, detail = '') {
 async function main() {
   const sql = postgres(process.env.DATABASE_URL!, { max: 1 });
 
-  // 1. Public language endpoint
+  // 1. Public language endpoint — must contain all 9 registry languages
   const langsRes = await fetch(`${BASE}/data/languages`);
   const langs = (await langsRes.json()) as { items: Array<{ code: string }> };
   const codes = langs.items.map((l) => l.code).sort();
-  check('public set is exactly tr/en/de/ru/ar', JSON.stringify(codes) === JSON.stringify([...EXPECTED_PUBLIC].sort()), codes.join(','));
+  check(
+    'public set is exactly all 9 registry languages',
+    JSON.stringify(codes) === JSON.stringify([...EXPECTED_PUBLIC].sort()),
+    codes.join(','),
+  );
 
   // 2. Passive locale URL → safe redirect chain ending at 200, no loop
-  const fr = await fetch(`${BASE}/fr`, { redirect: 'manual' });
-  const loc1 = fr.headers.get('location') ?? '';
-  check('/fr redirects (307)', fr.status === 307, `-> ${loc1}`);
+  //    Use a catalog language that is NOT in CORE_LANGS (e.g. 'zh').
+  const passiveRes = await fetch(`${BASE}/${PASSIVE_LOCALE}`, { redirect: 'manual' });
+  const loc1 = passiveRes.headers.get('location') ?? '';
+  check(`/${PASSIVE_LOCALE} redirects (307)`, passiveRes.status === 307, `-> ${loc1}`);
   const reset = await fetch(new URL(loc1, BASE), { redirect: 'manual' });
   const setsCookie = (reset.headers.get('set-cookie') ?? '').includes('ivt_lang_pref=tr');
   check('reset route clears lang cookie to tr and 303s to /', reset.status === 303 && setsCookie);
   const final = await fetch(`${BASE}/`, { headers: { Cookie: 'ivt_lang_pref=tr' } });
   check('root renders after reset', final.status === 200);
 
-  // 3. Loop safety: root with stale cookie for a DISABLED renderable lang would
-  //    bounce to /{lang}; layout must send it to the cookie-reset route, not "/".
-  //    (Simulated: /en with cookie is active today, so just assert /en is 200.)
-  const en = await fetch(`${BASE}/en`);
-  check('/en (active locale) renders', en.status === 200);
+  // 3. All 8 non-TR public locales must return 200
+  for (const lang of EXPECTED_PUBLIC.filter(l => l !== 'tr')) {
+    const res = await fetch(`${BASE}/${lang}`);
+    check(`/${lang} (active locale) renders 200`, res.status === 200);
+  }
 
   // 4. Sitemap only contains public locales
   const sm = await (await fetch(`${BASE}/sitemap.xml`)).text();
@@ -53,11 +61,11 @@ async function main() {
   const leaked = smLangs.filter((l) => !EXPECTED_PUBLIC.includes(l));
   check('sitemap leaks no non-public locale', leaked.length === 0, leaked.join(',') || 'clean');
 
-  // 5. Locale switch rejects a passive locale
-  const sw = await fetch(`${BASE}/data/locale/switch?locale=fr`, { redirect: 'manual' });
-  check('locale switch rejects passive locale (400)', sw.status === 400);
-  const swOk = await fetch(`${BASE}/data/locale/switch?locale=en`, { redirect: 'manual' });
-  check('locale switch accepts active locale (redirect)', swOk.status >= 300 && swOk.status < 400);
+  // 5. Locale switch rejects a passive locale; accepts an active one
+  const sw = await fetch(`${BASE}/data/locale/switch?locale=${PASSIVE_LOCALE}`, { redirect: 'manual' });
+  check(`locale switch rejects passive locale ${PASSIVE_LOCALE} (400)`, sw.status === 400);
+  const swOk = await fetch(`${BASE}/data/locale/switch?locale=fr`, { redirect: 'manual' });
+  check('locale switch accepts active locale fr (redirect)', swOk.status >= 300 && swOk.status < 400);
 
   // 6. hreflang on /en contains only public locales
   const enHtml = await (await fetch(`${BASE}/en`)).text();
@@ -75,21 +83,22 @@ async function main() {
            count(*) FILTER (WHERE is_published AND NOT is_enabled)::int AS bad_pub_disabled
     FROM languages`;
   check('catalog has 60+ languages', inv.total >= 60, `total=${inv.total}`);
-  check('exactly 5 public languages in DB', inv.public === 5);
+  check('exactly 9 public languages in DB', inv.public === 9, `public=${inv.public}`);
   check('TR is default + enabled + published', inv.tr_ok === 1);
   check('no unsupported language enabled/published', inv.bad_unsupported === 0);
   check('no published-but-disabled language', inv.bad_pub_disabled === 0);
 
-  // 8. Enabling a catalog language must NOT leak it publicly (unpublished).
-  await sql`UPDATE languages SET is_enabled = true WHERE code = 'fr'`;
+  // 8. Enabling a catalog language must NOT leak it publicly while unpublished.
+  //    Use 'zh' (Chinese) — a catalog language that is NOT in CORE_LANGS.
+  await sql`UPDATE languages SET is_enabled = true WHERE code = ${PASSIVE_LOCALE}`;
   try {
     const after = await fetch(`${BASE}/data/languages`);
     const afterCodes = ((await after.json()) as { items: Array<{ code: string }> }).items.map((l) => l.code);
-    check('enabled-but-unpublished fr does not leak publicly', !afterCodes.includes('fr'));
-    const fr2 = await fetch(`${BASE}/fr`, { redirect: 'manual' });
-    check('/fr still redirects while enabled-but-unpublished', fr2.status === 307);
+    check(`enabled-but-unpublished ${PASSIVE_LOCALE} does not leak publicly`, !afterCodes.includes(PASSIVE_LOCALE));
+    const passiveRes2 = await fetch(`${BASE}/${PASSIVE_LOCALE}`, { redirect: 'manual' });
+    check(`/${PASSIVE_LOCALE} still redirects while enabled-but-unpublished`, passiveRes2.status === 307);
   } finally {
-    await sql`UPDATE languages SET is_enabled = false, is_published = false WHERE code = 'fr'`;
+    await sql`UPDATE languages SET is_enabled = false, is_published = false WHERE code = ${PASSIVE_LOCALE}`;
   }
 
   // 9. Seed regression: re-seeding must preserve admin-managed state.

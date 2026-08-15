@@ -41,13 +41,17 @@ export interface EditorLocale {
   isSource: boolean;
 }
 
-/** Static fallback — used only if the server passes no catalog locales. */
+/** Static fallback — used only if the server passes no catalog locales. All 9 registry languages. */
 const FALLBACK_LOCALES: EditorLocale[] = [
-  { code: 'tr', label: 'Türkçe', dir: 'ltr', isSource: true },
-  { code: 'en', label: 'English', dir: 'ltr', isSource: false },
-  { code: 'de', label: 'Deutsch', dir: 'ltr', isSource: false },
-  { code: 'ru', label: 'Русский', dir: 'ltr', isSource: false },
-  { code: 'ar', label: 'العربية', dir: 'rtl', isSource: false },
+  { code: 'tr', label: '🇹🇷 Türkçe',    dir: 'ltr', isSource: true  },
+  { code: 'en', label: '🇬🇧 English',   dir: 'ltr', isSource: false },
+  { code: 'de', label: '🇩🇪 Deutsch',   dir: 'ltr', isSource: false },
+  { code: 'ru', label: '🇷🇺 Русский',   dir: 'ltr', isSource: false },
+  { code: 'ar', label: '🇸🇦 العربية',  dir: 'rtl', isSource: false },
+  { code: 'fr', label: '🇫🇷 Français',  dir: 'ltr', isSource: false },
+  { code: 'es', label: '🇪🇸 Español',   dir: 'ltr', isSource: false },
+  { code: 'it', label: '🇮🇹 Italiano',  dir: 'ltr', isSource: false },
+  { code: 'nl', label: '🇳🇱 Nederlands',dir: 'ltr', isSource: false },
 ];
 
 const SECTIONS = [
@@ -175,7 +179,7 @@ function ServicesSectionEditor({ data, onChange, dir, ro }: { data: ServicesSect
       <Field name="Açıklama" value={data.description} onChange={v => set('description', v)} multiline dir={dir} readOnly={ro} />
       <div className="hpe-fg2">
         <Field name="Tüm Hizmetler Buton Metni" value={data.allServicesText} onChange={v => set('allServicesText', v)} dir={dir} readOnly={ro} />
-        <Field name="Tüm Hizmetler Yolu" value={data.allServicesRoute} onChange={v => set('allServicesRoute', v)} hint="Paylaşılan alan" readOnly={ro} />
+        <Field name="Tüm Hizmetler Yolu" value={data.allServicesRoute} onChange={v => set('allServicesRoute', v)} dir="ltr" hint="Paylaşılan alan — URL, her zaman soldan sağa okunur" readOnly={ro} />
       </div>
       {!ro && <Checkbox name="Bölüm Etkin" checked={data.enabled} onChange={v => set('enabled', v)} />}
     </div>
@@ -211,7 +215,7 @@ function VehiclesEditor({ data, onChange, dir, ro }: { data: VehiclesSectionData
       <Field name="Açıklama" value={data.description} onChange={v => set('description', v)} multiline dir={dir} readOnly={ro} />
       <div className="hpe-fg2">
         <Field name="Buton Metni" value={data.ctaText} onChange={v => set('ctaText', v)} dir={dir} readOnly={ro} />
-        <Field name="Buton Yolu" value={data.ctaRoute} onChange={v => set('ctaRoute', v)} hint="Paylaşılan alan" readOnly={ro} />
+        <Field name="Buton Yolu" value={data.ctaRoute} onChange={v => set('ctaRoute', v)} dir="ltr" hint="Paylaşılan alan — URL, her zaman soldan sağa okunur" readOnly={ro} />
       </div>
       {!ro && <Checkbox name="Bölüm Etkin" checked={data.enabled} onChange={v => set('enabled', v)} />}
     </div>
@@ -343,7 +347,7 @@ function TranslationInfoPanel({
       ghost:   { background: '#F8FAFC', color: '#334155', border: '1px solid #CBD5E1' },
     };
     return (
-      <button onClick={onClick} disabled={busy} style={{
+      <button onClick={onClick} disabled={busy} className="hpe-txpanel-btn" style={{
         ...styles[variant], padding: '7px 14px', borderRadius: '7px',
         fontSize: '12px', fontWeight: 600, cursor: busy ? 'wait' : 'pointer',
         fontFamily: 'Inter, sans-serif', opacity: busy ? 0.7 : 1,
@@ -389,7 +393,7 @@ function TranslationInfoPanel({
       )}
 
       {/* Action buttons */}
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+      <div className="hpe-txpanel-actions">
         {/* Re-translate when unlocked and in a retriable state (includes DRAFT) */}
         {(status === 'FAILED' || status === 'OUTDATED' || status === 'NOT_STARTED' ||
           status === 'QUEUED' || status === 'DRAFT') && !locked && (
@@ -701,6 +705,9 @@ export default function HomepageEditor({ initialTrRecord, locales }: { initialTr
         /* Locale tabs — wrap by default so they never force horizontal scroll */
         .hpe-locale-tabs { display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; }
 
+        /* TranslationInfoPanel action buttons */
+        .hpe-txpanel-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
         .hpe-abar {
           margin-top: 18px; padding: 14px 18px;
           background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px;
@@ -762,6 +769,20 @@ export default function HomepageEditor({ initialTrRecord, locales }: { initialTr
 
           /* Prevent iOS Safari auto-zoom: inputs ≥ 16 px */
           .hpe-field-input, .hpe-field-ta { font-size: 16px !important; }
+
+          /* Per-locale panel action buttons — full-width touch targets */
+          .hpe-txpanel-actions { flex-direction: column; }
+          .hpe-txpanel-btn {
+            width: 100% !important;
+            min-height: 44px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center;
+          }
+
+          /* Locale tab buttons — adequate touch target height */
+          .hpe-locale-tabs button { min-height: 44px; }
         }
 
         /* ── Very narrow (320 px) ───────────────────────────────────────── */

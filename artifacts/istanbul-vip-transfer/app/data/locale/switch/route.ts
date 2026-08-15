@@ -10,7 +10,7 @@
  * this Next.js application directly (same pattern as /data/service-types, etc.).
  *
  * Security:
- *   - `locale` must be one of: tr, en, de, ru, ar
+ *   - `locale` must be one of the 9 active public languages (validated via DB)
  *   - `next`   must be a safe same-site relative path (starts with /, no host,
  *              no //, no backslashes, no external protocol)
  *   - Legacy cookies with wrong sub-paths are expired in the same response

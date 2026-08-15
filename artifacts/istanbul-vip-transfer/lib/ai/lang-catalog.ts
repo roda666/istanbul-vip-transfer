@@ -14,12 +14,16 @@ export interface TranslationTargetInfo {
   isEnabled: boolean;
 }
 
-/** Static fallback for the launched languages if the DB is unavailable. */
+/** Static fallback for all 8 launched languages if the DB is unavailable. */
 const FALLBACK: Record<string, TranslationTargetInfo> = {
-  en: { code: 'en', name: 'English', direction: 'ltr', providerSupported: true, isEnabled: true },
-  de: { code: 'de', name: 'German', direction: 'ltr', providerSupported: true, isEnabled: true },
-  ru: { code: 'ru', name: 'Russian', direction: 'ltr', providerSupported: true, isEnabled: true },
-  ar: { code: 'ar', name: 'Arabic', direction: 'rtl', providerSupported: true, isEnabled: true },
+  en: { code: 'en', name: 'English',  direction: 'ltr', providerSupported: true, isEnabled: true },
+  de: { code: 'de', name: 'German',   direction: 'ltr', providerSupported: true, isEnabled: true },
+  ru: { code: 'ru', name: 'Russian',  direction: 'ltr', providerSupported: true, isEnabled: true },
+  ar: { code: 'ar', name: 'Arabic',   direction: 'rtl', providerSupported: true, isEnabled: true },
+  fr: { code: 'fr', name: 'French',   direction: 'ltr', providerSupported: true, isEnabled: true },
+  es: { code: 'es', name: 'Spanish',  direction: 'ltr', providerSupported: true, isEnabled: true },
+  it: { code: 'it', name: 'Italian',  direction: 'ltr', providerSupported: true, isEnabled: true },
+  nl: { code: 'nl', name: 'Dutch',    direction: 'ltr', providerSupported: true, isEnabled: true },
 };
 
 /**

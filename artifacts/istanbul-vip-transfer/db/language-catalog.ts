@@ -2,7 +2,7 @@
  * Language catalog — languages the OpenAI translation provider handles reliably,
  * plus a few low-resource languages explicitly marked providerSupported: false.
  *
- * Order: Turkish (source), then the 4 launched languages, then the rest.
+ * Order: Turkish (source), then the 8 launched languages, then the rest.
  * All locale codes are valid BCP 47; scripts are ISO 15924.
  *
  * Shared between the seed script and (indirectly, via the DB) the admin UI.
@@ -29,7 +29,7 @@ export interface CatalogLanguage {
 }
 
 export const LANGUAGE_CATALOG: CatalogLanguage[] = [
-  // ── Core 5 ────────────────────────────────────────────────────────────────
+  // ── Core 9 (TR source + 8 launched) ─────────────────────────────────────
   { code: 'tr', locale: 'tr-TR', name: 'Turkish', nativeName: 'Türkçe', turkishName: 'Türkçe', script: 'Latn', direction: 'ltr' },
   { code: 'en', locale: 'en-GB', name: 'English', nativeName: 'English', turkishName: 'İngilizce', script: 'Latn', direction: 'ltr' },
   { code: 'de', locale: 'de-DE', name: 'German', nativeName: 'Deutsch', turkishName: 'Almanca', script: 'Latn', direction: 'ltr' },

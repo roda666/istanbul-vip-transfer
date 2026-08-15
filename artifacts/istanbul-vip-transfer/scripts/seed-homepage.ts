@@ -61,8 +61,8 @@ async function seedHomepage() {
     console.log(`  ✓ Created TR record: ${contentId}`);
   }
 
-  // ── 2. Translation records for EN, DE, RU, AR ─────────────────────────
-  const locales = ['en', 'de', 'ru', 'ar'] as const;
+  // ── 2. Translation records for all 8 non-TR launched languages ────────
+  const locales = ['en', 'de', 'ru', 'ar', 'fr', 'es', 'it', 'nl'] as const;
   for (const locale of locales) {
     const sections = HOMEPAGE_FALLBACK[locale];
     if (!sections) continue;
@@ -151,7 +151,7 @@ async function seedHomepage() {
 
   console.log('\n✅ Homepage seed complete.');
   console.log(`   Content ID: ${contentId}`);
-  console.log('   Locales: TR (source) + EN, DE, RU, AR (translations)');
+  console.log('   Locales: TR (source) + EN, DE, RU, AR, FR, ES, IT, NL (translations)');
   console.log('   All records marked PUBLISHED.');
 }
 

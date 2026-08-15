@@ -67,7 +67,27 @@ export async function GET() {
     cmsOk = true;
   } catch { /* ignore */ }
 
-  // ── Studio project count ──────────────────────────────────────────────────
+  // ── Studio table health check ─────────────────────────────────────────────
+  const studioTables = [
+    'studio_projects', 'studio_project_translations', 'studio_images',
+    'studio_research', 'studio_distribution', 'studio_audit', 'studio_schedules',
+  ];
+  const studioTableStatus: Record<string, boolean> = {};
+  let studioMigrationApplied = true;
+  try {
+    const { db } = await import('@/db');
+    const { sql: drizzleSql } = await import('drizzle-orm');
+    for (const t of studioTables) {
+      try {
+        await db.execute(drizzleSql.raw(`SELECT 1 FROM ${t} LIMIT 0`));
+        studioTableStatus[t] = true;
+      } catch {
+        studioTableStatus[t] = false;
+        studioMigrationApplied = false;
+      }
+    }
+  } catch { studioMigrationApplied = false; }
+
   let studioCount = 0;
   try {
     const { db } = await import('@/db');
@@ -94,7 +114,12 @@ export async function GET() {
     database: {
       ok: dbOk,
       label: dbOk ? 'Veritabanı bağlı' : `Veritabanı hatası: ${dbError ?? 'bilinmiyor'}`,
-      studioProjects: studioCount,
+      studioProjects:   studioCount,
+      migrationApplied: studioMigrationApplied,
+      tables:           studioTableStatus,
+      migrationGuide:   studioMigrationApplied
+        ? null
+        : 'Dev: psql $DATABASE_URL < drizzle/migrations/0016_studio.sql — güvenli, veri silinmez. Prod: pnpm db:migrate çalıştırın.',
     },
     openai: {
       configured: openaiKeyPresent,

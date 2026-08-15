@@ -407,7 +407,7 @@ export function runSeoCheck(
 // ── 4. Image generation ───────────────────────────────────────────────────────
 
 export interface ImageGenResult {
-  b64Json: string;
+  imageUrl: string;   // temporary OpenAI CDN URL (expires ~1 h) — upload to storage ASAP
   prompt: string;
   altText: string;
   usageRights: string;
@@ -440,17 +440,18 @@ export async function generateStudioImage(opts: {
   ].join(' ');
 
   try {
+    // Use URL format — response_format: 'b64_json' was removed in OpenAI SDK 6.x for newer API versions
     const resp = await client.images.generate({
       model: getImageModel(),
       prompt,
       n: 1,
       size: '1792x1024',
       quality: 'standard',
-      response_format: 'b64_json',
+      // response_format omitted: defaults to URL (compatible with all SDK versions)
     }, { signal: AbortSignal.timeout(60_000) });
 
-    const b64Json = resp.data?.[0]?.b64_json;
-    if (!b64Json) {
+    const imageUrl = resp.data?.[0]?.url;
+    if (!imageUrl) {
       return { ok: false, reason: 'api_error', message: 'Görsel üretim yanıtı boş döndü.' };
     }
 
@@ -460,11 +461,11 @@ export async function generateStudioImage(opts: {
       ok: true,
       model: getImageModel(),
       data: {
-        b64Json,
+        imageUrl,   // temporary CDN URL (~1 h) — caller should upload to permanent storage
         prompt,
         altText,
         usageRights: 'ai_generated — OpenAI DALL-E 3. Ticari kullanıma uygundur.',
-        warning: 'Gerçek kişi, plaka veya marka logosu içermez.',
+        warning: 'Gerçek kişi, plaka veya marka logosu içermez. URL ~1 saat geçerlidir — kalıcı depolama için yükleyin.',
       },
     };
   } catch (err) {

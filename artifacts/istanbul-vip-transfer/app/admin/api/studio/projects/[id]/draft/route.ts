@@ -17,9 +17,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
 
   // Body is optional — research is always read from DB
-  let _body: unknown = {};
-  try { _body = await req.json(); }
-  catch { /* no body is fine */ }
+  try { await req.json(); } catch { /* no body is fine */ }
 
   try {
     const { db } = await import('@/db');

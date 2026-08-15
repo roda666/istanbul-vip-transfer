@@ -92,36 +92,39 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   let imageUrl: string | null = null;
   let objectPath: string | null = null;
 
+  // Save the temporary OpenAI CDN URL for immediate use
+  const tempUrl = result.data.imageUrl; // expires ~1 h
+
   if (privateDir) {
     try {
-      const cleaned = privateDir.replace(/^gs:\/\//, '');
-      const slash = cleaned.indexOf('/');
+      const cleaned    = privateDir.replace(/^gs:\/\//, '');
+      const slash      = cleaned.indexOf('/');
       const bucketName = slash === -1 ? cleaned : cleaned.slice(0, slash);
-      const prefix = slash === -1 ? '' : cleaned.slice(slash + 1);
-      const entityId = `studio/${id}/${Date.now()}.png`;
+      const prefix     = slash === -1 ? '' : cleaned.slice(slash + 1);
+      const entityId   = `studio/${id}/${Date.now()}.webp`;
       const objectName = [prefix, entityId].filter(Boolean).join('/');
 
-      // Get signed URL
-      const signRes = await fetch(`${SIDECAR}/object-storage/signed-object-url`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bucket_name: bucketName,
-          object_name: objectName,
-          method: 'PUT',
-          expires_at: new Date(Date.now() + 900_000).toISOString(),
+      // Download from OpenAI CDN then re-upload to our storage
+      const [imgFetch, signRes] = await Promise.all([
+        fetch(tempUrl, { signal: AbortSignal.timeout(30_000) }),
+        fetch(`${SIDECAR}/object-storage/signed-object-url`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bucket_name: bucketName, object_name: objectName,
+            method: 'PUT', expires_at: new Date(Date.now() + 900_000).toISOString(),
+          }),
+          signal: AbortSignal.timeout(30_000),
         }),
-        signal: AbortSignal.timeout(30_000),
-      });
+      ]);
 
-      if (signRes.ok) {
+      if (imgFetch.ok && signRes.ok) {
         const { signed_url } = await signRes.json() as { signed_url: string };
-        // Upload PNG
-        const pngBuffer = Buffer.from(result.data.b64Json, 'base64');
+        const imgBuffer = await imgFetch.arrayBuffer();
         const putRes = await fetch(signed_url, {
           method: 'PUT',
-          body: pngBuffer,
-          headers: { 'Content-Type': 'image/png' },
+          body: imgBuffer,
+          headers: { 'Content-Type': 'image/webp' },
         });
         if (putRes.ok) {
           objectPath = entityId;
@@ -129,8 +132,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         }
       }
     } catch (uploadErr) {
-      console.error('[studio/image] upload failed:', uploadErr);
+      console.error('[studio/image] upload failed — using temp URL:', uploadErr);
+      imageUrl = tempUrl; // fall back to temporary CDN URL
     }
+  } else {
+    // No storage configured — use the temp URL with a TTL warning
+    imageUrl = tempUrl;
+    console.warn('[studio/image] PRIVATE_OBJECT_DIR not set — storing temporary OpenAI CDN URL (~1h TTL)');
   }
 
   // Save image record

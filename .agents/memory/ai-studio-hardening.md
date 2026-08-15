@@ -34,3 +34,25 @@ description: Key decisions and constraints for the AI Content Studio — timeout
 - Routes where body is optional (draft) use `try { ... } catch { /* no body is fine */ }`
 
 **Why:** Malformed JSON from network errors or browser quirks caused generic 500s. Turkish 400 messages are user-friendly in the admin panel context.
+
+## DALL-E response_format (OpenAI SDK 6.x)
+- SDK 6.49.0: `response_format: 'b64_json'` throws `400 Unknown parameter: 'response_format'`
+- Fix: omit `response_format` entirely — defaults to URL; download from CDN URL then re-upload to storage
+- `imageUrl` field replaced `b64Json` in `ImageGenResult` interface
+- Image route now fetches CDN URL + re-uploads to GCS; falls back to temp CDN URL if storage not configured
+
+## DB Migration application
+- Migration 0016 (7 studio tables) was not applied to dev DB — apply with:
+  `sed 's/--> statement-breakpoint/;/g' drizzle/migrations/0016_studio.sql | psql $DATABASE_URL`
+- Production: `pnpm db:migrate` (safe — all CREATE TABLE IF NOT EXISTS)
+- Config route now pings each studio table and returns `migrationApplied` + `tables` + `migrationGuide` in response
+- Sistem Kontrolü page shows migration status with fix instructions
+
+## QA test results (2026-08-15)
+- 29 PASS, 0 FAIL, 2 WARN
+- 8/8 language translations: EN/DE/RU/AR/FR/ES/IT/NL — real OpenAI calls
+- TR draft: 347 words, SEO 70/100
+- CMS DRAFT: isActive:false, publishedAt:null, showOnHomepage:false, archived after test
+- DALL-E WARN: billing/quota in QA environment (code fixed for prod)
+- AR RTL: bidi markers applied; QA content had no phone numbers (normal)
+- Idempotency: 8 rows before = 8 rows after repeat EN save

@@ -30,10 +30,10 @@ export async function exportStudioToCms(opts: {
   coverImageUrl: string | null;
   coverImageAlt: string | null;
 }): Promise<ExportResult> {
-  const { contentType, trContent, config, coverImageUrl, coverImageAlt } = opts;
+  const { contentType, trContent, coverImageUrl, coverImageAlt } = opts;
   const { db } = await import('@/db');
-  const { content, contentTranslations } = await import('@/db/schema');
-  const { eq, and } = await import('drizzle-orm');
+  const { content } = await import('@/db/schema');
+  const { eq } = await import('drizzle-orm');
 
   const baseSlug = trContent.slug || slugify(trContent.title);
 

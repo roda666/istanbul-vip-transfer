@@ -53,6 +53,11 @@ type PageHeroBase = {
   heroImage?: string | null;
   /** Alt text for the hero image. */
   heroImageAlt?: string | null;
+  /**
+   * Optional badge/pill displayed above the H1 (e.g. "İstanbul Havalimanı").
+   * Comes from body.hero.badge in the DB branch. Hidden when empty.
+   */
+  badge?: string | null;
 };
 
 type PageHeroProps = PageHeroBase &
@@ -75,7 +80,7 @@ type PageHeroProps = PageHeroBase &
 
 export default function PageHero(props: PageHeroProps) {
   const { lang, dict } = useLang();
-  const { heroImage, heroImageAlt } = props;
+  const { heroImage, heroImageAlt, badge } = props;
 
   // Resolve strings — either from pageKey (locale-aware) or from explicit props.
   let title: string;
@@ -132,6 +137,32 @@ export default function PageHero(props: PageHeroProps) {
       />
 
       <div className="relative z-10 max-w-4xl mx-auto px-5 md:px-8">
+        {/* Badge — service category label above H1 */}
+        {badge && (
+          <motion.div
+            className="inline-flex items-center gap-2 mb-5"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.05 }}
+          >
+            <span style={{
+              display: 'inline-block',
+              padding: '4px 14px',
+              borderRadius: '20px',
+              fontSize: '12px',
+              fontWeight: 600,
+              fontFamily: 'Inter, sans-serif',
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+              background: 'rgba(199,154,53,0.12)',
+              color: '#A07820',
+              border: '1px solid rgba(199,154,53,0.3)',
+            }}>
+              {badge}
+            </span>
+          </motion.div>
+        )}
+
         {/* Breadcrumb */}
         <nav
           className="flex items-center justify-center gap-1.5 mb-8 text-xs flex-wrap"

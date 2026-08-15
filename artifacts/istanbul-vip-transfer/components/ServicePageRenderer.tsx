@@ -9,7 +9,7 @@
  *
  * Shared components (BookingForm, VehicleFleet, Contact) are always rendered.
  */
-import type { ServicePageBody, ServicePageFaq } from '@/lib/service-page-types';
+import type { ServicePageBody, ServicePageFaq, ServicePageSchemaExtras } from '@/lib/service-page-types';
 import PageHero from '@/components/PageHero';
 import BookingForm from '@/components/BookingForm';
 import VehicleFleet from '@/components/VehicleFleet';
@@ -51,20 +51,29 @@ function safeJsonLd(obj: unknown): string {
 interface SchemaContext { name: string; slug: string; lang: string; body: ServicePageBody | null; canonicalUrl: string }
 
 function buildServiceJsonLd({ name, canonicalUrl, body }: SchemaContext) {
-  const url = canonicalUrl;
-  return {
+  const url      = canonicalUrl;
+  const extras   = body?.schemaExtras ?? {} as ServicePageSchemaExtras;
+  const schema: Record<string, unknown> = {
     '@context': 'https://schema.org',
     '@type': 'Service',
     name,
     description: body?.hero.subtitle ?? '',
     provider: {
-      '@type': 'LocalBusiness',
-      name:    'Istanbul VIP Transfer',
-      url:     SITE.siteUrl,
+      '@type':     'LocalBusiness',
+      name:        'Istanbul VIP Transfer',
+      url:         SITE.siteUrl,
+      telephone:   SITE.phoneE164,
     },
-    areaServed: body?.serviceArea?.title ?? 'Istanbul',
+    areaServed: body?.serviceArea?.areas?.length
+      ? body.serviceArea.areas
+      : (body?.serviceArea?.title ?? 'Istanbul'),
     url,
   };
+  if (extras.serviceType)      schema['serviceType']       = extras.serviceType;
+  if (extras.openingHours)     schema['openingHours']      = extras.openingHours;
+  if (extras.priceRange)       schema['priceRange']        = extras.priceRange;
+  if (extras.availableLanguage?.length) schema['availableLanguage'] = extras.availableLanguage;
+  return schema;
 }
 
 function buildBreadcrumbJsonLd({ name, slug, lang, canonicalUrl }: { name: string; slug: string; lang: string; canonicalUrl: string }) {
@@ -110,6 +119,55 @@ const prose: React.CSSProperties = {
   lineHeight: '1.7',
   color: '#374151',
 };
+
+function FeaturesBlock({ features, dir }: { features: string[]; dir?: string }) {
+  if (!features || features.length === 0) return null;
+  return (
+    <section style={{ padding: '40px 24px', maxWidth: '900px', margin: '0 auto' }}>
+      <ul style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+        gap: '14px',
+        listStyle: 'none',
+        margin: 0,
+        padding: 0,
+      }}>
+        {features.map((f, i) => (
+          <li key={i} style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '10px',
+            padding: '14px 16px',
+            background: '#FFFFFF',
+            border: '1px solid #E2E8F0',
+            borderRadius: '10px',
+            fontFamily: 'Inter, sans-serif',
+            fontSize: '14px',
+            color: '#374151',
+            lineHeight: 1.5,
+          }} dir={dir}>
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '20px',
+              height: '20px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #C79A35, #E4B84B)',
+              flexShrink: 0,
+              marginTop: '1px',
+            }}>
+              <svg width="10" height="8" viewBox="0 0 10 8" fill="none" aria-hidden="true">
+                <path d="M1 4L3.5 6.5L9 1.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </span>
+            {f}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 function IntroSection({ text, dir }: { text: string; dir?: string }) {
   return (
@@ -182,9 +240,22 @@ function ServiceAreaBlock({ body, dir }: { body: ServicePageBody; dir?: string }
   );
 }
 
-function FaqBlock({ body, dir }: { body: ServicePageBody; dir?: string }) {
+const FAQ_HEADING: Record<string, string> = {
+  tr: 'Sık Sorulan Sorular',
+  en: 'Frequently Asked Questions',
+  de: 'Häufig gestellte Fragen',
+  ru: 'Часто задаваемые вопросы',
+  ar: 'الأسئلة الشائعة',
+  fr: 'Questions fréquentes',
+  es: 'Preguntas frecuentes',
+  it: 'Domande frequenti',
+  nl: 'Veelgestelde vragen',
+};
+
+function FaqBlock({ body, dir, lang }: { body: ServicePageBody; dir?: string; lang?: string }) {
   const faqs = body.faqs;
   if (!faqs || faqs.length === 0) return null;
+  const heading = FAQ_HEADING[lang ?? 'tr'] ?? 'Sık Sorulan Sorular';
 
   return (
     <section style={{ padding: '48px 24px', maxWidth: '900px', margin: '0 auto' }}>
@@ -192,7 +263,7 @@ function FaqBlock({ body, dir }: { body: ServicePageBody; dir?: string }) {
         fontFamily: 'Inter, sans-serif', fontSize: '22px', fontWeight: 700,
         color: '#1E293B', marginBottom: '24px',
       }} dir={dir}>
-        {dir === 'rtl' ? 'الأسئلة الشائعة' : 'Sık Sorulan Sorular'}
+        {heading}
       </h2>
       <div>
         {faqs.map((faq) => (
@@ -270,6 +341,7 @@ export default async function ServicePageRenderer({ slug, lang, canonicalPath }:
           breadcrumbs={breadcrumbs}
           title={hero.title}
           subtitle={hero.subtitle}
+          badge={hero.badge || null}
           heroImage={dbPage.heroImage}
           heroImageAlt={dbPage.heroImageAlt}
         />
@@ -277,6 +349,11 @@ export default async function ServicePageRenderer({ slug, lang, canonicalPath }:
         {/* Introductory content */}
         {dbPage.body.introBody && (
           <IntroSection text={dbPage.body.introBody} dir={dir} />
+        )}
+
+        {/* Features list */}
+        {dbPage.body.features && dbPage.body.features.length > 0 && (
+          <FeaturesBlock features={dbPage.body.features} dir={dir} />
         )}
 
         <BookingForm />
@@ -290,7 +367,7 @@ export default async function ServicePageRenderer({ slug, lang, canonicalPath }:
         <ServiceAreaBlock body={dbPage.body} dir={dir} />
 
         {/* FAQ */}
-        <FaqBlock body={dbPage.body} dir={dir} />
+        <FaqBlock body={dbPage.body} dir={dir} lang={lang} />
 
         <Contact />
       </div>

@@ -52,6 +52,18 @@ export interface ServicePageFaq {
   answer: string;
 }
 
+/** Admin-editable fields fed into Service JSON-LD structured data. */
+export interface ServicePageSchemaExtras {
+  /** schema:serviceType — e.g. "Airport Transfer", "Chauffeur Service" */
+  serviceType?: string;
+  /** schema:openingHours — e.g. "Mo-Su 00:00-24:00" */
+  openingHours?: string;
+  /** schema:priceRange — leave empty if unknown, NEVER invent numbers */
+  priceRange?: string;
+  /** schema:availableLanguage — e.g. ["Turkish", "English", "Arabic"] */
+  availableLanguage?: string[];
+}
+
 export interface ServicePageBody {
   version: 1 | 2;
   hero: ServicePageHero;
@@ -66,6 +78,8 @@ export interface ServicePageBody {
   serviceArea?: ServicePageServiceArea;
   /** FAQ items rendered with FAQPage JSON-LD. */
   faqs?: ServicePageFaq[];
+  /** Admin-editable structured-data (JSON-LD) extras. Not translatable. */
+  schemaExtras?: ServicePageSchemaExtras;
 }
 
 // ── Type guard ────────────────────────────────────────────────────────────────

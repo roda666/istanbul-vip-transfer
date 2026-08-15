@@ -1,0 +1,209 @@
+Continue from the current checkpoint.
+
+Build CMS Phase 2: migrate every existing public service page into the admin-managed multilingual content system.
+
+IMPORTANT:
+- Do not rebuild or break the working Homepage Editor.
+- Do not change the reservation form, customer requests, newsletter, authentication, or language-switching behavior.
+- Do not publish/deploy the app or connect the production domain.
+- Preserve all existing public routes, design, responsive layout, canonical URLs and hreflang rules.
+- Do not invent prices, distances, travel times, guarantees, statistics, customer reviews or business claims.
+
+1. Audit before changing anything
+
+Inspect:
+
+- the existing Services admin module
+- all existing public service, transfer and tour pages
+- database schemas and migrations
+- TR/EN/DE/RU/AR locale infrastructure
+- translation jobs and approval workflow
+- current sitemap, navigation, canonical and hreflang generation
+
+Create an exact inventory of:
+
+- published service routes
+- draft/noindex routes
+- service categories
+- static content currently stored inside page.tsx files
+- service pages already connected to the database
+- service pages still rendering hard-coded content
+
+Do not delete or overwrite existing content during this audit.
+
+2. Make the database the source of truth
+
+Move the content of all currently published service pages into the database without losing text, images, URLs, SEO metadata or page structure.
+
+The migration/import must be idempotent:
+
+- running it twice must not create duplicates
+- existing admin records must not be overwritten accidentally
+- published URLs must remain unchanged
+- draft/noindex pages must remain draft/noindex
+
+Each service must support:
+
+- internal name
+- service category
+- public status
+- navigation visibility
+- display order
+- Turkish slug and existing localized route mapping
+- badge/eyebrow
+- H1
+- introduction
+- hero image
+- image ALT text
+- page sections with heading and body content
+- feature/benefit cards
+- FAQ items
+- CTA heading, description and button text
+- SEO meta title
+- SEO meta description
+- OG title
+- OG description
+- OG image
+- structured-data-safe factual fields
+- draft, review, approved, scheduled, published and archived states
+
+Use structured repeatable fields for page sections, benefits and FAQs. Do not store the entire page as one uncontrolled HTML string.
+
+3. Connect public pages to CMS content
+
+All published service pages must render from the CMS database.
+
+Keep the current design and components. Only replace hard-coded content with CMS content.
+
+The public website must always display the last published version. Editing a draft must not immediately modify the live version.
+
+If the CMS/database is temporarily unavailable, do not return an empty page or expose an error stack. Use a safe fallback to the existing published content where possible.
+
+4. Multilingual service workflow
+
+Turkish is the source language.
+
+Add locale tabs:
+
+- Turkish — tr
+- English — en
+- German — de
+- Russian — ru
+- Arabic — ar
+
+When Turkish content is changed and “Taslak Kaydet ve Çevir” is clicked:
+
+- save the Turkish draft
+- create or update translation jobs for selected active languages
+- translate every translatable service field
+- preserve formatting, brand names, phone numbers, IST, SAW, Mercedes Vito, Mercedes Sprinter and URLs
+- keep Arabic RTL
+- do not translate image paths, ordering, IDs, status or technical route mappings
+- never report a translation as successful when Turkish text was merely copied
+- if the AI provider fails or is not configured, mark the translation FAILED with a readable admin error
+- never publish untranslated Turkish text on another locale
+
+Required workflow:
+
+Turkish draft
+→ AI translation
+→ locale review
+→ admin approval
+→ publish
+
+No AI-generated translation may be published without admin approval.
+
+Provide:
+
+- “Taslak Kaydet ve Çevir”
+- “Tüm Çevirileri İncele”
+- per-language approve/reject controls
+- “Onaylanan Dilleri Toplu Yayınla”
+- clear statuses: Başlamadı, Çevriliyor, İncelemede, Onaylandı, Yayında, Hatalı
+
+5. Locale-aware routes and SEO
+
+Preserve the routing rules:
+
+- Turkish pages use the current root routes
+- English uses /en/...
+- German uses /de/...
+- Russian uses /ru/...
+- Arabic uses /ar/...
+
+Internal links and service navigation must preserve the selected language.
+
+For every published translation generate:
+
+- correct html lang
+- correct dir
+- self-referencing canonical
+- complete hreflang alternates
+- x-default
+- translated title and description
+- locale-correct Open Graph metadata
+- sitemap entry only when that locale is published
+
+Do not create duplicate URL versions or redirect loops.
+
+6. Admin usability and responsive behavior
+
+The Services editor must use the same light, modern admin design as the Homepage Editor.
+
+Desktop:
+- service list and filters
+- editor with section navigation and language tabs
+- unsaved-change warning
+- save/translate/review/publish controls always reachable
+
+Tablet and mobile:
+- no horizontal overflow
+- no clipped inputs
+- no side-by-side desktop editor columns
+- section navigation becomes a full-width dropdown or accordion
+- form fields stack to one column
+- language tabs wrap or scroll safely
+- sticky actions must not cover fields
+- Arabic editor must render correctly in RTL
+- minimum 44px touch targets
+
+Verify at 390px, 430px, 768px, 1024px and 1440px.
+
+7. Verification requirements
+
+Create a real test using one service:
+
+- edit one Turkish sentence
+- save and translate
+- confirm EN, DE, RU and AR contain genuinely different translated text
+- confirm each language loads its own database record
+- approve and publish the translations
+- verify the public TR/EN/DE/RU/AR routes
+- verify switching pages does not reset the selected language
+- verify Arabic RTL
+- verify there is no Turkish leakage inside non-Turkish pages
+- verify public drafts are not visible
+- verify canonical, hreflang and sitemap output
+- verify no horizontal overflow on mobile
+
+Then run:
+
+- database migration
+- TypeScript typecheck
+- ESLint
+- production build
+- browser console checks
+
+Report:
+
+- audited service-route inventory
+- imported record count
+- files changed
+- migrations applied
+- routes connected to the CMS
+- translation test results for each locale
+- desktop/tablet/mobile verification
+- typecheck, lint and production-build results
+- any intentionally deferred item
+
+Do not mark the task complete unless the public service pages are genuinely rendering from the CMS and each language has its own translated content.

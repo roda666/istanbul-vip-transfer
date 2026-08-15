@@ -8,6 +8,7 @@ import type {
   ServicePageContentSection,
   ServicePageFaq,
   ServicePageServiceArea,
+  ServicePageSchemaExtras,
 } from '@/lib/service-page-types';
 import { LOCALE_REGISTRY } from '@/lib/i18n/locale-registry';
 import { ImageUploadField } from '@/app/admin/_components/ImageUploadField';
@@ -1021,6 +1022,44 @@ export default function ServicePageEditor({ initialRecord }: Props) {
                 Sistem tarafından otomatik oluşturulur — düzenlenemez. Tüm dillerde aynı canonical kullanılır.
               </p>
             </div>
+          </SectionCard>
+
+          {/* ── Schema.org Extras ──────────────────────────────────────────── */}
+          <SectionCard title="Yapısal Veri (Schema.org)" collapsible defaultOpen={false}>
+            <p style={{ fontSize: '12px', color: '#64748B', marginBottom: '12px', fontFamily: 'Inter, sans-serif', lineHeight: 1.5 }}>
+              Bu alanlar Google arama sonuçlarında zengin snippet oluşturmak için kullanılır.
+              Tercümelere yansımaz. Boş bırakılabilir.
+            </p>
+            <Field
+              name="Hizmet Türü (serviceType)"
+              value={body.schemaExtras?.serviceType ?? ''}
+              onChange={v => setBody(b => ({ ...b, schemaExtras: { ...b.schemaExtras, serviceType: v } }))}
+              hint='Örn: "Airport Transfer", "Limousine Service", "Day Tour"'
+            />
+            <Field
+              name="Çalışma Saatleri (openingHours)"
+              value={body.schemaExtras?.openingHours ?? ''}
+              onChange={v => setBody(b => ({ ...b, schemaExtras: { ...b.schemaExtras, openingHours: v } }))}
+              hint='Örn: "Mo-Su 00:00-24:00" — Schema.org biçimi'
+            />
+            <Field
+              name="Fiyat Aralığı (priceRange)"
+              value={body.schemaExtras?.priceRange ?? ''}
+              onChange={v => setBody(b => ({ ...b, schemaExtras: { ...b.schemaExtras, priceRange: v } }))}
+              hint='Örn: "₺₺" — Genel fiyat seviyesi'
+            />
+            <Field
+              name="Diller (availableLanguage)"
+              value={(body.schemaExtras?.availableLanguage ?? []).join(', ')}
+              onChange={v => setBody(b => ({
+                ...b,
+                schemaExtras: {
+                  ...b.schemaExtras,
+                  availableLanguage: v.split(',').map(s => s.trim()).filter(Boolean),
+                },
+              }))}
+              hint='Virgülle ayırın. Örn: "Turkish, English, Arabic"'
+            />
           </SectionCard>
 
           {/* Audit log */}

@@ -362,6 +362,20 @@ export interface Dictionary {
     yalovaSubtitle: string;
     yalovaCrumb: string;
   };
+  routes: {
+    sectionLabel: string;
+    heading: string;
+    subheading: string;
+    distance: string;
+    duration: string;
+    vito: string;
+    sprinter: string;
+    priceFrom: string;
+    km: string;
+    min: string;
+    h: string;
+    bookBtn: string;
+  };
   chatbot: {
     /** Floating button aria label */
     aria: string;

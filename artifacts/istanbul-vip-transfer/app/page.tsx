@@ -5,6 +5,7 @@ import Hero from '@/components/Hero';
 import BookingForm from '@/components/BookingForm';
 import VehicleFleet from '@/components/VehicleFleet';
 import Services from '@/components/Services';
+import PopularRoutesSection from '@/components/PopularRoutesSection';
 import TrustSignals from '@/components/TrustSignals';
 import Reviews from '@/components/Reviews';
 import FAQ from '@/components/FAQ';
@@ -15,10 +16,22 @@ import { getContactSettings } from '@/lib/site-settings-server';
 import { HomepageCmsProvider } from '@/lib/homepage-cms-context';
 import { getPublishedHomepageData } from '@/lib/homepage-cms';
 import { getServiceVisibilityMap } from '@/lib/service-page-cms';
+import type { TransferRoute } from '@/db/schema';
 
 // Force dynamic rendering so visibility toggle changes take effect immediately
 // without requiring a redeploy.
 export const dynamic = 'force-dynamic';
+
+async function getTransferRoutes(): Promise<TransferRoute[]> {
+  try {
+    const { db } = await import('@/db');
+    const { transferRoutes } = await import('@/db/schema');
+    const { eq, asc } = await import('drizzle-orm');
+    return db.select().from(transferRoutes).where(eq(transferRoutes.active, true)).orderBy(asc(transferRoutes.displayOrder));
+  } catch {
+    return [];
+  }
+}
 
 const BASE = SITE.siteUrl;
 
@@ -57,10 +70,11 @@ const faqSchema = {
 
 export default async function HomePage() {
   // Read published CMS data server-side; falls back to static i18n if DB unavailable
-  const [cmsData, visibilityMap, cs] = await Promise.all([
+  const [cmsData, visibilityMap, cs, transferRoutes] = await Promise.all([
     getPublishedHomepageData('tr'),
     getServiceVisibilityMap(),
     getContactSettings(),
+    getTransferRoutes(),
   ]);
 
   const localBusinessSchema = {
@@ -90,6 +104,7 @@ export default async function HomePage() {
       <BookingForm />
       <VehicleFleet />
       <Services hiddenSlugs={hiddenServiceSlugs} />
+      <PopularRoutesSection routes={transferRoutes} />
       <TrustSignals />
       <Reviews />
       <FAQ />

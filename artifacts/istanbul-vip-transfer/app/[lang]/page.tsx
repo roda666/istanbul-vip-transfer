@@ -14,7 +14,20 @@ import BookingForm from '@/components/BookingForm';
 import Hero from '@/components/Hero';
 import VehicleFleet from '@/components/VehicleFleet';
 import Services from '@/components/Services';
+import PopularRoutesSection from '@/components/PopularRoutesSection';
 import TrustSignals from '@/components/TrustSignals';
+import type { TransferRoute } from '@/db/schema';
+
+async function getTransferRoutes(): Promise<TransferRoute[]> {
+  try {
+    const { db } = await import('@/db');
+    const { transferRoutes } = await import('@/db/schema');
+    const { eq, asc } = await import('drizzle-orm');
+    return db.select().from(transferRoutes).where(eq(transferRoutes.active, true)).orderBy(asc(transferRoutes.displayOrder));
+  } catch {
+    return [];
+  }
+}
 import Reviews from '@/components/Reviews';
 import FAQ from '@/components/FAQ';
 import Contact from '@/components/Contact';
@@ -92,10 +105,11 @@ export default async function TranslatedHomePage({ params }: Props) {
   if (!isValidLang(lang)) notFound();
 
   // Read published CMS data and service visibility server-side
-  const [cmsData, visibilityMap, cs] = await Promise.all([
+  const [cmsData, visibilityMap, cs, transferRoutes] = await Promise.all([
     getPublishedHomepageData(lang),
     getServiceVisibilityMap(),
     getContactSettings(),
+    getTransferRoutes(),
   ]);
 
   const hiddenServiceSlugs = new Set(
@@ -133,6 +147,7 @@ export default async function TranslatedHomePage({ params }: Props) {
       <BookingForm />
       <VehicleFleet />
       <Services hiddenSlugs={hiddenServiceSlugs} />
+      <PopularRoutesSection routes={transferRoutes} />
       <TrustSignals />
       <Reviews />
       <FAQ />

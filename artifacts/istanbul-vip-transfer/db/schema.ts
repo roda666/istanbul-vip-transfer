@@ -625,6 +625,14 @@ export const chatbotSessions = pgTable('chatbot_sessions', {
   id:               text('id').primaryKey(),
   visitorLang:      text('visitor_lang').notNull().default('tr'),
   adminActiveUntil: timestamp('admin_active_until', { withTimezone: true }),
+  /** True once an admin has manually replied — AI will no longer auto-respond. */
+  humanTakenOver:   boolean('human_taken_over').notNull().default(false),
+  /**
+   * When set, AI is on a 2-minute hold while admin has priority.
+   * If admin replies → cleared immediately.
+   * If timer elapses without a reply → AI resumes and clears this itself.
+   */
+  pendingAiAfter:   timestamp('pending_ai_after', { withTimezone: true }),
   createdAt:        timestamp('created_at',      { withTimezone: true }).defaultNow().notNull(),
   lastMessageAt:    timestamp('last_message_at', { withTimezone: true }).defaultNow().notNull(),
 });

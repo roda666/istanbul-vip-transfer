@@ -18,6 +18,8 @@ interface Session {
   id: string;
   visitorLang: string;
   adminActiveUntil: string | null;
+  humanTakenOver: boolean;
+  pendingAiAfter: string | null;
   lastMessageAt: string;
   messageCount: number;
   lastMessageTr: string | null;
@@ -407,6 +409,11 @@ export default function AdminChatOverlay() {
                   <p style={{ margin: 0, fontSize: '0.72rem', color: '#50677A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
                     {s.lastMessageTr ?? '—'}
                   </p>
+                  {/* Status label */}
+                  {s.humanTakenOver
+                    ? <span style={{ fontSize: '0.6rem', background: '#C99A32', color: '#fff', padding: '0.1rem 0.3rem', borderRadius: '999px', alignSelf: 'flex-start' }}>👤 Admin</span>
+                    : <span style={{ fontSize: '0.6rem', background: '#EEF3F9', color: '#50677A', padding: '0.1rem 0.3rem', borderRadius: '999px', alignSelf: 'flex-start' }}>🤖 AI</span>
+                  }
                 </button>
               ))}
             </div>
@@ -426,9 +433,11 @@ export default function AdminChatOverlay() {
                   background: '#fff', flexShrink: 0,
                 }}>
                   <span style={{ fontSize: '0.78rem', color: '#50677A' }}>
-                    {adminIsActive
-                      ? '✅ Siz aktifsiniz — AI bekliyor'
-                      : '🤖 AI yanıtlıyor'}
+                    {selSess?.humanTakenOver
+                      ? '👤 Admin Yönetiminde — AI devre dışı'
+                      : adminIsActive
+                        ? '✅ Siz aktifsiniz — AI bekliyor'
+                        : '🤖 AI yanıtlıyor'}
                   </span>
                   <button
                     onClick={() => fetch(`/admin/api/chatbot/${selId}/takeover${adminIsActive ? '?release=true' : ''}`, { method: 'POST' }).then(() => fetchMessages(selId))}

@@ -1,6 +1,6 @@
 /**
  * Lightweight translation helpers for the chatbot hybrid system.
- * Uses the Replit AI Integrations OpenAI proxy (gpt-5.6-luna for cost efficiency).
+ * Uses the Replit AI Integrations OpenAI proxy (gpt-4o-mini).
  */
 import OpenAI from 'openai';
 
@@ -26,7 +26,7 @@ export async function translateToTurkish(text: string): Promise<string> {
   if (!text.trim()) return text;
   const openai = getClient();
   const res = await openai.chat.completions.create({
-    model: 'gpt-5.6-luna',
+    model: process.env.OPENAI_CHATBOT_MODEL ?? 'gpt-4o-mini',
     max_completion_tokens: 400,
     messages: [
       {
@@ -53,7 +53,7 @@ export async function translateFromTurkish(text: string, targetLang: string): Pr
   const targetName = LANG_NAMES[targetLang] ?? 'English';
   const openai = getClient();
   const res = await openai.chat.completions.create({
-    model: 'gpt-5.6-luna',
+    model: process.env.OPENAI_CHATBOT_MODEL ?? 'gpt-4o-mini',
     max_completion_tokens: 400,
     messages: [
       {

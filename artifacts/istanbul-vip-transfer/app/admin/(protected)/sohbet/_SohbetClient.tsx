@@ -1,44 +1,41 @@
 'use client';
 
 /**
- * Admin live-chat interface.
- *
- * Left panel  → session list (last 7 days, newest first, auto-refreshes every 5s)
- * Right panel → selected session messages + Turkish reply input
- *
- * Customer messages are displayed in Turkish (content_tr).
- * Admin types Turkish → backend translates → customer sees their language.
- * "Devral" button marks the session as admin-active so AI stops auto-responding.
- * "AI'ya Bırak" releases control back to the AI.
+ * Admin live-chat interface — enhanced with:
+ *  - Audio + visual notifications for incoming visitor messages
+ *  - humanTakenOver status labels ("AI Yönetiminde" / "Admin Yönetiminde")
+ *  - Original message text shown alongside Turkish translation
+ *  - Unread message counter in the session list
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 interface Session {
-  id: string;
-  visitorLang: string;
+  id:               string;
+  visitorLang:      string;
   adminActiveUntil: string | null;
-  createdAt: string;
-  lastMessageAt: string;
-  messageCount: number;
-  lastMessageTr: string | null;
-  lastMessageRole: string | null;
+  humanTakenOver:   boolean;
+  pendingAiAfter:   string | null;
+  createdAt:        string;
+  lastMessageAt:    string;
+  messageCount:     number;
+  lastMessageTr:    string | null;
+  lastMessageRole:  string | null;
 }
 
 interface Message {
-  id: string;
+  id:        string;
   sessionId: string;
-  role: 'user' | 'assistant' | 'admin';
-  content: string;
+  role:      'user' | 'assistant' | 'admin';
+  content:   string;
   contentTr: string | null;
   createdAt: string;
 }
 
 import { LOCALE_REGISTRY } from '@/lib/i18n/locale-registry';
 
-/** Registry-derived: automatically includes any new locale added to locale-registry.ts */
 const LANG_LABELS: Record<string, string> = Object.fromEntries(
-  LOCALE_REGISTRY.map((l) => [l.code, `${l.flagEmoji} ${l.code.toUpperCase()}`])
+  LOCALE_REGISTRY.map(l => [l.code, `${l.flagEmoji} ${l.code.toUpperCase()}`])
 );
 
 function timeAgo(iso: string) {
@@ -51,25 +48,90 @@ function timeAgo(iso: string) {
   return `${Math.floor(h / 24)}g`;
 }
 
-export default function SohbetClient() {
-  const [sessions,         setSessions]        = useState<Session[]>([]);
-  const [selectedId,       setSelectedId]      = useState<string | null>(null);
-  const [messages,         setMessages]        = useState<Message[]>([]);
-  const [selectedSession,  setSelectedSession] = useState<Session | null>(null);
-  const [replyText,        setReplyText]       = useState('');
-  const [sending,          setSending]         = useState(false);
-  const [takingOver,       setTakingOver]      = useState(false);
-  const [error,            setError]           = useState<string | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+// ── Audio notification ────────────────────────────────────────────────────────
+function playNotificationBeep() {
+  try {
+    const ctx  = new AudioContext();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.4);
+    osc.onended = () => ctx.close();
+  } catch { /* browser may block AudioContext — ignore */ }
+}
 
-  // ── Session list polling ─────────────────────────────────────────────────
+export default function SohbetClient() {
+  const [sessions,        setSessions]       = useState<Session[]>([]);
+  const [selectedId,      setSelectedId]     = useState<string | null>(null);
+  const [messages,        setMessages]       = useState<Message[]>([]);
+  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+  const [replyText,       setReplyText]      = useState('');
+  const [sending,         setSending]        = useState(false);
+  const [takingOver,      setTakingOver]     = useState(false);
+  const [error,           setError]          = useState<string | null>(null);
+  const [toast,           setToast]          = useState<string | null>(null);
+  const [unreadIds,       setUnreadIds]      = useState<Set<string>>(new Set());
+
+  const bottomRef      = useRef<HTMLDivElement>(null);
+  const knownKeys      = useRef<Set<string>>(new Set());
+  const origTitle      = useRef('');
+  const blinkTimer     = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Title blink ───────────────────────────────────────────────────────────
+  const startBlink = useCallback(() => {
+    if (blinkTimer.current) return;
+    origTitle.current = document.title;
+    let tog = false;
+    blinkTimer.current = setInterval(() => {
+      document.title = tog ? '💬 Yeni mesaj!' : origTitle.current;
+      tog = !tog;
+    }, 700);
+  }, []);
+
+  const stopBlink = useCallback(() => {
+    if (blinkTimer.current) { clearInterval(blinkTimer.current); blinkTimer.current = null; }
+    if (origTitle.current) document.title = origTitle.current;
+  }, []);
+
+  // ── Toast helper ──────────────────────────────────────────────────────────
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 4000);
+  }, []);
+
+  // ── Session list polling ──────────────────────────────────────────────────
   const fetchSessions = useCallback(async () => {
     const res = await fetch('/admin/api/chatbot/sessions').catch(() => null);
-    if (res?.ok) {
-      const data = await res.json() as { sessions: Session[] };
-      setSessions(data.sessions);
+    if (!res?.ok) return;
+    const data = await res.json() as { sessions: Session[] };
+    const newSessions = data.sessions;
+
+    // Detect new user messages via fingerprint = id:lastMessageAt
+    for (const s of newSessions) {
+      if (s.lastMessageRole === 'user' && s.lastMessageTr) {
+        const key = `${s.id}:${s.lastMessageAt}`;
+        if (!knownKeys.current.has(key)) {
+          knownKeys.current.add(key);
+          const isCurrentlyViewing = selectedId === s.id;
+          if (!isCurrentlyViewing) {
+            setUnreadIds(prev => new Set([...prev, s.id]));
+            playNotificationBeep();
+            startBlink();
+            showToast(`💬 ${LANG_LABELS[s.visitorLang] ?? s.visitorLang}: ${(s.lastMessageTr ?? '').slice(0, 60)}`);
+          }
+        }
+      }
     }
-  }, []);
+
+    setSessions(newSessions);
+  }, [selectedId, startBlink, showToast]);
 
   useEffect(() => {
     fetchSessions();
@@ -77,15 +139,14 @@ export default function SohbetClient() {
     return () => clearInterval(t);
   }, [fetchSessions]);
 
-  // ── Message polling for selected session ────────────────────────────────
+  // ── Message polling ───────────────────────────────────────────────────────
   const fetchMessages = useCallback(async (sid: string) => {
     const res = await fetch(`/admin/api/chatbot/${sid}/messages`).catch(() => null);
-    if (res?.ok) {
-      const data = await res.json() as { session: Session; messages: Message[] };
-      setMessages(data.messages);
-      setSelectedSession(data.session);
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
+    if (!res?.ok) return;
+    const data = await res.json() as { session: Session; messages: Message[] };
+    setMessages(data.messages);
+    setSelectedSession(data.session);
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
   }, []);
 
   useEffect(() => {
@@ -95,12 +156,20 @@ export default function SohbetClient() {
     return () => clearInterval(t);
   }, [selectedId, fetchMessages]);
 
-  // ── Admin active status ──────────────────────────────────────────────────
+  // ── Select session ────────────────────────────────────────────────────────
+  const selectSession = (sid: string) => {
+    setSelectedId(sid);
+    setMessages([]);
+    setUnreadIds(prev => { const next = new Set(prev); next.delete(sid); return next; });
+    stopBlink();
+  };
+
+  // ── Admin active status ───────────────────────────────────────────────────
   const adminIsActive = selectedSession?.adminActiveUntil
     ? new Date() < new Date(selectedSession.adminActiveUntil)
     : false;
 
-  // ── Send reply ───────────────────────────────────────────────────────────
+  // ── Send reply ────────────────────────────────────────────────────────────
   const sendReply = async () => {
     if (!replyText.trim() || !selectedId || sending) return;
     setSending(true);
@@ -122,7 +191,7 @@ export default function SohbetClient() {
     }
   };
 
-  // ── Takeover / release ───────────────────────────────────────────────────
+  // ── Takeover / release ────────────────────────────────────────────────────
   const takeover = async (release = false) => {
     if (!selectedId) return;
     setTakingOver(true);
@@ -141,12 +210,9 @@ export default function SohbetClient() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply(); }
   };
 
-  // ── Styles ───────────────────────────────────────────────────────────────
+  // ── Styles ────────────────────────────────────────────────────────────────
   const card: React.CSSProperties = {
-    background: '#fff',
-    borderRadius: '0.75rem',
-    border: '1px solid #D9E2EC',
-    overflow: 'hidden',
+    background: '#fff', borderRadius: '0.75rem', border: '1px solid #D9E2EC', overflow: 'hidden',
   };
 
   const msgBubble = (role: string): React.CSSProperties => ({
@@ -161,159 +227,217 @@ export default function SohbetClient() {
     wordBreak: 'break-word',
   });
 
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '1rem', marginTop: '1.5rem', height: 'calc(100vh - 200px)', minHeight: 400 }}>
+  // ── Status label for a session ────────────────────────────────────────────
+  const SessionStatusBadge = ({ s }: { s: Session }) => {
+    const adminActive = s.adminActiveUntil ? new Date() < new Date(s.adminActiveUntil) : false;
+    if (s.humanTakenOver || adminActive) {
+      return (
+        <span style={{ fontSize: '0.62rem', background: '#C99A32', color: '#fff', padding: '0.1rem 0.35rem', borderRadius: '999px' }}>
+          👤 Admin
+        </span>
+      );
+    }
+    return (
+      <span style={{ fontSize: '0.62rem', background: '#EEF3F9', color: '#50677A', padding: '0.1rem 0.35rem', borderRadius: '999px' }}>
+        🤖 AI
+      </span>
+    );
+  };
 
-      {/* ── Session list ──────────────────────────────────────────────── */}
-      <div style={{ ...card, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div style={{ padding: '0.875rem 1rem', borderBottom: '1px solid #EEF3F9', fontWeight: 600, fontSize: '0.875rem', color: '#102A43', flexShrink: 0 }}>
-          Aktif Oturumlar ({sessions.length})
+  return (
+    <div style={{ position: 'relative' }}>
+
+      {/* ── Toast notification ─────────────────────────────────────────── */}
+      {toast && (
+        <div style={{
+          position: 'fixed', top: '1.25rem', right: '1.25rem', zIndex: 9000,
+          background: '#102A43', color: '#fff', borderRadius: '0.75rem',
+          padding: '0.75rem 1rem', fontSize: '0.82rem', maxWidth: 320,
+          boxShadow: '0 4px 20px rgba(16,42,67,0.3)',
+          animation: 'slideIn 0.25s ease',
+        }}>
+          {toast}
         </div>
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          {sessions.length === 0 && (
-            <p style={{ padding: '1.5rem 1rem', color: '#50677A', fontSize: '0.8rem', textAlign: 'center' }}>
-              Henüz sohbet yok
-            </p>
-          )}
-          {sessions.map(s => {
-            const active = s.adminActiveUntil ? new Date() < new Date(s.adminActiveUntil) : false;
-            return (
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '1rem', marginTop: '1.5rem', height: 'calc(100vh - 200px)', minHeight: 400 }}>
+
+        {/* ── Session list ─────────────────────────────────────────────── */}
+        <div style={{ ...card, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ padding: '0.875rem 1rem', borderBottom: '1px solid #EEF3F9', fontWeight: 600, fontSize: '0.875rem', color: '#102A43', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Aktif Oturumlar ({sessions.length})</span>
+            {unreadIds.size > 0 && (
+              <span style={{ background: '#E53E3E', color: '#fff', borderRadius: '999px', padding: '0.1rem 0.5rem', fontSize: '0.72rem', fontWeight: 700 }}>
+                {unreadIds.size} yeni
+              </span>
+            )}
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            {sessions.length === 0 && (
+              <p style={{ padding: '1.5rem 1rem', color: '#50677A', fontSize: '0.8rem', textAlign: 'center' }}>
+                Henüz sohbet yok
+              </p>
+            )}
+            {sessions.map(s => (
               <button
                 key={s.id}
-                onClick={() => setSelectedId(s.id)}
+                onClick={() => selectSession(s.id)}
                 style={{
                   width: '100%', textAlign: 'left', padding: '0.75rem 1rem',
                   borderBottom: '1px solid #F3F6FA',
                   background: selectedId === s.id ? '#EEF3F9' : 'transparent',
                   border: 'none', cursor: 'pointer',
                   display: 'flex', flexDirection: 'column', gap: '0.25rem',
+                  position: 'relative',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                {/* Unread dot */}
+                {unreadIds.has(s.id) && (
+                  <span style={{ position: 'absolute', top: '0.75rem', right: '0.75rem', width: 8, height: 8, borderRadius: '50%', background: '#E53E3E' }} />
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.25rem' }}>
                   <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#102A43' }}>
                     {LANG_LABELS[s.visitorLang] ?? s.visitorLang}
                   </span>
-                  <span style={{ fontSize: '0.7rem', color: '#50677A' }}>{timeAgo(s.lastMessageAt)}</span>
+                  <span style={{ fontSize: '0.7rem', color: '#50677A', flexShrink: 0 }}>{timeAgo(s.lastMessageAt)}</span>
                 </div>
-                <p style={{ margin: 0, fontSize: '0.75rem', color: '#50677A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+                <p style={{ margin: 0, fontSize: '0.72rem', color: '#50677A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {s.lastMessageTr ?? '—'}
                 </p>
-                {active && (
-                  <span style={{ fontSize: '0.65rem', background: '#C99A32', color: '#fff', padding: '0.1rem 0.4rem', borderRadius: '999px', alignSelf: 'flex-start' }}>
-                    Siz yanıtlıyorsunuz
-                  </span>
-                )}
+                <SessionStatusBadge s={s} />
               </button>
-            );
-          })}
+            ))}
+          </div>
+        </div>
+
+        {/* ── Chat thread ───────────────────────────────────────────────── */}
+        <div style={{ ...card, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {!selectedId ? (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#50677A', fontSize: '0.9rem' }}>
+              Soldaki listeden bir oturum seçin
+            </div>
+          ) : (
+            <>
+              {/* Thread header */}
+              <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #EEF3F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.875rem', color: '#102A43' }}>
+                    {LANG_LABELS[selectedSession?.visitorLang ?? ''] ?? selectedSession?.visitorLang}
+                  </span>
+                  {selectedSession?.humanTakenOver ? (
+                    <span style={{ fontSize: '0.7rem', background: '#C99A32', color: '#fff', padding: '0.15rem 0.5rem', borderRadius: '999px' }}>
+                      👤 Admin Yönetiminde
+                    </span>
+                  ) : adminIsActive ? (
+                    <span style={{ fontSize: '0.7rem', background: '#16A36A', color: '#fff', padding: '0.15rem 0.5rem', borderRadius: '999px' }}>
+                      ✅ Siz Aktifsiniz
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: '0.7rem', background: '#EEF3F9', color: '#50677A', padding: '0.15rem 0.5rem', borderRadius: '999px' }}>
+                      🤖 AI Yönetiminde
+                    </span>
+                  )}
+                  {selectedSession?.pendingAiAfter && new Date() < new Date(selectedSession.pendingAiAfter) && (
+                    <span style={{ fontSize: '0.65rem', background: '#FFF3CD', color: '#856404', padding: '0.1rem 0.4rem', borderRadius: '999px' }}>
+                      ⏳ 2dk pencere
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  {(selectedSession?.humanTakenOver || adminIsActive) ? (
+                    <button
+                      onClick={() => takeover(true)}
+                      disabled={takingOver}
+                      style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', borderRadius: '0.5rem', background: '#EEF3F9', color: '#102A43', border: '1px solid #D9E2EC', cursor: 'pointer' }}
+                    >
+                      AI&apos;ya Bırak
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => takeover(false)}
+                      disabled={takingOver}
+                      style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', borderRadius: '0.5rem', background: '#C99A32', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                    >
+                      Devral
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Messages */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {messages.map(msg => (
+                  <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: msg.role === 'admin' ? 'flex-end' : 'flex-start', gap: '0.2rem' }}>
+                    <span style={{ fontSize: '0.65rem', color: '#50677A', paddingInline: '0.25rem' }}>
+                      {msg.role === 'user' ? '🙋 Ziyaretçi' : msg.role === 'admin' ? '👤 Siz' : '🤖 AI'}
+                      {' · '}
+                      {new Date(msg.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    <div style={msgBubble(msg.role)}>
+                      {msg.role === 'user' ? (
+                        /* Show Turkish translation prominently; original below if different */
+                        <>
+                          <span>{msg.contentTr ?? msg.content}</span>
+                          {msg.contentTr && msg.contentTr !== msg.content && (
+                            <div style={{ marginTop: '0.35rem', paddingTop: '0.35rem', borderTop: '1px solid rgba(16,42,67,0.1)', fontSize: '0.75rem', color: '#50677A', fontStyle: 'italic' }}>
+                              Orijinal: {msg.content}
+                            </div>
+                          )}
+                        </>
+                      ) : msg.role === 'admin' ? (
+                        /* Show what admin typed (Turkish); visitor translation below */
+                        <>
+                          <span>{msg.contentTr ?? msg.content}</span>
+                          {msg.contentTr && msg.contentTr !== msg.content && (
+                            <div style={{ marginTop: '0.35rem', paddingTop: '0.35rem', borderTop: '1px solid rgba(255,255,255,0.25)', fontSize: '0.75rem', color: 'rgba(255,255,255,0.8)', fontStyle: 'italic' }}>
+                              Çeviri: {msg.content}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        msg.content
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {messages.length === 0 && (
+                  <p style={{ color: '#50677A', fontSize: '0.85rem', textAlign: 'center', marginTop: '2rem' }}>Bu oturumda henüz mesaj yok</p>
+                )}
+                <div ref={bottomRef} />
+              </div>
+
+              {/* Reply input */}
+              <div style={{ borderTop: '1px solid #D9E2EC', padding: '0.75rem 1rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexShrink: 0 }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <textarea
+                    value={replyText}
+                    onChange={e => setReplyText(e.target.value)}
+                    onKeyDown={handleKey}
+                    placeholder="Türkçe yazın — müşteriye otomatik çevrilir (Enter ile gönder)"
+                    rows={2}
+                    style={{ width: '100%', border: '1px solid #D9E2EC', borderRadius: '0.5rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', resize: 'none', outline: 'none', color: '#102A43', background: '#fff', boxSizing: 'border-box' }}
+                  />
+                  {error && <span style={{ fontSize: '0.75rem', color: '#c0392b' }}>{error}</span>}
+                </div>
+                <button
+                  onClick={sendReply}
+                  disabled={!replyText.trim() || sending}
+                  style={{ background: '#C99A32', border: 'none', borderRadius: '0.5rem', padding: '0.6rem 1rem', color: '#fff', fontWeight: 600, fontSize: '0.85rem', cursor: !replyText.trim() || sending ? 'not-allowed' : 'pointer', opacity: !replyText.trim() || sending ? 0.5 : 1, flexShrink: 0, alignSelf: 'flex-end' }}
+                >
+                  {sending ? '…' : 'Gönder'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
-      {/* ── Chat thread ───────────────────────────────────────────────── */}
-      <div style={{ ...card, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {!selectedId ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#50677A', fontSize: '0.9rem' }}>
-            Soldaki listeden bir oturum seçin
-          </div>
-        ) : (
-          <>
-            {/* Thread header */}
-            <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #EEF3F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontWeight: 600, fontSize: '0.875rem', color: '#102A43' }}>
-                  {LANG_LABELS[selectedSession?.visitorLang ?? ''] ?? selectedSession?.visitorLang}
-                </span>
-                {adminIsActive ? (
-                  <span style={{ fontSize: '0.7rem', background: '#16A36A', color: '#fff', padding: '0.15rem 0.5rem', borderRadius: '999px' }}>
-                    Siz aktifsiniz
-                  </span>
-                ) : (
-                  <span style={{ fontSize: '0.7rem', background: '#EEF3F9', color: '#50677A', padding: '0.15rem 0.5rem', borderRadius: '999px' }}>
-                    AI yanıtlıyor
-                  </span>
-                )}
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                {!adminIsActive ? (
-                  <button
-                    onClick={() => takeover(false)}
-                    disabled={takingOver}
-                    style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', borderRadius: '0.5rem', background: '#C99A32', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}
-                  >
-                    Devral
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => takeover(true)}
-                    disabled={takingOver}
-                    style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', borderRadius: '0.5rem', background: '#EEF3F9', color: '#102A43', border: '1px solid #D9E2EC', cursor: 'pointer' }}
-                  >
-                    AI&apos;ya Bırak
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Messages */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {messages.map(msg => (
-                <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: msg.role === 'admin' ? 'flex-end' : 'flex-start', gap: '0.2rem' }}>
-                  <span style={{ fontSize: '0.65rem', color: '#50677A', paddingInline: '0.25rem' }}>
-                    {msg.role === 'user' ? '🙋 Ziyaretçi' : msg.role === 'admin' ? '👤 Siz' : '🤖 AI'}
-                    {' · '}
-                    {new Date(msg.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                  <div style={msgBubble(msg.role)}>
-                    {/* Show Turkish translation for user messages, original for others */}
-                    {msg.role === 'user'
-                      ? (msg.contentTr ?? msg.content)
-                      : msg.role === 'admin'
-                        ? (msg.contentTr ?? msg.content) // admin's original Turkish
-                        : msg.content
-                    }
-                  </div>
-                </div>
-              ))}
-              {messages.length === 0 && (
-                <p style={{ color: '#50677A', fontSize: '0.85rem', textAlign: 'center', marginTop: '2rem' }}>Bu oturumda henüz mesaj yok</p>
-              )}
-              <div ref={bottomRef} />
-            </div>
-
-            {/* Reply input */}
-            <div style={{ borderTop: '1px solid #D9E2EC', padding: '0.75rem 1rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexShrink: 0 }}>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                <textarea
-                  value={replyText}
-                  onChange={e => setReplyText(e.target.value)}
-                  onKeyDown={handleKey}
-                  placeholder="Türkçe yazın — müşteriye otomatik çevrilir (Enter ile gönder)"
-                  rows={2}
-                  style={{
-                    width: '100%', border: '1px solid #D9E2EC', borderRadius: '0.5rem',
-                    padding: '0.5rem 0.75rem', fontSize: '0.875rem', resize: 'none',
-                    outline: 'none', color: '#102A43', background: '#fff', boxSizing: 'border-box',
-                  }}
-                />
-                {error && <span style={{ fontSize: '0.75rem', color: '#c0392b' }}>{error}</span>}
-              </div>
-              <button
-                onClick={sendReply}
-                disabled={!replyText.trim() || sending}
-                style={{
-                  background: '#C99A32', border: 'none', borderRadius: '0.5rem',
-                  padding: '0.6rem 1rem', color: '#fff', fontWeight: 600, fontSize: '0.85rem',
-                  cursor: !replyText.trim() || sending ? 'not-allowed' : 'pointer',
-                  opacity: !replyText.trim() || sending ? 0.5 : 1, flexShrink: 0,
-                  alignSelf: 'flex-end',
-                }}
-              >
-                {sending ? '…' : 'Gönder'}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
+      <style>{`
+        @keyframes slideIn {
+          from { opacity: 0; transform: translateY(-8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }

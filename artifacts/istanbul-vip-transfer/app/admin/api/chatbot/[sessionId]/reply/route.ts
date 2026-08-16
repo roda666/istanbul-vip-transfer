@@ -1,7 +1,11 @@
 /**
- * POST /api/chatbot/admin/[sessionId]/reply
+ * POST /admin/api/chatbot/[sessionId]/reply
+ *
  * Admin sends a Turkish message → translated to visitor language → saved.
- * Also sets adminActiveUntil = now + 5 minutes.
+ * Also:
+ *  - Sets humanTakenOver = true (AI will never auto-respond again in this session)
+ *  - Clears pendingAiAfter (cancels any in-progress 2-minute AI countdown)
+ *  - Refreshes adminActiveUntil to 5 minutes from now
  */
 import { NextRequest } from 'next/server';
 import { db } from '@/db';
@@ -38,21 +42,26 @@ export async function POST(
     return Response.json({ error: 'Session not found' }, { status: 404 });
   }
 
-  // Translate Turkish → visitor language
+  // Translate Turkish admin reply → visitor language
   const translated = await translateFromTurkish(content.trim(), chatSession.visitorLang);
 
-  // Set admin active window: 5 minutes from now
+  // 5-minute active window + permanent human takeover + cancel AI countdown
   const adminActiveUntil = new Date(Date.now() + 5 * 60 * 1000);
 
   await Promise.all([
     db.insert(chatbotMessages).values({
       sessionId,
-      role: 'admin',
-      content: translated,        // what visitor sees (in their language)
-      contentTr: content.trim(),  // what admin typed (Turkish)
+      role:      'admin',
+      content:   translated,         // what the visitor sees (their language)
+      contentTr: content.trim(),     // what the admin typed (Turkish)
     }),
     db.update(chatbotSessions)
-      .set({ adminActiveUntil, lastMessageAt: new Date() })
+      .set({
+        adminActiveUntil,
+        humanTakenOver: true,        // permanent — AI will no longer auto-respond
+        pendingAiAfter: null,        // cancel any pending 2-minute AI countdown
+        lastMessageAt:  new Date(),
+      })
       .where(eq(chatbotSessions.id, sessionId)),
   ]);
 

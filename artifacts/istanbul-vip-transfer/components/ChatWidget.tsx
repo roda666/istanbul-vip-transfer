@@ -103,26 +103,43 @@ export default function ChatWidget() {
           if (res.ok && !cancelled) {
             const data = await res.json() as {
               messages: Array<{ id: string; role: string; content: string; createdAt: string }>;
+              aiModeRestored?: boolean;
             };
             if (data.messages.length > 0) {
               // Advance 1 ms past the last returned message to prevent the
               // boundary record from being re-fetched on the next poll.
               const lastCreatedAt = data.messages[data.messages.length - 1].createdAt;
               lastPollTime.current = new Date(new Date(lastCreatedAt).getTime() + 1).toISOString();
-              const adminMsgs = data.messages.filter(m => m.role === 'admin');
-              if (adminMsgs.length > 0) {
-                setMessages(prev => {
-                  const existingIds = new Set(prev.map(m => m.id).filter(Boolean));
-                  const newMsgs = adminMsgs.filter(m => !existingIds.has(m.id));
-                  if (newMsgs.length === 0) return prev;
-                  // Drop any pending "..." bubble and append real admin messages
-                  return [
-                    ...prev.filter(m => !m.pending),
-                    ...newMsgs.map(m => ({ id: m.id, role: 'admin' as const, content: m.content })),
-                  ];
-                });
-                setAdminMode(false);
-              }
+            }
+
+            // Admin messages: direct human reply
+            const adminMsgs = data.messages.filter(m => m.role === 'admin');
+            // AI messages surfaced via poll: 2-minute fallback kicked in
+            const aiRestoreMsgs = data.aiModeRestored
+              ? data.messages.filter(m => m.role === 'assistant')
+              : [];
+
+            const incomingMsgs = [...adminMsgs, ...aiRestoreMsgs];
+            if (incomingMsgs.length > 0) {
+              setMessages(prev => {
+                const existingIds = new Set(prev.map(m => m.id).filter(Boolean));
+                const newMsgs = incomingMsgs.filter(m => !existingIds.has(m.id));
+                if (newMsgs.length === 0) return prev;
+                // Drop any pending "..." bubble and append the real messages
+                return [
+                  ...prev.filter(m => !m.pending),
+                  ...newMsgs.map(m => ({
+                    id:      m.id,
+                    role:    m.role as 'admin' | 'assistant',
+                    content: m.content,
+                  })),
+                ];
+              });
+              setAdminMode(false);
+            } else if (data.aiModeRestored) {
+              // Timer elapsed but no last user message to respond to — just exit admin mode
+              setAdminMode(false);
+              setMessages(prev => prev.filter(m => !m.pending));
             }
           }
         } catch { /* ignore */ }

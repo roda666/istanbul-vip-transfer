@@ -1,5 +1,5 @@
 /**
- * GET /api/chatbot/admin/sessions
+ * GET /admin/api/chatbot/sessions
  * Lists recent chatbot sessions for the admin panel (last 7 days, newest first).
  * Protected: only callable from authenticated admin context.
  */
@@ -27,6 +27,8 @@ export async function GET() {
       id:               chatbotSessions.id,
       visitorLang:      chatbotSessions.visitorLang,
       adminActiveUntil: chatbotSessions.adminActiveUntil,
+      humanTakenOver:   chatbotSessions.humanTakenOver,
+      pendingAiAfter:   chatbotSessions.pendingAiAfter,
       createdAt:        chatbotSessions.createdAt,
       lastMessageAt:    chatbotSessions.lastMessageAt,
       messageCount: sql<number>`(

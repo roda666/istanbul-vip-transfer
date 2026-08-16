@@ -14,6 +14,7 @@ import PageHero from '@/components/PageHero';
 import BookingForm from '@/components/BookingForm';
 import VehicleFleet from '@/components/VehicleFleet';
 import Contact from '@/components/Contact';
+import TranslationNotice from '@/components/TranslationNotice';
 import { getPublishedServicePage } from '@/lib/service-page-cms';
 import { SLUG_TO_PAGE_KEY, TWO_CRUMB_SLUGS } from '@/lib/service-page-config';
 import { SITE } from '@/lib/site-config';
@@ -340,6 +341,11 @@ export default async function ServicePageRenderer({ slug, lang, canonicalPath }:
           />
         )}
 
+        {/* Translation status notice — shown for OUTDATED non-TR pages */}
+        {lang !== 'tr' && dbPage.translationStatus === 'OUTDATED' && (
+          <TranslationNotice status="outdated" lang={lang} />
+        )}
+
         {/* PageHero with DB content */}
         <PageHero
           breadcrumbs={breadcrumbs}
@@ -379,9 +385,13 @@ export default async function ServicePageRenderer({ slug, lang, canonicalPath }:
   }
 
   // Static fallback — uses i18n dict via pageKey
+  // If the visitor is not on Turkish and there's no DB translation, show a notice.
   if (pageKey) {
     return (
       <>
+        {lang !== 'tr' && (
+          <TranslationNotice status="missing" lang={lang} />
+        )}
         <PageHero pageKey={pageKey} />
         <BookingForm />
         <VehicleFleet />

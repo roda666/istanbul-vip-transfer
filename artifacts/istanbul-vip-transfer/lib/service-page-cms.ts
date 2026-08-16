@@ -53,6 +53,8 @@ export interface PublishedServicePage {
   isActive: boolean;
   category: string | null;
   body: ServicePageBody | null;
+  /** Translation status for non-TR locales. 'OUTDATED' = stale, null = up-to-date. */
+  translationStatus: 'OUTDATED' | null;
 }
 
 /**
@@ -95,6 +97,7 @@ export async function getPublishedServicePage(
         isActive:       src.isActive,
         category:       src.category ?? null,
         body:           parseServicePageBody(src.body),
+        translationStatus: null,
       };
     }
 
@@ -128,6 +131,7 @@ export async function getPublishedServicePage(
       isActive:       src.isActive,
       category:       src.category ?? null,
       body:           parseServicePageBody(tx.body) ?? parseServicePageBody(src.body),
+      translationStatus: tx.status === 'OUTDATED' ? 'OUTDATED' : null,
     };
   } catch {
     return null;

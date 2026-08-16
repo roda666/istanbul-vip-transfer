@@ -24,3 +24,4 @@
 - [Chatbot hybrid system](chatbot-hybrid-system.md) — humanTakenOver permanent flag + pendingAiAfter 2-min timer; shared AI logic in lib/chatbot-ai.ts; poll route handles AI fallback atomically; cookie-based session ownership.
 - [Contact settings from DB](contact-settings-db.md) — getContactSettings() server-side (5-min cache) + SiteSettingsProvider/useSiteSettings() client-side; /admin/api/settings POST calls invalidateContactSettings(); site_settings seeded; ALL pages/components converted.
 - [Drizzle migration workflow](drizzle-migration-workflow.md) — drizzle.__drizzle_migrations now exists (drizzle-kit migrate ran); journal has 0000–0016; future changes: db:generate then db:migrate (not db:push).
+- [Bulk translation scripts](bulk-translation-scripts.md) — .mjs scripts must use `../node_modules/` imports (not `./`); content_type='SERVICE' for service pages; translationStatus field added to PublishedServicePage; hero images in public/hero-images/.

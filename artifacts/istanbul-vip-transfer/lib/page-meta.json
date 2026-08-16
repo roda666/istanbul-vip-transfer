@@ -412,5 +412,143 @@
       "description": "جولة يوم خاصة إلى يالوا من إسطنبول. استمتع بالينابيع الحرارية والحدائق النباتية والطبيعة الساحلية مع نقل VIP مريح."
     },
     "_sourceHash": "1f990d0a5295e559"
+  },
+  "ankara-vip-transfer": {
+    "tr": {
+      "title": "Ankara VIP Transfer | Esenboğa Havalimanı Özel Araç",
+      "description": "Ankara Esenboğa Havalimanı'ndan ve şehir içi noktalara Mercedes Vito ve Sprinter ile özel VIP transfer hizmeti. 7/24, kapıdan kapıya."
+    },
+    "en": {
+      "title": "Ankara VIP Transfer | Private Vehicle from Esenboğa Airport",
+      "description": "Exclusive VIP transfer service from Ankara Esenboğa Airport and city locations with Mercedes Vito and Sprinter. 24/7, door-to-door."
+    },
+    "de": {
+      "title": "Ankara VIP Transfer | Privater Transport vom Flughafen Esenboğa",
+      "description": "Exklusiver VIP Transfer vom Flughafen Esenboğa nach Ankara mit Mercedes Vito und Sprinter. 24/7, Tür-zu-Tür-Service."
+    },
+    "ru": {
+      "title": "VIP-трансфер Анкара | Частный транспорт из аэропорта Эсенбога",
+      "description": "Частный VIP трансфер из аэропорта Эсенбога в Анкаре на Mercedes Vito и Sprinter. 24/7, от двери до двери."
+    },
+    "ar": {
+      "title": "نقل VIP في أنقرة | سيارة خاصة من مطار إيسنبوغا",
+      "description": "خدمة نقل VIP خاصة من مطار أنقرة إيسنبوغا وإلى نقاط داخل المدينة بسيارات مرسيدس فيتو وسبرينتر. متاحة على مدار الساعة."
+    },
+    "_sourceHash": "ec1308e2b0e7fefe"
+  },
+  "antalya-vip-transfer": {
+    "tr": {
+      "title": "Antalya VIP Transfer | Havalimanı Özel Araç Hizmeti",
+      "description": "Antalya Havalimanı'ndan Kemer, Belek, Side, Alanya ve şehir merkezine Mercedes ile VIP transfer. 7/24, kapıdan kapıya özel araç."
+    },
+    "en": {
+      "title": "Antalya VIP Transfer | Private Car Service from the Airport",
+      "description": "VIP transfer from Antalya Airport to Kemer, Belek, Side, Alanya, and the city center with Mercedes. 24/7, door-to-door private car service."
+    },
+    "de": {
+      "title": "Antalya VIP Transfer | Privater Fahrzeugservice am Flughafen",
+      "description": "VIP Transfer von Antalya Flughafen nach Kemer, Belek, Side, Alanya und ins Stadtzentrum mit Mercedes. 24/7, Tür-zu-Tür-Service."
+    },
+    "ru": {
+      "title": "VIP-трансфер Анталья | Частный транспорт из аэропорта Анталья",
+      "description": "VIP трансфер на Mercedes из аэропорта Анталья в Кемер, Белек, Сиде, Аланью и центр города. 24/7, услуги от двери до двери."
+    },
+    "ar": {
+      "title": "نقل VIP في أنطاليا | خدمة سيارات خاصة من المطار",
+      "description": "نقل VIP من مطار أنطاليا إلى كيمر، بيليك، سايد، ألانيا ووسط المدينة بسيارة مرسيدس. خدمة على مدار الساعة، من الباب إلى الباب."
+    },
+    "_sourceHash": "3a750522c8460254"
+  },
+  "izmir-vip-transfer": {
+    "tr": {
+      "title": "İzmir VIP Transfer | Adnan Menderes Havalimanı Özel Araç",
+      "description": "İzmir Adnan Menderes Havalimanı'ndan Çeşme, Alaçatı, Urla ve şehir merkezine Mercedes ile özel VIP transfer. 7/24, kapıdan kapıya."
+    },
+    "en": {
+      "title": "Izmir VIP Transfer | Adnan Menderes Airport Private Vehicle",
+      "description": "Private VIP transfer from Izmir Adnan Menderes Airport to Cesme, Alacati, Urla, and city center with Mercedes. 24/7, door-to-door service."
+    },
+    "de": {
+      "title": "Izmir VIP Transfer | Adnan Menderes Flughafen Privatfahrzeug",
+      "description": "Privater VIP Transfer mit Mercedes vom Izmir Adnan Menderes Flughafen nach Cesme, Alacati, Urla und ins Stadtzentrum. 24/7, Tür-zu-Tür."
+    },
+    "ru": {
+      "title": "VIP-трансфер Измир | Частный трансфер из аэропорта Аднан Мендерес",
+      "description": "Частный VIP трансфер на Mercedes из аэропорта Аднан Мендерес в Чешме, Алачаты, Урлу и центр города. 24/7, от двери до двери."
+    },
+    "ar": {
+      "title": "نقل VIP في إزمير | سيارة خاصة من مطار عدنان مندريس",
+      "description": "نقل VIP خاص من مطار إزمير عدنان مندريس إلى تشيشمي، ألاجاتي، أورلا ووسط المدينة بسيارة مرسيدس. متاح 24/7، من الباب إلى الباب."
+    },
+    "_sourceHash": "d0c6d4888e3b71f7"
+  },
+  "gelin-arabasi-kiralama": {
+    "tr": {
+      "title": "Gelin Arabası Kiralama İstanbul | Düğün Mercedes VIP",
+      "description": "İstanbul'da lüks gelin arabası kiralama. Mercedes Vito ve Sprinter ile düğün transferi, özel süsleme, profesyonel şoför. En özel gününüz için."
+    },
+    "en": {
+      "title": "Bridal Car Rental Istanbul | Wedding Mercedes VIP",
+      "description": "Luxury bridal car rental in Istanbul. Wedding transfer with Mercedes Vito and Sprinter, special decoration, professional driver. For your special day."
+    },
+    "de": {
+      "title": "Hochzeitsauto Vermietung Istanbul | Mercedes VIP Transfer",
+      "description": "Luxus Hochzeitsauto Vermietung in Istanbul. VIP Transfer mit Mercedes Vito und Sprinter, professionelle Fahrer für Ihren besonderen Tag."
+    },
+    "ru": {
+      "title": "Аренда свадебного автомобиля в Стамбуле | Mercedes VIP",
+      "description": "Аренда роскошного свадебного автомобиля в Стамбуле. Трансфер на Mercedes Vito и Sprinter с профессиональным водителем для вашего особого дня."
+    },
+    "ar": {
+      "title": "تأجير سيارات الزفاف في إسطنبول | مرسيدس VIP",
+      "description": "تأجير سيارات الزفاف الفاخرة في إسطنبول. نقل الزفاف مع مرسيدس فيتو وسبينتر، تزيين خاص، سائق محترف. ليومك المميز."
+    },
+    "_sourceHash": "16fa2fd92660539b"
+  },
+  "vip-protokol-secim-araci": {
+    "tr": {
+      "title": "VIP Protokol Aracı | Seçim Kampanya Araç Kiralama",
+      "description": "Protokol transferleri ve seçim kampanyaları için özel şoförlü VIP araç tahsisi. Mercedes Vito ve Sprinter, diskret profesyonel hizmet."
+    },
+    "en": {
+      "title": "VIP Protocol Vehicle | Election Campaign Car Rental",
+      "description": "Special chauffeur-driven VIP vehicle allocation for protocol transfers and election campaigns. Mercedes Vito and Sprinter, discreet professional service."
+    },
+    "de": {
+      "title": "VIP Transfer Istanbul | Protokollfahrzeuge für Wahlkampagnen",
+      "description": "Spezielle VIP-Fahrzeugbereitstellung mit Chauffeur für Protokolltransfers und Wahlkampagnen. Mercedes Vito und Sprinter, diskreter professioneller Service."
+    },
+    "ru": {
+      "title": "VIP Transfer Istanbul | Прокат автомобилей для протокольных мероприятий",
+      "description": "Специальные VIP трансферы с водителем для протокольных мероприятий и выборов. Mercedes Vito и Sprinter, дискретное профессиональное обслуживание."
+    },
+    "ar": {
+      "title": "نقل VIP في إسطنبول | تأجير سيارات الحملات الانتخابية",
+      "description": "تخصيص سيارات VIP مع سائق خاص لنقل البروتوكولات والحملات الانتخابية. خدمة احترافية مع مرسيدس فيتو ومرسيدس سبرينتر."
+    },
+    "_sourceHash": "d74db0f7902d082f"
+  },
+  "gunluk-villa-kiralama": {
+    "tr": {
+      "title": "Günlük Villa Kiralama İstanbul | VIP Günübirlik Villa",
+      "description": "İstanbul çevresinde günlük kiralık lüks villa. Özel havuz, bahçe, korunaklı alan ve transfer hizmetiyle birlikte özel konaklama deneyimi."
+    },
+    "en": {
+      "title": "Daily Villa Rental Istanbul | VIP Day Villa",
+      "description": "Luxury daily rental villas around Istanbul. Enjoy a private pool, garden, secure area, and transfer service for a unique accommodation experience."
+    },
+    "de": {
+      "title": "Tägliche Villa Vermietung Istanbul | VIP Tagesvilla",
+      "description": "Luxusvilla zur Tagesmiete in Istanbul. Private Pool, Garten, geschützte Bereiche und Transferdienst für ein exklusives Unterkunftserlebnis."
+    },
+    "ru": {
+      "title": "Ежедневная аренда вилл в Стамбуле | VIP Transfer Istanbul",
+      "description": "Аренда роскошной виллы на день в Стамбуле. Частный бассейн, сад, защищенная территория и услуги трансфера для уникального отдыха."
+    },
+    "ar": {
+      "title": "تأجير فيلا يومي في إسطنبول | VIP Transfer Istanbul",
+      "description": "فيلا فاخرة للإيجار اليومي حول إسطنبول. تجربة إقامة خاصة مع مسبح خاص وحديقة وخدمة نقل."
+    },
+    "_sourceHash": "e8229b490cb6f637"
   }
 }

@@ -181,6 +181,54 @@ export const PAGE_REGISTRY: Record<string, PageRegistryEntry> = {
         "İstanbul'dan Yalova'ya özel araçla günübirlik tur. Termal tatil bölgelerini ve doğal güzellikleri keşfetmek için Mercedes VIP tur transferi.",
     },
   },
+  'ankara-vip-transfer': {
+    schemaType: 'Service',
+    tr: {
+      title: 'Ankara VIP Transfer | Esenboğa Havalimanı Özel Araç',
+      description:
+        "Ankara Esenboğa Havalimanı'ndan ve şehir içi noktalara Mercedes Vito ve Sprinter ile özel VIP transfer hizmeti. 7/24, kapıdan kapıya.",
+    },
+  },
+  'antalya-vip-transfer': {
+    schemaType: 'Service',
+    tr: {
+      title: 'Antalya VIP Transfer | Havalimanı Özel Araç Hizmeti',
+      description:
+        "Antalya Havalimanı'ndan Kemer, Belek, Side, Alanya ve şehir merkezine Mercedes ile VIP transfer. 7/24, kapıdan kapıya özel araç.",
+    },
+  },
+  'izmir-vip-transfer': {
+    schemaType: 'Service',
+    tr: {
+      title: 'İzmir VIP Transfer | Adnan Menderes Havalimanı Özel Araç',
+      description:
+        "İzmir Adnan Menderes Havalimanı'ndan Çeşme, Alaçatı, Urla ve şehir merkezine Mercedes ile özel VIP transfer. 7/24, kapıdan kapıya.",
+    },
+  },
+  'gelin-arabasi-kiralama': {
+    schemaType: 'Service',
+    tr: {
+      title: 'Gelin Arabası Kiralama İstanbul | Düğün Mercedes VIP',
+      description:
+        "İstanbul'da lüks gelin arabası kiralama. Mercedes Vito ve Sprinter ile düğün transferi, özel süsleme, profesyonel şoför. En özel gününüz için.",
+    },
+  },
+  'vip-protokol-secim-araci': {
+    schemaType: 'Service',
+    tr: {
+      title: 'VIP Protokol Aracı | Seçim Kampanya Araç Kiralama',
+      description:
+        'Protokol transferleri ve seçim kampanyaları için özel şoförlü VIP araç tahsisi. Mercedes Vito ve Sprinter, diskret profesyonel hizmet.',
+    },
+  },
+  'gunluk-villa-kiralama': {
+    schemaType: 'Service',
+    tr: {
+      title: 'Günlük Villa Kiralama İstanbul | VIP Günübirlik Villa',
+      description:
+        "İstanbul çevresinde günlük kiralık lüks villa. Özel havuz, bahçe, korunaklı alan ve transfer hizmetiyle birlikte özel konaklama deneyimi.",
+    },
+  },
 };
 
 /** Ordered list of all registered page slugs. */

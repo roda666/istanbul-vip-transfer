@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
@@ -81,6 +82,8 @@ type PageHeroProps = PageHeroBase &
 export default function PageHero(props: PageHeroProps) {
   const { lang, dict } = useLang();
   const { heroImage, heroImageAlt, badge } = props;
+  // Track image load failures so a broken storage URL doesn't leave a broken <img> on the page.
+  const [heroImgError, setHeroImgError] = useState(false);
 
   // Resolve strings — either from pageKey (locale-aware) or from explicit props.
   let title: string;
@@ -222,7 +225,7 @@ export default function PageHero(props: PageHeroProps) {
           </motion.p>
         )}
 
-        {heroImage && (
+        {heroImage && !heroImgError && (
           <motion.div
             className="mt-10 mx-auto overflow-hidden rounded-2xl shadow-lg"
             style={{ maxWidth: '720px', aspectRatio: '16/9', position: 'relative' }}
@@ -237,6 +240,7 @@ export default function PageHero(props: PageHeroProps) {
               className="object-cover"
               sizes="(max-width: 768px) 100vw, 720px"
               priority
+              onError={() => setHeroImgError(true)}
             />
           </motion.div>
         )}

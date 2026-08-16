@@ -73,6 +73,93 @@ const nextConfig: NextConfig = {
   // "127.0.0.1" is needed because Next.js only auto-allows "localhost", not the IP.
   allowedDevOrigins: ['**.replit.dev', '127.0.0.1'],
 
+  // ── HTTP Security Headers ──────────────────────────────────────────────────
+  //
+  // Applied to every route (source: '/(.*)'). Notes per header:
+  //
+  // Content-Security-Policy
+  //   • script-src 'unsafe-inline' — required for Next.js hydration scripts,
+  //     the locale/RTL inline script, and web-vitals inline initialisation.
+  //     JSON-LD <script type="application/ld+json"> blocks are NOT executable
+  //     and don't need this, but the Next.js runtime inline scripts do.
+  //   • style-src 'unsafe-inline' — Next.js injects critical CSS inline.
+  //   • font-src fonts.gstatic.com — Google Fonts font files.
+  //   • img-src https: — blog hero images are arbitrary admin-entered URLs
+  //     so the safest working policy is to allow all HTTPS images.
+  //   • connect-src 'self' — chatbot polling, admin APIs, /api/vitals are all
+  //     same-origin. OpenAI calls happen server-side (not browser) — no entry needed.
+  //   • frame-ancestors 'none' — prevents clickjacking (enforced by modern browsers).
+  //
+  // Strict-Transport-Security
+  //   Only sent in production (isDev guard). Sending HSTS over plain HTTP dev
+  //   server would lock out the localhost origin in some browsers.
+  //
+  async headers() {
+    const cspDirectives = [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' data: https://fonts.gstatic.com",
+      // img-src: 'self' covers /_next/image proxied GCS images;
+      // blob: covers canvas/object-URL previews;
+      // https: covers arbitrary admin-entered blog hero image URLs.
+      "img-src 'self' data: blob: https:",
+      // connect-src: all API calls are same-origin (chatbot, admin, vitals).
+      "connect-src 'self'",
+      "media-src 'self'",
+      "object-src 'none'",
+      "frame-src 'none'",
+      // Prevents this page from being embedded in any iframe (clickjacking guard).
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join('; ');
+
+    const securityHeaders = [
+      // Blocks MIME-type sniffing — protects against content-type confusion attacks.
+      { key: 'X-Content-Type-Options', value: 'nosniff' },
+      // Prevents page from being framed (fallback for older browsers that don't
+      // support frame-ancestors; modern browsers use the CSP directive above).
+      { key: 'X-Frame-Options', value: 'DENY' },
+      // Controls how much referrer info is sent with requests.
+      { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+      // Restricts access to browser features not used by this site.
+      {
+        key: 'Permissions-Policy',
+        value: [
+          'camera=()',
+          'microphone=()',
+          'geolocation=()',
+          'payment=()',
+          'usb=()',
+          'bluetooth=()',
+          'accelerometer=()',
+          'gyroscope=()',
+          'magnetometer=()',
+          'ambient-light-sensor=()',
+          'autoplay=(self)',
+          'fullscreen=(self)',
+        ].join(', '),
+      },
+      { key: 'Content-Security-Policy', value: cspDirectives },
+    ];
+
+    // HSTS: only in production — sending it over HTTP dev server can lock out localhost.
+    if (!isDev) {
+      securityHeaders.push({
+        key:   'Strict-Transport-Security',
+        value: 'max-age=63072000; includeSubDomains; preload',
+      });
+    }
+
+    return [
+      {
+        source:  '/(.*)',
+        headers: securityHeaders,
+      },
+    ];
+  },
+
   // Permanent redirects
   async redirects() {
     return [

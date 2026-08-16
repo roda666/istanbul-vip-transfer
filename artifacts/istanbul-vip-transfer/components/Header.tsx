@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Phone, ChevronDown } from 'lucide-react';
-import { SITE } from '@/lib/site-config';
 import { getNav } from '@/lib/nav-config';
 import { useLang } from '@/lib/i18n/context';
+import { useSiteSettings } from '@/components/SiteSettingsContext';
 import { localePath } from '@/lib/locale-path';
 import LanguageSelector from './LanguageSelector';
 
@@ -18,6 +18,7 @@ interface HeaderProps {
 
 export default function Header({ hiddenNavSlugs }: HeaderProps = {}) {
   const { lang, dict } = useLang();
+  const cs = useSiteSettings();
   const hiddenSet = hiddenNavSlugs && hiddenNavSlugs.length > 0 ? new Set(hiddenNavSlugs) : undefined;
   const nav = getNav(lang, dict, hiddenSet);
 
@@ -320,7 +321,7 @@ export default function Header({ hiddenNavSlugs }: HeaderProps = {}) {
                 </motion.div>
               )}
               <motion.a
-                href={SITE.whatsappUrl}
+                href={cs.whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#16A36A]"
@@ -559,7 +560,7 @@ export default function Header({ hiddenNavSlugs }: HeaderProps = {}) {
                   </Link>
                 )}
                 <a
-                  href={SITE.whatsappUrl}
+                  href={cs.whatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2.5 px-6 py-4 rounded-xl text-base font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-[#16A36A]"

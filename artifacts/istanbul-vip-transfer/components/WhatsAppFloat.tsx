@@ -21,11 +21,12 @@
  */
 
 import { useState, useEffect } from 'react';
-import { SITE } from '@/lib/site-config';
 import { useLang } from '@/lib/i18n/context';
+import { useSiteSettings } from '@/components/SiteSettingsContext';
 
 export default function WhatsAppFloat() {
   const { dict } = useLang();
+  const cs = useSiteSettings();
 
   // True after the initial entrance delay has elapsed.
   const [appeared, setAppeared] = useState(false);
@@ -74,7 +75,7 @@ export default function WhatsAppFloat() {
 
   return (
     <a
-      href={SITE.whatsappFloatUrl}
+      href={cs.whatsappFloatUrl}
       target="_blank"
       rel="noopener noreferrer"
       aria-label={dict.common.whatsappAria}

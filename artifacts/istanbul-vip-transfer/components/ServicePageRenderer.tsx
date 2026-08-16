@@ -17,6 +17,7 @@ import Contact from '@/components/Contact';
 import { getPublishedServicePage } from '@/lib/service-page-cms';
 import { SLUG_TO_PAGE_KEY, TWO_CRUMB_SLUGS } from '@/lib/service-page-config';
 import { SITE } from '@/lib/site-config';
+import { getContactSettings, type ContactSettings } from '@/lib/site-settings-server';
 
 interface Props {
   slug: string;
@@ -48,9 +49,9 @@ function safeJsonLd(obj: unknown): string {
 
 // ── JSON-LD helpers ───────────────────────────────────────────────────────────
 
-interface SchemaContext { name: string; slug: string; lang: string; body: ServicePageBody | null; canonicalUrl: string }
+interface SchemaContext { name: string; slug: string; lang: string; body: ServicePageBody | null; canonicalUrl: string; cs: ContactSettings }
 
-function buildServiceJsonLd({ name, canonicalUrl, body }: SchemaContext) {
+function buildServiceJsonLd({ name, canonicalUrl, body, cs }: SchemaContext) {
   const url      = canonicalUrl;
   const extras   = body?.schemaExtras ?? {} as ServicePageSchemaExtras;
   const schema: Record<string, unknown> = {
@@ -62,7 +63,7 @@ function buildServiceJsonLd({ name, canonicalUrl, body }: SchemaContext) {
       '@type':     'LocalBusiness',
       name:        'Istanbul VIP Transfer',
       url:         SITE.siteUrl,
-      telephone:   SITE.phoneE164,
+      telephone:   cs.phoneE164,
     },
     areaServed: body?.serviceArea?.areas?.length
       ? body.serviceArea.areas
@@ -293,7 +294,10 @@ function FaqBlock({ body, dir, lang }: { body: ServicePageBody; dir?: string; la
 // ── Main renderer ─────────────────────────────────────────────────────────────
 
 export default async function ServicePageRenderer({ slug, lang, canonicalPath }: Props) {
-  const dbPage = await getPublishedServicePage(slug, lang);
+  const [dbPage, cs] = await Promise.all([
+    getPublishedServicePage(slug, lang),
+    getContactSettings(),
+  ]);
   const pageKey = SLUG_TO_PAGE_KEY[slug];
   const canonicalUrl = `${SITE.siteUrl}${canonicalPath ?? `/${lang}/${slug}`}`;
 
@@ -314,7 +318,7 @@ export default async function ServicePageRenderer({ slug, lang, canonicalPath }:
         ];
 
     // Build JSON-LD scripts
-    const serviceSchema    = buildServiceJsonLd({ name: dbPage.title, slug, lang, body: dbPage.body, canonicalUrl });
+    const serviceSchema    = buildServiceJsonLd({ name: dbPage.title, slug, lang, body: dbPage.body, canonicalUrl, cs });
     const breadcrumbSchema = buildBreadcrumbJsonLd({ name: dbPage.title, slug, lang, canonicalUrl });
     const faqSchema        = faqs && faqs.length > 0 ? buildFaqJsonLd(faqs) : null;
 

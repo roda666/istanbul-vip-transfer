@@ -12,6 +12,7 @@ import { getOgLocale } from '@/lib/i18n/seo';
 import { buildBlogAlternates } from '@/lib/blog-hreflang';
 import { getPublishedBlogTranslation } from '@/lib/blog-cms';
 import { SITE } from '@/lib/site-config';
+import { getContactSettings } from '@/lib/site-settings-server';
 
 interface Props {
   params: Promise<{ lang: string; slug: string }>;
@@ -53,7 +54,10 @@ export default async function TranslatedBlogPost({ params }: Props) {
   const { lang, slug } = await params;
   if (!isValidLang(lang)) notFound();
 
-  const translation = await getPublishedBlogTranslation(slug, lang);
+  const [translation, cs] = await Promise.all([
+    getPublishedBlogTranslation(slug, lang),
+    getContactSettings(),
+  ]);
   if (!translation) notFound();
 
   const dict = getDictionary(lang);
@@ -204,7 +208,7 @@ export default async function TranslatedBlogPost({ params }: Props) {
           author: translation.sourceAuthor
             ? { '@type': 'Person', name: translation.sourceAuthor }
             : { '@type': 'Organization', name: 'VIP Transfer Istanbul', url: SITE.siteUrl },
-          publisher: { '@type': 'Organization', name: 'VIP Transfer Istanbul', url: SITE.siteUrl, telephone: SITE.phoneE164, email: SITE.email },
+          publisher: { '@type': 'Organization', name: 'VIP Transfer Istanbul', url: SITE.siteUrl, telephone: cs.phoneE164, email: cs.email },
         }),
       }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{

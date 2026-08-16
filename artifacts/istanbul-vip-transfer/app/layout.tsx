@@ -4,6 +4,8 @@ import PublicLayoutWrapper from '@/components/PublicLayoutWrapper';
 import WebVitalsReporter from '@/components/WebVitalsReporter';
 import { SITE } from '@/lib/site-config';
 import { getServiceVisibilityMap } from '@/lib/service-page-cms';
+import { getContactSettings } from '@/lib/site-settings-server';
+import { SiteSettingsProvider } from '@/components/SiteSettingsContext';
 
 export const viewport: Viewport = {
   width:        'device-width',
@@ -32,7 +34,10 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   // Fetch nav visibility server-side so Header can filter showInNav=false items.
   // Gracefully falls back to an empty array (all nav items shown) if DB is unavailable.
-  const visibilityMap = await getServiceVisibilityMap().catch(() => new Map<string, { showOnHomepage: boolean; showInNav: boolean }>());
+  const [visibilityMap, contactSettings] = await Promise.all([
+    getServiceVisibilityMap().catch(() => new Map<string, { showOnHomepage: boolean; showInNav: boolean }>()),
+    getContactSettings(),
+  ]);
   const hiddenNavSlugs = [...visibilityMap.entries()]
     .filter(([, flags]) => !flags.showInNav)
     .map(([slug]) => slug);
@@ -60,7 +65,9 @@ export default async function RootLayout({
       >
         {/* PublicLayoutWrapper conditionally adds Header/Footer for public routes.
             Admin routes render their own layout without public chrome. */}
-        <PublicLayoutWrapper hiddenNavSlugs={hiddenNavSlugs}>{children}</PublicLayoutWrapper>
+        <SiteSettingsProvider settings={contactSettings}>
+          <PublicLayoutWrapper hiddenNavSlugs={hiddenNavSlugs}>{children}</PublicLayoutWrapper>
+        </SiteSettingsProvider>
         {/*
          * Privacy-friendly Core Web Vitals reporter — no external service or key.
          * Fires web-vitals observers after hydration; beacons metrics to /api/vitals.

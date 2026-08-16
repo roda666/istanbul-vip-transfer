@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Phone, MapPin, Mail } from 'lucide-react';
-import { SITE } from '@/lib/site-config';
 import { useLang } from '@/lib/i18n/context';
+import { useSiteSettings } from '@/components/SiteSettingsContext';
 import { localePath } from '@/lib/locale-path';
 import LanguageSelector from './LanguageSelector';
 
@@ -15,6 +15,7 @@ interface FooterProps {
 
 export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
   const { lang, dict } = useLang();
+  const cs = useSiteSettings();
   const p = (path: string) => localePath(path, lang);
   const hidden = new Set(hiddenNavSlugs ?? []);
 
@@ -152,14 +153,14 @@ export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
                 <Phone size={15} style={{ color: '#C79A35', flexShrink: 0, marginTop: '2px' }} aria-hidden="true" />
                 <div>
                   <a
-                    href={SITE.phoneTel}
+                    href={cs.phoneTel}
                     className="text-sm transition-colors duration-300 focus:outline-none focus-visible:underline"
                     style={{ color: 'rgba(255,255,255,0.88)', fontFamily: 'Inter, sans-serif' }}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#C79A35'; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,0.88)'; }}
                     dir="ltr"
                   >
-                    {SITE.phoneDisplay}
+                    {cs.phoneDisplay}
                   </a>
                   <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Inter, sans-serif' }}>
                     {dict.footer.available247}
@@ -170,14 +171,14 @@ export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
                 <Mail size={15} style={{ color: '#C79A35', flexShrink: 0, marginTop: '2px' }} aria-hidden="true" />
                 <div>
                   <a
-                    href={SITE.emailMailto}
+                    href={cs.emailMailto}
                     className="text-sm transition-colors duration-300 break-all focus:outline-none focus-visible:underline"
                     style={{ color: 'rgba(255,255,255,0.88)', fontFamily: 'Inter, sans-serif' }}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#C79A35'; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,0.88)'; }}
                     dir="ltr"
                   >
-                    {SITE.email}
+                    {cs.email}
                   </a>
                 </div>
               </li>

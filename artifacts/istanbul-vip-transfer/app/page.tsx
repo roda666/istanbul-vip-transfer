@@ -11,6 +11,7 @@ import FAQ from '@/components/FAQ';
 import Contact from '@/components/Contact';
 import { faqs } from '@/lib/faq-data';
 import { SITE } from '@/lib/site-config';
+import { getContactSettings } from '@/lib/site-settings-server';
 import { HomepageCmsProvider } from '@/lib/homepage-cms-context';
 import { getPublishedHomepageData } from '@/lib/homepage-cms';
 import { getServiceVisibilityMap } from '@/lib/service-page-cms';
@@ -42,19 +43,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-const localBusinessSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'LocalBusiness',
-  name: 'VIP Transfer Istanbul',
-  description:
-    'İstanbul havalimanı ve şehir içi VIP transfer hizmeti. Mercedes Vito ve Sprinter ile 7/24 hizmet.',
-  telephone: SITE.phoneE164,
-  email: SITE.email,
-  url: BASE,
-  sameAs: [SITE.googleBusinessUrl],
-  areaServed: { '@type': 'City', name: 'İstanbul' },
-  priceRange: '$$',
-};
+// localBusinessSchema is built inside HomePage() so contact fields reflect DB values.
 
 const faqSchema = {
   '@context': 'https://schema.org',
@@ -68,10 +57,25 @@ const faqSchema = {
 
 export default async function HomePage() {
   // Read published CMS data server-side; falls back to static i18n if DB unavailable
-  const [cmsData, visibilityMap] = await Promise.all([
+  const [cmsData, visibilityMap, cs] = await Promise.all([
     getPublishedHomepageData('tr'),
     getServiceVisibilityMap(),
+    getContactSettings(),
   ]);
+
+  const localBusinessSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    name: 'VIP Transfer Istanbul',
+    description:
+      'İstanbul havalimanı ve şehir içi VIP transfer hizmeti. Mercedes Vito ve Sprinter ile 7/24 hizmet.',
+    telephone: cs.phoneE164,
+    email: cs.email,
+    url: BASE,
+    sameAs: [cs.googleBusinessUrl],
+    areaServed: { '@type': 'City', name: 'İstanbul' },
+    priceRange: '$$',
+  };
 
   // Build the set of service slugs the admin has hidden from the homepage
   const hiddenServiceSlugs = new Set(

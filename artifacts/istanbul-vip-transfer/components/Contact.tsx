@@ -2,17 +2,18 @@
 
 import { motion } from 'framer-motion';
 import { Phone, Clock, MapPin, Mail } from 'lucide-react';
-import { SITE } from '@/lib/site-config';
 import { useLang } from '@/lib/i18n/context';
+import { useSiteSettings } from '@/components/SiteSettingsContext';
 
 export default function Contact() {
   const { dict } = useLang();
   const c = dict.contact;
+  const cs = useSiteSettings();
 
   const infoCards = [
-    { icon: Phone,  title: c.phoneTitle,  content: SITE.phoneDisplay, sub: c.hoursValue,  href: SITE.phoneTel, ltr: true },
-    { icon: Clock,  title: c.hoursTitle,  content: c.hoursValue,      sub: c.hoursAlways, href: null,          ltr: false },
-    { icon: Mail,   title: c.emailTitle,  content: SITE.email,        sub: c.emailSub,    href: SITE.emailMailto, ltr: true },
+    { icon: Phone,  title: c.phoneTitle,  content: cs.phoneDisplay, sub: c.hoursValue,  href: cs.phoneTel, ltr: true },
+    { icon: Clock,  title: c.hoursTitle,  content: c.hoursValue,    sub: c.hoursAlways, href: null,        ltr: false },
+    { icon: Mail,   title: c.emailTitle,  content: cs.email,        sub: c.emailSub,    href: cs.emailMailto, ltr: true },
     { icon: MapPin, title: c.regionTitle, content: c.regionValue,     sub: c.regionSub,   href: null,          ltr: false },
   ];
 
@@ -80,17 +81,17 @@ export default function Contact() {
             {c.supportLine}
           </p>
           <a
-            href={SITE.phoneTel}
+            href={cs.phoneTel}
             className="text-4xl md:text-5xl font-bold mb-8 block transition-colors duration-300 focus:outline-none focus-visible:underline"
             style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#C79A35'; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#102A43'; }}
             dir="ltr"
           >
-            {SITE.phoneDisplay}
+            {cs.phoneDisplay}
           </a>
           <motion.a
-            href={SITE.whatsappUrl}
+            href={cs.whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-3 px-10 py-4 rounded-xl text-base font-semibold transition-all duration-300 hover:shadow-xl hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#16A36A] focus-visible:ring-offset-2"

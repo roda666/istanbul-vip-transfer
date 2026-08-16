@@ -7,6 +7,7 @@
  */
 import 'server-only';
 import { z } from 'zod';
+import { getContactSettings } from '@/lib/site-settings-server';
 
 /**
  * Coerce a value to a plain string.
@@ -101,11 +102,14 @@ export async function translateContent(
   }
   const targetLangName = promptLangName(info, targetLang);
 
+  // Read contact details from DB (cached, falls back to static config)
+  const cs = await getContactSettings();
+
   const systemPrompt = `You are an expert translation engine specializing in luxury transportation and tourism content.
 Your task is to translate Turkish content about Istanbul VIP Transfer into ${targetLangName}.
 
 CRITICAL RULES — NEVER VIOLATE:
-1. Do NOT translate these exact strings (keep them verbatim): "VIP Transfer Istanbul", "Istanbul VIP Transfer", "IST", "SAW", "Mercedes Vito", "Mercedes Sprinter", "+90 532 660 08 47", "WhatsApp", "wa.me/905326600847", "info@istanbulviptransfer.com"
+1. Do NOT translate these exact strings (keep them verbatim): "VIP Transfer Istanbul", "Istanbul VIP Transfer", "IST", "SAW", "Mercedes Vito", "Mercedes Sprinter", "${cs.phoneDisplay}", "WhatsApp", "wa.me/${cs.whatsappNumber}", "${cs.email}"
 2. Preserve ALL HTML tags exactly — translate only the text nodes inside them
 3. Preserve phone numbers, URLs, and email addresses exactly as-is
 4. For Arabic (ar): use Modern Standard Arabic appropriate for a luxury service

@@ -1,8 +1,13 @@
 import { SITE } from '@/lib/site-config';
+import { getContactSettings } from '@/lib/site-settings-server';
 
-export const dynamic = 'force-static';
+// Dynamic so contact info reflects DB settings without a redeploy
+export const dynamic = 'force-dynamic';
 
-const BODY = `# Istanbul VIP Transfer
+export async function GET() {
+  const cs = await getContactSettings();
+
+  const body = `# Istanbul VIP Transfer
 
 > Premium VIP airport transfer and private chauffeur service in Istanbul, Turkey. Luxury Mercedes vehicles (Vito, Sprinter, S-Class), professional drivers, fixed prices, 24/7 availability.
 
@@ -28,13 +33,12 @@ Website available in Turkish (default), English (/en), German (/de), Russian (/r
 
 ## Contact
 
-- Phone / WhatsApp: ${SITE.phoneDisplay}
-- Email: ${SITE.email}
+- Phone / WhatsApp: ${cs.phoneDisplay}
+- Email: ${cs.email}
 - Bookings via website form or WhatsApp; quotes are free and prices are fixed in advance.
 `;
 
-export function GET() {
-  return new Response(BODY, {
+  return new Response(body, {
     headers: { 'Content-Type': 'text/plain; charset=utf-8' },
   });
 }

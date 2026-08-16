@@ -8,6 +8,7 @@ import { notFound } from 'next/navigation';
 import { isValidLang, getDictionary, SUPPORTED_LANGS } from '@/lib/i18n';
 import { buildAlternates, getOgLocale } from '@/lib/i18n/seo';
 import { SITE } from '@/lib/site-config';
+import { getContactSettings } from '@/lib/site-settings-server';
 import { getPublishedBlogTranslations } from '@/lib/blog-cms';
 import { ArrowRight } from 'lucide-react';
 
@@ -65,7 +66,7 @@ export default async function TranslatedBlogPage({ params }: Props) {
   if (!isValidLang(lang)) notFound();
 
   const dict   = getDictionary(lang);
-  const posts  = await getPublishedBlogTranslations(lang);
+  const [posts, cs] = await Promise.all([getPublishedBlogTranslations(lang), getContactSettings()]);
   const isRtl  = lang === 'ar';
 
   const headings: Record<string, string> = {
@@ -165,7 +166,7 @@ export default async function TranslatedBlogPage({ params }: Props) {
           '@context': 'https://schema.org', '@type': 'WebPage',
           name: lang === 'ru' ? 'Блог | Стамбул VIP Трансфер' : lang === 'ar' ? 'المدونة | إسطنبول VIP ترانسفير' : 'Blog | Istanbul VIP Transfer',
           url: `${SITE.siteUrl}/${lang}/blog`, inLanguage: lang,
-          publisher: { '@type': 'Organization', name: 'VIP Transfer Istanbul', url: SITE.siteUrl, telephone: SITE.phoneE164, email: SITE.email },
+          publisher: { '@type': 'Organization', name: 'VIP Transfer Istanbul', url: SITE.siteUrl, telephone: cs.phoneE164, email: cs.email },
         }),
       }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{

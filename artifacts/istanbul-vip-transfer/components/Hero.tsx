@@ -3,13 +3,14 @@
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { ChevronDown, Star } from 'lucide-react';
-import { SITE } from '@/lib/site-config';
 import { useLang } from '@/lib/i18n/context';
+import { useSiteSettings } from '@/components/SiteSettingsContext';
 import { useHomepageCms } from '@/lib/homepage-cms-context';
 
 export default function Hero() {
   const { dict } = useLang();
   const cms = useHomepageCms();
+  const cs = useSiteSettings();
 
   // Use CMS data where published; fall back to static i18n dictionary
   const h = cms?.hero
@@ -145,7 +146,7 @@ export default function Hero() {
                 {h.ctaBooking}
               </button>
               <a
-                href={SITE.phoneTel}
+                href={cs.phoneTel}
                 className="px-8 py-3.5 rounded-xl text-sm font-semibold tracking-wide transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#102A43] focus-visible:ring-offset-2 text-center"
                 style={{
                   background: '#102A43',

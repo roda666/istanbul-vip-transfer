@@ -9,6 +9,7 @@ import { notFound } from 'next/navigation';
 import { isValidLang, SUPPORTED_LANGS } from '@/lib/i18n';
 import { buildAlternates, getOgLocale } from '@/lib/i18n/seo';
 import { SITE } from '@/lib/site-config';
+import { getContactSettings } from '@/lib/site-settings-server';
 import BookingForm from '@/components/BookingForm';
 import Hero from '@/components/Hero';
 import VehicleFleet from '@/components/VehicleFleet';
@@ -91,9 +92,10 @@ export default async function TranslatedHomePage({ params }: Props) {
   if (!isValidLang(lang)) notFound();
 
   // Read published CMS data and service visibility server-side
-  const [cmsData, visibilityMap] = await Promise.all([
+  const [cmsData, visibilityMap, cs] = await Promise.all([
     getPublishedHomepageData(lang),
     getServiceVisibilityMap(),
+    getContactSettings(),
   ]);
 
   const hiddenServiceSlugs = new Set(
@@ -119,9 +121,9 @@ export default async function TranslatedHomePage({ params }: Props) {
       '@type': 'Organization',
       name: 'VIP Transfer Istanbul',
       url: SITE.siteUrl,
-      telephone: SITE.phoneE164,
-      email: SITE.email,
-      sameAs: [SITE.googleBusinessUrl],
+      telephone: cs.phoneE164,
+      email: cs.email,
+      sameAs: [cs.googleBusinessUrl],
     },
   };
 

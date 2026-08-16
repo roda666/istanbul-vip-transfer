@@ -5,25 +5,12 @@ import Link from 'next/link';
 import PageHero from '@/components/PageHero';
 import { getPublishedBlogPosts } from '@/lib/blog-cms';
 import { SITE } from '@/lib/site-config';
+import { getContactSettings } from '@/lib/site-settings-server';
 
 const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/blog`;
 
-const blogListingSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'WebPage',
-  name: 'Blog | İstanbul VIP Transfer Rehberleri',
-  description: 'İstanbul havalimanı transferi, VIP ulaşım, araç seçimi ve rezervasyon süreçleri hakkında faydalı rehberler.',
-  url: PAGE,
-  inLanguage: 'tr',
-  publisher: {
-    '@type': 'Organization',
-    name: 'VIP Transfer Istanbul',
-    url: BASE,
-    telephone: SITE.phoneE164,
-    email: SITE.email,
-  },
-};
+// blogListingSchema is built inside BlogPage() so contact fields come from DB.
 
 const breadcrumbSchema = {
   '@context': 'https://schema.org',
@@ -54,7 +41,23 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function BlogPage() {
-  const posts = await getPublishedBlogPosts();
+  const [posts, cs] = await Promise.all([getPublishedBlogPosts(), getContactSettings()]);
+
+  const blogListingSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: 'Blog | İstanbul VIP Transfer Rehberleri',
+    description: 'İstanbul havalimanı transferi, VIP ulaşım, araç seçimi ve rezervasyon süreçleri hakkında faydalı rehberler.',
+    url: PAGE,
+    inLanguage: 'tr',
+    publisher: {
+      '@type': 'Organization',
+      name: 'VIP Transfer Istanbul',
+      url: BASE,
+      telephone: cs.phoneE164,
+      email: cs.email,
+    },
+  };
 
   return (
     <>

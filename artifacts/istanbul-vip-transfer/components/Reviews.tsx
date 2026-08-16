@@ -2,8 +2,8 @@
 
 import { motion } from 'framer-motion';
 import { Star, Quote, ExternalLink } from 'lucide-react';
-import { SITE } from '@/lib/site-config';
 import { useLang } from '@/lib/i18n/context';
+import { useSiteSettings } from '@/components/SiteSettingsContext';
 
 interface Review {
   name: string;
@@ -112,6 +112,7 @@ function GoogleMark({ size = 16 }: { size?: number }) {
 
 export default function Reviews() {
   const { lang, dict } = useLang();
+  const cs = useSiteSettings();
   const r = dict.reviews;
   const reviews = REVIEWS_BY_LANG[lang] ?? REVIEWS_BY_LANG.tr;
 
@@ -226,7 +227,7 @@ export default function Reviews() {
           transition={{ duration: 0.6, delay: 0.3 }}
         >
           <a
-            href={SITE.googleBusinessUrl}
+            href={cs.googleBusinessUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-3 px-10 py-4 rounded-xl text-sm font-semibold transition-all duration-300 hover:shadow-xl hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C79A35] focus-visible:ring-offset-2"

@@ -15,6 +15,7 @@ import { notFound } from 'next/navigation';
 import { isValidLang, SUPPORTED_LANGS } from '@/lib/i18n';
 import { buildAlternates, getOgLocale } from '@/lib/i18n/seo';
 import { SITE } from '@/lib/site-config';
+import { getContactSettings } from '@/lib/site-settings-server';
 import rawPageMeta from '@/lib/page-meta.json';
 import { PAGE_REGISTRY } from '@/lib/page-registry';
 import { STATIC_PAGE_SLUGS } from '@/lib/static-page-slugs';
@@ -179,6 +180,7 @@ export default async function LocalizedPassthrough({ params }: Props) {
   if (!isValidLang(lang)) notFound();
 
   const pathKey = slug.join('/');
+  const cs = await getContactSettings();
 
   // Validate route exists
   const inRegistry = PAGE_REGISTRY[pathKey];
@@ -213,8 +215,8 @@ export default async function LocalizedPassthrough({ params }: Props) {
             '@type': 'LocalBusiness',
             name: 'VIP Transfer Istanbul',
             url: SITE.siteUrl,
-            telephone: SITE.phoneE164,
-            email: SITE.email,
+            telephone: cs.phoneE164,
+            email: cs.email,
           },
           areaServed: { '@type': 'City', name: 'İstanbul' },
         }
@@ -229,8 +231,8 @@ export default async function LocalizedPassthrough({ params }: Props) {
             '@type': 'Organization',
             name: 'VIP Transfer Istanbul',
             url: SITE.siteUrl,
-            telephone: SITE.phoneE164,
-            email: SITE.email,
+            telephone: cs.phoneE164,
+            email: cs.email,
           },
         };
 

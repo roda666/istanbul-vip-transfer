@@ -243,7 +243,22 @@ export async function runServiceHealthCheck(): Promise<void> {
         });
     }
   } catch (err) {
-    console.error('[health-check] Error during service health check:', err);
+    // PostgreSQL error code 42P01 = "relation does not exist" — almost always
+    // means the migration for health tables (0009_service_health_monitoring.sql)
+    // has not been applied yet.  Log a targeted warning with guidance rather than
+    // a generic error, and skip the run silently so the server stays up.
+    const msg = err instanceof Error ? err.message : String(err);
+    const isRelationMissing = msg.includes('relation') && msg.includes('does not exist')
+      || (err as { code?: string }).code === '42P01';
+
+    if (isRelationMissing) {
+      console.warn(
+        '[health-check] Skipped — required DB tables are missing. ' +
+        'Run `pnpm db:migrate` (or `pnpm db:push`) to create them.',
+      );
+    } else {
+      console.error('[health-check] Error during service health check:', err);
+    }
   }
 }
 

@@ -21,10 +21,18 @@ function formatDuration(minutes: number, min: string, h: string) {
   return m > 0 ? `${hours} ${h} ${m} ${min}` : `${hours} ${h}`;
 }
 
-function RouteCard({ route, t }: {
+/** Return a locale-aware string from a translations map, falling back to Turkish base value. */
+function localize(base: string, translations: Record<string, string> | null | undefined, lang: string): string {
+  if (lang === 'tr' || !translations) return base;
+  return translations[lang] ?? base;
+}
+
+function RouteCard({ route, lang, t }: {
   route: TransferRoute;
+  lang: string;
   t: { vito: string; sprinter: string; min: string; h: string; km: string };
 }) {
+  const name = localize(route.name, route.nameTranslations, lang);
   const vitoRange     = `${route.priceVitoMinEur}–${route.priceVitoMaxEur} €`;
   const sprinterRange = `${route.priceSprinterMinEur}–${route.priceSprinterMaxEur} €`;
 
@@ -53,7 +61,7 @@ function RouteCard({ route, t }: {
         {route.imagePath ? (
           <Image
             src={route.imagePath}
-            alt={route.name}
+            alt={name}
             fill
             sizes="(max-width:600px) 100vw, (max-width:900px) 50vw, 340px"
             style={{ objectFit: 'cover' }}
@@ -69,7 +77,7 @@ function RouteCard({ route, t }: {
       <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
         {/* Route name */}
         <h3 style={{ margin: 0, color: TEXT_MAIN, fontSize: '14px', fontWeight: 600, fontFamily: 'Inter, sans-serif', lineHeight: 1.4 }}>
-          {route.name}
+          {name}
         </h3>
 
         {/* Distance + Duration */}
@@ -107,7 +115,7 @@ function RouteCard({ route, t }: {
 }
 
 export default function PopularRoutesSection({ routes }: { routes: TransferRoute[] }) {
-  const { dict } = useLang();
+  const { dict, lang } = useLang();
   const t = dict.routes;
   const [hydrated, setHydrated] = useState(false);
 
@@ -154,7 +162,7 @@ export default function PopularRoutesSection({ routes }: { routes: TransferRoute
           }}
         >
           {routes.map((route) => (
-            <RouteCard key={route.id} route={route} t={t} />
+            <RouteCard key={route.id} route={route} lang={lang} t={t} />
           ))}
         </div>
       </div>

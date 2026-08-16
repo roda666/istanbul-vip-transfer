@@ -855,22 +855,26 @@ export const studioSchedules = pgTable('studio_schedules', {
 // ── Transfer Routes ───────────────────────────────────────────────────────────
 // Shown on homepage "Popüler Transfer Bölgeleri" section; managed via admin.
 export const transferRoutes = pgTable('transfer_routes', {
-  id:                   uuid('id').primaryKey().defaultRandom(),
-  slug:                 text('slug').notNull().unique(),
-  name:                 text('name').notNull(),
-  origin:               text('origin').notNull(),
-  destination:          text('destination').notNull(),
-  distanceKm:           integer('distance_km').notNull(),
-  durationMinutes:      integer('duration_minutes').notNull(),
-  priceVitoMinEur:      integer('price_vito_min_eur').notNull(),
-  priceVitoMaxEur:      integer('price_vito_max_eur').notNull(),
-  priceSprinterMinEur:  integer('price_sprinter_min_eur').notNull(),
-  priceSprinterMaxEur:  integer('price_sprinter_max_eur').notNull(),
-  imagePath:            text('image_path'),
-  displayOrder:         integer('display_order').default(0).notNull(),
-  active:               boolean('active').default(true).notNull(),
-  createdAt:            timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt:            timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  id:                     uuid('id').primaryKey().defaultRandom(),
+  slug:                   text('slug').notNull().unique(),
+  name:                   text('name').notNull(),
+  origin:                 text('origin').notNull(),
+  destination:            text('destination').notNull(),
+  distanceKm:             integer('distance_km').notNull(),
+  durationMinutes:        integer('duration_minutes').notNull(),
+  priceVitoMinEur:        integer('price_vito_min_eur').notNull(),
+  priceVitoMaxEur:        integer('price_vito_max_eur').notNull(),
+  priceSprinterMinEur:    integer('price_sprinter_min_eur').notNull(),
+  priceSprinterMaxEur:    integer('price_sprinter_max_eur').notNull(),
+  imagePath:              text('image_path'),
+  displayOrder:           integer('display_order').default(0).notNull(),
+  active:                 boolean('active').default(true).notNull(),
+  /** JSONB: {"en":"…","de":"…","ru":"…","ar":"…","fr":"…","es":"…","it":"…","nl":"…"} */
+  nameTranslations:       jsonb('name_translations').$type<Record<string, string>>(),
+  originTranslations:     jsonb('origin_translations').$type<Record<string, string>>(),
+  destinationTranslations: jsonb('destination_translations').$type<Record<string, string>>(),
+  createdAt:              timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:              timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type TransferRoute = typeof transferRoutes.$inferSelect;

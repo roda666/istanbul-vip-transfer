@@ -283,65 +283,92 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
         <AlignLeft size={20} />
       </button>
 
-      {/* Mobile drawer — safe-area aware, nav-only scrolls */}
+      {/* Mobile drawer ─ three fixed regions: header / scrollable nav / footer */}
       {mobileOpen && (
         <>
           {/* Backdrop */}
           <div
             onClick={() => setMobileOpen(false)}
-            style={{ position: 'fixed', inset: 0, zIndex: 55, background: 'rgba(19,42,68,0.6)', backdropFilter: 'blur(4px)' }}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 55,
+              background: 'rgba(19,42,68,0.6)', backdropFilter: 'blur(4px)',
+            }}
             aria-hidden="true"
           />
-          {/* Drawer panel */}
+
+          {/* Drawer shell — never overflows, flex column fills 100dvh */}
           <div style={{
-            position: 'fixed', top: 0, left: 0,
+            position: 'fixed',
+            inset: '0 auto 0 0',
             width: 'min(86vw, 340px)',
             height: '100dvh',
             zIndex: 60,
-            borderRight: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: '4px 0 20px rgba(19,42,68,0.3)',
             background: SIDEBAR_BG,
+            borderRight: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: '4px 0 24px rgba(0,0,0,0.45)',
             display: 'flex',
             flexDirection: 'column',
-            overflowX: 'hidden',
+            overflow: 'hidden',
           }}>
-            {/* Header with close button — safe top inset */}
+
+            {/* ① HEADER — fixed height, brand + close button, never clipped */}
             <div style={{
+              flexShrink: 0,
+              minHeight: '96px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '8px',
               paddingTop: 'max(16px, env(safe-area-inset-top))',
               paddingBottom: '12px',
               paddingLeft: '18px',
               paddingRight: '10px',
-              borderBottom: '1px solid rgba(255,255,255,0.07)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexShrink: 0,
-              gap: '8px',
+              borderBottom: '1px solid rgba(255,255,255,0.10)',
+              boxSizing: 'border-box',
             }}>
-              <div style={{ minWidth: 0 }}>
-                <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 700, color: GOLD, margin: 0, letterSpacing: '0.02em' }}>
+              {/* Brand — two-line, no truncation */}
+              <div>
+                <p style={{
+                  fontFamily: 'Inter, sans-serif', fontSize: '14px', fontWeight: 700,
+                  color: GOLD, margin: 0, letterSpacing: '0.02em', lineHeight: 1.3,
+                }}>
                   VIP Transfer
                 </p>
-                <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', color: 'rgba(255,255,255,0.45)', margin: 0, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                <p style={{
+                  fontFamily: 'Inter, sans-serif', fontSize: '10px',
+                  color: 'rgba(255,255,255,0.5)', margin: '3px 0 0',
+                  letterSpacing: '0.08em', textTransform: 'uppercase', lineHeight: 1,
+                }}>
                   Admin Panel
                 </p>
               </div>
+
+              {/* Close button — 44×44, no overlap */}
               <button
                 onClick={() => setMobileOpen(false)}
                 aria-label="Menüyü kapat"
                 style={{
-                  background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px',
-                  color: 'rgba(255,255,255,0.7)', cursor: 'pointer',
-                  minWidth: '44px', minHeight: '44px', flexShrink: 0,
+                  flexShrink: 0,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  minWidth: '44px', minHeight: '44px',
+                  background: 'rgba(255,255,255,0.10)',
+                  border: 'none', borderRadius: '8px',
+                  color: 'rgba(255,255,255,0.80)', cursor: 'pointer',
                 }}
               >
                 <X size={20} />
               </button>
             </div>
 
-            {/* Nav — only this section scrolls */}
-            <nav style={{ flex: 1, padding: '12px 8px', overflowY: 'auto', overflowX: 'hidden' }}>
+            {/* ② NAV — flex:1 + min-height:0 forces it to fill remaining space and scroll */}
+            <nav style={{
+              flex: 1,
+              minHeight: 0,           /* ← critical: prevents nav from growing past container */
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              padding: '10px 8px',
+              WebkitOverflowScrolling: 'touch',
+            }}>
               {NAV_ITEMS.map(item => {
                 const active = isActive(item.href);
                 const count = item.href === '/admin/talepler' ? newCount : 0;
@@ -355,25 +382,44 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
                     <div style={{
                       display: 'flex', alignItems: 'center', gap: '10px',
                       padding: '11px 12px', borderRadius: '8px',
+                      minHeight: '44px',
                       background: active ? NAV_ACTIVE_BG : 'transparent',
                       transition: 'background 0.15s', position: 'relative',
                     }}>
-                      <span style={{ color: active ? GOLD : NAV_TEXT, flexShrink: 0 }}>{item.icon}</span>
-                      <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', color: active ? '#fff' : NAV_TEXT, fontWeight: active ? 600 : 400, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <span style={{ color: active ? GOLD : NAV_TEXT, flexShrink: 0 }}>
+                        {item.icon}
+                      </span>
+                      <span style={{
+                        fontFamily: 'Inter, sans-serif', fontSize: '13px',
+                        color: active ? '#fff' : NAV_TEXT,
+                        fontWeight: active ? 600 : 400,
+                        flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>
                         {item.label}
                       </span>
                       {item.badge && (
-                        <span style={{ fontSize: '9px', fontFamily: 'Inter, sans-serif', fontWeight: 700, background: GOLD, color: '#fff', padding: '1px 5px', borderRadius: '4px', letterSpacing: '0.05em' }}>
+                        <span style={{
+                          fontSize: '9px', fontFamily: 'Inter, sans-serif', fontWeight: 700,
+                          background: GOLD, color: '#fff', padding: '1px 5px',
+                          borderRadius: '4px', letterSpacing: '0.05em',
+                        }}>
                           {item.badge}
                         </span>
                       )}
                       {count > 0 && (
-                        <span style={{ fontSize: '11px', fontFamily: 'Inter, sans-serif', fontWeight: 700, background: '#EF4444', color: '#fff', borderRadius: '10px', padding: '1px 6px', minWidth: '18px', textAlign: 'center' }}>
+                        <span style={{
+                          fontSize: '11px', fontFamily: 'Inter, sans-serif', fontWeight: 700,
+                          background: '#EF4444', color: '#fff', borderRadius: '10px',
+                          padding: '1px 6px', minWidth: '18px', textAlign: 'center',
+                        }}>
                           {count > 99 ? '99+' : count}
                         </span>
                       )}
                       {active && (
-                        <div style={{ position: 'absolute', left: 0, top: '6px', bottom: '6px', width: '3px', background: GOLD, borderRadius: '0 2px 2px 0' }} />
+                        <div style={{
+                          position: 'absolute', left: 0, top: '6px', bottom: '6px',
+                          width: '3px', background: GOLD, borderRadius: '0 2px 2px 0',
+                        }} />
                       )}
                     </div>
                   </Link>
@@ -381,33 +427,50 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
               })}
             </nav>
 
-            {/* Footer — account + logout, safe bottom inset */}
+            {/* ③ FOOTER — always visible, safe bottom inset */}
             <div style={{
-              borderTop: '1px solid rgba(255,255,255,0.07)',
-              paddingTop: '12px', paddingLeft: '14px', paddingRight: '14px',
-              paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
               flexShrink: 0,
+              borderTop: '1px solid rgba(255,255,255,0.10)',
+              paddingTop: '12px',
+              paddingLeft: '14px',
+              paddingRight: '14px',
+              paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
             }}>
               <div style={{ marginBottom: '8px' }}>
-                <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 600, color: '#fff', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userName}</p>
-                <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: 'rgba(255,255,255,0.45)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userEmail}</p>
+                <p style={{
+                  fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 600,
+                  color: '#fff', margin: 0,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  {userName}
+                </p>
+                <p style={{
+                  fontFamily: 'Inter, sans-serif', fontSize: '11px',
+                  color: 'rgba(255,255,255,0.45)', margin: '2px 0 0',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  {userEmail}
+                </p>
               </div>
               <button
                 onClick={handleLogout}
                 disabled={loggingOut}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '8px',
-                  padding: '0 10px',
+                  padding: '0 12px',
                   width: '100%', minHeight: '44px',
                   borderRadius: '7px', border: 'none',
-                  background: 'rgba(255,255,255,0.06)', cursor: 'pointer',
-                  color: 'rgba(255,255,255,0.6)',
+                  background: 'rgba(255,255,255,0.07)', cursor: 'pointer',
+                  color: 'rgba(255,255,255,0.65)',
                 }}
               >
                 <LogOut size={16} />
-                <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>{loggingOut ? 'Çıkılıyor…' : 'Çıkış Yap'}</span>
+                <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
+                  {loggingOut ? 'Çıkılıyor…' : 'Çıkış Yap'}
+                </span>
               </button>
             </div>
+
           </div>
         </>
       )}

@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { db } from '@/db';
 import { content, contentTranslations } from '@/db/schema';
-import { eq, desc, count, inArray } from 'drizzle-orm';
+import { eq, desc, count, inArray, and } from 'drizzle-orm';
 import AdminPageHeader from '../../_components/AdminPageHeader';
 import ContentList from '../../_components/ContentList';
 import {
@@ -42,11 +42,15 @@ export default async function BlogPage({ searchParams }: { searchParams: Promise
     items = rows;
     total = totalRows[0]?.count ?? 0;
 
-    // Health check: cross-reference known slugs against source records + translations
+    // Health check: only check posts that are live or ready for publication.
+    // DRAFT/IDEA/RESEARCH/REVIEW posts don't need translations yet.
     const allSourceRows = await db
       .select({ id: content.id, slug: content.slug, title: content.title })
       .from(content)
-      .where(eq(content.contentType, 'BLOG_POST'));
+      .where(and(
+        eq(content.contentType, 'BLOG_POST'),
+        inArray(content.status as never, ['PUBLISHED', 'APPROVED', 'SCHEDULED'] as never[]),
+      ));
 
     const sourceRows: BlogSourceRow[] = allSourceRows.map(r => ({
       id: r.id, slug: r.slug, title: r.title,

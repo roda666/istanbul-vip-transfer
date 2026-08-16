@@ -28,6 +28,7 @@ import {
   MailOpen,
   MessageSquare,
   PenSquare,
+  Users,
 } from 'lucide-react';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -69,6 +70,29 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/gecmis',           label: 'İşlem Geçmişi',        icon: <History size={18} /> },
   { href: '/admin/hesabim',          label: 'Hesabım',              icon: <UserCircle size={18} /> },
 ];
+
+const PERSONEL_ITEM: NavItem = {
+  href: '/admin/personel',
+  label: 'Personel Yönetimi',
+  icon: <Users size={18} />,
+};
+
+const CHAT_STAFF_ITEMS: NavItem[] = [
+  { href: '/admin/sohbet', label: 'Canlı Sohbet', icon: <MessageSquare size={18} /> },
+  { href: '/admin/hesabim', label: 'Hesabım', icon: <UserCircle size={18} /> },
+];
+
+/** Returns the nav items visible to the given role. */
+function getVisibleItems(role: string): NavItem[] {
+  if (role === 'CHAT_STAFF') return CHAT_STAFF_ITEMS;
+  if (role === 'SUPER_ADMIN' || role === 'ADMIN') {
+    // Insert Personel after Bülten Aboneleri (index 3)
+    const items = [...NAV_ITEMS];
+    items.splice(3, 0, PERSONEL_ITEM);
+    return items;
+  }
+  return NAV_ITEMS;
+}
 
 interface Props {
   userName: string;
@@ -180,7 +204,7 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
 
       {/* Nav */}
       <nav style={{ flex: 1, padding: '12px 8px', overflowY: 'auto' }}>
-        {NAV_ITEMS.map(item => {
+        {getVisibleItems(userRole).map(item => {
           const active = isActive(item.href);
           const hasBadge = !!item.badge;
           const count = item.href === '/admin/talepler'
@@ -402,7 +426,7 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
               padding: '10px 8px',
               WebkitOverflowScrolling: 'touch',
             }}>
-              {NAV_ITEMS.map(item => {
+              {getVisibleItems(userRole).map(item => {
                 const active = isActive(item.href);
                 const count = item.href === '/admin/talepler'
                   ? newCount

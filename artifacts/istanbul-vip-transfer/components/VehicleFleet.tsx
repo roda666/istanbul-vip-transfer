@@ -1,9 +1,61 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Users, Luggage, Wifi, Wind, UserCheck, Droplets, Star } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
+
+const FEATURE_ICON_MAP: Record<string, React.ElementType> = {
+  WIFI:       Wifi,
+  CLIMATE:    Wind,
+  MEET_GREET: UserCheck,
+  LEATHER:    Star,
+  LUXURY:     Star,
+  WATER:      Droplets,
+};
+
+interface DbVehicle {
+  id: number;
+  displayName: string;
+  displayShortDesc: string;
+  displayTagline: string;
+  coverImage: string | null;
+  coverImageAlt: string | null;
+  passengerCapacity: number;
+  luggageCapacity: number;
+  features: Array<{ icon: string; label: string }>;
+  isFeatured: boolean;
+}
+
+interface DisplayVehicle {
+  name: string;
+  alt: string;
+  tagline: string;
+  image: string;
+  passengers: number;
+  luggage: number;
+  description: string;
+  features: Array<{ icon: React.ElementType; label: string }>;
+  featured: boolean;
+}
+
+function adaptDbVehicle(vehicle: DbVehicle): DisplayVehicle {
+  return {
+    name:        vehicle.displayName,
+    alt:         vehicle.coverImageAlt ?? vehicle.displayName,
+    tagline:     vehicle.displayTagline,
+    image:       vehicle.coverImage ?? '/images/mercedes-vito.jpg',
+    passengers:  vehicle.passengerCapacity,
+    luggage:     vehicle.luggageCapacity,
+    description: vehicle.displayShortDesc,
+    features:    (vehicle.features ?? []).map(f => ({
+      icon:  FEATURE_ICON_MAP[f.icon] ?? Star,
+      label: f.label,
+    })),
+    featured: vehicle.isFeatured,
+  };
+}
 
 export default function VehicleFleet() {
   const { dict } = useLang();
@@ -13,7 +65,7 @@ export default function VehicleFleet() {
     document.querySelector('#rezervasyon')?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const vehicles = [
+  const staticVehicles: DisplayVehicle[] = [
     {
       name: 'Mercedes Vito',
       alt: v.vitoAlt,
@@ -48,6 +100,22 @@ export default function VehicleFleet() {
       featured: true,
     },
   ];
+
+  const [dbVehicles, setDbVehicles] = useState<DisplayVehicle[] | null>(null);
+
+  useEffect(() => {
+    const lang = (typeof document !== 'undefined' && document.documentElement.lang) || 'tr';
+    fetch(`/data/vehicles?lang=${lang}`)
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { vehicles?: DbVehicle[] } | null) => {
+        if (d?.vehicles?.length) {
+          setDbVehicles(d.vehicles.map(adaptDbVehicle));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const displayVehicles: DisplayVehicle[] = dbVehicles ?? staticVehicles;
 
   return (
     <section
@@ -90,7 +158,7 @@ export default function VehicleFleet() {
 
         {/* Vehicle Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-7">
-          {vehicles.map((vehicle, i) => (
+          {displayVehicles.map((vehicle, i) => (
             <motion.div
               key={vehicle.name}
               className="group relative rounded-2xl overflow-hidden"

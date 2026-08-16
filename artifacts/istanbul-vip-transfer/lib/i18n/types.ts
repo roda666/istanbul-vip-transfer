@@ -180,6 +180,22 @@ export interface Dictionary {
     waReservation: string;
     waHours: string;
     waDays: string;
+    // Collapsible booking section (used by CollapsibleBookingForm on service/blog pages)
+    expand?: string;
+    collapse?: string;
+    // Optional admin-configured booking fields
+    luggageCount?: string;
+    luggageCountPlaceholder?: string;
+    childSeatCount?: string;
+    childSeatCountPlaceholder?: string;
+    vehiclePreference?: string;
+    vehiclePreferenceDefault?: string;
+    additionalNotes?: string;
+    additionalNotesPlaceholder?: string;
+    waLuggageCount?: string;
+    waChildSeatCount?: string;
+    waVehiclePreference?: string;
+    waAdditionalNotes?: string;
   };
   langSelector: {
     label: string;

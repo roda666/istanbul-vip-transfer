@@ -26,3 +26,6 @@
 - [Drizzle migration workflow](drizzle-migration-workflow.md) — drizzle.__drizzle_migrations now exists (drizzle-kit migrate ran); journal has 0000–0016; future changes: db:generate then db:migrate (not db:push).
 - [Bulk translation scripts](bulk-translation-scripts.md) — .mjs scripts must use `../node_modules/` imports (not `./`); content_type='SERVICE' for service pages; translationStatus field added to PublishedServicePage; hero images in public/hero-images/.
 - [Route translations](route-translations.md) — JSONB columns (name/origin/destination_translations) on transfer_routes; localize() helper in PopularRoutesSection; drizzle journal manual edit does NOT run SQL — always verify columns after migrate.
+- [Vehicle fleet DB-driven system](vehicle-fleet-db-driven.md) — VehicleFleet fetches DB; FEATURE_ICON_MAP + adaptDbVehicle; migration 0023; 6 vehicles seeded; admin UI pending (#154).
+- [CHAT_STAFF role and routing](chat-staff-role.md) — restricted to /admin/sohbet; ChatStaffGuard client component; login returns redirectTo; Personel page at /admin/personel.
+- [Booking form optional fields](booking-form-optional-fields.md) — 4 admin-toggleable fields; /data/form-settings public API; migration 0021; WA suffix pattern.

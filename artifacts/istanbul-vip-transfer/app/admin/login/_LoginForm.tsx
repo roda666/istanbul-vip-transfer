@@ -57,7 +57,7 @@ export default function LoginForm({ searchParams }: Props) {
         return;
       }
 
-      router.push('/admin/dashboard');
+      router.push((data as { redirectTo?: string }).redirectTo ?? '/admin/dashboard');
       router.refresh();
     } catch {
       setError('Sunucuya bağlanılamadı. Lütfen tekrar deneyin.');

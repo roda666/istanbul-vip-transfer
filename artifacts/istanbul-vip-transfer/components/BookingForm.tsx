@@ -11,7 +11,7 @@ import { z } from 'zod';
 // a different attribute representation and warns).
 import {
   MapPin, Calendar, Clock, Users, User, Phone, Home,
-  Plane, ArrowRightLeft, Car, Compass, Mail,
+  Plane, ArrowRightLeft, Car, Compass, Mail, Luggage,
 } from 'lucide-react';
 import LocationCombobox from './LocationCombobox';
 import { useLang } from '@/lib/i18n/context';
@@ -19,6 +19,19 @@ import { useLang } from '@/lib/i18n/context';
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const WA_NUMBER = '905326600847';
+
+interface FormSettings {
+  showLuggageCount:      boolean;
+  showChildSeatCount:    boolean;
+  showVehiclePreference: boolean;
+  showAdditionalNotes:   boolean;
+}
+const DEFAULT_FORM_SETTINGS: FormSettings = {
+  showLuggageCount:      false,
+  showChildSeatCount:    false,
+  showVehiclePreference: false,
+  showAdditionalNotes:   false,
+};
 
 // ── Service type defs ─────────────────────────────────────────────────────────
 
@@ -90,6 +103,11 @@ function buildSchema(b: import('@/lib/i18n/types').Dictionary['booking']) {
     talepsYerler:      z.string().optional(),
     planlananSure:     z.string().optional(),
     planlananSureUnit: z.enum(['SAAT', 'GUN']).default('SAAT'),
+    // Optional admin-configured fields
+    bagajSayisi:  z.string().optional(),
+    cocukKoltugu: z.string().optional(),
+    aracTercihi:  z.string().optional(),
+    ekNotlar:     z.string().optional(),
   });
 }
 
@@ -236,6 +254,15 @@ export default function BookingForm() {
   const [newsletterConsent, setNewsletterConsent] = useState(false);
   const [newsletterError, setNewsletterError]     = useState('');
   const honeypotRef = useRef<HTMLInputElement>(null);
+  const [formSettings, setFormSettings] = useState<FormSettings>(DEFAULT_FORM_SETTINGS);
+
+  // Fetch admin-configured booking form field visibility
+  useEffect(() => {
+    fetch('/data/form-settings')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setFormSettings(d); })
+      .catch(() => {});
+  }, []);
 
   // Returns today's date as YYYY-MM-DD in the Europe/Istanbul timezone.
   // formatToParts() is used instead of trusting the output order of format(),
@@ -377,8 +404,18 @@ export default function BookingForm() {
     setSubmitting(true);
 
     const serviceLabel = ST_LABELS[activeService] ?? activeST?.label ?? activeService;
-    const msg   = buildWhatsAppMessage(data, serviceLabel, activeService, b, lang);
-    const waUrl = `https://wa.me/${WA_NUMBER}?text=${msg}`;
+    const msg = buildWhatsAppMessage(data, serviceLabel, activeService, b, lang);
+    const optionalLines: string[] = [];
+    if (formSettings.showLuggageCount && data.bagajSayisi?.trim())
+      optionalLines.push(`🧳 ${b.waLuggageCount ?? 'Bagaj'}: ${data.bagajSayisi}`);
+    if (formSettings.showChildSeatCount && data.cocukKoltugu?.trim())
+      optionalLines.push(`👶 ${b.waChildSeatCount ?? 'Çocuk Koltuğu'}: ${data.cocukKoltugu}`);
+    if (formSettings.showVehiclePreference && data.aracTercihi?.trim())
+      optionalLines.push(`🚗 ${b.waVehiclePreference ?? 'Araç Tercihi'}: ${data.aracTercihi}`);
+    if (formSettings.showAdditionalNotes && data.ekNotlar?.trim())
+      optionalLines.push(`📝 ${b.waAdditionalNotes ?? 'Ek Notlar'}: ${data.ekNotlar}`);
+    const waSuffix = optionalLines.length ? encodeURIComponent('\n' + optionalLines.join('\n')) : '';
+    const waUrl = `https://wa.me/${WA_NUMBER}?text=${msg}${waSuffix}`;
 
     fetch('/data/submit-request', {
       method:    'POST',
@@ -742,6 +779,53 @@ export default function BookingForm() {
                   </div>
                 </div>
               </div>
+
+              {/* Optional Panel — admin-configured fields (shown only when admin enables them) */}
+              {(formSettings.showLuggageCount || formSettings.showChildSeatCount || formSettings.showVehiclePreference || formSettings.showAdditionalNotes) && (
+                <div className={panelA} data-testid="optional-fields-panel">
+                  <p className="text-xs tracking-[0.15em] uppercase mb-4 font-semibold" style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}>
+                    Ek Bilgiler
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+                    {formSettings.showLuggageCount && (
+                      <div>
+                        <label style={labelStyle}><Luggage size={12} aria-hidden="true" /> {b.luggageCount ?? 'Bagaj Sayısı'}</label>
+                        <input type="number" min="0" max="20" {...register('bagajSayisi')} className="vip-input"
+                          placeholder={b.luggageCountPlaceholder ?? 'Kaç parça bagaj?'} />
+                      </div>
+                    )}
+                    {formSettings.showChildSeatCount && (
+                      <div>
+                        <label style={labelStyle}><Users size={12} aria-hidden="true" /> {b.childSeatCount ?? 'Çocuk Koltuğu Sayısı'}</label>
+                        <input type="number" min="0" max="10" {...register('cocukKoltugu')} className="vip-input"
+                          placeholder={b.childSeatCountPlaceholder ?? '0'} />
+                      </div>
+                    )}
+                    {formSettings.showVehiclePreference && (
+                      <div>
+                        <label style={labelStyle}><Car size={12} aria-hidden="true" /> {b.vehiclePreference ?? 'Araç Tercihi'}</label>
+                        <select {...register('aracTercihi')} className="vip-input">
+                          <option value="">{b.vehiclePreferenceDefault ?? 'Belirtmek istemiyorum'}</option>
+                          <option value="Mercedes Vito">Mercedes Vito</option>
+                          <option value="Mercedes Sprinter VIP">Mercedes Sprinter VIP</option>
+                          <option value="Mercedes E-Class">Mercedes E-Class</option>
+                          <option value="Mercedes S-Class">Mercedes S-Class</option>
+                          <option value="Mercedes V-Class">Mercedes V-Class</option>
+                          <option value="VW Transporter">VW Transporter</option>
+                        </select>
+                      </div>
+                    )}
+                    {formSettings.showAdditionalNotes && (
+                      <div className={!formSettings.showVehiclePreference ? 'md:col-span-2' : ''}>
+                        <label style={labelStyle}>{b.additionalNotes ?? 'Ek Notlar'}</label>
+                        <textarea {...register('ekNotlar')} className="vip-input" rows={3}
+                          placeholder={b.additionalNotesPlaceholder ?? 'Özel istekler, notlar…'}
+                          style={{ resize: 'vertical', minHeight: '80px' }} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Panel B — Email + Newsletter */}
               <div className={panelB} data-testid="email-panel">

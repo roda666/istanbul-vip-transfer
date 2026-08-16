@@ -3,7 +3,7 @@ import { buildBlogAlternates } from '@/lib/blog-hreflang';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import PageHero from '@/components/PageHero';
-import BookingForm from '@/components/BookingForm';
+import CollapsibleBookingForm from '@/components/CollapsibleBookingForm';
 import ArticleBody from '@/components/ArticleBody';
 import { getPublishedBlogPost, getPublishedBlogPosts } from '@/lib/blog-cms';
 import { SITE } from '@/lib/site-config';
@@ -190,7 +190,7 @@ export default async function BlogArticlePage({ params }: Props) {
         </section>
       )}
 
-      <BookingForm />
+      <CollapsibleBookingForm />
 
       {/* Diğer Yazılar */}
       {otherPosts.length > 0 && (

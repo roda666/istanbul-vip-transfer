@@ -5,7 +5,22 @@ const settingsSchema = z.object({
   timeStepMinutes: z.number().int().min(1).max(60).optional(),
   exactAddressRequired: z.boolean().optional(),
   locationSearchEnabled: z.boolean().optional(),
+  // Booking form field visibility
+  showLuggageCount:      z.boolean().optional(),
+  showChildSeatCount:    z.boolean().optional(),
+  showVehiclePreference: z.boolean().optional(),
+  showAdditionalNotes:   z.boolean().optional(),
 });
+
+const DEFAULTS = {
+  timeStepMinutes: 5,
+  exactAddressRequired: false,
+  locationSearchEnabled: true,
+  showLuggageCount:      false,
+  showChildSeatCount:    false,
+  showVehiclePreference: false,
+  showAdditionalNotes:   false,
+};
 
 /** GET /admin/api/reservation-settings */
 export async function GET() {
@@ -22,18 +37,20 @@ export async function GET() {
 
     const rows = await db
       .select({
-        timeStepMinutes: siteSettings.timeStepMinutes,
-        exactAddressRequired: siteSettings.exactAddressRequired,
+        timeStepMinutes:       siteSettings.timeStepMinutes,
+        exactAddressRequired:  siteSettings.exactAddressRequired,
         locationSearchEnabled: siteSettings.locationSearchEnabled,
-        updatedAt: siteSettings.updatedAt,
+        showLuggageCount:      siteSettings.showLuggageCount,
+        showChildSeatCount:    siteSettings.showChildSeatCount,
+        showVehiclePreference: siteSettings.showVehiclePreference,
+        showAdditionalNotes:   siteSettings.showAdditionalNotes,
+        updatedAt:             siteSettings.updatedAt,
       })
       .from(siteSettings)
       .where(eq(siteSettings.id, 1))
       .limit(1);
 
-    // Return defaults if no row exists yet
-    const defaults = { timeStepMinutes: 5, exactAddressRequired: false, locationSearchEnabled: true };
-    return NextResponse.json({ settings: rows[0] ?? defaults });
+    return NextResponse.json({ settings: rows[0] ?? DEFAULTS });
   } catch (err) {
     console.error('Reservation settings GET error:', err);
     return NextResponse.json({ error: 'Veritabanı hatası.' }, { status: 503 });
@@ -78,10 +95,14 @@ export async function POST(request: NextRequest) {
       .values({ id: 1, ...data, updatedAt: new Date() })
       .onConflictDoUpdate({ target: siteSettings.id, set: { ...data, updatedAt: new Date() } })
       .returning({
-        timeStepMinutes: siteSettings.timeStepMinutes,
-        exactAddressRequired: siteSettings.exactAddressRequired,
+        timeStepMinutes:       siteSettings.timeStepMinutes,
+        exactAddressRequired:  siteSettings.exactAddressRequired,
         locationSearchEnabled: siteSettings.locationSearchEnabled,
-        updatedAt: siteSettings.updatedAt,
+        showLuggageCount:      siteSettings.showLuggageCount,
+        showChildSeatCount:    siteSettings.showChildSeatCount,
+        showVehiclePreference: siteSettings.showVehiclePreference,
+        showAdditionalNotes:   siteSettings.showAdditionalNotes,
+        updatedAt:             siteSettings.updatedAt,
       });
 
     await db.insert(auditLogs).values({

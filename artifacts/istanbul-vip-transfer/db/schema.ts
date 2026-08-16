@@ -20,6 +20,7 @@ export const adminRoleEnum = pgEnum('admin_role', [
   'SUPER_ADMIN',
   'ADMIN',
   'EDITOR',
+  'CHAT_STAFF',
 ]);
 
 export const contentTypeEnum = pgEnum('content_type', [
@@ -181,6 +182,11 @@ export const siteSettings = pgTable('site_settings', {
   timeStepMinutes: integer('time_step_minutes').default(5).notNull(),
   exactAddressRequired: boolean('exact_address_required').default(false).notNull(),
   locationSearchEnabled: boolean('location_search_enabled').default(true).notNull(),
+  // Optional booking form fields (admin toggles each on/off; default off = current slim form)
+  showLuggageCount: boolean('show_luggage_count').default(false).notNull(),
+  showChildSeatCount: boolean('show_child_seat_count').default(false).notNull(),
+  showVehiclePreference: boolean('show_vehicle_preference').default(false).notNull(),
+  showAdditionalNotes: boolean('show_additional_notes').default(false).notNull(),
 });
 
 export const navigationItems = pgTable('navigation_items', {
@@ -319,6 +325,10 @@ export const vehicles = pgTable('vehicles', {
   displayOrder: integer('display_order').default(0).notNull(),
   isFeatured: boolean('is_featured').default(false).notNull(),
   status: contentStatusEnum('status').default('DRAFT').notNull(),
+  /** JSONB i18n: {"tr":"…","en":"…","de":"…","ru":"…","ar":"…","fr":"…","es":"…","it":"…","nl":"…"} */
+  nameTranslations:      jsonb('name_translations').$type<Record<string, string>>(),
+  shortDescTranslations: jsonb('short_desc_translations').$type<Record<string, string>>(),
+  taglineTranslations:   jsonb('tagline_translations').$type<Record<string, string>>(),
   metaTitle: text('meta_title'),
   metaDescription: text('meta_description'),
   canonicalUrl: text('canonical_url'),

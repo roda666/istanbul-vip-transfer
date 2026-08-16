@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import AdminSidebar from '../_components/AdminSidebar';
+import { ChatStaffGuard } from '../_components/ChatStaffGuard';
 
 // All admin pages are dynamic — they require authenticated sessions via cookies.
 export const dynamic = 'force-dynamic';
@@ -44,6 +45,7 @@ export default async function ProtectedAdminLayout({
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#F3F6FA' }}>
+      <ChatStaffGuard role={sessionData.role} />
       <AdminSidebar
         userName={sessionData.name}
         userEmail={sessionData.email}

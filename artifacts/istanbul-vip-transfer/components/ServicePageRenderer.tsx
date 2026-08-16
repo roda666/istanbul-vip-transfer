@@ -11,7 +11,7 @@
  */
 import type { ServicePageBody, ServicePageFaq, ServicePageSchemaExtras } from '@/lib/service-page-types';
 import PageHero from '@/components/PageHero';
-import BookingForm from '@/components/BookingForm';
+import CollapsibleBookingForm from '@/components/CollapsibleBookingForm';
 import VehicleFleet from '@/components/VehicleFleet';
 import Contact from '@/components/Contact';
 import TranslationNotice from '@/components/TranslationNotice';
@@ -366,7 +366,7 @@ export default async function ServicePageRenderer({ slug, lang, canonicalPath }:
           <FeaturesBlock features={dbPage.body.features} dir={dir} />
         )}
 
-        <BookingForm />
+        <CollapsibleBookingForm />
 
         {/* Rich content sections */}
         <ContentSectionsBlock body={dbPage.body} dir={dir} />
@@ -393,7 +393,7 @@ export default async function ServicePageRenderer({ slug, lang, canonicalPath }:
           <TranslationNotice status="missing" lang={lang} />
         )}
         <PageHero pageKey={pageKey} />
-        <BookingForm />
+        <CollapsibleBookingForm />
         <VehicleFleet />
         <Contact />
       </>

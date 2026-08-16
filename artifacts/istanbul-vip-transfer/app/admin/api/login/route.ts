@@ -138,5 +138,7 @@ export async function POST(request: NextRequest) {
     // Non-fatal — don't fail login over audit logging
   }
 
-  return NextResponse.json({ success: true });
+  // CHAT_STAFF can only access the live-chat panel
+  const redirectTo = user.role === 'CHAT_STAFF' ? '/admin/sohbet' : '/admin/dashboard';
+  return NextResponse.json({ success: true, redirectTo });
 }

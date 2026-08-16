@@ -39,6 +39,10 @@ interface FormSettings {
   timeStepMinutes: number;
   exactAddressRequired: boolean;
   locationSearchEnabled: boolean;
+  showLuggageCount:      boolean;
+  showChildSeatCount:    boolean;
+  showVehiclePreference: boolean;
+  showAdditionalNotes:   boolean;
 }
 
 interface ServiceTypeItem {
@@ -389,7 +393,7 @@ export default function ReservasyonAyarlariClient() {
   const [stLoading, setStLoading] = useState(true);
 
   // ── Form Ayarları state ──
-  const [settings, setSettings] = useState<FormSettings>({ timeStepMinutes: 5, exactAddressRequired: false, locationSearchEnabled: true });
+  const [settings, setSettings] = useState<FormSettings>({ timeStepMinutes: 5, exactAddressRequired: false, locationSearchEnabled: true, showLuggageCount: false, showChildSeatCount: false, showVehiclePreference: false, showAdditionalNotes: false });
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsMsg, setSettingsMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -652,6 +656,34 @@ export default function ReservasyonAyarlariClient() {
                   checked={settings.exactAddressRequired}
                   onChange={v => setSettings(s => ({ ...s, exactAddressRequired: v }))}
                   label="Kesin Adres Zorunlu (Adres alanı zorunlu olsun)"
+                />
+
+                <div style={{ height: '1px', background: BORDER, margin: '8px 0' }} />
+                <p style={{ color: NAVY, fontSize: '12px', fontFamily: 'Inter, sans-serif', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 4px' }}>
+                  Alan Görünürlüğü
+                </p>
+                <p style={{ color: MUTED, fontSize: '11px', fontFamily: 'Inter, sans-serif', margin: '0 0 8px' }}>
+                  Rezervasyon formunda opsiyonel alanları gösterin. Varsayılan olarak kapalıdır.
+                </p>
+                <Toggle
+                  checked={settings.showLuggageCount}
+                  onChange={v => setSettings(s => ({ ...s, showLuggageCount: v }))}
+                  label="Bagaj Sayısı Alanını Göster"
+                />
+                <Toggle
+                  checked={settings.showChildSeatCount}
+                  onChange={v => setSettings(s => ({ ...s, showChildSeatCount: v }))}
+                  label="Çocuk Koltuğu Sayısı Alanını Göster"
+                />
+                <Toggle
+                  checked={settings.showVehiclePreference}
+                  onChange={v => setSettings(s => ({ ...s, showVehiclePreference: v }))}
+                  label="Araç Tercihi Seçim Alanını Göster"
+                />
+                <Toggle
+                  checked={settings.showAdditionalNotes}
+                  onChange={v => setSettings(s => ({ ...s, showAdditionalNotes: v }))}
+                  label="Ek Notlar / Özel İstekler Alanını Göster"
                 />
 
                 {settingsMsg && (

@@ -268,23 +268,43 @@ const nextConfig: NextConfig = {
       { source: '/giris-yap',                                           destination: '/',                                 permanent: true },
       { source: '/uye-kayit',                                           destination: '/',                                 permanent: true },
 
-      // ── Dil önekli URL varyantları ────────────────────────────────────────────
+      // ── Dil önekli URL varyantları (hizmet sayfaları) ─────────────────────────
       //
       // Eski sitede dil seçimi cookie tabanlıydı (URL'de prefix yoktu),
       // ancak bazı backlink'ler veya arama motorları /en/slug-ID-8 formatında
-      // indexlemiş olabilir. Bu catch-all kuralı bu varyantları yakalar:
-      //   /en/istanbul-havalimani-transfer-85-8 → /en/istanbul-havalimani-transfer
-      //   /de/sabiha-gokcen-havalimani-transfer-82-8 → /de/sabiha-gokcen...
-      //
-      // Kural: dil önekini koru, slug'ın sonundaki -ID-8 veya -ID-5 parçasını sil.
-      // Next.js regex: :path* + has matcher ile sonundaki -\d+-[58] kaldırılır.
-      // Not: Next.js redirects regex desteği sınırlı olduğundan bu iki ayrı
-      // regex kuralı olarak tanımlanır (hizmet=8, blog=5).
+      // indexlemiş olabilir.
       {
         source: '/:lang(en|de|ru|ar|es|fr|it|nl)/:slug(.*)-:id(\\d+)-8',
         destination: '/:lang/:slug',
         permanent: true,
       },
+
+      // ── Blog yazıları: mevcut makalelerle eşleşenler ─────────────────────────
+      // 6 eski URL → 3 mevcut yeni makale
+      { source: '/istanbul-yeni-havalimanina-ulasim-1467-5',                          destination: '/blog/istanbul-havalimani-transfer-rehberi',               permanent: true },
+      { source: '/istanbul-havalimanina-ulasim-1472-5',                               destination: '/blog/istanbul-havalimani-transfer-rehberi',               permanent: true },
+      { source: '/istanbul-havalimanina-nasil-gidilir-1524-5',                        destination: '/blog/istanbul-havalimani-transfer-rehberi',               permanent: true },
+      { source: '/sabiha-gokcen-havalimanina-ulasim-1471-5',                          destination: '/blog/sabiha-gokcen-transfer-rehberi',                     permanent: true },
+      { source: '/vip-transfer-1473-5',                                               destination: '/blog/vip-transfer-ile-taksi-arasindaki-farklar',          permanent: true },
+      { source: '/kapidan-kapiya-transfer-sehir-ici-transfer-1470-5',                 destination: '/blog/vip-transfer-ile-taksi-arasindaki-farklar',          permanent: true },
+
+      // ── Blog yazıları: yeni makalelere yönlendirilecekler ─────────────────────
+      // 15 eski URL → 12 yeni makale
+      { source: '/kayak-turlari-1458-5',                                              destination: '/blog/kayak-turlarinda-vip-transfer-rehberi',              permanent: true },
+      { source: '/populer-kayak-merkezlerine-transfer-hizmeti-1469-5',                destination: '/blog/kayak-turlarinda-vip-transfer-rehberi',              permanent: true },
+      { source: '/uludag-kayak-turu-1528-5',                                          destination: '/blog/kayak-turlarinda-vip-transfer-rehberi',              permanent: true },
+      { source: '/istanbuldan-kis-tatili-kis-turizmi-icin-en-iyi-secenekler-1535-5',  destination: '/blog/kayak-turlarinda-vip-transfer-rehberi',              permanent: true },
+      { source: '/bodrum-vip-transfer-1515-5',                                        destination: '/blog/bodrum-vip-transfer-rehberi',                        permanent: true },
+      { source: '/yaz-tatilinde-seyahat-secenekleri-istanbul-vip-transfer-1516-5',    destination: '/blog/yaz-tatilinde-vip-transfer-secenekleri',             permanent: true },
+      { source: '/hotel-transfer-1517-5',                                             destination: '/blog/otel-transfer-hizmeti-nasil-calisir',                permanent: true },
+      { source: '/havaalanindan-fuarlara-transfer-hizmeti--1518-5',                   destination: '/blog/havalimani-fuar-kongre-transfer',                    permanent: true },
+      { source: '/istanbul-bogaz-camlica-sultanahmet-taksim-beyoglu-turlari-1520-5',  destination: '/blog/istanbul-bogaz-sultanahmet-taksim-tur-rehberi',      permanent: true },
+      { source: '/istanbul-vip-transfer-ile-sehirler-arasi-transfer-1521-5',          destination: '/blog/sehirlerarasi-vip-transfer-rehberi',                 permanent: true },
+      { source: '/istanbul-cikisli--bursa--uludag-inegol-ve--kartepe-transfer-hizmetleri-1522-5', destination: '/blog/istanbul-bursa-uludag-inegol-kartepe-transfer', permanent: true },
+      { source: '/istanbul-vip-transfer-fiyatlari-1527-5',                            destination: '/blog/istanbul-vip-transfer-fiyatlari-nasil-belirlenir',   permanent: true },
+      { source: '/vito-kiralama-1531-5',                                              destination: '/blog/vito-soforlu-arac-kiralama-rehberi',                 permanent: true },
+      { source: '/vip-taksi-1532-5',                                                  destination: '/blog/vip-taksi-ile-standart-taksi-farklari',              permanent: true },
+      { source: '/ankarada-vip-taksi-hizmeti-1534-5',                                 destination: '/blog/ankara-vip-transfer-ozel-sofor-rehberi',             permanent: true },
     ];
   },
 };

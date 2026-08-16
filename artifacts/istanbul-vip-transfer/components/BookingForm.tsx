@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -32,6 +33,15 @@ const DEFAULT_FORM_SETTINGS: FormSettings = {
   showVehiclePreference: false,
   showAdditionalNotes:   false,
 };
+
+interface CustomField {
+  id: number;
+  label: string;
+  appliesToSlugs: string[];
+  fieldType: string;
+  isActive: boolean;
+  sortOrder: number;
+}
 
 // ── Service type defs ─────────────────────────────────────────────────────────
 
@@ -247,6 +257,11 @@ export default function BookingForm() {
     TOUR:             b.stTour,
   };
 
+  const pathname = usePathname();
+  // Extract the service slug from the URL for custom-field filtering
+  // e.g. /tr/istanbul-havalimani-transfer → istanbul-havalimani-transfer
+  const pageSlug = pathname?.split('/').filter(Boolean).at(-1) ?? '';
+
   const [serviceTypes, setServiceTypes]   = useState<ServiceTypeOption[]>([]);
   const [activeService, setActiveService] = useState('AIRPORT_TRANSFER');
   const [loadingST, setLoadingST]         = useState(true);
@@ -255,6 +270,9 @@ export default function BookingForm() {
   const [newsletterError, setNewsletterError]     = useState('');
   const honeypotRef = useRef<HTMLInputElement>(null);
   const [formSettings, setFormSettings] = useState<FormSettings>(DEFAULT_FORM_SETTINGS);
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  // State values for custom checkbox fields (keyed by field id)
+  const [customFieldValues, setCustomFieldValues] = useState<Record<number, boolean>>({});
 
   // Fetch admin-configured booking form field visibility
   useEffect(() => {
@@ -263,6 +281,17 @@ export default function BookingForm() {
       .then(d => { if (d) setFormSettings(d); })
       .catch(() => {});
   }, []);
+
+  // Fetch admin-defined custom fields for this service slug
+  useEffect(() => {
+    const url = pageSlug ? `/data/custom-fields?slug=${encodeURIComponent(pageSlug)}` : '/data/custom-fields';
+    fetch(url)
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { fields?: CustomField[] } | null) => {
+        if (d?.fields) setCustomFields(d.fields.filter(f => f.isActive));
+      })
+      .catch(() => {});
+  }, [pageSlug]);
 
   // Returns today's date as YYYY-MM-DD in the Europe/Istanbul timezone.
   // formatToParts() is used instead of trusting the output order of format(),
@@ -781,7 +810,7 @@ export default function BookingForm() {
               </div>
 
               {/* Optional Panel — admin-configured fields (shown only when admin enables them) */}
-              {(formSettings.showLuggageCount || formSettings.showChildSeatCount || formSettings.showVehiclePreference || formSettings.showAdditionalNotes) && (
+              {(formSettings.showLuggageCount || formSettings.showChildSeatCount || formSettings.showVehiclePreference || formSettings.showAdditionalNotes || customFields.length > 0) && (
                 <div className={panelA} data-testid="optional-fields-panel">
                   <p className="text-xs tracking-[0.15em] uppercase mb-4 font-semibold" style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}>
                     Ek Bilgiler
@@ -823,6 +852,33 @@ export default function BookingForm() {
                           style={{ resize: 'vertical', minHeight: '80px' }} />
                       </div>
                     )}
+                    {/* Admin-defined custom fields */}
+                    {customFields.map(field => (
+                      <div key={field.id} className={field.fieldType === 'text' ? 'md:col-span-2' : ''}>
+                        {field.fieldType === 'checkbox' ? (
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px', color: '#263F55' }}>
+                            <input
+                              type="checkbox"
+                              checked={!!customFieldValues[field.id]}
+                              onChange={e => setCustomFieldValues(prev => ({ ...prev, [field.id]: e.target.checked }))}
+                              style={{ width: '16px', height: '16px', accentColor: '#C79A35', flexShrink: 0 }}
+                            />
+                            {field.label}
+                          </label>
+                        ) : (
+                          <>
+                            <label style={labelStyle}>{field.label}</label>
+                            <input
+                              type="text"
+                              className="vip-input"
+                              placeholder={field.label}
+                              value={typeof customFieldValues[field.id] === 'string' ? customFieldValues[field.id] as unknown as string : ''}
+                              onChange={e => setCustomFieldValues(prev => ({ ...prev, [field.id]: e.target.value as unknown as boolean }))}
+                            />
+                          </>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}

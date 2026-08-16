@@ -196,11 +196,18 @@ export async function POST(request: NextRequest) {
         } finally {
           controller.close();
           if (fullResponse) {
+            // Translate AI reply to Turkish so admin sees it in Turkish
+            let contentTrValue = fullResponse;
+            try {
+              const { translateToTurkish } = await import('@/lib/chatbot-translate');
+              const tr = await translateToTurkish(fullResponse);
+              if (tr) contentTrValue = tr;
+            } catch { /* keep original on error */ }
             db.insert(chatbotMessages).values({
               sessionId:  sid,
               role:       'assistant',
               content:    fullResponse,
-              contentTr:  fullResponse,
+              contentTr:  contentTrValue,
             }).catch(() => {});
           }
         }

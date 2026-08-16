@@ -15,6 +15,7 @@ import PageHero    from '@/components/PageHero';
 import BookingForm from '@/components/BookingForm';
 import Contact     from '@/components/Contact';
 import HizmetlerServiceGridCms from '@/components/HizmetlerServiceGridCms';
+import HizmetlerCategoryNav from '@/components/HizmetlerCategoryNav';
 import { buildAlternates }  from '@/lib/i18n/seo';
 import { NON_SOURCE_LOCALES } from '@/lib/i18n/locale-registry';
 import { SITE } from '@/lib/site-config';
@@ -102,6 +103,7 @@ export default async function HizmetlerLangPage({ params }: Props) {
       <PageHero pageKey="services" />
 
       <section className="py-16 md:py-20 max-w-7xl mx-auto px-5 md:px-8">
+        <HizmetlerCategoryNav locale={lang} />
         <HizmetlerServiceGridCms locale={lang} />
       </section>
 

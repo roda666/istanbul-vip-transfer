@@ -7,6 +7,7 @@ import {
   text,
   boolean,
   integer,
+  serial,
   timestamp,
   uuid,
   jsonb,
@@ -889,6 +890,21 @@ export const transferRoutes = pgTable('transfer_routes', {
 
 export type TransferRoute = typeof transferRoutes.$inferSelect;
 export type NewTransferRoute = typeof transferRoutes.$inferInsert;
+
+// ── Custom Reservation Fields ─────────────────────────────────────────────────
+// Admin-defined optional fields shown on the booking form per service.
+export const customReservationFields = pgTable('custom_reservation_fields', {
+  id:              serial('id').primaryKey(),
+  label:           text('label').notNull(),
+  appliesToSlugs:  jsonb('applies_to_slugs').notNull().default([]).$type<string[]>(),
+  fieldType:       text('field_type').notNull().default('checkbox'),
+  isActive:        boolean('is_active').notNull().default(true),
+  sortOrder:       integer('sort_order').notNull().default(0),
+  createdAt:       timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type CustomReservationField    = typeof customReservationFields.$inferSelect;
+export type NewCustomReservationField = typeof customReservationFields.$inferInsert;
 
 // Type aliases for jsonb columns (avoid circular import, define inline)
 export type StudioConfigJson = Record<string, unknown>;

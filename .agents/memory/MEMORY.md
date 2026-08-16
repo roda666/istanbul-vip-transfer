@@ -29,3 +29,6 @@
 - [Vehicle fleet DB-driven system](vehicle-fleet-db-driven.md) — VehicleFleet fetches DB; FEATURE_ICON_MAP + adaptDbVehicle; migration 0023; 6 vehicles seeded; admin UI pending (#154).
 - [CHAT_STAFF role and routing](chat-staff-role.md) — restricted to /admin/sohbet; ChatStaffGuard client component; login returns redirectTo; Personel page at /admin/personel.
 - [Booking form optional fields](booking-form-optional-fields.md) — 4 admin-toggleable fields; /data/form-settings public API; migration 0021; WA suffix pattern.
+- [Custom reservation fields](custom-reservation-fields.md) — DB table custom_reservation_fields (serial PK — serial must be imported from drizzle-orm/pg-core); admin CRUD at /admin/api/custom-fields; public GET at /data/custom-fields?slug=...; BookingForm fetches by pageSlug from usePathname(); admin UI is 4th tab in rezervasyon-ayarlari.
+- [Schema import quirks](schema-import-quirks.md) — serial must be explicitly imported from drizzle-orm/pg-core; admin API routes use @/lib/auth/session not @/lib/session.
+- [AdminSidebar grouped nav](admin-sidebar-groups.md) — NavGroup collapsible sections; CHAT_STAFF sees flat list; Dashboard is standalone above groups; groups auto-expand when active item is inside; getNavGroups() returns 5 groups.

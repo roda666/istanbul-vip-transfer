@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Pencil, Archive, Trash2, Search, RefreshCw, Check, X } from 'lucide-react';
+import { Plus, Pencil, Archive, Trash2, Search, RefreshCw, Check, X, GripVertical } from 'lucide-react';
 import AdminPageHeader from '../../_components/AdminPageHeader';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -43,6 +43,15 @@ interface FormSettings {
   showChildSeatCount:    boolean;
   showVehiclePreference: boolean;
   showAdditionalNotes:   boolean;
+}
+
+interface CustomField {
+  id: number;
+  label: string;
+  appliesToSlugs: string[];
+  fieldType: string;
+  isActive: boolean;
+  sortOrder: number;
 }
 
 interface ServiceTypeItem {
@@ -398,6 +407,14 @@ export default function ReservasyonAyarlariClient() {
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsMsg, setSettingsMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // ── Özel Alanlar state ──
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [cfLoading, setCfLoading] = useState(false);
+  const [cfSaving, setCfSaving] = useState<number | 'new' | null>(null);
+  const [cfMsg, setCfMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [cfForm, setCfForm] = useState<{ label: string; appliesToSlugs: string; fieldType: string } | null>(null);
+  const [cfEditId, setCfEditId] = useState<number | 'new' | null>(null);
+
   const fetchLocations = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams({ limit: '300' });
@@ -441,6 +458,61 @@ export default function ReservasyonAyarlariClient() {
 
   useEffect(() => { fetchSettings(); }, []);
 
+  async function fetchCustomFields() {
+    setCfLoading(true);
+    try {
+      const res = await fetch('/admin/api/custom-fields');
+      const json = await res.json();
+      if (Array.isArray(json.fields)) setCustomFields(json.fields);
+    } catch { /* ignore */ }
+    setCfLoading(false);
+  }
+
+  useEffect(() => { fetchCustomFields(); }, []);
+
+  async function saveCustomField() {
+    if (!cfForm) return;
+    const isNew = cfEditId === 'new';
+    setCfSaving(cfEditId);
+    setCfMsg(null);
+    try {
+      const payload = {
+        label: cfForm.label.trim(),
+        appliesToSlugs: cfForm.appliesToSlugs.split(',').map(s => s.trim()).filter(Boolean),
+        fieldType: cfForm.fieldType,
+        isActive: true,
+      };
+      const url = isNew ? '/admin/api/custom-fields' : `/admin/api/custom-fields/${cfEditId}`;
+      const method = isNew ? 'POST' : 'PATCH';
+      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const json = await res.json();
+      if (!res.ok) { setCfMsg({ type: 'error', text: json.error ?? 'Hata oluştu.' }); }
+      else { setCfMsg({ type: 'success', text: isNew ? 'Alan oluşturuldu.' : 'Alan güncellendi.' }); setCfEditId(null); setCfForm(null); await fetchCustomFields(); }
+    } catch { setCfMsg({ type: 'error', text: 'Bağlantı hatası.' }); }
+    setCfSaving(null);
+  }
+
+  async function deleteCustomField(id: number) {
+    if (!confirm('Bu alanı silmek istediğinizden emin misiniz?')) return;
+    setCfSaving(id);
+    try {
+      await fetch(`/admin/api/custom-fields/${id}`, { method: 'DELETE' });
+      await fetchCustomFields();
+    } catch { /* ignore */ }
+    setCfSaving(null);
+  }
+
+  async function toggleCustomFieldActive(field: CustomField) {
+    try {
+      await fetch(`/admin/api/custom-fields/${field.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !field.isActive }),
+      });
+      await fetchCustomFields();
+    } catch { /* ignore */ }
+  }
+
   async function handleArchiveOrDelete(loc: Location) {
     setActionLoading(loc.id);
     try {
@@ -473,6 +545,7 @@ export default function ReservasyonAyarlariClient() {
     ['lokasyonlar', 'Lokasyonlar'],
     ['hizmet-turleri', 'Hizmet Türleri'],
     ['form-ayarlari', 'Form Ayarları'],
+    ['ozel-alanlar', 'Özel Alanlar'],
   ] as const;
 
   return (
@@ -698,6 +771,118 @@ export default function ReservasyonAyarlariClient() {
                   </Btn>
                 </div>
               </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Özel Alanlar Tab ── */}
+      {tab === 'ozel-alanlar' && (
+        <div style={{ maxWidth: '640px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <p style={{ color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif', margin: 0 }}>
+              Rezervasyon formuna servis bazlı özel alanlar ekleyin. Boş "Geçerli Hizmetler" = tüm servislerde göster.
+            </p>
+            <Btn variant="primary" small onClick={() => { setCfEditId('new'); setCfForm({ label: '', appliesToSlugs: '', fieldType: 'checkbox' }); setCfMsg(null); }}>
+              <Plus size={13} /> Yeni Alan
+            </Btn>
+          </div>
+
+          {/* New / Edit form */}
+          {cfEditId !== null && cfForm !== null && (
+            <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px', padding: '20px', marginBottom: '16px', boxShadow: '0 2px 8px rgba(23,43,58,0.06)' }}>
+              <h3 style={{ color: GOLD, fontSize: '12px', fontFamily: 'Inter, sans-serif', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 16px' }}>
+                {cfEditId === 'new' ? 'Yeni Alan Ekle' : 'Alanı Düzenle'}
+              </h3>
+              <div style={{ display: 'grid', gap: '12px' }}>
+                <div>
+                  <Label required>Alan Etiketi</Label>
+                  <FieldInput value={cfForm.label} onChange={v => setCfForm(f => f ? { ...f, label: v } : f)} placeholder="örn: VIP Karşılama Talebi" />
+                </div>
+                <div>
+                  <Label>Alan Türü</Label>
+                  <select value={cfForm.fieldType} onChange={e => setCfForm(f => f ? { ...f, fieldType: e.target.value } : f)}
+                    style={{ width: '100%', padding: '8px 12px', background: '#F8FAFC', border: `1px solid ${BORDER}`, borderRadius: '8px', color: NAVY, fontSize: '13px', fontFamily: 'Inter, sans-serif', outline: 'none' }}>
+                    <option value="checkbox">Onay Kutusu (checkbox)</option>
+                    <option value="text">Metin Girişi (text)</option>
+                  </select>
+                </div>
+                <div>
+                  <Label>Geçerli Hizmetler (slug, virgülle ayır — boş = hepsi)</Label>
+                  <FieldInput value={cfForm.appliesToSlugs} onChange={v => setCfForm(f => f ? { ...f, appliesToSlugs: v } : f)} placeholder="örn: istanbul-havalimani-transfer,sabiha-gokcen-havalimani-transfer" />
+                  <p style={{ color: MUTED, fontSize: '11px', fontFamily: 'Inter, sans-serif', marginTop: '4px' }}>Boş bırakırsanız alan tüm rezervasyon formlarında görünür.</p>
+                </div>
+                {cfMsg && (
+                  <div style={{ background: cfMsg.type === 'success' ? '#ECFDF5' : '#FEF2F2', border: `1px solid ${cfMsg.type === 'success' ? '#86EFAC' : '#FECACA'}`, borderRadius: '8px', padding: '10px 14px', color: cfMsg.type === 'success' ? '#065F46' : RED, fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>
+                    {cfMsg.text}
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                  <Btn variant="ghost" onClick={() => { setCfEditId(null); setCfForm(null); setCfMsg(null); }}>İptal</Btn>
+                  <Btn variant="primary" loading={cfSaving !== null} onClick={saveCustomField} disabled={!cfForm.label.trim()}>Kaydet</Btn>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Fields list */}
+          <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(23,43,58,0.06)' }}>
+            {cfLoading ? (
+              <div style={{ padding: '48px', textAlign: 'center', color: MUTED, fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>Yükleniyor…</div>
+            ) : customFields.length === 0 ? (
+              <div style={{ padding: '48px', textAlign: 'center', color: MUTED, fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
+                Henüz özel alan eklenmedi. Yukarıdan yeni alan ekleyebilirsiniz.
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: '#F8FAFC', borderBottom: `1px solid ${BORDER}` }}>
+                    {['Etiket', 'Tür', 'Geçerli Hizmetler', 'Aktif', ''].map((h, i) => (
+                      <th key={i} style={{ padding: '10px 14px', textAlign: 'left', color: MUTED, fontSize: '11px', fontFamily: 'Inter, sans-serif', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {customFields.map((field, i) => (
+                    <tr key={field.id} style={{ borderBottom: i < customFields.length - 1 ? `1px solid #F0F4F8` : 'none' }}>
+                      <td style={{ padding: '10px 14px', color: NAVY, fontSize: '13px', fontFamily: 'Inter, sans-serif', fontWeight: 500 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <GripVertical size={13} style={{ color: MUTED, flexShrink: 0 }} />
+                          {field.label}
+                        </div>
+                      </td>
+                      <td style={{ padding: '10px 14px' }}>
+                        <span style={{ background: '#EEF3F9', color: BLUE, fontSize: '11px', padding: '2px 8px', borderRadius: '12px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>
+                          {field.fieldType === 'checkbox' ? 'Onay Kutusu' : 'Metin'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '10px 14px', color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>
+                        {field.appliesToSlugs?.length ? field.appliesToSlugs.join(', ') : <em style={{ color: '#9CA3AF' }}>Hepsi</em>}
+                      </td>
+                      <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                        <button onClick={() => toggleCustomFieldActive(field)} title={field.isActive ? 'Pasife Al' : 'Aktife Al'}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                          {field.isActive
+                            ? <span style={{ background: '#ECFDF5', color: '#065F46', fontSize: '11px', padding: '2px 8px', borderRadius: '12px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>Aktif</span>
+                            : <span style={{ background: '#F1F5F9', color: MUTED, fontSize: '11px', padding: '2px 8px', borderRadius: '12px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>Pasif</span>}
+                        </button>
+                      </td>
+                      <td style={{ padding: '10px 14px' }}>
+                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                          <button onClick={() => { setCfEditId(field.id); setCfForm({ label: field.label, appliesToSlugs: (field.appliesToSlugs ?? []).join(', '), fieldType: field.fieldType }); setCfMsg(null); }} title="Düzenle"
+                            style={{ background: '#EEF3F9', border: 'none', borderRadius: '6px', padding: '5px 8px', cursor: 'pointer', color: BLUE, display: 'flex', alignItems: 'center' }}>
+                            <Pencil size={13} />
+                          </button>
+                          <button onClick={() => deleteCustomField(field.id)} disabled={cfSaving === field.id} title="Sil"
+                            style={{ background: '#FEF2F2', border: 'none', borderRadius: '6px', padding: '5px 8px', cursor: cfSaving === field.id ? 'not-allowed' : 'pointer', color: RED, display: 'flex', alignItems: 'center', opacity: cfSaving === field.id ? 0.5 : 1 }}>
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
           </div>
         </div>

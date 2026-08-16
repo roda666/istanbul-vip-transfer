@@ -75,11 +75,18 @@ export async function GET(
         const aiContent = await generateAIReply(session.visitorLang, aiHistory);
 
         if (aiContent) {
+          // Translate AI reply to Turkish so admin sees it in Turkish
+          let aiContentTr = aiContent;
+          try {
+            const { translateToTurkish } = await import('@/lib/chatbot-translate');
+            const tr = await translateToTurkish(aiContent);
+            if (tr) aiContentTr = tr;
+          } catch { /* keep original on error */ }
           await db.insert(chatbotMessages).values({
             sessionId,
             role:      'assistant',
             content:   aiContent,
-            contentTr: aiContent,
+            contentTr: aiContentTr,
           });
           await db.update(chatbotSessions)
             .set({ lastMessageAt: new Date() })

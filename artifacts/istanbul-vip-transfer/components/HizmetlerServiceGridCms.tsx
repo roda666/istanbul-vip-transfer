@@ -19,44 +19,34 @@ import { RTL_LOCALES } from '@/lib/i18n/locale-registry';
 
 const CAT_LABELS: Record<string, Record<string, string>> = {
   airport: {
-    tr: 'Havalimanı Transferleri', en: 'Airport Transfers',          de: 'Flughafentransfers',
-    ru: 'Трансферы в аэропорт',   ar: 'نقل المطار',                 fr: 'Transferts Aéroport',
-    es: 'Traslados al Aeropuerto', it: 'Transfer Aeroporto',         nl: 'Luchthaventransfers',
+    tr: 'Havalimanı Transferleri',   en: 'Airport Transfers',            de: 'Flughafentransfers',
+    ru: 'Трансферы в аэропорт',     ar: 'نقل المطار',                   fr: 'Transferts Aéroport',
+    es: 'Traslados al Aeropuerto',   it: 'Transfer Aeroporto',           nl: 'Luchthaventransfers',
   },
-  vip: {
-    tr: 'VIP & Özel Hizmetler',   en: 'VIP & Private Services',     de: 'VIP & Privatdienste',
-    ru: 'VIP и частные услуги',   ar: 'خدمات VIP والخاصة',          fr: 'Services VIP & Privés',
-    es: 'Servicios VIP y Privados', it: 'Servizi VIP e Privati',    nl: 'VIP & Privédiensten',
+  city_vip: {
+    tr: 'VIP & Şehir İçi',          en: 'VIP & City Services',          de: 'VIP & Stadtdienste',
+    ru: 'VIP и городские услуги',    ar: 'خدمات VIP والمدينة',           fr: 'VIP & Services Urbains',
+    es: 'VIP & Servicios Urbanos',   it: 'VIP & Servizi Urbani',         nl: 'VIP & Stadsdiensten',
   },
   intercity: {
-    tr: 'Şehirlerarası Transferler', en: 'Intercity Transfers',      de: 'Intercity-Transfers',
-    ru: 'Межгородские трансферы',  ar: 'نقل بين المدن',             fr: 'Transferts Interurbains',
-    es: 'Traslados Interurbanos',  it: 'Transfer Interurbani',       nl: 'Intercitytransfers',
+    tr: 'Şehirlerarası Transfer',    en: 'Intercity Transfer',           de: 'Intercity-Transfer',
+    ru: 'Межгородской трансфер',     ar: 'نقل بين المدن',               fr: 'Transfert Interurbain',
+    es: 'Traslado Interurbano',      it: 'Transfer Interurbano',         nl: 'Intercitytransfer',
   },
   tour: {
-    tr: 'Günübirlik Turlar',       en: 'Day Tours',                  de: 'Tagestouren',
-    ru: 'Однодневные экскурсии',   ar: 'جولات ليوم واحد',            fr: "Excursions d'une Journée",
-    es: 'Excursiones de un Día',   it: 'Tour di un Giorno',          nl: 'Dagtochten',
+    tr: 'Günübirlik Turlar',         en: 'Day Tours',                    de: 'Tagestouren',
+    ru: 'Однодневные экскурсии',     ar: 'جولات ليوم واحد',             fr: "Excursions d'une Journée",
+    es: 'Excursiones de un Día',     it: 'Tour di un Giorno',            nl: 'Dagtochten',
   },
-  corporate: {
-    tr: 'Kurumsal Transfer',       en: 'Corporate Transfer',         de: 'Firmentransfer',
-    ru: 'Корпоративный трансфер',  ar: 'نقل الشركات',               fr: 'Transfert Corporate',
-    es: 'Transfer Corporativo',    it: 'Transfer Aziendale',         nl: 'Zakelijk Transfer',
-  },
-  health: {
-    tr: 'Sağlık Turizmi',          en: 'Health Tourism',             de: 'Gesundheitstourismus',
-    ru: 'Медицинский туризм',      ar: 'السياحة الصحية',             fr: 'Tourisme de Santé',
-    es: 'Turismo de Salud',        it: 'Turismo Sanitario',          nl: 'Gezondheidszorgtoerisme',
-  },
-  rental: {
-    tr: 'Şoförlü Araç Kiralama',   en: 'Chauffeur Car Rental',       de: 'Fahrzeugvermietung mit Fahrer',
-    ru: 'Аренда авто с водителем', ar: 'تأجير سيارة مع سائق',       fr: 'Location Voiture avec Chauffeur',
-    es: 'Alquiler con Conductor',  it: 'Noleggio Auto con Autista',  nl: 'Auto Verhuur met Chauffeur',
+  special: {
+    tr: 'Özel Hizmetler',            en: 'Special Services',             de: 'Sonderdienste',
+    ru: 'Особые услуги',             ar: 'الخدمات الخاصة',              fr: 'Services Spéciaux',
+    es: 'Servicios Especiales',      it: 'Servizi Speciali',             nl: 'Speciale Diensten',
   },
 };
 
-/** Canonical category order in the grid (matches admin displayOrder intent). */
-const CAT_ORDER = ['airport', 'vip', 'intercity', 'tour', 'corporate', 'health', 'rental'];
+/** Canonical category order in the grid. */
+const CAT_ORDER = ['airport', 'city_vip', 'intercity', 'tour', 'special'];
 
 /** Empty-state strings in each locale. */
 const EMPTY_MSG: Record<string, string> = {
@@ -128,9 +118,10 @@ export default async function HizmetlerServiceGridCms({ locale }: Props) {
 
         return (
           <div
+            id={`hiz-cat-${cat}`}
             key={cat}
             className="rounded-sm p-8"
-            style={{ background: 'rgba(201,168,76,0.04)', border: '1px solid rgba(201,168,76,0.12)' }}
+            style={{ background: 'rgba(201,168,76,0.04)', border: '1px solid rgba(201,168,76,0.12)', scrollMarginTop: '90px' }}
           >
             <h2
               className="text-xs tracking-[0.2em] uppercase mb-5"

@@ -27,6 +27,35 @@ function localize(base: string, translations: Record<string, string> | null | un
   return translations[lang] ?? base;
 }
 
+/**
+ * Map a route name to the most relevant service page slug.
+ * Runs purely on keywords found in the route name.
+ */
+function getRouteHref(routeName: string, lang: string): string {
+  const n = routeName.toLowerCase();
+  let slug = '';
+  if (n.includes('sabiha')) {
+    slug = 'sabiha-gokcen-havalimani-transfer';
+  } else if (n.includes('havalimanı') || n.includes('havalimani') || n.includes('airport')) {
+    slug = 'istanbul-havalimani-transfer';
+  } else if (n.includes('antalya')) {
+    slug = 'antalya-vip-transfer';
+  } else if (n.includes('ankara')) {
+    slug = 'ankara-vip-transfer';
+  } else if (n.includes('izmir') || n.includes('İzmir')) {
+    slug = 'izmir-vip-transfer';
+  } else if (n.includes('bursa')) {
+    slug = 'istanbul-bursa-transfer';
+  } else if (n.includes('bodrum') || n.includes('şehirlerarası') || n.includes('intercity')) {
+    slug = 'sehirler-arasi-transfer';
+  } else if (n.includes('otel') || n.includes('boğaz') || n.includes('hotel')) {
+    slug = 'otel-transfer';
+  } else {
+    slug = 'vip-transfer';
+  }
+  return lang === 'tr' ? `/${slug}` : `/${lang}/${slug}`;
+}
+
 function RouteCard({ route, lang, t }: {
   route: TransferRoute;
   lang: string;
@@ -35,9 +64,11 @@ function RouteCard({ route, lang, t }: {
   const name = localize(route.name, route.nameTranslations, lang);
   const vitoRange     = `${route.priceVitoMinEur}–${route.priceVitoMaxEur} €`;
   const sprinterRange = `${route.priceSprinterMinEur}–${route.priceSprinterMaxEur} €`;
+  const href = getRouteHref(route.name, lang);
 
   return (
-    <article
+    <a
+      href={href}
       style={{
         background: CARD_BG,
         border: `1px solid ${BORDER}`,
@@ -46,6 +77,8 @@ function RouteCard({ route, lang, t }: {
         display: 'flex',
         flexDirection: 'column',
         transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+        textDecoration: 'none',
+        color: 'inherit',
       }}
       onMouseEnter={(e) => {
         (e.currentTarget as HTMLElement).style.transform = 'translateY(-4px)';
@@ -110,7 +143,7 @@ function RouteCard({ route, lang, t }: {
           </div>
         </div>
       </div>
-    </article>
+    </a>
   );
 }
 

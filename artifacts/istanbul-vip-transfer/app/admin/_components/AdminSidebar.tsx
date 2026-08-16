@@ -46,52 +46,110 @@ interface NavItem {
   badge?: string;
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { href: '/admin/dashboard',        label: 'Dashboard',             icon: <LayoutDashboard size={18} /> },
-  { href: '/admin/talepler',         label: 'Talepler',              icon: <ClipboardList size={18} /> },
-  { href: '/admin/sohbet',           label: 'Canlı Sohbet',          icon: <MessageSquare size={18} /> },
-  { href: '/admin/bulten-aboneleri', label: 'Bülten Aboneleri',      icon: <Mail size={18} /> },
-  { href: '/admin/sayfalar/ana-sayfa', label: 'Ana Sayfa Düzenleyici', icon: <LayoutDashboard size={18} /> },
-  { href: '/admin/sayfalar',         label: 'Sayfalar',              icon: <FileText size={18} /> },
-  { href: '/admin/hizmetler',        label: 'Hizmetler',             icon: <Wrench size={18} /> },
-  { href: '/admin/araclar',          label: 'Araçlar',               icon: <Car size={18} /> },
-  { href: '/admin/transfer-rotalari', label: 'Transfer Rotaları',    icon: <MapPin size={18} /> },
-  { href: '/admin/rezervasyon-ayarlari', label: 'Rezervasyon Ayarları', icon: <CalendarClock size={18} /> },
-  { href: '/admin/blog',             label: 'Blog',                  icon: <BookOpen size={18} /> },
-  { href: '/admin/dil-ve-ceviri',    label: 'Dil ve Çeviri',         icon: <Languages size={18} /> },
-  { href: '/admin/sss',              label: 'SSS',                   icon: <HelpCircle size={18} /> },
-  { href: '/admin/menu',             label: 'Menü Yönetimi',         icon: <MenuIcon size={18} /> },
-  { href: '/admin/e-posta-ayarlari', label: 'E-posta Ayarları',      icon: <MailOpen size={18} /> },
-  { href: '/admin/ayarlar',          label: 'Site Ayarları',         icon: <Settings size={18} /> },
-  { href: '/admin/ayarlar/icerik-entegrasyonlari', label: 'İçerik Entegrasyonları', icon: <Settings size={18} /> },
-  // ── AI Studio (new) ──────────────────────────────────────────────────────
-  { href: '/admin/ai-studio',        label: 'İçerik Stüdyosu',      icon: <PenSquare size={18} />, badge: 'AI' },
-  { href: '/admin/ai-oneriler',      label: 'AI İçerik Merkezi',    icon: <Sparkles size={18} /> },
-  { href: '/admin/gecmis',           label: 'İşlem Geçmişi',        icon: <History size={18} /> },
-  { href: '/admin/hesabim',          label: 'Hesabım',              icon: <UserCircle size={18} /> },
-];
+// ── Nav group definitions ─────────────────────────────────────────────────────
 
-const PERSONEL_ITEM: NavItem = {
-  href: '/admin/personel',
-  label: 'Personel Yönetimi',
-  icon: <Users size={18} />,
-};
+interface NavGroup {
+  key: string;
+  label: string;
+  items: NavItem[];
+}
+
+/** All nav groups for ADMIN / SUPER_ADMIN roles. Order matters. */
+function getNavGroups(role: string, isSuperOrAdmin: boolean): NavGroup[] {
+  return [
+    {
+      key: 'iletisim',
+      label: 'İletişim',
+      items: [
+        { href: '/admin/sohbet',           label: 'Canlı Sohbet',     icon: <MessageSquare size={18} /> },
+        { href: '/admin/bulten-aboneleri', label: 'Bülten Aboneleri', icon: <Mail size={18} /> },
+        ...(isSuperOrAdmin ? [{ href: '/admin/personel', label: 'Personel Yönetimi', icon: <Users size={18} /> }] : []),
+      ],
+    },
+    {
+      key: 'operasyon',
+      label: 'Operasyon',
+      items: [
+        { href: '/admin/talepler',             label: 'Talepler',            icon: <ClipboardList size={18} /> },
+        { href: '/admin/rezervasyon-ayarlari', label: 'Rezervasyon Ayarları', icon: <CalendarClock size={18} /> },
+        { href: '/admin/transfer-rotalari',   label: 'Transfer Rotaları',   icon: <MapPin size={18} /> },
+      ],
+    },
+    {
+      key: 'icerik',
+      label: 'İçerik',
+      items: [
+        { href: '/admin/blog',           label: 'Blog',            icon: <BookOpen size={18} /> },
+        { href: '/admin/sayfalar',       label: 'Sayfalar',        icon: <FileText size={18} /> },
+        { href: '/admin/hizmetler',      label: 'Hizmetler',       icon: <Wrench size={18} /> },
+        { href: '/admin/sss',            label: 'SSS',             icon: <HelpCircle size={18} /> },
+        { href: '/admin/dil-ve-ceviri',  label: 'Dil ve Çeviri',  icon: <Languages size={18} /> },
+        { href: '/admin/ai-studio',      label: 'İçerik Stüdyosu', icon: <PenSquare size={18} />, badge: 'AI' },
+        { href: '/admin/ai-oneriler',    label: 'AI İçerik Merkezi', icon: <Sparkles size={18} /> },
+      ],
+    },
+    {
+      key: 'site',
+      label: 'Site Yönetimi',
+      items: [
+        { href: '/admin/sayfalar/ana-sayfa', label: 'Ana Sayfa Düzenleyici', icon: <LayoutDashboard size={18} /> },
+        { href: '/admin/menu',              label: 'Menü Yönetimi',          icon: <MenuIcon size={18} /> },
+        { href: '/admin/araclar',           label: 'Araçlar',               icon: <Car size={18} /> },
+      ],
+    },
+    {
+      key: 'ayarlar',
+      label: 'Ayarlar',
+      items: [
+        { href: '/admin/e-posta-ayarlari',                  label: 'E-posta Ayarları',       icon: <MailOpen size={18} /> },
+        { href: '/admin/ayarlar',                           label: 'Site Ayarları',           icon: <Settings size={18} /> },
+        { href: '/admin/ayarlar/icerik-entegrasyonlari',    label: 'İçerik Entegrasyonları', icon: <Settings size={18} /> },
+        { href: '/admin/gecmis',                            label: 'İşlem Geçmişi',          icon: <History size={18} /> },
+        { href: '/admin/hesabim',                           label: 'Hesabım',               icon: <UserCircle size={18} /> },
+      ],
+    },
+  ];
+}
 
 const CHAT_STAFF_ITEMS: NavItem[] = [
   { href: '/admin/sohbet', label: 'Canlı Sohbet', icon: <MessageSquare size={18} /> },
   { href: '/admin/hesabim', label: 'Hesabım', icon: <UserCircle size={18} /> },
 ];
 
-/** Returns the nav items visible to the given role. */
-function getVisibleItems(role: string): NavItem[] {
-  if (role === 'CHAT_STAFF') return CHAT_STAFF_ITEMS;
-  if (role === 'SUPER_ADMIN' || role === 'ADMIN') {
-    // Insert Personel after Bülten Aboneleri (index 3)
-    const items = [...NAV_ITEMS];
-    items.splice(3, 0, PERSONEL_ITEM);
-    return items;
-  }
-  return NAV_ITEMS;
+// ── NavGroup collapsible section ──────────────────────────────────────────────
+function NavGroup({ group, collapsed, openGroups, toggleGroup, renderNavItem }: {
+  group: { key: string; label: string; items: NavItem[] };
+  collapsed: boolean;
+  openGroups: Set<string>;
+  toggleGroup: (key: string) => void;
+  renderNavItem: (item: NavItem) => React.ReactNode;
+}) {
+  const isOpen = openGroups.has(group.key);
+  return (
+    <div style={{ marginBottom: '4px' }}>
+      {!collapsed && (
+        <button
+          onClick={() => toggleGroup(group.key)}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            width: '100%', padding: '6px 12px',
+            background: 'none', border: 'none', cursor: 'pointer',
+            borderRadius: '6px',
+          }}
+          aria-expanded={isOpen}
+        >
+          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.38)' }}>
+            {group.label}
+          </span>
+          <ChevronRight
+            size={12}
+            style={{ color: 'rgba(255,255,255,0.30)', transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}
+          />
+        </button>
+      )}
+      {(isOpen || collapsed) && group.items.map(item => renderNavItem(item))}
+    </div>
+  );
 }
 
 interface Props {
@@ -108,6 +166,31 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
   const [loggingOut, setLoggingOut] = useState(false);
   const [newCount,  setNewCount]  = useState(0);
   const [chatCount, setChatCount] = useState(0);
+
+  const isChatStaff    = userRole === 'CHAT_STAFF';
+  const isSuperOrAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
+
+  // Determine which groups are open by default (auto-expand if active item is inside)
+  function getDefaultOpen(): Set<string> {
+    const s = new Set<string>();
+    for (const g of getNavGroups(userRole, isSuperOrAdmin)) {
+      if (g.items.some(item => pathname === item.href || pathname.startsWith(item.href + '/'))) {
+        s.add(g.key);
+      }
+    }
+    // If nothing is active, open the first group
+    if (s.size === 0) s.add('iletisim');
+    return s;
+  }
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => getDefaultOpen());
+  function toggleGroup(key: string) {
+    setOpenGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
 
   useEffect(() => {
     let active = true;
@@ -165,6 +248,63 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
     return pathname === href || pathname.startsWith(href + '/');
   }
 
+  function renderNavItem(item: NavItem) {
+    const active   = isActive(item.href);
+    const hasBadge = !!item.badge;
+    const count    = item.href === '/admin/talepler' ? newCount
+                   : item.href === '/admin/sohbet'   ? chatCount
+                   : 0;
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        onClick={() => setMobileOpen(false)}
+        style={{ textDecoration: 'none', display: 'block', marginBottom: '2px' }}
+      >
+        <div
+          style={{
+            display: 'flex', alignItems: 'center', gap: '10px',
+            padding: collapsed ? '9px' : '9px 12px',
+            borderRadius: '8px',
+            justifyContent: collapsed ? 'center' : 'flex-start',
+            background: active ? NAV_ACTIVE_BG : 'transparent',
+            transition: 'background 0.15s',
+            position: 'relative',
+          }}
+          onMouseEnter={e => { if (!active) e.currentTarget.style.background = NAV_HOVER_BG; }}
+          onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
+        >
+          <span style={{ color: active ? GOLD : NAV_TEXT, flexShrink: 0, position: 'relative' }}>
+            {item.icon}
+            {collapsed && count > 0 && (
+              <span style={{ position: 'absolute', top: -4, right: -4, width: 8, height: 8, borderRadius: '50%', background: '#EF4444', border: '1.5px solid ' + SIDEBAR_BG }} />
+            )}
+          </span>
+          {!collapsed && (
+            <>
+              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: active ? '#fff' : NAV_TEXT, fontWeight: active ? 600 : 400, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {item.label}
+              </span>
+              {hasBadge && (
+                <span style={{ fontSize: '9px', fontFamily: 'Inter, sans-serif', fontWeight: 700, background: GOLD, color: '#fff', padding: '1px 5px', borderRadius: '4px', letterSpacing: '0.05em' }}>
+                  {item.badge}
+                </span>
+              )}
+              {count > 0 && (
+                <span style={{ fontSize: '11px', fontFamily: 'Inter, sans-serif', fontWeight: 700, background: '#EF4444', color: '#fff', borderRadius: '10px', padding: '1px 6px', minWidth: '18px', textAlign: 'center' }}>
+                  {count > 99 ? '99+' : count}
+                </span>
+              )}
+            </>
+          )}
+          {active && (
+            <div style={{ position: 'absolute', left: 0, top: '6px', bottom: '6px', width: '3px', background: GOLD, borderRadius: '0 2px 2px 0' }} />
+          )}
+        </div>
+      </Link>
+    );
+  }
+
   const sidebarContent = (
     <div style={{
       background: SIDEBAR_BG,
@@ -203,71 +343,27 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
       </div>
 
       {/* Nav */}
-      <nav style={{ flex: 1, padding: '12px 8px', overflowY: 'auto' }}>
-        {getVisibleItems(userRole).map(item => {
-          const active = isActive(item.href);
-          const hasBadge = !!item.badge;
-          const count = item.href === '/admin/talepler'
-            ? newCount
-            : item.href === '/admin/sohbet'
-              ? chatCount
-              : 0;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setMobileOpen(false)}
-              style={{ textDecoration: 'none', display: 'block', marginBottom: '2px' }}
-            >
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                padding: collapsed ? '9px' : '9px 12px',
-                borderRadius: '8px',
-                justifyContent: collapsed ? 'center' : 'flex-start',
-                background: active ? NAV_ACTIVE_BG : 'transparent',
-                transition: 'background 0.15s',
-                position: 'relative',
-              }}
-                onMouseEnter={e => { if (!active) e.currentTarget.style.background = NAV_HOVER_BG; }}
-                onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
-              >
-                {/* Icon + collapsed-mode dot badge */}
-                <span style={{ color: active ? GOLD : NAV_TEXT, flexShrink: 0, position: 'relative' }}>
-                  {item.icon}
-                  {collapsed && count > 0 && (
-                    <span style={{
-                      position: 'absolute', top: -4, right: -4,
-                      width: 8, height: 8, borderRadius: '50%',
-                      background: '#EF4444', border: '1.5px solid ' + SIDEBAR_BG,
-                    }} />
-                  )}
-                </span>
-                {!collapsed && (
-                  <>
-                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: active ? '#fff' : NAV_TEXT, fontWeight: active ? 600 : 400, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {item.label}
-                    </span>
-                    {hasBadge && (
-                      <span style={{ fontSize: '9px', fontFamily: 'Inter, sans-serif', fontWeight: 700, background: GOLD, color: '#fff', padding: '1px 5px', borderRadius: '4px', letterSpacing: '0.05em' }}>
-                        {item.badge}
-                      </span>
-                    )}
-                    {count > 0 && (
-                      <span style={{ fontSize: '11px', fontFamily: 'Inter, sans-serif', fontWeight: 700, background: '#EF4444', color: '#fff', borderRadius: '10px', padding: '1px 6px', minWidth: '18px', textAlign: 'center' }}>
-                        {count > 99 ? '99+' : count}
-                      </span>
-                    )}
-                  </>
-                )}
-                {active && (
-                  <div style={{ position: 'absolute', left: 0, top: '6px', bottom: '6px', width: '3px', background: GOLD, borderRadius: '0 2px 2px 0' }} />
-                )}
-              </div>
-            </Link>
-          );
-        })}
+      <nav style={{ flex: 1, padding: '8px 8px 12px', overflowY: 'auto' }}>
+        {isChatStaff ? (
+          /* CHAT_STAFF: flat list — no groups */
+          CHAT_STAFF_ITEMS.map(item => renderNavItem(item))
+        ) : (
+          <>
+            {/* Dashboard always first, standalone */}
+            {renderNavItem({ href: '/admin/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> })}
+            {/* Grouped sections */}
+            {getNavGroups(userRole, isSuperOrAdmin).map(group => (
+              <NavGroup
+                key={group.key}
+                group={group}
+                collapsed={collapsed}
+                openGroups={openGroups}
+                toggleGroup={toggleGroup}
+                renderNavItem={renderNavItem}
+              />
+            ))}
+          </>
+        )}
       </nav>
 
       {/* User footer */}

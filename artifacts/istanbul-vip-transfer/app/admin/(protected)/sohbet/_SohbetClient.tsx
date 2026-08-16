@@ -571,7 +571,15 @@ export default function SohbetClient() {
                             )}
                           </>
                         ) : (
-                          msg.content
+                          /* AI: show Turkish translation; original below if different */
+                          <>
+                            <span>{msg.contentTr ?? msg.content}</span>
+                            {msg.contentTr && msg.contentTr !== msg.content && (
+                              <div style={{ marginTop: '0.35rem', paddingTop: '0.35rem', borderTop: '1px solid rgba(16,42,67,0.1)', fontSize: '0.75rem', color: '#50677A', fontStyle: 'italic' }}>
+                                Orijinal: {msg.content}
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>

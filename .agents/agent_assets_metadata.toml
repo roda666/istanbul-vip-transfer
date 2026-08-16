@@ -1,0 +1,9 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "2mpERpW3T5McLf9modikb"
+uri = "file://Istanbul-Transfer-Pro-source.zip"
+type = "unspecified"
+title = "Istanbul-Transfer-Pro-source.zip"
+description = "Complete project source — 952 files, 5.1 MB. Excludes node_modules, .next, .git, cache, secrets and env files."

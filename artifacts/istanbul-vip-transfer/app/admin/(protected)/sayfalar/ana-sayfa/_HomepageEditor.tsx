@@ -737,9 +737,13 @@ export default function HomepageEditor({ initialTrRecord, locales }: { initialTr
         @media (max-width: 767px) {
           .hpe-sec-card { padding: 12px !important; }
 
-          /* Locale tabs wrap into multiple rows — no horizontal scroll */
-          .hpe-locale-tabs { flex-wrap: wrap !important; gap: 6px; }
-          .hpe-locale-tabs button { flex-shrink: 0; }
+          /* Locale tabs — 2-column grid on phones so each card stays readable */
+          .hpe-locale-tabs {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 6px !important;
+          }
+          .hpe-locale-tabs button { width: 100%; }
 
           /* Action bar: vertical stack, full-width touch targets */
           .hpe-abar {

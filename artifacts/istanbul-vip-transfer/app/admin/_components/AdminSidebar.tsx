@@ -97,6 +97,16 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
     return () => { active = false; clearInterval(id); };
   }, []);
 
+  // Lock body scroll while mobile drawer is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileOpen]);
+
   async function handleLogout() {
     if (loggingOut) return;
     setLoggingOut(true);
@@ -248,7 +258,7 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
         {sidebarContent}
       </div>
 
-      {/* Mobile hamburger */}
+      {/* Mobile hamburger — 44×44 touch target */}
       <button
         onClick={() => setMobileOpen(true)}
         aria-label="Menüyü aç"
@@ -256,35 +266,148 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
         style={{
           display: 'none',
           position: 'fixed',
-          top: '12px',
-          left: '12px',
+          top: '6px',
+          left: '6px',
           zIndex: 70,
           background: SIDEBAR_BG,
           border: 'none',
           borderRadius: '8px',
           color: '#fff',
           cursor: 'pointer',
-          padding: '8px',
+          minWidth: '44px',
+          minHeight: '44px',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
         <AlignLeft size={20} />
       </button>
 
-      {/* Mobile drawer */}
+      {/* Mobile drawer — safe-area aware, nav-only scrolls */}
       {mobileOpen && (
         <>
+          {/* Backdrop */}
           <div
             onClick={() => setMobileOpen(false)}
             style={{ position: 'fixed', inset: 0, zIndex: 55, background: 'rgba(19,42,68,0.6)', backdropFilter: 'blur(4px)' }}
             aria-hidden="true"
           />
-          <div style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: '260px', zIndex: 60, borderRight: '1px solid rgba(255,255,255,0.08)', boxShadow: '4px 0 20px rgba(19,42,68,0.3)' }}>
-            <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 10 }}>
-              <button onClick={() => setMobileOpen(false)} aria-label="Menüyü kapat" style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '6px', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', padding: '6px', display: 'flex' }}>
-                <X size={18} />
+          {/* Drawer panel */}
+          <div style={{
+            position: 'fixed', top: 0, left: 0,
+            width: 'min(86vw, 340px)',
+            height: '100dvh',
+            zIndex: 60,
+            borderRight: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: '4px 0 20px rgba(19,42,68,0.3)',
+            background: SIDEBAR_BG,
+            display: 'flex',
+            flexDirection: 'column',
+            overflowX: 'hidden',
+          }}>
+            {/* Header with close button — safe top inset */}
+            <div style={{
+              paddingTop: 'max(16px, env(safe-area-inset-top))',
+              paddingBottom: '12px',
+              paddingLeft: '18px',
+              paddingRight: '10px',
+              borderBottom: '1px solid rgba(255,255,255,0.07)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexShrink: 0,
+              gap: '8px',
+            }}>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 700, color: GOLD, margin: 0, letterSpacing: '0.02em' }}>
+                  VIP Transfer
+                </p>
+                <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', color: 'rgba(255,255,255,0.45)', margin: 0, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                  Admin Panel
+                </p>
+              </div>
+              <button
+                onClick={() => setMobileOpen(false)}
+                aria-label="Menüyü kapat"
+                style={{
+                  background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px',
+                  color: 'rgba(255,255,255,0.7)', cursor: 'pointer',
+                  minWidth: '44px', minHeight: '44px', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <X size={20} />
               </button>
             </div>
-            {sidebarContent}
+
+            {/* Nav — only this section scrolls */}
+            <nav style={{ flex: 1, padding: '12px 8px', overflowY: 'auto', overflowX: 'hidden' }}>
+              {NAV_ITEMS.map(item => {
+                const active = isActive(item.href);
+                const count = item.href === '/admin/talepler' ? newCount : 0;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    style={{ textDecoration: 'none', display: 'block', marginBottom: '2px' }}
+                  >
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: '10px',
+                      padding: '11px 12px', borderRadius: '8px',
+                      background: active ? NAV_ACTIVE_BG : 'transparent',
+                      transition: 'background 0.15s', position: 'relative',
+                    }}>
+                      <span style={{ color: active ? GOLD : NAV_TEXT, flexShrink: 0 }}>{item.icon}</span>
+                      <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', color: active ? '#fff' : NAV_TEXT, fontWeight: active ? 600 : 400, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {item.label}
+                      </span>
+                      {item.badge && (
+                        <span style={{ fontSize: '9px', fontFamily: 'Inter, sans-serif', fontWeight: 700, background: GOLD, color: '#fff', padding: '1px 5px', borderRadius: '4px', letterSpacing: '0.05em' }}>
+                          {item.badge}
+                        </span>
+                      )}
+                      {count > 0 && (
+                        <span style={{ fontSize: '11px', fontFamily: 'Inter, sans-serif', fontWeight: 700, background: '#EF4444', color: '#fff', borderRadius: '10px', padding: '1px 6px', minWidth: '18px', textAlign: 'center' }}>
+                          {count > 99 ? '99+' : count}
+                        </span>
+                      )}
+                      {active && (
+                        <div style={{ position: 'absolute', left: 0, top: '6px', bottom: '6px', width: '3px', background: GOLD, borderRadius: '0 2px 2px 0' }} />
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
+            </nav>
+
+            {/* Footer — account + logout, safe bottom inset */}
+            <div style={{
+              borderTop: '1px solid rgba(255,255,255,0.07)',
+              paddingTop: '12px', paddingLeft: '14px', paddingRight: '14px',
+              paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
+              flexShrink: 0,
+            }}>
+              <div style={{ marginBottom: '8px' }}>
+                <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 600, color: '#fff', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userName}</p>
+                <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: 'rgba(255,255,255,0.45)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userEmail}</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                disabled={loggingOut}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  padding: '0 10px',
+                  width: '100%', minHeight: '44px',
+                  borderRadius: '7px', border: 'none',
+                  background: 'rgba(255,255,255,0.06)', cursor: 'pointer',
+                  color: 'rgba(255,255,255,0.6)',
+                }}
+              >
+                <LogOut size={16} />
+                <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>{loggingOut ? 'Çıkılıyor…' : 'Çıkış Yap'}</span>
+              </button>
+            </div>
           </div>
         </>
       )}

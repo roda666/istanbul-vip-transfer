@@ -1,0 +1,34 @@
+Fix the mobile responsiveness of the admin panel, with priority on the Homepage Editor and the mobile navigation drawer.
+
+Observed issues from real iPhone screenshots:
+1. The admin sidebar drawer is clipped at the top: brand text and “Admin Panel” are partially hidden, and the close button overlaps the logo area.
+2. The bottom account/logout area is too close to the mobile browser toolbar and can be obscured.
+3. On the Homepage Editor, the desktop form layout is still too cramped on mobile: text inputs become extremely narrow and hard to edit.
+
+Requirements:
+- Do not change production domain, secrets, passwords, database content, translations, or published content.
+- Keep existing desktop/tablet appearance intact.
+
+Mobile admin drawer:
+- At <= 767px, make the drawer fixed with height: 100dvh and safe-area padding:
+  padding-top: max(16px, env(safe-area-inset-top));
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+- Drawer width must be min(86vw, 340px), with no horizontal overflow.
+- Header must show full readable brand without clipping.
+- Use one clear close button, at least 44×44px, positioned away from the logo.
+- Make only the navigation list scrollable; keep account/logout reachable with safe bottom clearance.
+- Keep backdrop and prevent background scrolling while the drawer is open.
+- Check iPhone widths 320, 375, 390 and 430px.
+
+Homepage Editor:
+- At <= 1023px, use a true one-column editor layout.
+- Section chooser full width/dropdown as needed.
+- Each text field full width; no two-column input rows.
+- Language cards must stay as a readable two-column grid on phones.
+- Action buttons must stack full-width on narrow screens.
+- Form controls minimum 44px height and font-size 16px to prevent iOS zoom.
+- No horizontal overflow at 320, 375, 390, 430 and 768px.
+
+Also verify Dashboard mobile cards and the public booking form are not affected.
+
+Run TypeScript, ESLint and production build. Verify with actual mobile viewport screenshots, not only code inspection. Report exact viewport results and remaining limitations.

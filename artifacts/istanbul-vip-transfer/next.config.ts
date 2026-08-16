@@ -95,32 +95,60 @@ const nextConfig: NextConfig = {
   //   server would lock out the localhost origin in some browsers.
   //
   async headers() {
-    const cspDirectives = [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' data: https://fonts.gstatic.com",
-      // img-src: 'self' covers /_next/image proxied GCS images;
-      // blob: covers canvas/object-URL previews;
-      // https: covers arbitrary admin-entered blog hero image URLs.
-      "img-src 'self' data: blob: https:",
-      // connect-src: all API calls are same-origin (chatbot, admin, vitals).
-      "connect-src 'self'",
-      "media-src 'self'",
-      "object-src 'none'",
-      "frame-src 'none'",
-      // Prevents this page from being embedded in any iframe (clickjacking guard).
-      "frame-ancestors 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-    ].join('; ');
+    // ── In dev (Replit preview), use a relaxed CSP so the preview iframe works.
+    // In production, apply a strict policy.
+    //
+    // Why the relaxation is needed in dev:
+    //   • Replit embeds the app in an iframe on *.replit.dev / *.repl.co —
+    //     frame-ancestors 'none' and X-Frame-Options: DENY block this entirely.
+    //   • Replit's bridge script (replit-bridge.js) uses eval() — 'unsafe-eval'
+    //     is required so it doesn't throw an unhandled CSP error on load.
+    //   • Next.js HMR uses WebSocket — wss: must be in connect-src in dev.
+    const cspDirectives = isDev
+      ? [
+          "default-src 'self'",
+          // unsafe-eval: Next.js HMR + Replit bridge script need it in dev.
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+          "font-src 'self' data: https://fonts.gstatic.com",
+          "img-src 'self' data: blob: https:",
+          // wss: needed for Next.js HMR websocket connection.
+          "connect-src 'self' wss:",
+          "media-src 'self'",
+          "object-src 'none'",
+          "frame-src 'self'",
+          // Allow Replit preview iframe to embed this page.
+          "frame-ancestors 'self' https://*.replit.dev https://*.repl.co https://*.replit.co",
+          "base-uri 'self'",
+          "form-action 'self'",
+        ].join('; ')
+      : [
+          "default-src 'self'",
+          "script-src 'self' 'unsafe-inline'",
+          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+          "font-src 'self' data: https://fonts.gstatic.com",
+          // img-src: 'self' covers /_next/image proxied GCS images;
+          // blob: covers canvas/object-URL previews;
+          // https: covers arbitrary admin-entered blog hero image URLs.
+          "img-src 'self' data: blob: https:",
+          // connect-src: all API calls are same-origin (chatbot, admin, vitals).
+          "connect-src 'self'",
+          "media-src 'self'",
+          "object-src 'none'",
+          "frame-src 'none'",
+          // Prevents this page from being embedded in any iframe (clickjacking guard).
+          "frame-ancestors 'none'",
+          "base-uri 'self'",
+          "form-action 'self'",
+        ].join('; ');
 
     const securityHeaders = [
       // Blocks MIME-type sniffing — protects against content-type confusion attacks.
       { key: 'X-Content-Type-Options', value: 'nosniff' },
       // Prevents page from being framed (fallback for older browsers that don't
       // support frame-ancestors; modern browsers use the CSP directive above).
-      { key: 'X-Frame-Options', value: 'DENY' },
+      // In dev we omit this so the Replit preview iframe can load the page.
+      ...(isDev ? [] : [{ key: 'X-Frame-Options', value: 'DENY' }]),
       // Controls how much referrer info is sent with requests.
       { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
       // Restricts access to browser features not used by this site.

@@ -1,27 +1,29 @@
 /**
  * GET /admin/api/chatbot/sessions
- * Lists recent chatbot sessions for the admin panel (last 7 days, newest first).
+ * Lists chatbot sessions for the admin panel (last 7 days, newest first).
  * Protected: only callable from authenticated admin context.
+ *
+ * Query params:
+ *   ?archived=true   → return only archived (resolvedAt IS NOT NULL) sessions
+ *   (default)        → return only active   (resolvedAt IS NULL)     sessions
  */
 import { db } from '@/db';
 import { chatbotSessions } from '@/db/schema';
-import { desc, gte, sql } from 'drizzle-orm';
+import { desc, gte, isNull, isNotNull, and, sql } from 'drizzle-orm';
 import { getSession } from '@/lib/auth/session';
+import { NextRequest } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const session = await getSession();
   if (!session.isLoggedIn) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const archived = request.nextUrl.searchParams.get('archived') === 'true';
+  const since    = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  // Get sessions with message count and last message preview.
-  // Use unquoted table-qualified column references in subqueries so PostgreSQL
-  // resolves them against the outer chatbot_sessions row (TEXT id), not the
-  // inner chatbot_messages.id column (UUID) which would cause a type error.
   const sessions = await db
     .select({
       id:               chatbotSessions.id,
@@ -29,6 +31,7 @@ export async function GET() {
       adminActiveUntil: chatbotSessions.adminActiveUntil,
       humanTakenOver:   chatbotSessions.humanTakenOver,
       pendingAiAfter:   chatbotSessions.pendingAiAfter,
+      resolvedAt:       chatbotSessions.resolvedAt,
       createdAt:        chatbotSessions.createdAt,
       lastMessageAt:    chatbotSessions.lastMessageAt,
       messageCount: sql<number>`(
@@ -46,7 +49,12 @@ export async function GET() {
       )`,
     })
     .from(chatbotSessions)
-    .where(gte(chatbotSessions.lastMessageAt, since))
+    .where(
+      and(
+        gte(chatbotSessions.lastMessageAt, since),
+        archived ? isNotNull(chatbotSessions.resolvedAt) : isNull(chatbotSessions.resolvedAt),
+      ),
+    )
     .orderBy(desc(chatbotSessions.lastMessageAt));
 
   return Response.json({ sessions });

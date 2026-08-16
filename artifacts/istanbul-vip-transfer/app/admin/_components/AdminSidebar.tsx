@@ -80,7 +80,8 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
   const [collapsed, setCollapsed]   = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [newCount, setNewCount]     = useState(0);
+  const [newCount,  setNewCount]  = useState(0);
+  const [chatCount, setChatCount] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -94,6 +95,22 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
     }
     fetchCount();
     const id = setInterval(fetchCount, 60_000);
+    return () => { active = false; clearInterval(id); };
+  }, []);
+
+  // Unread chat badge — polls every 30 s; returns 0 on auth failure (safe)
+  useEffect(() => {
+    let active = true;
+    async function fetchChatCount() {
+      try {
+        const res = await fetch('/admin/api/chatbot/unread-count');
+        if (!res.ok) return;
+        const data = await res.json() as { count: number };
+        if (active) setChatCount(data.count ?? 0);
+      } catch { /* ignore */ }
+    }
+    fetchChatCount();
+    const id = setInterval(fetchChatCount, 30_000);
     return () => { active = false; clearInterval(id); };
   }, []);
 
@@ -164,7 +181,11 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
         {NAV_ITEMS.map(item => {
           const active = isActive(item.href);
           const hasBadge = !!item.badge;
-          const count = item.href === '/admin/talepler' ? newCount : 0;
+          const count = item.href === '/admin/talepler'
+            ? newCount
+            : item.href === '/admin/sohbet'
+              ? chatCount
+              : 0;
           return (
             <Link
               key={item.href}
@@ -186,7 +207,17 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
                 onMouseEnter={e => { if (!active) e.currentTarget.style.background = NAV_HOVER_BG; }}
                 onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
               >
-                <span style={{ color: active ? GOLD : NAV_TEXT, flexShrink: 0 }}>{item.icon}</span>
+                {/* Icon + collapsed-mode dot badge */}
+                <span style={{ color: active ? GOLD : NAV_TEXT, flexShrink: 0, position: 'relative' }}>
+                  {item.icon}
+                  {collapsed && count > 0 && (
+                    <span style={{
+                      position: 'absolute', top: -4, right: -4,
+                      width: 8, height: 8, borderRadius: '50%',
+                      background: '#EF4444', border: '1.5px solid ' + SIDEBAR_BG,
+                    }} />
+                  )}
+                </span>
                 {!collapsed && (
                   <>
                     <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: active ? '#fff' : NAV_TEXT, fontWeight: active ? 600 : 400, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -371,7 +402,11 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
             }}>
               {NAV_ITEMS.map(item => {
                 const active = isActive(item.href);
-                const count = item.href === '/admin/talepler' ? newCount : 0;
+                const count = item.href === '/admin/talepler'
+                  ? newCount
+                  : item.href === '/admin/sohbet'
+                    ? chatCount
+                    : 0;
                 return (
                   <Link
                     key={item.href}

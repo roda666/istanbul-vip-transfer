@@ -633,6 +633,8 @@ export const chatbotSessions = pgTable('chatbot_sessions', {
    * If timer elapses without a reply → AI resumes and clears this itself.
    */
   pendingAiAfter:   timestamp('pending_ai_after', { withTimezone: true }),
+  /** When set, this session is archived/resolved and hidden from the active list. */
+  resolvedAt:       timestamp('resolved_at',      { withTimezone: true }),
   createdAt:        timestamp('created_at',      { withTimezone: true }).defaultNow().notNull(),
   lastMessageAt:    timestamp('last_message_at', { withTimezone: true }).defaultNow().notNull(),
 });

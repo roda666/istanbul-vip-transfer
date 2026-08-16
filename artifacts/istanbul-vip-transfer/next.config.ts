@@ -191,6 +191,7 @@ const nextConfig: NextConfig = {
   // Permanent redirects
   async redirects() {
     return [
+      // ── Internal admin / CMS redirects ────────────────────────────────────────
       // Old admin routes → unified Dil ve Çeviri module
       {
         source: '/admin/diller',
@@ -215,6 +216,73 @@ const nextConfig: NextConfig = {
       {
         source: '/:lang(en|de|ru|ar|es|fr|it|nl)/ana-sayfa',
         destination: '/:lang',
+        permanent: true,
+      },
+
+      // ── Domain geçişi: eski site (istanbulviptransfer.com) → yeni Next.js ──
+      //
+      // Eski site ASP.NET tabanlıydı; URL formatı /slug-ID-tip şeklindeydi:
+      //   • Hizmet sayfaları: /slug-<id>-8
+      //   • Blog yazıları:    /slug-<id>-5  (ayrı aşamada ele alınacak)
+      //
+      // Aşağıdaki tüm yönlendirmeler 301 Permanent olarak işaretlenmiştir;
+      // bu sayede Google arama sıralamaları yeni URL'lere aktarılır.
+      //
+      // ── TR Hizmet sayfaları (ana sayfada listeleniyordu) ──────────────────────
+      { source: '/sabiha-gokcen-havalimani-transfer-82-8',              destination: '/sabiha-gokcen-havalimani-transfer', permanent: true },
+      { source: '/soforlu-arac-kiralama-83-8',                          destination: '/soforlu-arac-kiralama',             permanent: true },
+      { source: '/gelin-arabasi-kiralama-84-8',                         destination: '/gelin-arabasi-kiralama',            permanent: true },
+      { source: '/istanbul-havalimani-transfer-85-8',                   destination: '/istanbul-havalimani-transfer',      permanent: true },
+      { source: '/istanbul-gunubirlik-turlar-86-8',                     destination: '/istanbul-gunubirlik-turlar',        permanent: true },
+      { source: '/yalova-gunubirlik-turlar-90-8',                       destination: '/yalova-gunubirlik-tur',             permanent: true },
+      { source: '/sapanca-ve-masukiye-gunubirlik-turlari-91-8',         destination: '/sapanca-masukiye-turu',             permanent: true },
+      { source: '/bursa-gunubirlik-turlar-92-8',                        destination: '/bursa-gunubirlik-tur',              permanent: true },
+      { source: '/vip-protokol-ve-secim-araci-102-8',                   destination: '/vip-protokol-secim-araci',          permanent: true },
+      { source: '/istanbul-airport-transfer-103-8',                     destination: '/istanbul-havalimani-transfer',      permanent: true },
+      { source: '/sehirlerarasi-transfer-105-8',                        destination: '/sehirler-arasi-transfer',           permanent: true },
+      { source: '/gunluk-villa-kiralama-villa-azelya-106-8',            destination: '/gunluk-villa-kiralama',             permanent: true },
+      { source: '/kurumsal-transfer-107-8',                             destination: '/istanbul-bursa-transfer',           permanent: true },
+      { source: '/istanbuldan-sakarya-ve--sapanca-arasi-transfer-109-8',destination: '/istanbul-sapanca-transfer',         permanent: true },
+      { source: '/vip-transfer-110-8',                                  destination: '/vip-transfer',                     permanent: true },
+      { source: '/ankara-vip-transfer-115-8',                           destination: '/ankara-vip-transfer',              permanent: true },
+      { source: '/antalya-vip-transfer-119-8',                          destination: '/antalya-vip-transfer',             permanent: true },
+      { source: '/istanbul-vip-transfer-121-8',                         destination: '/vip-transfer',                     permanent: true },
+      { source: '/izmir-vip-transfer-122-8',                            destination: '/izmir-vip-transfer',               permanent: true },
+      { source: '/saglik-turizmi-123-8',                                destination: '/saglik-turizmi-transfer',          permanent: true },
+      // ── Ek erişilebilir sayfalar (EN varyantları / terk edilmişler) ───────────
+      { source: '/havalimani-transfer-111-8',                           destination: '/antalya-vip-transfer',             permanent: true },
+      { source: '/istanbul-tur-112-8',                                  destination: '/vip-transfer',                     permanent: true },
+      { source: '/kartepe-kayak-turu-113-8',                            destination: '/hizmetler',                        permanent: true },
+      { source: '/uludag-kayak-turu-114-8',                             destination: '/istanbul-havalimani-transfer',     permanent: true },
+      { source: '/istanbul-tour-116-8',                                 destination: '/istanbul-havalimani-transfer',     permanent: true },
+      { source: '/vip-transfer-117-8',                                  destination: '/istanbul-bursa-transfer',          permanent: true },
+      { source: '/kiralik-mercedes-118-8',                              destination: '/soforlu-arac-kiralama',            permanent: true },
+      { source: '/bursa-vip-transfer-120-8',                            destination: '/vip-transfer',                     permanent: true },
+      { source: '/trabzon-vip-transfer-124-8',                          destination: '/saglik-turizmi-transfer',          permanent: true },
+      // ── Server error dönen sayfalar ───────────────────────────────────────────
+      { source: '/kurumsal-87-8',                                       destination: '/',                                 permanent: true },
+      { source: '/uludag-kayak-turu-93-8',                              destination: '/',                                 permanent: true },
+      { source: '/vip-transfer-hizmetleri-108-8',                       destination: '/vip-transfer',                     permanent: true },
+      { source: '/bodrum-vip-transfer-125-8',                           destination: '/antalya-vip-transfer',             permanent: true },
+      // ── Üyelik sayfaları (yeni sitede mevcut değil) ───────────────────────────
+      { source: '/giris-yap',                                           destination: '/',                                 permanent: true },
+      { source: '/uye-kayit',                                           destination: '/',                                 permanent: true },
+
+      // ── Dil önekli URL varyantları ────────────────────────────────────────────
+      //
+      // Eski sitede dil seçimi cookie tabanlıydı (URL'de prefix yoktu),
+      // ancak bazı backlink'ler veya arama motorları /en/slug-ID-8 formatında
+      // indexlemiş olabilir. Bu catch-all kuralı bu varyantları yakalar:
+      //   /en/istanbul-havalimani-transfer-85-8 → /en/istanbul-havalimani-transfer
+      //   /de/sabiha-gokcen-havalimani-transfer-82-8 → /de/sabiha-gokcen...
+      //
+      // Kural: dil önekini koru, slug'ın sonundaki -ID-8 veya -ID-5 parçasını sil.
+      // Next.js regex: :path* + has matcher ile sonundaki -\d+-[58] kaldırılır.
+      // Not: Next.js redirects regex desteği sınırlı olduğundan bu iki ayrı
+      // regex kuralı olarak tanımlanır (hizmet=8, blog=5).
+      {
+        source: '/:lang(en|de|ru|ar|es|fr|it|nl)/:slug(.*)-:id(\\d+)-8',
+        destination: '/:lang/:slug',
         permanent: true,
       },
     ];

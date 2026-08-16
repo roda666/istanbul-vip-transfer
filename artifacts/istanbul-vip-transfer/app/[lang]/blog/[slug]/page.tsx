@@ -13,6 +13,7 @@ import { buildBlogAlternates } from '@/lib/blog-hreflang';
 import { getPublishedBlogTranslation } from '@/lib/blog-cms';
 import { SITE } from '@/lib/site-config';
 import { getContactSettings } from '@/lib/site-settings-server';
+import CollapsibleBookingForm from '@/components/CollapsibleBookingForm';
 
 interface Props {
   params: Promise<{ lang: string; slug: string }>;
@@ -196,6 +197,8 @@ export default async function TranslatedBlogPost({ params }: Props) {
           </div>
         )}
       </div>
+
+      <CollapsibleBookingForm />
 
       <script type="application/ld+json" dangerouslySetInnerHTML={{
         __html: JSON.stringify({

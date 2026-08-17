@@ -29,6 +29,10 @@ const es: Dictionary = {
       tagline: 'El servicio de traslados VIP más fiable de Istanbul. Vehículos Mercedes de lujo y conductores profesionales, 24/7.',
       locationCity: 'Istanbul, Turquía',
       locationServing: 'Servicio en todo Istanbul',
+      legalTitle: 'Legal',
+      cookieLink: 'Política de Cookies',
+      termsLink: 'Términos de Uso',
+      privacyLink: 'Política de Privacidad',
     },
     common: {
       loading: 'Cargando...',
@@ -44,6 +48,9 @@ const es: Dictionary = {
       save: 'Guardar',
       cancel: 'Cancelar',
       whatsappAria: 'Contactar por WhatsApp',
+      cookieBannerText: 'Este sitio utiliza cookies esenciales para mejorar su experiencia.',
+      cookieBannerAccept: 'Aceptar',
+      cookieBannerDetails: 'Detalles',
     },
     booking: {
       sectionLabel: 'Reserva rápida',

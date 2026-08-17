@@ -29,6 +29,10 @@ const nl: Dictionary = {
       tagline: "De meest betrouwbare VIP-transferdienst van Istanbul. Luxe Mercedes-voertuigen, professionele chauffeurs, 24/7.",
       locationCity: 'Istanbul, Turkije',
       locationServing: 'Actief in heel Istanbul',
+      legalTitle: 'Juridisch',
+      cookieLink: 'Cookiebeleid',
+      termsLink: 'Gebruiksvoorwaarden',
+      privacyLink: 'Privacybeleid',
     },
     common: {
       loading: 'Laden...',
@@ -44,6 +48,9 @@ const nl: Dictionary = {
       save: 'Opslaan',
       cancel: 'Annuleren',
       whatsappAria: 'Contact opnemen via WhatsApp',
+      cookieBannerText: 'Deze site gebruikt essentiële cookies om uw ervaring te verbeteren.',
+      cookieBannerAccept: 'Accepteren',
+      cookieBannerDetails: 'Details',
     },
     booking: {
       sectionLabel: 'Snel boeken',

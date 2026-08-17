@@ -197,8 +197,29 @@ export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
           </div>
         </div>
 
+        {/* Legal links */}
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pb-4">
+          {([
+            { href: p('/yasal/kvkk-aydinlatma-metni'), label: dict.booking.kvkkLink },
+            { href: p('/yasal/cerez-politikasi'),       label: dict.footer.cookieLink },
+            { href: p('/yasal/kullanim-kosullari'),     label: dict.footer.termsLink },
+            { href: p('/yasal/gizlilik-politikasi'),    label: dict.footer.privacyLink },
+          ] as { href: string; label: string }[]).map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="text-xs transition-colors duration-300 focus:outline-none focus-visible:underline"
+              style={{ color: 'rgba(255,255,255,0.42)', fontFamily: 'Inter, sans-serif' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,0.75)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,0.42)'; }}
+            >
+              {link.label}
+            </Link>
+          ))}
+        </div>
+
         <motion.div
-          className="mt-14 pt-7 flex flex-col md:flex-row items-center justify-between gap-4"
+          className="mt-0 pt-7 flex flex-col md:flex-row items-center justify-between gap-4"
           style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}

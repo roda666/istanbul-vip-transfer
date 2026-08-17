@@ -29,6 +29,10 @@ const it: Dictionary = {
       tagline: 'Il servizio di transfer VIP più affidabile di Istanbul. Veicoli Mercedes di lusso, autisti professionisti, 24/7.',
       locationCity: 'Istanbul, Turchia',
       locationServing: 'Operativi in tutta Istanbul',
+      legalTitle: 'Note legali',
+      cookieLink: 'Informativa sui cookie',
+      termsLink: 'Termini di utilizzo',
+      privacyLink: 'Informativa sulla privacy',
     },
     common: {
       loading: 'Caricamento...',
@@ -44,6 +48,9 @@ const it: Dictionary = {
       save: 'Salva',
       cancel: 'Annulla',
       whatsappAria: 'Contatta tramite WhatsApp',
+      cookieBannerText: 'Questo sito utilizza cookie essenziali per migliorare la tua esperienza.',
+      cookieBannerAccept: 'Accetta',
+      cookieBannerDetails: 'Dettagli',
     },
     booking: {
       sectionLabel: 'Prenotazione rapida',

@@ -29,6 +29,10 @@ const tr: Dictionary = {
     tagline: "İstanbul'un en güvenilir VIP transfer hizmeti. Lüks Mercedes araçlar, profesyonel sürücüler, 7/24 hizmet.",
     locationCity: 'İstanbul, Türkiye',
     locationServing: "Tüm İstanbul'a hizmet",
+    legalTitle: 'Yasal',
+    cookieLink: 'Çerez Politikası',
+    termsLink: 'Kullanım Koşulları',
+    privacyLink: 'Gizlilik Politikası',
   },
   common: {
     loading: 'Yükleniyor...',
@@ -44,6 +48,9 @@ const tr: Dictionary = {
     save: 'Kaydet',
     cancel: 'İptal',
     whatsappAria: 'WhatsApp ile iletişime geç',
+    cookieBannerText: 'Bu site deneyiminizi geliştirmek için zorunlu çerezler kullanmaktadır.',
+    cookieBannerAccept: 'Kabul Et',
+    cookieBannerDetails: 'Detaylar',
   },
   booking: {
     sectionLabel: 'Hızlı Rezervasyon',

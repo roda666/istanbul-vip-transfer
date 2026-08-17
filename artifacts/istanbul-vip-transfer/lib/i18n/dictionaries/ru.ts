@@ -29,6 +29,10 @@ const ru: Dictionary = {
     tagline: 'Самый надёжный VIP-трансфер в Стамбуле. Роскошные Mercedes, профессиональные водители, 24/7.',
     locationCity: 'Стамбул, Турция',
     locationServing: 'Обслуживаем весь Стамбул',
+    legalTitle: 'Правовая информация',
+    cookieLink: 'Политика Cookies',
+    termsLink: 'Условия использования',
+    privacyLink: 'Политика конфиденциальности',
   },
   common: {
     loading: 'Загрузка...',
@@ -44,6 +48,9 @@ const ru: Dictionary = {
     save: 'Сохранить',
     cancel: 'Отмена',
     whatsappAria: 'Связаться через WhatsApp',
+    cookieBannerText: 'Этот сайт использует необходимые файлы cookie для улучшения вашего опыта.',
+    cookieBannerAccept: 'Принять',
+    cookieBannerDetails: 'Подробнее',
   },
   booking: {
     sectionLabel: 'Быстрое бронирование',

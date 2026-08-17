@@ -29,6 +29,10 @@ const ar: Dictionary = {
     tagline: 'أكثر خدمات نقل VIP موثوقية في إسطنبول. سيارات مرسيدس فاخرة، سائقون محترفون، 24/7.',
     locationCity: 'إسطنبول، تركيا',
     locationServing: 'نخدم كل إسطنبول',
+    legalTitle: 'معلومات قانونية',
+    cookieLink: 'سياسة الكوكيز',
+    termsLink: 'شروط الاستخدام',
+    privacyLink: 'سياسة الخصوصية',
   },
   common: {
     loading: 'جارٍ التحميل...',
@@ -44,6 +48,9 @@ const ar: Dictionary = {
     save: 'حفظ',
     cancel: 'إلغاء',
     whatsappAria: 'التواصل عبر واتساب',
+    cookieBannerText: 'يستخدم هذا الموقع ملفات تعريف الارتباط الضرورية لتحسين تجربتك.',
+    cookieBannerAccept: 'قبول',
+    cookieBannerDetails: 'التفاصيل',
   },
   booking: {
     sectionLabel: 'حجز سريع',

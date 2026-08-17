@@ -32,6 +32,10 @@ export interface Dictionary {
     tagline: string;
     locationCity: string;
     locationServing: string;
+    legalTitle: string;
+    cookieLink: string;
+    termsLink: string;
+    privacyLink: string;
   };
   common: {
     loading: string;
@@ -47,6 +51,9 @@ export interface Dictionary {
     save: string;
     cancel: string;
     whatsappAria: string;
+    cookieBannerText: string;
+    cookieBannerAccept: string;
+    cookieBannerDetails: string;
   };
   booking: {
     sectionLabel: string;

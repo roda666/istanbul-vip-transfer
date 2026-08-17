@@ -13,6 +13,7 @@ import Footer from './Footer';
 import WhatsAppFloat from './WhatsAppFloat';
 import ChatWidget from './ChatWidget';
 import LangProvider from './LangProvider';
+import CookieConsentBanner from './CookieConsentBanner';
 
 export default function PublicLayoutWrapper({
   children,
@@ -37,6 +38,7 @@ export default function PublicLayoutWrapper({
       <Footer hiddenNavSlugs={hiddenNavSlugs} />
       <WhatsAppFloat />
       <ChatWidget />
+      <CookieConsentBanner />
     </LangProvider>
   );
 }

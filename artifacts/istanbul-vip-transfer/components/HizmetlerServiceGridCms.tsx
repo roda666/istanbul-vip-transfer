@@ -1,52 +1,20 @@
 /**
  * HizmetlerServiceGridCms — CMS-backed server component.
  *
- * Reads published service pages from the DB for the requested locale.
- * - TR: reads content table directly (always PUBLISHED source).
- * - non-TR: inner-joins content_translations (status = 'PUBLISHED' only).
- *           Services without a published translation are hidden.
- * - Falls back to an empty-state message on DB error (does NOT fall back to
- *   static nav-config data to avoid showing stale/incorrect service names).
- * - Preserves the existing visual design (group cards with link lists).
- * - Handles Arabic RTL automatically.
+ * Reads published service pages AND active categories from the DB.
+ * Categories are DB-driven (sorted by sort_order, localised) so admin
+ * changes propagate without a code deploy.
+ *
+ * Props:
+ *   locale     — UI locale (tr, en, de, …)
+ *   categories — pre-fetched from parent to avoid double-query (optional;
+ *                falls back to fetching if omitted)
  */
 import 'server-only';
 import Link from 'next/link';
 import { getPublishedServiceList } from '@/lib/service-page-cms-list';
+import { getServiceCategories, type ServiceCategoryItem } from '@/lib/service-category-server';
 import { RTL_LOCALES } from '@/lib/i18n/locale-registry';
-
-// ── Category group labels (all 9 locales) ────────────────────────────────────
-
-const CAT_LABELS: Record<string, Record<string, string>> = {
-  airport: {
-    tr: 'Havalimanı Transferleri',   en: 'Airport Transfers',            de: 'Flughafentransfers',
-    ru: 'Трансферы в аэропорт',     ar: 'نقل المطار',                   fr: 'Transferts Aéroport',
-    es: 'Traslados al Aeropuerto',   it: 'Transfer Aeroporto',           nl: 'Luchthaventransfers',
-  },
-  city_vip: {
-    tr: 'VIP & Şehir İçi',          en: 'VIP & City Services',          de: 'VIP & Stadtdienste',
-    ru: 'VIP и городские услуги',    ar: 'خدمات VIP والمدينة',           fr: 'VIP & Services Urbains',
-    es: 'VIP & Servicios Urbanos',   it: 'VIP & Servizi Urbani',         nl: 'VIP & Stadsdiensten',
-  },
-  intercity: {
-    tr: 'Şehirlerarası Transfer',    en: 'Intercity Transfer',           de: 'Intercity-Transfer',
-    ru: 'Межгородской трансфер',     ar: 'نقل بين المدن',               fr: 'Transfert Interurbain',
-    es: 'Traslado Interurbano',      it: 'Transfer Interurbano',         nl: 'Intercitytransfer',
-  },
-  tour: {
-    tr: 'Günübirlik Turlar',         en: 'Day Tours',                    de: 'Tagestouren',
-    ru: 'Однодневные экскурсии',     ar: 'جولات ليوم واحد',             fr: "Excursions d'une Journée",
-    es: 'Excursiones de un Día',     it: 'Tour di un Giorno',            nl: 'Dagtochten',
-  },
-  special: {
-    tr: 'Özel Hizmetler',            en: 'Special Services',             de: 'Sonderdienste',
-    ru: 'Особые услуги',             ar: 'الخدمات الخاصة',              fr: 'Services Spéciaux',
-    es: 'Servicios Especiales',      it: 'Servizi Speciali',             nl: 'Speciale Diensten',
-  },
-};
-
-/** Canonical category order in the grid. */
-const CAT_ORDER = ['airport', 'city_vip', 'intercity', 'tour', 'special'];
 
 /** Empty-state strings in each locale. */
 const EMPTY_MSG: Record<string, string> = {
@@ -61,37 +29,37 @@ const EMPTY_MSG: Record<string, string> = {
   nl: 'Er zijn nog geen diensten in het Nederlands gepubliceerd.',
 };
 
-function getCatLabel(cat: string, locale: string): string {
-  return CAT_LABELS[cat]?.[locale] ?? CAT_LABELS[cat]?.['en'] ?? cat;
-}
-
 function serviceHref(slug: string, locale: string): string {
   return locale === 'tr' ? `/${slug}` : `/${locale}/${slug}`;
 }
 
 interface Props {
-  locale: string;
+  locale:     string;
+  /** Pre-fetched category list from parent page. Falls back to DB if omitted. */
+  categories?: ServiceCategoryItem[];
 }
 
-export default async function HizmetlerServiceGridCms({ locale }: Props) {
+export default async function HizmetlerServiceGridCms({ locale, categories: catsProp }: Props) {
   const isRtl    = RTL_LOCALES.includes(locale);
-  const services = await getPublishedServiceList(locale);
+
+  // Fetch in parallel
+  const [services, categories] = await Promise.all([
+    getPublishedServiceList(locale),
+    catsProp ? Promise.resolve(catsProp) : getServiceCategories(locale),
+  ]);
 
   if (services.length === 0) {
     return (
       <p style={{
-        color: '#777',
-        fontFamily: 'Inter, sans-serif',
-        fontSize: '15px',
-        textAlign: isRtl ? 'right' : 'left',
-        padding: '20px 0',
+        color: '#777', fontFamily: 'Inter, sans-serif', fontSize: '15px',
+        textAlign: isRtl ? 'right' : 'left', padding: '20px 0',
       }}>
         {EMPTY_MSG[locale] ?? EMPTY_MSG.en}
       </p>
     );
   }
 
-  // Group by category, preserving CAT_ORDER for canonical groups
+  // Group services by category slug
   const grouped = new Map<string, typeof services>();
   for (const svc of services) {
     const cat = svc.category ?? '__other__';
@@ -99,10 +67,14 @@ export default async function HizmetlerServiceGridCms({ locale }: Props) {
     grouped.get(cat)!.push(svc);
   }
 
-  // Sort groups: canonical order first, then alphabetical for unknowns
+  // Build ordered group list: DB order first, then unknown slugs alphabetically
+  const catOrder  = categories.map(c => c.slug);
+  const catLabelMap = Object.fromEntries(categories.map(c => [c.slug, c.label]));
+
   const sortedGroups = [
-    ...CAT_ORDER.filter((c) => grouped.has(c)),
-    ...[...grouped.keys()].filter((c) => !CAT_ORDER.includes(c)).sort(),
+    ...catOrder.filter(c => grouped.has(c)),
+    ...[...grouped.keys()].filter(c => !catOrder.includes(c) && c !== '__other__').sort(),
+    ...( grouped.has('__other__') ? ['__other__'] : []),
   ];
 
   return (
@@ -114,7 +86,7 @@ export default async function HizmetlerServiceGridCms({ locale }: Props) {
         const items = grouped.get(cat)!;
         const groupLabel = cat === '__other__'
           ? (locale === 'tr' ? 'Diğer Hizmetler' : 'Other Services')
-          : getCatLabel(cat, locale);
+          : (catLabelMap[cat] ?? cat);
 
         return (
           <div
@@ -136,8 +108,7 @@ export default async function HizmetlerServiceGridCms({ locale }: Props) {
                     href={serviceHref(svc.slug, locale)}
                     className="flex items-center gap-3 group transition-colors duration-200 hover:text-[#C9A84C]"
                     style={{
-                      color: '#AAA',
-                      fontFamily: 'Inter, sans-serif',
+                      color: '#AAA', fontFamily: 'Inter, sans-serif',
                       flexDirection: isRtl ? 'row-reverse' : 'row',
                     }}
                   >

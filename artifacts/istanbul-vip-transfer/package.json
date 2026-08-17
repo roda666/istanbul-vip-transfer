@@ -13,7 +13,7 @@
     "generate:page-meta": "tsx scripts/generate-page-meta.ts",
     "prebuild": "tsx scripts/check-page-meta.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate && tsx db/seed-blog-posts.ts && tsx db/seed-new-service-translations-static.ts && tsx db/seed-transfer-routes.ts",
+    "db:migrate": "drizzle-kit migrate && tsx db/seed-blog-posts.ts && tsx db/seed-new-service-translations-static.ts && tsx db/seed-transfer-routes.ts && tsx db/seed-service-categories.ts",
     "db:push": "drizzle-kit push",
     "generate:og-card": "bash scripts/generate-og-card.sh",
     "create-admin": "tsx scripts/create-admin.ts",

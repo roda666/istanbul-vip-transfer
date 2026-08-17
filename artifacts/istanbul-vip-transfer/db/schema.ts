@@ -117,7 +117,7 @@ export const content = pgTable('content', {
   indexable: boolean('indexable').default(true).notNull(),
   isActive: boolean('is_active').default(true).notNull(),
   displayOrder: integer('display_order').default(0).notNull(),
-  /** Service category — e.g. 'airport', 'intercity', 'tour', 'corporate', 'health', 'vip', 'rental' */
+  /** Service category slug — must match a slug in service_categories table (airport|city_vip|intercity|tour|special) */
   category: text('category'),
   /** Whether to show this service on the public homepage service cards grid. */
   showOnHomepage: boolean('show_on_homepage').default(true).notNull(),
@@ -492,6 +492,20 @@ export const contentTranslations = pgTable(
     ),
   ],
 );
+
+// ── Service Categories ────────────────────────────────────────────────────────
+// DB-driven category taxonomy for the /hizmetler service listing.
+// Admin manages categories via /admin/kategoriler.
+export const serviceCategories = pgTable('service_categories', {
+  id:               serial('id').primaryKey(),
+  slug:             text('slug').unique().notNull(),
+  nameTranslations: jsonb('name_translations').notNull().default({}),
+  sortOrder:        integer('sort_order').notNull().default(0),
+  isActive:         boolean('is_active').notNull().default(true),
+  createdAt:        timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:        timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+export type ServiceCategory = typeof serviceCategories.$inferSelect;
 
 // ── Inferred TypeScript types ────────────────────────────────────────────────
 

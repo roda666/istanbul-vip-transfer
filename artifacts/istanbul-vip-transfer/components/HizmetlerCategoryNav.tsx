@@ -2,90 +2,83 @@
 /**
  * HizmetlerCategoryNav — sticky tab navigation for the /hizmetler service list.
  * Smooth-scrolls to each category section anchor. Highlights the active tab
- * based on scroll position. Localised labels for all 9 supported locales.
+ * based on scroll position.
+ *
+ * Category list is now DB-driven: passed as a prop from the parent server
+ * page (which calls getServiceCategories). No hard-coded labels or slugs.
  */
 import { useState, useEffect } from 'react';
+import type { ServiceCategoryItem } from '@/lib/service-category-server';
 
-const CATEGORIES = ['airport', 'city_vip', 'intercity', 'tour', 'special'] as const;
+interface Props {
+  locale:     string;
+  categories: ServiceCategoryItem[];
+}
 
-const CAT_LABELS: Record<string, Record<string, string>> = {
-  airport:  { tr: 'Havalimanı', en: 'Airport', de: 'Flughafen', ru: 'Аэропорт', ar: 'مطار', fr: 'Aéroport', es: 'Aeropuerto', it: 'Aeroporto', nl: 'Luchthaven' },
-  city_vip: { tr: 'VIP & Şehir İçi', en: 'VIP & City', de: 'VIP & Stadt', ru: 'VIP & Город', ar: 'VIP والمدينة', fr: 'VIP & Ville', es: 'VIP & Ciudad', it: 'VIP & Città', nl: 'VIP & Stad' },
-  intercity:{ tr: 'Şehirlerarası', en: 'Intercity', de: 'Intercity', ru: 'Межгород', ar: 'بين المدن', fr: 'Interurbain', es: 'Interurbano', it: 'Intercity', nl: 'Intercity' },
-  tour:     { tr: 'Günübirlik Turlar', en: 'Day Tours', de: 'Tagestouren', ru: 'Экскурсии', ar: 'جولات يومية', fr: 'Excursions', es: 'Excursiones', it: 'Tour', nl: 'Dagtochten' },
-  special:  { tr: 'Özel Hizmetler', en: 'Special', de: 'Speziell', ru: 'Особые', ar: 'خاص', fr: 'Spécial', es: 'Especial', it: 'Speciale', nl: 'Speciaal' },
-};
-
-interface Props { locale: string }
-
-export default function HizmetlerCategoryNav({ locale }: Props) {
-  const [active, setActive] = useState<string>('airport');
+export default function HizmetlerCategoryNav({ locale, categories }: Props) {
+  const [active, setActive] = useState<string>(categories[0]?.slug ?? '');
+  const isRtl = locale === 'ar';
 
   // Track which section is in view
   useEffect(() => {
+    if (categories.length === 0) return;
     const observers: IntersectionObserver[] = [];
-    CATEGORIES.forEach(cat => {
-      const el = document.getElementById(`hiz-cat-${cat}`);
+    categories.forEach(cat => {
+      const el = document.getElementById(`hiz-cat-${cat.slug}`);
       if (!el) return;
       const obs = new IntersectionObserver(
-        ([entry]) => { if (entry.isIntersecting) setActive(cat); },
+        ([entry]) => { if (entry.isIntersecting) setActive(cat.slug); },
         { rootMargin: '-40% 0px -50% 0px' },
       );
       obs.observe(el);
       observers.push(obs);
     });
     return () => observers.forEach(o => o.disconnect());
-  }, []);
+  }, [categories]);
 
-  function scrollTo(cat: string) {
-    const el = document.getElementById(`hiz-cat-${cat}`);
+  function scrollTo(slug: string) {
+    const el = document.getElementById(`hiz-cat-${slug}`);
     if (!el) return;
     const y = el.getBoundingClientRect().top + window.scrollY - 80;
     window.scrollTo({ top: y, behavior: 'smooth' });
-    setActive(cat);
+    setActive(slug);
   }
 
   const GOLD = '#C9A84C';
-  const isRtl = locale === 'ar';
+
+  if (categories.length === 0) return null;
 
   return (
     <div
       dir={isRtl ? 'rtl' : 'ltr'}
       style={{
-        display: 'flex',
-        gap: '8px',
-        flexWrap: 'wrap',
-        marginBottom: '32px',
+        display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '32px',
         padding: '6px',
         background: 'rgba(201,168,76,0.04)',
         borderRadius: '12px',
         border: '1px solid rgba(201,168,76,0.12)',
       }}
     >
-      {CATEGORIES.map(cat => {
-        const isActive = active === cat;
-        const label = CAT_LABELS[cat]?.[locale] ?? CAT_LABELS[cat]?.['en'] ?? cat;
+      {categories.map(cat => {
+        const isActive = active === cat.slug;
         return (
           <button
-            key={cat}
-            onClick={() => scrollTo(cat)}
+            key={cat.slug}
+            onClick={() => scrollTo(cat.slug)}
             style={{
-              padding: '8px 18px',
-              borderRadius: '8px',
+              padding: '8px 18px', borderRadius: '8px',
               border: isActive ? `1px solid ${GOLD}` : '1px solid transparent',
               background: isActive ? GOLD : 'transparent',
               color: isActive ? '#102A43' : '#50677A',
-              fontFamily: 'Inter, sans-serif',
-              fontSize: '13px',
+              fontFamily: 'Inter, sans-serif', fontSize: '13px',
               fontWeight: isActive ? 700 : 400,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
+              cursor: 'pointer', transition: 'all 0.2s',
               whiteSpace: 'nowrap',
               letterSpacing: isActive ? '0.02em' : undefined,
             }}
             aria-current={isActive ? 'true' : undefined}
           >
-            {label}
+            {cat.label}
           </button>
         );
       })}

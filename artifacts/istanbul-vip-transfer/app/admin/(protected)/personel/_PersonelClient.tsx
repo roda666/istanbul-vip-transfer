@@ -245,7 +245,7 @@ export default function PersonelClient() {
         ) : staff.length === 0 ? (
           <div style={{ padding: '40px', textAlign: 'center', color: MUTED }}>
             <p style={{ fontSize: '14px', marginBottom: '8px' }}>Henüz sohbet personeli eklenmemiş.</p>
-            <p style={{ fontSize: '12px' }}>Yukarıdaki "Yeni Personel Ekle" butonunu kullanın.</p>
+            <p style={{ fontSize: '12px' }}>Yukarıdaki &ldquo;Yeni Personel Ekle&rdquo; butonunu kullanın.</p>
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>

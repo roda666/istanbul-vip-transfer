@@ -7,6 +7,7 @@ import Contact from '@/components/Contact';
 import HizmetlerServiceGridCms from '@/components/HizmetlerServiceGridCms';
 import HizmetlerCategoryNav from '@/components/HizmetlerCategoryNav';
 import { SITE } from '@/lib/site-config';
+import { getServiceCategories } from '@/lib/service-category-server';
 
 const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/hizmetler`;
@@ -47,14 +48,16 @@ const breadcrumbSchema = {
  * The locale-prefixed variants (/en/hizmetler etc.) are handled by
  * app/[lang]/hizmetler/page.tsx (specific route, overrides catch-all).
  */
-export default function HizmetlerPage() {
+export default async function HizmetlerPage() {
+  const categories = await getServiceCategories('tr');
+
   return (
     <>
       <PageHero pageKey="services" />
 
       <section className="py-16 md:py-20 max-w-7xl mx-auto px-5 md:px-8">
-        <HizmetlerCategoryNav locale="tr" />
-      <HizmetlerServiceGridCms locale="tr" />
+        <HizmetlerCategoryNav locale="tr" categories={categories} />
+        <HizmetlerServiceGridCms locale="tr" categories={categories} />
       </section>
 
       <BookingForm />

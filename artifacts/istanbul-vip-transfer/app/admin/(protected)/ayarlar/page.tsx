@@ -109,7 +109,7 @@ export default function AyarlarPage() {
             <div>
               <label style={labelStyle}>TÜRSAB Belge No</label>
               <input type="text" {...field('tursabNo')} style={inputStyle} placeholder="A-7377" />
-              <p style={hintStyle}>Footer'da güven rozeti olarak ve yasal sayfalarda gösterilir.</p>
+              <p style={hintStyle}>Footer&apos;da güven rozeti olarak ve yasal sayfalarda gösterilir.</p>
             </div>
             <div>
               <label style={labelStyle}>Tam Açık Adres</label>
@@ -119,7 +119,7 @@ export default function AyarlarPage() {
             <div>
               <label style={labelStyle}>Google Play URL (Opsiyonel)</label>
               <input type="url" {...field('googlePlayUrl')} style={inputStyle} placeholder="https://play.google.com/store/apps/details?id=..." />
-              <p style={hintStyle}>Dolu ise footer'da "Mobil Uygulamayı İndir" rozeti gösterilir.</p>
+              <p style={hintStyle}>Dolu ise footer&apos;da &ldquo;Mobil Uygulamayı İndir&rdquo; rozeti gösterilir.</p>
             </div>
           </div>
         </div>

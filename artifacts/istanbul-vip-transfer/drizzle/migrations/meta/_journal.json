@@ -169,6 +169,13 @@
       "when": 1787950000000,
       "tag": "0023_vehicle_translations",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1787001522895,
+      "tag": "0024_wonderful_hannibal_king",
+      "breakpoints": true
     }
   ]
 }

@@ -78,6 +78,7 @@ export default function GlobalError({
           </p>
           <div className="actions">
             <button onClick={reset}>Sayfayı Yenile</button>
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a href="/">Ana Sayfaya Dön</a>
           </div>
         </div>

@@ -29,6 +29,7 @@ import {
   MessageSquare,
   PenSquare,
   Users,
+  Tag,
 } from 'lucide-react';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -82,6 +83,7 @@ function getNavGroups(role: string, isSuperOrAdmin: boolean): NavGroup[] {
         { href: '/admin/blog',           label: 'Blog',            icon: <BookOpen size={18} /> },
         { href: '/admin/sayfalar',       label: 'Sayfalar',        icon: <FileText size={18} /> },
         { href: '/admin/hizmetler',      label: 'Hizmetler',       icon: <Wrench size={18} /> },
+        { href: '/admin/kategoriler',    label: 'Kategoriler',     icon: <Tag size={18} /> },
         { href: '/admin/sss',            label: 'SSS',             icon: <HelpCircle size={18} /> },
         { href: '/admin/dil-ve-ceviri',  label: 'Dil ve Çeviri',  icon: <Languages size={18} /> },
         { href: '/admin/ai-studio',      label: 'İçerik Stüdyosu', icon: <PenSquare size={18} />, badge: 'AI' },
@@ -115,6 +117,13 @@ const CHAT_STAFF_ITEMS: NavItem[] = [
   { href: '/admin/sohbet', label: 'Canlı Sohbet', icon: <MessageSquare size={18} /> },
   { href: '/admin/hesabim', label: 'Hesabım', icon: <UserCircle size={18} /> },
 ];
+
+/** Returns a flat list of nav items visible to the given role (used by mobile drawer). */
+function getVisibleItems(role: string): NavItem[] {
+  if (role === 'CHAT_STAFF') return CHAT_STAFF_ITEMS;
+  const isSuperOrAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN';
+  return getNavGroups(role, isSuperOrAdmin).flatMap(g => g.items);
+}
 
 // ── NavGroup collapsible section ──────────────────────────────────────────────
 function NavGroup({ group, collapsed, openGroups, toggleGroup, renderNavItem }: {

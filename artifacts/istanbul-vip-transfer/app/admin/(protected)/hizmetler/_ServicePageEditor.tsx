@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type {
   ServicePageRecord,
   ServicePageBody,
@@ -47,15 +47,7 @@ const TX_STATUS: Record<string, { label: string; color: string; bg: string }> = 
   OUTDATED:     { label: 'Güncelleme Gerekli', color: '#EA580C', bg: '#FFF7ED' },
 };
 
-const CATEGORY_OPTIONS = [
-  { value: 'airport',   label: 'Havalimanı Transferi' },
-  { value: 'intercity', label: 'Şehirlerarası Transfer' },
-  { value: 'tour',      label: 'Tur / Günübirlik' },
-  { value: 'corporate', label: 'Kurumsal VIP' },
-  { value: 'health',    label: 'Sağlık Turizmi' },
-  { value: 'vip',       label: 'VIP Transfer' },
-  { value: 'rental',    label: 'Araç Kiralama' },
-];
+// CATEGORY_OPTIONS is now fetched dynamically from /admin/api/categories
 
 // ── Styles ─────────────────────────────────────────────────────────────────
 
@@ -619,6 +611,22 @@ export default function ServicePageEditor({ initialRecord }: Props) {
   const [heroImageAlt, setHeroImageAlt] = useState(record.heroImageAlt ?? '');
   const [ogImage,      setOgImage]      = useState(record.ogImage ?? '');
 
+  // ── Dynamic category options from DB ─────────────────────────────────────
+  const [catOptions, setCatOptions] = useState<{ value: string; label: string }[]>([]);
+  useEffect(() => {
+    fetch('/admin/api/categories')
+      .then(r => r.json())
+      .then((d: { categories?: { slug: string; nameTranslations: Record<string,string> }[] }) => {
+        if (d.categories) {
+          setCatOptions(d.categories.map(c => ({
+            value: c.slug,
+            label: c.nameTranslations?.['tr'] ?? c.slug,
+          })));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // ── Body state (v2) ──────────────────────────────────────────────────────
   // For a PUBLISHED page with pending draft changes, initialise from draftBody
   // so the admin sees their pending edits rather than the live content.
@@ -874,7 +882,7 @@ export default function ServicePageEditor({ initialRecord }: Props) {
                 <label style={lbl}>Kategori</label>
                 <select value={category} onChange={e => setCategory(e.target.value)} style={{ ...inp(), cursor: 'pointer' }}>
                   <option value="">— Seçiniz —</option>
-                  {CATEGORY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  {catOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               <div>

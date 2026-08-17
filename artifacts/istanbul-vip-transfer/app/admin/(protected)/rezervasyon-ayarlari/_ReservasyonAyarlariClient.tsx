@@ -383,7 +383,7 @@ function ServiceTypeRow({ st, onSaved }: { st: ServiceTypeItem; onSaved: () => v
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function ReservasyonAyarlariClient() {
-  const [tab, setTab] = useState<'lokasyonlar' | 'hizmet-turleri' | 'form-ayarlari'>('lokasyonlar');
+  const [tab, setTab] = useState<'lokasyonlar' | 'hizmet-turleri' | 'form-ayarlari' | 'ozel-alanlar'>('lokasyonlar');
 
   // ── Lokasyonlar state ──
   const [items, setItems] = useState<Location[]>([]);
@@ -493,7 +493,7 @@ export default function ReservasyonAyarlariClient() {
   }
 
   async function deleteCustomField(id: number) {
-    if (!confirm('Bu alanı silmek istediğinizden emin misiniz?')) return;
+    if (!window.confirm('Bu alanı silmek istediğinizden emin misiniz?')) return;
     setCfSaving(id);
     try {
       await fetch(`/admin/api/custom-fields/${id}`, { method: 'DELETE' });
@@ -781,7 +781,7 @@ export default function ReservasyonAyarlariClient() {
         <div style={{ maxWidth: '640px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <p style={{ color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif', margin: 0 }}>
-              Rezervasyon formuna servis bazlı özel alanlar ekleyin. Boş "Geçerli Hizmetler" = tüm servislerde göster.
+              Rezervasyon formuna servis bazlı özel alanlar ekleyin. Boş &ldquo;Geçerli Hizmetler&rdquo; = tüm servislerde göster.
             </p>
             <Btn variant="primary" small onClick={() => { setCfEditId('new'); setCfForm({ label: '', appliesToSlugs: '', fieldType: 'checkbox' }); setCfMsg(null); }}>
               <Plus size={13} /> Yeni Alan

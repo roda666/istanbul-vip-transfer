@@ -36,6 +36,11 @@ const DEFAULT_SETTINGS: ContactSettings = {
   email:            SITE.email,
   emailMailto:      SITE.emailMailto,
   googleBusinessUrl: SITE.googleBusinessUrl,
+  companyLegalName: '',
+  companyTradeName: '',
+  tursabNo:         '',
+  fullAddress:      '',
+  googlePlayUrl:    '',
 };
 
 // ── Context ───────────────────────────────────────────────────────────────────

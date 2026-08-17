@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useTransition } from 'react';
+import { useState, useMemo, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -48,15 +48,7 @@ const TX_STATUS_LABEL: Record<string, string> = {
   PUBLISHED: 'Yayında', FAILED: 'Hata', ARCHIVED: 'Arşiv', OUTDATED: 'Güncelleme Gerekli',
 };
 
-const CATEGORY_LABELS: Record<string, string> = {
-  airport:   'Havalimanı',
-  intercity: 'Şehirlerarası',
-  tour:      'Tur',
-  corporate: 'Kurumsal',
-  health:    'Sağlık',
-  vip:       'VIP',
-  rental:    'Kiralama',
-};
+// CATEGORY_LABELS is now fetched dynamically from /admin/api/categories
 
 const TARGET_LOCALES = ['en', 'de', 'ru', 'ar', 'fr', 'es', 'it', 'nl'];
 
@@ -166,6 +158,21 @@ export default function HizmetlerList({ items }: Props) {
   const [sortBy,          setSortBy]          = useState('displayOrder');
   const [actionLoading,   setActionLoading]   = useState<string | null>(null);
   const [confirmArchive,  setConfirmArchive]  = useState<string | null>(null);
+
+  // ── Dynamic category map from DB ────────────────────────────────────────
+  const [catMap, setCatMap] = useState<Record<string, string>>({});
+  useEffect(() => {
+    fetch('/admin/api/categories')
+      .then(r => r.json())
+      .then((d: { categories?: { slug: string; nameTranslations: Record<string,string> }[] }) => {
+        if (d.categories) {
+          const m: Record<string,string> = {};
+          for (const c of d.categories) m[c.slug] = c.nameTranslations?.['tr'] ?? c.slug;
+          setCatMap(m);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const filtered = useMemo(() => {
     let result = [...items];
@@ -328,10 +335,10 @@ export default function HizmetlerList({ items }: Props) {
         />
         <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} style={sel}>
           <option value="">Tüm kategoriler</option>
-          {Object.entries(CATEGORY_LABELS).map(([v, l]) => (
+          {Object.entries(catMap).map(([v, l]) => (
             <option key={v} value={v}>{l}</option>
           ))}
-          {categoryOptions.filter(c => !(c in CATEGORY_LABELS)).map(c => (
+          {categoryOptions.filter(c => !(c in catMap)).map(c => (
             <option key={c} value={c}>{c}</option>
           ))}
         </select>
@@ -381,7 +388,7 @@ export default function HizmetlerList({ items }: Props) {
 
         {filtered.map((item, idx) => {
           const s        = STATUS_STYLE[item.status] ?? STATUS_STYLE.DRAFT;
-          const catLabel = item.category ? (CATEGORY_LABELS[item.category] ?? item.category) : '—';
+          const catLabel = item.category ? (catMap[item.category] ?? item.category) : '—';
 
           return (
             <div key={item.id} className="hl-table-row" style={{
@@ -439,7 +446,7 @@ export default function HizmetlerList({ items }: Props) {
 
         {filtered.map((item, idx) => {
           const s        = STATUS_STYLE[item.status] ?? STATUS_STYLE.DRAFT;
-          const catLabel = item.category ? (CATEGORY_LABELS[item.category] ?? item.category) : null;
+          const catLabel = item.category ? (catMap[item.category] ?? item.category) : null;
 
           return (
             <div key={item.id} className="hl-card"

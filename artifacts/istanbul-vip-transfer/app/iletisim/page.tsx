@@ -3,6 +3,7 @@ import { SUPPORTED_LANGS } from '@/lib/i18n';
 import { buildAlternates } from '@/lib/i18n/seo';
 import PageHero from '@/components/PageHero';
 import Contact from '@/components/Contact';
+import ContactForm from '@/components/ContactForm';
 import BookingForm from '@/components/BookingForm';
 import { SITE } from '@/lib/site-config';
 
@@ -44,6 +45,7 @@ export default function IletisimPage() {
     <>
       <PageHero pageKey="contact" />
       <Contact />
+      <ContactForm />
       <BookingForm />
       <script
         type="application/ld+json"

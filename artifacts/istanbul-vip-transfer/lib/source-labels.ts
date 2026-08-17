@@ -9,6 +9,7 @@ export const SOURCE_LABELS: Record<string, string> = {
   'booking-form:ALLOCATION':       'Rezervasyon Formu – Araç Tahsisi',
   'booking-form:TOUR':             'Rezervasyon Formu – Özel Tur / Gezi',
   'booking-form':                  'Rezervasyon Formu',
+  'contact-form':                  '📩 İletişim Formu',
 };
 
 /** Options for the source filter dropdown (value = raw DB value, label = readable Turkish). */
@@ -17,6 +18,7 @@ export const SOURCE_FILTER_OPTIONS: { value: string; label: string }[] = [
   { value: 'booking-form:INTERCITY',        label: 'Rezervasyon Formu – Şehirler Arası Transfer' },
   { value: 'booking-form:ALLOCATION',       label: 'Rezervasyon Formu – Araç Tahsisi' },
   { value: 'booking-form:TOUR',             label: 'Rezervasyon Formu – Özel Tur / Gezi' },
+  { value: 'contact-form',                  label: '📩 İletişim Formu' },
 ];
 
 /** Returns the human-readable Turkish label for a source value, or the raw value if unmapped. */

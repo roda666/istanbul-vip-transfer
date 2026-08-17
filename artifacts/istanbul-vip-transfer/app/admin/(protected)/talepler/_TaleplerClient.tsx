@@ -56,10 +56,11 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }
 };
 
 const SERVICE_LABELS: Record<string, string> = {
-  AIRPORT_TRANSFER: 'Havalimanı',
-  INTERCITY:        'Şehirler Arası',
-  ALLOCATION:       'Araç Tahsisi',
-  TOUR:             'Özel Tur',
+  AIRPORT_TRANSFER:  'Havalimanı',
+  INTERCITY:         'Şehirler Arası',
+  ALLOCATION:        'Araç Tahsisi',
+  TOUR:              'Özel Tur',
+  CONTACT_INQUIRY:   '📩 İletişim Talebi',
 };
 
 const INTENT_LABELS: Record<string, string> = {

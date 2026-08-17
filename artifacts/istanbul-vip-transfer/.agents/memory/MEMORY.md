@@ -1,0 +1,2 @@
+- [next/font migration](next-font-migration.md) — Google Fonts @import removed; Playfair Display + Inter loaded via next/font/google with CSS vars --font-playfair / --font-inter.
+- [Web vitals routing](web-vitals-routing.md) — /api/vitals shadowed by api-server; correct endpoint is /data/vitals (app/data/vitals/route.ts).

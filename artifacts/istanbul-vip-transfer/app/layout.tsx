@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { Playfair_Display, Inter } from 'next/font/google';
 import './globals.css';
 import PublicLayoutWrapper from '@/components/PublicLayoutWrapper';
 import WebVitalsReporter from '@/components/WebVitalsReporter';
@@ -6,6 +7,26 @@ import { SITE } from '@/lib/site-config';
 import { getServiceVisibilityMap } from '@/lib/service-page-cms';
 import { getContactSettings } from '@/lib/site-settings-server';
 import { SiteSettingsProvider } from '@/components/SiteSettingsContext';
+
+/**
+ * Self-hosted via next/font — eliminates the external Google Fonts request
+ * and associated layout shift / FOIT. CSS variable names map to the existing
+ * --app-font-serif / --app-font-sans variables in globals.css.
+ */
+const playfairDisplay = Playfair_Display({
+  subsets:  ['latin'],
+  variable: '--font-playfair',
+  display:  'swap',
+  weight:   ['400', '500', '600', '700', '800', '900'],
+  style:    ['normal', 'italic'],
+});
+
+const inter = Inter({
+  subsets:  ['latin'],
+  variable: '--font-inter',
+  display:  'swap',
+  weight:   ['300', '400', '500', '600', '700'],
+});
 
 export const viewport: Viewport = {
   width:        'device-width',
@@ -49,16 +70,7 @@ export default async function RootLayout({
      * for non-Turkish pages before React hydration. Without this attribute
      * React would warn about the attribute mismatch.
      */
-    <html lang="tr" dir="ltr" suppressHydrationWarning>
-      {/*
-       * Preconnect to Google Fonts origins so the browser establishes TCP/TLS
-       * connections before the CSS @import in globals.css fires.
-       * This shaves ~200-400 ms off font TTFB without changing font-family names.
-       */}
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      </head>
+    <html lang="tr" dir="ltr" suppressHydrationWarning className={`${playfairDisplay.variable} ${inter.variable}`}>
       <body
         className="grain-overlay"
         style={{ backgroundColor: 'var(--pub-page-bg, #F7F5EF)', minHeight: '100dvh' }}

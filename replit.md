@@ -1,51 +1,70 @@
-# [Project name]
+# İstanbul VIP Transfer
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Türkiye Seyahat Acenteleri Birliği'ne (TÜRSAB) kayıtlı, Mercedes Vito ve Sprinter araç filosuyla İstanbul havalimanı, şehir içi, şehirlerarası ve özel tur transferi sunan VIP ulaşım hizmetinin web sitesi ve admin paneli.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- `pnpm --filter @workspace/istanbul-vip-transfer run dev` — Next.js web uygulamasını başlat (PORT env ile)
+- `pnpm --filter @workspace/api-server run dev` — API sunucusunu başlat (port 8080)
+- `pnpm --filter @workspace/istanbul-vip-transfer run typecheck` — TypeScript tip kontrolü
+- `pnpm --filter @workspace/istanbul-vip-transfer run build` — Production build (prebuild check-page-meta dahil)
+- `pnpm --filter @workspace/istanbul-vip-transfer run lint` — ESLint
+- `cd artifacts/istanbul-vip-transfer && pnpm exec drizzle-kit generate` — Yeni migration oluştur
+- `cd artifacts/istanbul-vip-transfer && pnpm exec drizzle-kit migrate` — Migration uygula
 
 ## Stack
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- **Framework:** Next.js 15 App Router, React 19, TypeScript 5
+- **Stil:** Tailwind CSS v4, CSS custom properties
+- **Veritabanı:** PostgreSQL + Drizzle ORM (38 tablo, 25 migration)
+- **Auth:** iron-session (httpOnly cookie), 4 rol: SUPER_ADMIN / ADMIN / EDITOR / CHAT_STAFF
+- **i18n:** 9 dil (TR, EN, DE, RU, AR, FR, ES, IT, NL); TR prefix'siz, diğerleri `/[lang]/...`; RTL Arapça
+- **AI:** OpenAI GPT-4o-mini (çeviri, içerik üretimi, chatbot)
+- **E-posta:** Nodemailer + AES-256-GCM şifreli SMTP
+- **Görsel:** Next.js Image optimization (AVIF/WebP), GCS + Replit remote patterns
+- **Fontlar:** next/font/google (Playfair Display + Inter, self-hosted)
 
-## Where things live
+## Önemli Mimari Kararlar
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `/data/*` — public Next.js API rotaları (`/api/*` workspace api-server'a yönleniyor, çakışmayı önlemek için `/data/` prefix'i kullanılıyor)
+- Tüm admin API rotaları (`/admin/api/*`) session + rol kontrolü gerektiriyor
+- Dil switch'i POST `/api/locale` + `window.location.assign()` ile yapılıyor (cookie race condition'ı önlemek için)
+- Drizzle migration workflow: `db:generate` → `db:migrate` (push değil)
+- Araç seed'i (`db/seed-vehicles.ts`) `db:migrate` zincirine dahil; `service_categories` seed'i de dahil
+- Rate limiter'lar in-memory (Map) — multi-instance deploy'da her instance bağımsız sayar; production'da Redis önerilir
 
-## Architecture decisions
+## Klasör Yapısı (artifacts/istanbul-vip-transfer/)
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+```
+app/
+  (root TR pages)  — /hizmetler, /araclar, /hakkimizda, /iletisim, /blog, ...
+  [lang]/          — /en/..., /de/..., /ar/..., vb.
+  admin/           — /admin/** (korumalı panel)
+  data/            — Public Next.js API endpoint'leri
+  api/             — Next.js API (dikkat: /api → api-server'a yönlendirilir; sadece /data/ kullan)
+components/        — Ortak React bileşenleri
+lib/               — Yardımcı fonksiyonlar, i18n, DB yardımcıları
+  i18n/
+    dictionaries/  — 9 dil dosyası (tr.ts, en.ts, de.ts, ru.ts, ar.ts, fr.ts, es.ts, it.ts, nl.ts)
+    types.ts       — Dictionary arayüzü (yeni key eklerken buraya da ekle)
+db/
+  schema.ts        — Tüm tablo tanımları (38 tablo)
+  seed-*.ts        — Idempotent seed scriptleri
+drizzle/
+  migrations/      — SQL migration dosyaları (0000–0024)
+```
 
-## Product
+## Geliştirici Notları
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- `lib/i18n/types.ts`'e yeni bir dictionary key eklerken **9 dil dosyasını da** güncelle (TR başta, sonra diğerleri)
+- Admin sayfaları `/admin/(protected)/` altında; `layout.tsx` session kontrolü yapıyor
+- `lib/source-labels.ts` — form kaynak etiketleri; `_TaleplerClient.tsx` içindeki `SERVICE_LABELS` — servis tipi etiketleri
+- Chatbot: hibrit AI + insan devralma; `humanTakenOver` kalıcı bayrak, 2-dk AI fallback timer
+- Ana sayfa CMS: `entity_type='homepage'` canonical; TR kaydedince 8 dil otomatik çevriliyor
 
-## User preferences
+## User Preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
-
-## Gotchas
-
-- **Social card (og-card.jpg)** — regenerate after any hero image or brand colour change:
-  ```
-  pnpm --filter @workspace/istanbul-vip-transfer generate:og-card
-  ```
-  The script lives at `artifacts/istanbul-vip-transfer/scripts/generate-og-card.sh`.
-  Brand tokens (colours, text) are at the top of the script — edit them before running.
-  Requires ImageMagick 7 (`magick` on PATH, already present in the Replit environment).
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- Türkçe kullanıcı arayüzü ve admin paneli
+- Tüm yeni özellikler 9 dili desteklemeli
+- Admin paneli açık tema (light theme)
+- Servis sayfaları DB-driven CMS ile yönetiliyor

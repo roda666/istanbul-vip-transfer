@@ -6,7 +6,7 @@
  * - Runs entirely in the browser; no external service or API key required.
  * - Uses the `web-vitals` package (already a dependency) to observe
  *   CLS, INP, LCP, FCP and TTFB after the page has become interactive.
- * - Sends each metric to the internal /api/vitals endpoint via sendBeacon
+ * - Sends each metric to the internal /data/vitals endpoint via sendBeacon
  *   (fire-and-forget — never blocks rendering).
  * - Falls back silently when web-vitals is unavailable (e.g. unsupported browser).
  */
@@ -32,7 +32,7 @@ export default function WebVitalsReporter() {
             url: window.location.pathname,
           };
           if (typeof navigator.sendBeacon === 'function') {
-            navigator.sendBeacon('/api/vitals', JSON.stringify(payload));
+            navigator.sendBeacon('/data/vitals', JSON.stringify(payload));
           }
         };
 

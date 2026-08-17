@@ -226,11 +226,15 @@ export default function SohbetClient() {
     if (!selectedId) return;
     setTakingOver(true);
     try {
-      await fetch(
+      const res = await fetch(
         `/admin/api/chatbot/${selectedId}/takeover${release ? '?release=true' : ''}`,
         { method: 'POST' },
       );
+      if (!res.ok) throw new Error(`takeover failed: ${res.status}`);
       await fetchMessages(selectedId);
+      await fetchSessions();
+    } catch (err) {
+      console.error('[sohbet] takeover error:', err);
     } finally {
       setTakingOver(false);
     }

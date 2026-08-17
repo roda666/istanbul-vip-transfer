@@ -48,10 +48,11 @@ async function getAuditLog(entityId: string) {
 }
 
 const SERVICE_LABELS: Record<string, string> = {
-  AIRPORT_TRANSFER: 'Havalimanı / Şehir İçi Transfer',
-  INTERCITY:        'Şehirler Arası Transfer',
-  ALLOCATION:       'Araç Tahsisi',
-  TOUR:             'Özel Tur / Gezi',
+  AIRPORT_TRANSFER:  'Havalimanı / Şehir İçi Transfer',
+  INTERCITY:         'Şehirler Arası Transfer',
+  ALLOCATION:        'Araç Tahsisi',
+  TOUR:              'Özel Tur / Gezi',
+  CONTACT_INQUIRY:   '📩 İletişim Talebi',
 };
 
 /** Maps raw JSON form keys to human-readable Turkish labels. */

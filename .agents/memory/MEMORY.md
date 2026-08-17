@@ -32,3 +32,4 @@
 - [Custom reservation fields](custom-reservation-fields.md) — DB table custom_reservation_fields (serial PK — serial must be imported from drizzle-orm/pg-core); admin CRUD at /admin/api/custom-fields; public GET at /data/custom-fields?slug=...; BookingForm fetches by pageSlug from usePathname(); admin UI is 4th tab in rezervasyon-ayarlari.
 - [Schema import quirks](schema-import-quirks.md) — serial must be explicitly imported from drizzle-orm/pg-core; admin API routes use @/lib/auth/session not @/lib/session.
 - [AdminSidebar grouped nav](admin-sidebar-groups.md) — NavGroup collapsible sections; CHAT_STAFF sees flat list; Dashboard is standalone above groups; groups auto-expand when active item is inside; getNavGroups() returns 5 groups.
+- [Homepage translation source-of-truth](homepage-translation-source-of-truth.md) — entity_type='homepage' is canonical; entity_type='content' orphans deleted; EN was broken (old format), fixed 2026-08-17.

@@ -212,6 +212,7 @@ export async function PATCH(
       status: contentTranslations.status,
       sourceHash: contentTranslations.sourceHash,
       isManuallyLocked: contentTranslations.isManuallyLocked,
+      isAiGenerated: contentTranslations.isAiGenerated,
       body: contentTranslations.body,
     }).from(contentTranslations).where(
       and(
@@ -269,11 +270,10 @@ export async function PATCH(
       }
 
       // Guard: hash changed but translation is APPROVED or PUBLISHED.
-      // Never silently overwrite a human-reviewed translation — lock it and require an
-      // explicit admin retry. PUBLISHED rows keep their status so the public page keeps
-      // serving the last reviewed content. sourceHash is intentionally NOT updated here
-      // so that the lock check above continues to detect "hash changed" on future saves.
-      if (tx && tx.sourceHash !== trHash && ['APPROVED', 'PUBLISHED'].includes(tx.status ?? '')) {
+      // For AI-generated translations (isAiGenerated=true) we always auto-retranslate —
+      // no manual lock. For human-reviewed translations we lock and require explicit retry.
+      // PUBLISHED rows keep their status so the public page keeps serving content.
+      if (tx && tx.sourceHash !== trHash && ['APPROVED', 'PUBLISHED'].includes(tx.status ?? '') && !tx.isAiGenerated) {
         const guardStatus = tx.status === 'PUBLISHED' ? 'PUBLISHED' : 'OUTDATED';
         await db.update(contentTranslations).set({
           status: guardStatus,
@@ -292,6 +292,8 @@ export async function PATCH(
         syncResults[targetLocale] = { status: 'skipped', reason: `Protected: ${guardStatus.toLowerCase()} translation locked as outdated` };
         continue;
       }
+      // AI-generated PUBLISHED/APPROVED translations whose source hash changed fall through
+      // to the auto-retranslation block below (no lock, always re-translate).
 
       const fallback = (HOMEPAGE_FALLBACK[targetLocale] ?? HOMEPAGE_FALLBACK.en) as HomepageSections;
       // Safe parse — a malformed existing body must not crash the whole save operation

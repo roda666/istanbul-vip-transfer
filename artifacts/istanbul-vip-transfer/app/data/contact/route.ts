@@ -19,7 +19,26 @@ export const dynamic = 'force-dynamic';
 // ── Rate limiter: 5 per hour per IP (more conservative than booking form) ────
 const contactStore = new Map<string, { count: number; resetAt: number }>();
 
+/**
+ * Periodic cleanup — removes expired entries so the Map doesn't grow
+ * unboundedly on a long-running server. Runs every 30 minutes, same pattern
+ * as lib/auth/rate-limit.ts. `.unref()` lets the process exit cleanly.
+ */
+const CONTACT_CLEANUP_INTERVAL_MS = 30 * 60 * 1000;
+let contactCleanupHandle: ReturnType<typeof setInterval> | null = null;
+function ensureContactCleanup() {
+  if (contactCleanupHandle) return;
+  contactCleanupHandle = setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of contactStore.entries()) {
+      if (entry.resetAt < now) contactStore.delete(key);
+    }
+  }, CONTACT_CLEANUP_INTERVAL_MS);
+  contactCleanupHandle.unref?.();
+}
+
 function checkRateLimit(ip: string): boolean {
+  ensureContactCleanup();
   const now = Date.now();
   const entry = contactStore.get(ip);
   if (!entry || entry.resetAt < now) {

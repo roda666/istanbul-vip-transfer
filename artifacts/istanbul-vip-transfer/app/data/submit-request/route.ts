@@ -19,7 +19,26 @@ export const dynamic = 'force-dynamic';
 // ── Rate limiter: 10 per hour per IP ─────────────────────────────────────────
 const submitStore = new Map<string, { count: number; resetAt: number }>();
 
+/**
+ * Periodic cleanup — removes expired entries so the Map doesn't grow
+ * unboundedly on a long-running server. Runs every 30 minutes, same pattern
+ * as lib/auth/rate-limit.ts. `.unref()` lets the process exit cleanly.
+ */
+const SUBMIT_CLEANUP_INTERVAL_MS = 30 * 60 * 1000;
+let submitCleanupHandle: ReturnType<typeof setInterval> | null = null;
+function ensureSubmitCleanup() {
+  if (submitCleanupHandle) return;
+  submitCleanupHandle = setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of submitStore.entries()) {
+      if (entry.resetAt < now) submitStore.delete(key);
+    }
+  }, SUBMIT_CLEANUP_INTERVAL_MS);
+  submitCleanupHandle.unref?.();
+}
+
 function checkRateLimit(ip: string): boolean {
+  ensureSubmitCleanup();
   const now = Date.now();
   const entry = submitStore.get(ip);
   if (!entry || entry.resetAt < now) {

@@ -78,16 +78,23 @@ const nextConfig: NextConfig = {
   // Applied to every route (source: '/(.*)'). Notes per header:
   //
   // Content-Security-Policy
-  //   • script-src 'unsafe-inline' — required for Next.js hydration scripts,
-  //     the locale/RTL inline script, and web-vitals inline initialisation.
-  //     JSON-LD <script type="application/ld+json"> blocks are NOT executable
-  //     and don't need this, but the Next.js runtime inline scripts do.
-  //   • style-src 'unsafe-inline' — Next.js injects critical CSS inline.
-  //   • font-src fonts.gstatic.com — Google Fonts font files.
+  //
+  //   • script-src 'unsafe-inline' — still required for Next.js App Router.
+  //     The RSC streaming renderer injects inline <script> tags (e.g.
+  //     self.__next_f.push([...])) that cannot carry a nonce without migrating
+  //     CSP generation from next.config.ts headers() into middleware (per-request
+  //     nonce) and patching every <Script> component. That migration is tracked
+  //     as a follow-up task. Until then 'unsafe-inline' stays but is the ONLY
+  //     relaxation — no 'unsafe-eval' in production, no wildcard domains.
+  //   • style-src 'unsafe-inline' — Next.js injects critical CSS inline;
+  //     fonts.googleapis.com removed (migrated to next/font — self-hosted).
+  //   • font-src — fonts.gstatic.com removed (same reason); only 'self' + data:.
   //   • img-src https: — blog hero images are arbitrary admin-entered URLs
   //     so the safest working policy is to allow all HTTPS images.
-  //   • connect-src 'self' — chatbot polling, admin APIs, /api/vitals are all
-  //     same-origin. OpenAI calls happen server-side (not browser) — no entry needed.
+  //   • connect-src 'self' — chatbot polling, admin APIs, vitals — all same-origin.
+  //     OpenAI calls happen server-side (not in browser) — no entry needed.
+  //   • upgrade-insecure-requests — forces any http:// sub-resource to https://.
+  //   • worker-src 'none' — no service workers registered on this site.
   //   • frame-ancestors 'none' — prevents clickjacking (enforced by modern browsers).
   //
   // Strict-Transport-Security
@@ -109,13 +116,16 @@ const nextConfig: NextConfig = {
           "default-src 'self'",
           // unsafe-eval: Next.js HMR + Replit bridge script need it in dev.
           "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-          "font-src 'self' data: https://fonts.gstatic.com",
+          // fonts.googleapis.com removed: migrated to next/font (self-hosted).
+          "style-src 'self' 'unsafe-inline'",
+          // fonts.gstatic.com removed: same reason.
+          "font-src 'self' data:",
           "img-src 'self' data: blob: https:",
           // wss: needed for Next.js HMR websocket connection.
           "connect-src 'self' wss:",
           "media-src 'self'",
           "object-src 'none'",
+          "worker-src 'none'",
           "frame-src 'self'",
           // Allow Replit preview iframe to embed this page.
           "frame-ancestors 'self' https://*.replit.dev https://*.repl.co https://*.replit.co",
@@ -125,8 +135,10 @@ const nextConfig: NextConfig = {
       : [
           "default-src 'self'",
           "script-src 'self' 'unsafe-inline'",
-          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-          "font-src 'self' data: https://fonts.gstatic.com",
+          // fonts.googleapis.com removed: migrated to next/font (self-hosted).
+          "style-src 'self' 'unsafe-inline'",
+          // fonts.gstatic.com removed: same reason.
+          "font-src 'self' data:",
           // img-src: 'self' covers /_next/image proxied GCS images;
           // blob: covers canvas/object-URL previews;
           // https: covers arbitrary admin-entered blog hero image URLs.
@@ -135,7 +147,10 @@ const nextConfig: NextConfig = {
           "connect-src 'self'",
           "media-src 'self'",
           "object-src 'none'",
+          "worker-src 'none'",
           "frame-src 'none'",
+          // Forces any accidental http:// sub-resource load to https://.
+          "upgrade-insecure-requests",
           // Prevents this page from being embedded in any iframe (clickjacking guard).
           "frame-ancestors 'none'",
           "base-uri 'self'",

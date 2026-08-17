@@ -27,7 +27,7 @@ if (!OPENAI_KEY) { console.error('❌ OPENAI_API_KEY eksik'); process.exit(1); }
 const sqlClient = postgres(DB_URL, { max: 3 });
 const db        = drizzle(sqlClient, { schema });
 const ai        = new OpenAI({ apiKey: OPENAI_KEY });
-const MODEL     = process.env.OPENAI_CONTENT_MODEL ?? 'gpt-4o-mini';
+const MODEL     = process.env.OPENAI_CONTENT_MODEL ?? 'gpt-5.4-mini';
 
 const TARGET_LANGS = ['en', 'de', 'ru', 'ar', 'fr', 'es', 'it', 'nl'] as const;
 type Lang = typeof TARGET_LANGS[number];

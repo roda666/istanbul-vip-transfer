@@ -151,7 +151,7 @@ describe('FORBIDDEN_CLAIMS_PATTERN', () => {
 
 describe('AIResult type narrowing', () => {
   it('ok:true result has data property', () => {
-    const result = { ok: true as const, data: { title: 'Test' }, model: 'gpt-4o-mini' };
+    const result = { ok: true as const, data: { title: 'Test' }, model: 'gpt-5.4-mini' };
     expect(result.ok).toBe(true);
     expect(result.data.title).toBe('Test');
   });

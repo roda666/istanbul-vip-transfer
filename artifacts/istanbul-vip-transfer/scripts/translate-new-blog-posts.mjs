@@ -47,7 +47,7 @@ const PRESERVED = [
   'Kartepe', 'Uludağ', 'Bursa', 'Sapanca', 'Maşukiye',
 ];
 
-const MODEL = process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-4o-mini';
+const MODEL = process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-5.4-mini';
 const CONCURRENCY = 2; // simultaneous language translations per article
 
 // ── DB + AI clients ───────────────────────────────────────────────────────────

@@ -105,7 +105,7 @@ Title (TR): ${trTitle}
 Description (TR): ${trDescription}`;
 
   const response = await client.chat.completions.create({
-    model: process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-4o-mini',
+    model: process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-5.4-mini',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },

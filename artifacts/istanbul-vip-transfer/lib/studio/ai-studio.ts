@@ -54,7 +54,7 @@ async function getClient() {
 }
 
 function getModel() {
-  return process.env.OPENAI_CONTENT_MODEL ?? process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-4o-mini';
+  return process.env.OPENAI_CONTENT_MODEL ?? process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-5.4-mini';
 }
 
 function getImageModel(): 'dall-e-3' { return 'dall-e-3'; }
@@ -520,7 +520,7 @@ Return JSON with EXACTLY the same keys as the input object. All values must be i
 
   const bodyFull = trContent.bodyMd;
   // Translate in one chunk for bodies ≤ 3000 chars; for longer bodies use first 4000 chars
-  // (gpt-4o-mini context is 128k — 4000 chars ≈ 1000 tokens, well within limits)
+  // (gpt-5.4-mini context is 128k — 4000 chars ≈ 1000 tokens, well within limits)
   const bodyForTranslation = bodyFull.length > 4000
     ? bodyFull.slice(0, 4000) + '\n\n[... content continues — translate up to this point ...]'
     : bodyFull;

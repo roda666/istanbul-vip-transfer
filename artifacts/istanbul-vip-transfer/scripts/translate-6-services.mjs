@@ -41,7 +41,7 @@ const PRESERVED = [
   'Esenboğa', 'Adnan Menderes', 'ADB', 'ESB', 'AYT',
 ];
 
-const MODEL = process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-4o-mini';
+const MODEL = process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-5.4-mini';
 
 const sql = postgres(process.env.DATABASE_URL, { max: 3 });
 const ai  = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });

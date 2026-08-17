@@ -7,8 +7,8 @@
  */
 import OpenAI from 'openai';
 
-/** Configurable via env var; defaults to gpt-4o-mini. */
-export const CHATBOT_MODEL = process.env.OPENAI_CHATBOT_MODEL ?? 'gpt-4o-mini';
+/** Configurable via env var; defaults to gpt-5.4-mini. */
+export const CHATBOT_MODEL = process.env.OPENAI_CHATBOT_MODEL ?? 'gpt-5.4-mini';
 
 /**
  * Returns a fresh OpenAI client on every call (do NOT cache — tokens expire).

@@ -275,7 +275,7 @@ async function runAutoPublishPipeline(opts: {
         metaDescription:    c.ogDescription ?? c.excerpt ?? '',
         imageAlt:           c.ogImageAlt ?? '',
         isAiGenerated:      true,
-        aiModel:            'gpt-4o-mini',
+        aiModel:            'gpt-5.4-mini',
         publishedAt:        now(),
         updatedAt:          now(),
       };

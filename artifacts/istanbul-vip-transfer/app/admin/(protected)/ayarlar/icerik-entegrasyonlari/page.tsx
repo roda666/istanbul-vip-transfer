@@ -287,7 +287,7 @@ export default async function IcerikEntegrasyonlariPage({
           <div>
             <p style={labelStyle}>Kullanılan Model</p>
             <p style={{ ...hint, margin: 0 }}>
-              {process.env.OPENAI_CONTENT_MODEL ?? process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-4o-mini'} (varsayılan)
+              {process.env.OPENAI_CONTENT_MODEL ?? process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-5.4-mini'} (varsayılan)
             </p>
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>{codePill('OPENAI_CONTENT_MODEL')}</div>
           </div>

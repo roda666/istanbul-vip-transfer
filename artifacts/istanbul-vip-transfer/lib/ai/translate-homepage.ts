@@ -31,7 +31,7 @@ export async function translateHomepageFields(
     return { ok: false, reason: 'not_configured', message: 'OPENAI_API_KEY is not set' };
   }
 
-  const model = process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-4o-mini';
+  const model = process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-5.4-mini';
 
   // Resolve the target language from the catalog (name + provider support).
   const { getTranslationTargets, promptLangName } = await import('./lang-catalog');

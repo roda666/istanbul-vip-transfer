@@ -74,7 +74,7 @@ async function seed() {
         'PUBLISHED',
         ${t.title ?? null}, ${t.body ?? null},
         ${t.metaTitle ?? null}, ${t.metaDescription ?? null}, ${t.imageAlt ?? null},
-        true, 'gpt-4o-mini', 'sp-1.1',
+        true, 'gpt-5.4-mini', 'sp-1.1',
         now(), now(), now()
       )
       ON CONFLICT (entity_type, entity_id, target_language_code) DO NOTHING

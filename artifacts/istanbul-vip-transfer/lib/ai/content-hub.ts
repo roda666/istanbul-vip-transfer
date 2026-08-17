@@ -75,7 +75,7 @@ async function getClient() {
 }
 
 function getModel() {
-  return process.env.OPENAI_CONTENT_MODEL ?? process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-4o-mini';
+  return process.env.OPENAI_CONTENT_MODEL ?? process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-5.4-mini';
 }
 
 // ── 1. Topic + keyword suggestion ─────────────────────────────────────────────

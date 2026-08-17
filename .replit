@@ -49,3 +49,4 @@ defaultBucketID = "replit-objstore-256c4b02-b655-41f8-bd7d-03afce0d36cb"
 
 [userenv.shared]
 STUDIO_SCHEDULER_ENABLED = "true"
+CRON_SECRET = "6d2704cf9986f508a9e761638387503e1208dd0b31020cde9132add6ae5e9441"

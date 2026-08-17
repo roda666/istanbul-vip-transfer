@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { SUPPORTED_LANGS } from '@/lib/i18n';
 import { buildAlternates } from '@/lib/i18n/seo';
 import PageHero from '@/components/PageHero';
+import HakkimizdaArticle from '@/components/HakkimizdaArticle';
 import TrustSignals from '@/components/TrustSignals';
 import Reviews from '@/components/Reviews';
 import BookingForm from '@/components/BookingForm';
@@ -45,6 +46,7 @@ export default function HakkimizdaPage() {
   return (
     <>
       <PageHero pageKey="about" />
+      <HakkimizdaArticle />
       <TrustSignals />
       <Reviews />
       <BookingForm />

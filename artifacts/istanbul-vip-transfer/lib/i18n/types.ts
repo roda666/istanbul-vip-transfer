@@ -423,4 +423,33 @@ export interface Dictionary {
     /** Error message when request fails */
     error: string;
   };
+  /** General contact enquiry form on the İletişim page (not the booking/quote form). */
+  contactForm: {
+    sectionLabel: string;
+    heading: string;
+    subheading: string;
+    nameLabel: string;
+    emailLabel: string;
+    phoneLabel: string;
+    phoneOptional: string;
+    subjectLabel: string;
+    messageLabel: string;
+    namePlaceholder: string;
+    emailPlaceholder: string;
+    phonePlaceholder: string;
+    subjectPlaceholder: string;
+    messagePlaceholder: string;
+    submitButton: string;
+    submitting: string;
+    successTitle: string;
+    successMessage: string;
+    errorMessage: string;
+    requiredName: string;
+    requiredEmail: string;
+    requiredSubject: string;
+    requiredMessage: string;
+    invalidEmail: string;
+    rateLimit: string;
+    minMessage: string;
+  };
 }

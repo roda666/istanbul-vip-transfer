@@ -164,8 +164,9 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
   const [collapsed, setCollapsed]   = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [newCount,  setNewCount]  = useState(0);
-  const [chatCount, setChatCount] = useState(0);
+  const [newCount,    setNewCount]    = useState(0);
+  const [chatCount,   setChatCount]   = useState(0);
+  const [studioCount, setStudioCount] = useState(0);
 
   const isChatStaff    = userRole === 'CHAT_STAFF';
   const isSuperOrAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
@@ -223,6 +224,22 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
     return () => { active = false; clearInterval(id); };
   }, []);
 
+  // Studio pending draft badge — polls every 60 s
+  useEffect(() => {
+    let active = true;
+    async function fetchStudioCount() {
+      try {
+        const res = await fetch('/admin/api/studio/pending-count');
+        if (!res.ok) return;
+        const data = await res.json() as { count: number };
+        if (active) setStudioCount(data.count ?? 0);
+      } catch { /* ignore */ }
+    }
+    fetchStudioCount();
+    const id = setInterval(fetchStudioCount, 60_000);
+    return () => { active = false; clearInterval(id); };
+  }, []);
+
   // Lock body scroll while mobile drawer is open
   useEffect(() => {
     if (mobileOpen) {
@@ -251,8 +268,9 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
   function renderNavItem(item: NavItem) {
     const active   = isActive(item.href);
     const hasBadge = !!item.badge;
-    const count    = item.href === '/admin/talepler' ? newCount
-                   : item.href === '/admin/sohbet'   ? chatCount
+    const count    = item.href === '/admin/talepler'  ? newCount
+                   : item.href === '/admin/sohbet'    ? chatCount
+                   : item.href === '/admin/ai-studio' ? studioCount
                    : 0;
     return (
       <Link
@@ -524,11 +542,10 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
             }}>
               {getVisibleItems(userRole).map(item => {
                 const active = isActive(item.href);
-                const count = item.href === '/admin/talepler'
-                  ? newCount
-                  : item.href === '/admin/sohbet'
-                    ? chatCount
-                    : 0;
+                const count = item.href === '/admin/talepler'  ? newCount
+                           : item.href === '/admin/sohbet'    ? chatCount
+                           : item.href === '/admin/ai-studio' ? studioCount
+                           : 0;
                 return (
                   <Link
                     key={item.href}

@@ -44,3 +44,8 @@ channel = "stable-25_05"
 
 [objectStorage]
 defaultBucketID = "replit-objstore-256c4b02-b655-41f8-bd7d-03afce0d36cb"
+
+[userenv]
+
+[userenv.shared]
+STUDIO_SCHEDULER_ENABLED = "true"

@@ -919,3 +919,20 @@ export type StudioResearch = typeof studioResearch.$inferSelect;
 export type StudioDistributionRow = typeof studioDistribution.$inferSelect;
 export type StudioAuditRow = typeof studioAudit.$inferSelect;
 export type StudioSchedule = typeof studioSchedules.$inferSelect;
+
+// ── GSC (Google Search Console) connection ────────────────────────────────────
+
+export const gscConnections = pgTable('gsc_connections', {
+  id:             serial('id').primaryKey(),
+  siteUrl:        text('site_url').notNull(),
+  accessToken:    text('access_token'),
+  refreshToken:   text('refresh_token').notNull(),
+  tokenExpiry:    timestamp('token_expiry',    { withTimezone: true }),
+  scope:          text('scope'),
+  connectedEmail: text('connected_email'),
+  connectedAt:    timestamp('connected_at',    { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:      timestamp('updated_at',      { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type GscConnection    = typeof gscConnections.$inferSelect;
+export type NewGscConnection = typeof gscConnections.$inferInsert;

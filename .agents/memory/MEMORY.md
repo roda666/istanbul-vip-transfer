@@ -33,3 +33,4 @@
 - [Schema import quirks](schema-import-quirks.md) — serial must be explicitly imported from drizzle-orm/pg-core; admin API routes use @/lib/auth/session not @/lib/session.
 - [AdminSidebar grouped nav](admin-sidebar-groups.md) — NavGroup collapsible sections; CHAT_STAFF sees flat list; Dashboard is standalone above groups; groups auto-expand when active item is inside; getNavGroups() returns 5 groups.
 - [Homepage translation source-of-truth](homepage-translation-source-of-truth.md) — entity_type='homepage' is canonical; entity_type='content' orphans deleted; EN was broken (old format), fixed 2026-08-17.
+- [Legal entity & trust footer](legal-entity-trust-footer.md) — company_legal_name/tursab_no/full_address/google_play_url in site_settings; ContactSettings extended; Footer trust band + TÜRSAB badge + payment badges; KVKK/Privacy veri sorumlusu updated to Hevra Turizm.

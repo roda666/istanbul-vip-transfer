@@ -15,6 +15,12 @@ interface Settings {
   address?: string | null;
   defaultSeoTitle?: string | null;
   defaultSeoDescription?: string | null;
+  // Legal / trust fields
+  companyLegalName?: string | null;
+  companyTradeName?: string | null;
+  tursabNo?: string | null;
+  fullAddress?: string | null;
+  googlePlayUrl?: string | null;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -25,6 +31,9 @@ const inputStyle: React.CSSProperties = {
 const labelStyle: React.CSSProperties = {
   display: 'block', color: '#52697A', fontSize: '11px', fontFamily: 'Inter, sans-serif',
   letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '6px', fontWeight: 600,
+};
+const hintStyle: React.CSSProperties = {
+  color: '#8FA3B3', fontSize: '11px', fontFamily: 'Inter, sans-serif', marginTop: '4px',
 };
 
 export default function AyarlarPage() {
@@ -67,40 +76,92 @@ export default function AyarlarPage() {
       )}
 
       <form onSubmit={handleSubmit} style={{ maxWidth: '640px' }}>
-        {[
-          { section: 'İşletme Bilgileri', fields: [
-            { key: 'businessName' as keyof Settings, label: 'İşletme Adı' },
-            { key: 'logoPath' as keyof Settings, label: 'Logo Yolu' },
-          ]},
-          { section: 'İletişim', fields: [
-            { key: 'phoneDisplay' as keyof Settings, label: 'Telefon (Görünüm)' },
-            { key: 'phoneInternational' as keyof Settings, label: 'Telefon (E.164)' },
-            { key: 'whatsappNumber' as keyof Settings, label: 'WhatsApp Numarası' },
-            { key: 'email' as keyof Settings, label: 'E-Posta' },
-            { key: 'googleBusinessUrl' as keyof Settings, label: 'Google İşletme URL' },
-            { key: 'address' as keyof Settings, label: 'Adres' },
-          ]},
-          { section: 'SEO Varsayılanları', fields: [
-            { key: 'defaultSeoTitle' as keyof Settings, label: 'Varsayılan Meta Başlık' },
-            { key: 'defaultSeoDescription' as keyof Settings, label: 'Varsayılan Meta Açıklama' },
-          ]},
-        ].map(section => (
-          <div key={section.section} style={{ background: '#FFFFFF', border: '1px solid #D8E1E9', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
-            <p style={{ color: '#52697A', fontSize: '11px', fontFamily: 'Inter, sans-serif', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '16px', paddingBottom: '10px', borderBottom: '1px solid #EDF2F7', margin: '0 0 16px' }}>{section.section}</p>
-            <div style={{ display: 'grid', gap: '12px' }}>
-              {section.fields.map(f => (
-                <div key={f.key}>
-                  <label style={labelStyle}>{f.label}</label>
-                  {f.key === 'address' || f.key === 'defaultSeoDescription' ? (
-                    <textarea {...field(f.key)} style={{ ...inputStyle, minHeight: '64px', resize: 'vertical' }} />
-                  ) : (
-                    <input type="text" {...field(f.key)} style={inputStyle} />
-                  )}
-                </div>
-              ))}
+
+        {/* Şirket Bilgileri */}
+        <div style={{ background: '#FFFFFF', border: '1px solid #D8E1E9', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
+          <p style={{ color: '#52697A', fontSize: '11px', fontFamily: 'Inter, sans-serif', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '16px', paddingBottom: '10px', borderBottom: '1px solid #EDF2F7', margin: '0 0 16px' }}>İşletme Bilgileri</p>
+          <div style={{ display: 'grid', gap: '12px' }}>
+            <div>
+              <label style={labelStyle}>İşletme Adı (Görünüm)</label>
+              <input type="text" {...field('businessName')} style={inputStyle} placeholder="Istanbul VIP Transfer" />
+            </div>
+            <div>
+              <label style={labelStyle}>Logo Yolu</label>
+              <input type="text" {...field('logoPath')} style={inputStyle} />
             </div>
           </div>
-        ))}
+        </div>
+
+        {/* Yasal / Güven Bilgileri */}
+        <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
+          <p style={{ color: '#92400E', fontSize: '11px', fontFamily: 'Inter, sans-serif', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '4px', margin: '0 0 4px' }}>Yasal &amp; Güven Bilgileri</p>
+          <p style={{ color: '#B45309', fontSize: '11px', fontFamily: 'Inter, sans-serif', marginBottom: '16px', paddingBottom: '10px', borderBottom: '1px solid #FDE68A' }}>Footer ve yasal sayfalarda (KVKK, Gizlilik) gösterilir.</p>
+          <div style={{ display: 'grid', gap: '12px' }}>
+            <div>
+              <label style={labelStyle}>Şirket Ticari Unvanı</label>
+              <input type="text" {...field('companyLegalName')} style={inputStyle} placeholder="Hevra Turizm" />
+              <p style={hintStyle}>Resmi tescilli şirket adı — KVKK ve yasal belgeler için kullanılır.</p>
+            </div>
+            <div>
+              <label style={labelStyle}>Ticari Adı / Marka</label>
+              <input type="text" {...field('companyTradeName')} style={inputStyle} placeholder="The History Travel" />
+            </div>
+            <div>
+              <label style={labelStyle}>TÜRSAB Belge No</label>
+              <input type="text" {...field('tursabNo')} style={inputStyle} placeholder="A-7377" />
+              <p style={hintStyle}>Footer'da güven rozeti olarak ve yasal sayfalarda gösterilir.</p>
+            </div>
+            <div>
+              <label style={labelStyle}>Tam Açık Adres</label>
+              <textarea {...field('fullAddress')} style={{ ...inputStyle, minHeight: '64px', resize: 'vertical' }} placeholder="Alemdar Mah. Ticarethane Sok. No:5/3 34110 Fatih/İSTANBUL" />
+              <p style={hintStyle}>Footer iletişim bölümünde ve yasal sayfalarda görünür.</p>
+            </div>
+            <div>
+              <label style={labelStyle}>Google Play URL (Opsiyonel)</label>
+              <input type="url" {...field('googlePlayUrl')} style={inputStyle} placeholder="https://play.google.com/store/apps/details?id=..." />
+              <p style={hintStyle}>Dolu ise footer'da "Mobil Uygulamayı İndir" rozeti gösterilir.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* İletişim */}
+        <div style={{ background: '#FFFFFF', border: '1px solid #D8E1E9', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
+          <p style={{ color: '#52697A', fontSize: '11px', fontFamily: 'Inter, sans-serif', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '16px', paddingBottom: '10px', borderBottom: '1px solid #EDF2F7', margin: '0 0 16px' }}>İletişim</p>
+          <div style={{ display: 'grid', gap: '12px' }}>
+            {[
+              { key: 'phoneDisplay' as keyof Settings, label: 'Telefon (Görünüm)', placeholder: '+90 532 660 08 47' },
+              { key: 'phoneInternational' as keyof Settings, label: 'Telefon (E.164)', placeholder: '+905326600847' },
+              { key: 'whatsappNumber' as keyof Settings, label: 'WhatsApp Numarası', placeholder: '905326600847' },
+              { key: 'email' as keyof Settings, label: 'E-Posta', placeholder: 'info@istanbulviptransfer.com' },
+              { key: 'googleBusinessUrl' as keyof Settings, label: 'Google İşletme URL', placeholder: 'https://...' },
+            ].map(f => (
+              <div key={f.key}>
+                <label style={labelStyle}>{f.label}</label>
+                <input type="text" {...field(f.key)} placeholder={f.placeholder} style={inputStyle} />
+              </div>
+            ))}
+            <div>
+              <label style={labelStyle}>Kısa Adres (Görünüm)</label>
+              <textarea {...field('address')} style={{ ...inputStyle, minHeight: '64px', resize: 'vertical' }} placeholder="İstanbul, Türkiye" />
+              <p style={hintStyle}>Kısa biçim — tam adres için yukarıdaki &quot;Tam Açık Adres&quot; alanını kullanın.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* SEO */}
+        <div style={{ background: '#FFFFFF', border: '1px solid #D8E1E9', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
+          <p style={{ color: '#52697A', fontSize: '11px', fontFamily: 'Inter, sans-serif', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '16px', paddingBottom: '10px', borderBottom: '1px solid #EDF2F7', margin: '0 0 16px' }}>SEO Varsayılanları</p>
+          <div style={{ display: 'grid', gap: '12px' }}>
+            <div>
+              <label style={labelStyle}>Varsayılan Meta Başlık</label>
+              <input type="text" {...field('defaultSeoTitle')} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Varsayılan Meta Açıklama</label>
+              <textarea {...field('defaultSeoDescription')} style={{ ...inputStyle, minHeight: '64px', resize: 'vertical' }} />
+            </div>
+          </div>
+        </div>
 
         <button type="submit" disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '10px 20px', borderRadius: '8px', background: saving ? '#93C5FD' : '#2563EB', color: '#FFFFFF', fontWeight: 700, fontSize: '13px', fontFamily: 'Inter, sans-serif', border: 'none', cursor: saving ? 'not-allowed' : 'pointer' }}>
           {saving ? <Loader2 size={14} /> : <Save size={14} />} {saving ? 'Kaydediliyor...' : 'Kaydet'}

@@ -188,6 +188,12 @@ export const siteSettings = pgTable('site_settings', {
   showChildSeatCount: boolean('show_child_seat_count').default(false).notNull(),
   showVehiclePreference: boolean('show_vehicle_preference').default(false).notNull(),
   showAdditionalNotes: boolean('show_additional_notes').default(false).notNull(),
+  // Legal / trust fields (shown in footer and legal pages)
+  companyLegalName: text('company_legal_name'),  // e.g. "Hevra Turizm"
+  companyTradeName: text('company_trade_name'),  // e.g. "The History Travel"
+  tursabNo:         text('tursab_no'),           // e.g. "A-7377"
+  fullAddress:      text('full_address'),         // Full registered address
+  googlePlayUrl:    text('google_play_url'),      // Mobile app link (optional)
 });
 
 export const navigationItems = pgTable('navigation_items', {

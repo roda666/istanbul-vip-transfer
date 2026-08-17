@@ -33,6 +33,11 @@ const tr: Dictionary = {
     cookieLink: 'Çerez Politikası',
     termsLink: 'Kullanım Koşulları',
     privacyLink: 'Gizlilik Politikası',
+    tursabLabel: 'TÜRSAB Yetkili Acente',
+    paymentMethods: 'Ödeme Yöntemleri',
+    cashPayment: 'Araçta Nakit Ödeme',
+    bankTransfer: 'Havale / EFT Ödeme',
+    googlePlayLabel: 'Mobil Uygulamayı İndir',
   },
   common: {
     loading: 'Yükleniyor...',

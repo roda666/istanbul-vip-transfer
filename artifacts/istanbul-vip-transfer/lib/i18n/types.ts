@@ -36,6 +36,12 @@ export interface Dictionary {
     cookieLink: string;
     termsLink: string;
     privacyLink: string;
+    // Trust & payment section
+    tursabLabel: string;
+    paymentMethods: string;
+    cashPayment: string;
+    bankTransfer: string;
+    googlePlayLabel: string;
   };
   common: {
     loading: string;

@@ -13,6 +13,12 @@ const settingsSchema = z.object({
   address: z.string().max(500).optional().nullable(),
   defaultSeoTitle: z.string().max(200).optional().nullable(),
   defaultSeoDescription: z.string().max(400).optional().nullable(),
+  // Legal / trust fields
+  companyLegalName: z.string().max(200).optional().nullable(),
+  companyTradeName: z.string().max(200).optional().nullable(),
+  tursabNo: z.string().max(50).optional().nullable(),
+  fullAddress: z.string().max(500).optional().nullable(),
+  googlePlayUrl: z.string().max(500).optional().nullable(),
 });
 
 export async function GET() {

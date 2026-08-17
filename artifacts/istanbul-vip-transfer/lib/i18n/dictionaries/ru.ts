@@ -33,6 +33,11 @@ const ru: Dictionary = {
     cookieLink: 'Политика Cookies',
     termsLink: 'Условия использования',
     privacyLink: 'Политика конфиденциальности',
+    tursabLabel: 'Лицензированное агентство TÜRSAB',
+    paymentMethods: 'Способы оплаты',
+    cashPayment: 'Наличные в автомобиле',
+    bankTransfer: 'Банковский перевод / EFT',
+    googlePlayLabel: 'Скачать мобильное приложение',
   },
   common: {
     loading: 'Загрузка...',

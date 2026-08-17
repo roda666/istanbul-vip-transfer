@@ -33,6 +33,11 @@ const fr: Dictionary = {
       cookieLink: 'Politique de cookies',
       termsLink: "Conditions d'utilisation",
       privacyLink: 'Politique de confidentialité',
+      tursabLabel: 'Agence agréée TÜRSAB',
+      paymentMethods: 'Modes de paiement',
+      cashPayment: 'Paiement en espèces dans le véhicule',
+      bankTransfer: 'Virement bancaire / EFT',
+      googlePlayLabel: "Télécharger l'application",
     },
     common: {
       loading: 'Chargement...',

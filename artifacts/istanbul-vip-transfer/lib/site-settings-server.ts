@@ -39,6 +39,17 @@ export type ContactSettings = {
   emailMailto: string;
   /** Google Business profile URL */
   googleBusinessUrl: string;
+  // Legal / trust fields (shown in footer and legal pages)
+  /** Registered company legal name, e.g. "Hevra Turizm" */
+  companyLegalName: string;
+  /** Trade/brand name, e.g. "The History Travel" */
+  companyTradeName: string;
+  /** TÜRSAB license number, e.g. "A-7377" */
+  tursabNo: string;
+  /** Full registered address */
+  fullAddress: string;
+  /** Google Play app URL (optional, empty string if not set) */
+  googlePlayUrl: string;
 };
 
 // ── Fallback (static SITE values) ─────────────────────────────────────────────
@@ -53,6 +64,11 @@ const STATIC_DEFAULTS: ContactSettings = {
   email:            SITE.email,
   emailMailto:      SITE.emailMailto,
   googleBusinessUrl: SITE.googleBusinessUrl,
+  companyLegalName: '',
+  companyTradeName: '',
+  tursabNo:         '',
+  fullAddress:      '',
+  googlePlayUrl:    '',
 };
 
 // ── Module-level cache ─────────────────────────────────────────────────────────
@@ -90,6 +106,11 @@ function buildFromRow(row: typeof siteSettings.$inferSelect): ContactSettings {
     email,
     emailMailto:      `mailto:${email}`,
     googleBusinessUrl: gbUrl,
+    companyLegalName: (row.companyLegalName ?? '').trim(),
+    companyTradeName: (row.companyTradeName ?? '').trim(),
+    tursabNo:         (row.tursabNo         ?? '').trim(),
+    fullAddress:      (row.fullAddress       ?? '').trim(),
+    googlePlayUrl:    (row.googlePlayUrl     ?? '').trim(),
   };
 }
 

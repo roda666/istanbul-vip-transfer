@@ -33,6 +33,11 @@ const nl: Dictionary = {
       cookieLink: 'Cookiebeleid',
       termsLink: 'Gebruiksvoorwaarden',
       privacyLink: 'Privacybeleid',
+      tursabLabel: 'TÜRSAB Gecertificeerd Bureau',
+      paymentMethods: 'Betaalmethoden',
+      cashPayment: 'Contant betalen in het voertuig',
+      bankTransfer: 'Bankoverschrijving / EFT',
+      googlePlayLabel: 'Download de mobiele app',
     },
     common: {
       loading: 'Laden...',

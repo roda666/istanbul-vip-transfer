@@ -33,6 +33,11 @@ const de: Dictionary = {
     cookieLink: 'Cookie-Richtlinie',
     termsLink: 'Nutzungsbedingungen',
     privacyLink: 'Datenschutzrichtlinie',
+    tursabLabel: 'TÜRSAB Lizenzierte Agentur',
+    paymentMethods: 'Zahlungsmethoden',
+    cashPayment: 'Barzahlung im Fahrzeug',
+    bankTransfer: 'Banküberweisung / EFT',
+    googlePlayLabel: 'Mobile App herunterladen',
   },
   common: {
     loading: 'Wird geladen...',

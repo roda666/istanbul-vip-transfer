@@ -69,6 +69,7 @@ function RouteCard({ route, lang, t }: {
   return (
     <a
       href={href}
+      title={`${name} — İstanbul VIP Transfer`}
       style={{
         background: CARD_BG,
         border: `1px solid ${BORDER}`,

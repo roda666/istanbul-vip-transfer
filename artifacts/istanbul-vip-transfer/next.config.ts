@@ -206,6 +206,16 @@ const nextConfig: NextConfig = {
   // Permanent redirects
   async redirects() {
     return [
+      // ── Canonical domain: non-www → www ───────────────────────────────────────
+      // Ensures istanbulviptransfer.com redirects to www.istanbulviptransfer.com.
+      // Only fires if the non-www host resolves to this server.
+      {
+        source:      '/:path*',
+        has:         [{ type: 'host', value: 'istanbulviptransfer.com' }],
+        destination: 'https://www.istanbulviptransfer.com/:path*',
+        permanent:   true,
+      },
+
       // ── Internal admin / CMS redirects ────────────────────────────────────────
       // Old admin routes → unified Dil ve Çeviri module
       {

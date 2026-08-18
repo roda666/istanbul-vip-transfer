@@ -423,7 +423,7 @@ export default function Services({ hiddenSlugs }: Props = {}) {
               </motion.div>
             );
             return 'href' in service ? (
-              <Link key={service.title} href={service.href!} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C79A35] rounded-2xl">
+              <Link key={service.title} href={service.href!} title={typeof service.title === 'string' ? service.title : undefined} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C79A35] rounded-2xl">
                 {card}
               </Link>
             ) : (

@@ -41,6 +41,15 @@ export const metadata: Metadata = {
   description:
     'İstanbul VIP transfer hizmeti; İstanbul Havalimanı, Sabiha Gökçen, şehir içi ve şehirler arası Mercedes Vito ve Sprinter ulaşımı.',
   metadataBase: new URL(SITE.siteUrl),
+  icons: {
+    // SVG favicon for modern browsers (served via app/icon.svg)
+    icon:  [{ url: '/icon.svg', type: 'image/svg+xml' }],
+    // Apple touch icon (180×180 static PNG in public/)
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+    // Classic ICO fallback for older browsers and bookmarks
+    shortcut: [{ url: '/favicon.ico' }],
+  },
+  manifest: '/manifest.webmanifest',
   openGraph: {
     images: [SITE.ogImage],
   },

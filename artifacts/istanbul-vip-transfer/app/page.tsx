@@ -35,8 +35,23 @@ async function getTransferRoutes(): Promise<TransferRoute[]> {
 
 const BASE = SITE.siteUrl;
 
+async function getPublishedHomepageLangs(): Promise<string[]> {
+  try {
+    const { db } = await import('@/db');
+    const rows = await db.execute(
+      `SELECT target_language_code FROM content_translations
+       WHERE entity_type = 'homepage' AND status = 'PUBLISHED'` as never,
+    ) as unknown as { rows: Array<{ target_language_code: string }> };
+    return (rows.rows ?? []).map((r) => r.target_language_code).filter(Boolean);
+  } catch {
+    // DB unavailable — only emit TR hreflang
+    return [];
+  }
+}
+
 export async function generateMetadata(): Promise<Metadata> {
-  const alts = await buildAlternates('/', [...SUPPORTED_LANGS]);
+  const publishedLangs = await getPublishedHomepageLangs();
+  const alts = await buildAlternates('/', publishedLangs);
   return {
     title: 'İstanbul VIP Transfer | Vito ve Sprinter Hizmeti',
     description:

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Archive, MessageCircle, Save } from 'lucide-react';
+import { Archive, MessageCircle, Save, Star } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 // Statuses available for new selections (workflow)
@@ -10,24 +10,26 @@ const WORKFLOW_STATUSES: Record<string, string> = {
   CONTACTED: 'İletişimde',
   QUOTED:    'Teklife Gönderildi',
   CONFIRMED: 'Onaylandı',
+  COMPLETED: 'Tamamlandı',
   CANCELLED: 'İptal',
   ARCHIVED:  'Arşivlendi',
 };
 
 // Legacy statuses that may exist on old records — display-only
 const LEGACY_STATUS_LABELS: Record<string, string> = {
-  COMPLETED: 'Tamamlandı (Eski)',
-  SPAM:      'Spam (Eski)',
+  SPAM: 'Spam (Eski)',
 };
 
 interface Props {
-  requestId:      string;
-  currentStatus:  string;
-  archivedAt:     string | null;
-  customerName:   string;
-  customerPhone:  string;
+  requestId:       string;
+  currentStatus:   string;
+  archivedAt:      string | null;
+  customerName:    string;
+  customerPhone:   string;
   referenceNumber: string;
-  adminNotes:     string | null;
+  adminNotes:      string | null;
+  /** Direct Google review link fetched from site_settings */
+  googleReviewUrl: string;
 }
 
 export default function TalepDetayClient({
@@ -38,6 +40,7 @@ export default function TalepDetayClient({
   customerPhone,
   referenceNumber,
   adminNotes: initialNotes,
+  googleReviewUrl,
 }: Props) {
   const [status, setStatus]   = useState(currentStatus);
   const [loading, setLoading] = useState(false);
@@ -45,9 +48,10 @@ export default function TalepDetayClient({
   const [notes, setNotes]     = useState(initialNotes ?? '');
   const [notesSaving, setNotesSaving] = useState(false);
   const [notesSaved, setNotesSaved]   = useState(false);
+  const [copyDone, setCopyDone]       = useState(false);
   const router = useRouter();
 
-  const isLegacy = status === 'COMPLETED' || status === 'SPAM';
+  const isLegacy = status === 'SPAM';
 
   async function saveStatus(newStatus: string) {
     setLoading(true);
@@ -103,6 +107,27 @@ export default function TalepDetayClient({
       `Merhaba ${customerName}, IVT referans numaranız: ${referenceNumber} hakkında size ulaşmak istedik.`
     );
     window.open(`https://wa.me/${intlPhone}?text=${message}`, '_blank', 'noopener,noreferrer');
+  }
+
+  /** Builds the WhatsApp review-request message and opens it */
+  function openReviewWhatsApp() {
+    const phone     = customerPhone.replace(/\D/g, '');
+    const intlPhone = phone.startsWith('0') ? `90${phone.slice(1)}` : phone.startsWith('90') ? phone : `90${phone}`;
+    const reviewLink = googleReviewUrl || 'https://g.page/r/review'; // fallback
+    const message = encodeURIComponent(
+      `Merhaba ${customerName} 😊\n\nTransfer hizmetimizden memnun kaldıysanız, Google'da kısa bir yorum bırakmanız bize çok yardımcı olur 🙏\n\n⭐ Yorum bağlantısı: ${reviewLink}\n\nTeşekkürler!\nİstanbul VIP Transfer`
+    );
+    window.open(`https://wa.me/${intlPhone}?text=${message}`, '_blank', 'noopener,noreferrer');
+  }
+
+  /** Copies the review message text to clipboard */
+  function copyReviewMessage() {
+    const reviewLink = googleReviewUrl || 'https://g.page/r/review';
+    const text = `Merhaba ${customerName} 😊\n\nTransfer hizmetimizden memnun kaldıysanız, Google'da kısa bir yorum bırakmanız bize çok yardımcı olur 🙏\n\n⭐ Yorum bağlantısı: ${reviewLink}\n\nTeşekkürler!\nİstanbul VIP Transfer`;
+    navigator.clipboard.writeText(text).then(() => {
+      setCopyDone(true);
+      setTimeout(() => setCopyDone(false), 2500);
+    }).catch(() => {});
   }
 
   const labelStyle: React.CSSProperties = {
@@ -183,6 +208,70 @@ export default function TalepDetayClient({
         <p style={{ fontSize: '12px', color: '#94A3B8', fontFamily: 'Inter, sans-serif', margin: 0 }}>
           Bu talep arşivlenmiş.
         </p>
+      )}
+
+      {/* ── Review request panel — shown when status is COMPLETED ── */}
+      {status === 'COMPLETED' && (
+        <div style={{
+          background: 'linear-gradient(135deg, #FFFBEB 0%, #FEF9EE 100%)',
+          border: '1px solid #FDE68A',
+          borderRadius: '10px',
+          padding: '16px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '10px' }}>
+            <Star size={15} style={{ color: '#D97706', fill: '#D97706' }} />
+            <p style={{ fontSize: '13px', fontWeight: 700, color: '#92400E', fontFamily: 'Inter, sans-serif', margin: 0 }}>
+              Yorum İsteği Gönder
+            </p>
+          </div>
+          <p style={{ fontSize: '12px', color: '#B45309', fontFamily: 'Inter, sans-serif', margin: '0 0 12px', lineHeight: 1.5 }}>
+            Müşteriye hazır mesajı WhatsApp üzerinden gönderin veya kopyalayıp kendi mesajınıza yapıştırın.
+            Gönderim tamamen manuel — admin WhatsApp&apos;ından yapılır.
+          </p>
+
+          {/* Preview of the message */}
+          <div style={{
+            background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '8px',
+            padding: '12px', marginBottom: '12px', fontSize: '12px', color: '#374151',
+            fontFamily: 'Inter, sans-serif', lineHeight: 1.6, whiteSpace: 'pre-line',
+          }}>
+            {`Merhaba ${customerName} 😊\n\nTransfer hizmetimizden memnun kaldıysanız, Google'da kısa bir yorum bırakmanız bize çok yardımcı olur 🙏\n\n⭐ Yorum bağlantısı: ${googleReviewUrl || '(Google Yorum URL\'si ayarlardan girilmeli)'}\n\nTeşekkürler!\nİstanbul VIP Transfer`}
+          </div>
+
+          {!googleReviewUrl && (
+            <p style={{ fontSize: '11px', color: '#DC2626', fontFamily: 'Inter, sans-serif', margin: '0 0 10px', background: '#FEF2F2', padding: '6px 10px', borderRadius: '6px', border: '1px solid #FECACA' }}>
+              ⚠️ Google Yorum URL&apos;si henüz girilmemiş. Lütfen <strong>Site Ayarları</strong> sayfasından ekleyin.
+            </p>
+          )}
+
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              onClick={openReviewWhatsApp}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '8px 14px', borderRadius: '8px',
+                background: '#25D366', color: '#FFFFFF',
+                border: 'none', cursor: 'pointer',
+                fontSize: '12px', fontWeight: 600, fontFamily: 'Inter, sans-serif',
+              }}
+            >
+              <MessageCircle size={13} />
+              WhatsApp&apos;tan Gönder
+            </button>
+            <button
+              onClick={copyReviewMessage}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '8px 14px', borderRadius: '8px',
+                background: '#F1F5F9', color: '#475569',
+                border: '1px solid #E2E8F0', cursor: 'pointer',
+                fontSize: '12px', fontWeight: 600, fontFamily: 'Inter, sans-serif',
+              }}
+            >
+              {copyDone ? '✓ Kopyalandı' : 'Metni Kopyala'}
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Internal notes */}

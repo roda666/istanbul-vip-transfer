@@ -30,6 +30,7 @@ import {
   PenSquare,
   Users,
   Tag,
+  BarChart2,
 } from 'lucide-react';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -71,6 +72,7 @@ function getNavGroups(role: string, isSuperOrAdmin: boolean): NavGroup[] {
       label: 'Operasyon',
       items: [
         { href: '/admin/talepler',             label: 'Talepler',            icon: <ClipboardList size={18} /> },
+        { href: '/admin/istatistikler',       label: 'İstatistikler',        icon: <BarChart2 size={18} /> },
         { href: '/admin/rezervasyon-ayarlari', label: 'Rezervasyon Ayarları', icon: <CalendarClock size={18} /> },
         { href: '/admin/transfer-rotalari',   label: 'Transfer Rotaları',   icon: <MapPin size={18} /> },
       ],

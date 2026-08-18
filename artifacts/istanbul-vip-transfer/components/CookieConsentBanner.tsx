@@ -7,7 +7,14 @@ import Link from 'next/link';
 
 const COOKIE_NAME  = 'ivt_cookie_consent';
 const COOKIE_VALUE = 'accepted';
+const COOKIE_REJECT = 'rejected';
 const MAX_AGE_SECS = 365 * 24 * 3600; // 1 year
+
+// Reject button labels per locale — avoids updating 9 dict files for one word
+const REJECT_LABELS: Record<string, string> = {
+  tr: 'Reddet', en: 'Decline', de: 'Ablehnen', ru: 'Отклонить',
+  ar: 'رفض',   es: 'Rechazar', fr: 'Refuser',  it: 'Rifiuta', nl: 'Weigeren',
+};
 
 function getCookie(name: string): string | undefined {
   if (typeof document === 'undefined') return undefined;
@@ -26,9 +33,9 @@ export default function CookieConsentBanner() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (getCookie(COOKIE_NAME) !== COOKIE_VALUE) {
-      setVisible(true);
-    }
+    // Show only when no decision has been made yet
+    const current = getCookie(COOKIE_NAME);
+    if (!current) setVisible(true);
   }, []);
 
   if (!visible) return null;
@@ -36,6 +43,14 @@ export default function CookieConsentBanner() {
   const accept = () => {
     setCookie(COOKIE_NAME, COOKIE_VALUE, MAX_AGE_SECS);
     setVisible(false);
+    // Notify GoogleAnalyticsConsent that scripts can now be loaded
+    window.dispatchEvent(new CustomEvent('ivt:consent:accepted'));
+  };
+
+  const reject = () => {
+    setCookie(COOKIE_NAME, COOKIE_REJECT, MAX_AGE_SECS);
+    setVisible(false);
+    // No event dispatched → GA stays unloaded
   };
 
   const lp = (path: string) => localePath(path, lang);
@@ -88,6 +103,26 @@ export default function CookieConsentBanner() {
           {dict.common.cookieBannerDetails}
         </Link>
 
+        {/* Reject — sets rejected cookie, GA stays unloaded */}
+        <button
+          onClick={reject}
+          style={{
+            background:   'transparent',
+            color:        'rgba(255,255,255,0.60)',
+            border:       '1px solid rgba(255,255,255,0.25)',
+            borderRadius: '6px',
+            padding:      '7px 14px',
+            fontFamily:   'Inter, sans-serif',
+            fontSize:     '13px',
+            fontWeight:   500,
+            cursor:       'pointer',
+            whiteSpace:   'nowrap',
+          }}
+        >
+          {REJECT_LABELS[lang] ?? 'Decline'}
+        </button>
+
+        {/* Accept — sets accepted cookie and signals GA to load */}
         <button
           onClick={accept}
           style={{

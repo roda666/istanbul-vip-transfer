@@ -50,6 +50,8 @@ export type ContactSettings = {
   fullAddress: string;
   /** Google Play app URL (optional, empty string if not set) */
   googlePlayUrl: string;
+  /** Direct Google review link (e.g. https://g.page/r/xxx/review) */
+  googleReviewUrl: string;
 };
 
 // ── Fallback (static SITE values) ─────────────────────────────────────────────
@@ -69,6 +71,7 @@ const STATIC_DEFAULTS: ContactSettings = {
   tursabNo:         '',
   fullAddress:      '',
   googlePlayUrl:    '',
+  googleReviewUrl:  '',
 };
 
 // ── Module-level cache ─────────────────────────────────────────────────────────
@@ -111,6 +114,7 @@ function buildFromRow(row: typeof siteSettings.$inferSelect): ContactSettings {
     tursabNo:         (row.tursabNo         ?? '').trim(),
     fullAddress:      (row.fullAddress       ?? '').trim(),
     googlePlayUrl:    (row.googlePlayUrl     ?? '').trim(),
+    googleReviewUrl:  (row.googleReviewUrl   ?? '').trim(),
   };
 }
 

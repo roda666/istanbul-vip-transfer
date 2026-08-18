@@ -21,6 +21,7 @@ interface Settings {
   tursabNo?: string | null;
   fullAddress?: string | null;
   googlePlayUrl?: string | null;
+  googleReviewUrl?: string | null;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -133,7 +134,8 @@ export default function AyarlarPage() {
               { key: 'phoneInternational' as keyof Settings, label: 'Telefon (E.164)', placeholder: '+905326600847' },
               { key: 'whatsappNumber' as keyof Settings, label: 'WhatsApp Numarası', placeholder: '905326600847' },
               { key: 'email' as keyof Settings, label: 'E-Posta', placeholder: 'info@istanbulviptransfer.com' },
-              { key: 'googleBusinessUrl' as keyof Settings, label: 'Google İşletme URL', placeholder: 'https://...' },
+              { key: 'googleBusinessUrl' as keyof Settings, label: 'Google İşletme URL', placeholder: 'https://maps.app.goo.gl/...' },
+              { key: 'googleReviewUrl' as keyof Settings, label: 'Google Yorum URL (Direkt Link)', placeholder: 'https://g.page/r/xxx/review' },
             ].map(f => (
               <div key={f.key}>
                 <label style={labelStyle}>{f.label}</label>

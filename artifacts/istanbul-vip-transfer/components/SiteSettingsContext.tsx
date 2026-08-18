@@ -41,6 +41,7 @@ const DEFAULT_SETTINGS: ContactSettings = {
   tursabNo:         '',
   fullAddress:      '',
   googlePlayUrl:    '',
+  googleReviewUrl:  '',
 };
 
 // ── Context ───────────────────────────────────────────────────────────────────

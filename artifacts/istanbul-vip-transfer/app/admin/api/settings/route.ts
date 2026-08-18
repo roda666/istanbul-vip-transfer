@@ -18,7 +18,8 @@ const settingsSchema = z.object({
   companyTradeName: z.string().max(200).optional().nullable(),
   tursabNo: z.string().max(50).optional().nullable(),
   fullAddress: z.string().max(500).optional().nullable(),
-  googlePlayUrl: z.string().max(500).optional().nullable(),
+  googlePlayUrl:   z.string().max(500).optional().nullable(),
+  googleReviewUrl: z.string().max(500).optional().nullable(),
 });
 
 export async function GET() {

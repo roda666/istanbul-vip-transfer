@@ -132,7 +132,11 @@ const valueStyle: React.CSSProperties = {
 
 export default async function TalepDetayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [req, auditEntries] = await Promise.all([getRequest(id), getAuditLog(id)]);
+  const [req, auditEntries, siteSettings] = await Promise.all([
+    getRequest(id),
+    getAuditLog(id),
+    import('@/lib/site-settings-server').then(m => m.getContactSettings()),
+  ]);
   if (!req) notFound();
 
   const formData = (req.requestData as Record<string, unknown>) ?? {};
@@ -181,6 +185,7 @@ export default async function TalepDetayPage({ params }: { params: Promise<{ id:
             customerPhone={req.phone}
             referenceNumber={req.referenceNumber}
             adminNotes={req.adminNotes ?? null}
+            googleReviewUrl={siteSettings.googleReviewUrl}
           />
         </div>
 

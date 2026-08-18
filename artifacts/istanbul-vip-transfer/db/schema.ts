@@ -194,6 +194,7 @@ export const siteSettings = pgTable('site_settings', {
   tursabNo:         text('tursab_no'),           // e.g. "A-7377"
   fullAddress:      text('full_address'),         // Full registered address
   googlePlayUrl:    text('google_play_url'),      // Mobile app link (optional)
+  googleReviewUrl:  text('google_review_url'),    // Direct Google review link
 });
 
 export const navigationItems = pgTable('navigation_items', {

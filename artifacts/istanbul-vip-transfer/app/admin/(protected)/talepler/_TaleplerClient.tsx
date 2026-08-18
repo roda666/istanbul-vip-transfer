@@ -32,6 +32,7 @@ const WORKFLOW_STATUSES: Record<string, string> = {
   CONTACTED: 'İletişimde',
   QUOTED:    'Teklife Gönderildi',
   CONFIRMED: 'Onaylandı',
+  COMPLETED: 'Tamamlandı',
   CANCELLED: 'İptal',
   ARCHIVED:  'Arşivlendi',
 };
@@ -110,7 +111,7 @@ function RequestCard({
   formatDate: (iso: string) => string;
 }) {
   const sc = STATUS_COLORS[row.status] ?? STATUS_COLORS.NEW;
-  const isLegacy = row.status === 'COMPLETED' || row.status === 'SPAM';
+  const isLegacy = row.status === 'SPAM';
 
   return (
     <div style={{

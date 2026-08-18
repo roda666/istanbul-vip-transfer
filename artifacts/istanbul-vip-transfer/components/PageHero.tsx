@@ -3,7 +3,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
 import { localePath } from '@/lib/locale-path';
@@ -142,12 +141,7 @@ export default function PageHero(props: PageHeroProps) {
       <div className="relative z-10 max-w-4xl mx-auto px-5 md:px-8">
         {/* Badge — service category label above H1 */}
         {badge && (
-          <motion.div
-            className="inline-flex items-center gap-2 mb-5"
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.05 }}
-          >
+          <div className="ivt-ph-badge inline-flex items-center gap-2 mb-5">
             <span style={{
               display: 'inline-block',
               padding: '4px 14px',
@@ -163,7 +157,7 @@ export default function PageHero(props: PageHeroProps) {
             }}>
               {badge}
             </span>
-          </motion.div>
+          </div>
         )}
 
         {/* Breadcrumb */}
@@ -194,44 +188,32 @@ export default function PageHero(props: PageHeroProps) {
         </nav>
 
         {/* H1 */}
-        <motion.h1
-          className="text-3xl sm:text-4xl md:text-6xl font-bold mb-6"
+        <h1
+          className="ivt-ph-h1 text-3xl sm:text-4xl md:text-6xl font-bold mb-6"
           style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43', lineHeight: 1.15 }}
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.1 }}
         >
           {title}
-        </motion.h1>
+        </h1>
 
         {/* Gold accent bar */}
-        <motion.div
-          className="mx-auto mb-6"
+        <div
+          className="ivt-ph-bar mx-auto mb-6"
           style={{ width: '60px', height: '3px', background: 'linear-gradient(90deg, #C79A35, #E4B84B)', borderRadius: '2px' }}
-          initial={{ opacity: 0, scaleX: 0 }}
-          animate={{ opacity: 1, scaleX: 1 }}
-          transition={{ duration: 0.7, delay: 0.3 }}
         />
 
         {subtitle && (
-          <motion.p
-            className="text-base md:text-lg max-w-2xl mx-auto leading-relaxed"
+          <p
+            className="ivt-ph-sub text-base md:text-lg max-w-2xl mx-auto leading-relaxed"
             style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.4 }}
           >
             {subtitle}
-          </motion.p>
+          </p>
         )}
 
         {heroImage && !heroImgError && (
-          <motion.div
-            className="mt-10 mx-auto overflow-hidden rounded-2xl shadow-lg"
+          <div
+            className="ivt-ph-img mt-10 mx-auto overflow-hidden rounded-2xl shadow-lg"
             style={{ maxWidth: '720px', aspectRatio: '16/9', position: 'relative' }}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.5 }}
           >
             <Image
               src={heroImage}
@@ -242,7 +224,7 @@ export default function PageHero(props: PageHeroProps) {
               priority
               onError={() => setHeroImgError(true)}
             />
-          </motion.div>
+          </div>
         )}
       </div>
 

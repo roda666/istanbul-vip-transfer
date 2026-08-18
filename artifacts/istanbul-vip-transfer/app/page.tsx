@@ -21,9 +21,10 @@ import { getPublishedHomepageData } from '@/lib/homepage-cms';
 import { getServiceVisibilityMap } from '@/lib/service-page-cms';
 import type { TransferRoute } from '@/db/schema';
 
-// Force dynamic rendering so visibility toggle changes take effect immediately
-// without requiring a redeploy.
-export const dynamic = 'force-dynamic';
+// ISR: serve pre-rendered HTML instantly; revalidate in background every 5 min.
+// Admin publish routes call revalidatePath() for on-demand invalidation,
+// so homepage content updates appear within seconds of a publish action.
+export const revalidate = 300;
 
 async function getTransferRoutes(): Promise<TransferRoute[]> {
   try {

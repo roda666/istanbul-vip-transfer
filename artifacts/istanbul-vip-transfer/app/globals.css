@@ -386,6 +386,102 @@ html {
   .ivt-hero-chevron { animation: none; }
 }
 
+/* ── Header animations (replaces framer-motion in Header.tsx) ────────────────
+   Desktop: one-shot entrance for logo, nav links, CTA, WhatsApp button.
+   Desktop dropdown: always in DOM, CSS visibility+opacity+transform for entry+exit.
+   Mobile: entry fade+slide for overlay, nav, list items, language, CTAs.
+   Mobile accordion: CSS grid-template-rows trick for height animation (both directions).
+   All respect prefers-reduced-motion.                                        */
+
+@keyframes ivt-hdr-from-left {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes ivt-hdr-from-right {
+  from { opacity: 0; transform: translateX(var(--ivt-tx, 10px)); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes ivt-hdr-from-top {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Desktop one-shot entrances */
+.ivt-hdr-logo     { animation: ivt-hdr-from-left  0.6s ease both; }
+.ivt-hdr-nav-item { animation: ivt-hdr-from-top   0.4s ease both; animation-delay: var(--delay, 0s); }
+.ivt-hdr-cta      { animation: ivt-hdr-from-right 0.5s ease both; animation-delay: 0.25s; --ivt-tx: 10px; }
+.ivt-hdr-wa       { animation: ivt-hdr-from-right 0.6s ease both; animation-delay: 0.3s;  --ivt-tx: 20px; }
+
+/* Desktop dropdown — always rendered; visibility transition enables both entry AND exit */
+.ivt-hdr-dropdown {
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  /* delay visibility:hidden until opacity transition finishes (exit) */
+  transition: opacity 0.16s ease, transform 0.16s ease, visibility 0s linear 0.16s;
+}
+.ivt-hdr-dropdown[data-open="true"] {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  transition: opacity 0.16s ease, transform 0.16s ease; /* no visibility delay on enter */
+}
+
+/* Mobile menu entry animations */
+.ivt-hdr-mobile-overlay { animation: ivt-fade-in       0.2s ease both; }
+.ivt-hdr-mobile-nav     { animation: ivt-hdr-from-top  0.25s ease both; }
+.ivt-hdr-mobile-item    { animation: ivt-hdr-from-left 0.3s  ease both; animation-delay: var(--delay, 0s); }
+.ivt-hdr-mobile-fade    { animation: ivt-fade-in       0.3s  ease both; animation-delay: var(--delay, 0s); }
+
+/* Mobile accordion — CSS grid-template-rows trick.
+   Works for open AND close because grid-template-rows is transition-able.
+   Direct child MUST have overflow:hidden + min-height:0.                   */
+.ivt-hdr-accordion {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 0.25s ease, opacity 0.2s ease;
+}
+.ivt-hdr-accordion[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.ivt-hdr-accordion > * {
+  overflow: hidden;
+  min-height: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ivt-hdr-logo, .ivt-hdr-nav-item, .ivt-hdr-cta, .ivt-hdr-wa,
+  .ivt-hdr-mobile-overlay, .ivt-hdr-mobile-nav,
+  .ivt-hdr-mobile-item, .ivt-hdr-mobile-fade {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .ivt-hdr-accordion {
+    transition: grid-template-rows 0.1s, opacity 0.1s;
+  }
+}
+
+/* ── PageHero entrance animations (replaces framer-motion in PageHero.tsx) ──
+   Reuses ivt-fade-up and ivt-scale-x keyframes defined above.              */
+.ivt-ph-badge { animation: ivt-fade-up  0.5s ease both; animation-delay: 0.05s; --ivt-ty: 8px;  }
+.ivt-ph-h1    { animation: ivt-fade-up  0.7s ease both; animation-delay: 0.10s; --ivt-ty: 24px; }
+.ivt-ph-bar   { animation: ivt-scale-x  0.7s ease both; animation-delay: 0.30s; transform-origin: center; }
+.ivt-ph-sub   { animation: ivt-fade-up  0.7s ease both; animation-delay: 0.40s; --ivt-ty: 16px; }
+.ivt-ph-img   { animation: ivt-fade-up  0.7s ease both; animation-delay: 0.50s; --ivt-ty: 20px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ivt-ph-badge, .ivt-ph-h1, .ivt-ph-bar, .ivt-ph-sub, .ivt-ph-img {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* Grain overlay (brand texture) — RTL-safe, no directional dependency */
 .grain-overlay::before {
   content: '';

@@ -39,8 +39,9 @@ async function getTransferRoutes(): Promise<TransferRoute[]> {
   }
 }
 
-// Force dynamic rendering so visibility toggle changes take effect immediately.
-export const dynamic = 'force-dynamic';
+// ISR: serve pre-rendered HTML instantly; revalidate in background every 5 min.
+// Admin publish routes call revalidatePath() for on-demand invalidation.
+export const revalidate = 300;
 
 interface Props {
   params: Promise<{ lang: string }>;

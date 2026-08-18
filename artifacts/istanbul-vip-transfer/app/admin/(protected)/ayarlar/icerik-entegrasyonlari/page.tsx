@@ -3,7 +3,6 @@
  * Content integration settings: Google Search Console OAuth + keyword data provider + OpenAI.
  */
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import {
   AlertCircle, CheckCircle2, Search, Cpu,

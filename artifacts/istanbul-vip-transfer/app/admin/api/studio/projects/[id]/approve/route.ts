@@ -137,7 +137,7 @@ async function runAutoPublishPipeline(opts: {
 }) {
   const { db }                     = await import('@/db');
   const { studioProjects, studioProjectTranslations, studioAudit, content, contentTranslations } = await import('@/db/schema');
-  const { eq, and, inArray }       = await import('drizzle-orm');
+  const { eq, and }                = await import('drizzle-orm');
   const { translateStudioContent } = await import('@/lib/studio/ai-studio');
   const { exportStudioToCms }      = await import('@/lib/studio/export-to-cms');
   const { TARGET_LANGS }           = await import('@/lib/studio/types');

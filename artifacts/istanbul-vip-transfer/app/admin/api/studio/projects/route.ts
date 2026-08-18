@@ -28,8 +28,7 @@ const createSchema = z.object({
 });
 
 export async function GET(req: NextRequest) {
-  let session;
-  try { session = await requireAdminSession(); }
+  try { await requireAdminSession(); }
   catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
 
   const { db } = await import('@/db');

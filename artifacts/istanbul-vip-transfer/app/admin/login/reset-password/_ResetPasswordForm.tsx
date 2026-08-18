@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Eye, EyeOff, Lock, ShieldCheck, AlertCircle, ArrowLeft } from 'lucide-react';
 
 const inputStyle: React.CSSProperties = {
@@ -172,9 +173,9 @@ export default function ResetPasswordForm({ token }: { token: string }) {
 
         {/* Back to login */}
         <div style={{ textAlign: 'center', marginTop: '24px' }}>
-          <a href="/admin/login" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#64748B', textDecoration: 'none', fontFamily: 'Inter, sans-serif' }}>
+          <Link href="/admin/login" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#64748B', textDecoration: 'none', fontFamily: 'Inter, sans-serif' }}>
             <ArrowLeft size={13} /> Giriş sayfasına dön
-          </a>
+          </Link>
         </div>
       </div>
     </div>

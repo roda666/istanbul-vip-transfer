@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
         dataSourceNote = `Google Search Console verisi: ${top.impressions.toLocaleString('tr-TR')} gösterim, %${(top.ctr * 100).toFixed(1)} CTR`;
       } else {
         // GSC connected but no data yet — fall back
-        gscOk && console.warn('[cron/weekly-draft] GSC connected but no opportunity data:', opResult);
+        if (gscOk) console.warn('[cron/weekly-draft] GSC connected but no opportunity data:', opResult);
           const fallback = FALLBACK_TOPICS[new Date().getDay() % FALLBACK_TOPICS.length];
         topicTitle     = fallback.title;
         primaryKeyword = fallback.keyword;

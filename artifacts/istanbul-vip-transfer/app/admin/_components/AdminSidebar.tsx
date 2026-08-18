@@ -34,7 +34,6 @@ import {
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const SIDEBAR_BG   = '#132A44';
-const SIDEBAR_BG2  = '#1B3858';
 const GOLD         = '#C99A32';
 const NAV_TEXT     = 'rgba(255,255,255,0.75)';
 const NAV_ACTIVE_BG = 'rgba(201,154,50,0.18)';

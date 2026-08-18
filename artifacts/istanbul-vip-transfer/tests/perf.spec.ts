@@ -28,7 +28,7 @@
  *   overflow-x  no horizontal scroll at any tested width
  */
 
-import { test, expect, type Page, type BrowserContext } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
 // ── Pages under test ──────────────────────────────────────────────────────────
 const PUBLIC_PAGES = [

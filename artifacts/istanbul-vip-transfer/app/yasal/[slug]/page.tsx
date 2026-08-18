@@ -50,5 +50,5 @@ export default async function LegalPageTR({ params }: Props) {
   if (!isLegalSlug(slug)) notFound();
   const page = await getLegalPage(slug);
   if (!page) notFound();
-  return <LegalPageRenderer page={page} lang="tr" slug={slug} />;
+  return <LegalPageRenderer page={page} lang="tr" />;
 }

@@ -6,7 +6,6 @@ import { localePath } from '@/lib/locale-path';
 interface Props {
   page:  LegalPage;
   lang:  string;
-  slug:  string;
 }
 
 const UPDATED_LABELS: Record<string, string> = {
@@ -26,7 +25,7 @@ const BREADCRUMB_HOME: Record<string, string> = {
   ar: 'الرئيسية', es: 'Inicio', fr: 'Accueil', it: 'Home', nl: 'Home',
 };
 
-export default function LegalPageRenderer({ page, lang, slug }: Props) {
+export default function LegalPageRenderer({ page, lang }: Props) {
   const updatedLabel = UPDATED_LABELS[lang] ?? 'Last updated';
   const homeLabel    = BREADCRUMB_HOME[lang] ?? 'Home';
   const lp           = (path: string) => localePath(path, lang);

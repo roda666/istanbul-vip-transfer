@@ -18,7 +18,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { RefreshCw, CheckCircle2, XCircle, AlertTriangle, Clock, Loader2, Globe, Database, Zap, ImageIcon, Calendar, BookOpen, ExternalLink } from 'lucide-react';
+import { RefreshCw, CheckCircle2, XCircle, AlertTriangle, Loader2, Database, Zap, ImageIcon, Calendar, BookOpen } from 'lucide-react';
 import AdminPageHeader from '../../../_components/AdminPageHeader';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────

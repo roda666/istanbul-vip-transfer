@@ -109,7 +109,7 @@ export async function DELETE(
 
   try {
     const { db }   = await import('@/db');
-    const { serviceCategories, content, auditLogs } = await import('@/db/schema');
+    const { serviceCategories, auditLogs } = await import('@/db/schema');
     const { eq, sql } = await import('drizzle-orm');
 
     const [cat] = await db.select().from(serviceCategories).where(eq(serviceCategories.id, catId)).limit(1);

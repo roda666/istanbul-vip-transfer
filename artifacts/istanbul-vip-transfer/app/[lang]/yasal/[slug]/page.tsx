@@ -67,5 +67,5 @@ export default async function LegalPageLocalized({ params }: Props) {
   const page = await getLegalPageTranslation(slug, lang) ?? await getLegalPage(slug);
   if (!page) notFound();
 
-  return <LegalPageRenderer page={page} lang={lang} slug={slug} />;
+  return <LegalPageRenderer page={page} lang={lang} />;
 }

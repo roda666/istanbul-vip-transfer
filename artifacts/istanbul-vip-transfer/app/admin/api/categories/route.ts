@@ -30,8 +30,8 @@ export async function GET() {
 
   try {
     const { db }   = await import('@/db');
-    const { serviceCategories, content } = await import('@/db/schema');
-    const { sql, asc, eq } = await import('drizzle-orm');
+    const { serviceCategories } = await import('@/db/schema');
+    const { sql, asc } = await import('drizzle-orm');
 
     const rows = await db
       .select()

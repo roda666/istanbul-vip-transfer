@@ -11,7 +11,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Wrench, ChevronRight, ChevronLeft, Plus, X, Info } from 'lucide-react';
+import { BookOpen, Wrench, ChevronRight, ChevronLeft, Plus, X } from 'lucide-react';
 import AdminPageHeader from '../../../_components/AdminPageHeader';
 import Link from 'next/link';
 

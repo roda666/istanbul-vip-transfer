@@ -10,7 +10,7 @@
  */
 import { db } from '@/db';
 import { chatbotSessions } from '@/db/schema';
-import { gte, isNull, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { getSession } from '@/lib/auth/session';
 
 export const dynamic = 'force-dynamic';

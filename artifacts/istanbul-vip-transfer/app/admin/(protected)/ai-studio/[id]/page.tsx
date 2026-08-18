@@ -12,9 +12,9 @@ import { useState, useEffect, useCallback, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ChevronLeft, RefreshCw, Sparkles, CheckCircle2, AlertTriangle,
-  Clock, Send, Globe, ImageIcon, Calendar, BookOpen, FileText,
-  Download, Eye, X, Plus, ExternalLink, Loader2, Info,
+  RefreshCw, Sparkles, CheckCircle2, AlertTriangle,
+  Send, Globe, ImageIcon, Calendar, FileText,
+  Download, ExternalLink, Loader2,
 } from 'lucide-react';
 import AdminPageHeader from '../../../_components/AdminPageHeader';
 import type { StudioProject, StudioTranslation, StudioImage, ResearchSource, DistributionDraft, StudioAuditEntry } from '@/lib/studio/types';
@@ -134,7 +134,7 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
   const [scheduleLangs, setScheduleLangs] = useState<string[]>([]);
 
   // Image approve/reject
-  const [rejectReason, setRejectReason] = useState('');
+  const [rejectReason] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -529,9 +529,8 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
         {approvedImage && (
           <div style={card}>
             <h3 style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', fontWeight: 700, color: '#059669', margin: '0 0 12px' }}>✓ Onaylı Kapak Görseli</h3>
-            {approvedImage.url && (
-              <img src={approvedImage.url} alt={approvedImage.altText ?? ''} style={{ width: '100%', maxHeight: '250px', objectFit: 'cover', borderRadius: '8px', marginBottom: '10px' }} />
-            )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {approvedImage.url && <img src={approvedImage.url} alt={approvedImage.altText ?? ''} style={{ width: '100%', maxHeight: '250px', objectFit: 'cover', borderRadius: '8px', marginBottom: '10px' }} />}
             <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: C.muted, margin: '0 0 4px' }}>Alt: {approvedImage.altText}</p>
             <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: C.light, margin: 0 }}>Kullanım: {approvedImage.usageRights}</p>
           </div>
@@ -545,6 +544,7 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
             </h3>
             {pendingImages.map(img => (
               <div key={img.id} style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: `1px solid ${C.border}` }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 {img.url && <img src={img.url} alt="" style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '8px', marginBottom: '8px' }} />}
                 <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: C.muted, margin: '0 0 8px' }}>{img.prompt?.slice(0, 120)}…</p>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -865,6 +865,7 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
     );
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   function DistributionPanel() {
     const drafts = p.distribution;
     const PLATFORM_LABELS: Record<string, string> = { newsletter: 'Bülten', instagram: 'Instagram', facebook: 'Facebook', twitter: 'Twitter / X', linkedin: 'LinkedIn' };

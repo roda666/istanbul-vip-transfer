@@ -15,8 +15,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   Sparkles, Plus, BookOpen, Wrench, Clock, CheckCircle2,
-  AlertTriangle, Archive, Send, Eye, RefreshCw,
-  Globe, ImageOff, Calendar, ChevronRight,
+  RefreshCw, Calendar, ChevronRight,
 } from 'lucide-react';
 import AdminPageHeader from '../../_components/AdminPageHeader';
 
@@ -30,13 +29,6 @@ const C = {
   text:   '#172B3A',
   muted:  '#52697A',
   light:  '#718596',
-};
-
-const inputStyle: React.CSSProperties = {
-  padding: '8px 12px', background: C.card,
-  border: `1px solid ${C.border}`, borderRadius: '8px',
-  color: C.text, fontSize: '13px', fontFamily: 'Inter, sans-serif',
-  outline: 'none', boxSizing: 'border-box',
 };
 
 // ── Types ─────────────────────────────────────────────────────────────────────

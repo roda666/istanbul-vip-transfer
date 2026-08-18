@@ -17,12 +17,12 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: 'Hakkımızda | İstanbul VIP Transfer',
     description:
-      'İstanbul VIP Transfer\'in hizmet anlayışı, araç seçenekleri, havalimanı ve şehirler arası özel ulaşım çözümleri hakkında bilgi alın.',
+      "İstanbul VIP Transfer'in hizmet anlayışı, araç seçenekleri, havalimanı ve şehirler arası özel ulaşım çözümleri hakkında bilgi alın.",
     alternates: { canonical: PAGE, languages: alts.languages },
     openGraph: {
       title: 'Hakkımızda | İstanbul VIP Transfer',
       description:
-        'İstanbul VIP Transfer\'in hizmet anlayışı, araç seçenekleri, havalimanı ve şehirler arası özel ulaşım çözümleri hakkında bilgi alın.',
+        "İstanbul VIP Transfer'in hizmet anlayışı, araç seçenekleri, havalimanı ve şehirler arası özel ulaşım çözümleri hakkında bilgi alın.",
       url: PAGE,
       siteName: 'VIP Transfer Istanbul',
       locale: 'tr_TR',
@@ -42,6 +42,72 @@ const breadcrumbSchema = {
   ],
 };
 
+const organizationSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  '@id': `${BASE}/#organization`,
+  name: 'İstanbul VIP Transfer',
+  alternateName: 'VIP Transfer Istanbul',
+  url: BASE,
+  logo: {
+    '@type': 'ImageObject',
+    url: `${BASE}/logo.png`,
+    width: 200,
+    height: 60,
+  },
+  image: SITE.ogImage.url,
+  description:
+    'İstanbul\'da Mercedes Vito ve Sprinter ile profesyonel VIP havalimanı transferi ve şehirler arası özel ulaşım hizmetleri.',
+  telephone: SITE.phoneE164,
+  email: SITE.email,
+  address: {
+    '@type': 'PostalAddress',
+    addressLocality: 'İstanbul',
+    addressCountry: 'TR',
+  },
+  geo: {
+    '@type': 'GeoCoordinates',
+    latitude: 41.0082,
+    longitude: 28.9784,
+  },
+  areaServed: [
+    { '@type': 'City', name: 'İstanbul' },
+    { '@type': 'Country', name: 'Türkiye' },
+  ],
+  serviceType: ['VIP Havalimanı Transferi', 'Şehirler Arası Transfer', 'Özel Tur', 'Kurumsal Transfer'],
+  knowsLanguage: ['tr', 'en', 'de', 'ru', 'ar', 'fr', 'es', 'it', 'nl'],
+  contactPoint: {
+    '@type': 'ContactPoint',
+    telephone: SITE.phoneE164,
+    contactType: 'customer service',
+    availableLanguage: ['Turkish', 'English'],
+    contactOption: 'TollFree',
+    hoursAvailable: {
+      '@type': 'OpeningHoursSpecification',
+      dayOfWeek: ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'],
+      opens: '00:00',
+      closes: '23:59',
+    },
+  },
+  sameAs: [
+    SITE.googleBusinessUrl,
+    'https://www.instagram.com/istanbulviptransfer',
+  ].filter(Boolean),
+};
+
+const aboutPageSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'AboutPage',
+  '@id': `${PAGE}#webpage`,
+  url: PAGE,
+  name: 'Hakkımızda — İstanbul VIP Transfer',
+  description:
+    "İstanbul VIP Transfer'in hizmet anlayışı ve araç filosu hakkında bilgi edinin.",
+  isPartOf: { '@id': `${BASE}/#website` },
+  about: { '@id': `${BASE}/#organization` },
+  inLanguage: 'tr-TR',
+};
+
 export default function HakkimizdaPage() {
   return (
     <>
@@ -54,6 +120,14 @@ export default function HakkimizdaPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(aboutPageSchema) }}
       />
     </>
   );

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Search, ChevronLeft, ChevronRight, Archive, RefreshCw } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Archive, RefreshCw, Phone } from 'lucide-react';
 import { SOURCE_FILTER_OPTIONS, formatSource } from '@/lib/source-labels';
 
 interface RequestRow {
@@ -27,7 +27,6 @@ interface PageResult {
   totalPages: number;
 }
 
-// Workflow statuses available for new selections
 const WORKFLOW_STATUSES: Record<string, string> = {
   NEW:       'Yeni',
   CONTACTED: 'İletişimde',
@@ -37,7 +36,6 @@ const WORKFLOW_STATUSES: Record<string, string> = {
   ARCHIVED:  'Arşivlendi',
 };
 
-// All possible display labels (including legacy values)
 const STATUS_LABELS: Record<string, string> = {
   ...WORKFLOW_STATUSES,
   COMPLETED: 'Tamamlandı',
@@ -60,7 +58,7 @@ const SERVICE_LABELS: Record<string, string> = {
   INTERCITY:         'Şehirler Arası',
   ALLOCATION:        'Araç Tahsisi',
   TOUR:              'Özel Tur',
-  CONTACT_INQUIRY:   '📩 İletişim Talebi',
+  CONTACT_INQUIRY:   '📩 İletişim',
 };
 
 const INTENT_LABELS: Record<string, string> = {
@@ -70,11 +68,11 @@ const INTENT_LABELS: Record<string, string> = {
 
 import { LOCALE_REGISTRY } from '@/lib/i18n/locale-registry';
 
-/** Registry-derived: automatically includes any new locale added to locale-registry.ts */
 const LOCALE_LABELS: Record<string, string> = Object.fromEntries(
   LOCALE_REGISTRY.map((l) => [l.code, l.code.toUpperCase()])
 );
 
+/* ── Shared styles ─────────────────────────────────────── */
 const td: React.CSSProperties = {
   padding: '12px 14px',
   fontSize: '13px',
@@ -97,6 +95,128 @@ const th: React.CSSProperties = {
   whiteSpace: 'nowrap',
 };
 
+/* ── Mobile card ────────────────────────────────────────── */
+function RequestCard({
+  row,
+  updating,
+  onStatusChange,
+  onArchive,
+  formatDate,
+}: {
+  row: RequestRow;
+  updating: string | null;
+  onStatusChange: (id: string, status: string) => void;
+  onArchive: (id: string) => void;
+  formatDate: (iso: string) => string;
+}) {
+  const sc = STATUS_COLORS[row.status] ?? STATUS_COLORS.NEW;
+  const isLegacy = row.status === 'COMPLETED' || row.status === 'SPAM';
+
+  return (
+    <div style={{
+      background: '#FFFFFF',
+      border: '1px solid #E2E8F0',
+      borderRadius: '12px',
+      padding: '14px 16px',
+      marginBottom: '10px',
+      opacity: row.archivedAt ? 0.55 : 1,
+    }}>
+      {/* Header row: ref + status */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', gap: '8px', flexWrap: 'wrap' }}>
+        <Link
+          href={`/admin/talepler/${row.id}`}
+          style={{ fontFamily: 'monospace', fontSize: '13px', fontWeight: 700, color: '#2563EB', textDecoration: 'none' }}
+        >
+          #{row.referenceNumber}
+        </Link>
+        {isLegacy ? (
+          <span style={{
+            padding: '3px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 700,
+            background: sc.bg, color: sc.text, border: `1px solid ${sc.border}`,
+          }}>
+            {STATUS_LABELS[row.status]}
+          </span>
+        ) : (
+          <select
+            value={row.status}
+            disabled={!!updating || !!row.archivedAt}
+            onChange={(e) => onStatusChange(row.id, e.target.value)}
+            style={{
+              padding: '4px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 700,
+              border: `1px solid ${sc.border}`, background: sc.bg, color: sc.text,
+              cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+            }}
+          >
+            {Object.entries(WORKFLOW_STATUSES).map(([k, v]) => (
+              <option key={k} value={k}>{v}</option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {/* Name + Phone */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', gap: '8px' }}>
+        <span style={{ fontSize: '14px', fontWeight: 600, color: '#1E293B', fontFamily: 'Inter, sans-serif' }}>
+          {row.name}
+        </span>
+        <a
+          href={`tel:${row.phone.replace(/\s/g, '')}`}
+          style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', color: '#2563EB', textDecoration: 'none', fontFamily: 'Inter, sans-serif' }}
+        >
+          <Phone size={12} />
+          {row.phone}
+        </a>
+      </div>
+
+      {/* Badges row */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+        <span style={{ padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, background: '#F1F5F9', color: '#475569', border: '1px solid #E2E8F0' }}>
+          {SERVICE_LABELS[row.serviceType] ?? row.serviceType}
+        </span>
+        <span style={{
+          padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 600,
+          background: row.intent === 'QUOTE' ? '#EFF6FF' : '#F0FDF4',
+          color:      row.intent === 'QUOTE' ? '#1D4ED8' : '#15803D',
+          border:     `1px solid ${row.intent === 'QUOTE' ? '#BFDBFE' : '#BBF7D0'}`,
+        }}>
+          {INTENT_LABELS[row.intent] ?? row.intent}
+        </span>
+        <span style={{ padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' }}>
+          {LOCALE_LABELS[row.locale] ?? row.locale.toUpperCase()}
+        </span>
+        <span style={{ padding: '2px 8px', borderRadius: '999px', fontSize: '11px', color: '#64748B', background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+          {formatSource(row.source)}
+        </span>
+      </div>
+
+      {/* Date + actions */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', borderTop: '1px solid #F1F5F9', paddingTop: '8px' }}>
+        <span style={{ fontSize: '12px', color: '#94A3B8', fontFamily: 'Inter, sans-serif' }}>
+          {formatDate(row.createdAt)}
+        </span>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <Link
+            href={`/admin/talepler/${row.id}`}
+            style={{ padding: '5px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, background: '#EFF6FF', color: '#2563EB', textDecoration: 'none' }}
+          >
+            Detay
+          </Link>
+          {!row.archivedAt && (
+            <button
+              onClick={() => onArchive(row.id)}
+              disabled={!!updating}
+              style={{ padding: '5px 10px', borderRadius: '6px', fontSize: '12px', background: '#F1F5F9', color: '#64748B', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+            >
+              <Archive size={11} /> Arşivle
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Main component ─────────────────────────────────────── */
 export default function TaleplerClient() {
   const [data, setData]         = useState<PageResult | null>(null);
   const [loading, setLoading]   = useState(true);
@@ -111,6 +231,15 @@ export default function TaleplerClient() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo]     = useState('');
   const [updating, setUpdating] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile — only on client
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -146,6 +275,7 @@ export default function TaleplerClient() {
         body: JSON.stringify({ status: newStatus }),
       });
       if (res.ok) fetchData();
+      else setError('Durum güncellenemedi. Lütfen tekrar deneyin.');
     } finally {
       setUpdating(null);
     }
@@ -161,6 +291,7 @@ export default function TaleplerClient() {
         body: JSON.stringify({ archive: true }),
       });
       if (res.ok) fetchData();
+      else setError('Arşivleme başarısız. Lütfen tekrar deneyin.');
     } finally {
       setUpdating(null);
     }
@@ -193,12 +324,42 @@ export default function TaleplerClient() {
 
   const hasActiveFilters = search || status || service || intent || lang || source || dateFrom || dateTo;
 
+  const pagination = data && data.totalPages > 1 && (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '12px 16px', borderTop: '1px solid #F1F5F9',
+      background: '#FFFFFF', borderRadius: '0 0 12px 12px',
+    }}>
+      <span style={{ fontSize: '12px', color: '#64748B', fontFamily: 'Inter, sans-serif' }}>
+        Toplam {data.total} kayıt
+      </span>
+      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+        <button
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          disabled={page <= 1}
+          style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', cursor: page > 1 ? 'pointer' : 'not-allowed', opacity: page <= 1 ? 0.4 : 1 }}
+        >
+          <ChevronLeft size={14} />
+        </button>
+        <span style={{ padding: '6px 12px', fontSize: '12px', fontFamily: 'Inter, sans-serif', color: '#334155' }}>
+          {page} / {data.totalPages}
+        </span>
+        <button
+          onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}
+          disabled={page >= data.totalPages}
+          style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', cursor: page < data.totalPages ? 'pointer' : 'not-allowed', opacity: page >= data.totalPages ? 0.4 : 1 }}
+        >
+          <ChevronRight size={14} />
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div>
       {/* Filters */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '16px', alignItems: 'center' }}>
-        {/* Search */}
-        <div style={{ position: 'relative', flex: '1 1 220px', maxWidth: '320px' }}>
+        <div style={{ position: 'relative', flex: '1 1 200px', maxWidth: isMobile ? '100%' : '320px' }}>
           <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
           <input
             type="text"
@@ -209,28 +370,28 @@ export default function TaleplerClient() {
           />
         </div>
 
-        <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} style={inputStyle}>
+        <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} style={{ ...inputStyle, flex: '1 1 140px' }}>
           <option value="">Tüm Durumlar</option>
           {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
 
-        <select value={service} onChange={(e) => { setService(e.target.value); setPage(1); }} style={inputStyle}>
+        <select value={service} onChange={(e) => { setService(e.target.value); setPage(1); }} style={{ ...inputStyle, flex: '1 1 140px' }}>
           <option value="">Tüm Hizmetler</option>
           {Object.entries(SERVICE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
 
-        <select value={intent} onChange={(e) => { setIntent(e.target.value); setPage(1); }} style={inputStyle}>
+        <select value={intent} onChange={(e) => { setIntent(e.target.value); setPage(1); }} style={{ ...inputStyle, flex: '1 1 130px' }}>
           <option value="">Tüm Talepler</option>
           <option value="QUOTE">Fiyat Teklifi</option>
           <option value="RESERVATION">Rezervasyon</option>
         </select>
 
-        <select value={lang} onChange={(e) => { setLang(e.target.value); setPage(1); }} style={inputStyle}>
+        <select value={lang} onChange={(e) => { setLang(e.target.value); setPage(1); }} style={{ ...inputStyle, flex: '1 1 110px' }}>
           <option value="">Tüm Diller</option>
           {Object.entries(LOCALE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
 
-        <select value={source} onChange={(e) => { setSource(e.target.value); setPage(1); }} style={inputStyle}>
+        <select value={source} onChange={(e) => { setSource(e.target.value); setPage(1); }} style={{ ...inputStyle, flex: '1 1 120px' }}>
           <option value="">Tüm Kaynaklar</option>
           {SOURCE_FILTER_OPTIONS.map(({ value, label }) => (
             <option key={value} value={value}>{label}</option>
@@ -242,210 +403,150 @@ export default function TaleplerClient() {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
         <label style={{ fontSize: '12px', color: '#64748B', fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', gap: '6px' }}>
           Başlangıç:
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
-            style={{ ...inputStyle, padding: '6px 10px' }}
-          />
+          <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} style={{ ...inputStyle, padding: '6px 10px' }} />
         </label>
         <label style={{ fontSize: '12px', color: '#64748B', fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', gap: '6px' }}>
           Bitiş:
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
-            style={{ ...inputStyle, padding: '6px 10px' }}
-          />
+          <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} style={{ ...inputStyle, padding: '6px 10px' }} />
         </label>
-
         {hasActiveFilters && (
-          <button
-            onClick={resetFilters}
-            style={{ ...inputStyle, cursor: 'pointer', color: '#DC2626', borderColor: '#FECACA', background: '#FFF5F5' }}
-          >
+          <button onClick={resetFilters} style={{ ...inputStyle, cursor: 'pointer', color: '#DC2626', borderColor: '#FECACA', background: '#FFF5F5' }}>
             Filtreleri Temizle
           </button>
         )}
-
-        <button
-          onClick={fetchData}
-          style={{ ...inputStyle, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-        >
+        <button onClick={fetchData} style={{ ...inputStyle, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <RefreshCw size={13} /> Yenile
         </button>
       </div>
 
-      {/* Table */}
-      <div style={{ background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-        {loading && (
-          <div style={{ padding: '48px', textAlign: 'center', color: '#94A3B8', fontFamily: 'Inter, sans-serif' }}>
-            Yükleniyor…
-          </div>
-        )}
-        {error && (
-          <div style={{ padding: '24px', color: '#DC2626', fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>{error}</div>
-        )}
-        {!loading && !error && data && (
-          <>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
+      {/* Loading / Error */}
+      {loading && (
+        <div style={{ padding: '48px', textAlign: 'center', color: '#94A3B8', fontFamily: 'Inter, sans-serif' }}>
+          Yükleniyor…
+        </div>
+      )}
+      {error && (
+        <div style={{ padding: '12px 16px', color: '#DC2626', fontFamily: 'Inter, sans-serif', fontSize: '13px', background: '#FFF5F5', borderRadius: '8px', marginBottom: '12px', border: '1px solid #FECACA' }}>
+          {error}
+        </div>
+      )}
+
+      {/* ── MOBILE: Card view ── */}
+      {!loading && !error && data && isMobile && (
+        <>
+          {data.rows.length === 0 ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: '#94A3B8', fontFamily: 'Inter, sans-serif', background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+              Kayıt bulunamadı.
+            </div>
+          ) : (
+            <>
+              {data.rows.map((row) => (
+                <RequestCard
+                  key={row.id}
+                  row={row}
+                  updating={updating}
+                  onStatusChange={updateStatus}
+                  onArchive={archiveRequest}
+                  formatDate={formatDate}
+                />
+              ))}
+              {pagination}
+            </>
+          )}
+        </>
+      )}
+
+      {/* ── DESKTOP: Table view ── */}
+      {!loading && !error && data && !isMobile && (
+        <div style={{ background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={th}>Referans</th>
+                  <th style={th}>İsim</th>
+                  <th style={th}>Telefon</th>
+                  <th style={th}>Dil</th>
+                  <th style={th}>Kaynak</th>
+                  <th style={th}>Hizmet</th>
+                  <th style={th}>Talep</th>
+                  <th style={th}>Durum</th>
+                  <th style={th}>Kayıt Tarihi</th>
+                  <th style={th}>İşlemler</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.rows.length === 0 && (
                   <tr>
-                    <th style={th}>Referans</th>
-                    <th style={th}>İsim</th>
-                    <th style={th}>Telefon</th>
-                    <th style={th}>Dil</th>
-                    <th style={th}>Kaynak</th>
-                    <th style={th}>Hizmet</th>
-                    <th style={th}>Talep</th>
-                    <th style={th}>Durum</th>
-                    <th style={th}>Kayıt Tarihi</th>
-                    <th style={th}>İşlemler</th>
+                    <td colSpan={10} style={{ ...td, textAlign: 'center', color: '#94A3B8', padding: '40px' }}>
+                      Kayıt bulunamadı.
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {data.rows.length === 0 && (
-                    <tr>
-                      <td colSpan={10} style={{ ...td, textAlign: 'center', color: '#94A3B8', padding: '40px' }}>
-                        Kayıt bulunamadı.
+                )}
+                {data.rows.map((row) => {
+                  const sc = STATUS_COLORS[row.status] ?? STATUS_COLORS.NEW;
+                  const isLegacyStatus = row.status === 'COMPLETED' || row.status === 'SPAM';
+                  return (
+                    <tr key={row.id} style={{ opacity: row.archivedAt ? 0.55 : 1 }}>
+                      <td style={td}>
+                        <Link href={`/admin/talepler/${row.id}`} style={{ color: '#2563EB', textDecoration: 'none', fontFamily: 'monospace', fontSize: '12px', fontWeight: 600 }}>
+                          {row.referenceNumber}
+                        </Link>
+                      </td>
+                      <td style={td}>{row.name}</td>
+                      <td style={{ ...td, fontSize: '12px', color: '#475569' }}>{row.phone}</td>
+                      <td style={{ ...td, textAlign: 'center' }}>
+                        <span style={{ padding: '2px 7px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' }}>
+                          {LOCALE_LABELS[row.locale] ?? row.locale.toUpperCase()}
+                        </span>
+                      </td>
+                      <td style={{ ...td, fontSize: '12px', color: '#64748B' }}>{formatSource(row.source)}</td>
+                      <td style={{ ...td, fontSize: '12px' }}>{SERVICE_LABELS[row.serviceType] ?? row.serviceType}</td>
+                      <td style={{ ...td, fontSize: '12px' }}>
+                        <span style={{ padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, background: row.intent === 'QUOTE' ? '#EFF6FF' : '#F0FDF4', color: row.intent === 'QUOTE' ? '#1D4ED8' : '#15803D', border: `1px solid ${row.intent === 'QUOTE' ? '#BFDBFE' : '#BBF7D0'}` }}>
+                          {INTENT_LABELS[row.intent] ?? row.intent}
+                        </span>
+                      </td>
+                      <td style={td}>
+                        {isLegacyStatus ? (
+                          <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, border: `1px solid ${sc.border}`, background: sc.bg, color: sc.text, display: 'inline-block' }}>
+                            {STATUS_LABELS[row.status]}
+                          </span>
+                        ) : (
+                          <select
+                            value={row.status}
+                            disabled={!!updating || !!row.archivedAt}
+                            onChange={(e) => updateStatus(row.id, e.target.value)}
+                            style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, border: `1px solid ${sc.border}`, background: sc.bg, color: sc.text, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
+                          >
+                            {Object.entries(WORKFLOW_STATUSES).map(([k, v]) => (
+                              <option key={k} value={k}>{v}</option>
+                            ))}
+                          </select>
+                        )}
+                      </td>
+                      <td style={{ ...td, fontSize: '12px', color: '#64748B', whiteSpace: 'nowrap' }}>{formatDate(row.createdAt)}</td>
+                      <td style={td}>
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                          <Link href={`/admin/talepler/${row.id}`} style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#EFF6FF', color: '#2563EB', textDecoration: 'none' }}>
+                            Detay
+                          </Link>
+                          {!row.archivedAt && (
+                            <button onClick={() => archiveRequest(row.id)} disabled={!!updating} title="Arşivle" style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '11px', background: '#F1F5F9', color: '#64748B', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <Archive size={11} /> Arşivle
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
-                  )}
-                  {data.rows.map((row) => {
-                    const sc = STATUS_COLORS[row.status] ?? STATUS_COLORS.NEW;
-                    const isLegacyStatus = row.status === 'COMPLETED' || row.status === 'SPAM';
-                    return (
-                      <tr key={row.id} style={{ opacity: row.archivedAt ? 0.55 : 1 }}>
-                        <td style={td}>
-                          <Link
-                            href={`/admin/talepler/${row.id}`}
-                            style={{ color: '#2563EB', textDecoration: 'none', fontFamily: 'mono, monospace', fontSize: '12px', fontWeight: 600 }}
-                          >
-                            {row.referenceNumber}
-                          </Link>
-                        </td>
-                        <td style={td}>{row.name}</td>
-                        <td style={{ ...td, fontSize: '12px', color: '#475569' }}>{row.phone}</td>
-                        <td style={{ ...td, textAlign: 'center' }}>
-                          <span style={{
-                            padding: '2px 7px', borderRadius: '999px', fontSize: '11px', fontWeight: 600,
-                            background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE',
-                          }}>
-                            {LOCALE_LABELS[row.locale] ?? row.locale.toUpperCase()}
-                          </span>
-                        </td>
-                        <td style={{ ...td, fontSize: '12px', color: '#64748B' }}>
-                          {formatSource(row.source)}
-                        </td>
-                        <td style={{ ...td, fontSize: '12px' }}>{SERVICE_LABELS[row.serviceType] ?? row.serviceType}</td>
-                        <td style={{ ...td, fontSize: '12px' }}>
-                          <span style={{
-                            padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 600,
-                            background: row.intent === 'QUOTE' ? '#EFF6FF' : '#F0FDF4',
-                            color:      row.intent === 'QUOTE' ? '#1D4ED8' : '#15803D',
-                            border:     `1px solid ${row.intent === 'QUOTE' ? '#BFDBFE' : '#BBF7D0'}`,
-                          }}>
-                            {INTENT_LABELS[row.intent] ?? row.intent}
-                          </span>
-                        </td>
-                        <td style={td}>
-                          {isLegacyStatus ? (
-                            // Legacy statuses shown read-only, not selectable
-                            <span style={{
-                              padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
-                              border: `1px solid ${sc.border}`, background: sc.bg, color: sc.text,
-                              display: 'inline-block',
-                            }}>
-                              {STATUS_LABELS[row.status]}
-                            </span>
-                          ) : (
-                            <select
-                              value={row.status}
-                              disabled={!!updating || !!row.archivedAt}
-                              onChange={(e) => updateStatus(row.id, e.target.value)}
-                              style={{
-                                padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
-                                border: `1px solid ${sc.border}`, background: sc.bg, color: sc.text,
-                                cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-                              }}
-                            >
-                              {Object.entries(WORKFLOW_STATUSES).map(([k, v]) => (
-                                <option key={k} value={k}>{v}</option>
-                              ))}
-                            </select>
-                          )}
-                        </td>
-                        <td style={{ ...td, fontSize: '12px', color: '#64748B', whiteSpace: 'nowrap' }}>
-                          {formatDate(row.createdAt)}
-                        </td>
-                        <td style={{ ...td }}>
-                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                            <Link
-                              href={`/admin/talepler/${row.id}`}
-                              style={{
-                                padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
-                                background: '#EFF6FF', color: '#2563EB', textDecoration: 'none',
-                              }}
-                            >
-                              Detay
-                            </Link>
-                            {!row.archivedAt && (
-                              <button
-                                onClick={() => archiveRequest(row.id)}
-                                disabled={!!updating}
-                                title="Arşivle"
-                                style={{
-                                  padding: '4px 8px', borderRadius: '6px', fontSize: '11px',
-                                  background: '#F1F5F9', color: '#64748B', border: 'none', cursor: 'pointer',
-                                  display: 'flex', alignItems: 'center', gap: '4px',
-                                }}
-                              >
-                                <Archive size={11} /> Arşivle
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination */}
-            {data.totalPages > 1 && (
-              <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '12px 16px', borderTop: '1px solid #F1F5F9',
-              }}>
-                <span style={{ fontSize: '12px', color: '#64748B', fontFamily: 'Inter, sans-serif' }}>
-                  Toplam {data.total} kayıt
-                </span>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <button
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page <= 1}
-                    style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', cursor: page > 1 ? 'pointer' : 'not-allowed', opacity: page <= 1 ? 0.4 : 1 }}
-                  >
-                    <ChevronLeft size={14} />
-                  </button>
-                  <span style={{ padding: '6px 12px', fontSize: '12px', fontFamily: 'Inter, sans-serif', color: '#334155' }}>
-                    {page} / {data.totalPages}
-                  </span>
-                  <button
-                    onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}
-                    disabled={page >= data.totalPages}
-                    style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', cursor: page < data.totalPages ? 'pointer' : 'not-allowed', opacity: page >= data.totalPages ? 0.4 : 1 }}
-                  >
-                    <ChevronRight size={14} />
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {pagination}
+        </div>
+      )}
     </div>
   );
 }

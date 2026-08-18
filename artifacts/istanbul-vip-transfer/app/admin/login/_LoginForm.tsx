@@ -2,7 +2,7 @@
 
 import { useState, use } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, Lock, Mail, AlertCircle, Shield } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, AlertCircle, Shield, ArrowLeft, Send } from 'lucide-react';
 
 interface Props {
   searchParams: Promise<{ error?: string; changed?: string }>;
@@ -25,6 +25,7 @@ const inputStyle: React.CSSProperties = {
 
 export default function LoginForm({ searchParams }: Props) {
   const params = use(searchParams);
+  const [mode, setMode] = useState<'login' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(
@@ -35,6 +36,7 @@ export default function LoginForm({ searchParams }: Props) {
   const passwordChanged = params.changed === '1';
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
@@ -64,6 +66,41 @@ export default function LoginForm({ searchParams }: Props) {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleForgot(e: React.FormEvent) {
+    e.preventDefault();
+    if (loading) return;
+    setLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch('/admin/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      await res.json().catch(() => ({}));
+      // Always show success regardless of result (prevents enumeration)
+      setResetSent(true);
+    } catch {
+      setError('Sunucuya bağlanılamadı. Lütfen tekrar deneyin.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function switchToForgot() {
+    setMode('forgot');
+    setError('');
+    setResetSent(false);
+    setPassword('');
+  }
+
+  function switchToLogin() {
+    setMode('login');
+    setError('');
+    setResetSent(false);
   }
 
   return (
@@ -131,157 +168,171 @@ export default function LoginForm({ searchParams }: Props) {
             boxShadow: '0 4px 24px rgba(19,42,68,0.08)',
           }}
         >
-          <h2
-            style={{
-              color: '#172B3A',
-              fontSize: '20px',
-              fontWeight: 600,
-              marginBottom: '8px',
-              fontFamily: 'Inter, sans-serif',
-            }}
-          >
-            Giriş Yap
-          </h2>
-          <p style={{ color: '#718596', fontSize: '14px', marginBottom: '28px', fontFamily: 'Inter, sans-serif' }}>
-            Admin hesabınızla oturum açın.
-          </p>
-
-          {passwordChanged && (
-            <div
-              role="status"
-              style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '10px',
-                background: '#F0FDF4',
-                border: '1px solid #BBF7D0',
-                borderRadius: '8px',
-                padding: '12px',
-                marginBottom: '20px',
-              }}
-            >
-              <p style={{ color: '#168C5B', fontSize: '13px', margin: 0, fontFamily: 'Inter, sans-serif' }}>
-                ✓ Şifreniz başarıyla değiştirildi. Lütfen yeni şifrenizle giriş yapın.
+          {/* ──────── LOGIN MODE ──────── */}
+          {mode === 'login' && (
+            <>
+              <h2 style={{ color: '#172B3A', fontSize: '20px', fontWeight: 600, marginBottom: '8px', fontFamily: 'Inter, sans-serif' }}>
+                Giriş Yap
+              </h2>
+              <p style={{ color: '#718596', fontSize: '14px', marginBottom: '28px', fontFamily: 'Inter, sans-serif' }}>
+                Admin hesabınızla oturum açın.
               </p>
-            </div>
-          )}
 
-          {error && (
-            <div
-              role="alert"
-              style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '10px',
-                background: '#FEF2F2',
-                border: '1px solid #FECACA',
-                borderRadius: '8px',
-                padding: '12px',
-                marginBottom: '20px',
-              }}
-            >
-              <AlertCircle size={16} style={{ color: '#D64545', flexShrink: 0, marginTop: '1px' }} />
-              <p style={{ color: '#D64545', fontSize: '13px', margin: 0, fontFamily: 'Inter, sans-serif' }}>
-                {error}
-              </p>
-            </div>
-          )}
+              {passwordChanged && (
+                <div role="status" style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '12px', marginBottom: '20px' }}>
+                  <p style={{ color: '#168C5B', fontSize: '13px', margin: 0, fontFamily: 'Inter, sans-serif' }}>
+                    ✓ Şifreniz başarıyla değiştirildi. Lütfen yeni şifrenizle giriş yapın.
+                  </p>
+                </div>
+              )}
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {/* Email */}
-            <div>
-              <label
-                htmlFor="email"
-                style={{ display: 'block', color: '#52697A', fontSize: '12px', fontFamily: 'Inter, sans-serif', letterSpacing: '0.05em', marginBottom: '6px', fontWeight: 600 }}
-              >
-                E-Posta
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Mail
-                  size={16}
-                  style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#A0B0BC' }}
-                  aria-hidden="true"
-                />
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                  placeholder="admin@example.com"
-                  style={{ ...inputStyle, paddingLeft: '40px' }}
-                />
-              </div>
-            </div>
+              {error && (
+                <div role="alert" style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', padding: '12px', marginBottom: '20px' }}>
+                  <AlertCircle size={16} style={{ color: '#D64545', flexShrink: 0, marginTop: '1px' }} />
+                  <p style={{ color: '#D64545', fontSize: '13px', margin: 0, fontFamily: 'Inter, sans-serif' }}>{error}</p>
+                </div>
+              )}
 
-            {/* Password */}
-            <div>
-              <label
-                htmlFor="password"
-                style={{ display: 'block', color: '#52697A', fontSize: '12px', fontFamily: 'Inter, sans-serif', letterSpacing: '0.05em', marginBottom: '6px', fontWeight: 600 }}
-              >
-                Şifre
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Lock
-                  size={16}
-                  style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#A0B0BC' }}
-                  aria-hidden="true"
-                />
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  style={{ ...inputStyle, paddingLeft: '40px', paddingRight: '44px' }}
-                />
+              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <label htmlFor="email" style={{ display: 'block', color: '#52697A', fontSize: '12px', fontFamily: 'Inter, sans-serif', letterSpacing: '0.05em', marginBottom: '6px', fontWeight: 600 }}>
+                    E-Posta
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#A0B0BC' }} aria-hidden="true" />
+                    <input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      autoComplete="email"
+                      placeholder="admin@example.com"
+                      style={{ ...inputStyle, paddingLeft: '40px' }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label htmlFor="password" style={{ color: '#52697A', fontSize: '12px', fontFamily: 'Inter, sans-serif', letterSpacing: '0.05em', fontWeight: 600 }}>
+                      Şifre
+                    </label>
+                    <button
+                      type="button"
+                      onClick={switchToForgot}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2563EB', fontSize: '12px', fontFamily: 'Inter, sans-serif', padding: 0 }}
+                    >
+                      Şifremi Unuttum
+                    </button>
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#A0B0BC' }} aria-hidden="true" />
+                    <input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      autoComplete="current-password"
+                      placeholder="••••••••"
+                      style={{ ...inputStyle, paddingLeft: '40px', paddingRight: '44px' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
+                      style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#A0B0BC', cursor: 'pointer', padding: '2px' }}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
                 <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
-                  style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    color: '#A0B0BC',
-                    cursor: 'pointer',
-                    padding: '2px',
-                  }}
+                  type="submit"
+                  disabled={loading}
+                  style={{ marginTop: '8px', padding: '12px', borderRadius: '8px', background: loading ? '#93C5FD' : '#2563EB', color: '#FFFFFF', fontWeight: 700, fontSize: '14px', fontFamily: 'Inter, sans-serif', letterSpacing: '0.05em', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', transition: 'background 0.2s' }}
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
+                </button>
+              </form>
+            </>
+          )}
+
+          {/* ──────── FORGOT PASSWORD MODE ──────── */}
+          {mode === 'forgot' && (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                <button type="button" onClick={switchToLogin} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B', padding: '2px', display: 'flex' }}>
+                  <ArrowLeft size={18} />
+                </button>
+                <h2 style={{ color: '#172B3A', fontSize: '20px', fontWeight: 600, margin: 0, fontFamily: 'Inter, sans-serif' }}>
+                  Şifremi Unuttum
+                </h2>
+              </div>
+              <p style={{ color: '#718596', fontSize: '14px', marginBottom: '24px', fontFamily: 'Inter, sans-serif' }}>
+                E-posta adresinize şifre sıfırlama linki göndereceğiz.
+              </p>
+
+              {resetSent ? (
+                <div role="status" style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '16px' }}>
+                  <Send size={16} color="#15803D" style={{ flexShrink: 0, marginTop: '1px' }} />
+                  <div>
+                    <p style={{ color: '#15803D', fontSize: '13px', margin: '0 0 8px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>
+                      E-posta gönderildi
+                    </p>
+                    <p style={{ color: '#166534', fontSize: '13px', margin: 0, fontFamily: 'Inter, sans-serif' }}>
+                      Kayıtlı bir hesap varsa birkaç dakika içinde sıfırlama linki alacaksınız. Spam klasörünü de kontrol edin.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {error && (
+                    <div role="alert" style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', padding: '12px', marginBottom: '20px' }}>
+                      <AlertCircle size={16} style={{ color: '#D64545', flexShrink: 0, marginTop: '1px' }} />
+                      <p style={{ color: '#D64545', fontSize: '13px', margin: 0, fontFamily: 'Inter, sans-serif' }}>{error}</p>
+                    </div>
+                  )}
+                  <form onSubmit={handleForgot} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div>
+                      <label htmlFor="forgot-email" style={{ display: 'block', color: '#52697A', fontSize: '12px', fontFamily: 'Inter, sans-serif', letterSpacing: '0.05em', marginBottom: '6px', fontWeight: 600 }}>
+                        E-Posta
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#A0B0BC' }} aria-hidden="true" />
+                        <input
+                          id="forgot-email"
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          required
+                          autoComplete="email"
+                          placeholder="admin@example.com"
+                          style={{ ...inputStyle, paddingLeft: '40px' }}
+                        />
+                      </div>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      style={{ padding: '12px', borderRadius: '8px', background: loading ? '#93C5FD' : '#2563EB', color: '#FFFFFF', fontWeight: 700, fontSize: '14px', fontFamily: 'Inter, sans-serif', border: 'none', cursor: loading ? 'not-allowed' : 'pointer' }}
+                    >
+                      {loading ? 'Gönderiliyor...' : 'Sıfırlama Linki Gönder'}
+                    </button>
+                  </form>
+                </>
+              )}
+
+              {/* Back to login link */}
+              <div style={{ textAlign: 'center', marginTop: '20px' }}>
+                <button type="button" onClick={switchToLogin} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#718596', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>
+                  ← Giriş sayfasına dön
                 </button>
               </div>
-            </div>
-
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                marginTop: '8px',
-                padding: '12px',
-                borderRadius: '8px',
-                background: loading ? '#93C5FD' : '#2563EB',
-                color: '#FFFFFF',
-                fontWeight: 700,
-                fontSize: '14px',
-                fontFamily: 'Inter, sans-serif',
-                letterSpacing: '0.05em',
-                border: 'none',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                transition: 'background 0.2s',
-              }}
-            >
-              {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
-            </button>
-          </form>
+            </>
+          )}
         </div>
 
         <p style={{ textAlign: 'center', color: '#A0B0BC', fontSize: '12px', marginTop: '24px', fontFamily: 'Inter, sans-serif' }}>

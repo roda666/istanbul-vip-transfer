@@ -200,7 +200,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const { db }                  = await import('@/db');
     const { contentTranslations, content } = await import('@/db/schema');
-    const { eq, and }             = await import('drizzle-orm');
+    const { eq, and, sql }        = await import('drizzle-orm');
 
     const rows = await db
       .select({
@@ -213,7 +213,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .from(contentTranslations)
       // innerJoin ensures the source content row exists; leftJoin would allow
       // orphaned translations to generate URLs with null sourceSlug.
-      .innerJoin(content, eq(contentTranslations.entityId, content.id))
+      // entity_id is TEXT, content.id is UUID — explicit cast required.
+      .innerJoin(content, sql`${contentTranslations.entityId}::uuid = ${content.id}`)
       .where(
         and(
           eq(contentTranslations.status,     'PUBLISHED'),

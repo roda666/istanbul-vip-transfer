@@ -163,7 +163,7 @@ export async function getPublishedBlogTranslation(
   try {
     const { db }                          = await import('@/db');
     const { contentTranslations, content } = await import('@/db/schema');
-    const { eq, and, or }                 = await import('drizzle-orm');
+    const { eq, and, or, sql }            = await import('drizzle-orm');
 
     const rows = await db
       .select({
@@ -184,7 +184,8 @@ export async function getPublishedBlogTranslation(
         sourceTags:      content.tags,
       })
       .from(contentTranslations)
-      .innerJoin(content, eq(contentTranslations.entityId, content.id))
+      // entity_id is TEXT, content.id is UUID — explicit cast required
+      .innerJoin(content, sql`${contentTranslations.entityId}::uuid = ${content.id}`)
       .where(and(
         eq(contentTranslations.targetLanguageCode, lang),
         eq(contentTranslations.status,             'PUBLISHED'),
@@ -243,7 +244,7 @@ export async function getPublishedBlogTranslations(
   try {
     const { db }                          = await import('@/db');
     const { contentTranslations, content } = await import('@/db/schema');
-    const { eq, and, desc }               = await import('drizzle-orm');
+    const { eq, and, desc, sql }          = await import('drizzle-orm');
 
     const rows = await db
       .select({
@@ -258,7 +259,8 @@ export async function getPublishedBlogTranslations(
         sourceCategory:  content.category,
       })
       .from(contentTranslations)
-      .innerJoin(content, eq(contentTranslations.entityId, content.id))
+      // entity_id is TEXT, content.id is UUID — explicit cast required
+      .innerJoin(content, sql`${contentTranslations.entityId}::uuid = ${content.id}`)
       .where(and(
         eq(contentTranslations.targetLanguageCode, lang),
         eq(contentTranslations.status,             'PUBLISHED'),

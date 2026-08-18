@@ -20,7 +20,9 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { lang, slug } = await params;
+  const { lang, slug: rawSlug } = await params;
+  // Next.js app-router may pass non-ASCII path segments still percent-encoded.
+  const slug = decodeURIComponent(rawSlug);
   if (!isValidLang(lang)) return {};
 
   const translation = await getPublishedBlogTranslation(slug, lang);
@@ -52,7 +54,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function TranslatedBlogPost({ params }: Props) {
-  const { lang, slug } = await params;
+  const { lang, slug: rawSlug } = await params;
+  // Next.js app-router may pass non-ASCII path segments still percent-encoded.
+  const slug = decodeURIComponent(rawSlug);
   if (!isValidLang(lang)) notFound();
 
   const [translation, cs] = await Promise.all([

@@ -32,7 +32,7 @@ export async function getPublishedServiceList(
   try {
     const { db }                        = await import('@/db');
     const { content, contentTranslations } = await import('@/db/schema');
-    const { eq, and, asc, inArray }     = await import('drizzle-orm');
+    const { eq, and, asc, inArray, sql } = await import('drizzle-orm');
 
     if (locale === 'tr') {
       const rows = await db
@@ -75,7 +75,8 @@ export async function getPublishedServiceList(
       .innerJoin(
         contentTranslations,
         and(
-          eq(contentTranslations.entityId,            content.id),
+          // entity_id is TEXT, content.id is UUID — explicit cast required
+          sql`${contentTranslations.entityId}::uuid = ${content.id}`,
           eq(contentTranslations.targetLanguageCode,  locale),
           eq(contentTranslations.entityType,          'service_page'),
           inArray(contentTranslations.status,         ['PUBLISHED']),

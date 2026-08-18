@@ -80,15 +80,41 @@ export default async function HomePage() {
   const localBusinessSchema = {
     '@context': 'https://schema.org',
     '@type': 'LocalBusiness',
+    '@id': `${BASE}/#business`,
     name: 'VIP Transfer Istanbul',
     description:
       'İstanbul havalimanı ve şehir içi VIP transfer hizmeti. Mercedes Vito ve Sprinter ile 7/24 hizmet.',
+    url: BASE,
     telephone: cs.phoneE164,
     email: cs.email,
-    url: BASE,
-    sameAs: [cs.googleBusinessUrl],
-    areaServed: { '@type': 'City', name: 'İstanbul' },
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: 'İstanbul',
+      addressRegion: 'İstanbul',
+      addressCountry: 'TR',
+    },
+    geo: {
+      '@type': 'GeoCoordinates',
+      latitude: 41.0082,
+      longitude: 28.9784,
+    },
+    openingHoursSpecification: [
+      {
+        '@type': 'OpeningHoursSpecification',
+        dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+        opens: '00:00',
+        closes: '23:59',
+      },
+    ],
+    sameAs: [cs.googleBusinessUrl].filter(Boolean),
+    areaServed: [
+      { '@type': 'City', name: 'İstanbul' },
+      { '@type': 'Country', name: 'Türkiye' },
+    ],
     priceRange: '$$',
+    serviceType: 'Transportation Service',
+    knowsLanguage: ['Turkish', 'English', 'German', 'Russian', 'Arabic'],
+    image: SITE.ogImage,
   };
 
   // Build the set of service slugs the admin has hidden from the homepage

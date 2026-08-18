@@ -40,6 +40,34 @@ const breadcrumbSchema = {
   ],
 };
 
+const contactPageSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'ContactPage',
+  name: 'İletişim | İstanbul VIP Transfer',
+  url: PAGE,
+  description:
+    'İstanbul VIP Transfer rezervasyonu ve bilgi için telefon, WhatsApp veya e-posta üzerinden bize 7/24 ulaşın.',
+  mainEntity: {
+    '@type': 'LocalBusiness',
+    name: 'VIP Transfer Istanbul',
+    url: BASE,
+    telephone: '+90 532 000 00 00',
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: 'İstanbul',
+      addressCountry: 'TR',
+    },
+    openingHoursSpecification: [
+      {
+        '@type': 'OpeningHoursSpecification',
+        dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+        opens: '00:00',
+        closes: '23:59',
+      },
+    ],
+  },
+};
+
 export default function IletisimPage() {
   return (
     <>
@@ -50,6 +78,10 @@ export default function IletisimPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(contactPageSchema) }}
       />
     </>
   );

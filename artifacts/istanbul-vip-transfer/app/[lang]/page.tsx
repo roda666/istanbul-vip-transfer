@@ -84,7 +84,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: seoTitle,
     description: seoDescription,
     alternates: {
-      canonical: alternates.canonical,
+      // Each locale page must canonicalize to its own URL, not the TR root.
+      canonical: `${SITE.siteUrl}/${lang}`,
       languages: alternates.languages,
     },
     openGraph: {

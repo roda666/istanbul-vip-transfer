@@ -29,7 +29,8 @@ export default function HakkimizdaArticle() {
           lineHeight: 1.75,
         }}
       >
-        <h1
+        {/* h2 not h1: PageHero already renders the page's H1 */}
+        <h2
           style={{
             fontSize: 'clamp(1.5rem, 3.5vw, 2.1rem)',
             fontWeight: 800,
@@ -39,7 +40,7 @@ export default function HakkimizdaArticle() {
           }}
         >
           {content.pageTitle}
-        </h1>
+        </h2>
 
         <p
           style={{

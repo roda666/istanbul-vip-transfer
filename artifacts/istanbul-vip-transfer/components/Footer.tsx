@@ -6,6 +6,7 @@ import { useLang } from '@/lib/i18n/context';
 import { useSiteSettings } from '@/components/SiteSettingsContext';
 import { localePath } from '@/lib/locale-path';
 import LanguageSelector from './LanguageSelector';
+import { trackEvent } from '@/lib/analytics';
 
 interface FooterProps {
   /** Slugs where admin set showInNav=false — passed from the root server layout. */
@@ -283,6 +284,7 @@ export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
                     style={{ color: 'rgba(255,255,255,0.88)', fontFamily: 'Inter, sans-serif' }}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#C79A35'; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,0.88)'; }}
+                    onClick={() => trackEvent('phone_click', { source: 'footer', page_path: window.location.pathname })}
                     dir="ltr"
                   >
                     {cs.phoneDisplay}

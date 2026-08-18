@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
+import { trackEvent } from '@/lib/analytics';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -462,6 +463,12 @@ export default function BookingForm() {
         formData:         data,
       }),
     }).catch(() => {});
+
+    // GA4: track every booking form submission with service type and originating page
+    trackEvent('reservation_submit', {
+      service_type: activeService,
+      page_path:    pathname,
+    });
 
     window.location.href = waUrl;
   };

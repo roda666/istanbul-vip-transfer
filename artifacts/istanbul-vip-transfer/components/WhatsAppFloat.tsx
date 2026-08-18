@@ -23,6 +23,7 @@
 import { useState, useEffect } from 'react';
 import { useLang } from '@/lib/i18n/context';
 import { useSiteSettings } from '@/components/SiteSettingsContext';
+import { trackEvent } from '@/lib/analytics';
 
 export default function WhatsAppFloat() {
   const { dict } = useLang();
@@ -82,6 +83,12 @@ export default function WhatsAppFloat() {
       aria-hidden={show ? undefined : true}
       tabIndex={show ? undefined : -1}
       data-testid="whatsapp-float"
+      onClick={() =>
+        trackEvent('whatsapp_click', {
+          source:    'float_button',
+          page_path: window.location.pathname,
+        })
+      }
       className="fixed z-50 flex items-center justify-center w-14 h-14 rounded-full"
       style={{
         background:    '#25D366',

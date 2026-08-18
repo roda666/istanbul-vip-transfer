@@ -7,6 +7,7 @@
  */
 import { useState, useRef } from 'react';
 import { useLang } from '@/lib/i18n/context';
+import { trackEvent } from '@/lib/analytics';
 
 interface FormState {
   name: string;
@@ -74,6 +75,10 @@ export default function ContactForm() {
       }
       setStatus('success');
       setForm(INIT);
+      // GA4: contact form successfully submitted
+      trackEvent('contact_form_submit', {
+        page_path: window.location.pathname,
+      });
     } catch {
       setServerError(cf.errorMessage);
       setStatus('error');

@@ -1,9 +1,11 @@
 import type { Metadata, Viewport } from 'next';
 import { Playfair_Display, Inter } from 'next/font/google';
+import Script from 'next/script';
 import './globals.css';
 import PublicLayoutWrapper from '@/components/PublicLayoutWrapper';
 import WebVitalsReporter from '@/components/WebVitalsReporter';
 import { SITE } from '@/lib/site-config';
+import { GA_ID } from '@/lib/analytics';
 import { getServiceVisibilityMap } from '@/lib/service-page-cms';
 import { getContactSettings } from '@/lib/site-settings-server';
 import { SiteSettingsProvider } from '@/components/SiteSettingsContext';
@@ -94,6 +96,23 @@ export default async function RootLayout({
          * Fires web-vitals observers after hydration; beacons metrics to /api/vitals.
          */}
         <WebVitalsReporter />
+        {/* ── Google Analytics 4 ─────────────────────────────────────────
+            strategy="afterInteractive" defers loading until after hydration
+            so it never blocks the initial paint / LCP. Both scripts must share
+            the same strategy to guarantee gtag() is callable before any
+            client-component event fires. */}
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+          strategy="afterInteractive"
+        />
+        <Script id="gtag-init" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '${GA_ID}');
+          `}
+        </Script>
       </body>
     </html>
   );

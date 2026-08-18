@@ -20,8 +20,11 @@ import 'server-only';
 
 export const dynamic = 'force-dynamic';
 
-// Pre-defined fallback topics when GSC is not connected
+// Pre-defined fallback topics when GSC is not connected.
+// Rotation uses ISO week-of-year so ALL topics are reachable (day-of-week % N
+// only covers 0-6, leaving topics beyond index 6 permanently unreachable).
 const FALLBACK_TOPICS = [
+  // ── Orijinal 7 konu ──────────────────────────────────────────────────────────
   { title: 'İstanbul Havalimanı VIP Karşılama Hizmeti: İlk İzlenim Rehberi', keyword: 'istanbul havalimanı karşılama hizmeti', intent: 'informational', service: 'havalimanı transferi' },
   { title: 'Kurumsal VIP Transfer: Şirket Misafiri Ağırlama Rehberi', keyword: 'kurumsal vip transfer istanbul', intent: 'commercial', service: 'kurumsal transfer' },
   { title: 'İstanbul Düğün Transferi: Gelin Arabası Alternatifleri', keyword: 'istanbul düğün transfer aracı', intent: 'commercial', service: 'özel etkinlik transferi' },
@@ -29,7 +32,31 @@ const FALLBACK_TOPICS = [
   { title: 'İstanbul\'dan Ankara\'ya VIP Araç Kiralama Karşılaştırması', keyword: 'istanbul ankara vip araç kiralama', intent: 'commercial', service: 'şehirlerarası transfer' },
   { title: 'Sabiha Gökçen Havalimanı Karşılama Hizmetleri: Kapsamlı Rehber', keyword: 'sabiha gökçen karşılama hizmeti', intent: 'informational', service: 'havalimanı transferi' },
   { title: 'VIP Transfer Rezervasyonu İpuçları: Seyahat Öncesi Bilinmesi Gerekenler', keyword: 'vip transfer rezervasyon ipuçları', intent: 'informational', service: 'vip transfer' },
+
+  // ── Yeni 6 konu — gerçek Google arama davranışından ──────────────────────────
+  // Şehirlerarası — yüksek hacim sinyali (İstanbul→Bodrum tatil koridoru)
+  { title: 'İstanbul Bodrum VIP Transfer Rehberi: Konforlu Şehirlerarası Yolculuk', keyword: 'istanbul bodrum vip transfer', intent: 'informational', service: 'şehirlerarası transfer' },
+  // Batı Marmara koridoru
+  { title: 'İstanbul Balıkesir ve Ayvalık Transfer Hizmeti: Ege\'ye Keyifli Yolculuk', keyword: 'istanbul balıkesir ayvalık transfer', intent: 'informational', service: 'şehirlerarası transfer' },
+  // Tarihi/turistik tur açısı
+  { title: 'Gelibolu Yarımadası Tarihi Turu: VIP Araçla Eksiksiz Ziyaret Rehberi', keyword: 'gelibolu turu vip transfer', intent: 'informational', service: 'özel tur transferi' },
+  // Düğün/etkinlik — rakiplerin de güçlü olduğu niş
+  { title: 'Gelin Arabası Alternatifleri: Vito ile Özel Düğün Transferi', keyword: 'düğün için vito kiralama istanbul', intent: 'commercial', service: 'özel etkinlik transferi' },
+  // Meet & Greet — rakiplerin öne çıkardığı, bizim hizmetimizle örtüşen konsept
+  { title: 'Havalimanı VIP Karşılama Hizmeti: İsim Tabelası ile Meet & Greet', keyword: 'havalimanı isim tabelası karşılama hizmeti', intent: 'commercial', service: 'havalimanı transferi' },
+  // Rakip karşılaştırma / karar aşaması içeriği
+  { title: 'İstanbul VIP Transfer Firması Nasıl Seçilir? Karşılaştırma Rehberi', keyword: 'istanbul vip transfer firması seçimi', intent: 'commercial', service: 'vip transfer' },
 ];
+
+/**
+ * Returns the ISO week-of-year for a given date (1-based).
+ * Using week number instead of day-of-week ensures all N topics can be selected
+ * in a weekly rotation (day-of-week is always 0-6, unreachable beyond index 6).
+ */
+function isoWeekOfYear(d: Date = new Date()): number {
+  const jan1 = new Date(d.getFullYear(), 0, 1);
+  return Math.ceil(((d.getTime() - jan1.getTime()) / 86_400_000 + jan1.getDay() + 1) / 7);
+}
 
 export async function POST(req: NextRequest) {
   // ── Auth: CRON_SECRET check ────────────────────────────────────────────────
@@ -86,7 +113,7 @@ export async function POST(req: NextRequest) {
       } else {
         // GSC connected but no data yet — fall back
         if (gscOk) console.warn('[cron/weekly-draft] GSC connected but no opportunity data:', opResult);
-          const fallback = FALLBACK_TOPICS[new Date().getDay() % FALLBACK_TOPICS.length];
+          const fallback = FALLBACK_TOPICS[isoWeekOfYear() % FALLBACK_TOPICS.length];
         topicTitle     = fallback.title;
         primaryKeyword = fallback.keyword;
         searchIntent   = fallback.intent;
@@ -94,7 +121,7 @@ export async function POST(req: NextRequest) {
         dataSourceNote = 'AI tahmini — GSC veri yetersiz';
       }
     } else {
-      const fallback = FALLBACK_TOPICS[new Date().getDay() % FALLBACK_TOPICS.length];
+      const fallback = FALLBACK_TOPICS[isoWeekOfYear() % FALLBACK_TOPICS.length];
       topicTitle     = fallback.title;
       primaryKeyword = fallback.keyword;
       searchIntent   = fallback.intent;

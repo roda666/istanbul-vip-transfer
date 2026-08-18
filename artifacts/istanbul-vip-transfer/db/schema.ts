@@ -223,6 +223,20 @@ export const topicClusters = pgTable('topic_clusters', {
   updatedAt:        timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+/**
+ * Rakip siteler listesi — ileride rakip bazlı içerik boşluğu analizinde kullanılır.
+ * Her satır bir rakip domaini temsil eder.
+ */
+export const competitorSites = pgTable('competitor_sites', {
+  id:        serial('id').primaryKey(),
+  domain:    text('domain').notNull().unique(),   // e.g. "cabistanbul.com"
+  label:     text('label').notNull(),             // display name, e.g. "Cab Istanbul"
+  notes:     text('notes'),                       // optional analysis notes
+  active:    boolean('active').default(true).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const aiContentSuggestions = pgTable('ai_content_suggestions', {
   id: uuid('id').primaryKey().defaultRandom(),
   suggestedTitle:       text('suggested_title'),

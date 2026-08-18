@@ -112,7 +112,7 @@ async function translateFields(fields, lang) {
   const res = await ai.chat.completions.create({
     model: MODEL,
     messages: [
-      { role: 'system', content: `You are an expert translation engine for luxury VIP transportation content. Translate all JSON values from Turkish to ${langName}. Keep ALL keys as-is. Preserve verbatim: ${PRESERVED.map(s => `"${s}"`).join(', ')}. Do not translate URLs, slugs, numbers. For Arabic: Modern Standard Arabic, wrap LTR inline strings with \\u202A...\\u202C. Maintain premium tone. Return ONLY valid JSON.` },
+      { role: 'system', content: `You are an expert translation engine for luxury VIP transportation content. Translate all JSON values from Turkish to ${langName}. Keep ALL keys as-is. Preserve verbatim: ${PRESERVED.map(s => `"${s}"`).join(', ')}. Do not translate URLs, slugs, numbers. Maintain premium tone. Return ONLY valid JSON with no additional commentary.` },
       { role: 'user', content: `Translate to ${langName}:\n${JSON.stringify(fields, null, 2)}\nReturn translated JSON with identical keys.` },
     ],
     response_format: { type: 'json_object' },

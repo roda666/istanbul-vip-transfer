@@ -955,6 +955,24 @@ export type StudioDistributionRow = typeof studioDistribution.$inferSelect;
 export type StudioAuditRow = typeof studioAudit.$inferSelect;
 export type StudioSchedule = typeof studioSchedules.$inferSelect;
 
+// ── Google Ads connection ─────────────────────────────────────────────────────
+// Stores OAuth tokens for Google Ads API (Keyword Planner).
+// Single-row pattern — same as gsc_connections.
+
+export const googleAdsConnections = pgTable('google_ads_connections', {
+  id:             serial('id').primaryKey(),
+  accessToken:    text('access_token'),
+  refreshToken:   text('refresh_token').notNull(),
+  tokenExpiry:    timestamp('token_expiry',    { withTimezone: true }),
+  scope:          text('scope'),
+  connectedEmail: text('connected_email'),
+  connectedAt:    timestamp('connected_at',    { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:      timestamp('updated_at',      { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type GoogleAdsConnection    = typeof googleAdsConnections.$inferSelect;
+export type NewGoogleAdsConnection = typeof googleAdsConnections.$inferInsert;
+
 // ── GSC (Google Search Console) connection ────────────────────────────────────
 
 export const gscConnections = pgTable('gsc_connections', {

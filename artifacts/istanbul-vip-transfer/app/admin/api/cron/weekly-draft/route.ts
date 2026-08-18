@@ -98,10 +98,16 @@ export async function POST(req: NextRequest) {
     let targetService: string;
     let dataSourceNote: string;
 
+    // ── Data source priority: GSC → Google Ads Keyword Planner → AI fallback ──
+
     const { isGscConnected, findKeywordOpportunities } = await import('@/lib/gsc');
-    const gscOk = await isGscConnected();
+    const { isGoogleAdsConnected, findKeywordOpportunitiesFromAds } = await import('@/lib/google-ads');
+
+    const gscOk  = await isGscConnected();
+    const gadsOk = gscOk ? false : await isGoogleAdsConnected(); // skip Ads check if GSC works
 
     if (gscOk) {
+      // ── Priority 1: Google Search Console (real traffic data) ─────────────
       const opResult = await findKeywordOpportunities(5);
       if (opResult.ok && opResult.opportunities.length > 0) {
         const top = opResult.opportunities[0];
@@ -111,22 +117,42 @@ export async function POST(req: NextRequest) {
         targetService  = 'vip transfer';
         dataSourceNote = `Google Search Console verisi: ${top.impressions.toLocaleString('tr-TR')} gösterim, %${(top.ctr * 100).toFixed(1)} CTR`;
       } else {
-        // GSC connected but no data yet — fall back
-        if (gscOk) console.warn('[cron/weekly-draft] GSC connected but no opportunity data:', opResult);
-          const fallback = FALLBACK_TOPICS[isoWeekOfYear() % FALLBACK_TOPICS.length];
+        console.warn('[cron/weekly-draft] GSC connected but no opportunity data:', opResult);
+        // GSC connected but insufficient data — fall to AI
+        const fallback = FALLBACK_TOPICS[isoWeekOfYear() % FALLBACK_TOPICS.length];
         topicTitle     = fallback.title;
         primaryKeyword = fallback.keyword;
         searchIntent   = fallback.intent;
         targetService  = fallback.service;
         dataSourceNote = 'AI tahmini — GSC veri yetersiz';
       }
+    } else if (gadsOk) {
+      // ── Priority 2: Google Ads Keyword Planner (search volume data) ───────
+      const adsResult = await findKeywordOpportunitiesFromAds(5);
+      if (adsResult.ok && adsResult.opportunities.length > 0) {
+        const top = adsResult.opportunities[0];
+        primaryKeyword = top.keyword;
+        topicTitle     = `${top.keyword.charAt(0).toUpperCase() + top.keyword.slice(1)} — Kapsamlı Rehber`;
+        searchIntent   = 'informational';
+        targetService  = 'vip transfer';
+        dataSourceNote = `Google Ads Keyword Planner: ~${top.monthlySearches.toLocaleString('tr-TR')} aylık arama, rekabet: ${top.competition}`;
+      } else {
+        console.warn('[cron/weekly-draft] Google Ads connected but no data:', adsResult);
+        const fallback = FALLBACK_TOPICS[isoWeekOfYear() % FALLBACK_TOPICS.length];
+        topicTitle     = fallback.title;
+        primaryKeyword = fallback.keyword;
+        searchIntent   = fallback.intent;
+        targetService  = fallback.service;
+        dataSourceNote = 'AI tahmini — Google Ads veri yetersiz';
+      }
     } else {
+      // ── Priority 3: AI estimation (curated fallback pool) ─────────────────
       const fallback = FALLBACK_TOPICS[isoWeekOfYear() % FALLBACK_TOPICS.length];
       topicTitle     = fallback.title;
       primaryKeyword = fallback.keyword;
       searchIntent   = fallback.intent;
       targetService  = fallback.service;
-      dataSourceNote = 'AI tahmini — GSC bağlı değil';
+      dataSourceNote = 'AI tahmini — GSC ve Google Ads bağlı değil';
     }
 
     // ── Create studio project ──────────────────────────────────────────────

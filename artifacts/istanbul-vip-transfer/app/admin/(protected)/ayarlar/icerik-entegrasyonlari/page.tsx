@@ -6,10 +6,11 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
   AlertCircle, CheckCircle2, Search, Cpu,
-  BarChart2,
+  BarChart2, TrendingUp,
 } from 'lucide-react';
 import AdminPageHeader from '../../../_components/AdminPageHeader';
 import DisconnectGscButton from './DisconnectGscButton';
+import DisconnectGadsButton from './DisconnectGadsButton';
 
 export const metadata: Metadata = { title: 'İçerik Entegrasyonları | Admin', robots: { index: false } };
 export const dynamic = 'force-dynamic';
@@ -42,6 +43,28 @@ async function getTopOpportunities() {
     const result = await findKeywordOpportunities(5);
     return result.ok ? result.opportunities : null;
   } catch { return null; }
+}
+
+async function getGoogleAdsStatus(): Promise<{
+  connected: boolean;
+  email?: string | null;
+  hasDevToken: boolean;
+  hasLoginCustomerId: boolean;
+  error?: string;
+}> {
+  const hasDevToken        = !!(process.env.GOOGLE_ADS_DEVELOPER_TOKEN);
+  const hasLoginCustomerId = !!(process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID);
+  const hasCredentials = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+  if (!hasCredentials) return { connected: false, hasDevToken, hasLoginCustomerId };
+  try {
+    const { isGoogleAdsConnected, getGoogleAdsConnection } = await import('@/lib/google-ads');
+    const connected = await isGoogleAdsConnected();
+    if (!connected) return { connected: false, hasDevToken, hasLoginCustomerId };
+    const conn = await getGoogleAdsConnection();
+    return { connected: true, email: conn?.connectedEmail, hasDevToken, hasLoginCustomerId };
+  } catch (err) {
+    return { connected: false, hasDevToken, hasLoginCustomerId, error: err instanceof Error ? err.message : 'Hata' };
+  }
 }
 
 // ── Styles (shared) ───────────────────────────────────────────────────────────
@@ -96,7 +119,7 @@ export default async function IcerikEntegrasyonlariPage({
   searchParams: Promise<{ error?: string; success?: string }>;
 }) {
   const sp           = await searchParams;
-  const gscStatus    = await getGscStatus();
+  const [gscStatus, gadsStatus] = await Promise.all([getGscStatus(), getGoogleAdsStatus()]);
   const opportunities = gscStatus.connected ? await getTopOpportunities() : null;
 
   const hasGscCredentials = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
@@ -104,14 +127,22 @@ export default async function IcerikEntegrasyonlariPage({
   const cronSecretOk      = !!(process.env.CRON_SECRET);
 
   const ERROR_MSGS: Record<string, string> = {
-    missing_client_id:    'GOOGLE_CLIENT_ID tanımlı değil. Aşağıdaki talimatları izleyin.',
-    missing_credentials:  'GOOGLE_CLIENT_ID veya GOOGLE_CLIENT_SECRET eksik.',
-    invalid_state:        'Güvenlik doğrulaması başarısız (state uyuşmazlığı). Tekrar deneyin.',
-    missing_code:         'Google yetkilendirme kodu alınamadı. Tekrar deneyin.',
-    token_exchange_failed:'Token alışverişi başarısız. Credentials doğru mu?',
-    no_refresh_token:     'Google refresh token döndürmedi. Consent ekranında "prompt=consent" gerekli (zaten ayarlı).',
-    server_error:         'Sunucu hatası. Sunucu loglarını kontrol edin.',
-    user_cancelled:       'Bağlantı kullanıcı tarafından iptal edildi.',
+    missing_client_id:         'GOOGLE_CLIENT_ID tanımlı değil. Aşağıdaki talimatları izleyin.',
+    missing_credentials:       'GOOGLE_CLIENT_ID veya GOOGLE_CLIENT_SECRET eksik.',
+    invalid_state:             'Güvenlik doğrulaması başarısız (state uyuşmazlığı). Tekrar deneyin.',
+    missing_code:              'Google yetkilendirme kodu alınamadı. Tekrar deneyin.',
+    token_exchange_failed:     'Token alışverişi başarısız. Credentials doğru mu?',
+    no_refresh_token:          'Google refresh token döndürmedi. Consent ekranında "prompt=consent" gerekli (zaten ayarlı).',
+    server_error:              'Sunucu hatası. Sunucu loglarını kontrol edin.',
+    user_cancelled:            'Bağlantı kullanıcı tarafından iptal edildi.',
+    // Google Ads specific
+    gads_missing_credentials:  'GOOGLE_CLIENT_ID veya GOOGLE_CLIENT_SECRET eksik.',
+    gads_invalid_state:        'Google Ads güvenlik doğrulaması başarısız. Tekrar deneyin.',
+    gads_missing_code:         'Google Ads yetkilendirme kodu alınamadı.',
+    gads_token_exchange_failed:'Google Ads token alışverişi başarısız.',
+    gads_no_refresh_token:     'Google Ads refresh token alınamadı. Tekrar deneyin.',
+    gads_server_error:         'Sunucu hatası. Sunucu loglarını kontrol edin.',
+    gads_user_cancelled:       'Google Ads bağlantısı kullanıcı tarafından iptal edildi.',
   };
 
   return (
@@ -135,6 +166,14 @@ export default async function IcerikEntegrasyonlariPage({
           <CheckCircle2 size={16} color="#168C5B" />
           <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: '#14532D', margin: 0 }}>
             Google Search Console başarıyla bağlandı! Site verileri artık AI Studio&apos;da kullanılacak.
+          </p>
+        </div>
+      )}
+      {sp.success === 'gads_connected' && (
+        <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '10px', padding: '14px 18px', marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <CheckCircle2 size={16} color="#168C5B" />
+          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: '#14532D', margin: 0 }}>
+            Google Ads Keyword Planner başarıyla bağlandı! Gerçek arama hacmi verileri AI Studio taslak seçiminde kullanılacak.
           </p>
         </div>
       )}
@@ -263,6 +302,95 @@ export default async function IcerikEntegrasyonlariPage({
                 Google ile Bağlan (Search Console)
               </button>
             </Link>
+          </div>
+        )}
+      </div>
+
+      {/* ── Google Ads Keyword Planner ─────────────────────────────────────── */}
+      <div style={card}>
+        <div style={cardHead}>
+          <TrendingUp size={18} color={gadsStatus.connected ? '#168C5B' : '#D97706'} />
+          <h2 style={headTitle}>Google Ads — Keyword Planner</h2>
+          <StatusBadge ok={gadsStatus.connected} />
+        </div>
+
+        {/* Secrets / credentials missing */}
+        {(!gadsStatus.hasDevToken || !gadsStatus.hasLoginCustomerId) && (
+          <div style={{ padding: '16px 20px', background: '#FFFBEB', borderBottom: '1px solid #E8EDF2' }}>
+            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: '#92400E', fontWeight: 600, margin: '0 0 8px' }}>
+              ⚠️ Eksik Replit Secrets:
+            </p>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              {!gadsStatus.hasDevToken        && codePill('GOOGLE_ADS_DEVELOPER_TOKEN')}
+              {!gadsStatus.hasLoginCustomerId && codePill('GOOGLE_ADS_LOGIN_CUSTOMER_ID')}
+            </div>
+            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: '#78350F', margin: '8px 0 0' }}>
+              Google Cloud Console&apos;da aynı projeye <strong>Google Ads API</strong>&apos;yi etkinleştirin ve bu secrets&apos;ları Replit&apos;e ekleyin.
+              Callback URI&apos;yi de kayıt ettirin:{' '}
+              <code style={{ fontSize: '11px', background: '#F1F5F9', padding: '2px 5px', borderRadius: '4px' }}>
+                https://www.istanbulviptransfer.com/admin/api/google-ads/callback
+              </code>
+            </p>
+          </div>
+        )}
+
+        {gadsStatus.connected ? (
+          /* Connected state */
+          <div>
+            <div style={row}>
+              <div>
+                <p style={labelStyle}>Bağlı Hesap</p>
+                <p style={{ ...hint, margin: 0 }}>{gadsStatus.email ?? '—'}</p>
+              </div>
+              <StatusBadge ok label="Aktif" />
+            </div>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #E8EDF2' }}>
+              <p style={labelStyle}>Veri Önceliği</p>
+              <p style={hint}>
+                GSC bağlıysa GSC verisi önceliklidir. GSC bağlı değilse Keyword Planner devreye girer;
+                ikisi de yoksa AI tahmini kullanılır. Haftalık taslak loglarında hangi kaynağın seçildiği gösterilir.
+              </p>
+            </div>
+            <div style={{ padding: '16px 20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <Link href="/admin/api/google-ads/connect" style={{ textDecoration: 'none' }}>
+                <button style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #D8E1E9', background: '#F3F6FA', color: '#172B3A', fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+                  Yeniden Bağlan
+                </button>
+              </Link>
+              <DisconnectGadsButton />
+            </div>
+          </div>
+        ) : (
+          /* Not connected */
+          <div style={{ padding: '20px' }}>
+            <p style={hint}>
+              Google Ads hesabınıza bağlanın. Keyword Planner, Türkiye&apos;deki gerçek aylık arama hacimlerini ve
+              rekabet seviyelerini çekerek haftalık taslak konu seçimini gerçek veriye dayandırır.
+            </p>
+            <p style={{ ...hint, marginBottom: '8px' }}>
+              Kapsam:{' '}
+              <code style={{ fontSize: '11px', background: '#F1F5F9', padding: '2px 5px', borderRadius: '4px' }}>
+                ads.readonly (adwords)
+              </code>{' '}
+              — yalnızca keyword planner erişimi.
+            </p>
+            <p style={{ ...hint, marginBottom: '16px', color: '#D97706', fontWeight: 500 }}>
+              ⚠️ Bağlanmadan önce Google Cloud Console&apos;da{' '}
+              <strong>https://www.istanbulviptransfer.com/admin/api/google-ads/callback</strong>{' '}
+              adresini Authorized Redirect URI olarak ekleyin.
+            </p>
+            {hasGscCredentials && gadsStatus.hasDevToken && gadsStatus.hasLoginCustomerId ? (
+              <Link href="/admin/api/google-ads/connect" style={{ textDecoration: 'none' }}>
+                <button style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: '#2563EB', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+                  <TrendingUp size={15} />
+                  Google ile Bağlan (Keyword Planner)
+                </button>
+              </Link>
+            ) : (
+              <p style={{ fontSize: '13px', color: '#94A3B8', fontFamily: 'Inter, sans-serif' }}>
+                Yukarıdaki eksik secrets&apos;ları ekledikten sonra bağlan butonu görünecek.
+              </p>
+            )}
           </div>
         )}
       </div>

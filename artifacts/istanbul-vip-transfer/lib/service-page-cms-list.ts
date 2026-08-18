@@ -14,6 +14,7 @@ export interface PublishedServiceListItem {
   excerpt:      string | null;
   category:     string | null;
   displayOrder: number;
+  heroImage:    string | null;
 }
 
 /**
@@ -42,6 +43,7 @@ export async function getPublishedServiceList(
           excerpt:      content.excerpt,
           category:     content.category,
           displayOrder: content.displayOrder,
+          heroImage:    content.heroImage,
         })
         .from(content)
         .where(and(
@@ -57,6 +59,7 @@ export async function getPublishedServiceList(
         excerpt:      r.excerpt ?? null,
         category:     r.category ?? null,
         displayOrder: r.displayOrder ?? 99,
+        heroImage:    r.heroImage ?? null,
       }));
     }
 
@@ -70,6 +73,7 @@ export async function getPublishedServiceList(
         srcExcerpt:   content.excerpt,
         category:     content.category,
         displayOrder: content.displayOrder,
+        heroImage:    content.heroImage,
       })
       .from(content)
       .innerJoin(
@@ -95,6 +99,7 @@ export async function getPublishedServiceList(
       excerpt:      r.txExcerpt ?? r.srcExcerpt ?? null,
       category:     r.category ?? null,
       displayOrder: r.displayOrder ?? 99,
+      heroImage:    r.heroImage ?? null,
     }));
   } catch {
     return [];

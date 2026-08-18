@@ -1,17 +1,17 @@
 /**
  * HizmetlerServiceGridCms — CMS-backed server component.
  *
- * Reads published service pages AND active categories from the DB.
- * Categories are DB-driven (sorted by sort_order, localised) so admin
- * changes propagate without a code deploy.
+ * Renders service pages as image cards (consistent with blog listing).
+ * Groups by category; each service shows: thumbnail, title, excerpt, link.
  *
  * Props:
  *   locale     — UI locale (tr, en, de, …)
- *   categories — pre-fetched from parent to avoid double-query (optional;
- *                falls back to fetching if omitted)
+ *   categories — pre-fetched from parent to avoid double-query (optional)
  */
 import 'server-only';
+import Image from 'next/image';
 import Link from 'next/link';
+import { ArrowRight, ArrowLeft } from 'lucide-react';
 import { getPublishedServiceList } from '@/lib/service-page-cms-list';
 import { getServiceCategories, type ServiceCategoryItem } from '@/lib/service-category-server';
 import { RTL_LOCALES } from '@/lib/i18n/locale-registry';
@@ -29,20 +29,32 @@ const EMPTY_MSG: Record<string, string> = {
   nl: 'Er zijn nog geen diensten in het Nederlands gepubliceerd.',
 };
 
+const MORE_LABEL: Record<string, string> = {
+  tr: 'Detayları Gör',
+  en: 'View Details',
+  de: 'Details ansehen',
+  ru: 'Подробнее',
+  ar: 'عرض التفاصيل',
+  fr: 'Voir les détails',
+  es: 'Ver detalles',
+  it: 'Visualizza dettagli',
+  nl: 'Details bekijken',
+};
+
 function serviceHref(slug: string, locale: string): string {
   return locale === 'tr' ? `/${slug}` : `/${locale}/${slug}`;
 }
 
 interface Props {
   locale:     string;
-  /** Pre-fetched category list from parent page. Falls back to DB if omitted. */
   categories?: ServiceCategoryItem[];
 }
 
 export default async function HizmetlerServiceGridCms({ locale, categories: catsProp }: Props) {
-  const isRtl    = RTL_LOCALES.includes(locale);
+  const isRtl = RTL_LOCALES.includes(locale);
+  const Arrow = isRtl ? ArrowLeft : ArrowRight;
+  const moreLabel = MORE_LABEL[locale] ?? MORE_LABEL.en;
 
-  // Fetch in parallel
   const [services, categories] = await Promise.all([
     getPublishedServiceList(locale),
     catsProp ? Promise.resolve(catsProp) : getServiceCategories(locale),
@@ -67,63 +79,207 @@ export default async function HizmetlerServiceGridCms({ locale, categories: cats
     grouped.get(cat)!.push(svc);
   }
 
-  // Build ordered group list: DB order first, then unknown slugs alphabetically
-  const catOrder  = categories.map(c => c.slug);
+  const catOrder   = categories.map(c => c.slug);
   const catLabelMap = Object.fromEntries(categories.map(c => [c.slug, c.label]));
 
   const sortedGroups = [
     ...catOrder.filter(c => grouped.has(c)),
     ...[...grouped.keys()].filter(c => !catOrder.includes(c) && c !== '__other__').sort(),
-    ...( grouped.has('__other__') ? ['__other__'] : []),
+    ...(grouped.has('__other__') ? ['__other__'] : []),
   ];
 
   return (
-    <div
-      className="grid grid-cols-1 md:grid-cols-2 gap-10"
-      dir={isRtl ? 'rtl' : 'ltr'}
-    >
-      {sortedGroups.map((cat) => {
+    <div dir={isRtl ? 'rtl' : 'ltr'} style={{ display: 'flex', flexDirection: 'column', gap: '52px' }}>
+      {sortedGroups.map((cat, catIdx) => {
         const items = grouped.get(cat)!;
         const groupLabel = cat === '__other__'
           ? (locale === 'tr' ? 'Diğer Hizmetler' : 'Other Services')
           : (catLabelMap[cat] ?? cat);
 
         return (
-          <div
-            id={`hiz-cat-${cat}`}
-            key={cat}
-            className="rounded-sm p-8"
-            style={{ background: 'rgba(201,168,76,0.04)', border: '1px solid rgba(201,168,76,0.12)', scrollMarginTop: '90px' }}
-          >
+          <section key={cat} id={`hiz-cat-${cat}`} style={{ scrollMarginTop: '90px' }}>
+            {/* Category heading */}
             <h2
-              className="text-xs tracking-[0.2em] uppercase mb-5"
-              style={{ color: '#C9A84C', fontFamily: 'Inter, sans-serif' }}
+              style={{
+                fontFamily: 'Inter, sans-serif',
+                fontSize: '11px',
+                fontWeight: 700,
+                letterSpacing: '0.2em',
+                textTransform: 'uppercase',
+                color: '#C9A84C',
+                marginBottom: '20px',
+                paddingBottom: '10px',
+                borderBottom: '1px solid rgba(201,168,76,0.18)',
+              }}
             >
               {groupLabel}
             </h2>
-            <ul className="space-y-3">
-              {items.map((svc) => (
-                <li key={svc.slug}>
-                  <Link
-                    href={serviceHref(svc.slug, locale)}
-                    className="flex items-center gap-3 group transition-colors duration-200 hover:text-[#C9A84C]"
+
+            {/* Service cards grid */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                gap: '20px',
+              }}
+            >
+              {items.map((svc, svcIdx) => (
+                <Link
+                  key={svc.slug}
+                  href={serviceHref(svc.slug, locale)}
+                  style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column' }}
+                >
+                  <article
                     style={{
-                      color: '#AAA', fontFamily: 'Inter, sans-serif',
-                      flexDirection: isRtl ? 'row-reverse' : 'row',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      height: '100%',
+                      background: '#FFFFFF',
+                      border: '1px solid #E8EDF2',
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      transition: 'box-shadow 0.2s, transform 0.2s',
                     }}
+                    className="ivt-svc-card"
                   >
-                    <span
-                      className="h-px flex-shrink-0 transition-all duration-200 group-hover:w-6"
-                      style={{ width: '14px', background: 'rgba(201,168,76,0.5)' }}
-                    />
-                    <span className="text-sm">{svc.title}</span>
-                  </Link>
-                </li>
+                    {/* Thumbnail */}
+                    <div
+                      style={{
+                        position: 'relative',
+                        width: '100%',
+                        aspectRatio: '16/9',
+                        background: 'linear-gradient(135deg, #1A2E3D 0%, #263E52 100%)',
+                        overflow: 'hidden',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {svc.heroImage ? (
+                        <Image
+                          src={svc.heroImage}
+                          alt={svc.title}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 340px"
+                          priority={catIdx === 0 && svcIdx === 0}
+                        />
+                      ) : (
+                        /* Branded gradient fallback when no hero image */
+                        <div
+                          style={{
+                            position: 'absolute', inset: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: 'linear-gradient(135deg, #1A2E3D 0%, #263E52 100%)',
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontFamily: 'Inter, sans-serif',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              letterSpacing: '0.2em',
+                              textTransform: 'uppercase',
+                              color: 'rgba(201,168,76,0.7)',
+                            }}
+                          >
+                            VIP TRANSFER
+                          </span>
+                        </div>
+                      )}
+                      {/* Gold overlay on hover */}
+                      <div
+                        className="ivt-svc-card-overlay"
+                        style={{
+                          position: 'absolute', inset: 0,
+                          background: 'rgba(201,168,76,0)',
+                          transition: 'background 0.2s',
+                        }}
+                      />
+                    </div>
+
+                    {/* Content */}
+                    <div
+                      style={{
+                        padding: '18px 20px 20px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                        flex: 1,
+                      }}
+                    >
+                      <h3
+                        style={{
+                          fontFamily: '"Playfair Display", Georgia, serif',
+                          fontSize: '16px',
+                          fontWeight: 700,
+                          color: '#172B3A',
+                          lineHeight: 1.3,
+                          margin: 0,
+                        }}
+                      >
+                        {svc.title}
+                      </h3>
+
+                      {svc.excerpt && (
+                        <p
+                          style={{
+                            fontFamily: 'Inter, sans-serif',
+                            fontSize: '13px',
+                            color: '#50677A',
+                            lineHeight: 1.6,
+                            margin: 0,
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                          }}
+                        >
+                          {svc.excerpt}
+                        </p>
+                      )}
+
+                      <div
+                        style={{
+                          marginTop: 'auto',
+                          paddingTop: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          flexDirection: isRtl ? 'row-reverse' : 'row',
+                        }}
+                        className="ivt-svc-card-link"
+                      >
+                        <span
+                          style={{
+                            fontFamily: 'Inter, sans-serif',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            color: '#C9A84C',
+                            letterSpacing: '0.04em',
+                          }}
+                        >
+                          {moreLabel}
+                        </span>
+                        <Arrow size={13} color="#C9A84C" />
+                      </div>
+                    </div>
+                  </article>
+                </Link>
               ))}
-            </ul>
-          </div>
+            </div>
+          </section>
         );
       })}
+
+      {/* Hover styles injected globally via style tag */}
+      <style>{`
+        .ivt-svc-card:hover {
+          box-shadow: 0 8px 32px rgba(0,0,0,0.10);
+          transform: translateY(-2px);
+        }
+        .ivt-svc-card:hover .ivt-svc-card-overlay {
+          background: rgba(201,168,76,0.08) !important;
+        }
+      `}</style>
     </div>
   );
 }

@@ -7,3 +7,10 @@ uri = "file://Istanbul-Transfer-Pro-source.zip"
 type = "unspecified"
 title = "Istanbul-Transfer-Pro-source.zip"
 description = "Complete project source — 952 files, 5.1 MB. Excludes node_modules, .next, .git, cache, secrets and env files."
+
+[[outputs]]
+id = "IWUvMMJP-H759W7ud6n9i"
+uri = "file://artifacts/istanbul-vip-transfer/public/images/istanbul-havalimani-hero-alt.jpg"
+type = "image"
+title = "İstanbul Havalimanı Hero — Yeni Alternatif"
+description = "AI ile üretilen özgün hero görseli. İstanbul Havalimanı kontrol kulesi, alacakaranlık gökyüzü, siyah Mercedes Vito ve takım elbiseli şoför."

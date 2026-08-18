@@ -119,6 +119,98 @@ function Checkbox({ name, checked, onChange }: { name: string; checked: boolean;
 
 // ── Section editors ────────────────────────────────────────────────────────
 
+/** Built-in hero image presets. New options can be added here. */
+const HERO_PRESETS: Array<{ path: string; label: string; description: string }> = [
+  {
+    path:        '/images/istanbul-vip-transfer-hero.webp',
+    label:       'Mevcut Hero',
+    description: 'Orijinal ana sayfa hero görseli',
+  },
+  {
+    path:        '/images/istanbul-havalimani-hero-alt.jpg',
+    label:       '✨ Yeni Alternatif',
+    description: 'İstanbul Havalimanı kontrol kulesi — alacakaranlık, Mercedes Vito, dramatik ışıklandırma',
+  },
+];
+
+function HeroImagePresets({ currentPath, onSelect }: { currentPath: string; onSelect: (path: string) => void }) {
+  return (
+    <div style={{ marginBottom: '16px' }}>
+      <p style={{ ...lbl, marginBottom: '10px' }}>🖼 Hero Görseli Önizleme — Hızlı Seçim</p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
+        {HERO_PRESETS.map(preset => {
+          const isActive = currentPath === preset.path || (!currentPath && preset.path.includes('hero.webp'));
+          return (
+            <div
+              key={preset.path}
+              style={{
+                border: `2px solid ${isActive ? '#C79A35' : '#E2E8F0'}`,
+                borderRadius: '10px',
+                overflow: 'hidden',
+                background: isActive ? '#FFFBEB' : '#F8FAFC',
+                transition: 'border-color 0.15s',
+              }}
+            >
+              {/* Thumbnail */}
+              <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', overflow: 'hidden', background: '#1A2E3D' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={preset.path}
+                  alt={preset.label}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  loading="lazy"
+                />
+                {isActive && (
+                  <div style={{
+                    position: 'absolute', top: '8px', left: '8px',
+                    background: '#C79A35', color: '#102A43',
+                    fontSize: '10px', fontWeight: 700, padding: '3px 8px',
+                    borderRadius: '999px', fontFamily: 'Inter, sans-serif',
+                    letterSpacing: '0.04em',
+                  }}>
+                    ✓ AKTİF
+                  </div>
+                )}
+              </div>
+              {/* Info + button */}
+              <div style={{ padding: '10px 12px' }}>
+                <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', fontWeight: 700, color: '#172B3A', margin: '0 0 3px' }}>
+                  {preset.label}
+                </p>
+                <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: '#64748B', margin: '0 0 8px', lineHeight: 1.4 }}>
+                  {preset.description}
+                </p>
+                {!isActive && (
+                  <button
+                    type="button"
+                    onClick={() => onSelect(preset.path)}
+                    style={{
+                      padding: '5px 12px', borderRadius: '6px',
+                      background: '#172B3A', color: '#FFFFFF',
+                      border: 'none', fontSize: '11px', fontWeight: 600,
+                      cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                    }}
+                  >
+                    Bu Görseli Seç
+                  </button>
+                )}
+                {isActive && (
+                  <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: '#C79A35', fontWeight: 600 }}>
+                    Şu an kullanılıyor
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: '#94A3B8', marginTop: '8px' }}>
+        Seçim yaptıktan sonra sayfanın altındaki <strong>Kaydet ve Yayımla</strong> butonuna basın.
+      </p>
+    </div>
+  );
+}
+
 function HeroEditor({ data, onChange, dir, ro }: { data: HeroSection; onChange: (d: HeroSection) => void; dir: string; ro?: boolean }) {
   const set = (key: keyof HeroSection, val: string | boolean) => onChange({ ...data, [key]: val });
   return (
@@ -134,15 +226,24 @@ function HeroEditor({ data, onChange, dir, ro }: { data: HeroSection; onChange: 
         <Field name="CTA Rezervasyon" value={data.ctaBookingText} onChange={v => set('ctaBookingText', v)} dir={dir} readOnly={ro} />
         <Field name="CTA Ara" value={data.ctaCallText} onChange={v => set('ctaCallText', v)} dir={dir} readOnly={ro} />
       </div>
+
+      {/* Hero image preset picker — editable on TR only */}
+      {!ro && (
+        <HeroImagePresets
+          currentPath={data.imagePath}
+          onSelect={path => set('imagePath', path)}
+        />
+      )}
+
       {ro ? (
         <Field name="Hero Görseli Yolu" value={data.imagePath} hint="Paylaşılan alan — tüm dillerde aynıdır" readOnly />
       ) : (
         <ImageUploadField
-          label="Hero Görseli"
+          label="Özel Görsel Yükle (İsteğe Bağlı)"
           value={data.imagePath}
           onChange={v => set('imagePath', v)}
           namespace="homepage/hero"
-          hint="Paylaşılan alan — tüm dillerde aynıdır. JPEG, PNG, WebP, GIF, AVIF — max 10 MB."
+          hint="Veya yukarıdaki önizlemelerden birini seçin. Paylaşılan alan — tüm dillerde aynıdır. JPEG, PNG, WebP, GIF, AVIF — max 10 MB."
         />
       )}
       <Field name="Görsel ALT Metni" value={data.imageAlt} onChange={v => set('imageAlt', v)} dir={dir} readOnly={ro} />

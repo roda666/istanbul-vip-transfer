@@ -10,13 +10,23 @@ import { isValidLang, SUPPORTED_LANGS } from '@/lib/i18n';
 import { buildAlternates, getOgLocale } from '@/lib/i18n/seo';
 import { SITE } from '@/lib/site-config';
 import { getContactSettings } from '@/lib/site-settings-server';
+// Renamed to avoid conflict with Next.js's `export const dynamic` route segment config
+import lazyLoad from 'next/dynamic';
+import type { TransferRoute } from '@/db/schema';
+import { HomepageCmsProvider } from '@/lib/homepage-cms-context';
+import { getPublishedHomepageData } from '@/lib/homepage-cms';
+import { getServiceVisibilityMap } from '@/lib/service-page-cms';
+// Above-fold: static imports
 import BookingForm from '@/components/BookingForm';
 import Hero from '@/components/Hero';
-import VehicleFleet from '@/components/VehicleFleet';
-import Services from '@/components/Services';
-import PopularRoutesSection from '@/components/PopularRoutesSection';
-import TrustSignals from '@/components/TrustSignals';
-import type { TransferRoute } from '@/db/schema';
+// Below-fold: lazy-loaded client components (each gets its own JS chunk)
+const VehicleFleet         = lazyLoad(() => import('@/components/VehicleFleet'));
+const Services             = lazyLoad(() => import('@/components/Services'));
+const PopularRoutesSection = lazyLoad(() => import('@/components/PopularRoutesSection'));
+const TrustSignals         = lazyLoad(() => import('@/components/TrustSignals'));
+const Reviews              = lazyLoad(() => import('@/components/Reviews'));
+const FAQ                  = lazyLoad(() => import('@/components/FAQ'));
+const Contact              = lazyLoad(() => import('@/components/Contact'));
 
 async function getTransferRoutes(): Promise<TransferRoute[]> {
   try {
@@ -28,12 +38,6 @@ async function getTransferRoutes(): Promise<TransferRoute[]> {
     return [];
   }
 }
-import Reviews from '@/components/Reviews';
-import FAQ from '@/components/FAQ';
-import Contact from '@/components/Contact';
-import { HomepageCmsProvider } from '@/lib/homepage-cms-context';
-import { getPublishedHomepageData } from '@/lib/homepage-cms';
-import { getServiceVisibilityMap } from '@/lib/service-page-cms';
 
 // Force dynamic rendering so visibility toggle changes take effect immediately.
 export const dynamic = 'force-dynamic';

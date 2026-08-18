@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { motion } from 'framer-motion';
 import { Phone, MapPin, Mail, Lock, ShieldCheck, Banknote, ArrowLeftRight, Smartphone } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
 import { useSiteSettings } from '@/components/SiteSettingsContext';
@@ -189,7 +188,7 @@ export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
             </p>
             {/* Company legal name (small, below tagline) */}
             {cs.companyLegalName && (
-              <p className="text-xs mt-3 leading-relaxed" style={{ color: 'rgba(255,255,255,0.38)', fontFamily: 'Inter, sans-serif' }}>
+              <p className="text-xs mt-3 leading-relaxed" style={{ color: 'rgba(255,255,255,0.55)', fontFamily: 'Inter, sans-serif' }}>
                 {cs.companyLegalName}
                 {cs.companyTradeName && ` · ${cs.companyTradeName}`}
               </p>
@@ -198,12 +197,12 @@ export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
 
           {/* Quick Links */}
           <div>
-            <h4
+            <h3
               className="text-xs tracking-[0.2em] uppercase mb-6"
               style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
             >
               {dict.footer.quickLinks}
-            </h4>
+            </h3>
             <ul className="space-y-3">
               {quickLinks.map((link) => (
                 <li key={link.href}>
@@ -228,12 +227,12 @@ export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
 
           {/* Services */}
           <div>
-            <h4
+            <h3
               className="text-xs tracking-[0.2em] uppercase mb-6"
               style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
             >
               {dict.footer.services}
-            </h4>
+            </h3>
             <ul className="space-y-3">
               {services.map((service) => (
                 <li key={service.href}>
@@ -268,12 +267,12 @@ export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
 
           {/* Contact */}
           <div>
-            <h4
+            <h3
               className="text-xs tracking-[0.2em] uppercase mb-6"
               style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
             >
               {dict.footer.contact}
-            </h4>
+            </h3>
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
                 <Phone size={15} style={{ color: '#C79A35', flexShrink: 0, marginTop: '2px' }} aria-hidden="true" />
@@ -455,13 +454,9 @@ export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
           ))}
         </div>
 
-        <motion.div
+        <div
           className="mt-0 pt-7 flex flex-col md:flex-row items-center justify-between gap-4"
           style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
           data-testid="footer-bottom"
         >
           <div className="text-center md:text-left">
@@ -469,7 +464,7 @@ export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
               &copy; {new Date().getFullYear()} VIP Transfer Istanbul. {dict.footer.copyright}
             </p>
             {cs.companyLegalName && (
-              <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.3)', fontFamily: 'Inter, sans-serif' }}>
+              <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.55)', fontFamily: 'Inter, sans-serif' }}>
                 {cs.companyLegalName}
                 {cs.tursabNo && ` · TÜRSAB ${cs.tursabNo}`}
               </p>
@@ -481,7 +476,7 @@ export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
             </p>
             <LanguageSelector variant="dark" />
           </div>
-        </motion.div>
+        </div>
       </div>
     </footer>
   );

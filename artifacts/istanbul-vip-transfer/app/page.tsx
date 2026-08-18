@@ -1,15 +1,18 @@
 import type { Metadata } from 'next';
-import { SUPPORTED_LANGS } from '@/lib/i18n';
+// Renamed to avoid conflict with Next.js's `export const dynamic` route segment config
+import lazyLoad from 'next/dynamic';
 import { buildAlternates } from '@/lib/i18n/seo';
+// Above-fold: static imports (always in initial bundle)
 import Hero from '@/components/Hero';
 import BookingForm from '@/components/BookingForm';
-import VehicleFleet from '@/components/VehicleFleet';
-import Services from '@/components/Services';
-import PopularRoutesSection from '@/components/PopularRoutesSection';
-import TrustSignals from '@/components/TrustSignals';
-import Reviews from '@/components/Reviews';
-import FAQ from '@/components/FAQ';
-import Contact from '@/components/Contact';
+// Below-fold: lazy-loaded client components (each gets its own JS chunk)
+const VehicleFleet         = lazyLoad(() => import('@/components/VehicleFleet'));
+const Services             = lazyLoad(() => import('@/components/Services'));
+const PopularRoutesSection = lazyLoad(() => import('@/components/PopularRoutesSection'));
+const TrustSignals         = lazyLoad(() => import('@/components/TrustSignals'));
+const Reviews              = lazyLoad(() => import('@/components/Reviews'));
+const FAQ                  = lazyLoad(() => import('@/components/FAQ'));
+const Contact              = lazyLoad(() => import('@/components/Contact'));
 import { faqs } from '@/lib/faq-data';
 import { SITE } from '@/lib/site-config';
 import { getContactSettings } from '@/lib/site-settings-server';

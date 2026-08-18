@@ -7,6 +7,12 @@ const nextConfig: NextConfig = {
   // to bundle it into any browser/fallback bundle.
   serverExternalPackages: ['nodemailer'],
 
+  // Tree-shake lucide-react so only actually-imported icons end up in the bundle.
+  // Without this Next.js would barrel-import the entire icon set (~2 MB).
+  experimental: {
+    optimizePackageImports: ['lucide-react'],
+  },
+
   webpack(config, { isServer }) {
     if (!isServer) {
       // When webpack compiles the client / edge / client-development-fallback

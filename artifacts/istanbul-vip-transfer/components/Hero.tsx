@@ -1,7 +1,6 @@
 'use client';
 
 import Image from 'next/image';
-import { motion } from 'framer-motion';
 import { ChevronDown, Star } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
 import { useSiteSettings } from '@/components/SiteSettingsContext';
@@ -71,12 +70,9 @@ export default function Hero() {
           {/* ── Left: Content ── */}
           <div className="order-1">
             {/* Badge */}
-            <motion.div
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-7 border"
+            <div
+              className="ivt-hero-badge inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-7 border"
               style={{ borderColor: 'rgba(199,154,53,0.35)', background: 'rgba(199,154,53,0.08)' }}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.15 }}
               data-testid="hero-badge"
             >
               <Star size={12} fill="#C79A35" stroke="none" aria-hidden="true" />
@@ -87,51 +83,37 @@ export default function Hero() {
                 {h.badge}
               </span>
               <Star size={12} fill="#C79A35" stroke="none" aria-hidden="true" />
-            </motion.div>
+            </div>
 
             {/* H1 */}
-            <motion.h1
-              className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-5"
+            <h1
+              className="ivt-hero-h1 text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-5"
               style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43', lineHeight: 1.1 }}
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.25 }}
               data-testid="hero-headline"
             >
               {h.headline1}{' '}
               <span style={{ color: '#C79A35' }}>{h.headlineAccent}</span>
               <br />
               {h.headline2}
-            </motion.h1>
+            </h1>
 
             {/* Gold accent bar */}
-            <motion.div
-              className="mb-6"
-              style={{ width: '72px', height: '3px', background: 'linear-gradient(90deg, #C79A35, #E4B84B)', borderRadius: '2px', originX: 0 } as React.CSSProperties}
-              initial={{ opacity: 0, scaleX: 0 }}
-              animate={{ opacity: 1, scaleX: 1 }}
-              transition={{ duration: 0.7, delay: 0.4 }}
+            <div
+              className="ivt-hero-bar mb-6"
+              style={{ width: '72px', height: '3px', background: 'linear-gradient(90deg, #C79A35, #E4B84B)', borderRadius: '2px' }}
             />
 
             {/* Subheadline */}
-            <motion.p
-              className="text-base md:text-lg mb-8 max-w-xl leading-relaxed"
+            <p
+              className="ivt-hero-sub text-base md:text-lg mb-8 max-w-xl leading-relaxed"
               style={{ color: '#50677A', fontFamily: 'Inter, sans-serif', fontWeight: 400 }}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.42 }}
               data-testid="hero-subheadline"
             >
               {h.subheadline}
-            </motion.p>
+            </p>
 
             {/* CTA Buttons */}
-            <motion.div
-              className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-10"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.54 }}
-            >
+            <div className="ivt-hero-cta flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-10">
               <button
                 onClick={scrollToBooking}
                 className="px-8 py-3.5 rounded-xl text-sm font-semibold tracking-wide transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C79A35] focus-visible:ring-offset-2"
@@ -158,15 +140,12 @@ export default function Hero() {
               >
                 {h.ctaCall}
               </a>
-            </motion.div>
+            </div>
 
             {/* Trust bar */}
-            <motion.div
-              className="flex flex-wrap items-center gap-6 md:gap-8 pt-7"
+            <div
+              className="ivt-hero-trust flex flex-wrap items-center gap-6 md:gap-8 pt-7"
               style={{ borderTop: '1px solid #D9E2EC' }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.8, delay: 0.7 }}
               data-testid="hero-trust-bar"
             >
               {[
@@ -190,16 +169,11 @@ export default function Hero() {
                   </span>
                 </div>
               ))}
-            </motion.div>
+            </div>
           </div>
 
           {/* ── Right: Istanbul image panel ── */}
-          <motion.div
-            className="order-2 relative"
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.9, delay: 0.3 }}
-          >
+          <div className="ivt-hero-img order-2 relative">
             {/* Decorative offset frame */}
             <div
               className="absolute inset-0 rounded-2xl xl:rounded-3xl pointer-events-none"
@@ -228,19 +202,16 @@ export default function Hero() {
                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 50vw"
               />
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
 
       {/* Scroll indicator — desktop only */}
-      <motion.button
+      <button
         type="button"
-        className="absolute bottom-6 left-1/2 -translate-x-1/2 hidden lg:flex flex-col items-center gap-1.5 bg-transparent border-0 p-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C79A35] rounded"
+        className="ivt-hero-scroll absolute bottom-6 left-1/2 -translate-x-1/2 hidden lg:flex flex-col items-center gap-1.5 bg-transparent border-0 p-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C79A35] rounded"
         onClick={scrollToBooking}
         aria-label={h.scrollAriaLabel}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.8, delay: 1.1 }}
         data-testid="hero-scroll-indicator"
       >
         <span
@@ -249,13 +220,10 @@ export default function Hero() {
         >
           {h.scrollHint}
         </span>
-        <motion.div
-          animate={{ y: [0, 5, 0] }}
-          transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-        >
+        <div className="ivt-hero-chevron">
           <ChevronDown size={18} style={{ color: '#C79A35' }} aria-hidden="true" />
-        </motion.div>
-      </motion.button>
+        </div>
+      </button>
     </section>
   );
 }

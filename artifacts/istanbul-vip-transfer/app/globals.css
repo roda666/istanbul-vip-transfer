@@ -341,6 +341,51 @@ html {
   .ivt-wa-pulse-2 { animation: none; }
 }
 
+/* ── Hero entrance animations (replaces framer-motion) ───────────────────────
+   CSS-only animations match the previous framer-motion behaviour exactly:
+   fade-up, scale-x, slide-in-right, bounce. All respect prefers-reduced-motion.
+   Class names are applied directly in Hero.tsx.                              */
+@keyframes ivt-fade-up {
+  from { opacity: 0; transform: translateY(var(--ivt-ty, 20px)); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes ivt-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes ivt-scale-x {
+  from { opacity: 0; transform: scaleX(0); }
+  to   { opacity: 1; transform: scaleX(1); }
+}
+@keyframes ivt-slide-right {
+  from { opacity: 0; transform: translateX(30px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes ivt-hero-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(5px); }
+}
+
+.ivt-hero-badge  { animation: ivt-fade-up    0.7s ease both; animation-delay: 0.15s; --ivt-ty: 20px; }
+.ivt-hero-h1     { animation: ivt-fade-up    0.8s ease both; animation-delay: 0.25s; --ivt-ty: 24px; }
+.ivt-hero-bar    { animation: ivt-scale-x    0.7s ease both; animation-delay: 0.40s; transform-origin: left; }
+.ivt-hero-sub    { animation: ivt-fade-up    0.7s ease both; animation-delay: 0.42s; --ivt-ty: 16px; }
+.ivt-hero-cta    { animation: ivt-fade-up    0.7s ease both; animation-delay: 0.54s; --ivt-ty: 16px; }
+.ivt-hero-trust  { animation: ivt-fade-in    0.8s ease both; animation-delay: 0.70s; }
+.ivt-hero-img    { animation: ivt-slide-right 0.9s ease both; animation-delay: 0.30s; }
+.ivt-hero-scroll { animation: ivt-fade-in    0.8s ease both; animation-delay: 1.10s; }
+.ivt-hero-chevron { animation: ivt-hero-bounce 1.8s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ivt-hero-badge, .ivt-hero-h1, .ivt-hero-bar, .ivt-hero-sub,
+  .ivt-hero-cta,   .ivt-hero-trust, .ivt-hero-img, .ivt-hero-scroll {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .ivt-hero-chevron { animation: none; }
+}
+
 /* Grain overlay (brand texture) — RTL-safe, no directional dependency */
 .grain-overlay::before {
   content: '';

@@ -148,7 +148,7 @@ const errorStyle: React.CSSProperties = {
 const hintStyle: React.CSSProperties = {
   marginTop:  '4px',
   fontSize:   '11px',
-  color:      '#718596',
+  color:      '#4E6275', // ≥4.5:1 on white — WCAG AA compliant (was #718596 ≈3.4:1)
   fontFamily: 'Inter, sans-serif',
 };
 
@@ -542,14 +542,14 @@ export default function BookingForm() {
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} data-testid="booking-form" noValidate>
-              {/* Honeypot */}
+              {/* Honeypot — offscreen + tabIndex=-1 hides from keyboard and AT;
+                  aria-hidden removed because WCAG forbids aria-hidden on focusable elements */}
               <input
                 ref={honeypotRef}
                 type="text"
                 name="_hp"
                 tabIndex={-1}
                 autoComplete="off"
-                aria-hidden="true"
                 style={{ position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0 }}
               />
 
@@ -582,13 +582,13 @@ export default function BookingForm() {
                       {errors.varisLokasyonu && <p role="alert" style={errorStyle}>{errors.varisLokasyonu.message}</p>}
                     </div>
                     <div>
-                      <label style={labelStyle}><Home size={12} aria-hidden="true" /> {b.pickupAddress} {optionalBadge}</label>
-                      <input type="text" {...register('alisAdresi')} className="vip-input"
+                      <label htmlFor="bf-alis-adresi" style={labelStyle}><Home size={12} aria-hidden="true" /> {b.pickupAddress} {optionalBadge}</label>
+                      <input id="bf-alis-adresi" type="text" {...register('alisAdresi')} className="vip-input"
                         placeholder={b.pickupAddressPlaceholder} autoComplete="address-line1" />
                     </div>
                     <div>
-                      <label style={labelStyle}><Home size={12} aria-hidden="true" /> {b.dropoffAddress} {optionalBadge}</label>
-                      <input type="text" {...register('varisAdresi')} className="vip-input"
+                      <label htmlFor="bf-varis-adresi" style={labelStyle}><Home size={12} aria-hidden="true" /> {b.dropoffAddress} {optionalBadge}</label>
+                      <input id="bf-varis-adresi" type="text" {...register('varisAdresi')} className="vip-input"
                         placeholder={b.dropoffAddressPlaceholder} autoComplete="off" />
                     </div>
                   </>)}
@@ -612,13 +612,13 @@ export default function BookingForm() {
                       {errors.varisIli && <p role="alert" style={errorStyle}>{errors.varisIli.message}</p>}
                     </div>
                     <div>
-                      <label style={labelStyle}><Home size={12} aria-hidden="true" /> {b.departureAddress} {optionalBadge}</label>
-                      <input type="text" {...register('kalkisAdres')} className="vip-input"
+                      <label htmlFor="bf-kalkis-adres" style={labelStyle}><Home size={12} aria-hidden="true" /> {b.departureAddress} {optionalBadge}</label>
+                      <input id="bf-kalkis-adres" type="text" {...register('kalkisAdres')} className="vip-input"
                         placeholder={b.departureCityAddressPlaceholder} autoComplete="address-line1" />
                     </div>
                     <div>
-                      <label style={labelStyle}><Home size={12} aria-hidden="true" /> {b.arrivalAddress} {optionalBadge}</label>
-                      <input type="text" {...register('varisAdres')} className="vip-input"
+                      <label htmlFor="bf-varis-adres" style={labelStyle}><Home size={12} aria-hidden="true" /> {b.arrivalAddress} {optionalBadge}</label>
+                      <input id="bf-varis-adres" type="text" {...register('varisAdres')} className="vip-input"
                         placeholder={b.arrivalCityAddressPlaceholder} autoComplete="off" />
                     </div>
                   </>)}
@@ -634,12 +634,13 @@ export default function BookingForm() {
                       {errors.alisLokasyonu && <p role="alert" style={errorStyle}>{errors.alisLokasyonu.message}</p>}
                     </div>
                     <div>
-                      <label style={labelStyle}><Home size={12} aria-hidden="true" /> {b.pickupAddress} {optionalBadge}</label>
-                      <input type="text" {...register('alisAdresi')} className="vip-input"
+                      <label htmlFor="bf-alloc-alis-adresi" style={labelStyle}><Home size={12} aria-hidden="true" /> {b.pickupAddress} {optionalBadge}</label>
+                      <input id="bf-alloc-alis-adresi" type="text" {...register('alisAdresi')} className="vip-input"
                         placeholder={b.allocationAddressPlaceholder} autoComplete="address-line1" />
                     </div>
                     <div data-testid="field-tahsis">
-                      <label style={labelStyle}><Clock size={12} aria-hidden="true" /> {b.allocationDuration}</label>
+                      {/* Duration group: two inputs, each labelled via aria-label */}
+                      <p style={labelStyle}><Clock size={12} aria-hidden="true" /> {b.allocationDuration}</p>
                       <div style={durationRowStyle}>
                         <input
                           type="number"
@@ -669,8 +670,8 @@ export default function BookingForm() {
                           : null}
                     </div>
                     <div className="md:col-span-2">
-                      <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.routeDescription} {optionalBadge}</label>
-                      <textarea {...register('rotaAciklama')} className="vip-input"
+                      <label htmlFor="bf-rota-aciklama" style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.routeDescription} {optionalBadge}</label>
+                      <textarea id="bf-rota-aciklama" {...register('rotaAciklama')} className="vip-input"
                         placeholder={b.allocationRoutePlaceholder} rows={2}
                         style={{ width: '100%', resize: 'vertical', minHeight: '72px' }} />
                     </div>
@@ -687,24 +688,25 @@ export default function BookingForm() {
                       {errors.alisLokasyonu && <p role="alert" style={errorStyle}>{errors.alisLokasyonu.message}</p>}
                     </div>
                     <div>
-                      <label style={labelStyle}><Home size={12} aria-hidden="true" /> {b.pickupAddress} {optionalBadge}</label>
-                      <input type="text" {...register('alisAdresi')} className="vip-input"
+                      <label htmlFor="bf-tour-alis-adresi" style={labelStyle}><Home size={12} aria-hidden="true" /> {b.pickupAddress} {optionalBadge}</label>
+                      <input id="bf-tour-alis-adresi" type="text" {...register('alisAdresi')} className="vip-input"
                         placeholder={b.tourAddressPlaceholder} autoComplete="address-line1" />
                     </div>
                     <div className="md:col-span-2" data-testid="field-rota-tour">
-                      <label style={labelStyle}><Compass size={12} aria-hidden="true" /> {b.tourRoute}</label>
-                      <input type="text" {...register('talepsRota')} className="vip-input"
+                      <label htmlFor="bf-taleps-rota" style={labelStyle}><Compass size={12} aria-hidden="true" /> {b.tourRoute}</label>
+                      <input id="bf-taleps-rota" type="text" {...register('talepsRota')} className="vip-input"
                         placeholder={b.tourRoutePlaceholder} />
                       {errors.talepsRota && <p role="alert" style={errorStyle}>{errors.talepsRota.message}</p>}
                     </div>
                     <div className="md:col-span-2">
-                      <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.tourPlaces} {optionalBadge}</label>
-                      <textarea {...register('talepsYerler')} className="vip-input"
+                      <label htmlFor="bf-taleps-yerler" style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.tourPlaces} {optionalBadge}</label>
+                      <textarea id="bf-taleps-yerler" {...register('talepsYerler')} className="vip-input"
                         placeholder={b.tourPlacesPlaceholder} rows={2}
                         style={{ width: '100%', resize: 'vertical', minHeight: '72px' }} />
                     </div>
                     <div data-testid="field-sure-tour">
-                      <label style={labelStyle}><Clock size={12} aria-hidden="true" /> {b.plannedDuration} {optionalBadge}</label>
+                      {/* Duration group: two inputs, each labelled via aria-label */}
+                      <p style={labelStyle}><Clock size={12} aria-hidden="true" /> {b.plannedDuration} {optionalBadge}</p>
                       <div style={durationRowStyle}>
                         <input
                           type="number"
@@ -741,29 +743,30 @@ export default function BookingForm() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
 
                   <div data-testid="field-tarih">
-                    <label style={labelStyle}>
+                    <label htmlFor="bf-tarih" style={labelStyle}>
                       <Calendar size={12} aria-hidden="true" />
                       {activeService === 'ALLOCATION' ? b.waStartDate : b.date}
                     </label>
-                    <input type="date" {...register('tarih')} className="vip-input" min={today}
+                    <input id="bf-tarih" type="date" {...register('tarih')} className="vip-input" min={today}
                       style={{ colorScheme: 'light' }}
                       data-testid="input-tarih" />
                     {errors.tarih && <p role="alert" style={errorStyle}>{errors.tarih.message}</p>}
                   </div>
 
                   <div data-testid="field-saat">
-                    <label style={labelStyle}>
+                    {/* Time group: two selects each with individual aria-label */}
+                    <p style={labelStyle}>
                       <Clock size={12} aria-hidden="true" />
                       {activeService === 'ALLOCATION' || activeService === 'TOUR' ? b.waStartTime : b.time}
-                    </label>
+                    </p>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <select {...register('saatSaat')} className="vip-input vip-select" style={{ flex: 1 }}
-                        aria-label={b.time} data-testid="input-saat-saat">
+                        aria-label={b.hourAbbr} data-testid="input-saat-saat">
                         <option value="">{b.hourAbbr}</option>
                         {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
                       </select>
                       <select {...register('saatDakika')} className="vip-input vip-select" style={{ flex: 1 }}
-                        aria-label={b.time} data-testid="input-saat-dakika">
+                        aria-label={b.minuteAbbr} data-testid="input-saat-dakika">
                         <option value="">{b.minuteAbbr}</option>
                         {MINUTES.map((m) => <option key={m} value={m}>{m}</option>)}
                       </select>
@@ -774,8 +777,8 @@ export default function BookingForm() {
                   </div>
 
                   <div data-testid="field-yolcu">
-                    <label style={labelStyle}><Users size={12} aria-hidden="true" /> {b.passengerCount}</label>
-                    <select {...register('yolcuSayisi')} className="vip-input vip-select" data-testid="input-yolcu">
+                    <label htmlFor="bf-yolcu" style={labelStyle}><Users size={12} aria-hidden="true" /> {b.passengerCount}</label>
+                    <select id="bf-yolcu" {...register('yolcuSayisi')} className="vip-input vip-select" data-testid="input-yolcu">
                       {Array.from({ length: 30 }, (_, i) => i + 1).map((n) => (
                         <option key={n} value={String(n)}>{n} {b.passengerSuffix}</option>
                       ))}
@@ -793,15 +796,15 @@ export default function BookingForm() {
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
                   <div data-testid="field-adsoyad">
-                    <label style={labelStyle}><User size={12} aria-hidden="true" /> {b.fullName}</label>
-                    <input type="text" {...register('adSoyad')} className="vip-input"
+                    <label htmlFor="bf-adsoyad" style={labelStyle}><User size={12} aria-hidden="true" /> {b.fullName}</label>
+                    <input id="bf-adsoyad" type="text" {...register('adSoyad')} className="vip-input"
                       placeholder={b.namePlaceholder} autoComplete="name"
                       inputMode="text" data-testid="input-adsoyad" />
                     {errors.adSoyad && <p role="alert" style={errorStyle}>{errors.adSoyad.message}</p>}
                   </div>
                   <div data-testid="field-telefon">
-                    <label style={labelStyle}><Phone size={12} aria-hidden="true" /> {b.phone}</label>
-                    <input type="tel" {...register('telefon')} className="vip-input"
+                    <label htmlFor="bf-telefon" style={labelStyle}><Phone size={12} aria-hidden="true" /> {b.phone}</label>
+                    <input id="bf-telefon" type="tel" {...register('telefon')} className="vip-input"
                       placeholder={b.phonePlaceholder} autoComplete="tel"
                       inputMode="tel" data-testid="input-telefon" dir="ltr" />
                     {errors.telefon && <p role="alert" style={errorStyle}>{errors.telefon.message}</p>}
@@ -818,22 +821,22 @@ export default function BookingForm() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
                     {formSettings.showLuggageCount && (
                       <div>
-                        <label style={labelStyle}><Luggage size={12} aria-hidden="true" /> {b.luggageCount ?? 'Bagaj Sayısı'}</label>
-                        <input type="number" min="0" max="20" {...register('bagajSayisi')} className="vip-input"
+                        <label htmlFor="bf-bagaj" style={labelStyle}><Luggage size={12} aria-hidden="true" /> {b.luggageCount ?? 'Bagaj Sayısı'}</label>
+                        <input id="bf-bagaj" type="number" min="0" max="20" {...register('bagajSayisi')} className="vip-input"
                           placeholder={b.luggageCountPlaceholder ?? 'Kaç parça bagaj?'} />
                       </div>
                     )}
                     {formSettings.showChildSeatCount && (
                       <div>
-                        <label style={labelStyle}><Users size={12} aria-hidden="true" /> {b.childSeatCount ?? 'Çocuk Koltuğu Sayısı'}</label>
-                        <input type="number" min="0" max="10" {...register('cocukKoltugu')} className="vip-input"
+                        <label htmlFor="bf-cocuk" style={labelStyle}><Users size={12} aria-hidden="true" /> {b.childSeatCount ?? 'Çocuk Koltuğu Sayısı'}</label>
+                        <input id="bf-cocuk" type="number" min="0" max="10" {...register('cocukKoltugu')} className="vip-input"
                           placeholder={b.childSeatCountPlaceholder ?? '0'} />
                       </div>
                     )}
                     {formSettings.showVehiclePreference && (
                       <div>
-                        <label style={labelStyle}><Car size={12} aria-hidden="true" /> {b.vehiclePreference ?? 'Araç Tercihi'}</label>
-                        <select {...register('aracTercihi')} className="vip-input">
+                        <label htmlFor="bf-arac" style={labelStyle}><Car size={12} aria-hidden="true" /> {b.vehiclePreference ?? 'Araç Tercihi'}</label>
+                        <select id="bf-arac" {...register('aracTercihi')} className="vip-input">
                           <option value="">{b.vehiclePreferenceDefault ?? 'Belirtmek istemiyorum'}</option>
                           <option value="Mercedes Vito">Mercedes Vito</option>
                           <option value="Mercedes Sprinter VIP">Mercedes Sprinter VIP</option>
@@ -846,8 +849,8 @@ export default function BookingForm() {
                     )}
                     {formSettings.showAdditionalNotes && (
                       <div className={!formSettings.showVehiclePreference ? 'md:col-span-2' : ''}>
-                        <label style={labelStyle}>{b.additionalNotes ?? 'Ek Notlar'}</label>
-                        <textarea {...register('ekNotlar')} className="vip-input" rows={3}
+                        <label htmlFor="bf-notlar" style={labelStyle}>{b.additionalNotes ?? 'Ek Notlar'}</label>
+                        <textarea id="bf-notlar" {...register('ekNotlar')} className="vip-input" rows={3}
                           placeholder={b.additionalNotesPlaceholder ?? 'Özel istekler, notlar…'}
                           style={{ resize: 'vertical', minHeight: '80px' }} />
                       </div>
@@ -887,8 +890,8 @@ export default function BookingForm() {
               <div className={panelB} data-testid="email-panel">
                 <div className="grid grid-cols-1 gap-4">
                   <div data-testid="field-email">
-                    <label style={labelStyle}><Mail size={12} aria-hidden="true" /> {b.email} {optionalBadge}</label>
-                    <input type="email" {...register('email')} className="vip-input"
+                    <label htmlFor="bf-email" style={labelStyle}><Mail size={12} aria-hidden="true" /> {b.email} {optionalBadge}</label>
+                    <input id="bf-email" type="email" {...register('email')} className="vip-input"
                       placeholder={b.emailPlaceholder} autoComplete="email" inputMode="email"
                       style={{ maxWidth: '420px' }} dir="ltr" />
                   </div>

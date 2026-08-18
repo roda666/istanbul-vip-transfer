@@ -162,7 +162,7 @@ export default async function IcerikEntegrasyonlariPage({
                 <li>Application type: <strong>Web application</strong></li>
                 <li>Authorized redirect URIs ekleyin:<br />
                   <code style={{ fontSize: '12px', background: '#F1F5F9', padding: '4px 8px', borderRadius: '4px', display: 'inline-block', marginTop: '4px' }}>
-                    https://[sitenizin-domain]/api/auth/gsc/callback
+                    https://www.istanbulviptransfer.com/admin/api/gsc/callback
                   </code>
                 </li>
                 <li>Client ID ve Secret&apos;ı kopyalayın → Replit Secrets&apos;a ekleyin:</li>
@@ -237,7 +237,7 @@ export default async function IcerikEntegrasyonlariPage({
             )}
 
             <div style={{ padding: '16px 20px', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <Link href="/api/auth/gsc" style={{ textDecoration: 'none' }}>
+              <Link href="/admin/api/gsc/connect" style={{ textDecoration: 'none' }}>
                 <button style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #D8E1E9', background: '#F3F6FA', color: '#172B3A', fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
                   Yeniden Bağlan
                 </button>
@@ -258,7 +258,7 @@ export default async function IcerikEntegrasyonlariPage({
             <p style={{ ...hint, marginBottom: '16px' }}>
               Scope: <code style={{ fontSize: '11px', background: '#F1F5F9', padding: '2px 5px', borderRadius: '4px' }}>webmasters.readonly</code> — yalnızca okuma yetkisi, site verinize yazamaz.
             </p>
-            <Link href="/api/auth/gsc" style={{ textDecoration: 'none' }}>
+            <Link href="/admin/api/gsc/connect" style={{ textDecoration: 'none' }}>
               <button style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: '#2563EB', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
                 <Search size={15} />
                 Google ile Bağlan (Search Console)

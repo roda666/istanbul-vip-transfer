@@ -24,18 +24,14 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Build origin — works both in dev (Replit preview) and production (custom domain)
-  const forwardedHost = req.headers.get('x-forwarded-host');
-  const origin = forwardedHost
-    ? `https://${forwardedHost}`
-    : new URL(req.url).origin;
-
-  // Callback must be registered in Google Cloud Console as an Authorized Redirect URI.
-  // Current value: https://www.istanbulviptransfer.com/admin/api/gsc/callback
-  const redirectUri = `${origin}/admin/api/gsc/callback`;
+  // Redirect URI must be hardcoded — Google requires an exact string match against the
+  // registered Authorized Redirect URI. Dynamic host detection produces different strings
+  // in dev (Replit preview domain) vs production and causes redirect_uri_mismatch.
+  // Registered in Google Cloud Console: https://www.istanbulviptransfer.com/admin/api/gsc/callback
+  const redirectUri = 'https://www.istanbulviptransfer.com/admin/api/gsc/callback';
 
   // CSRF state — base64url-encoded JSON, verified in callback
-  const state = Buffer.from(JSON.stringify({ ts: Date.now(), origin })).toString('base64url');
+  const state = Buffer.from(JSON.stringify({ ts: Date.now() })).toString('base64url');
 
   const params = new URLSearchParams({
     client_id:     clientId,

@@ -92,7 +92,7 @@ export async function PUT(request: NextRequest) {
 
   // Rate limit
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '127.0.0.1';
-  const rl = rateLimit(`${ip}:email-settings`);
+  const rl = await rateLimit(`${ip}:email-settings`);
   if (!rl.success) {
     const m = Math.ceil(rl.retryAfterSeconds / 60);
     return NextResponse.json({ error: `Çok fazla deneme. ${m} dakika bekleyin.` }, { status: 429 });

@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
   const ip =
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '127.0.0.1';
 
-  const limit = rateLimit(ip);
+  const limit = await rateLimit(ip);
   if (!limit.success) {
     const minutes = Math.ceil(limit.retryAfterSeconds / 60);
     return NextResponse.json(
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Clear rate limit on success
-  clearRateLimit(ip);
+  await clearRateLimit(ip);
 
   // Set session
   const { cookies } = await import('next/headers');

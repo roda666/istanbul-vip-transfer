@@ -133,8 +133,8 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
   const [scheduleDate, setScheduleDate]  = useState('');
   const [scheduleLangs, setScheduleLangs] = useState<string[]>([]);
 
-  // Image approve/reject
-  const [rejectReason] = useState('');
+  // Image approve/reject — per-image rejection reasons
+  const [rejectReasons, setRejectReasons] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -547,13 +547,23 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 {img.url && <img src={img.url} alt="" style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '8px', marginBottom: '8px' }} />}
                 <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: C.muted, margin: '0 0 8px' }}>{img.prompt?.slice(0, 120)}…</p>
+                <textarea
+                  placeholder="Red sebebi (isteğe bağlı)…"
+                  value={rejectReasons[img.id] ?? ''}
+                  onChange={e => setRejectReasons(prev => ({ ...prev, [img.id]: e.target.value }))}
+                  rows={2}
+                  style={{ width: '100%', padding: '7px 10px', fontSize: '12px', fontFamily: 'Inter, sans-serif', border: `1px solid ${C.border}`, borderRadius: '7px', color: C.text, resize: 'vertical', outline: 'none', boxSizing: 'border-box', marginBottom: '8px' }}
+                />
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   <button style={btn('primary')} disabled={working}
                     onClick={() => run(() => api('/image', 'PATCH', { imageId: img.id, action: 'approve', altText: img.altText }), 'Görsel onaylandı!')}>
                     {working ? <Spin /> : <CheckCircle2 size={15} />} Onayla
                   </button>
                   <button style={btn('danger')} disabled={working}
-                    onClick={() => run(() => api('/image', 'PATCH', { imageId: img.id, action: 'reject', rejectionReason: rejectReason }), 'Görsel reddedildi.')}>
+                    onClick={() => {
+                      const reason = rejectReasons[img.id]?.trim() || 'Görsel reddedildi.';
+                      run(() => api('/image', 'PATCH', { imageId: img.id, action: 'reject', rejectionReason: reason }), 'Görsel reddedildi.');
+                    }}>
                     Reddet
                   </button>
                 </div>
@@ -865,7 +875,6 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
     );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   function DistributionPanel() {
     const drafts = p.distribution;
     const PLATFORM_LABELS: Record<string, string> = { newsletter: 'Bülten', instagram: 'Instagram', facebook: 'Facebook', twitter: 'Twitter / X', linkedin: 'LinkedIn' };
@@ -962,6 +971,8 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
     scheduling:   <SchedulingPanel />,
     published:    <ReviewPanel />,
     archived:     <ReviewPanel />,
+    distribution: <DistributionPanel />,
+    audit:        <AuditPanel />,
   };
 
   return (

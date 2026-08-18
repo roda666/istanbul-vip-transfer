@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
   // Rate limit by IP (separate key from login attempts)
   const ip =
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '127.0.0.1';
-  const limit = rateLimit(`${ip}:change-password`);
+  const limit = await rateLimit(`${ip}:change-password`);
   if (!limit.success) {
     const minutes = Math.ceil(limit.retryAfterSeconds / 60);
     return NextResponse.json(

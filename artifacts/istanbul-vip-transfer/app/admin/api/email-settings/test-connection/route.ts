@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 
   // Rate limit
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '127.0.0.1';
-  const rl = rateLimit(`${ip}:email-test-conn`);
+  const rl = await rateLimit(`${ip}:email-test-conn`);
   if (!rl.success) {
     const m = Math.ceil(rl.retryAfterSeconds / 60);
     return NextResponse.json({ error: `Çok fazla deneme. ${m} dakika bekleyin.` }, { status: 429 });

@@ -38,11 +38,18 @@ const BASE = SITE.siteUrl;
 async function getPublishedHomepageLangs(): Promise<string[]> {
   try {
     const { db } = await import('@/db');
-    const rows = await db.execute(
-      `SELECT target_language_code FROM content_translations
-       WHERE entity_type = 'homepage' AND status = 'PUBLISHED'` as never,
-    ) as unknown as { rows: Array<{ target_language_code: string }> };
-    return (rows.rows ?? []).map((r) => r.target_language_code).filter(Boolean);
+    const { contentTranslations } = await import('@/db/schema');
+    const { eq, and } = await import('drizzle-orm');
+    const rows = await db
+      .select({ lang: contentTranslations.targetLanguageCode })
+      .from(contentTranslations)
+      .where(
+        and(
+          eq(contentTranslations.entityType, 'homepage'),
+          eq(contentTranslations.status, 'PUBLISHED'),
+        ),
+      );
+    return rows.map((r) => r.lang).filter((l): l is string => Boolean(l));
   } catch {
     // DB unavailable — only emit TR hreflang
     return [];

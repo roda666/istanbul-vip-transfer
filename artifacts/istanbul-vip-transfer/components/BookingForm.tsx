@@ -244,6 +244,29 @@ function buildWhatsAppMessage(
   return encodeURIComponent(lines.join('\n'));
 }
 
+/**
+ * Produces a date input value in the local operating timezone.
+ * Kept outside the component so the initial SSR/client render can remain static.
+ */
+function getIstanbulToday(): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Istanbul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+
+  const year  = parts.find((part) => part.type === 'year')?.value;
+  const month = parts.find((part) => part.type === 'month')?.value;
+  const day   = parts.find((part) => part.type === 'day')?.value;
+
+  if (!year || !month || !day) {
+    throw new Error('Istanbul tarihi oluşturulamadı.');
+  }
+
+  return `${year}-${month}-${day}`;
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function BookingForm() {
@@ -294,31 +317,13 @@ export default function BookingForm() {
       .catch(() => {});
   }, [pageSlug]);
 
-  // Returns today's date as YYYY-MM-DD in the Europe/Istanbul timezone.
-  // formatToParts() is used instead of trusting the output order of format(),
-  // so the result is always a well-formed ISO date regardless of runtime locale.
-  const today = (() => {
-    function getIstanbulToday(): string {
-      const parts = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'Europe/Istanbul',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      }).formatToParts(new Date());
-
-      const year  = parts.find((part) => part.type === 'year')?.value;
-      const month = parts.find((part) => part.type === 'month')?.value;
-      const day   = parts.find((part) => part.type === 'day')?.value;
-
-      if (!year || !month || !day) {
-        throw new Error('Istanbul tarihi oluşturulamadı.');
-      }
-
-      return `${year}-${month}-${day}`;
-    }
-
-    return getIstanbulToday();
-  })();
+  // Avoid calculating a time-sensitive value during SSR: a date boundary
+  // between server render and browser hydration would otherwise change the
+  // input's min attribute and cause a hydration warning.
+  const [today, setToday] = useState('');
+  useEffect(() => {
+    setToday(getIstanbulToday());
+  }, []);
 
   // Load service types once on mount
   useEffect(() => {

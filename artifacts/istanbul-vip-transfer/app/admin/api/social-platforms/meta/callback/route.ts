@@ -65,13 +65,14 @@ export async function GET(req: NextRequest) {
     const page = pagesPayload.data?.[0];
     if (!pagesResponse.ok || !page?.access_token) throw new Error(pagesPayload.error?.message ?? 'Yönetilebilir Facebook Sayfası bulunamadı.');
 
-    const encrypted = encrypt(page.access_token);
-    if (!encrypted) throw new Error('Meta token şifrelenemedi.');
+    const pageAccessToken = page.access_token;
+    const encryptedPageAccessToken = encrypt(pageAccessToken);
+    if (!encryptedPageAccessToken) throw new Error('Meta Sayfa tokenı şifrelenemedi.');
     const now = new Date();
     await db.update(socialPlatforms).set({
       connected: true,
-      accessTokenEncrypted: encrypted,
-      connectionMeta: { pageId: page.id, pageName: page.name },
+      accessTokenEncrypted: encryptedPageAccessToken,
+      connectionMeta: { pageId: page.id, pageName: page.name, tokenType: 'page' },
       connectedAt: now,
       lastError: null,
       updatedAt: now,
@@ -80,11 +81,12 @@ export async function GET(req: NextRequest) {
     const instagram = page.instagram_business_account;
     await db.update(socialPlatforms).set({
       connected: Boolean(instagram?.id),
-      accessTokenEncrypted: instagram?.id ? encrypted : null,
+      accessTokenEncrypted: instagram?.id ? encryptedPageAccessToken : null,
       connectionMeta: instagram?.id ? {
         instagramAccountId: instagram.id,
         instagramUsername: instagram.username ?? null,
         pageId: page.id,
+        tokenType: 'page',
       } : {},
       connectedAt: instagram?.id ? now : null,
       lastError: instagram?.id ? null : 'Seçilen Facebook Sayfasına bağlı profesyonel Instagram hesabı yok.',

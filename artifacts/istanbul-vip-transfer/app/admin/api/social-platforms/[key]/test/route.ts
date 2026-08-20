@@ -4,6 +4,7 @@ import { db } from '@/db';
 import { auditLogs, content } from '@/db/schema';
 import { requireSocialPlatformAdmin, socialAuthErrorResponse } from '@/lib/social-auth';
 import { publishFacebookPost, publishInstagramPost, publishXTweet } from '@/lib/social-publish';
+import { getPublicOrigin } from '@/lib/social-public-url';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,8 +16,10 @@ function isTestableKey(key: string): key is TestableKey {
   return SUPPORTED_KEYS.includes(key as TestableKey);
 }
 
-function publicImageUrl(value: string) {
-  return value.startsWith('https://') ? value : `${SITE_URL}${value.startsWith('/') ? value : `/${value}`}`;
+function publicImageUrl(value: string, req: Request) {
+  return value.startsWith('https://')
+    ? value
+    : `${getPublicOrigin(req)}${value.startsWith('/') ? value : `/${value}`}`;
 }
 
 export async function POST(_req: Request, { params }: { params: Promise<{ key: string }> }) {
@@ -54,7 +57,10 @@ export async function POST(_req: Request, { params }: { params: Promise<{ key: s
       ? await publishFacebookPost({ message: summary.slice(0, 5_000), link: blogUrl })
       : key === 'instagram'
         ? blog.heroImage
-          ? await publishInstagramPost({ caption: summary.slice(0, 2_200), imageUrl: publicImageUrl(blog.heroImage) })
+          ? await publishInstagramPost({
+            caption: summary.slice(0, 2_200),
+            imageUrl: publicImageUrl(blog.heroImage, _req),
+          })
           : (() => { throw new Error('Instagram test paylaşımı için blog kapak görseli gerekli.'); })()
         : await publishXTweet(`Yeni blog yazımız: ${blog.title.slice(0, 220)}\n${blogUrl}`);
 

@@ -41,3 +41,4 @@
 - [GSC OAuth routing fix](gsc-oauth-routing.md) — api-server artifact owns paths=["/api"], so Next.js app/api/* routes are unreachable; GSC connect+callback moved to /admin/api/gsc/connect and /admin/api/gsc/callback; Google Cloud Console redirect URI must be https://www.istanbulviptransfer.com/admin/api/gsc/callback.
 - [Google Ads Keyword Planner integration](google-ads-kp.md) — lib/google-ads.ts uses Ads REST API v18; DB table google_ads_connections (migration 0027 applied manually); data priority: GSC > Google Ads > AI fallback; callback URI must be registered in Google Cloud Console.
 - [Social OAuth public origin](social-oauth-public-origin.md) — build callbacks and error redirects from forwarded public host with forced HTTPS.
+- [Social publishing public assets](social-publishing-public-assets.md) — resolve test images against the active public origin, not a fixed site hostname.

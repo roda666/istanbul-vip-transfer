@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
 const META_SCOPE = [
   'pages_show_list',
   'pages_read_engagement',
+  'pages_manage_posts',
   'business_management',
   'instagram_basic',
   'instagram_content_publish',

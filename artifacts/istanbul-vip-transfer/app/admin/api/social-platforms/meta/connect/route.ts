@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { requireSocialPlatformAdmin, socialAuthErrorResponse } from '@/lib/social-auth';
-import { getMetaCallbackUri } from '@/lib/meta-oauth';
+import { getSocialCallbackUrl, getSocialSettingsUrl } from '@/lib/social-public-url';
 
 export const dynamic = 'force-dynamic';
 
-const SETTINGS_PATH = '/admin/ayarlar/icerik-entegrasyonlari';
 const META_SCOPE = [
   'pages_show_list',
   'pages_read_engagement',
@@ -24,11 +23,11 @@ export async function GET(req: NextRequest) {
   const appId = process.env.META_APP_ID;
   const appSecret = process.env.META_APP_SECRET;
   if (!appId || !appSecret) {
-    return NextResponse.redirect(new URL(`${SETTINGS_PATH}?social_error=meta_credentials_missing`, req.url));
+    return NextResponse.redirect(getSocialSettingsUrl(req, { social_error: 'meta_credentials_missing' }));
   }
 
   const state = crypto.randomBytes(24).toString('base64url');
-  const redirectUri = getMetaCallbackUri(req);
+  const redirectUri = getSocialCallbackUrl(req, 'meta');
   const params = new URLSearchParams({
     client_id: appId,
     redirect_uri: redirectUri,

@@ -7,17 +7,16 @@ import { db } from '@/db';
 import { socialPlatforms } from '@/db/schema';
 import { ensureSocialPlatforms } from '@/lib/social-platforms';
 import { socialOAuthCallbackResponse } from '@/lib/social-oauth-callback';
+import { getSocialSettingsUrl } from '@/lib/social-public-url';
 
 export const dynamic = 'force-dynamic';
 
-const SETTINGS_PATH = '/admin/ayarlar/icerik-entegrasyonlari';
 export async function GET(req: NextRequest) {
   try { await requireSocialPlatformAdmin(); }
   catch (error) {
     const response = socialAuthErrorResponse(error);
-    const fallback = new URL(SETTINGS_PATH, req.url);
-    fallback.searchParams.set('social_error', 'unauthorized');
-    return socialOAuthCallbackResponse(req, { provider: 'x', success: false, error: response.error }, fallback.toString());
+    const fallback = getSocialSettingsUrl(req, { social_error: 'unauthorized' });
+    return socialOAuthCallbackResponse(req, { provider: 'x', success: false, error: response.error }, fallback);
   }
 
   const url = new URL(req.url);
@@ -29,9 +28,8 @@ export async function GET(req: NextRequest) {
   const consumerKey = process.env.X_CONSUMER_KEY;
   const consumerSecret = process.env.X_CONSUMER_SECRET;
   const callbackResult = (value: string) => {
-    const fallback = new URL(SETTINGS_PATH, req.url);
-    fallback.searchParams.set('social_error', value);
-    return socialOAuthCallbackResponse(req, { provider: 'x', success: false, error: value }, fallback.toString());
+    const fallback = getSocialSettingsUrl(req, { social_error: value });
+    return socialOAuthCallbackResponse(req, { provider: 'x', success: false, error: value }, fallback);
   };
 
   if (!oauthToken || !verifier || oauthToken !== requestToken || !requestSecret || !consumerKey || !consumerSecret) {
@@ -60,12 +58,11 @@ export async function GET(req: NextRequest) {
       lastError: null,
       updatedAt: new Date(),
     }).where(eq(socialPlatforms.key, 'x'));
-    const fallback = new URL(SETTINGS_PATH, req.url);
-    fallback.searchParams.set('social_success', 'x_connected');
+    const fallback = getSocialSettingsUrl(req, { social_success: 'x_connected' });
     const success = socialOAuthCallbackResponse(
       req,
       { provider: 'x', success: true, message: 'X bağlantısı tamamlandı.' },
-      fallback.toString(),
+      fallback,
     );
     success.cookies.delete('x_oauth_request_token');
     success.cookies.delete('x_oauth_request_secret');

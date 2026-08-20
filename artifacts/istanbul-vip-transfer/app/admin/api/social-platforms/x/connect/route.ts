@@ -2,11 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { TwitterApi } from 'twitter-api-v2';
 import { requireSocialPlatformAdmin, socialAuthErrorResponse } from '@/lib/social-auth';
 import { encrypt, isEncryptionReady } from '@/lib/email-crypto';
+import { getSocialCallbackUrl, getSocialSettingsUrl } from '@/lib/social-public-url';
 
 export const dynamic = 'force-dynamic';
 
-const SETTINGS_PATH = '/admin/ayarlar/icerik-entegrasyonlari';
-const X_CALLBACK = 'https://www.istanbulviptransfer.com/admin/api/social-platforms/x/callback';
 export async function GET(req: NextRequest) {
   try { await requireSocialPlatformAdmin(); }
   catch (error) {
@@ -17,12 +16,12 @@ export async function GET(req: NextRequest) {
   const consumerKey = process.env.X_CONSUMER_KEY;
   const consumerSecret = process.env.X_CONSUMER_SECRET;
   if (!consumerKey || !consumerSecret || !isEncryptionReady()) {
-    return NextResponse.redirect(new URL(`${SETTINGS_PATH}?social_error=x_credentials_missing`, req.url));
+    return NextResponse.redirect(getSocialSettingsUrl(req, { social_error: 'x_credentials_missing' }));
   }
 
   try {
     const client = new TwitterApi({ appKey: consumerKey, appSecret: consumerSecret });
-    const tokenRequest = await client.generateAuthLink(X_CALLBACK, {
+    const tokenRequest = await client.generateAuthLink(getSocialCallbackUrl(req, 'x'), {
       authAccessType: 'write',
       linkMode: 'authorize',
     });
@@ -36,6 +35,6 @@ export async function GET(req: NextRequest) {
     return redirect;
   } catch (error) {
     console.error('[x connect]', error instanceof Error ? error.message : 'unknown');
-    return NextResponse.redirect(new URL(`${SETTINGS_PATH}?social_error=x_request_token_failed`, req.url));
+    return NextResponse.redirect(getSocialSettingsUrl(req, { social_error: 'x_request_token_failed' }));
   }
 }

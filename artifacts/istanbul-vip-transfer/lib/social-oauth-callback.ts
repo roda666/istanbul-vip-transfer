@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getPublicOrigin } from '@/lib/social-public-url';
 
 type SocialOAuthCallbackPayload = {
   provider: 'meta' | 'x';
@@ -19,7 +20,7 @@ export function socialOAuthCallbackResponse(
   payload: SocialOAuthCallbackPayload,
   fallbackUrl: string,
 ) {
-  const origin = new URL(req.url).origin;
+  const origin = getPublicOrigin(req);
   const html = `<!doctype html>
 <html lang="tr">
   <head><meta charset="utf-8"><title>Bağlantı tamamlandı</title></head>

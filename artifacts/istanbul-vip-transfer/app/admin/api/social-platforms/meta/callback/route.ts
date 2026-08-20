@@ -6,20 +6,18 @@ import { socialPlatforms } from '@/db/schema';
 import { encrypt, isEncryptionReady } from '@/lib/email-crypto';
 import { ensureSocialPlatforms } from '@/lib/social-platforms';
 import { socialOAuthCallbackResponse } from '@/lib/social-oauth-callback';
-import { getMetaCallbackUri } from '@/lib/meta-oauth';
+import { getPublicUrl, getSocialSettingsUrl } from '@/lib/social-public-url';
 
 export const dynamic = 'force-dynamic';
 
-const SETTINGS_PATH = '/admin/ayarlar/icerik-entegrasyonlari';
 const graphUrl = (path: string, params: URLSearchParams) => `https://graph.facebook.com/v22.0/${path}?${params}`;
 
 export async function GET(req: NextRequest) {
   try { await requireSocialPlatformAdmin(); }
   catch (error) {
     const response = socialAuthErrorResponse(error);
-    const fallback = new URL(SETTINGS_PATH, req.url);
-    fallback.searchParams.set('social_error', 'unauthorized');
-    return socialOAuthCallbackResponse(req, { provider: 'meta', success: false, error: response.error }, fallback.toString());
+    const fallback = getSocialSettingsUrl(req, { social_error: 'unauthorized' });
+    return socialOAuthCallbackResponse(req, { provider: 'meta', success: false, error: response.error }, fallback);
   }
 
   const url = new URL(req.url);
@@ -27,9 +25,8 @@ export async function GET(req: NextRequest) {
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');
   const callbackResult = (value: string) => {
-    const fallback = new URL(SETTINGS_PATH, req.url);
-    fallback.searchParams.set('social_error', value);
-    return socialOAuthCallbackResponse(req, { provider: 'meta', success: false, error: value }, fallback.toString());
+    const fallback = getSocialSettingsUrl(req, { social_error: value });
+    return socialOAuthCallbackResponse(req, { provider: 'meta', success: false, error: value }, fallback);
   };
   if (error) return callbackResult(`meta_${error}`);
   if (!code || state !== req.cookies.get('meta_oauth_state')?.value) return callbackResult('meta_invalid_state');
@@ -41,7 +38,7 @@ export async function GET(req: NextRequest) {
 
   try {
     await ensureSocialPlatforms();
-    const redirectUri = getMetaCallbackUri(req);
+    const redirectUri = getPublicUrl(req, '/admin/api/social-platforms/meta/callback');
     const tokenResponse = await fetch(graphUrl('oauth/access_token', new URLSearchParams({
       client_id: appId, client_secret: appSecret, redirect_uri: redirectUri, code,
     })), { signal: AbortSignal.timeout(15_000) });
@@ -94,12 +91,11 @@ export async function GET(req: NextRequest) {
       updatedAt: now,
     }).where(eq(socialPlatforms.key, 'instagram'));
 
-    const fallback = new URL(SETTINGS_PATH, req.url);
-    fallback.searchParams.set('social_success', 'meta_connected');
+    const fallback = getSocialSettingsUrl(req, { social_success: 'meta_connected' });
     const response = socialOAuthCallbackResponse(
       req,
       { provider: 'meta', success: true, message: 'Facebook ve Instagram bağlantısı tamamlandı.' },
-      fallback.toString(),
+      fallback,
     );
     response.cookies.delete('meta_oauth_state');
     return response;

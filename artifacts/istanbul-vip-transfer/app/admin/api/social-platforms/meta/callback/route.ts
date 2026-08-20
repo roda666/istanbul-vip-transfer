@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { requireSocialPlatformAdmin, socialAuthErrorResponse } from '@/lib/social-auth';
 import { db } from '@/db';
 import { socialPlatforms } from '@/db/schema';
 import { encrypt, isEncryptionReady } from '@/lib/email-crypto';
 import { ensureSocialPlatforms } from '@/lib/social-platforms';
+import { socialOAuthCallbackResponse } from '@/lib/social-oauth-callback';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,21 +17,27 @@ export async function GET(req: NextRequest) {
   try { await requireSocialPlatformAdmin(); }
   catch (error) {
     const response = socialAuthErrorResponse(error);
-    return NextResponse.json({ error: response.error }, { status: response.status });
+    const fallback = new URL(SETTINGS_PATH, req.url);
+    fallback.searchParams.set('social_error', 'unauthorized');
+    return socialOAuthCallbackResponse(req, { provider: 'meta', success: false, error: response.error }, fallback.toString());
   }
 
   const url = new URL(req.url);
   const error = url.searchParams.get('error');
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');
-  const redirect = (value: string) => NextResponse.redirect(new URL(`${SETTINGS_PATH}?social_error=${value}`, req.url));
-  if (error) return redirect(`meta_${error}`);
-  if (!code || state !== req.cookies.get('meta_oauth_state')?.value) return redirect('meta_invalid_state');
-  if (!isEncryptionReady()) return redirect('encryption_key_missing');
+  const callbackResult = (value: string) => {
+    const fallback = new URL(SETTINGS_PATH, req.url);
+    fallback.searchParams.set('social_error', value);
+    return socialOAuthCallbackResponse(req, { provider: 'meta', success: false, error: value }, fallback.toString());
+  };
+  if (error) return callbackResult(`meta_${error}`);
+  if (!code || state !== req.cookies.get('meta_oauth_state')?.value) return callbackResult('meta_invalid_state');
+  if (!isEncryptionReady()) return callbackResult('encryption_key_missing');
 
   const appId = process.env.META_APP_ID;
   const appSecret = process.env.META_APP_SECRET;
-  if (!appId || !appSecret) return redirect('meta_credentials_missing');
+  if (!appId || !appSecret) return callbackResult('meta_credentials_missing');
 
   try {
     await ensureSocialPlatforms();
@@ -86,11 +93,17 @@ export async function GET(req: NextRequest) {
       updatedAt: now,
     }).where(eq(socialPlatforms.key, 'instagram'));
 
-    const response = NextResponse.redirect(new URL(`${SETTINGS_PATH}?social_success=meta_connected`, req.url));
+    const fallback = new URL(SETTINGS_PATH, req.url);
+    fallback.searchParams.set('social_success', 'meta_connected');
+    const response = socialOAuthCallbackResponse(
+      req,
+      { provider: 'meta', success: true, message: 'Facebook ve Instagram bağlantısı tamamlandı.' },
+      fallback.toString(),
+    );
     response.cookies.delete('meta_oauth_state');
     return response;
   } catch (caught) {
     console.error('[meta callback]', caught instanceof Error ? caught.message : 'unknown');
-    return redirect('meta_connection_failed');
+    return callbackResult('meta_connection_failed');
   }
 }

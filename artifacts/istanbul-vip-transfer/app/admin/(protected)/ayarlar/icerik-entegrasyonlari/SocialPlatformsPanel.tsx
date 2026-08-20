@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, CheckCircle2, ExternalLink, Link2, Loader2, Power, RefreshCw, Send } from 'lucide-react';
 
 type Platform = {
@@ -30,8 +30,9 @@ export default function SocialPlatformsPanel() {
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const popupPollRef = useRef<number | null>(null);
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -44,9 +45,83 @@ export default function SocialPlatformsPanel() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    void load();
+    return () => {
+      if (popupPollRef.current !== null) window.clearInterval(popupPollRef.current);
+    };
+  }, [load]);
+
+  useEffect(() => {
+    function handleOAuthMessage(event: MessageEvent<{
+      provider?: string;
+      success?: boolean;
+      message?: string;
+      error?: string;
+    }>) {
+      if (event.origin !== window.location.origin || event.data?.provider === undefined) return;
+      if (!['meta', 'x'].includes(event.data.provider)) return;
+
+      if (popupPollRef.current !== null) {
+        window.clearInterval(popupPollRef.current);
+        popupPollRef.current = null;
+      }
+      setBusyKey(null);
+      if (event.data.success) {
+        setError(null);
+        setMessage(event.data.message ?? 'Bağlantı tamamlandı.');
+      } else {
+        setMessage(null);
+        setError(event.data.error ?? 'OAuth bağlantısı tamamlanamadı.');
+      }
+      void load();
+    }
+
+    window.addEventListener('message', handleOAuthMessage);
+    return () => window.removeEventListener('message', handleOAuthMessage);
+  }, [load]);
+
+  function connect(platform: Platform, href: string) {
+    setBusyKey(platform.key);
+    setError(null);
+    setMessage(null);
+
+    if (popupPollRef.current !== null) {
+      window.clearInterval(popupPollRef.current);
+      popupPollRef.current = null;
+    }
+
+    const width = 620;
+    const height = 760;
+    const left = Math.max(0, Math.round((window.screen.width - width) / 2));
+    const top = Math.max(0, Math.round((window.screen.height - height) / 2));
+    const popup = window.open(
+      href,
+      `social-oauth-${platform.key}`,
+      `popup=yes,width=${width},height=${height},left=${left},top=${top}`,
+    );
+
+    if (!popup) {
+      setBusyKey(null);
+      setError('OAuth penceresi tarayıcı tarafından engellendi. Akış aynı sekmede açılıyor.');
+      window.location.assign(href);
+      return;
+    }
+
+    popup.focus();
+    popupPollRef.current = window.setInterval(() => {
+      if (popup.closed) {
+        if (popupPollRef.current !== null) {
+          window.clearInterval(popupPollRef.current);
+          popupPollRef.current = null;
+        }
+        setBusyKey(null);
+        void load();
+      }
+    }, 500);
+  }
 
   async function toggle(platform: Platform) {
     setBusyKey(platform.key);
@@ -132,11 +207,15 @@ export default function SocialPlatformsPanel() {
               )}
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 {href && !platform.connected ? (
-                  <a href={href} style={{ textDecoration: 'none' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#2563EB', color: '#fff', padding: '7px 10px', borderRadius: 7, fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700 }}>
-                      Bağlan <ExternalLink size={12} />
-                    </span>
-                  </a>
+                  <button
+                    type="button"
+                    onClick={() => connect(platform, href)}
+                    disabled={busyKey === platform.key}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5, border: 0, background: '#2563EB', color: '#fff', padding: '7px 10px', borderRadius: 7, fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, cursor: busyKey === platform.key ? 'wait' : 'pointer' }}
+                  >
+                    {busyKey === platform.key ? <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <ExternalLink size={12} />}
+                    {busyKey === platform.key ? 'Bağlanıyor…' : 'Bağlan'}
+                  </button>
                 ) : !platform.canConnect ? (
                   <span style={{ color: '#94A3B8', fontFamily: 'Inter, sans-serif', fontSize: 11 }}>Yakında</span>
                 ) : (

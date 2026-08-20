@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { TwitterApi } from 'twitter-api-v2';
 import { requireSocialPlatformAdmin, socialAuthErrorResponse } from '@/lib/social-auth';
@@ -6,6 +6,7 @@ import { decrypt, encrypt } from '@/lib/email-crypto';
 import { db } from '@/db';
 import { socialPlatforms } from '@/db/schema';
 import { ensureSocialPlatforms } from '@/lib/social-platforms';
+import { socialOAuthCallbackResponse } from '@/lib/social-oauth-callback';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +15,9 @@ export async function GET(req: NextRequest) {
   try { await requireSocialPlatformAdmin(); }
   catch (error) {
     const response = socialAuthErrorResponse(error);
-    return NextResponse.json({ error: response.error }, { status: response.status });
+    const fallback = new URL(SETTINGS_PATH, req.url);
+    fallback.searchParams.set('social_error', 'unauthorized');
+    return socialOAuthCallbackResponse(req, { provider: 'x', success: false, error: response.error }, fallback.toString());
   }
 
   const url = new URL(req.url);
@@ -25,10 +28,14 @@ export async function GET(req: NextRequest) {
   const requestSecret = encryptedRequestSecret ? decrypt(encryptedRequestSecret) : null;
   const consumerKey = process.env.X_CONSUMER_KEY;
   const consumerSecret = process.env.X_CONSUMER_SECRET;
-  const redirect = (value: string) => NextResponse.redirect(new URL(`${SETTINGS_PATH}?social_error=${value}`, req.url));
+  const callbackResult = (value: string) => {
+    const fallback = new URL(SETTINGS_PATH, req.url);
+    fallback.searchParams.set('social_error', value);
+    return socialOAuthCallbackResponse(req, { provider: 'x', success: false, error: value }, fallback.toString());
+  };
 
   if (!oauthToken || !verifier || oauthToken !== requestToken || !requestSecret || !consumerKey || !consumerSecret) {
-    return redirect('x_invalid_state');
+    return callbackResult('x_invalid_state');
   }
 
   try {
@@ -53,12 +60,18 @@ export async function GET(req: NextRequest) {
       lastError: null,
       updatedAt: new Date(),
     }).where(eq(socialPlatforms.key, 'x'));
-    const success = NextResponse.redirect(new URL(`${SETTINGS_PATH}?social_success=x_connected`, req.url));
+    const fallback = new URL(SETTINGS_PATH, req.url);
+    fallback.searchParams.set('social_success', 'x_connected');
+    const success = socialOAuthCallbackResponse(
+      req,
+      { provider: 'x', success: true, message: 'X bağlantısı tamamlandı.' },
+      fallback.toString(),
+    );
     success.cookies.delete('x_oauth_request_token');
     success.cookies.delete('x_oauth_request_secret');
     return success;
   } catch (error) {
     console.error('[x callback]', error instanceof Error ? error.message : 'unknown');
-    return redirect('x_access_token_failed');
+    return callbackResult('x_access_token_failed');
   }
 }

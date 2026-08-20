@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
+import { TwitterApi } from 'twitter-api-v2';
 import { requireSocialPlatformAdmin, socialAuthErrorResponse } from '@/lib/social-auth';
-import { createOAuth1AuthorizationHeader } from '@/lib/social-publish';
 import { decrypt, encrypt } from '@/lib/email-crypto';
 import { db } from '@/db';
 import { socialPlatforms } from '@/db/schema';
@@ -10,8 +10,6 @@ import { ensureSocialPlatforms } from '@/lib/social-platforms';
 export const dynamic = 'force-dynamic';
 
 const SETTINGS_PATH = '/admin/ayarlar/icerik-entegrasyonlari';
-const ACCESS_TOKEN_URL = 'https://api.x.com/oauth/access_token';
-
 export async function GET(req: NextRequest) {
   try { await requireSocialPlatformAdmin(); }
   catch (error) {
@@ -35,35 +33,22 @@ export async function GET(req: NextRequest) {
 
   try {
     await ensureSocialPlatforms();
-    const response = await fetch(ACCESS_TOKEN_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: createOAuth1AuthorizationHeader({
-          method: 'POST',
-          url: ACCESS_TOKEN_URL,
-          consumerKey,
-          consumerSecret,
-          token: oauthToken,
-          tokenSecret: requestSecret,
-          extraOAuthParams: { oauth_verifier: verifier },
-        }),
-      },
-      signal: AbortSignal.timeout(15_000),
+    const requestClient = new TwitterApi({
+      appKey: consumerKey,
+      appSecret: consumerSecret,
+      accessToken: oauthToken,
+      accessSecret: requestSecret,
     });
-    const payload = new URLSearchParams(await response.text());
-    const accessToken = payload.get('oauth_token');
-    const accessTokenSecret = payload.get('oauth_token_secret');
-    const screenName = payload.get('screen_name');
-    if (!response.ok || !accessToken || !accessTokenSecret) throw new Error('X access token alınamadı.');
-    const encryptedToken = encrypt(accessToken);
-    const encryptedSecret = encrypt(accessTokenSecret);
+    const login = await requestClient.login(verifier);
+    const encryptedToken = encrypt(login.accessToken);
+    const encryptedSecret = encrypt(login.accessSecret);
     if (!encryptedToken || !encryptedSecret) throw new Error('X access token şifrelenemedi.');
 
     await db.update(socialPlatforms).set({
       connected: true,
       accessTokenEncrypted: encryptedToken,
       accessTokenSecretEncrypted: encryptedSecret,
-      connectionMeta: { screenName: screenName ?? null, source: 'oauth1' },
+      connectionMeta: { screenName: login.screenName, source: 'oauth1' },
       connectedAt: new Date(),
       lastError: null,
       updatedAt: new Date(),

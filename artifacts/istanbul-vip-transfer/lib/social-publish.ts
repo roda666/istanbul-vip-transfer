@@ -1,74 +1,40 @@
 import 'server-only';
 
-import crypto from 'crypto';
 import { eq } from 'drizzle-orm';
+import { TwitterApi } from 'twitter-api-v2';
 import { db } from '@/db';
 import { socialPlatforms } from '@/db/schema';
 import { decrypt } from '@/lib/email-crypto';
 import { ensureSocialPlatforms } from '@/lib/social-platforms';
 
 const META_GRAPH_VERSION = 'v22.0';
-const X_API_URL = 'https://api.x.com/2/tweets';
 
 export type PublishResult = {
   id: string;
   url: string | null;
 };
 
-function percentEncode(value: string) {
-  return encodeURIComponent(value).replace(/[!'()*]/g, (character) =>
-    `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
-  );
+function safeXErrorBody(value: unknown) {
+  const sensitiveKey = /token|secret|authorization|cookie|signature|oauth/i;
+  try {
+    return JSON.stringify(value, (key, item) => sensitiveKey.test(key) ? '[REDACTED]' : item);
+  } catch {
+    return String(value);
+  }
 }
 
-type OAuth1Options = {
-  method: 'POST' | 'GET';
-  url: string;
-  consumerKey: string;
-  consumerSecret: string;
-  token?: string;
-  tokenSecret?: string;
-  extraOAuthParams?: Record<string, string>;
-};
-
-export function createOAuth1AuthorizationHeader(options: OAuth1Options) {
-  const url = new URL(options.url);
-  const oauthParams: Record<string, string> = {
-    oauth_consumer_key: options.consumerKey,
-    oauth_nonce: crypto.randomBytes(16).toString('hex'),
-    oauth_signature_method: 'HMAC-SHA1',
-    oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
-    oauth_version: '1.0',
-    ...options.extraOAuthParams,
-  };
-
-  if (options.token) oauthParams.oauth_token = options.token;
-
-  const signatureParams = [
-    ...Array.from(url.searchParams.entries()),
-    ...Object.entries(oauthParams),
-  ].sort(([leftKey, leftValue], [rightKey, rightValue]) => {
-    const left = `${percentEncode(leftKey)}=${percentEncode(leftValue)}`;
-    const right = `${percentEncode(rightKey)}=${percentEncode(rightValue)}`;
-    return left < right ? -1 : left > right ? 1 : 0;
-  });
-
-  const normalized = signatureParams
-    .map(([key, value]) => `${percentEncode(key)}=${percentEncode(value)}`)
-    .join('&');
-  const baseUrl = `${url.protocol}//${url.host}${url.pathname}`;
-  const signatureBase = [
-    options.method,
-    percentEncode(baseUrl),
-    percentEncode(normalized),
-  ].join('&');
-  const signingKey = `${percentEncode(options.consumerSecret)}&${percentEncode(options.tokenSecret ?? '')}`;
-  const signature = crypto.createHmac('sha1', signingKey).update(signatureBase).digest('base64');
-
-  return `OAuth ${Object.entries({ ...oauthParams, oauth_signature: signature })
-    .sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
-    .map(([key, value]) => `${percentEncode(key)}="${percentEncode(value)}"`)
-    .join(', ')}`;
+function getXApiErrorMessage(error: unknown) {
+  if (typeof error === 'object' && error) {
+    const apiError = error as { code?: unknown; data?: unknown; message?: unknown };
+    const status = typeof apiError.code === 'number' ? apiError.code : null;
+    if (apiError.data !== undefined) {
+      return `X API ${status ?? 'istek hatası'}: ${safeXErrorBody(apiError.data)}`;
+    }
+    if (typeof apiError.message === 'string') {
+      return `X API ${status ?? 'istek hatası'}: ${apiError.message}`;
+    }
+  }
+  return 'X paylaşımı başarısız.';
 }
 
 async function getPlatform(key: 'facebook' | 'instagram' | 'x') {
@@ -190,38 +156,19 @@ export async function publishXTweet(text: string) {
   }
 
   try {
-    const response = await fetch(X_API_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: createOAuth1AuthorizationHeader({
-          method: 'POST',
-          url: X_API_URL,
-          consumerKey,
-          consumerSecret,
-          token: accessToken,
-          tokenSecret: accessTokenSecret,
-        }),
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ text: text.slice(0, 280) }),
-      signal: AbortSignal.timeout(15_000),
+    const client = new TwitterApi({
+      appKey: consumerKey,
+      appSecret: consumerSecret,
+      accessToken,
+      accessSecret: accessTokenSecret,
     });
-    const payload = await response.json() as {
-      data?: { id?: string };
-      detail?: string;
-      title?: string;
-      errors?: Array<{ message?: string }>;
-    };
-    const id = payload.data?.id;
-    if (!response.ok || !id) {
-      const providerMessage = payload.detail ?? payload.errors?.[0]?.message ?? payload.title ?? 'Bilinmeyen X API hatası';
-      throw new Error(`X API ${response.status}: ${providerMessage}`);
-    }
+    const response = await client.v2.tweet(text.slice(0, 280));
+    const id = response.data.id;
     const result = { id, url: `https://x.com/i/web/status/${id}` };
     await storePublicationResult('x', result, null);
     return result;
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'X paylaşımı başarısız.';
+    const message = getXApiErrorMessage(error);
     await storePublicationResult('x', null, message);
     if (/^X API (401|403):/.test(message)) {
       await db.update(socialPlatforms).set({

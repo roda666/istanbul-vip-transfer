@@ -10,8 +10,12 @@ import { socialOAuthCallbackResponse } from '@/lib/social-oauth-callback';
 export const dynamic = 'force-dynamic';
 
 const SETTINGS_PATH = '/admin/ayarlar/icerik-entegrasyonlari';
-const META_CALLBACK = 'https://www.istanbulviptransfer.com/admin/api/social-platforms/meta/callback';
+const META_CALLBACK_PATH = '/admin/api/social-platforms/meta/callback';
 const graphUrl = (path: string, params: URLSearchParams) => `https://graph.facebook.com/v22.0/${path}?${params}`;
+
+function getMetaCallbackUri(req: NextRequest) {
+  return new URL(META_CALLBACK_PATH, req.url).toString();
+}
 
 export async function GET(req: NextRequest) {
   try { await requireSocialPlatformAdmin(); }
@@ -41,8 +45,9 @@ export async function GET(req: NextRequest) {
 
   try {
     await ensureSocialPlatforms();
+    const redirectUri = getMetaCallbackUri(req);
     const tokenResponse = await fetch(graphUrl('oauth/access_token', new URLSearchParams({
-      client_id: appId, client_secret: appSecret, redirect_uri: META_CALLBACK, code,
+      client_id: appId, client_secret: appSecret, redirect_uri: redirectUri, code,
     })), { signal: AbortSignal.timeout(15_000) });
     const tokenPayload = await tokenResponse.json() as { access_token?: string; error?: { message?: string } };
     if (!tokenResponse.ok || !tokenPayload.access_token) throw new Error(tokenPayload.error?.message ?? 'Meta token alınamadı.');

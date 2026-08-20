@@ -5,7 +5,11 @@ import { requireSocialPlatformAdmin, socialAuthErrorResponse } from '@/lib/socia
 export const dynamic = 'force-dynamic';
 
 const SETTINGS_PATH = '/admin/ayarlar/icerik-entegrasyonlari';
-const META_CALLBACK = 'https://www.istanbulviptransfer.com/admin/api/social-platforms/meta/callback';
+const META_CALLBACK_PATH = '/admin/api/social-platforms/meta/callback';
+
+function getMetaCallbackUri(req: NextRequest) {
+  return new URL(META_CALLBACK_PATH, req.url).toString();
+}
 
 export async function GET(req: NextRequest) {
   try { await requireSocialPlatformAdmin(); }
@@ -25,10 +29,11 @@ export async function GET(req: NextRequest) {
   }
 
   const state = crypto.randomBytes(24).toString('base64url');
+  const redirectUri = getMetaCallbackUri(req);
   const params = new URLSearchParams({
     client_id: appId,
     config_id: configId,
-    redirect_uri: META_CALLBACK,
+    redirect_uri: redirectUri,
     response_type: 'code',
     state,
   });

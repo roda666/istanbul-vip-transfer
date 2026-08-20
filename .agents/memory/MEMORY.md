@@ -40,3 +40,4 @@
 - [Logout endpoint mismatch](logout-endpoint-mismatch.md) — AdminSidebar must call POST /admin/api/logout (not /admin/api/auth/logout); route file is at app/admin/api/logout/route.ts.
 - [GSC OAuth routing fix](gsc-oauth-routing.md) — api-server artifact owns paths=["/api"], so Next.js app/api/* routes are unreachable; GSC connect+callback moved to /admin/api/gsc/connect and /admin/api/gsc/callback; Google Cloud Console redirect URI must be https://www.istanbulviptransfer.com/admin/api/gsc/callback.
 - [Google Ads Keyword Planner integration](google-ads-kp.md) — lib/google-ads.ts uses Ads REST API v18; DB table google_ads_connections (migration 0027 applied manually); data priority: GSC > Google Ads > AI fallback; callback URI must be registered in Google Cloud Console.
+- [Meta OAuth proxy callback URI](meta-oauth-proxy-callback.md) — public HTTPS callback must use forwarded host, not the proxy-facing request origin.

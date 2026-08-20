@@ -6,16 +6,12 @@ import { socialPlatforms } from '@/db/schema';
 import { encrypt, isEncryptionReady } from '@/lib/email-crypto';
 import { ensureSocialPlatforms } from '@/lib/social-platforms';
 import { socialOAuthCallbackResponse } from '@/lib/social-oauth-callback';
+import { getMetaCallbackUri } from '@/lib/meta-oauth';
 
 export const dynamic = 'force-dynamic';
 
 const SETTINGS_PATH = '/admin/ayarlar/icerik-entegrasyonlari';
-const META_CALLBACK_PATH = '/admin/api/social-platforms/meta/callback';
 const graphUrl = (path: string, params: URLSearchParams) => `https://graph.facebook.com/v22.0/${path}?${params}`;
-
-function getMetaCallbackUri(req: NextRequest) {
-  return new URL(META_CALLBACK_PATH, req.url).toString();
-}
 
 export async function GET(req: NextRequest) {
   try { await requireSocialPlatformAdmin(); }

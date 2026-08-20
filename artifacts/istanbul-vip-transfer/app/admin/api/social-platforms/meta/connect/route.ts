@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { requireSocialPlatformAdmin, socialAuthErrorResponse } from '@/lib/social-auth';
+import { getMetaCallbackUri } from '@/lib/meta-oauth';
 
 export const dynamic = 'force-dynamic';
 
 const SETTINGS_PATH = '/admin/ayarlar/icerik-entegrasyonlari';
-const META_CALLBACK_PATH = '/admin/api/social-platforms/meta/callback';
 const META_SCOPE = [
   'pages_show_list',
   'pages_read_engagement',
@@ -13,10 +13,6 @@ const META_SCOPE = [
   'instagram_basic',
   'instagram_content_publish',
 ].join(',');
-
-function getMetaCallbackUri(req: NextRequest) {
-  return new URL(META_CALLBACK_PATH, req.url).toString();
-}
 
 export async function GET(req: NextRequest) {
   try { await requireSocialPlatformAdmin(); }

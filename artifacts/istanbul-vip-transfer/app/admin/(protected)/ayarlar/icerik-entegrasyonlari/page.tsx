@@ -6,12 +6,12 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
   AlertCircle, CheckCircle2, Search, Cpu,
-  BarChart2, TrendingUp, Link2, ExternalLink,
+  BarChart2, TrendingUp,
 } from 'lucide-react';
 import AdminPageHeader from '../../../_components/AdminPageHeader';
 import DisconnectGscButton from './DisconnectGscButton';
 import DisconnectGadsButton from './DisconnectGadsButton';
-import { SOCIAL_PLATFORM_LINKS } from '@/lib/social-platform-links';
+import SocialPlatformsPanel from './SocialPlatformsPanel';
 
 export const metadata: Metadata = { title: 'İçerik Entegrasyonları | Admin', robots: { index: false } };
 export const dynamic = 'force-dynamic';
@@ -450,91 +450,7 @@ export default async function IcerikEntegrasyonlariPage({
         </div>
       </div>
 
-      {/* ── Social platform link placeholders ─────────────────────────────── */}
-      <div style={{ ...card, marginBottom: 0 }}>
-        <div style={cardHead}>
-          <Link2 size={18} color="#2563EB" />
-          <div style={{ flex: 1 }}>
-            <h2 style={headTitle}>Sosyal Medya Bağlantı Alanları</h2>
-            <p style={{ ...hint, margin: '4px 0 0' }}>
-              Platform linklerini aşağıdaki merkezi dosyaya ekleyin; dolu alanlar burada tıklanabilir olarak görünür.
-            </p>
-          </div>
-          <span style={{
-            padding: '4px 9px', borderRadius: '20px', background: '#EFF6FF',
-            color: '#2563EB', fontFamily: 'Inter, sans-serif', fontSize: '11px', fontWeight: 700,
-            whiteSpace: 'nowrap',
-          }}>
-            8 platform
-          </span>
-        </div>
-        <div style={{ padding: '16px 20px', background: '#F8FAFC', borderBottom: '1px solid #E8EDF2' }}>
-          <p style={{ ...hint, margin: 0 }}>
-            Düzenlenecek dosya:{' '}
-            <code style={{ fontSize: '11px', background: '#E2E8F0', padding: '3px 6px', borderRadius: '4px', color: '#334155' }}>
-              lib/social-platform-links.ts
-            </code>
-          </p>
-        </div>
-        <div style={{
-          padding: '16px 20px 20px',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-          gap: '12px',
-        }}>
-          {SOCIAL_PLATFORM_LINKS.map((platform) => {
-            const linkRows = [
-              { label: 'Bağlantı / OAuth', value: platform.connectionUrl, field: 'connectionUrl' },
-              { label: 'Profil / Sayfa', value: platform.profileUrl, field: 'profileUrl' },
-              { label: 'Dokümantasyon', value: platform.docsUrl, field: 'docsUrl' },
-            ];
-
-            return (
-              <div key={platform.key} style={{
-                border: '1px solid #E2E8F0', borderRadius: '10px', background: '#FFFFFF',
-                padding: '14px',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '6px' }}>
-                  <p style={{ ...labelStyle, margin: 0 }}>{platform.name}</p>
-                  <span style={{
-                    fontSize: '10px', fontWeight: 700, color: '#D97706', background: '#FFF7ED',
-                    padding: '3px 7px', borderRadius: '10px', whiteSpace: 'nowrap',
-                  }}>
-                    Link bekliyor
-                  </span>
-                </div>
-                <p style={{ ...hint, minHeight: '32px' }}>{platform.description}</p>
-                <div style={{ display: 'grid', gap: '7px' }}>
-                  {linkRows.map((link) => (
-                    <div key={link.field} style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      gap: '8px', padding: '7px 8px', borderRadius: '7px', background: '#F8FAFC',
-                    }}>
-                      <span style={{ fontSize: '11px', color: '#52697A', fontFamily: 'Inter, sans-serif' }}>
-                        {link.label}
-                      </span>
-                      {link.value ? (
-                        <a
-                          href={link.value}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#2563EB', fontSize: '11px', fontWeight: 600, textDecoration: 'none' }}
-                        >
-                          Aç <ExternalLink size={11} />
-                        </a>
-                      ) : (
-                        <code style={{ fontSize: '9px', color: '#94A3B8' }}>
-                          {link.field}: &apos;&apos;
-                        </code>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <SocialPlatformsPanel />
     </div>
   );
 }

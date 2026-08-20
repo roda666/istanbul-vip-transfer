@@ -898,6 +898,27 @@ export const studioSchedules = pgTable('studio_schedules', {
   createdAt:       timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+// ── Social publishing platforms ───────────────────────────────────────────────
+// Credentials are encrypted before being stored. App-level secrets always remain
+// in Replit Secrets; this table only holds connection-specific user/page tokens.
+export const socialPlatforms = pgTable('social_platforms', {
+  id:                    uuid('id').primaryKey().defaultRandom(),
+  key:                   text('key').notNull().unique(),
+  name:                  text('name').notNull(),
+  authType:               text('auth_type').notNull().default('manual'),
+  requiredSecrets:        jsonb('required_secrets').$type<string[]>().notNull().default([] as never),
+  connected:              boolean('connected').notNull().default(false),
+  enabled:                boolean('enabled').notNull().default(false),
+  accessTokenEncrypted:   text('access_token_encrypted'),
+  accessTokenSecretEncrypted: text('access_token_secret_encrypted'),
+  connectionMeta:         jsonb('connection_meta').$type<Record<string, unknown>>().notNull().default({} as never),
+  lastPublishId:          text('last_publish_id'),
+  lastPublishUrl:         text('last_publish_url'),
+  lastError:              text('last_error'),
+  connectedAt:            timestamp('connected_at', { withTimezone: true }),
+  updatedAt:              timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 // ── Transfer Routes ───────────────────────────────────────────────────────────
 // Shown on homepage "Popüler Transfer Bölgeleri" section; managed via admin.
 export const transferRoutes = pgTable('transfer_routes', {
@@ -954,6 +975,8 @@ export type StudioResearch = typeof studioResearch.$inferSelect;
 export type StudioDistributionRow = typeof studioDistribution.$inferSelect;
 export type StudioAuditRow = typeof studioAudit.$inferSelect;
 export type StudioSchedule = typeof studioSchedules.$inferSelect;
+export type SocialPlatform = typeof socialPlatforms.$inferSelect;
+export type NewSocialPlatform = typeof socialPlatforms.$inferInsert;
 
 // ── Google Ads connection ─────────────────────────────────────────────────────
 // Stores OAuth tokens for Google Ads API (Keyword Planner).

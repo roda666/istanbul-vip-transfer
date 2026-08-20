@@ -7,7 +7,7 @@ description: drizzle-kit migrate reported success but admin_notes and source col
 After running `drizzle-kit migrate`, always verify critical columns actually exist in the live DB before trusting "migrations applied successfully!" — the journal can record a migration as applied even if the DDL partially failed.
 
 **Why:**
-Migration 0005 added `admin_notes` and `source` to `reservation_requests`, plus enum values `ARCHIVED` and `SUPPRESSED`. The journal showed it applied, but `information_schema.columns` confirmed both columns were missing. INSERT calls that included those columns failed with "Database error" at runtime.
+Migration 0005 added `admin_notes` and `source` to `reservation_requests`, plus enum values `ARCHIVED` and `SUPPRESSED`. The journal showed it applied, but `information_schema.columns` confirmed both columns were missing. The same journal-versus-DDL mismatch later recurred for a newly added table. INSERT calls that included the missing schema failed at runtime.
 
 **How to apply:**
 Run `executeSql({ sqlQuery: 'SELECT column_name FROM information_schema.columns WHERE table_name = ...' })` to spot-check key columns after any migration. If missing, run the DDL manually:

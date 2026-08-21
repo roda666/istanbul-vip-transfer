@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
-import { localePath } from '@/lib/locale-path';
+import { localizedPublicPath } from '@/lib/localized-service-path';
 import type { Dictionary } from '@/lib/i18n/types';
 import { isolateLtrValues } from '@/lib/i18n/bidi';
 
@@ -172,7 +172,7 @@ export default function PageHero(props: PageHeroProps) {
               {i > 0 && <ChevronRight size={11} style={{ color: '#50677A' }} aria-hidden="true" />}
               {crumb.href ? (
                 <Link
-                  href={localePath(crumb.href, lang)}
+                  href={localizedPublicPath(crumb.href, lang)}
                   className="transition-colors duration-200 focus:outline-none focus-visible:underline"
                   style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#C79A35'; }}

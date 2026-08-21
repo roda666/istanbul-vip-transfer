@@ -1,7 +1,7 @@
 import type { LegalPage } from '@/lib/legal-page-cms';
 import ArticleBody from '@/components/ArticleBody';
 import Link from 'next/link';
-import { localePath } from '@/lib/locale-path';
+import { localizedPublicPath } from '@/lib/localized-service-path';
 
 interface Props {
   page:  LegalPage;
@@ -28,7 +28,7 @@ const BREADCRUMB_HOME: Record<string, string> = {
 export default function LegalPageRenderer({ page, lang }: Props) {
   const updatedLabel = UPDATED_LABELS[lang] ?? 'Last updated';
   const homeLabel    = BREADCRUMB_HOME[lang] ?? 'Home';
-  const lp           = (path: string) => localePath(path, lang);
+  const lp           = (path: string) => localizedPublicPath(path, lang);
 
   const formattedDate = page.updatedAt
     ? new Intl.DateTimeFormat(lang === 'tr' ? 'tr-TR' : lang, {

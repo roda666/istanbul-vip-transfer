@@ -3,8 +3,7 @@
  * Both desktop and mobile menus consume getNav(lang, dict).
  */
 import type { Dictionary } from '@/lib/i18n/types';
-import { localePath } from '@/lib/locale-path';
-import { localizedServicePath } from '@/lib/localized-service-path';
+import { localizedPublicPath, localizedServicePath } from '@/lib/localized-service-path';
 
 export interface NavItem {
   label: string;
@@ -38,7 +37,7 @@ export interface NavEntry {
  *   When absent, all items are shown (safe fallback for static callers).
  */
 export function getNav(lang: string, dict: Dictionary, hiddenNavSlugs?: Set<string>): NavEntry[] {
-  const p = (path: string) => localePath(path, lang);
+  const p = (path: string) => localizedPublicPath(path, lang);
   const servicePath = (slug: string) => localizedServicePath(slug, lang);
   const show = (slug: string) => !hiddenNavSlugs?.has(slug);
 

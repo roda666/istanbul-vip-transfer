@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useLang } from '@/lib/i18n/context';
-import { localePath } from '@/lib/locale-path';
+import { localizedPublicPath } from '@/lib/localized-service-path';
 import Link from 'next/link';
 
 const COOKIE_NAME  = 'ivt_cookie_consent';
@@ -53,7 +53,7 @@ export default function CookieConsentBanner() {
     // No event dispatched → GA stays unloaded
   };
 
-  const lp = (path: string) => localePath(path, lang);
+  const lp = (path: string) => localizedPublicPath(path, lang);
 
   return (
     <div

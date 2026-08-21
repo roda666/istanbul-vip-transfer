@@ -20,7 +20,15 @@ const SERVICE_NAV_KEYS: Record<string, keyof ReturnType<typeof getDictionary>['n
   'yalova-gunubirlik-tur': 'yalovaTour',
 };
 
+const STATIC_NAV_KEYS: Record<string, keyof ReturnType<typeof getDictionary>['nav']> = {
+  hizmetler: 'services',
+  araclar: 'vehicles',
+  hakkimizda: 'about',
+  iletisim: 'contact',
+};
+
 const SERVICE_SLUGS = new Set(Object.keys(SLUG_TO_PAGE_KEY));
+const STATIC_SLUGS = new Set(Object.keys(STATIC_NAV_KEYS));
 
 /** Builds the public path for a canonical service slug in the requested locale. */
 export function localizedServicePath(canonicalSlug: string, locale: string): string {
@@ -35,6 +43,18 @@ export function localizedServicePath(canonicalSlug: string, locale: string): str
   // a URL and make the canonical slug needlessly noisy.
   const translatedLabel = getDictionary(locale).nav[navKey].replace(/\s*\([^)]*\)/g, '');
   return `/${locale}/${slugify(translatedLabel, canonicalSlug)}`;
+}
+
+/** Builds the public path for a canonical static page slug in the requested locale. */
+export function localizedStaticPath(canonicalSlug: string, locale: string): string {
+  if (locale === 'tr') return `/${canonicalSlug}`;
+
+  const navKey = STATIC_NAV_KEYS[canonicalSlug];
+  if (!navKey || !SUPPORTED_LANGS.includes(locale as typeof SUPPORTED_LANGS[number])) {
+    return localePath(`/${canonicalSlug}`, locale);
+  }
+
+  return `/${locale}/${slugify(getDictionary(locale).nav[navKey], canonicalSlug)}`;
 }
 
 /** Returns the canonical Turkish CMS slug for a localized or legacy route segment. */
@@ -53,21 +73,51 @@ export function resolveLocalizedServiceSlug(routeSlug: string, locale: string): 
   return null;
 }
 
+/** Returns the canonical Turkish static slug for a localized or legacy route segment. */
+export function resolveLocalizedStaticSlug(routeSlug: string, locale: string): string | null {
+  if (!routeSlug || routeSlug.includes('/')) return null;
+  if (locale === 'tr') return STATIC_SLUGS.has(routeSlug) ? routeSlug : null;
+
+  // Locale-prefixed Turkish static slugs remain valid solely for redirects.
+  if (STATIC_SLUGS.has(routeSlug)) return routeSlug;
+
+  for (const canonicalSlug of STATIC_SLUGS) {
+    if (localizedStaticPath(canonicalSlug, locale).split('/').at(-1) === routeSlug) {
+      return canonicalSlug;
+    }
+  }
+  return null;
+}
+
 /**
- * Rewrites a service pathname while changing locale. Static routes retain their
- * existing locale-path behaviour; only registered service URLs get a translated
- * final segment.
+ * Builds a locale-aware public path for recognized static or service pages.
+ * Unknown paths preserve the existing generic prefix-only behaviour.
  */
-export function localizedPathForLanguageSwitch(pathname: string, targetLocale: string): string {
-  const segments = pathname.split('/').filter(Boolean);
-  const currentLocale = SUPPORTED_LANGS.includes(segments[0] as typeof SUPPORTED_LANGS[number])
+export function localizedPublicPath(pathname: string, targetLocale: string): string {
+  const suffixIndex = pathname.search(/[?#]/);
+  const basePath = suffixIndex === -1 ? pathname : pathname.slice(0, suffixIndex);
+  const suffix = suffixIndex === -1 ? '' : pathname.slice(suffixIndex);
+  const segments = basePath.split('/').filter(Boolean);
+  const sourceLocale = SUPPORTED_LANGS.includes(segments[0] as typeof SUPPORTED_LANGS[number])
     ? segments.shift()!
     : 'tr';
 
   if (segments.length === 1) {
-    const canonicalSlug = resolveLocalizedServiceSlug(segments[0], currentLocale);
-    if (canonicalSlug) return localizedServicePath(canonicalSlug, targetLocale);
+    const routeSlug = segments[0];
+    const serviceSlug = resolveLocalizedServiceSlug(routeSlug, sourceLocale);
+    if (serviceSlug) return localizedServicePath(serviceSlug, targetLocale) + suffix;
+
+    const staticSlug = resolveLocalizedStaticSlug(routeSlug, sourceLocale);
+    if (staticSlug) return localizedStaticPath(staticSlug, targetLocale) + suffix;
   }
 
   return localePath(pathname, targetLocale);
+}
+
+/**
+ * Rewrites a service pathname while changing locale. Static routes retain their
+ * existing locale-path behaviour unless they are registered public static pages.
+ */
+export function localizedPathForLanguageSwitch(pathname: string, targetLocale: string): string {
+  return localizedPublicPath(pathname, targetLocale);
 }

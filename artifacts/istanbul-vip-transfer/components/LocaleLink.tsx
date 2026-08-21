@@ -10,7 +10,7 @@
 import Link from 'next/link';
 import type { ComponentPropsWithoutRef } from 'react';
 import { useLang } from '@/lib/i18n/context';
-import { localePath } from '@/lib/locale-path';
+import { localizedPublicPath } from '@/lib/localized-service-path';
 
 /** Patterns that must never be locale-prefixed. */
 const EXTERNAL = /^(https?:|tel:|mailto:|#|\/admin|\/api|\/data|\/_next)/;
@@ -21,7 +21,7 @@ type LocaleLinkProps = Omit<ComponentPropsWithoutRef<typeof Link>, 'href'> & {
 
 export default function LocaleLink({ href, ...props }: LocaleLinkProps) {
   const { lang } = useLang();
-  const target = EXTERNAL.test(href) ? href : localePath(href, lang);
+  const target = EXTERNAL.test(href) ? href : localizedPublicPath(href, lang);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return <Link href={target as any} {...props} />;
 }

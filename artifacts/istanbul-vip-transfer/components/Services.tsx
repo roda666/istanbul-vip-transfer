@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Plane, Hotel, Map, Briefcase, PartyPopper, Route, ArrowRight, Heart, Building2, Home } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
-import { localePath } from '@/lib/locale-path';
+import { localizedPublicPath } from '@/lib/localized-service-path';
 
 interface Props {
   /**
@@ -18,7 +18,7 @@ interface Props {
 export default function Services({ hiddenSlugs }: Props = {}) {
   const { lang, dict } = useLang();
   const s = dict.services;
-  const p = (path: string) => localePath(path, lang);
+  const p = (path: string) => localizedPublicPath(path, lang);
 
   /**
    * Pick the localised string for the current locale.

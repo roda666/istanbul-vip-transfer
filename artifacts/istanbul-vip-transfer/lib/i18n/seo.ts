@@ -5,7 +5,7 @@
 import { SITE } from '@/lib/site-config';
 import { LANG_LOCALES, SUPPORTED_LANGS, type SiteLang } from './index';
 import { LOCALE_BCP47 } from './locale-registry';
-import { localizedServicePath } from '@/lib/localized-service-path';
+import { localizedServicePath, localizedStaticPath } from '@/lib/localized-service-path';
 
 export interface HreflangEntry {
   hrefLang: string;
@@ -76,6 +76,25 @@ export async function buildServiceAlternates(canonicalSlug: string, publishedLan
     const entry = publicLangs.find((candidate) => candidate.code === lang);
     if (!entry) continue;
     languages[entry.locale] = `${SITE.siteUrl}${localizedServicePath(canonicalSlug, lang)}`;
+  }
+
+  return { canonical, languages };
+}
+
+/** Builds hreflang entries for static pages with locale-specific final segments. */
+export async function buildStaticAlternates(canonicalSlug: string): Promise<AlternatesResult> {
+  const canonical = `${SITE.siteUrl}${localizedStaticPath(canonicalSlug, 'tr')}`;
+  const languages: Record<string, string> = {
+    'x-default': canonical,
+    [LANG_LOCALES.tr]: canonical,
+  };
+
+  const { getPublicLanguages } = await import('./active-locales');
+  const publicLangs = await getPublicLanguages();
+
+  for (const lang of publicLangs) {
+    if (lang.code === 'tr') continue;
+    languages[lang.locale] = `${SITE.siteUrl}${localizedStaticPath(canonicalSlug, lang.code)}`;
   }
 
   return { canonical, languages };

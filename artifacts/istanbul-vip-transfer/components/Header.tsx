@@ -7,7 +7,7 @@ import { Menu, X, Phone, ChevronDown } from 'lucide-react';
 import { getNav } from '@/lib/nav-config';
 import { useLang } from '@/lib/i18n/context';
 import { useSiteSettings } from '@/components/SiteSettingsContext';
-import { localePath } from '@/lib/locale-path';
+import { localizedPublicPath } from '@/lib/localized-service-path';
 import LanguageSelector from './LanguageSelector';
 
 interface HeaderProps {
@@ -82,8 +82,8 @@ export default function Header({ hiddenNavSlugs }: HeaderProps = {}) {
   // German has longer nav labels — tighten tracking + padding to avoid wrapping
   const isDE = lang === 'de';
   const navLinkCls = `text-xs ${isDE ? 'tracking-wide px-1.5' : 'tracking-wider px-2'} uppercase whitespace-nowrap transition-colors duration-300 py-7 block focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C79A35] rounded`;
-  const homePath = localePath('/', lang);
-  const servicesPath = localePath('/hizmetler', lang);
+  const homePath = localizedPublicPath('/', lang);
+  const servicesPath = localizedPublicPath('/hizmetler', lang);
 
   return (
     <>

@@ -10,16 +10,17 @@
  * Uses HizmetlerServiceGridCms (server component backed by the CMS).
  */
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import PageHero    from '@/components/PageHero';
 import BookingForm from '@/components/BookingForm';
 import Contact     from '@/components/Contact';
 import HizmetlerServiceGridCms from '@/components/HizmetlerServiceGridCms';
 import HizmetlerCategoryNav from '@/components/HizmetlerCategoryNav';
-import { buildAlternates }  from '@/lib/i18n/seo';
+import { buildStaticAlternates }  from '@/lib/i18n/seo';
 import { NON_SOURCE_LOCALES } from '@/lib/i18n/locale-registry';
 import { SITE } from '@/lib/site-config';
 import { getServiceCategories } from '@/lib/service-category-server';
+import { localizedStaticPath } from '@/lib/localized-service-path';
 
 // Localised page metadata for /[lang]/hizmetler
 const PAGE_META: Record<string, { title: string; description: string }> = {
@@ -64,8 +65,8 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { lang } = await params;
   const meta  = PAGE_META[lang] ?? PAGE_META.en;
-  const alts  = await buildAlternates('/hizmetler', NON_SOURCE_LOCALES as string[]);
-  const url   = `${SITE.siteUrl}/${lang}/hizmetler`;
+  const alts  = await buildStaticAlternates('hizmetler');
+  const url   = `${SITE.siteUrl}${localizedStaticPath('hizmetler', lang)}`;
 
   return {
     title:       meta.title,
@@ -83,19 +84,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function HizmetlerLangPage({ params }: Props) {
-  const { lang } = await params;
-
-  // Guard: this page only serves non-TR locales.
-  // TR is served at /hizmetler (app/hizmetler/page.tsx).
-  if (!NON_SOURCE_LOCALES.includes(lang)) notFound();
-
+/** Shared locale-aware services content used by the canonical localized URL. */
+export async function LocalizedServicesPageContent({ lang }: { lang: string }) {
   const breadcrumbSchema = {
     '@context': 'https://schema.org',
     '@type':    'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE.siteUrl}/${lang}` },
-      { '@type': 'ListItem', position: 2, name: 'Services', item: `${SITE.siteUrl}/${lang}/hizmetler` },
+      { '@type': 'ListItem', position: 2, name: 'Services', item: `${SITE.siteUrl}${localizedStaticPath('hizmetler', lang)}` },
     ],
   };
 
@@ -119,4 +115,16 @@ export default async function HizmetlerLangPage({ params }: Props) {
       />
     </>
   );
+}
+
+export default async function HizmetlerLangPage({ params }: Props) {
+  const { lang } = await params;
+
+  // Guard: this route only serves non-TR locales.
+  // TR is served at /hizmetler (app/hizmetler/page.tsx).
+  if (!NON_SOURCE_LOCALES.includes(lang)) notFound();
+
+  // This route predates locale-specific page segments and takes precedence
+  // over the catch-all route. Keep it as a permanent compatibility redirect.
+  permanentRedirect(localizedStaticPath('hizmetler', lang));
 }

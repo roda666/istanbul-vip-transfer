@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { SITE } from '@/lib/site-config';
-import { localizedServicePath } from '@/lib/localized-service-path';
+import { localizedServicePath, localizedStaticPath } from '@/lib/localized-service-path';
 
 const BASE = SITE.siteUrl;
 
@@ -82,7 +82,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
   for (const lang of nonTrLangs) {
     for (const { slug, priority } of STATIC_SLUGS) {
-      push({ url: `${BASE}/${lang.code}/${slug}`, changeFrequency: 'monthly', priority: Math.max(priority - 0.05, 0.5) });
+      push({ url: `${BASE}${localizedStaticPath(slug, lang.code)}`, changeFrequency: 'monthly', priority: Math.max(priority - 0.05, 0.5) });
     }
   }
 

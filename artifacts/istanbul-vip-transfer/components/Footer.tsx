@@ -4,8 +4,7 @@ import Link from 'next/link';
 import { Phone, MapPin, Mail, Lock, ShieldCheck, Banknote, ArrowLeftRight, Smartphone } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
 import { useSiteSettings } from '@/components/SiteSettingsContext';
-import { localePath } from '@/lib/locale-path';
-import { localizedServicePath } from '@/lib/localized-service-path';
+import { localizedPublicPath, localizedServicePath } from '@/lib/localized-service-path';
 import LanguageSelector from './LanguageSelector';
 import { trackEvent } from '@/lib/analytics';
 
@@ -131,7 +130,7 @@ function TursabBadge({ tursabNo, label }: { tursabNo: string; label: string }) {
 export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
   const { lang, dict } = useLang();
   const cs = useSiteSettings();
-  const p = (path: string) => localePath(path, lang);
+  const p = (path: string) => localizedPublicPath(path, lang);
   const servicePath = (slug: string) => localizedServicePath(slug, lang);
   const hidden = new Set(hiddenNavSlugs ?? []);
 

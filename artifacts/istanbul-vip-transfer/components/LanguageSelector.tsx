@@ -20,7 +20,7 @@ import { usePathname } from 'next/navigation';
 import { Globe, ChevronDown } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
 import { SUPPORTED_LANGS, LANG_NATIVE_NAMES, type SiteLang } from '@/lib/i18n';
-import { localePath } from '@/lib/locale-path';
+import { localizedPathForLanguageSwitch } from '@/lib/localized-service-path';
 
 interface PublicLang {
   code: string;
@@ -93,8 +93,8 @@ export default function LanguageSelector({ variant = 'light', className = '' }: 
     // Preserve hash (usePathname never includes the fragment — read it live)
     const hash = typeof window !== 'undefined' ? window.location.hash : '';
 
-    // Strip existing lang prefix, apply new one; append any hash
-    const targetPath = localePath(pathname, targetLang) + hash;
+    // Localize the service URL segment as well as its locale prefix.
+    const targetPath = localizedPathForLanguageSwitch(pathname, targetLang) + hash;
 
     // Single navigation to atomic switch endpoint:
     //   server sets cookie + redirects in ONE response → no race

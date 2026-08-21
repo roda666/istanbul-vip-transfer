@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { SITE } from '@/lib/site-config';
+import { localizedServicePath } from '@/lib/localized-service-path';
 
 const BASE = SITE.siteUrl;
 
@@ -167,7 +168,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       if (!txLocales?.has(lang.code)) continue; // skip — no published translation
       const txUpdatedAt = txLocales.get(lang.code) ?? updatedAt;
       push({
-        url: `${BASE}/${lang.code}/${slug}`,
+        url: `${BASE}${localizedServicePath(slug, lang.code)}`,
         ...(txUpdatedAt ? { lastModified: txUpdatedAt } : {}),
         changeFrequency: 'monthly',
         priority: Math.max(priority - 0.05, 0.5),

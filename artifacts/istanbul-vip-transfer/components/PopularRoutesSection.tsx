@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useLang } from '@/lib/i18n/context';
 import type { TransferRoute } from '@/db/schema';
 import { useEffect, useState } from 'react';
+import { localizedServicePath } from '@/lib/localized-service-path';
 
 // ── Design tokens (matches site dark/gold aesthetic) ──────────────────────────
 const DARK_BG    = '#0C1B2A';
@@ -53,7 +54,7 @@ function getRouteHref(routeName: string, lang: string): string {
   } else {
     slug = 'vip-transfer';
   }
-  return lang === 'tr' ? `/${slug}` : `/${lang}/${slug}`;
+  return localizedServicePath(slug, lang);
 }
 
 function RouteCard({ route, lang, t }: {

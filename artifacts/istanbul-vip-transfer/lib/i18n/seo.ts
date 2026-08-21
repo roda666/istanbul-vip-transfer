@@ -5,6 +5,7 @@
 import { SITE } from '@/lib/site-config';
 import { LANG_LOCALES, SUPPORTED_LANGS, type SiteLang } from './index';
 import { LOCALE_BCP47 } from './locale-registry';
+import { localizedServicePath } from '@/lib/localized-service-path';
 
 export interface HreflangEntry {
   hrefLang: string;
@@ -51,6 +52,30 @@ export async function buildAlternates(path: string, publishedLangs: string[] = [
     if (!entry) continue;
     const translatedPath = path === '/' ? `/${lang}` : `/${lang}${path}`;
     languages[entry.locale] = `${base}${translatedPath}`;
+  }
+
+  return { canonical, languages };
+}
+
+/**
+ * Builds hreflang entries for services whose final URL segment is localized.
+ * Turkish remains the x-default and root canonical URL.
+ */
+export async function buildServiceAlternates(canonicalSlug: string, publishedLangs: string[] = []): Promise<AlternatesResult> {
+  const canonical = `${SITE.siteUrl}${localizedServicePath(canonicalSlug, 'tr')}`;
+  const languages: Record<string, string> = {
+    'x-default': canonical,
+    [LANG_LOCALES.tr]: canonical,
+  };
+
+  const { getPublicLanguages } = await import('./active-locales');
+  const publicLangs = await getPublicLanguages();
+
+  for (const lang of publishedLangs) {
+    if (lang === 'tr') continue;
+    const entry = publicLangs.find((candidate) => candidate.code === lang);
+    if (!entry) continue;
+    languages[entry.locale] = `${SITE.siteUrl}${localizedServicePath(canonicalSlug, lang)}`;
   }
 
   return { canonical, languages };

@@ -11,14 +11,15 @@
  * NOTE: The param is named `slug` to match app/[lang]/blog/[slug]/page.tsx.
  */
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { isValidLang, SUPPORTED_LANGS } from '@/lib/i18n';
-import { buildAlternates, getOgLocale } from '@/lib/i18n/seo';
+import { buildAlternates, buildServiceAlternates, getOgLocale } from '@/lib/i18n/seo';
 import { SITE } from '@/lib/site-config';
 import { getContactSettings } from '@/lib/site-settings-server';
 import rawPageMeta from '@/lib/page-meta.json';
 import { PAGE_REGISTRY } from '@/lib/page-registry';
 import { STATIC_PAGE_SLUGS } from '@/lib/static-page-slugs';
+import { localizedServicePath, resolveLocalizedServiceSlug } from '@/lib/localized-service-path';
 
 // ── Turkish page components (non-SERVICE pages use these directly) ─────────
 import HizmetlerPage     from '@/app/hizmetler/page';
@@ -26,13 +27,6 @@ import AraclarPage       from '@/app/araclar/page';
 import VehiclesPageContent from '@/components/VehiclesPageContent';
 import HakkimizdaPage    from '@/app/hakkimizda/page';
 import IletisimPage      from '@/app/iletisim/page';
-
-// ── SERVICE slug set (derived from PAGE_REGISTRY — no manual sync needed) ─
-const SERVICE_SLUGS = new Set(
-  Object.entries(PAGE_REGISTRY)
-    .filter(([, entry]) => entry.schemaType === 'Service')
-    .map(([slug]) => slug),
-);
 
 // ── Non-service static pages ─────────────────────────────────────────────
 // When adding a new WebPage slug:
@@ -105,15 +99,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { lang, slug } = await params;
   if (!isValidLang(lang)) return {};
 
-  const pathKey = slug.join('/');
+  const requestedPath = slug.join('/');
+  const serviceSlug = resolveLocalizedServiceSlug(requestedPath, lang);
+  const pathKey = serviceSlug ?? requestedPath;
   const inRegistry = PAGE_REGISTRY[pathKey];
-  const isService = SERVICE_SLUGS.has(pathKey);
-  const isStatic  = Boolean(STATIC_PAGE_MAP[pathKey]);
+  const isService = serviceSlug !== null;
+  const isStatic  = Boolean(STATIC_PAGE_MAP[requestedPath]);
 
   if (!inRegistry && !isService && !isStatic) return {};
 
-  const canonicalPath = `/${pathKey}`;
-  const pageUrl = `${SITE.siteUrl}/${lang}${canonicalPath}`;
+  const canonicalPath = isService
+    ? localizedServicePath(pathKey, lang)
+    : `/${lang}/${requestedPath}`;
+  const pageUrl = `${SITE.siteUrl}${canonicalPath}`;
 
   // Try DB metadata for service pages first
   let title: string | undefined;
@@ -153,7 +151,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   } else {
     publishedLangs = [...SUPPORTED_LANGS];
   }
-  const alternates = await buildAlternates(canonicalPath, publishedLangs);
+  const alternates = isService
+    ? await buildServiceAlternates(pathKey, publishedLangs)
+    : await buildAlternates(`/${requestedPath}`, publishedLangs);
 
   return {
     title,
@@ -180,19 +180,31 @@ export default async function LocalizedPassthrough({ params }: Props) {
   const { lang, slug } = await params;
   if (!isValidLang(lang)) notFound();
 
-  const pathKey = slug.join('/');
+  const requestedPath = slug.join('/');
+  const serviceSlug = resolveLocalizedServiceSlug(requestedPath, lang);
+  const pathKey = serviceSlug ?? requestedPath;
   const cs = await getContactSettings();
 
   // Validate route exists
   const inRegistry = PAGE_REGISTRY[pathKey];
-  const isService  = SERVICE_SLUGS.has(pathKey);
-  const StaticPage = STATIC_PAGE_MAP[pathKey];
+  const isService  = serviceSlug !== null;
+  const StaticPage = STATIC_PAGE_MAP[requestedPath];
 
   if (!inRegistry && !isService && !StaticPage) notFound();
 
+  // Legacy locale-prefixed Turkish service slugs are redirected to the
+  // localized canonical URL so shared/indexed links stay valid without
+  // producing duplicate pages.
+  if (isService) {
+    const localizedPath = localizedServicePath(pathKey, lang);
+    if (`/${lang}/${requestedPath}` !== localizedPath) {
+      permanentRedirect(localizedPath);
+    }
+  }
+
   const schemaType = inRegistry?.schemaType ?? (isService ? 'Service' : 'WebPage');
   const meta       = PAGE_META[pathKey]?.[lang];
-  const pageUrl    = `${SITE.siteUrl}/${lang}/${pathKey}`;
+  const pageUrl    = `${SITE.siteUrl}${isService ? localizedServicePath(pathKey, lang) : `/${lang}/${requestedPath}`}`;
 
   // For SERVICE pages, also get DB metadata for JSON-LD
   let jsonLdTitle = meta?.title ?? 'VIP Transfer Istanbul';
@@ -268,7 +280,7 @@ export default async function LocalizedPassthrough({ params }: Props) {
     const { default: ServicePageRenderer } = await import('@/components/ServicePageRenderer');
     return (
       <>
-        <ServicePageRenderer slug={pathKey} lang={lang} />
+        <ServicePageRenderer slug={pathKey} lang={lang} canonicalPath={localizedServicePath(pathKey, lang)} />
         {scripts}
       </>
     );

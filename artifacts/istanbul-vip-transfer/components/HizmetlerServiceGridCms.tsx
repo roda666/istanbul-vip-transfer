@@ -16,6 +16,7 @@ import { getPublishedServiceList } from '@/lib/service-page-cms-list';
 import { getServiceCategories, type ServiceCategoryItem } from '@/lib/service-category-server';
 import { RTL_LOCALES } from '@/lib/i18n/locale-registry';
 import { isolateLtrValues } from '@/lib/i18n/bidi';
+import { localizedServicePath } from '@/lib/localized-service-path';
 
 /** Empty-state strings in each locale. */
 const EMPTY_MSG: Record<string, string> = {
@@ -49,7 +50,7 @@ const OTHER_LABEL: Record<string, string> = {
 };
 
 function serviceHref(slug: string, locale: string): string {
-  return locale === 'tr' ? `/${slug}` : `/${locale}/${slug}`;
+  return localizedServicePath(slug, locale);
 }
 
 interface Props {

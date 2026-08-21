@@ -21,6 +21,7 @@ import { SITE } from '@/lib/site-config';
 import { getContactSettings, type ContactSettings } from '@/lib/site-settings-server';
 import { getDictionary } from '@/lib/i18n';
 import { getContentDirection, isolateLtrValues } from '@/lib/i18n/bidi';
+import { localizedServicePath } from '@/lib/localized-service-path';
 
 interface Props {
   slug: string;
@@ -302,7 +303,7 @@ export default async function ServicePageRenderer({ slug, lang, canonicalPath }:
     getContactSettings(),
   ]);
   const pageKey = SLUG_TO_PAGE_KEY[slug];
-  const canonicalUrl = `${SITE.siteUrl}${canonicalPath ?? `/${lang}/${slug}`}`;
+  const canonicalUrl = `${SITE.siteUrl}${canonicalPath ?? localizedServicePath(slug, lang)}`;
 
   // Determine text direction for RTL locales
   const dir = getContentDirection(lang);

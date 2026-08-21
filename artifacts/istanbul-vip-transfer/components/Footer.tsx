@@ -5,6 +5,7 @@ import { Phone, MapPin, Mail, Lock, ShieldCheck, Banknote, ArrowLeftRight, Smart
 import { useLang } from '@/lib/i18n/context';
 import { useSiteSettings } from '@/components/SiteSettingsContext';
 import { localePath } from '@/lib/locale-path';
+import { localizedServicePath } from '@/lib/localized-service-path';
 import LanguageSelector from './LanguageSelector';
 import { trackEvent } from '@/lib/analytics';
 
@@ -131,6 +132,7 @@ export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
   const { lang, dict } = useLang();
   const cs = useSiteSettings();
   const p = (path: string) => localePath(path, lang);
+  const servicePath = (slug: string) => localizedServicePath(slug, lang);
   const hidden = new Set(hiddenNavSlugs ?? []);
 
   const quickLinks = [
@@ -144,13 +146,13 @@ export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
   ];
 
   const services = [
-    { slug: 'istanbul-havalimani-transfer',       label: dict.nav.istTransfer,       href: p('/istanbul-havalimani-transfer') },
-    { slug: 'sabiha-gokcen-havalimani-transfer',  label: dict.nav.sawTransfer,       href: p('/sabiha-gokcen-havalimani-transfer') },
-    { slug: 'vip-transfer',                       label: dict.nav.vipTransfer,       href: p('/vip-transfer') },
-    { slug: 'otel-transfer',                      label: dict.nav.hotelTransfer,     href: p('/otel-transfer') },
-    { slug: 'sehirler-arasi-transfer',            label: dict.nav.intercityTransfer, href: p('/sehirler-arasi-transfer') },
-    { slug: 'soforlu-arac-kiralama',              label: dict.nav.chauffeur,         href: p('/soforlu-arac-kiralama') },
-    { slug: 'kurumsal-vip-transfer',              label: dict.nav.corporateTransfer, href: p('/kurumsal-vip-transfer') },
+    { slug: 'istanbul-havalimani-transfer',       label: dict.nav.istTransfer,       href: servicePath('istanbul-havalimani-transfer') },
+    { slug: 'sabiha-gokcen-havalimani-transfer',  label: dict.nav.sawTransfer,       href: servicePath('sabiha-gokcen-havalimani-transfer') },
+    { slug: 'vip-transfer',                       label: dict.nav.vipTransfer,       href: servicePath('vip-transfer') },
+    { slug: 'otel-transfer',                      label: dict.nav.hotelTransfer,     href: servicePath('otel-transfer') },
+    { slug: 'sehirler-arasi-transfer',            label: dict.nav.intercityTransfer, href: servicePath('sehirler-arasi-transfer') },
+    { slug: 'soforlu-arac-kiralama',              label: dict.nav.chauffeur,         href: servicePath('soforlu-arac-kiralama') },
+    { slug: 'kurumsal-vip-transfer',              label: dict.nav.corporateTransfer, href: servicePath('kurumsal-vip-transfer') },
   ].filter(s => !hidden.has(s.slug));
 
   const linkHoverStyle = {

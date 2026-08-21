@@ -52,6 +52,10 @@ const TARGET_LANGS: Record<string, string> = {
   de: 'German',
   ru: 'Russian',
   ar: 'Arabic',
+  es: 'Spanish',
+  fr: 'French',
+  it: 'Italian',
+  nl: 'Dutch',
 };
 
 // ── Types ───────────────────────────────────────────────────────────────────

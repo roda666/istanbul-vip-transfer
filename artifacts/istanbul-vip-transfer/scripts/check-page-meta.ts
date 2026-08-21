@@ -39,7 +39,7 @@ const ROOT = path.resolve(__dirname, '..');
 const PAGE_META_PATH = path.join(ROOT, 'lib', 'page-meta.json');
 
 /** Non-Turkish languages that must have translations for every slug. */
-const REQUIRED_LANGS = ['en', 'de', 'ru', 'ar'];
+const REQUIRED_LANGS = ['en', 'de', 'ru', 'ar', 'es', 'fr', 'it', 'nl'];
 
 interface SlugMeta { title: string; description: string }
 type PageMeta = Record<string, Record<string, SlugMeta>>;
@@ -141,7 +141,7 @@ function main() {
   }
 
   console.log(
-    `✓  page-meta coverage OK — all ${registeredSlugs.length} slugs in PAGE_REGISTRY have en/de/ru/ar metadata`,
+    `✓  page-meta coverage OK — all ${registeredSlugs.length} slugs in PAGE_REGISTRY have metadata for all 8 target locales`,
   );
   console.log(
     `✓  component coverage OK — all ${webPageSlugs.length} WebPage slugs have entries in lib/static-page-slugs.ts`,

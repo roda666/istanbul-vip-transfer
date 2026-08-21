@@ -13,7 +13,7 @@ import { z } from 'zod';
 // a different attribute representation and warns).
 import {
   MapPin, Calendar, Clock, Users, User, Phone, Home,
-  Plane, ArrowRightLeft, Car, Compass, Mail, Luggage,
+  Plane, ArrowRightLeft, Car, Compass, Mail,
 } from 'lucide-react';
 import LocationCombobox from './LocationCombobox';
 import { useLang } from '@/lib/i18n/context';
@@ -21,19 +21,6 @@ import { useLang } from '@/lib/i18n/context';
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const WA_NUMBER = '905326600847';
-
-interface FormSettings {
-  showLuggageCount:      boolean;
-  showChildSeatCount:    boolean;
-  showVehiclePreference: boolean;
-  showAdditionalNotes:   boolean;
-}
-const DEFAULT_FORM_SETTINGS: FormSettings = {
-  showLuggageCount:      false,
-  showChildSeatCount:    false,
-  showVehiclePreference: false,
-  showAdditionalNotes:   false,
-};
 
 interface CustomField {
   id: number;
@@ -87,7 +74,12 @@ function buildSchema(b: import('@/lib/i18n/types').Dictionary['booking']) {
     saatSaat:   z.string().min(1, b.requiredHour),
     saatDakika: z.string().min(1, b.requiredMinute)
       .refine((v) => parseInt(v, 10) % 5 === 0, { message: b.minuteMultipleError }),
-    yolcuSayisi: z.string().min(1, b.requiredPassengers),
+    yolcuSayisi: z.string()
+      .min(1, b.requiredPassengers)
+      .refine((value) => {
+        const count = Number(value);
+        return Number.isInteger(count) && count >= 1 && count <= 30;
+      }, { message: b.requiredPassengers }),
     adSoyad:     z.string().min(2, b.requiredName),
     telefon:     z.string().min(10, b.requiredPhone),
     email:       z.string().optional(),
@@ -114,11 +106,6 @@ function buildSchema(b: import('@/lib/i18n/types').Dictionary['booking']) {
     talepsYerler:      z.string().optional(),
     planlananSure:     z.string().optional(),
     planlananSureUnit: z.enum(['SAAT', 'GUN']).default('SAAT'),
-    // Optional admin-configured fields
-    bagajSayisi:  z.string().optional(),
-    cocukKoltugu: z.string().optional(),
-    aracTercihi:  z.string().optional(),
-    ekNotlar:     z.string().optional(),
   });
 }
 
@@ -171,15 +158,15 @@ const durationRowStyle: React.CSSProperties = {
  * Formats a stored YYYY-MM-DD service date for display to the customer.
  * Parses year/month/day separately to avoid any UTC offset shifting the
  * calendar day (e.g. midnight Istanbul = previous UTC day).
- *   TR / DE / RU : DD.MM.YYYY
- *   EN / AR      : DD/MM/YYYY
+ * WhatsApp requests always use DD/MM/YYYY, independent of the page locale.
+ * A single format keeps dispatch and driver communication unambiguous.
  */
 function formatServiceDate(isoDate: string, locale: string): string {
   const parts = isoDate.split('-');
   if (parts.length !== 3) return isoDate;
   const [year, month, day] = parts;
-  const sep = locale === 'en' || locale === 'ar' ? '/' : '.';
-  return `${day}${sep}${month}${sep}${year}`;
+  void locale;
+  return `${day}/${month}/${year}`;
 }
 
 // ── WhatsApp message builder ──────────────────────────────────────────────────
@@ -293,18 +280,9 @@ export default function BookingForm() {
   const [newsletterConsent, setNewsletterConsent] = useState(false);
   const [newsletterError, setNewsletterError]     = useState('');
   const honeypotRef = useRef<HTMLInputElement>(null);
-  const [formSettings, setFormSettings] = useState<FormSettings>(DEFAULT_FORM_SETTINGS);
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
   // State values for custom checkbox fields (keyed by field id)
   const [customFieldValues, setCustomFieldValues] = useState<Record<number, boolean>>({});
-
-  // Fetch admin-configured booking form field visibility
-  useEffect(() => {
-    fetch('/data/form-settings')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setFormSettings(d); })
-      .catch(() => {});
-  }, []);
 
   // Fetch admin-defined custom fields for this service slug
   useEffect(() => {
@@ -440,34 +418,32 @@ export default function BookingForm() {
 
     const serviceLabel = ST_LABELS[activeService] ?? activeST?.label ?? activeService;
     const msg = buildWhatsAppMessage(data, serviceLabel, activeService, b, lang);
-    const optionalLines: string[] = [];
-    if (formSettings.showLuggageCount && data.bagajSayisi?.trim())
-      optionalLines.push(`🧳 ${b.waLuggageCount ?? 'Bagaj'}: ${data.bagajSayisi}`);
-    if (formSettings.showChildSeatCount && data.cocukKoltugu?.trim())
-      optionalLines.push(`👶 ${b.waChildSeatCount ?? 'Çocuk Koltuğu'}: ${data.cocukKoltugu}`);
-    if (formSettings.showVehiclePreference && data.aracTercihi?.trim())
-      optionalLines.push(`🚗 ${b.waVehiclePreference ?? 'Araç Tercihi'}: ${data.aracTercihi}`);
-    if (formSettings.showAdditionalNotes && data.ekNotlar?.trim())
-      optionalLines.push(`📝 ${b.waAdditionalNotes ?? 'Ek Notlar'}: ${data.ekNotlar}`);
-    const waSuffix = optionalLines.length ? encodeURIComponent('\n' + optionalLines.join('\n')) : '';
-    const waUrl = `https://wa.me/${WA_NUMBER}?text=${msg}${waSuffix}`;
+    const waUrl = `https://wa.me/${WA_NUMBER}?text=${msg}`;
 
-    fetch('/data/submit-request', {
-      method:    'POST',
-      keepalive: true,
-      headers:   { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        intent:           'QUOTE',
-        serviceType:      activeService,
-        adSoyad:          data.adSoyad,
-        telefon:          data.telefon,
-        email:            data.email?.trim() ?? null,
-        newsletterConsent,
-        locale:           lang,
-        _hp:              honeypotRef.current?.value ?? '',
-        formData:         data,
-      }),
-    }).catch(() => {});
+    // Persist the request before navigating away. The timeout keeps WhatsApp as
+    // the primary journey even if a slow network/database cannot respond.
+    try {
+      await fetch('/data/submit-request', {
+        method:    'POST',
+        keepalive: true,
+        signal:    AbortSignal.timeout(2500),
+        headers:   { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          intent:           'QUOTE',
+          serviceType:      activeService,
+          adSoyad:          data.adSoyad,
+          telefon:          data.telefon,
+          email:            data.email?.trim() ?? null,
+          newsletterConsent,
+          locale:           lang,
+          _hp:              honeypotRef.current?.value ?? '',
+          formData:         data,
+        }),
+      });
+    } catch {
+      // Do not block a visitor from opening WhatsApp. The server keeps its
+      // keepalive request when possible and the next submission can be retried.
+    }
 
     // GA4: track every booking form submission with service type and originating page
     trackEvent('reservation_submit', {
@@ -483,7 +459,7 @@ export default function BookingForm() {
     <section
       id="rezervasyon"
       className="py-24 relative scroll-mt-24"
-      style={{ background: 'linear-gradient(160deg, #FDFBF6 0%, #EBF4FF 50%, #F3EFFD 100%)' }}
+      style={{ background: 'linear-gradient(160deg, #F8F0DF 0%, #E4F1F8 48%, #EEEAF8 100%)' }}
       data-testid="booking-section"
     >
       <div className="absolute top-0 left-0 right-0 h-px" style={{ background: '#D9E2EC' }} aria-hidden="true" />
@@ -824,49 +800,12 @@ export default function BookingForm() {
                 </div>
               </div>
 
-              {/* Optional Panel — admin-configured fields (shown only when admin enables them) */}
-              {(formSettings.showLuggageCount || formSettings.showChildSeatCount || formSettings.showVehiclePreference || formSettings.showAdditionalNotes || customFields.length > 0) && (
+              {/* Existing admin-defined custom fields remain available. The
+                  discontinued luggage/seat/vehicle/note controls are no longer
+                  rendered or included in the WhatsApp payload. */}
+              {customFields.length > 0 && (
                 <div className={panelA} data-testid="optional-fields-panel">
-                  <p className="text-xs tracking-[0.15em] uppercase mb-4 font-semibold" style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}>
-                    Ek Bilgiler
-                  </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-                    {formSettings.showLuggageCount && (
-                      <div>
-                        <label htmlFor="bf-bagaj" style={labelStyle}><Luggage size={12} aria-hidden="true" /> {b.luggageCount ?? 'Bagaj Sayısı'}</label>
-                        <input id="bf-bagaj" type="number" min="0" max="20" {...register('bagajSayisi')} className="vip-input"
-                          placeholder={b.luggageCountPlaceholder ?? 'Kaç parça bagaj?'} />
-                      </div>
-                    )}
-                    {formSettings.showChildSeatCount && (
-                      <div>
-                        <label htmlFor="bf-cocuk" style={labelStyle}><Users size={12} aria-hidden="true" /> {b.childSeatCount ?? 'Çocuk Koltuğu Sayısı'}</label>
-                        <input id="bf-cocuk" type="number" min="0" max="10" {...register('cocukKoltugu')} className="vip-input"
-                          placeholder={b.childSeatCountPlaceholder ?? '0'} />
-                      </div>
-                    )}
-                    {formSettings.showVehiclePreference && (
-                      <div>
-                        <label htmlFor="bf-arac" style={labelStyle}><Car size={12} aria-hidden="true" /> {b.vehiclePreference ?? 'Araç Tercihi'}</label>
-                        <select id="bf-arac" {...register('aracTercihi')} className="vip-input">
-                          <option value="">{b.vehiclePreferenceDefault ?? 'Belirtmek istemiyorum'}</option>
-                          <option value="Mercedes Vito">Mercedes Vito</option>
-                          <option value="Mercedes Sprinter VIP">Mercedes Sprinter VIP</option>
-                          <option value="Mercedes E-Class">Mercedes E-Class</option>
-                          <option value="Mercedes S-Class">Mercedes S-Class</option>
-                          <option value="Mercedes V-Class">Mercedes V-Class</option>
-                          <option value="VW Transporter">VW Transporter</option>
-                        </select>
-                      </div>
-                    )}
-                    {formSettings.showAdditionalNotes && (
-                      <div className={!formSettings.showVehiclePreference ? 'md:col-span-2' : ''}>
-                        <label htmlFor="bf-notlar" style={labelStyle}>{b.additionalNotes ?? 'Ek Notlar'}</label>
-                        <textarea id="bf-notlar" {...register('ekNotlar')} className="vip-input" rows={3}
-                          placeholder={b.additionalNotesPlaceholder ?? 'Özel istekler, notlar…'}
-                          style={{ resize: 'vertical', minHeight: '80px' }} />
-                      </div>
-                    )}
                     {/* Admin-defined custom fields */}
                     {customFields.map(field => (
                       <div key={field.id} className={field.fieldType === 'text' ? 'md:col-span-2' : ''}>

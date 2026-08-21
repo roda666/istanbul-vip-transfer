@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "next lint",
     "check:page-meta": "tsx scripts/check-page-meta.ts",
+    "check:locale-contamination": "node scripts/check-locale-contamination.mjs",
     "generate:page-meta": "tsx scripts/generate-page-meta.ts",
     "prebuild": "tsx scripts/check-page-meta.ts",
     "db:generate": "drizzle-kit generate",

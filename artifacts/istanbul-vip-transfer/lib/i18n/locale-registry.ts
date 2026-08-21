@@ -52,7 +52,7 @@ export const NON_SOURCE_LOCALES: readonly string[] = LOCALE_REGISTRY
 
 /**
  * Locale codes that have complete static UI dictionaries and can serve public pages.
- * All 9 registry locales now have dictionaries (task #103 shipped es/fr/it/nl).
+ * All 9 registry locales have static UI dictionaries.
  */
 export const RENDERABLE_LOCALES: readonly string[] = LOCALE_REGISTRY.map((l) => l.code);
 

@@ -171,6 +171,9 @@ function isArGuarded(lines, lineIdx) {
   if (/lang\s*===\s*['"]ar['"]/.test(context)) return true;
   // The line itself is an ar: key-value
   if (/^\s+ar\s*:/.test(lines[lineIdx] ?? '')) return true;
+  // Inline locale-label maps may live on one line, e.g.
+  // { en: 'English', ar: 'العربية' }. They are intentionally locale-keyed.
+  if (/\bar\s*:\s*['"][\u0600-\u06FF]/.test(lines[lineIdx] ?? '')) return true;
   return false;
 }
 

@@ -2,9 +2,9 @@
  * Single source of truth for the publicly visible locale set.
  *
  * A language is PUBLIC when it is both enabled AND published in the languages
- * table AND has a static UI dictionary (RENDERABLE_LOCALES).  The 4 new
- * languages es/fr/it/nl are enabled in the DB but isPublished=false until
- * their UI dictionaries ship (task "Complete UI dictionaries for es/fr/it/nl").
+ * table AND has a static UI dictionary (RENDERABLE_LOCALES). All nine registry
+ * locales currently have UI dictionaries; the database remains the switch that
+ * decides whether each target locale is public.
  *
  * Server-only — uses the database with a short in-memory cache and a static
  * fallback so public pages never break if the DB is unavailable.

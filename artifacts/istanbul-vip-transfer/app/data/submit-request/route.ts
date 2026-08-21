@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { sanitizeText } from '@/lib/sanitize';
+import { ALL_LOCALE_CODES } from '@/lib/i18n/locale-registry';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,10 +86,53 @@ const RequestSchema = z.object({
   telefon:           z.string().min(7).max(30),
   email:             z.string().max(254).nullable().optional(),
   newsletterConsent: z.boolean().optional().default(false),
-  locale:            z.string().min(2).max(5).optional().default('tr'),
+  locale:            z.enum(ALL_LOCALE_CODES).optional().default('tr'),
   _hp:               z.string().optional(),
   formData:          z.record(z.unknown()),
 });
+
+const DISCONTINUED_FORM_FIELDS = new Set([
+  'bagajSayisi',
+  'cocukKoltugu',
+  'aracTercihi',
+  'ekNotlar',
+  'ucusNumarasi',
+  'seyahatYonu',
+]);
+
+function getFormString(formData: Record<string, unknown>, key: string): string {
+  const value = formData[key];
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+/**
+ * Keep API validation aligned with the public form. Client validation improves
+ * feedback; these checks prevent direct POSTs from bypassing booking limits.
+ */
+function validateBookingConstraints(
+  formData: Record<string, unknown>,
+  serviceType: string,
+): string | null {
+  const passengers = Number(getFormString(formData, 'yolcuSayisi'));
+  if (!Number.isInteger(passengers) || passengers < 1 || passengers > 30) {
+    return 'Passenger count must be between 1 and 30.';
+  }
+
+  const minute = getFormString(formData, 'saatDakika');
+  if (!/^(00|05|10|15|20|25|30|35|40|45|50|55)$/.test(minute)) {
+    return 'Minutes must use five-minute increments.';
+  }
+
+  if (serviceType === 'ALLOCATION') {
+    const unit = getFormString(formData, 'tahsisSuresiUnit') || 'SAAT';
+    const duration = Number(getFormString(formData, 'tahsisSuresi'));
+    if (!Number.isFinite(duration) || duration <= 0 || (unit === 'SAAT' && duration < 4)) {
+      return 'Allocation duration must be at least 4 hours.';
+    }
+  }
+
+  return null;
+}
 
 // ── Consent text version ──────────────────────────────────────────────────────
 const CONSENT_VERSION = '2026-07-28-v1';
@@ -129,10 +173,20 @@ export async function POST(req: NextRequest) {
   }
 
   const normalizedEmail = normalizeEmail(data.email);
+  if (normalizedEmail && !z.string().email().safeParse(normalizedEmail).success) {
+    return NextResponse.json({ error: 'Invalid email address' }, { status: 422 });
+  }
 
-  // Sanitize service-specific data — cap each text field, strip scripts
+  const constraintError = validateBookingConstraints(data.formData, data.serviceType);
+  if (constraintError) {
+    return NextResponse.json({ error: constraintError }, { status: 422 });
+  }
+
+  // Sanitize service-specific data — cap each text field, strip scripts, and
+  // never retain fields that have been removed from the public form.
   const safeFormData: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(data.formData)) {
+    if (DISCONTINUED_FORM_FIELDS.has(k)) continue;
     if (typeof v === 'string') {
       safeFormData[k] = sanitizeText(v).slice(0, 500);
     } else {
@@ -161,11 +215,11 @@ export async function POST(req: NextRequest) {
       status:          'NEW',
     });
 
-    // Newsletter consent — only when explicitly checked and email is present
-    if (data.newsletterConsent && normalizedEmail) {
-      // Upsert subscriber (ignore duplicate on email)
+    // Keep every supplied email visible to the admin as a PENDING subscriber.
+    // Only explicit consent activates marketing eligibility and records GRANTED.
+    if (normalizedEmail) {
       const existing = await db
-        .select({ id: newsletterSubscribers.id })
+        .select({ id: newsletterSubscribers.id, status: newsletterSubscribers.status })
         .from(newsletterSubscribers)
         .where(eq(newsletterSubscribers.normalizedEmail, normalizedEmail))
         .limit(1);
@@ -174,31 +228,34 @@ export async function POST(req: NextRequest) {
 
       if (existing.length > 0) {
         subscriberId = existing[0].id;
-        // Re-activate if previously unsubscribed / pending
-        await db
-          .update(newsletterSubscribers)
-          .set({ status: 'ACTIVE', updatedAt: new Date() })
-          .where(eq(newsletterSubscribers.normalizedEmail, normalizedEmail));
+        if (data.newsletterConsent) {
+          await db
+            .update(newsletterSubscribers)
+            .set({ status: 'ACTIVE', updatedAt: new Date() })
+            .where(eq(newsletterSubscribers.normalizedEmail, normalizedEmail));
+        }
       } else {
         const [inserted] = await db.insert(newsletterSubscribers).values({
           normalizedEmail,
           name:              sanitizeText(data.adSoyad).slice(0, 120),
           preferredLanguage: data.locale ?? 'tr',
-          status:            'ACTIVE',
+          status:            data.newsletterConsent ? 'ACTIVE' : 'PENDING',
           source:            `booking-form:${data.serviceType}`,
         }).returning({ id: newsletterSubscribers.id });
         subscriberId = inserted.id;
       }
 
-      // Record consent event — use the visitor's actual locale, not a hardcoded 'tr'
-      await db.insert(newsletterConsentEvents).values({
-        subscriberId,
-        normalizedEmail,
-        action:             'GRANTED',
-        consentTextVersion: CONSENT_VERSION,
-        language:           data.locale ?? 'tr',
-        source:             `booking-form:${data.serviceType}`,
-      });
+      if (data.newsletterConsent) {
+        // Record consent event — use the visitor's actual locale, not a hardcoded 'tr'
+        await db.insert(newsletterConsentEvents).values({
+          subscriberId,
+          normalizedEmail,
+          action:             'GRANTED',
+          consentTextVersion: CONSENT_VERSION,
+          language:           data.locale ?? 'tr',
+          source:             `booking-form:${data.serviceType}`,
+        });
+      }
     }
 
     return NextResponse.json({ referenceNumber });

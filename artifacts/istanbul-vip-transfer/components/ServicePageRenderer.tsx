@@ -19,6 +19,8 @@ import { getPublishedServicePage } from '@/lib/service-page-cms';
 import { SLUG_TO_PAGE_KEY, TWO_CRUMB_SLUGS } from '@/lib/service-page-config';
 import { SITE } from '@/lib/site-config';
 import { getContactSettings, type ContactSettings } from '@/lib/site-settings-server';
+import { getDictionary } from '@/lib/i18n';
+import { getContentDirection, isolateLtrValues } from '@/lib/i18n/bidi';
 
 interface Props {
   slug: string;
@@ -122,7 +124,7 @@ const prose: React.CSSProperties = {
   color: '#374151',
 };
 
-function FeaturesBlock({ features, dir }: { features: string[]; dir?: string }) {
+function FeaturesBlock({ features, dir, lang }: { features: string[]; dir?: string; lang: string }) {
   if (!features || features.length === 0) return null;
   return (
     <section style={{ padding: '40px 24px', maxWidth: '900px', margin: '0 auto' }}>
@@ -163,7 +165,7 @@ function FeaturesBlock({ features, dir }: { features: string[]; dir?: string }) 
                 <path d="M1 4L3.5 6.5L9 1.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </span>
-            {f}
+            {isolateLtrValues(f, lang)}
           </li>
         ))}
       </ul>
@@ -171,15 +173,15 @@ function FeaturesBlock({ features, dir }: { features: string[]; dir?: string }) 
   );
 }
 
-function IntroSection({ text, dir }: { text: string; dir?: string }) {
+function IntroSection({ text, dir, lang }: { text: string; dir?: string; lang: string }) {
   return (
     <section style={{ padding: '48px 24px', maxWidth: '900px', margin: '0 auto' }}>
-      <p style={{ ...prose, margin: 0 }} dir={dir}>{text}</p>
+      <p style={{ ...prose, margin: 0 }} dir={dir}>{isolateLtrValues(text, lang)}</p>
     </section>
   );
 }
 
-function ContentSectionsBlock({ body, dir }: { body: ServicePageBody; dir?: string }) {
+function ContentSectionsBlock({ body, dir, lang }: { body: ServicePageBody; dir?: string; lang: string }) {
   const sections = body.contentSections;
   if (!sections || sections.length === 0) return null;
 
@@ -190,22 +192,22 @@ function ContentSectionsBlock({ body, dir }: { body: ServicePageBody; dir?: stri
           {s.headingLevel === 'h2' ? (
             <h2 style={{ fontFamily: 'Inter, sans-serif', fontSize: '24px', fontWeight: 700,
               color: '#1E293B', marginBottom: '14px' }} dir={dir}>
-              {s.heading}
+               {isolateLtrValues(s.heading, lang)}
             </h2>
           ) : (
             <h3 style={{ fontFamily: 'Inter, sans-serif', fontSize: '20px', fontWeight: 700,
               color: '#1E293B', marginBottom: '12px' }} dir={dir}>
-              {s.heading}
+               {isolateLtrValues(s.heading, lang)}
             </h3>
           )}
-          <p style={{ ...prose, margin: 0 }} dir={dir}>{s.body}</p>
+           <p style={{ ...prose, margin: 0 }} dir={dir}>{isolateLtrValues(s.body, lang)}</p>
         </div>
       ))}
     </section>
   );
 }
 
-function ServiceAreaBlock({ body, dir }: { body: ServicePageBody; dir?: string }) {
+function ServiceAreaBlock({ body, dir, lang }: { body: ServicePageBody; dir?: string; lang: string }) {
   const sa = body.serviceArea;
   if (!sa || (!sa.title && !sa.description && sa.areas.length === 0)) return null;
 
@@ -218,11 +220,11 @@ function ServiceAreaBlock({ body, dir }: { body: ServicePageBody; dir?: string }
         {sa.title && (
           <h2 style={{ fontFamily: 'Inter, sans-serif', fontSize: '22px', fontWeight: 700,
             color: '#1E293B', marginBottom: '12px' }} dir={dir}>
-            {sa.title}
+             {isolateLtrValues(sa.title, lang)}
           </h2>
         )}
         {sa.description && (
-          <p style={{ ...prose, marginBottom: '20px' }} dir={dir}>{sa.description}</p>
+           <p style={{ ...prose, marginBottom: '20px' }} dir={dir}>{isolateLtrValues(sa.description, lang)}</p>
         )}
         {sa.areas.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -232,7 +234,7 @@ function ServiceAreaBlock({ body, dir }: { body: ServicePageBody; dir?: string }
                 borderRadius: '20px', fontSize: '13px', fontFamily: 'Inter, sans-serif',
                 color: '#374151',
               }}>
-                {area}
+                 {isolateLtrValues(area, lang)}
               </span>
             ))}
           </div>
@@ -279,11 +281,11 @@ function FaqBlock({ body, dir, lang }: { body: ServicePageBody; dir?: string; la
               listStyle: 'none', display: 'flex', justifyContent: 'space-between',
               alignItems: 'center', paddingTop: '4px',
             }} dir={dir}>
-              {faq.question}
+               {isolateLtrValues(faq.question, lang ?? 'tr')}
               <span style={{ marginLeft: '8px', flexShrink: 0, color: '#C9A84C' }}>+</span>
             </summary>
             <p style={{ ...prose, marginTop: '12px', marginBottom: 0 }} dir={dir}>
-              {faq.answer}
+               {isolateLtrValues(faq.answer, lang ?? 'tr')}
             </p>
           </details>
         ))}
@@ -303,18 +305,20 @@ export default async function ServicePageRenderer({ slug, lang, canonicalPath }:
   const canonicalUrl = `${SITE.siteUrl}${canonicalPath ?? `/${lang}/${slug}`}`;
 
   // Determine text direction for RTL locales
-  const isRtl = lang === 'ar';
-  const dir   = isRtl ? 'rtl' : undefined;
+  const dir = getContentDirection(lang);
+  const dict = getDictionary(lang);
 
   if (dbPage?.body) {
     const { hero, faqs } = dbPage.body;
     const isTwoCrumb     = TWO_CRUMB_SLUGS.has(slug);
 
+    const homeHref = lang === 'tr' ? '/' : `/${lang}`;
+    const servicesHref = lang === 'tr' ? '/hizmetler' : `/${lang}/hizmetler`;
     const breadcrumbs = isTwoCrumb
-      ? [{ label: lang === 'tr' ? 'Ana Sayfa' : 'Home', href: `/${lang}` }, { label: hero.crumb }]
+      ? [{ label: dict.nav.home, href: homeHref }, { label: hero.crumb }]
       : [
-          { label: lang === 'tr' ? 'Ana Sayfa' : 'Home', href: `/${lang}` },
-          { label: lang === 'tr' ? 'Hizmetler' : 'Services', href: `/${lang}/hizmetler` },
+          { label: dict.nav.home, href: homeHref },
+          { label: dict.nav.services, href: servicesHref },
           { label: hero.crumb },
         ];
 
@@ -358,23 +362,23 @@ export default async function ServicePageRenderer({ slug, lang, canonicalPath }:
 
         {/* Introductory content */}
         {dbPage.body.introBody && (
-          <IntroSection text={dbPage.body.introBody} dir={dir} />
+          <IntroSection text={dbPage.body.introBody} dir={dir} lang={lang} />
         )}
 
         {/* Features list */}
         {dbPage.body.features && dbPage.body.features.length > 0 && (
-          <FeaturesBlock features={dbPage.body.features} dir={dir} />
+          <FeaturesBlock features={dbPage.body.features} dir={dir} lang={lang} />
         )}
 
         <CollapsibleBookingForm />
 
         {/* Rich content sections */}
-        <ContentSectionsBlock body={dbPage.body} dir={dir} />
+        <ContentSectionsBlock body={dbPage.body} dir={dir} lang={lang} />
 
         <VehicleFleet />
 
         {/* Service area */}
-        <ServiceAreaBlock body={dbPage.body} dir={dir} />
+        <ServiceAreaBlock body={dbPage.body} dir={dir} lang={lang} />
 
         {/* FAQ */}
         <FaqBlock body={dbPage.body} dir={dir} lang={lang} />

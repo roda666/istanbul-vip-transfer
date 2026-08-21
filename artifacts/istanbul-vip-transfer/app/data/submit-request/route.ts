@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { sanitizeText } from '@/lib/sanitize';
 import { ALL_LOCALE_CODES } from '@/lib/i18n/locale-registry';
+import { isFiveMinuteIncrement, isValidPassengerCount, meetsAllocationMinimum } from '@/lib/booking-rules';
 
 export const dynamic = 'force-dynamic';
 
@@ -113,20 +114,18 @@ function validateBookingConstraints(
   formData: Record<string, unknown>,
   serviceType: string,
 ): string | null {
-  const passengers = Number(getFormString(formData, 'yolcuSayisi'));
-  if (!Number.isInteger(passengers) || passengers < 1 || passengers > 30) {
+  if (!isValidPassengerCount(getFormString(formData, 'yolcuSayisi'))) {
     return 'Passenger count must be between 1 and 30.';
   }
 
   const minute = getFormString(formData, 'saatDakika');
-  if (!/^(00|05|10|15|20|25|30|35|40|45|50|55)$/.test(minute)) {
+  if (!isFiveMinuteIncrement(minute)) {
     return 'Minutes must use five-minute increments.';
   }
 
   if (serviceType === 'ALLOCATION') {
     const unit = getFormString(formData, 'tahsisSuresiUnit') || 'SAAT';
-    const duration = Number(getFormString(formData, 'tahsisSuresi'));
-    if (!Number.isFinite(duration) || duration <= 0 || (unit === 'SAAT' && duration < 4)) {
+    if (!meetsAllocationMinimum(getFormString(formData, 'tahsisSuresi'), unit)) {
       return 'Allocation duration must be at least 4 hours.';
     }
   }
@@ -215,9 +214,9 @@ export async function POST(req: NextRequest) {
       status:          'NEW',
     });
 
-    // Keep every supplied email visible to the admin as a PENDING subscriber.
-    // Only explicit consent activates marketing eligibility and records GRANTED.
-    if (normalizedEmail) {
+    // A reservation is always retained, but marketing data is created only
+    // after explicit opt-in. No PENDING subscriber is created for non-consent.
+    if (normalizedEmail && data.newsletterConsent) {
       const existing = await db
         .select({ id: newsletterSubscribers.id, status: newsletterSubscribers.status })
         .from(newsletterSubscribers)
@@ -228,34 +227,30 @@ export async function POST(req: NextRequest) {
 
       if (existing.length > 0) {
         subscriberId = existing[0].id;
-        if (data.newsletterConsent) {
-          await db
-            .update(newsletterSubscribers)
-            .set({ status: 'ACTIVE', updatedAt: new Date() })
-            .where(eq(newsletterSubscribers.normalizedEmail, normalizedEmail));
-        }
+        await db
+          .update(newsletterSubscribers)
+          .set({ status: 'ACTIVE', updatedAt: new Date() })
+          .where(eq(newsletterSubscribers.normalizedEmail, normalizedEmail));
       } else {
         const [inserted] = await db.insert(newsletterSubscribers).values({
           normalizedEmail,
           name:              sanitizeText(data.adSoyad).slice(0, 120),
           preferredLanguage: data.locale ?? 'tr',
-          status:            data.newsletterConsent ? 'ACTIVE' : 'PENDING',
+          status:            'ACTIVE',
           source:            `booking-form:${data.serviceType}`,
         }).returning({ id: newsletterSubscribers.id });
         subscriberId = inserted.id;
       }
 
-      if (data.newsletterConsent) {
-        // Record consent event — use the visitor's actual locale, not a hardcoded 'tr'
-        await db.insert(newsletterConsentEvents).values({
-          subscriberId,
-          normalizedEmail,
-          action:             'GRANTED',
-          consentTextVersion: CONSENT_VERSION,
-          language:           data.locale ?? 'tr',
-          source:             `booking-form:${data.serviceType}`,
-        });
-      }
+      // Record consent event — use the visitor's actual locale, not a hardcoded 'tr'
+      await db.insert(newsletterConsentEvents).values({
+        subscriberId,
+        normalizedEmail,
+        action:             'GRANTED',
+        consentTextVersion: CONSENT_VERSION,
+        language:           data.locale ?? 'tr',
+        source:             `booking-form:${data.serviceType}`,
+      });
     }
 
     return NextResponse.json({ referenceNumber });

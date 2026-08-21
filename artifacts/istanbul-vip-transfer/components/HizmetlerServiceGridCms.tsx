@@ -15,6 +15,7 @@ import { ArrowRight, ArrowLeft } from 'lucide-react';
 import { getPublishedServiceList } from '@/lib/service-page-cms-list';
 import { getServiceCategories, type ServiceCategoryItem } from '@/lib/service-category-server';
 import { RTL_LOCALES } from '@/lib/i18n/locale-registry';
+import { isolateLtrValues } from '@/lib/i18n/bidi';
 
 /** Empty-state strings in each locale. */
 const EMPTY_MSG: Record<string, string> = {
@@ -39,6 +40,12 @@ const MORE_LABEL: Record<string, string> = {
   es: 'Ver detalles',
   it: 'Visualizza dettagli',
   nl: 'Details bekijken',
+};
+
+const OTHER_LABEL: Record<string, string> = {
+  tr: 'Diğer Hizmetler', en: 'Other Services', de: 'Weitere Dienstleistungen',
+  ru: 'Другие услуги', ar: 'خدمات أخرى', fr: 'Autres services',
+  es: 'Otros servicios', it: 'Altri servizi', nl: 'Andere diensten',
 };
 
 function serviceHref(slug: string, locale: string): string {
@@ -93,7 +100,7 @@ export default async function HizmetlerServiceGridCms({ locale, categories: cats
       {sortedGroups.map((cat, catIdx) => {
         const items = grouped.get(cat)!;
         const groupLabel = cat === '__other__'
-          ? (locale === 'tr' ? 'Diğer Hizmetler' : 'Other Services')
+          ? (OTHER_LABEL[locale] ?? OTHER_LABEL.en)
           : (catLabelMap[cat] ?? cat);
 
         return (
@@ -112,7 +119,7 @@ export default async function HizmetlerServiceGridCms({ locale, categories: cats
                 borderBottom: '1px solid rgba(201,168,76,0.18)',
               }}
             >
-              {groupLabel}
+               {isolateLtrValues(groupLabel, locale)}
             </h2>
 
             {/* Service cards grid */}
@@ -156,7 +163,7 @@ export default async function HizmetlerServiceGridCms({ locale, categories: cats
                       {svc.heroImage ? (
                         <Image
                           src={svc.heroImage}
-                          alt={svc.title}
+                           alt={isolateLtrValues(svc.title, locale)}
                           fill
                           className="object-cover"
                           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 340px"
@@ -216,7 +223,7 @@ export default async function HizmetlerServiceGridCms({ locale, categories: cats
                           margin: 0,
                         }}
                       >
-                        {svc.title}
+                         {isolateLtrValues(svc.title, locale)}
                       </h3>
 
                       {svc.excerpt && (
@@ -233,7 +240,7 @@ export default async function HizmetlerServiceGridCms({ locale, categories: cats
                             overflow: 'hidden',
                           }}
                         >
-                          {svc.excerpt}
+                           {isolateLtrValues(svc.excerpt, locale)}
                         </p>
                       )}
 

@@ -17,6 +17,14 @@ import {
 } from 'lucide-react';
 import LocationCombobox from './LocationCombobox';
 import { useLang } from '@/lib/i18n/context';
+import { formatServiceDate } from '@/lib/booking-date';
+import {
+  isFiveMinuteIncrement,
+  isValidPassengerCount,
+  meetsAllocationMinimum,
+  MIN_ALLOCATION_HOURS,
+} from '@/lib/booking-rules';
+import { isolateLtrValues } from '@/lib/i18n/bidi';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -73,12 +81,11 @@ function buildSchema(b: import('@/lib/i18n/types').Dictionary['booking']) {
     tarih:      z.string().min(1, b.requiredDate),
     saatSaat:   z.string().min(1, b.requiredHour),
     saatDakika: z.string().min(1, b.requiredMinute)
-      .refine((v) => parseInt(v, 10) % 5 === 0, { message: b.minuteMultipleError }),
+      .refine(isFiveMinuteIncrement, { message: b.minuteMultipleError }),
     yolcuSayisi: z.string()
       .min(1, b.requiredPassengers)
       .refine((value) => {
-        const count = Number(value);
-        return Number.isInteger(count) && count >= 1 && count <= 30;
+        return isValidPassengerCount(value);
       }, { message: b.requiredPassengers }),
     adSoyad:     z.string().min(2, b.requiredName),
     telefon:     z.string().min(10, b.requiredPhone),
@@ -152,23 +159,6 @@ const durationRowStyle: React.CSSProperties = {
   alignItems: 'stretch',
 };
 
-// ── Service date formatter ────────────────────────────────────────────────────
-
-/**
- * Formats a stored YYYY-MM-DD service date for display to the customer.
- * Parses year/month/day separately to avoid any UTC offset shifting the
- * calendar day (e.g. midnight Istanbul = previous UTC day).
- * WhatsApp requests always use DD/MM/YYYY, independent of the page locale.
- * A single format keeps dispatch and driver communication unambiguous.
- */
-function formatServiceDate(isoDate: string, locale: string): string {
-  const parts = isoDate.split('-');
-  if (parts.length !== 3) return isoDate;
-  const [year, month, day] = parts;
-  void locale;
-  return `${day}/${month}/${year}`;
-}
-
 // ── WhatsApp message builder ──────────────────────────────────────────────────
 
 function buildWhatsAppMessage(
@@ -178,55 +168,56 @@ function buildWhatsAppMessage(
   b: import('@/lib/i18n/types').Dictionary['booking'],
   locale: string,
 ): string {
+  const displayValue = (value: string | undefined) => isolateLtrValues(value ?? '', locale);
   const saat      = `${data.saatSaat}:${data.saatDakika}`;
   const fmtDate   = formatServiceDate(data.tarih, locale);
   const lines: string[] = [];
 
-  lines.push(b.waHeading, `${b.waService}: ${serviceLabel}`, '');
+  lines.push(b.waHeading, `${b.waService}: ${displayValue(serviceLabel)}`, '');
 
   if (activeService === 'AIRPORT_TRANSFER') {
-    lines.push(`${b.waPickup}: ${data.alisLokasyonu}`);
-    if (data.alisAdresi?.trim())  lines.push(`${b.waPickupAddress}: ${data.alisAdresi}`);
-    lines.push(`${b.waDropoff}: ${data.varisLokasyonu}`);
-    if (data.varisAdresi?.trim()) lines.push(`${b.waDropoffAddress}: ${data.varisAdresi}`);
-    lines.push(`${b.waDate}: ${fmtDate}`, `${b.waTime}: ${saat}`);
+    lines.push(`${b.waPickup}: ${displayValue(data.alisLokasyonu)}`);
+    if (data.alisAdresi?.trim())  lines.push(`${b.waPickupAddress}: ${displayValue(data.alisAdresi)}`);
+    lines.push(`${b.waDropoff}: ${displayValue(data.varisLokasyonu)}`);
+    if (data.varisAdresi?.trim()) lines.push(`${b.waDropoffAddress}: ${displayValue(data.varisAdresi)}`);
+    lines.push(`${b.waDate}: ${displayValue(fmtDate)}`, `${b.waTime}: ${displayValue(saat)}`);
 
   } else if (activeService === 'INTERCITY') {
-    lines.push(`${b.waDepartureCity}: ${data.kalkisIli}`);
-    if (data.kalkisAdres?.trim()) lines.push(`${b.waDepartureAddress}: ${data.kalkisAdres}`);
-    lines.push(`${b.waArrivalCity}: ${data.varisIli}`);
-    if (data.varisAdres?.trim())  lines.push(`${b.waArrivalAddress}: ${data.varisAdres}`);
-    lines.push(`${b.waDate}: ${fmtDate}`, `${b.waTime}: ${saat}`);
+    lines.push(`${b.waDepartureCity}: ${displayValue(data.kalkisIli)}`);
+    if (data.kalkisAdres?.trim()) lines.push(`${b.waDepartureAddress}: ${displayValue(data.kalkisAdres)}`);
+    lines.push(`${b.waArrivalCity}: ${displayValue(data.varisIli)}`);
+    if (data.varisAdres?.trim())  lines.push(`${b.waArrivalAddress}: ${displayValue(data.varisAdres)}`);
+    lines.push(`${b.waDate}: ${displayValue(fmtDate)}`, `${b.waTime}: ${displayValue(saat)}`);
 
   } else if (activeService === 'ALLOCATION') {
-    lines.push(`${b.waPickup}: ${data.alisLokasyonu}`);
-    if (data.alisAdresi?.trim())  lines.push(`${b.waPickupAddress}: ${data.alisAdresi}`);
-    lines.push(`${b.waStartDate}: ${fmtDate}`, `${b.waStartTime}: ${saat}`);
+    lines.push(`${b.waPickup}: ${displayValue(data.alisLokasyonu)}`);
+    if (data.alisAdresi?.trim())  lines.push(`${b.waPickupAddress}: ${displayValue(data.alisAdresi)}`);
+    lines.push(`${b.waStartDate}: ${displayValue(fmtDate)}`, `${b.waStartTime}: ${displayValue(saat)}`);
     if (data.tahsisSuresi) {
       const unit = data.tahsisSuresiUnit === 'GUN' ? b.waDays : b.waHours;
-      lines.push(`${b.waDuration}: ${data.tahsisSuresi} ${unit}`);
+       lines.push(`${b.waDuration}: ${displayValue(data.tahsisSuresi)} ${unit}`);
     }
     if (data.rotaAciklama?.trim()) lines.push(`${b.waRouteDescription}: ${data.rotaAciklama}`);
 
   } else if (activeService === 'TOUR') {
-    lines.push(`${b.waPickup}: ${data.alisLokasyonu}`);
-    if (data.alisAdresi?.trim())  lines.push(`${b.waPickupAddress}: ${data.alisAdresi}`);
-    lines.push(`${b.waTourRoute}: ${data.talepsRota}`);
-    if (data.talepsYerler?.trim()) lines.push(`${b.waTourPlaces}: ${data.talepsYerler}`);
-    lines.push(`${b.waDate}: ${fmtDate}`, `${b.waStartTime}: ${saat}`);
+    lines.push(`${b.waPickup}: ${displayValue(data.alisLokasyonu)}`);
+    if (data.alisAdresi?.trim())  lines.push(`${b.waPickupAddress}: ${displayValue(data.alisAdresi)}`);
+    lines.push(`${b.waTourRoute}: ${displayValue(data.talepsRota)}`);
+    if (data.talepsYerler?.trim()) lines.push(`${b.waTourPlaces}: ${displayValue(data.talepsYerler)}`);
+    lines.push(`${b.waDate}: ${displayValue(fmtDate)}`, `${b.waStartTime}: ${displayValue(saat)}`);
     if (data.planlananSure?.trim()) {
       const unit = data.planlananSureUnit === 'GUN' ? b.waDays : b.waHours;
-      lines.push(`${b.waPlannedDuration}: ${data.planlananSure} ${unit}`);
+       lines.push(`${b.waPlannedDuration}: ${displayValue(data.planlananSure)} ${unit}`);
     }
   }
 
   lines.push(
     '',
-    `${b.waPassengers}: ${data.yolcuSayisi} ${b.passengerSuffix}`,
-    `${b.waFullName}: ${data.adSoyad}`,
-    `${b.waPhone}: ${data.telefon}`,
+    `${b.waPassengers}: ${displayValue(data.yolcuSayisi)} ${b.passengerSuffix}`,
+    `${b.waFullName}: ${displayValue(data.adSoyad)}`,
+    `${b.waPhone}: ${displayValue(data.telefon)}`,
   );
-  if (data.email?.trim()) lines.push(`${b.waEmail}: ${data.email.trim()}`);
+  if (data.email?.trim()) lines.push(`${b.waEmail}: ${displayValue(data.email.trim())}`);
 
   return encodeURIComponent(lines.join('\n'));
 }
@@ -390,7 +381,7 @@ export default function BookingForm() {
       const n = parseInt(data.tahsisSuresi ?? '', 10);
       if (!data.tahsisSuresi?.trim() || isNaN(n) || n < 1) {
         setError('tahsisSuresi', { message: b.requiredDuration }); valid = false;
-      } else if (data.tahsisSuresiUnit === 'SAAT' && n < 4) {
+      } else if (!meetsAllocationMinimum(n, data.tahsisSuresiUnit)) {
         setError('tahsisSuresi', { message: b.minAllocationDuration }); valid = false;
       }
     } else if (activeService === 'TOUR') {
@@ -632,7 +623,7 @@ export default function BookingForm() {
                       <div style={durationRowStyle}>
                         <input
                           type="number"
-                          min={tahsisSuresiUnit === 'SAAT' ? 4 : 1}
+                          min={tahsisSuresiUnit === 'SAAT' ? MIN_ALLOCATION_HOURS : 1}
                           step="1"
                           inputMode="numeric"
                           aria-label={b.allocationDurationAmountLabel}

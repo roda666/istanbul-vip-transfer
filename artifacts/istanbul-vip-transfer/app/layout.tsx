@@ -8,6 +8,8 @@ import { SITE } from '@/lib/site-config';
 import { getServiceVisibilityMap } from '@/lib/service-page-cms';
 import { getContactSettings } from '@/lib/site-settings-server';
 import { SiteSettingsProvider } from '@/components/SiteSettingsContext';
+import { headers } from 'next/headers';
+import { getLangDir, isValidLang } from '@/lib/i18n';
 
 /**
  * Self-hosted via next/font — eliminates the external Google Fonts request
@@ -63,6 +65,10 @@ export const dynamic = 'force-dynamic';
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const requestHeaders = await headers();
+  const requestedLang = requestHeaders.get('x-ivt-lang') ?? 'tr';
+  const initialLang = isValidLang(requestedLang) ? requestedLang : 'tr';
+
   // Fetch nav visibility server-side so Header can filter showInNav=false items.
   // Gracefully falls back to an empty array (all nav items shown) if DB is unavailable.
   const [visibilityMap, contactSettings] = await Promise.all([
@@ -74,13 +80,7 @@ export default async function RootLayout({
     .map(([slug]) => slug);
 
   return (
-    /*
-     * suppressHydrationWarning is required because [lang]/layout.tsx
-     * injects a synchronous <script> that updates html[lang] and html[dir]
-     * for non-Turkish pages before React hydration. Without this attribute
-     * React would warn about the attribute mismatch.
-     */
-    <html lang="tr" dir="ltr" suppressHydrationWarning className={`${playfairDisplay.variable} ${inter.variable}`}>
+    <html lang={initialLang} dir={getLangDir(initialLang)} className={`${playfairDisplay.variable} ${inter.variable}`}>
       <body
         className="grain-overlay"
         style={{ backgroundColor: 'var(--pub-page-bg, #F7F5EF)', minHeight: '100dvh' }}
@@ -88,7 +88,7 @@ export default async function RootLayout({
         {/* PublicLayoutWrapper conditionally adds Header/Footer for public routes.
             Admin routes render their own layout without public chrome. */}
         <SiteSettingsProvider settings={contactSettings}>
-          <PublicLayoutWrapper hiddenNavSlugs={hiddenNavSlugs}>{children}</PublicLayoutWrapper>
+          <PublicLayoutWrapper initialLang={initialLang} hiddenNavSlugs={hiddenNavSlugs}>{children}</PublicLayoutWrapper>
         </SiteSettingsProvider>
         {/*
          * Privacy-friendly Core Web Vitals reporter — no external service or key.

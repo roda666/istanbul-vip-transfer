@@ -110,6 +110,16 @@ function isExemptFromLocale(pathname: string): boolean {
   );
 }
 
+/**
+ * Forward the URL locale to the root server layout. The public chrome then has
+ * the same locale on its first server and client render.
+ */
+function localizedResponse(request: NextRequest, locale: string): NextResponse {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-ivt-lang', locale);
+  return NextResponse.next({ request: { headers: requestHeaders } });
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -236,7 +246,10 @@ export async function middleware(request: NextRequest) {
   const firstSegment = pathname.split('/')[1] ?? '';
   const urlLang: string | null = isNonTrLang(firstSegment) ? firstSegment : null;
 
-  const response = NextResponse.next();
+  const response = localizedResponse(
+    request,
+    urlLang && isRenderableNonTrLang(urlLang) ? urlLang : 'tr',
+  );
   const cookieOpts = {
     path:     '/',
     maxAge:   60 * 60 * 24 * 365,  // 1 year

@@ -18,10 +18,13 @@ import CookieConsentBanner from './CookieConsentBanner';
 export default function PublicLayoutWrapper({
   children,
   hiddenNavSlugs,
+  initialLang,
 }: {
   children: React.ReactNode;
   /** Slugs where admin set showInNav=false — fetched by root server layout. */
   hiddenNavSlugs?: string[];
+  /** Resolved by middleware so the shared public chrome hydrates consistently. */
+  initialLang: string;
 }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith('/admin');
@@ -32,7 +35,7 @@ export default function PublicLayoutWrapper({
   }
 
   return (
-    <LangProvider>
+    <LangProvider forceLang={initialLang}>
       <Header hiddenNavSlugs={hiddenNavSlugs} />
       <main>{children}</main>
       <Footer hiddenNavSlugs={hiddenNavSlugs} />

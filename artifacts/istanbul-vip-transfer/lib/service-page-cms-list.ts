@@ -68,9 +68,7 @@ export async function getPublishedServiceList(
       .select({
         slug:         content.slug,
         txTitle:      contentTranslations.title,
-        srcTitle:     content.title,
         txExcerpt:    contentTranslations.excerpt,
-        srcExcerpt:   content.excerpt,
         category:     content.category,
         displayOrder: content.displayOrder,
         heroImage:    content.heroImage,
@@ -93,14 +91,16 @@ export async function getPublishedServiceList(
       ))
       .orderBy(asc(content.displayOrder));
 
-    return rows.map((r) => ({
-      slug:         r.slug,
-      title:        r.txTitle ?? r.srcTitle,
-      excerpt:      r.txExcerpt ?? r.srcExcerpt ?? null,
-      category:     r.category ?? null,
-      displayOrder: r.displayOrder ?? 99,
-      heroImage:    r.heroImage ?? null,
-    }));
+    return rows
+      .filter((r): r is typeof r & { txTitle: string } => Boolean(r.txTitle))
+      .map((r) => ({
+        slug:         r.slug,
+        title:        r.txTitle,
+        excerpt:      r.txExcerpt ?? null,
+        category:     r.category ?? null,
+        displayOrder: r.displayOrder ?? 99,
+        heroImage:    r.heroImage ?? null,
+      }));
   } catch {
     return [];
   }

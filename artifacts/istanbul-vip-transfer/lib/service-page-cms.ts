@@ -117,20 +117,26 @@ export async function getPublishedServicePage(
 
     if (!tx) return null;
 
+    // A locale page must never combine a target-language shell with Turkish
+    // fields. Missing core translation data is represented by null so callers
+    // can show a localized unavailable state instead.
+    const translatedBody = parseServicePageBody(tx.body);
+    if (!tx.title || !translatedBody) return null;
+
     return {
       id:             src.id,
       slug:           src.slug,
-      title:          tx.title ?? src.title,
-      excerpt:        tx.excerpt ?? src.excerpt ?? null,
+      title:          tx.title,
+      excerpt:        tx.excerpt ?? null,
       heroImage:      src.heroImage ?? null,
-      heroImageAlt:   tx.imageAlt ?? src.heroImageAlt ?? null,
+      heroImageAlt:   tx.imageAlt ?? null,
       ogImage:        src.ogImage ?? null,
-      seoTitle:       tx.metaTitle ?? src.seoTitle ?? null,
-      seoDescription: tx.metaDescription ?? src.seoDescription ?? null,
+      seoTitle:       tx.metaTitle ?? null,
+      seoDescription: tx.metaDescription ?? null,
       indexable:      src.indexable,
       isActive:       src.isActive,
       category:       src.category ?? null,
-      body:           parseServicePageBody(tx.body) ?? parseServicePageBody(src.body),
+      body:           translatedBody,
       translationStatus: tx.status === 'OUTDATED' ? 'OUTDATED' : null,
     };
   } catch {

@@ -14,6 +14,7 @@ const BASE_URL = process.env.BASE_URL ?? `http://localhost:${PORT}`;
 
 export default defineConfig({
   testDir:   './tests',
+  testMatch: '**/*.spec.ts',
   timeout:   30_000,
   retries:   1,
   workers:   4,

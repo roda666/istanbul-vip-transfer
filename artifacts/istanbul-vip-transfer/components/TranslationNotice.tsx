@@ -20,41 +20,41 @@ interface Props {
 const MESSAGES: Record<string, { outdated: string; missing: string }> = {
   en: {
     outdated: 'This page has been recently updated. A fresh translation is on the way.',
-    missing:  'This page is not yet available in English. Currently showing Turkish content.',
+    missing:  'This page is not yet available in English. Untranslated content is hidden.',
   },
   de: {
     outdated: 'Diese Seite wurde kürzlich aktualisiert. Eine neue Übersetzung ist in Arbeit.',
-    missing:  'Diese Seite ist noch nicht auf Deutsch verfügbar. Es wird der türkische Inhalt angezeigt.',
+    missing:  'Diese Seite ist noch nicht auf Deutsch verfügbar. Nicht übersetzte Inhalte sind ausgeblendet.',
   },
   ru: {
     outdated: 'Эта страница была недавно обновлена. Новый перевод готовится.',
-    missing:  'Эта страница пока недоступна на русском языке. Отображается турецкий контент.',
+    missing:  'Эта страница пока недоступна на русском языке. Непереведённый контент скрыт.',
   },
   ar: {
     outdated: 'تم تحديث هذه الصفحة مؤخراً. الترجمة الجديدة قيد الإعداد.',
-    missing:  'هذه الصفحة غير متوفرة باللغة العربية حتى الآن. يتم عرض المحتوى التركي.',
+    missing:  'هذه الصفحة غير متوفرة باللغة العربية حتى الآن. تم إخفاء المحتوى غير المترجم.',
   },
   fr: {
     outdated: 'Cette page a été récemment mise à jour. Une nouvelle traduction est en cours.',
-    missing:  'Cette page n\'est pas encore disponible en français. Le contenu turc est affiché.',
+    missing:  'Cette page n\'est pas encore disponible en français. Le contenu non traduit est masqué.',
   },
   es: {
     outdated: 'Esta página fue actualizada recientemente. Se está preparando una nueva traducción.',
-    missing:  'Esta página aún no está disponible en español. Se muestra el contenido en turco.',
+    missing:  'Esta página aún no está disponible en español. El contenido sin traducir está oculto.',
   },
   it: {
     outdated: 'Questa pagina è stata aggiornata di recente. È in arrivo una nuova traduzione.',
-    missing:  'Questa pagina non è ancora disponibile in italiano. Viene mostrato il contenuto in turco.',
+    missing:  'Questa pagina non è ancora disponibile in italiano. Il contenuto non tradotto è nascosto.',
   },
   nl: {
     outdated: 'Deze pagina is recentelijk bijgewerkt. Een nieuwe vertaling is onderweg.',
-    missing:  'Deze pagina is nog niet beschikbaar in het Nederlands. De Turkse inhoud wordt weergegeven.',
+    missing:  'Deze pagina is nog niet beschikbaar in het Nederlands. Niet-vertaalde inhoud is verborgen.',
   },
 };
 
 const FALLBACK = {
   outdated: 'This page was recently updated. A fresh translation is on the way.',
-  missing:  'This page is not yet available in your language. Currently showing Turkish content.',
+  missing:  'This page is not yet available in your language. Untranslated content is hidden.',
 };
 
 export default function TranslationNotice({ status, lang }: Props) {

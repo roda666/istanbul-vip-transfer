@@ -7,6 +7,7 @@ import { ChevronRight } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
 import { localePath } from '@/lib/locale-path';
 import type { Dictionary } from '@/lib/i18n/types';
+import { isolateLtrValues } from '@/lib/i18n/bidi';
 
 // ── PageKey support ───────────────────────────────────────────────────────────
 // Server Components cannot call useLang(). Instead of passing hardcoded Turkish
@@ -125,6 +126,7 @@ export default function PageHero(props: PageHeroProps) {
     subtitle    = props.subtitle;
     breadcrumbs = props.breadcrumbs;
   }
+  const display = (value: string) => isolateLtrValues(value, lang);
 
   return (
     <section
@@ -155,7 +157,7 @@ export default function PageHero(props: PageHeroProps) {
               color: '#A07820',
               border: '1px solid rgba(199,154,53,0.3)',
             }}>
-              {badge}
+              {display(badge)}
             </span>
           </div>
         )}
@@ -176,11 +178,11 @@ export default function PageHero(props: PageHeroProps) {
                   onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#C79A35'; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#50677A'; }}
                 >
-                  {crumb.label}
+                  {display(crumb.label)}
                 </Link>
               ) : (
                 <span style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}>
-                  {crumb.label}
+                  {display(crumb.label)}
                 </span>
               )}
             </span>
@@ -192,7 +194,7 @@ export default function PageHero(props: PageHeroProps) {
           className="ivt-ph-h1 text-3xl sm:text-4xl md:text-6xl font-bold mb-6"
           style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43', lineHeight: 1.15 }}
         >
-          {title}
+          {display(title)}
         </h1>
 
         {/* Gold accent bar */}
@@ -206,7 +208,7 @@ export default function PageHero(props: PageHeroProps) {
             className="ivt-ph-sub text-base md:text-lg max-w-2xl mx-auto leading-relaxed"
             style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
           >
-            {subtitle}
+            {display(subtitle)}
           </p>
         )}
 
@@ -217,7 +219,7 @@ export default function PageHero(props: PageHeroProps) {
           >
             <Image
               src={heroImage}
-              alt={heroImageAlt ?? title}
+              alt={display(heroImageAlt ?? title)}
               fill
               className="object-cover"
               sizes="(max-width: 768px) 100vw, 720px"

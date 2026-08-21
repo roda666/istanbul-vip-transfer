@@ -43,3 +43,5 @@
 - [Social OAuth public origin](social-oauth-public-origin.md) — build callbacks and error redirects from forwarded public host with forced HTTPS.
 - [Social publishing public assets](social-publishing-public-assets.md) — resolve test images against the active public origin, not a fixed site hostname.
 - [Admin audit resilience](admin-audit-resilience.md) — audit failures stay observable but never alter authorization; persist only normalized, allowlisted route categories.
+- [Playwright Nix dependencies](playwright-nix-dependencies.md) — headless Chromium needs explicit Nix shared libraries; verify with ldd before treating browser failures as app regressions.
+- [Nine-language product baseline](nine-language-baseline.md) — Turkish source plus EN/DE/RU/AR/FR/ES/IT/NL is the required public-language scope for future work.

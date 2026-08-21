@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Users, Luggage, Wifi, Wind, UserCheck, Droplets, Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
+import { isolateLtrValues } from '@/lib/i18n/bidi';
 
 const FEATURE_ICON_MAP: Record<string, React.ElementType> = {
   WIFI:       Wifi,
@@ -58,13 +59,14 @@ function adaptDbVehicle(vehicle: DbVehicle): DisplayVehicle {
 }
 
 /** Single vehicle card (extracted for carousel use) */
-function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage: lugLabel, scrollToBooking }: {
+function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage: lugLabel, lang, scrollToBooking }: {
   vehicle: DisplayVehicle;
   i: number;
   cta: string;
   popular: string;
   passengers: string;
   luggage: string;
+  lang: string;
   scrollToBooking: () => void;
 }) {
   return (
@@ -128,16 +130,16 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
           className="text-xs tracking-[0.2em] uppercase font-semibold block mb-1"
           style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
         >
-          {vehicle.tagline}
+          {isolateLtrValues(vehicle.tagline, lang)}
         </span>
         <h3
           className="text-xl font-bold mb-2"
           style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}
         >
-          {vehicle.name}
+          {isolateLtrValues(vehicle.name, lang)}
         </h3>
         <p className="text-sm mb-4 leading-relaxed" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
-          {vehicle.description}
+          {isolateLtrValues(vehicle.description, lang)}
         </p>
 
         {/* Capacity */}
@@ -148,13 +150,13 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
           <div className="flex items-center gap-1.5">
             <Users size={14} style={{ color: '#C99A32' }} aria-hidden="true" />
             <span className="text-sm" style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}>
-              <strong style={{ color: '#C99A32' }}>{vehicle.passengers}</strong> {passLabel}
+              <strong dir="ltr" style={{ color: '#C99A32', unicodeBidi: 'isolate' }}>{vehicle.passengers}</strong> {passLabel}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             <Luggage size={14} style={{ color: '#C99A32' }} aria-hidden="true" />
             <span className="text-sm" style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}>
-              <strong style={{ color: '#C99A32' }}>{vehicle.luggage}</strong> {lugLabel}
+              <strong dir="ltr" style={{ color: '#C99A32', unicodeBidi: 'isolate' }}>{vehicle.luggage}</strong> {lugLabel}
             </span>
           </div>
         </div>
@@ -172,7 +174,7 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
               }}
             >
               <feature.icon size={11} style={{ color: '#C79A35' }} aria-hidden="true" />
-              <span className="text-xs" style={{ color: '#263F55' }}>{feature.label}</span>
+              <span className="text-xs" style={{ color: '#263F55' }}>{isolateLtrValues(feature.label, lang)}</span>
             </div>
           ))}
         </div>
@@ -210,7 +212,7 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
 }
 
 export default function VehicleFleet() {
-  const { dict } = useLang();
+  const { dict, lang } = useLang();
   const v = dict.vehicles;
   const trackRef = useRef<HTMLDivElement>(null);
   const [canPrev, setCanPrev] = useState(false);
@@ -418,6 +420,7 @@ export default function VehicleFleet() {
                 popular={v.popular}
                 passengers={v.passengers}
                 luggage={v.luggage}
+                lang={lang}
                 scrollToBooking={scrollToBooking}
               />
             ))}

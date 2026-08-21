@@ -3,14 +3,13 @@
  *
  * Responsibilities:
  *  1. Validate the lang param — 404 for unknown/disabled languages
- *  2. Inject an inline script that updates html[lang] and html[dir] synchronously
- *     (root app/layout.tsx has suppressHydrationWarning so React won't complain)
- *  3. Wrap children with LangProvider so client components get the right dictionary
+ *  2. Wrap children with LangProvider so page components get the right dictionary.
+ *     The root layout receives the same locale from middleware and owns html lang/dir.
  */
 import { notFound, redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import LangProvider from '@/components/LangProvider';
-import { isValidLang, getLangDir, LANG_LOCALES } from '@/lib/i18n';
+import { isValidLang, LANG_LOCALES } from '@/lib/i18n';
 import { isPublicLang } from '@/lib/i18n/active-locales';
 
 interface Props {
@@ -59,24 +58,9 @@ export default async function LangLayout({ children, params }: Props) {
     redirect('/data/locale/reset');
   }
 
-  const dir = getLangDir(lang);
-
   return (
-    <>
-      {/*
-        This script runs synchronously during HTML parsing, BEFORE React hydration.
-        It updates the <html lang> and <html dir> attributes that the root layout
-        has set to "tr" / "ltr". The root layout's suppressHydrationWarning prevents
-        React from warning about the attribute mismatch.
-      */}
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `(function(){var h=document.documentElement;h.setAttribute('lang','${lang}');h.setAttribute('dir','${dir}');})();`,
-        }}
-      />
-      <LangProvider forceLang={lang}>
-        {children}
-      </LangProvider>
-    </>
+    <LangProvider forceLang={lang}>
+      {children}
+    </LangProvider>
   );
 }

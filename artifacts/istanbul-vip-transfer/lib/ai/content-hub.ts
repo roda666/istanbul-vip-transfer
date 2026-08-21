@@ -13,6 +13,7 @@
  *  - All temporal claims prohibited unless from a cited source
  */
 import 'server-only';
+import { getOpenAiContentModel } from './model-config';
 
 const BRAND_PRESERVE = [
   'VIP Transfer Istanbul', 'Istanbul VIP Transfer', 'IST', 'SAW',
@@ -75,7 +76,7 @@ async function getClient() {
 }
 
 function getModel() {
-  return process.env.OPENAI_CONTENT_MODEL ?? process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-5.4-mini';
+  return getOpenAiContentModel();
 }
 
 // ── 1. Topic + keyword suggestion ─────────────────────────────────────────────

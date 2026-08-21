@@ -15,6 +15,7 @@
  */
 import { NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/auth/session';
+import { getOpenAiModel } from '@/lib/ai/model-config';
 import 'server-only';
 
 export const dynamic = 'force-dynamic';
@@ -23,7 +24,7 @@ export async function GET() {
   try { await requireAdminSession(); }
   catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
 
-  const model             = process.env.OPENAI_CONTENT_MODEL ?? process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-5.4-mini';
+  const model             = getOpenAiModel();
   const openaiKeyPresent  = !!process.env.OPENAI_API_KEY;
   const schedulerReady    = !!process.env.STUDIO_SCHEDULER_ENABLED;
   const storageConfigured = !!process.env.PRIVATE_OBJECT_DIR;

@@ -3,6 +3,7 @@
  * Translates a flat map of field-key → Turkish-text to the target language.
  */
 import 'server-only';
+import { getOpenAiTranslationModel } from './model-config';
 
 export type ServicePageTranslateResult =
   | { ok: true; translated: Record<string, string>; model: string }
@@ -21,7 +22,7 @@ export async function translateServicePageFields(
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return { ok: false, reason: 'not_configured', message: 'OPENAI_API_KEY is not set' };
 
-  const model = process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-5.4-mini';
+  const model = getOpenAiTranslationModel();
 
   const { getTranslationTargets, promptLangName } = await import('./lang-catalog');
   const targets = await getTranslationTargets([targetLang]);

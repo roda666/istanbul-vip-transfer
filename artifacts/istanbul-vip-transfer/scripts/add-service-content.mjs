@@ -18,7 +18,7 @@ if (!process.env.DATABASE_URL)   { console.error('DATABASE_URL not set');   proc
 
 const sql   = postgres(process.env.DATABASE_URL, { max: 4 });
 const ai    = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const MODEL = process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-4o-mini';
+const MODEL = process.env.OPENAI_MODEL ?? process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-4o-mini';
 const LANGS = ['en', 'de', 'ru', 'ar', 'fr', 'es', 'it', 'nl'];
 
 const LANG_NAMES = {

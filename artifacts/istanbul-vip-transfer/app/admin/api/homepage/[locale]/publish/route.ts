@@ -61,18 +61,18 @@ export async function POST(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { locale } = await params;
-  if (!(await isManageableLocale(locale))) {
-    return NextResponse.json({ error: 'Invalid locale' }, { status: 400 });
-  }
-
-  const rawAction = req.nextUrl.searchParams.get('action') ?? 'publish';
-  if (!['submit_review', 'approve', 'publish', 'unpublish'].includes(rawAction)) {
-    return NextResponse.json({ error: `Unknown action: ${rawAction}` }, { status: 400 });
-  }
-  const action = rawAction as WorkflowAction;
-
   try {
+    const { locale } = await params;
+    if (!(await isManageableLocale(locale))) {
+      return NextResponse.json({ error: 'Invalid locale' }, { status: 400 });
+    }
+
+    const rawAction = req.nextUrl.searchParams.get('action') ?? 'publish';
+    if (!['submit_review', 'approve', 'publish', 'unpublish'].includes(rawAction)) {
+      return NextResponse.json({ error: `Unknown action: ${rawAction}` }, { status: 400 });
+    }
+    const action = rawAction as WorkflowAction;
+
     const { db }    = await import('@/db');
     const { content, contentTranslations, auditLogs } = await import('@/db/schema');
     const { eq, and } = await import('drizzle-orm');
@@ -193,6 +193,9 @@ export async function POST(
     return NextResponse.json({ ok: true, action, locale, newStatus: update.status });
   } catch (err) {
     console.error('[Homepage publish/workflow error]', err);
-    return NextResponse.json({ error: 'DB error' }, { status: 503 });
+    return NextResponse.json(
+      { ok: false, error: 'Homepage publishing workflow could not be completed.', code: 'HOMEPAGE_PUBLISH_FAILED' },
+      { status: 503 },
+    );
   }
 }

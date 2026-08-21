@@ -3,56 +3,21 @@ name: Homepage Translation Sync
 description: Automatic multilingual synchronization for homepage CMS — field classification, AI translation pipeline, manual lock, status states.
 ---
 
-## Critical: Migration 0007 must be applied via psql
+## Source-save behavior
 
-`drizzle-kit migrate` reports success but does NOT actually apply this migration. Always run:
-```
-psql $DATABASE_URL < drizzle/migrations/0007_homepage_translation_sync.sql
-```
-Columns added: `source_hash`, `is_manually_locked`, `locked_at`, `locked_by`
+Turkish is the canonical homepage source. Every Turkish source save must keep EN/DE/RU/AR/FR/ES/IT/NL synchronized and publish source-triggered translations; clients cannot opt out with request flags. Manual single-locale retries remain draft-only, while an unavailable AI provider leaves work safely queued.
 
-## Architecture
+## Concurrent source saves
 
-On **TR draft save** (`PATCH /admin/api/homepage/tr` with `autoTranslate=true`):
-1. Compute SHA-256 hash of all translatable text fields (`computeTranslatableHash`)
-2. For each target locale (en/de/ru/ar):
-   - **If manually locked + hash changed** → set status `OUTDATED`, write audit log, skip AI
-   - **If hash unchanged** → skip entirely
-   - **If AI key absent** → sync shared fields, set QUEUED, return `queued` status
-   - **Else** → sync shared fields, call `translateHomepageFields()`, save as DRAFT
+Only one provider request may own a locale at once. A later Turkish source save waits for
+the active row to complete, then either observes its own source hash as current or claims
+an eligible FAILED/OUTDATED row. The active worker rechecks the canonical source after
+each provider response and retries against the newest revision when necessary.
 
-## Key files
+**Why:** A unique translation row prevents duplicates but does not, on its own, prevent
+two requests from sending duplicate AI calls or an older result from overwriting a newer
+Turkish save.
 
-- `lib/homepage-sync.ts` — `extractTranslatableFields`, `computeTranslatableHash`, `syncSharedFields`, `applyTranslatedFields`, `buildInitialTargetSections`
-- `lib/ai/translate-homepage.ts` — flat-map OpenAI translation; input/output = `Record<string, string>` keyed by `section.field`
-- `app/admin/api/homepage/[locale]/route.ts` — PATCH handles full sync pipeline
-- `app/admin/api/homepage/[locale]/translate/route.ts` — POST: retry/force AI for one locale
-- `app/admin/api/homepage/[locale]/lock/route.ts` — POST: toggle isManuallyLocked
-- `app/admin/api/homepage/[locale]/publish/route.ts` — POST: action=publish|unpublish|approve
-- `app/admin/api/homepage/bulk-publish/route.ts` — POST: publish all APPROVED locales
-- `app/admin/(protected)/sayfalar/ana-sayfa/_HomepageEditor.tsx` — full editor with translation panel
-
-## DB columns (migration 0007)
-
-Added to `content_translations`:
-- `source_hash text` — hash of TR translatable fields at last AI run
-- `is_manually_locked boolean default false`
-- `locked_at timestamp`
-- `locked_by uuid FK admin_users`
-
-## Status states (8)
-
-NOT_STARTED → QUEUED → TRANSLATING → DRAFT → APPROVED → PUBLISHED | FAILED | OUTDATED
-
-## Shared vs translatable fields
-
-**Shared (copy, no AI):** hero.imagePath, hero.enabled, heroStats[].numberText/key/order/enabled, services.allServicesRoute/enabled, trustCards[].icon/id/order/enabled, trust/vehicles/reviews/reservation/contact.enabled, vehicles.ctaRoute, seo.ogImage/indexable
-
-**Translatable (AI):** all text — badge, headlines, subheadline, CTAs, eyebrows, headings, descriptions, card titles/descriptions, stat labels, footer texts, all SEO text fields
-
-## Safety rules (enforced in both route and prompt)
-
-- AI output always saved as DRAFT — never APPROVED or PUBLISHED
-- Manual lock prevents auto-overwrite; marks OUTDATED if source changes
-- `OpenAI_API_KEY` absence = graceful QUEUED state, not crash
-- Published public locales unaffected until admin explicitly publishes translated APPROVED row
+**How to apply:** Keep terminal updates conditional on both the translation claim and the
+exact canonical source revision. Any new homepage translation path must use the same
+single-owner/recheck pattern rather than a read-then-unconditional-update flow.

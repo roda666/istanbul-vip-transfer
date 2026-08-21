@@ -23,6 +23,7 @@
 import 'server-only';
 
 import type { AIResult, StudioConfig, StudioContent, SeoScore } from './types';
+import { getOpenAiContentModel } from '@/lib/ai/model-config';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -54,7 +55,7 @@ async function getClient() {
 }
 
 function getModel() {
-  return process.env.OPENAI_CONTENT_MODEL ?? process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-5.4-mini';
+  return getOpenAiContentModel();
 }
 
 function getImageModel(): 'dall-e-3' { return 'dall-e-3'; }

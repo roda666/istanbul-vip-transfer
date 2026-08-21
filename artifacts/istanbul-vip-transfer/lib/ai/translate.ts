@@ -8,6 +8,7 @@
 import 'server-only';
 import { z } from 'zod';
 import { getContactSettings } from '@/lib/site-settings-server';
+import { getOpenAiTranslationModel } from './model-config';
 
 /**
  * Coerce a value to a plain string.
@@ -87,7 +88,7 @@ export async function translateContent(
     return { ok: false, reason: 'not_configured', message: 'OPENAI_API_KEY is not set' };
   }
 
-  const model = process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-5.4-mini';
+  const model = getOpenAiTranslationModel();
 
   // Resolve the target language from the catalog (name + provider support).
   const { getTranslationTargets, promptLangName } = await import('./lang-catalog');

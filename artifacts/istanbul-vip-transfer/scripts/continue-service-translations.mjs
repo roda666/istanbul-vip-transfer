@@ -11,7 +11,7 @@ if (!process.env.DATABASE_URL)   { console.error('DATABASE_URL not set');   proc
 
 const sql   = postgres(process.env.DATABASE_URL, { max: 6 });
 const ai    = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const MODEL = process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-4o-mini';
+const MODEL = process.env.OPENAI_MODEL ?? process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-4o-mini';
 
 const TARGET_SLUGS = [
   'istanbul-havalimani-transfer','sabiha-gokcen-havalimani-transfer','vip-transfer',

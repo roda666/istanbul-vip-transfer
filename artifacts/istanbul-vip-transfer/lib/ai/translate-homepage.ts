@@ -9,6 +9,11 @@
  *  - Brand names, technical identifiers, URLs, phone numbers are preserved verbatim.
  */
 import 'server-only';
+import { getOpenAiTranslationModel } from './model-config';
+import {
+  classifyHomepageTranslationError,
+  parseHomepageTranslationResponse,
+} from './homepage-translation-response';
 
 export type HomepageTranslateResult =
   | { ok: true; translated: Record<string, string>; model: string }
@@ -31,7 +36,7 @@ export async function translateHomepageFields(
     return { ok: false, reason: 'not_configured', message: 'OPENAI_API_KEY is not set' };
   }
 
-  const model = process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-5.4-mini';
+  const model = getOpenAiTranslationModel();
 
   // Resolve the target language from the catalog (name + provider support).
   const { getTranslationTargets, promptLangName } = await import('./lang-catalog');
@@ -83,40 +88,9 @@ Return the translated JSON with identical keys.`;
       temperature: 0.25,
     });
 
-    const raw = response.choices[0]?.message?.content;
-    if (!raw) {
-      return { ok: false, reason: 'api_error', message: 'No content in OpenAI response' };
-    }
-
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      return { ok: false, reason: 'parse_error', message: 'Failed to parse JSON from AI response' };
-    }
-
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-      return { ok: false, reason: 'parse_error', message: 'AI response is not an object' };
-    }
-
-    // Validate: all input keys must be present in output
-    const result: Record<string, string> = {};
-    for (const key of Object.keys(fields)) {
-      const val = (parsed as Record<string, unknown>)[key];
-      if (typeof val === 'string') {
-        result[key] = val;
-      } else {
-        // Missing key — fall back to source value rather than crashing
-        result[key] = fields[key];
-      }
-    }
-
-    return { ok: true, translated: result, model };
+    const parsed = parseHomepageTranslationResponse(fields, response.choices[0]?.message?.content);
+    return parsed.ok ? { ...parsed, model } : parsed;
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    if (message.includes('429') || message.toLowerCase().includes('rate limit')) {
-      return { ok: false, reason: 'rate_limited', message };
-    }
-    return { ok: false, reason: 'api_error', message };
+    return classifyHomepageTranslationError(err);
   }
 }

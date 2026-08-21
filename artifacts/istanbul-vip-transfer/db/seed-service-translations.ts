@@ -14,7 +14,7 @@ import { createHash } from 'crypto';
 
 const TARGET_LOCALES = ['en', 'de', 'ru', 'ar', 'es', 'fr', 'it', 'nl'];
 const SERVICE_CONCURRENCY = 2; // services processed in parallel
-const MODEL = process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-5.4-mini';
+const MODEL = process.env.OPENAI_MODEL ?? process.env.OPENAI_TRANSLATION_MODEL ?? 'gpt-5.4-mini';
 
 const LANG_NAMES: Record<string, string> = {
   en: 'English (British)',

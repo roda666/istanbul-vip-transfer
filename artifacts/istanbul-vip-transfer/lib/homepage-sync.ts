@@ -18,6 +18,41 @@ import type {
   HomepageSeoData, TrustCard,
 } from './homepage-types';
 
+/** Every public target locale that a Turkish homepage save must keep in sync. */
+export const HOMEPAGE_AUTOMATIC_TARGET_LOCALES = [
+  'en', 'de', 'ru', 'ar', 'fr', 'es', 'it', 'nl',
+] as const;
+export type HomepageAutomaticTargetLocale = (typeof HOMEPAGE_AUTOMATIC_TARGET_LOCALES)[number];
+
+/**
+ * Checks the catalog-backed availability of the required homepage locales.
+ * Callers should fail explicitly instead of silently publishing a partial set.
+ */
+export function resolveHomepageSyncTargets(availableLocaleCodes: readonly string[]): {
+  targets: HomepageAutomaticTargetLocale[];
+  unavailable: HomepageAutomaticTargetLocale[];
+} {
+  const available = new Set(availableLocaleCodes);
+  const targets = HOMEPAGE_AUTOMATIC_TARGET_LOCALES.filter((locale) => available.has(locale));
+  const unavailable = HOMEPAGE_AUTOMATIC_TARGET_LOCALES.filter((locale) => !available.has(locale));
+  return { targets, unavailable };
+}
+
+/**
+ * A completed or in-flight translation of the same source hash must not start
+ * another translation request on repeated saves.
+ */
+export function isHomepageSyncCurrent(
+  translation: { sourceHash: string | null; status: string | null } | null | undefined,
+  sourceHash: string,
+): boolean {
+  return Boolean(
+    translation &&
+      translation.sourceHash === sourceHash &&
+      !['NOT_STARTED', 'FAILED', 'OUTDATED', 'ARCHIVED'].includes(translation.status ?? ''),
+  );
+}
+
 // ── Translatable field extraction ───────────────────────────────────────────
 
 /**
@@ -141,38 +176,29 @@ export function syncSharedFields(
   t.hero.imagePath = s.hero.imagePath;
   t.hero.enabled   = s.hero.enabled;
 
-  // Stats — match by key
-  const sourceStatsByKey = Object.fromEntries(s.heroStats.map(st => [st.key, st]));
-  t.heroStats = t.heroStats.map(stat => {
-    const src = sourceStatsByKey[stat.key];
-    if (!src) return stat;
-    return { ...stat, numberText: src.numberText, key: src.key, order: src.order, enabled: src.enabled };
+  // Stats — source is the canonical structure. Existing target labels remain
+  // until the translated values are applied, while removed source stats cannot
+  // leave stale target-only UI behind.
+  const targetStatsByKey = Object.fromEntries(t.heroStats.map(stat => [stat.key, stat]));
+  t.heroStats = s.heroStats.map((src) => {
+    const targetStat = targetStatsByKey[src.key];
+    return targetStat
+      ? { ...targetStat, numberText: src.numberText, key: src.key, order: src.order, enabled: src.enabled }
+      : { ...src };
   });
-  // Add any new stats from source that don't exist in target
-  for (const srcStat of s.heroStats) {
-    if (!t.heroStats.find(x => x.key === srcStat.key)) {
-      t.heroStats.push(srcStat); // Copy full stat including label (new item — use source text)
-    }
-  }
-  t.heroStats.sort((a, b) => a.order - b.order);
 
   // Services
   t.servicesSection.allServicesRoute = s.servicesSection.allServicesRoute;
   t.servicesSection.enabled          = s.servicesSection.enabled;
 
-  // Trust cards — match by id
-  const srcCardsById = Object.fromEntries(s.trustSection.cards.map(c => [c.id, c]));
-  t.trustSection.cards = t.trustSection.cards.map(card => {
-    const src = srcCardsById[card.id];
-    if (!src) return card;
-    return { ...card, icon: src.icon, id: src.id, order: src.order, enabled: src.enabled };
+  // Trust cards follow the source structure for the same reason as stats.
+  const targetCardsById = Object.fromEntries(t.trustSection.cards.map(card => [card.id, card]));
+  t.trustSection.cards = s.trustSection.cards.map((src) => {
+    const targetCard = targetCardsById[src.id];
+    return targetCard
+      ? { ...targetCard, icon: src.icon, id: src.id, order: src.order, enabled: src.enabled }
+      : { ...src };
   });
-  for (const srcCard of s.trustSection.cards) {
-    if (!t.trustSection.cards.find(x => x.id === srcCard.id)) {
-      t.trustSection.cards.push(srcCard);
-    }
-  }
-  t.trustSection.cards.sort((a, b) => a.order - b.order);
   t.trustSection.enabled = s.trustSection.enabled;
 
   // Vehicles

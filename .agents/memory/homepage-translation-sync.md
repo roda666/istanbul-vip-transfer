@@ -21,3 +21,17 @@ Turkish save.
 **How to apply:** Keep terminal updates conditional on both the translation claim and the
 exact canonical source revision. Any new homepage translation path must use the same
 single-owner/recheck pattern rather than a read-then-unconditional-update flow.
+
+## Shared asset rendering
+
+Hero image paths are shared source-owned fields, not locale-specific translation content.
+Public non-Turkish homepage rendering must overlay shared fields from the published Turkish
+source onto the translated body before display.
+
+**Why:** A previously published translation body can retain an old asset path if a
+background synchronization is delayed or a translation is protected, causing different hero
+images across locales even though the asset is intentionally shared.
+
+**How to apply:** Keep translated hero alt text locale-specific, but derive `hero.imagePath`
+and all other shared fields through `syncSharedFields` at public read time. Persisting the
+same synchronization remains desirable, but public consistency must not depend on it.

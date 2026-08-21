@@ -5,6 +5,7 @@
  */
 import type { HomepageSections } from './homepage-types';
 import { parseHomepageSections, HOMEPAGE_FALLBACK } from './homepage-types';
+import { syncSharedFields } from './homepage-sync';
 
 const HOMEPAGE_SLUG = 'ana-sayfa';
 const CACHE_TAG = 'homepage-cms';
@@ -51,7 +52,7 @@ export async function getPublishedHomepageData(locale: string): Promise<Homepage
 
     // For non-Turkish locales, read the source record id first, then translations
     const [src] = await db
-      .select({ id: content.id })
+      .select({ id: content.id, body: content.body, status: content.status })
       .from(content)
       .where(eq(content.slug, HOMEPAGE_SLUG))
       .limit(1);
@@ -72,7 +73,17 @@ export async function getPublishedHomepageData(locale: string): Promise<Homepage
       .limit(1);
 
     const parsed = parseHomepageSections(tx?.body);
-    return parsed ?? (HOMEPAGE_FALLBACK[locale] as HomepageSections ?? HOMEPAGE_FALLBACK.en as HomepageSections);
+    if (!parsed) {
+      return HOMEPAGE_FALLBACK[locale] as HomepageSections ?? HOMEPAGE_FALLBACK.en as HomepageSections;
+    }
+
+    // Shared fields (including the hero image) are always owned by the
+    // published Turkish source. Overlay them at read time so a stale or
+    // manually protected translation can never show an outdated asset.
+    const publishedSource = src.status === 'PUBLISHED'
+      ? parseHomepageSections(src.body)
+      : null;
+    return publishedSource ? syncSharedFields(parsed, publishedSource) : parsed;
   } catch {
     // DB unavailable — return static fallback so the page still renders
     return HOMEPAGE_FALLBACK[locale] as HomepageSections ?? HOMEPAGE_FALLBACK.en as HomepageSections;

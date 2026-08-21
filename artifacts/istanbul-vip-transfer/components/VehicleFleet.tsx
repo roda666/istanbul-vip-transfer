@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { Users, Luggage, Wifi, Wind, UserCheck, Droplets, Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
 import { isolateLtrValues } from '@/lib/i18n/bidi';
+import type { Dictionary } from '@/lib/i18n/types';
 
 const FEATURE_ICON_MAP: Record<string, React.ElementType> = {
   WIFI:       Wifi,
@@ -41,7 +42,23 @@ interface DisplayVehicle {
   featured: boolean;
 }
 
-function adaptDbVehicle(vehicle: DbVehicle): DisplayVehicle {
+function localizeFeatureLabel(
+  feature: DbVehicle['features'][number],
+  labels: Dictionary['vehicles'],
+): string {
+  const localizedLabels: Partial<Record<string, string>> = {
+    CLIMATE: labels.featureClimate,
+    LEATHER: labels.featureLeather,
+    LUXURY: labels.featureLuxury,
+    WATER: labels.featureWater,
+  };
+
+  // Feature codes are language-neutral; prefer their current-locale labels so
+  // legacy Turkish labels stored with vehicles cannot leak into public pages.
+  return localizedLabels[feature.icon] ?? feature.label;
+}
+
+function adaptDbVehicle(vehicle: DbVehicle, labels: Dictionary['vehicles']): DisplayVehicle {
   return {
     name:        vehicle.displayName,
     alt:         vehicle.coverImageAlt ?? vehicle.displayName,
@@ -52,7 +69,7 @@ function adaptDbVehicle(vehicle: DbVehicle): DisplayVehicle {
     description: vehicle.displayShortDesc,
     features:    (vehicle.features ?? []).map(f => ({
       icon:  FEATURE_ICON_MAP[f.icon] ?? Star,
-      label: f.label,
+      label: localizeFeatureLabel(f, labels),
     })),
     featured: vehicle.isFeatured,
   };
@@ -264,16 +281,15 @@ export default function VehicleFleet() {
   const [dbVehicles, setDbVehicles] = useState<DisplayVehicle[] | null>(null);
 
   useEffect(() => {
-    const lang = (typeof document !== 'undefined' && document.documentElement.lang) || 'tr';
-    fetch(`/data/vehicles?lang=${lang}`)
+    fetch(`/data/vehicles?lang=${encodeURIComponent(lang)}`)
       .then(r => r.ok ? r.json() : null)
       .then((d: { vehicles?: DbVehicle[] } | null) => {
         if (d?.vehicles?.length) {
-          setDbVehicles(d.vehicles.map(adaptDbVehicle));
+          setDbVehicles(d.vehicles.map(vehicle => adaptDbVehicle(vehicle, v)));
         }
       })
       .catch(() => {});
-  }, []);
+  }, [lang, v]);
 
   const displayVehicles: DisplayVehicle[] = dbVehicles ?? staticVehicles;
 

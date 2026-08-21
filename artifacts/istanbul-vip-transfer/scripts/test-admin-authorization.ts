@@ -20,6 +20,11 @@ import {
   getAdminSessionErrorMessage,
   getAdminSessionErrorStatus,
 } from '../lib/auth/session';
+import {
+  createStorageRequestUrlHandler,
+  STORAGE_UNAVAILABLE_MESSAGE,
+  type StorageRequestUrlHandlerDependencies,
+} from '../lib/storage/request-url-handler';
 
 const ROLE_EXPECTATIONS = {
   SUPER_ADMIN: new Set(ADMIN_PERMISSIONS),
@@ -178,6 +183,14 @@ assert.deepEqual(
   Object.keys((storedAuditRecords[0].metadata ?? {}) as Record<string, unknown>).sort(),
   ['auditAttemptId', 'method', 'permission', 'reason'],
 );
+const storageAuditFailure = await successfulAuditWriter({
+  action: 'ADMIN_OPERATION_FAILED',
+  pathname: '/admin/api/storage/request-url',
+  method: 'POST',
+  permission: 'MEDIA_MANAGE',
+  reason: 'storage_signing_failed',
+});
+assert.equal(storageAuditFailure.ok, true);
 
 const auditFailures: Array<{ event: string; details: Record<string, unknown> }> = [];
 const failingAuditWriter = createAdminSecurityAuditWriter(
@@ -232,5 +245,114 @@ await redactingAuditWriter({
 assert.equal(adversarialAuditRecords[0].pathname, '/admin/api/unknown');
 assert.equal(JSON.stringify(adversarialAuditRecords[0]).includes('token-do-not-record'), false);
 assert.equal(JSON.stringify(adversarialAuditRecords[0]).includes('credential='), false);
+
+type StorageAuditEvent = {
+  adminUserId?: string | null;
+  action: string;
+  pathname: string;
+  method: string;
+  permission?: string;
+  reason?: string;
+};
+
+function storagePost(body: Record<string, unknown>) {
+  return new Request('http://test.local/admin/api/storage/request-url', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+function createStorageHandler(
+  overrides: Partial<StorageRequestUrlHandlerDependencies> = {},
+) {
+  const audits: StorageAuditEvent[] = [];
+  const logs: Array<{ event: string; details: Record<string, unknown> }> = [];
+  const deps: StorageRequestUrlHandlerDependencies = {
+    requireAdminSession: async () => ({ adminId: 'test-admin-id', role: 'ADMIN' }),
+    getSessionErrorStatus: getAdminSessionErrorStatus,
+    getSessionErrorMessage: getAdminSessionErrorMessage,
+    hasMediaPermission: (role) => role === 'ADMIN' || role === 'SUPER_ADMIN',
+    writeAudit: async (input) => { audits.push(input); },
+    getPrivateObjectDir: () => 'test-bucket/private',
+    signPutUrl: async () => 'https://upload.example.test/signed',
+    createUuid: () => '00000000-0000-0000-0000-000000000002',
+    logFailure: (event, details) => logs.push({ event, details }),
+    ...overrides,
+  };
+  return { handler: createStorageRequestUrlHandler(deps), audits, logs };
+}
+
+const safeUploadRequest = {
+  name: 'photo.png',
+  size: 1,
+  contentType: 'image/png',
+  namespace: 'service-pages',
+};
+
+const successfulStorageHandler = createStorageHandler();
+const successfulStorageResponse = await successfulStorageHandler.handler(storagePost(safeUploadRequest));
+assert.equal(successfulStorageResponse.status, 200);
+assert.deepEqual(await successfulStorageResponse.json(), {
+  uploadURL: 'https://upload.example.test/signed',
+  serveUrl: '/api/storage/objects/service-pages/00000000-0000-0000-0000-000000000002.png',
+  contentType: 'image/png',
+});
+
+const missingConfigHandler = createStorageHandler({
+  getPrivateObjectDir: () => undefined,
+  signPutUrl: async () => { throw new Error('signer must not run without config'); },
+});
+const missingConfigResponse = await missingConfigHandler.handler(storagePost({
+  ...safeUploadRequest,
+  namespace: 'sidecar-token-do-not-record',
+}));
+assert.equal(missingConfigResponse.status, 503);
+assert.deepEqual(await missingConfigResponse.json(), { error: STORAGE_UNAVAILABLE_MESSAGE });
+assert.deepEqual(missingConfigHandler.audits, [{
+  adminUserId: 'test-admin-id',
+  action: 'ADMIN_OPERATION_FAILED',
+  pathname: '/admin/api/storage/request-url',
+  method: 'POST',
+  permission: 'MEDIA_MANAGE',
+  reason: 'storage_unavailable',
+}]);
+assert.deepEqual(missingConfigHandler.logs, [{
+  event: 'STORAGE_UNAVAILABLE',
+  details: { reason: 'private_object_dir_missing' },
+}]);
+assert.equal(JSON.stringify(missingConfigHandler.audits).includes('sidecar-token-do-not-record'), false);
+
+const failingSignerHandler = createStorageHandler({
+  signPutUrl: async () => { throw new Error('sidecar internal token=do-not-record'); },
+});
+const failingSignerResponse = await failingSignerHandler.handler(storagePost(safeUploadRequest));
+assert.equal(failingSignerResponse.status, 503);
+assert.deepEqual(await failingSignerResponse.json(), { error: STORAGE_UNAVAILABLE_MESSAGE });
+assert.equal(failingSignerHandler.audits[0]?.reason, 'storage_signing_failed');
+assert.deepEqual(failingSignerHandler.logs, [{
+  event: 'STORAGE_SIGNING_UNAVAILABLE',
+  details: { reason: 'signing_failed' },
+}]);
+assert.equal(JSON.stringify(failingSignerHandler.audits).includes('token=do-not-record'), false);
+assert.equal(JSON.stringify(failingSignerHandler.logs).includes('token=do-not-record'), false);
+
+const deniedStorageHandler = createStorageHandler({
+  requireAdminSession: async () => ({ adminId: 'editor-id', role: 'EDITOR' }),
+});
+const deniedStorageResponse = await deniedStorageHandler.handler(storagePost(safeUploadRequest));
+assert.equal(deniedStorageResponse.status, 403);
+assert.equal(deniedStorageHandler.audits[0]?.action, 'ADMIN_ACCESS_DENIED');
+assert.equal(deniedStorageHandler.audits[0]?.reason, 'permission_denied');
+
+for (const expectedStatus of [401, 403, 503] as const) {
+  const sessionFailureHandler = createStorageHandler({
+    requireAdminSession: async () => {
+      throw Object.assign(new Error('internal session error'), { status: expectedStatus });
+    },
+  });
+  const response = await sessionFailureHandler.handler(storagePost(safeUploadRequest));
+  assert.equal(response.status, expectedStatus, `Handler must preserve ${expectedStatus} session status`);
+}
 
 console.log('admin authorization policy tests passed');

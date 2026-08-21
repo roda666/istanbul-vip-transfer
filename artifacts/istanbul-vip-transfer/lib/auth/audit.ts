@@ -44,11 +44,13 @@ export type AdminAuditReason =
   | 'invalid_role'
   | 'permission_denied'
   | 'unmapped_admin_route'
-  | 'csrf_origin_mismatch';
+  | 'csrf_origin_mismatch'
+  | 'storage_unavailable'
+  | 'storage_signing_failed';
 
 export type AdminSecurityAuditRecord = {
   adminUserId: string | null;
-  action: 'ADMIN_ACCESS_DENIED' | 'ADMIN_MUTATION_AUTHORIZED';
+  action: 'ADMIN_ACCESS_DENIED' | 'ADMIN_MUTATION_AUTHORIZED' | 'ADMIN_OPERATION_FAILED';
   pathname: string;
   method: string;
   permission?: string;

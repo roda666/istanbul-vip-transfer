@@ -97,6 +97,74 @@ const REVIEWS_BY_LANG: Record<string, Review[]> = {
       text: "كانت زيارتنا الأولى لإسطنبول والخدمة كانت رائعة. السائق تحدث الإنجليزية بطلاقة وأعطانا نصائح عن المدينة ووصل قبل الموعد بـ 15 دقيقة. كانت مرسيدس فيتو نظيفة تماماً. أفضل تجربة نقل على الإطلاق.",
     },
   ],
+  es: [
+    {
+      name: 'Carlos Martín',
+      rating: 5,
+      text: 'Excelente traslado desde el aeropuerto de Estambul. El conductor nos esperaba con un cartel con nuestro nombre, nos ayudó con el equipaje y llegamos al hotel puntualmente. El Mercedes Sprinter era amplio e impecable. ¡Muy recomendable!',
+    },
+    {
+      name: 'Laura Gómez',
+      rating: 5,
+      text: 'Reservamos el traslado VIP para nuestro viaje en familia. A pesar del retraso del vuelo, el conductor esperó con paciencia. Un vehículo estupendo y un servicio muy profesional; repetiremos en nuestra próxima visita a Estambul.',
+    },
+    {
+      name: 'Javier Ruiz',
+      rating: 5,
+      text: 'Era nuestra primera visita a Estambul y el servicio fue extraordinario. El conductor hablaba inglés con fluidez, nos dio consejos sobre la ciudad y llegó 15 minutos antes. El Mercedes Vito estaba impecable. La mejor experiencia de traslado que hemos tenido.',
+    },
+  ],
+  fr: [
+    {
+      name: 'Claire Dubois',
+      rating: 5,
+      text: 'Excellent transfert depuis l’aéroport d’Istanbul. Le chauffeur nous attendait avec une pancarte à notre nom, a aidé avec les bagages et nous a conduits à l’hôtel à l’heure. Le Mercedes Sprinter était spacieux et impeccable. Je recommande vivement !',
+    },
+    {
+      name: 'Thomas Martin',
+      rating: 5,
+      text: 'Nous avons réservé le transfert VIP pour notre voyage en famille. Malgré le retard de notre vol, le chauffeur a attendu patiemment. Véhicule remarquable et service très professionnel : nous réserverons à nouveau lors de notre prochaine visite à Istanbul.',
+    },
+    {
+      name: 'Élodie Bernard',
+      rating: 5,
+      text: 'C’était notre première visite à Istanbul et le service a été exceptionnel. Le chauffeur parlait anglais couramment, nous a donné des conseils sur la ville et est arrivé 15 minutes en avance. Le Mercedes Vito était impeccable. Notre meilleure expérience de transfert.',
+    },
+  ],
+  it: [
+    {
+      name: 'Marco Bianchi',
+      rating: 5,
+      text: 'Trasferimento eccellente dall’aeroporto di Istanbul. L’autista ci aspettava con un cartello con il nostro nome, ci ha aiutato con i bagagli e ci ha portato in hotel puntualmente. Il Mercedes Sprinter era spazioso e perfettamente pulito. Consigliatissimo!',
+    },
+    {
+      name: 'Giulia Rossi',
+      rating: 5,
+      text: 'Abbiamo prenotato il trasferimento VIP per il nostro viaggio in famiglia. Nonostante il ritardo del volo, l’autista ha aspettato con pazienza. Veicolo eccellente e servizio professionale: prenoteremo di nuovo alla nostra prossima visita a Istanbul.',
+    },
+    {
+      name: 'Luca Conti',
+      rating: 5,
+      text: 'Era la nostra prima visita a Istanbul e il servizio è stato incredibile. L’autista parlava inglese fluentemente, ci ha dato consigli sulla città ed è arrivato con 15 minuti di anticipo. Il Mercedes Vito era impeccabile. La migliore esperienza di trasferimento mai avuta.',
+    },
+  ],
+  nl: [
+    {
+      name: 'Sophie de Vries',
+      rating: 5,
+      text: 'Uitstekende transfer vanaf de luchthaven van Istanbul. De chauffeur wachtte ons op met een naambordje, hielp met de bagage en bracht ons op tijd naar het hotel. De Mercedes Sprinter was ruim en brandschoon. Absoluut een aanrader!',
+    },
+    {
+      name: 'Pieter Jansen',
+      rating: 5,
+      text: 'We boekten de VIP-transfer voor onze familiereis. Ondanks de vertraging van onze vlucht wachtte de chauffeur geduldig. Geweldige auto en professionele service; bij ons volgende bezoek aan Istanbul boeken we zeker opnieuw.',
+    },
+    {
+      name: 'Emma Bakker',
+      rating: 5,
+      text: 'Het was ons eerste bezoek aan Istanbul en de service was geweldig. De chauffeur sprak vloeiend Engels, gaf ons tips over de stad en arriveerde 15 minuten te vroeg. De Mercedes Vito was brandschoon. De beste transferervaring die we ooit hebben gehad.',
+    },
+  ],
 };
 
 function GoogleMark({ size = 16 }: { size?: number }) {
@@ -114,7 +182,9 @@ export default function Reviews() {
   const { lang, dict } = useLang();
   const cs = useSiteSettings();
   const r = dict.reviews;
-  const reviews = REVIEWS_BY_LANG[lang] ?? REVIEWS_BY_LANG.tr;
+  // A malformed locale must not make an international visitor see Turkish
+  // review copy. Turkish is used only for an explicit Turkish route.
+  const reviews = REVIEWS_BY_LANG[lang] ?? REVIEWS_BY_LANG.en;
 
   return (
     <section

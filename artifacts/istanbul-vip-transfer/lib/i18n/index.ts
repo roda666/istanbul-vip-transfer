@@ -36,9 +36,9 @@ export type SiteLang = (typeof ALL_LANGS)[number];
 
 const DICTS: Record<SiteLang, Dictionary> = { tr, en, de, ru, ar, es, fr, it, nl };
 
-/** Returns the static UI dictionary for a given language code. Falls back to Turkish. */
+/** Returns a static UI dictionary without exposing Turkish to an unknown locale. */
 export function getDictionary(lang: string): Dictionary {
-  return DICTS[lang as SiteLang] ?? DICTS.tr;
+  return DICTS[lang as SiteLang] ?? DICTS.en;
 }
 
 /** Returns true if `lang` is a valid non-default target language code (has a dictionary). */

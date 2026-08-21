@@ -172,14 +172,144 @@ const faqsByLang: Record<string, FaqItem[]> = {
         'نعم — ما عليك سوى ذكر عمر طفلك ووزنه عند الحجز. نوفر مقعد الأطفال المناسب مجاناً. تتوفر مقاعد للرضع ومقاعد للأطفال الأكبر سناً ومقاعد رفع.',
     },
   ],
+  es: [
+    {
+      question: '¿Cómo se determinan los precios de los traslados?',
+      answer:
+        'Los precios se calculan según la distancia, el tipo de vehículo y la ruta. Contáctenos por WhatsApp para solicitar un presupuesto; todos los detalles se comparten antes de confirmar la reserva.',
+    },
+    {
+      question: '¿Cuánto equipaje puedo llevar?',
+      answer:
+        'El Mercedes Vito tiene capacidad para 7 pasajeros y 7 maletas grandes; el Mercedes Sprinter VIP admite 13 pasajeros y 13 maletas grandes. Si lleva equipaje adicional, avísenos al hacer la reserva para preparar el vehículo más adecuado.',
+    },
+    {
+      question: '¿El conductor esperará si mi vuelo se retrasa?',
+      answer:
+        'Seguimos su vuelo en tiempo real. Si hay un retraso, su conductor recibe una notificación automáticamente. Para conocer las condiciones concretas de espera, consúltenos por WhatsApp al reservar.',
+    },
+    {
+      question: '¿Qué métodos de pago aceptan?',
+      answer:
+        'Contáctenos por WhatsApp para conocer los métodos de pago disponibles; recibirá toda la información antes de confirmar su reserva.',
+    },
+    {
+      question: '¿Con cuánta antelación debo reservar?',
+      answer:
+        'Recomendamos reservar con al menos 2 horas de antelación. Según la disponibilidad, también podemos organizar traslados con menos tiempo. En temporadas de alta demanda, como verano y festivos, recomendamos reservar con antelación.',
+    },
+    {
+      question: '¿Puedo solicitar una silla infantil?',
+      answer:
+        'Sí. Indique la edad y el peso de su hijo al reservar y prepararemos gratuitamente la silla infantil adecuada. Disponemos de sillas para bebé, sillas orientadas hacia delante y elevadores.',
+    },
+  ],
+  fr: [
+    {
+      question: 'Comment sont déterminés vos tarifs de transfert ?',
+      answer:
+        'Les tarifs dépendent de la distance, du type de véhicule et de l’itinéraire. Contactez-nous sur WhatsApp pour obtenir un devis ; tous les détails sont fournis avant la confirmation de votre réservation.',
+    },
+    {
+      question: 'Quelle quantité de bagages puis-je emporter ?',
+      answer:
+        'Le Mercedes Vito accueille 7 passagers et 7 grandes valises ; le Mercedes Sprinter VIP peut accueillir 13 passagers et 13 grandes valises. Si vous avez des bagages supplémentaires, prévenez-nous lors de la réservation afin que nous préparions le véhicule adapté.',
+    },
+    {
+      question: 'Le chauffeur attend-il si mon vol est retardé ?',
+      answer:
+        'Nous suivons votre vol en temps réel. En cas de retard, votre chauffeur est automatiquement informé. Pour connaître les conditions précises d’attente, contactez-nous sur WhatsApp lors de la réservation.',
+    },
+    {
+      question: 'Quels moyens de paiement acceptez-vous ?',
+      answer:
+        'Contactez-nous sur WhatsApp pour connaître les moyens de paiement acceptés ; toutes les informations vous seront communiquées avant la confirmation de votre réservation.',
+    },
+    {
+      question: 'Combien de temps à l’avance dois-je réserver ?',
+      answer:
+        'Nous recommandons de réserver au moins 2 heures à l’avance. Selon les disponibilités, nous pouvons également organiser un transfert à plus court délai. En haute saison, notamment l’été et les jours fériés, une réservation anticipée est vivement conseillée.',
+    },
+    {
+      question: 'Puis-je demander un siège enfant ?',
+      answer:
+        'Oui. Indiquez simplement l’âge et le poids de votre enfant lors de la réservation. Nous fournissons gratuitement le siège enfant approprié, y compris les sièges bébé, les sièges face à la route et les rehausseurs.',
+    },
+  ],
+  it: [
+    {
+      question: 'Come vengono determinati i prezzi dei trasferimenti?',
+      answer:
+        'I prezzi dipendono dalla distanza, dal tipo di veicolo e dal percorso. Contattaci via WhatsApp per un preventivo; tutti i dettagli vengono forniti prima della conferma della prenotazione.',
+    },
+    {
+      question: 'Quanti bagagli posso portare?',
+      answer:
+        'Il Mercedes Vito può ospitare 7 passeggeri e 7 valigie grandi; il Mercedes Sprinter VIP può ospitare 13 passeggeri e 13 valigie grandi. Se hai bagagli extra, avvisaci al momento della prenotazione per organizzare il veicolo più adatto.',
+    },
+    {
+      question: 'L’autista aspetterà se il mio volo è in ritardo?',
+      answer:
+        'Monitoriamo il tuo volo in tempo reale. In caso di ritardo, l’autista viene avvisato automaticamente. Per le condizioni specifiche di attesa, contattaci via WhatsApp al momento della prenotazione.',
+    },
+    {
+      question: 'Quali metodi di pagamento accettate?',
+      answer:
+        'Contattaci via WhatsApp per conoscere i metodi di pagamento accettati; tutte le informazioni vengono fornite prima della conferma della prenotazione.',
+    },
+    {
+      question: 'Con quanto anticipo devo prenotare?',
+      answer:
+        'Consigliamo di prenotare con almeno 2 ore di anticipo. In base alla disponibilità, possiamo spesso organizzare trasferimenti anche con un preavviso minore. Nei periodi più affollati, come l’estate e le festività, è vivamente consigliata la prenotazione anticipata.',
+    },
+    {
+      question: 'Posso richiedere un seggiolino per bambini?',
+      answer:
+        'Sì. Indica l’età e il peso del bambino al momento della prenotazione; forniremo gratuitamente il seggiolino più adatto. Sono disponibili seggiolini per neonati, seggiolini rivolti in avanti e rialzi.',
+    },
+  ],
+  nl: [
+    {
+      question: 'Hoe worden jullie transferprijzen bepaald?',
+      answer:
+        'De prijs is gebaseerd op de afstand, het voertuigtype en de route. Neem via WhatsApp contact met ons op voor een prijsopgave; alle details worden vóór de boekingsbevestiging gedeeld.',
+    },
+    {
+      question: 'Hoeveel bagage kan ik meenemen?',
+      answer:
+        'De Mercedes Vito biedt plaats aan 7 passagiers en 7 grote koffers; de Mercedes Sprinter VIP biedt plaats aan 13 passagiers en 13 grote koffers. Laat het ons bij extra bagage tijdens het boeken weten, zodat we het meest geschikte voertuig kunnen regelen.',
+    },
+    {
+      question: 'Wacht de chauffeur als mijn vlucht vertraging heeft?',
+      answer:
+        'Wij volgen uw vlucht in realtime. Bij vertraging krijgt uw chauffeur automatisch bericht. Vraag ons via WhatsApp bij het boeken naar de precieze wachttijdvoorwaarden.',
+    },
+    {
+      question: 'Welke betaalmethoden accepteren jullie?',
+      answer:
+        'Neem via WhatsApp contact met ons op voor informatie over de beschikbare betaalmethoden; u ontvangt alle details voordat u de boeking bevestigt.',
+    },
+    {
+      question: 'Hoe ver van tevoren moet ik boeken?',
+      answer:
+        'Wij raden aan minstens 2 uur van tevoren te boeken. Afhankelijk van de beschikbaarheid kunnen we transfers vaak ook op kortere termijn regelen. In drukke periodes, zoals de zomer en feestdagen, raden we vroeg boeken sterk aan.',
+    },
+    {
+      question: 'Kan ik een kinderzitje aanvragen?',
+      answer:
+        'Ja. Vermeld bij het boeken de leeftijd en het gewicht van uw kind; wij zorgen kosteloos voor het juiste kinderzitje. Babyzitjes, voorwaarts gerichte zitjes en stoelverhogers zijn beschikbaar.',
+    },
+  ],
 };
 
 /**
  * Returns FAQ items in the requested language.
- * Falls back to Turkish if the language is not found.
+ * Turkish is only returned for an explicit Turkish request. A malformed or
+ * unknown locale gets English, never Turkish source text on an international
+ * route.
  */
 export function getFaqs(lang: string): FaqItem[] {
-  return faqsByLang[lang] ?? faqsByLang.tr;
+  return faqsByLang[lang] ?? faqsByLang.en;
 }
 
 /** @deprecated Use getFaqs('tr') instead — kept for backward compat */

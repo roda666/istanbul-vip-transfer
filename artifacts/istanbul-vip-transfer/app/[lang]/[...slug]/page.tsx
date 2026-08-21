@@ -23,6 +23,7 @@ import { STATIC_PAGE_SLUGS } from '@/lib/static-page-slugs';
 // ── Turkish page components (non-SERVICE pages use these directly) ─────────
 import HizmetlerPage     from '@/app/hizmetler/page';
 import AraclarPage       from '@/app/araclar/page';
+import VehiclesPageContent from '@/components/VehiclesPageContent';
 import HakkimizdaPage    from '@/app/hakkimizda/page';
 import IletisimPage      from '@/app/iletisim/page';
 
@@ -279,7 +280,7 @@ export default async function LocalizedPassthrough({ params }: Props) {
 
   return (
     <>
-      <Page />
+      {pathKey === 'araclar' ? <VehiclesPageContent locale={lang} /> : <Page />}
       {scripts}
     </>
   );

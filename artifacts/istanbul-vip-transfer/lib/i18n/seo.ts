@@ -58,10 +58,10 @@ export async function buildAlternates(path: string, publishedLangs: string[] = [
 
 /**
  * Returns the Open Graph locale string for a given language code.
- * Falls back to LOCALE_BCP47 for the full registry, then Turkish.
+ * Falls back to LOCALE_BCP47 for the full registry, then English.
  */
 export function getOgLocale(lang: string): string {
-  return LOCALE_BCP47[lang] ?? LANG_LOCALES.tr;
+  return LOCALE_BCP47[lang] ?? LANG_LOCALES.en;
 }
 
 /**

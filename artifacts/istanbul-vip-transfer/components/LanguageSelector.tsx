@@ -68,7 +68,7 @@ export default function LanguageSelector({ variant = 'light', className = '' }: 
   }, []);
 
   const nativeNameOf = (code: string) =>
-    siteLangs.find((l) => l.code === code)?.nativeName ?? LANG_NATIVE_NAMES.tr;
+    siteLangs.find((l) => l.code === code)?.nativeName ?? LANG_NATIVE_NAMES.en;
 
   // Close on outside click or Escape
   useEffect(() => {

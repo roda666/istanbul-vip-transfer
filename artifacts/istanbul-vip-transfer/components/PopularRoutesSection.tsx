@@ -21,10 +21,10 @@ function formatDuration(minutes: number, min: string, h: string) {
   return m > 0 ? `${hours} ${h} ${m} ${min}` : `${hours} ${h}`;
 }
 
-/** Return a locale-aware string from a translations map, falling back to Turkish base value. */
-function localize(base: string, translations: Record<string, string> | null | undefined, lang: string): string {
-  if (lang === 'tr' || !translations) return base;
-  return translations[lang] ?? base;
+/** Never display a Turkish source route name on a non-Turkish public page. */
+function localize(base: string, translations: Record<string, string> | null | undefined, lang: string): string | null {
+  if (lang === 'tr') return base;
+  return translations?.[lang] ?? null;
 }
 
 /**
@@ -62,6 +62,7 @@ function RouteCard({ route, lang, t }: {
   t: { vito: string; sprinter: string; min: string; h: string; km: string };
 }) {
   const name = localize(route.name, route.nameTranslations, lang);
+  if (!name) return null;
   const vitoRange     = `${route.priceVitoMinEur}–${route.priceVitoMaxEur} €`;
   const sprinterRange = `${route.priceSprinterMinEur}–${route.priceSprinterMaxEur} €`;
   const href = getRouteHref(route.name, lang);
@@ -152,10 +153,11 @@ export default function PopularRoutesSection({ routes }: { routes: TransferRoute
   const { dict, lang } = useLang();
   const t = dict.routes;
   const [hydrated, setHydrated] = useState(false);
+  const visibleRoutes = routes.filter((route) => localize(route.name, route.nameTranslations, lang));
 
   useEffect(() => { setHydrated(true); }, []);
 
-  if (!hydrated || routes.length === 0) return null;
+  if (!hydrated || visibleRoutes.length === 0) return null;
 
   return (
     <section
@@ -195,7 +197,7 @@ export default function PopularRoutesSection({ routes }: { routes: TransferRoute
             gap: '20px',
           }}
         >
-          {routes.map((route) => (
+          {visibleRoutes.map((route) => (
             <RouteCard key={route.id} route={route} lang={lang} t={t} />
           ))}
         </div>

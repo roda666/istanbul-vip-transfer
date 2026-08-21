@@ -28,6 +28,7 @@ import { eq } from 'drizzle-orm';
 import { writeAdminSecurityAudit } from '@/lib/auth/audit';
 import {
   getAdminApiPermission,
+  getAdminAuthFailureStatus,
   getAdminPagePermission,
   getCurrentAdminSessionStatus,
   hasAdminPermission,
@@ -86,8 +87,8 @@ function isAdminApi(pathname: string): boolean {
   return pathname.startsWith('/admin/api/');
 }
 
-function adminApiError(status: 401 | 403 | 503, error: string) {
-  return NextResponse.json({ error }, { status });
+function adminApiError(failure: 'unauthenticated' | 'forbidden' | 'unavailable', error: string) {
+  return NextResponse.json({ error }, { status: getAdminAuthFailureStatus(failure) });
 }
 
 function expectedOrigins(request: NextRequest): string[] {
@@ -123,7 +124,7 @@ export async function middleware(request: NextRequest) {
 
     if (!options) {
       if (isAdminApi(pathname)) {
-        return adminApiError(503, 'Server misconfigured: AUTH_SECRET is not set.');
+        return adminApiError('unavailable', 'Server misconfigured: AUTH_SECRET is not set.');
       }
       return NextResponse.redirect(new URL('/admin/login?error=misconfigured', request.url));
     }
@@ -135,13 +136,13 @@ export async function middleware(request: NextRequest) {
 
       if (!session.isLoggedIn || !session.adminId) {
         if (isAdminApi(pathname)) {
-          return adminApiError(401, 'Unauthorized');
+          return adminApiError('unauthenticated', 'Unauthorized');
         }
         return NextResponse.redirect(new URL('/admin/login', request.url));
       }
     } catch {
       if (isAdminApi(pathname)) {
-        return adminApiError(401, 'Unauthorized');
+        return adminApiError('unauthenticated', 'Unauthorized');
       }
       return NextResponse.redirect(new URL('/admin/login', request.url));
     }
@@ -159,7 +160,7 @@ export async function middleware(request: NextRequest) {
         .where(eq(adminUsers.id, session.adminId))
         .limit(1);
     } catch {
-      if (isAdminApi(pathname)) return adminApiError(503, 'Authentication service unavailable');
+      if (isAdminApi(pathname)) return adminApiError('unavailable', 'Authentication service unavailable');
       return NextResponse.redirect(new URL('/admin/login?error=unavailable', request.url));
     }
 
@@ -172,7 +173,9 @@ export async function middleware(request: NextRequest) {
         method: request.method,
         reason: sessionStatus === 401 ? 'inactive_or_stale_session' : 'invalid_role',
       });
-      if (isAdminApi(pathname)) return adminApiError(sessionStatus, sessionStatus === 401 ? 'Unauthorized' : 'Forbidden');
+      if (isAdminApi(pathname)) {
+        return adminApiError(sessionStatus === 401 ? 'unauthenticated' : 'forbidden', sessionStatus === 401 ? 'Unauthorized' : 'Forbidden');
+      }
       return NextResponse.redirect(new URL('/admin/login', request.url));
     }
 
@@ -189,7 +192,7 @@ export async function middleware(request: NextRequest) {
         permission,
         reason: permission ? 'permission_denied' : 'unmapped_admin_route',
       });
-      if (isAdminApi(pathname)) return adminApiError(403, 'Forbidden');
+      if (isAdminApi(pathname)) return adminApiError('forbidden', 'Forbidden');
       return NextResponse.redirect(new URL('/admin/erisim-reddedildi', request.url));
     }
 
@@ -210,7 +213,7 @@ export async function middleware(request: NextRequest) {
         permission,
         reason: 'csrf_origin_mismatch',
       });
-      return adminApiError(403, 'Forbidden');
+      return adminApiError('forbidden', 'Forbidden');
     }
 
     if (isAdminApi(pathname) && !['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {

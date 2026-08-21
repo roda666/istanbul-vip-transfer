@@ -42,3 +42,4 @@
 - [Google Ads Keyword Planner integration](google-ads-kp.md) — lib/google-ads.ts uses Ads REST API v18; DB table google_ads_connections (migration 0027 applied manually); data priority: GSC > Google Ads > AI fallback; callback URI must be registered in Google Cloud Console.
 - [Social OAuth public origin](social-oauth-public-origin.md) — build callbacks and error redirects from forwarded public host with forced HTTPS.
 - [Social publishing public assets](social-publishing-public-assets.md) — resolve test images against the active public origin, not a fixed site hostname.
+- [Admin audit resilience](admin-audit-resilience.md) — audit failures stay observable but never alter authorization; persist only normalized, allowlisted route categories.

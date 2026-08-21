@@ -19,7 +19,12 @@ API davranışı:
 
 - Oturumsuz, pasif kullanıcı veya eski oturum sürümü: JSON `401`.
 - Oturum geçerli fakat izin yetersiz: JSON `403`.
+- Kimlik doğrulama veritabanı kullanılamıyorsa: JSON `503`.
 - Yetkisiz sayfa isteği: güvenli `/admin/erisim-reddedildi` ekranına yönlendirme.
 - Cookie ile yetkilendirilen tüm durum değiştiren isteklerde zorunlu, tam eşleşen aynı-origin ve `Sec-Fetch-Site` kontrolü uygulanır. Login, parola sıfırlama ve cron endpointleri kendi ayrı kimlik doğrulama akışlarını kullanır.
 
 Kritik route handler’larının mevcut iş-audit kayıtları korunur. Merkezi katman ayrıca her reddedilen erişimi ve izin verilen durum değiştiren admin isteğini, parola/token/header/body içermeyen sınırlı metadata ile kaydeder.
+
+Audit yazımı çalışmazsa authorization kararı değişmez: istek yine doğru `401`/`403`/başarılı akışına devam eder. Ancak hata artık sessiz değildir; workflow loglarında allowlist’li `ADMIN_AUDIT_WRITE_FAILED` olayı görünür. Bu olay yalnızca deneme kimliği, aksiyon, normalize edilmiş route kategorisi, HTTP metodu, izin, neden ve hata sınıfını içerir; ham hata, body, header, cookie, token, secret, query string veya dinamik URL parametresi içermez. Log sink’i de kullanılamazsa audit writer yine kontrollü sonuç döndürür.
+
+`test:admin-auth`, her gerçek admin API route dosyasından export edilen tüm HTTP metodlarını okur. Her metodun merkezi izne, açık public recovery/login akışına veya ayrı bearer-secret cron akışına eşlenmesini zorunlu kılar.

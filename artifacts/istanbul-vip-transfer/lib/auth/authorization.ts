@@ -34,6 +34,8 @@ export const ADMIN_PERMISSIONS = [
 ] as const;
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
 
+export type AdminAuthFailure = 'unauthenticated' | 'forbidden' | 'unavailable';
+
 const ALL_PERMISSIONS = new Set<AdminPermission>(ADMIN_PERMISSIONS);
 
 /** The only source of truth for role capabilities. Unknown roles get nothing. */
@@ -79,6 +81,12 @@ export function getCurrentAdminSessionStatus(
     return 401;
   }
   return isAdminRole(currentUser.role) ? null : 403;
+}
+
+export function getAdminAuthFailureStatus(failure: AdminAuthFailure): 401 | 403 | 503 {
+  if (failure === 'forbidden') return 403;
+  if (failure === 'unavailable') return 503;
+  return 401;
 }
 
 export function isStateChangingMethod(method: string): boolean {

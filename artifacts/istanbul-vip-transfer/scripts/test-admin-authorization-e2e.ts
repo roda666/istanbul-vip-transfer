@@ -121,13 +121,29 @@ try {
     headers: { origin: baseUrl, 'content-type': 'application/json' },
     body: '{"name":"allowed.png","size":1,"contentType":"image/png"}',
   });
-  // A 503 is permitted here when local object-storage signing is unavailable;
-  // either 200 or 503 proves the ADMIN request passed authorization to reach
-  // the storage handler. A policy denial must never occur.
-  assert.ok(
-    [200, 503].includes(mediaAdminResponse.status),
-    `ADMIN media request must reach the storage handler, got ${mediaAdminResponse.status}`,
-  );
+  if (mediaAdminResponse.status === 200) {
+    const payload = await mediaAdminResponse.json() as { uploadURL?: unknown; objectPath?: unknown; objectName?: unknown };
+    assert.equal(typeof payload.uploadURL, 'object', 'Configured storage must return a signed upload form');
+    assert.equal(typeof payload.objectPath, 'string', 'Configured storage must return a public object path');
+    assert.equal(typeof payload.objectName, 'string', 'Configured storage must return an object name');
+  } else {
+    assert.equal(
+      mediaAdminResponse.status,
+      503,
+      `ADMIN media request must pass authorization and reach storage handling, got ${mediaAdminResponse.status}`,
+    );
+    const payload = await mediaAdminResponse.json() as { error?: unknown };
+    const error = typeof payload.error === 'string' ? payload.error : 'Unknown storage failure';
+    assert.ok(
+      ['Object storage not configured', 'Failed to generate upload URL'].includes(error),
+      `Storage failure must return a controlled public error, got ${error}`,
+    );
+    // Do not print URLs, bucket names, credentials, or the underlying SDK
+    // error. This stable event is enough for operational follow-up.
+    console.warn('ADMIN_MEDIA_STORAGE_INTEGRATION_UNAVAILABLE', {
+      reason: error === 'Object storage not configured' ? 'bucket_configuration_missing' : 'signing_service_unavailable',
+    });
+  }
 
   const inactiveUser = await createTestUser('ADMIN');
   const inactiveCookie = await login(inactiveUser.email);

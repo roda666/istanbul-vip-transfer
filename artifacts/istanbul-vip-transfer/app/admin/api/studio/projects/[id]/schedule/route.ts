@@ -8,7 +8,11 @@
  * Scheduler status shown as 'hazır değil' if no cron is configured.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdminSession } from '@/lib/auth/session';
+import {
+  getAdminSessionErrorMessage,
+  getAdminSessionErrorStatus,
+  requireAdminSession,
+} from '@/lib/auth/session';
 import { hasAdminPermission } from '@/lib/auth/authorization';
 import 'server-only';
 
@@ -37,7 +41,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   let session;
   try { session = await requireAdminSession(); }
-  catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
+  catch (error) {
+    const status = getAdminSessionErrorStatus(error);
+    return NextResponse.json({ error: getAdminSessionErrorMessage(status) }, { status });
+  }
   if (!hasAdminPermission(session.role, 'CONTENT_PUBLISH')) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }

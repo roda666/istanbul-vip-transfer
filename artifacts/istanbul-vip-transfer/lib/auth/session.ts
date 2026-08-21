@@ -22,6 +22,19 @@ export interface SessionData {
   sessionVersion: number;
 }
 
+export function getAdminSessionErrorStatus(error: unknown): 401 | 403 | 503 {
+  const status = typeof error === 'object' && error !== null && 'status' in error
+    ? (error as { status?: unknown }).status
+    : undefined;
+  return status === 403 || status === 503 ? status : 401;
+}
+
+export function getAdminSessionErrorMessage(status: 401 | 403 | 503): string {
+  if (status === 403) return 'Forbidden';
+  if (status === 503) return 'Authentication service unavailable';
+  return 'Unauthorized';
+}
+
 const COOKIE_NAME = 'ivt_admin_session';
 
 function buildSessionOptions() {

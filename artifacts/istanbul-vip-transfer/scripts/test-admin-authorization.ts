@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
-import { readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import {
+  ADMIN_PERMISSIONS,
   getAdminApiPermission,
+  getAdminAuthFailureStatus,
   getAdminPagePermission,
   getCurrentAdminSessionStatus,
   hasAdminPermission,
@@ -10,6 +12,30 @@ import {
   isCronAdminApi,
   isPublicAdminApi,
 } from '../lib/auth/authorization';
+import {
+  createAdminSecurityAuditWriter,
+  normalizeAdminAuditPath,
+} from '../lib/auth/audit';
+import {
+  getAdminSessionErrorMessage,
+  getAdminSessionErrorStatus,
+} from '../lib/auth/session';
+
+const ROLE_EXPECTATIONS = {
+  SUPER_ADMIN: new Set(ADMIN_PERMISSIONS),
+  ADMIN: new Set([
+    'ADMIN_ACCESS', 'DASHBOARD_READ', 'CONTENT_READ', 'CONTENT_WRITE',
+    'CONTENT_PUBLISH', 'CONTENT_DELETE', 'AI_USE', 'TRANSLATIONS_MANAGE',
+    'FLEET_MANAGE', 'RESERVATIONS_READ', 'RESERVATIONS_MANAGE',
+    'NEWSLETTER_READ', 'NEWSLETTER_MANAGE', 'CHAT_MANAGE', 'ANALYTICS_READ',
+    'SITE_SETTINGS_MANAGE', 'MEDIA_MANAGE', 'AUDIT_READ', 'ACCOUNT_SELF_MANAGE',
+  ]),
+  EDITOR: new Set([
+    'ADMIN_ACCESS', 'DASHBOARD_READ', 'CONTENT_READ', 'CONTENT_WRITE',
+    'AI_USE', 'TRANSLATIONS_MANAGE', 'ACCOUNT_SELF_MANAGE',
+  ]),
+  CHAT_STAFF: new Set(['CHAT_MANAGE', 'ACCOUNT_SELF_MANAGE']),
+} as const;
 
 function collectRouteFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((entry) => {
@@ -32,12 +58,26 @@ function appPath(root: string, file: string): string {
   return `/${path}`;
 }
 
-assert.equal(hasAdminPermission('SUPER_ADMIN', 'STAFF_MANAGE'), true);
-assert.equal(hasAdminPermission('ADMIN', 'STAFF_MANAGE'), false);
-assert.equal(hasAdminPermission('EDITOR', 'CONTENT_WRITE'), true);
-assert.equal(hasAdminPermission('EDITOR', 'CONTENT_PUBLISH'), false);
-assert.equal(hasAdminPermission('CHAT_STAFF', 'CHAT_MANAGE'), true);
-assert.equal(hasAdminPermission('CHAT_STAFF', 'RESERVATIONS_READ'), false);
+function exportedHttpMethods(file: string): string[] {
+  const source = readFileSync(file, 'utf8');
+  const methods = new Set<string>();
+  const pattern = /export\s+(?:async\s+)?function\s+(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b|export\s+const\s+(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s*=/g;
+  for (const match of source.matchAll(pattern)) {
+    methods.add(match[1] ?? match[2]);
+  }
+  return [...methods];
+}
+
+// Lock the complete four-role matrix, not just representative permissions.
+for (const [role, expectedPermissions] of Object.entries(ROLE_EXPECTATIONS)) {
+  for (const permission of ADMIN_PERMISSIONS) {
+    assert.equal(
+      hasAdminPermission(role, permission),
+      expectedPermissions.has(permission),
+      `${role} permission mismatch for ${permission}`,
+    );
+  }
+}
 assert.equal(hasAdminPermission('UNKNOWN', 'CONTENT_READ'), false);
 
 // Current user data is authoritative: inactive/deleted/stale sessions are 401,
@@ -46,6 +86,15 @@ assert.equal(getCurrentAdminSessionStatus(7, { active: false, role: 'ADMIN', ses
 assert.equal(getCurrentAdminSessionStatus(7, { active: true, role: 'ADMIN', sessionVersion: 6 }), 401);
 assert.equal(getCurrentAdminSessionStatus(7, { active: true, role: 'NOT_A_ROLE', sessionVersion: 7 }), 403);
 assert.equal(getCurrentAdminSessionStatus(7, { active: true, role: 'SUPER_ADMIN', sessionVersion: 7 }), null);
+assert.equal(getAdminAuthFailureStatus('unauthenticated'), 401);
+assert.equal(getAdminAuthFailureStatus('forbidden'), 403);
+assert.equal(getAdminAuthFailureStatus('unavailable'), 503);
+assert.equal(getAdminSessionErrorStatus(Object.assign(new Error('no session'), { status: 401 })), 401);
+assert.equal(getAdminSessionErrorStatus(Object.assign(new Error('bad role'), { status: 403 })), 403);
+assert.equal(getAdminSessionErrorStatus(Object.assign(new Error('db unavailable'), { status: 503 })), 503);
+assert.equal(getAdminSessionErrorStatus(new Error('unknown failure')), 401);
+assert.equal(getAdminSessionErrorMessage(403), 'Forbidden');
+assert.equal(getAdminSessionErrorMessage(503), 'Authentication service unavailable');
 
 assert.equal(getAdminApiPermission('/admin/api/staff', 'POST'), 'STAFF_MANAGE');
 assert.equal(getAdminApiPermission('/admin/api/homepage/tr/publish', 'POST'), 'CONTENT_PUBLISH');
@@ -68,16 +117,20 @@ assert.equal(getAdminPagePermission('/admin/sohbet'), 'CHAT_MANAGE');
 assert.equal(getAdminPagePermission('/admin/personel'), 'STAFF_MANAGE');
 assert.equal(getAdminPagePermission('/admin/not-a-real-page'), undefined);
 
-// Inventory guard: every actual admin route and protected page is deliberately
-// public/special or assigned a central permission. New files fail this test
-// until they are classified.
+// Inventory guard: every actual admin route method is deliberately public,
+// special, or assigned a central permission. New route handlers or methods
+// fail this test until they are classified.
 const apiRoot = join(process.cwd(), 'app/admin/api');
 for (const file of collectRouteFiles(apiRoot)) {
   const pathname = appPath(join(process.cwd(), 'app'), file);
-  assert.ok(
-    isPublicAdminApi(pathname) || isCronAdminApi(pathname) || getAdminApiPermission(pathname, 'POST'),
-    `Unmapped admin API route: ${pathname}`,
-  );
+  const methods = exportedHttpMethods(file);
+  assert.ok(methods.length > 0, `No HTTP method export found: ${pathname}`);
+  for (const method of methods) {
+    assert.ok(
+      isPublicAdminApi(pathname) || isCronAdminApi(pathname) || getAdminApiPermission(pathname, method),
+      `Unmapped admin API route method: ${method} ${pathname}`,
+    );
+  }
 }
 
 const pageRoot = join(process.cwd(), 'app/admin/(protected)');
@@ -104,5 +157,80 @@ assert.equal(hasValidAdminMutationOrigin({
   secFetchSite: null,
   expectedOrigins: ['https://admin.example'],
 }), false);
+
+// Audit writes have a success result and a non-throwing, observable failure
+// result. Both record/log shapes intentionally contain only allowlisted data.
+const storedAuditRecords: Array<Record<string, unknown>> = [];
+const successfulAuditWriter = createAdminSecurityAuditWriter(async (record) => {
+  storedAuditRecords.push(record as unknown as Record<string, unknown>);
+});
+const auditSuccess = await successfulAuditWriter({
+  adminUserId: '00000000-0000-0000-0000-000000000001',
+  action: 'ADMIN_ACCESS_DENIED',
+  pathname: '/admin/api/staff',
+  method: 'post',
+  permission: 'STAFF_MANAGE',
+  reason: 'permission_denied',
+});
+assert.equal(auditSuccess.ok, true);
+assert.equal(storedAuditRecords.length, 1);
+assert.deepEqual(
+  Object.keys((storedAuditRecords[0].metadata ?? {}) as Record<string, unknown>).sort(),
+  ['auditAttemptId', 'method', 'permission', 'reason'],
+);
+
+const auditFailures: Array<{ event: string; details: Record<string, unknown> }> = [];
+const failingAuditWriter = createAdminSecurityAuditWriter(
+  async () => { throw new Error('database connection unavailable'); },
+  (event, details) => auditFailures.push({ event, details }),
+);
+const auditFailure = await failingAuditWriter({
+  action: 'ADMIN_MUTATION_AUTHORIZED',
+  pathname: '/admin/api/homepage/media',
+  method: 'POST',
+  permission: 'MEDIA_MANAGE',
+});
+assert.equal(auditFailure.ok, false);
+assert.equal(auditFailure.code, 'AUDIT_WRITE_FAILED');
+assert.equal(auditFailures.length, 1);
+assert.equal(auditFailures[0].event, 'ADMIN_AUDIT_WRITE_FAILED');
+assert.deepEqual(
+  Object.keys(auditFailures[0].details).sort(),
+  ['action', 'attemptId', 'errorClass', 'method', 'pathname', 'permission', 'reason'],
+);
+assert.equal(auditFailures[0].details.errorClass, 'Error');
+
+// A failed reporting sink must not turn an audit failure into a request error.
+const loggerFailureWriter = createAdminSecurityAuditWriter(
+  async () => { throw new Error('database connection unavailable'); },
+  () => { throw new Error('log collector unavailable'); },
+);
+const loggerFailureResult = await loggerFailureWriter({
+  action: 'ADMIN_ACCESS_DENIED',
+  pathname: '/admin/api/staff',
+  method: 'GET',
+});
+assert.equal(loggerFailureResult.ok, false);
+if (!loggerFailureResult.ok) {
+  assert.equal(loggerFailureResult.code, 'AUDIT_WRITE_FAILED');
+}
+
+// Dynamic URL parameters and query strings are request-controlled and must
+// never become audit metadata or an operational log field.
+const adversarialPath = '/admin/api/not-a-real-module/token-do-not-record?credential=also-do-not-record';
+assert.equal(normalizeAdminAuditPath(adversarialPath), '/admin/api/unknown');
+const adversarialAuditRecords: Array<Record<string, unknown>> = [];
+const redactingAuditWriter = createAdminSecurityAuditWriter(async (record) => {
+  adversarialAuditRecords.push(record as unknown as Record<string, unknown>);
+});
+await redactingAuditWriter({
+  action: 'ADMIN_ACCESS_DENIED',
+  pathname: adversarialPath,
+  method: 'POST',
+  reason: 'unmapped_admin_route',
+});
+assert.equal(adversarialAuditRecords[0].pathname, '/admin/api/unknown');
+assert.equal(JSON.stringify(adversarialAuditRecords[0]).includes('token-do-not-record'), false);
+assert.equal(JSON.stringify(adversarialAuditRecords[0]).includes('credential='), false);
 
 console.log('admin authorization policy tests passed');

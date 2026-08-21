@@ -20,6 +20,8 @@
     "create-admin": "tsx scripts/create-admin.ts",
     "reset-admin-password": "tsx scripts/reset-admin-password.ts",
     "test:e2e": "playwright test",
+    "test:admin-auth": "tsx scripts/test-admin-authorization.ts",
+    "test:admin-auth:e2e": "tsx scripts/test-admin-authorization-e2e.ts",
     "test:perf": "tsx scripts/perf-check.ts",
     "test:perf:browser": "playwright test tests/perf.spec.ts"
   },

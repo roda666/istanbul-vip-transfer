@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdminSession } from '@/lib/auth/session';
+import { hasAdminPermission } from '@/lib/auth/authorization';
 
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -24,8 +25,12 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  try { await requireAdminSession(); } catch {
+  let session;
+  try { session = await requireAdminSession(); } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  if (!hasAdminPermission(session.role, 'MEDIA_MANAGE')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   let body: unknown;

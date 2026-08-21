@@ -22,6 +22,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import type { SessionData } from '@/lib/auth/session';
+import { db } from '@/db';
+import { adminUsers } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import { writeAdminSecurityAudit } from '@/lib/auth/audit';
+import {
+  getAdminApiPermission,
+  getAdminPagePermission,
+  getCurrentAdminSessionStatus,
+  hasAdminPermission,
+  hasValidAdminMutationOrigin,
+  isCronAdminApi,
+  isPublicAdminApi,
+} from '@/lib/auth/authorization';
 import {
   NON_SOURCE_LOCALES,
   RENDERABLE_LOCALES,
@@ -62,10 +75,26 @@ function tryGetOptions() {
   };
 }
 
-const PUBLIC_PATHS = ['/admin/login', '/admin/api/login', '/admin/api/logout'];
+const PUBLIC_PATHS = ['/admin/login'];
 
 function isPublicPath(pathname: string): boolean {
-  return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'));
+  return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/')) ||
+    isPublicAdminApi(pathname);
+}
+
+function isAdminApi(pathname: string): boolean {
+  return pathname.startsWith('/admin/api/');
+}
+
+function adminApiError(status: 401 | 403 | 503, error: string) {
+  return NextResponse.json({ error }, { status });
+}
+
+function expectedOrigins(request: NextRequest): string[] {
+  const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
+  const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim() || 'https';
+  const forwardedOrigin = forwardedHost ? `${forwardedProto}://${forwardedHost}` : null;
+  return Array.from(new Set([request.nextUrl.origin, forwardedOrigin].filter(Boolean) as string[]));
 }
 
 /** Paths that should never be touched by locale logic. */
@@ -86,34 +115,112 @@ export async function middleware(request: NextRequest) {
   // ── Admin auth ──────────────────────────────────────────────────────────────
   if (pathname.startsWith('/admin')) {
     if (isPublicPath(pathname)) return NextResponse.next();
+    // The scheduled job has its own bearer-secret authentication. It must not
+    // be forced through a browser admin session.
+    if (isCronAdminApi(pathname)) return NextResponse.next();
 
     const options = tryGetOptions();
 
     if (!options) {
-      if (pathname.startsWith('/admin/api/')) {
-        return NextResponse.json(
-          { error: 'Server misconfigured: AUTH_SECRET is not set.' },
-          { status: 503 },
-        );
+      if (isAdminApi(pathname)) {
+        return adminApiError(503, 'Server misconfigured: AUTH_SECRET is not set.');
       }
       return NextResponse.redirect(new URL('/admin/login?error=misconfigured', request.url));
     }
 
+    let session: SessionData;
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const session = await getIronSession<SessionData>(request.cookies as any, options);
+      session = await getIronSession<SessionData>(request.cookies as any, options);
 
       if (!session.isLoggedIn || !session.adminId) {
-        if (pathname.startsWith('/admin/api/')) {
-          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        if (isAdminApi(pathname)) {
+          return adminApiError(401, 'Unauthorized');
         }
         return NextResponse.redirect(new URL('/admin/login', request.url));
       }
     } catch {
-      if (pathname.startsWith('/admin/api/')) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      if (isAdminApi(pathname)) {
+        return adminApiError(401, 'Unauthorized');
       }
       return NextResponse.redirect(new URL('/admin/login', request.url));
+    }
+
+    let currentUser;
+    try {
+      [currentUser] = await db
+        .select({
+          id: adminUsers.id,
+          active: adminUsers.active,
+          role: adminUsers.role,
+          sessionVersion: adminUsers.sessionVersion,
+        })
+        .from(adminUsers)
+        .where(eq(adminUsers.id, session.adminId))
+        .limit(1);
+    } catch {
+      if (isAdminApi(pathname)) return adminApiError(503, 'Authentication service unavailable');
+      return NextResponse.redirect(new URL('/admin/login?error=unavailable', request.url));
+    }
+
+    const sessionStatus = getCurrentAdminSessionStatus(session.sessionVersion, currentUser);
+    if (sessionStatus) {
+      await writeAdminSecurityAudit({
+        adminUserId: currentUser?.id ?? null,
+        action: 'ADMIN_ACCESS_DENIED',
+        pathname,
+        method: request.method,
+        reason: sessionStatus === 401 ? 'inactive_or_stale_session' : 'invalid_role',
+      });
+      if (isAdminApi(pathname)) return adminApiError(sessionStatus, sessionStatus === 401 ? 'Unauthorized' : 'Forbidden');
+      return NextResponse.redirect(new URL('/admin/login', request.url));
+    }
+
+    const permission = isAdminApi(pathname)
+      ? getAdminApiPermission(pathname, request.method)
+      : getAdminPagePermission(pathname);
+
+    if (!permission || !hasAdminPermission(currentUser.role, permission)) {
+      await writeAdminSecurityAudit({
+        adminUserId: currentUser.id,
+        action: 'ADMIN_ACCESS_DENIED',
+        pathname,
+        method: request.method,
+        permission,
+        reason: permission ? 'permission_denied' : 'unmapped_admin_route',
+      });
+      if (isAdminApi(pathname)) return adminApiError(403, 'Forbidden');
+      return NextResponse.redirect(new URL('/admin/erisim-reddedildi', request.url));
+    }
+
+    if (
+      isAdminApi(pathname) &&
+      !hasValidAdminMutationOrigin({
+        method: request.method,
+        origin: request.headers.get('origin'),
+        secFetchSite: request.headers.get('sec-fetch-site'),
+        expectedOrigins: expectedOrigins(request),
+      })
+    ) {
+      await writeAdminSecurityAudit({
+        adminUserId: currentUser.id,
+        action: 'ADMIN_ACCESS_DENIED',
+        pathname,
+        method: request.method,
+        permission,
+        reason: 'csrf_origin_mismatch',
+      });
+      return adminApiError(403, 'Forbidden');
+    }
+
+    if (isAdminApi(pathname) && !['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {
+      await writeAdminSecurityAudit({
+        adminUserId: currentUser.id,
+        action: 'ADMIN_MUTATION_AUTHORIZED',
+        pathname,
+        method: request.method,
+        permission,
+      });
     }
 
     return NextResponse.next();
@@ -170,6 +277,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
+  runtime: 'nodejs',
   matcher: [
     '/admin/:path*',
     '/((?!_next/static|_next/image|favicon.ico).*)',

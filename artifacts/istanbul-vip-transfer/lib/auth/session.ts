@@ -4,6 +4,13 @@
  */
 import { getIronSession } from 'iron-session';
 import { cookies } from 'next/headers';
+import { db } from '@/db';
+import { adminUsers } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import {
+  getCurrentAdminSessionStatus,
+  type AdminRole,
+} from './authorization';
 
 export interface SessionData {
   adminId: string;
@@ -84,12 +91,38 @@ export async function requireAdminSession(): Promise<SessionData> {
   if (!session.isLoggedIn || !session.adminId) {
     throw Object.assign(new Error('Unauthorized'), { status: 401 });
   }
+
+  let user;
+  try {
+    [user] = await db
+      .select({
+        id: adminUsers.id,
+        email: adminUsers.email,
+        name: adminUsers.name,
+        role: adminUsers.role,
+        active: adminUsers.active,
+        sessionVersion: adminUsers.sessionVersion,
+      })
+      .from(adminUsers)
+      .where(eq(adminUsers.id, session.adminId))
+      .limit(1);
+  } catch {
+    throw Object.assign(new Error('Authentication service unavailable'), { status: 503 });
+  }
+
+  // The cookie is only an identifier. Current active status, role, and session
+  // version always come from the database.
+  const status = getCurrentAdminSessionStatus(session.sessionVersion, user);
+  if (status) {
+    throw Object.assign(new Error(status === 401 ? 'Unauthorized' : 'Forbidden'), { status });
+  }
+
   return {
-    adminId: session.adminId,
-    email: session.email,
-    role: session.role,
-    name: session.name,
+    adminId: user.id,
+    email: user.email,
+    role: user.role as AdminRole,
+    name: user.name,
     isLoggedIn: true,
-    sessionVersion: session.sessionVersion ?? 1,
+    sessionVersion: user.sessionVersion,
   };
 }

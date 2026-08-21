@@ -7,6 +7,7 @@
  * entity_type = 'service_page' (matches ENTITY_TYPE in service-page-cms.ts)
  */
 import 'server-only';
+import { parseServicePageBody } from './service-page-types';
 
 export interface PublishedServiceListItem {
   slug:         string;
@@ -69,6 +70,7 @@ export async function getPublishedServiceList(
         slug:         content.slug,
         txTitle:      contentTranslations.title,
         txExcerpt:    contentTranslations.excerpt,
+        txBody:       contentTranslations.body,
         category:     content.category,
         displayOrder: content.displayOrder,
         heroImage:    content.heroImage,
@@ -93,14 +95,25 @@ export async function getPublishedServiceList(
 
     return rows
       .filter((r): r is typeof r & { txTitle: string } => Boolean(r.txTitle))
-      .map((r) => ({
-        slug:         r.slug,
-        title:        r.txTitle,
-        excerpt:      r.txExcerpt ?? null,
-        category:     r.category ?? null,
-        displayOrder: r.displayOrder ?? 99,
-        heroImage:    r.heroImage ?? null,
-      }));
+      .map((r) => {
+        const translatedBody = parseServicePageBody(r.txBody);
+        // Older translation seeds did not populate `excerpt`. Use copy from
+        // the same published target-language body instead of showing an empty
+        // card or falling back to Turkish source text.
+        const excerpt = r.txExcerpt?.trim()
+          || translatedBody?.hero.subtitle?.trim()
+          || translatedBody?.introBody?.trim()
+          || null;
+
+        return {
+          slug:         r.slug,
+          title:        r.txTitle,
+          excerpt,
+          category:     r.category ?? null,
+          displayOrder: r.displayOrder ?? 99,
+          heroImage:    r.heroImage ?? null,
+        };
+      });
   } catch {
     return [];
   }

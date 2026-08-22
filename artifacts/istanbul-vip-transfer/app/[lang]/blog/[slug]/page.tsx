@@ -7,13 +7,14 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import { isValidLang, getDictionary, getLangDir } from '@/lib/i18n';
+import { isValidLang, getDictionary } from '@/lib/i18n';
 import { getOgLocale } from '@/lib/i18n/seo';
 import { buildBlogAlternates } from '@/lib/blog-hreflang';
 import { getPublishedBlogTranslation } from '@/lib/blog-cms';
 import { SITE } from '@/lib/site-config';
 import { getContactSettings } from '@/lib/site-settings-server';
 import CollapsibleBookingForm from '@/components/CollapsibleBookingForm';
+import { getPublicLanguage } from '@/lib/i18n/active-locales';
 
 interface Props {
   params: Promise<{ lang: string; slug: string }>;
@@ -28,7 +29,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const translation = await getPublishedBlogTranslation(slug, lang);
   if (!translation) return { robots: { index: false } };
 
-  const title = translation.metaTitle ?? translation.title ?? translation.sourceTitle;
+  const title = translation.metaTitle ?? translation.title ?? 'VIP Transfer Istanbul';
   const description = translation.metaDescription ?? translation.excerpt ?? undefined;
   const canonicalUrl = `${SITE.siteUrl}/${lang}/blog/${translation.slug ?? slug}`;
   const { languages } = await buildBlogAlternates(translation.sourceSlug);
@@ -46,7 +47,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: 'article',
       publishedTime: translation.publishedAt?.toISOString(),
       images: translation.sourceHeroImage
-        ? [{ url: translation.sourceHeroImage, alt: translation.sourceHeroImageAlt ?? translation.title ?? translation.sourceTitle }]
+        ? [{ url: translation.sourceHeroImage, alt: translation.title ?? 'VIP Transfer Istanbul' }]
         : [SITE.ogImage],
     },
     robots: { index: true, follow: true },
@@ -59,38 +60,17 @@ export default async function TranslatedBlogPost({ params }: Props) {
   const slug = decodeURIComponent(rawSlug);
   if (!isValidLang(lang)) notFound();
 
-  const [translation, cs] = await Promise.all([
+  const [translation, cs, language] = await Promise.all([
     getPublishedBlogTranslation(slug, lang),
     getContactSettings(),
+    getPublicLanguage(lang),
   ]);
   if (!translation) notFound();
 
   const dict = getDictionary(lang);
-  const dir  = getLangDir(lang);
+  const dir  = language?.direction ?? 'ltr';
   const isRtl = dir === 'rtl';
-
-  // Fetch FAQs from source content (TR source)
-  let faqs: Array<{ id: string; question: string; answer: string; sortOrder: number }> = [];
-  try {
-    const { db }        = await import('@/db');
-    const { faqs: ft }  = await import('@/db/schema');
-    const { eq, asc }   = await import('drizzle-orm');
-    // We need to get contentId from source slug — do a join lookup
-    const { content }   = await import('@/db/schema');
-    const [src] = await db.select({ id: content.id }).from(content)
-      .where(eq(content.slug, translation.sourceSlug)).limit(1);
-    if (src) {
-      faqs = await db.select().from(ft).where(eq(ft.contentId, src.id)).orderBy(asc(ft.sortOrder));
-    }
-  } catch { /* no FAQs — continue */ }
-
-  const faqSchema = faqs.length > 0 ? {
-    '@context': 'https://schema.org', '@type': 'FAQPage',
-    mainEntity: faqs.map(f => ({
-      '@type': 'Question', name: f.question,
-      acceptedAnswer: { '@type': 'Answer', text: f.answer },
-    })),
-  } : null;
+  const localizedTitle = translation.title?.trim() || dict.common.notFound;
 
   const postUrl = `${SITE.siteUrl}/${lang}/blog/${translation.slug ?? slug}`;
 
@@ -113,7 +93,7 @@ export default async function TranslatedBlogPost({ params }: Props) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={translation.sourceHeroImage}
-              alt={translation.sourceHeroImageAlt ?? translation.title ?? translation.sourceTitle}
+              alt={localizedTitle}
               className="w-full h-full object-cover"
               decoding="async"
               fetchPriority="high"
@@ -126,13 +106,6 @@ export default async function TranslatedBlogPost({ params }: Props) {
         <div className="rounded-2xl overflow-hidden"
           style={{ background: '#FFFFFF', border: '1px solid #D9E2EC', boxShadow: '0 4px 24px rgba(16,42,67,0.06)' }}>
           <div className="p-8 md:p-12">
-            {/* Category */}
-            {translation.sourceCategory && (
-              <p className="text-xs mb-3 tracking-wider uppercase" style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}>
-                {translation.sourceCategory}
-              </p>
-            )}
-
             {/* Date */}
             {translation.publishedAt && (
               <p className="text-xs mb-4 tracking-wider uppercase" style={{ color: '#94A3B8', fontFamily: 'Inter, sans-serif' }}>
@@ -145,7 +118,7 @@ export default async function TranslatedBlogPost({ params }: Props) {
 
             <h1 className="text-3xl md:text-4xl font-bold mb-6 leading-snug"
               style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}>
-              {translation.title ?? translation.sourceTitle}
+              {localizedTitle}
             </h1>
 
             {translation.excerpt && (
@@ -171,35 +144,9 @@ export default async function TranslatedBlogPost({ params }: Props) {
               <p style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>{dict.common.loading}</p>
             )}
 
-            {/* Author */}
-            {translation.sourceAuthor && (
-              <p className="mt-8 text-sm" style={{ color: '#94A3B8', fontFamily: 'Inter, sans-serif' }}>
-                {translation.sourceAuthor}
-              </p>
-            )}
           </div>
         </div>
 
-        {/* FAQs */}
-        {faqs.length > 0 && (
-          <div className="mt-10">
-            <h2 className="text-xl font-bold mb-5" style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}>
-              FAQ
-            </h2>
-            <div className="space-y-3">
-              {faqs.map(faq => (
-                <details key={faq.id} style={{ border: '1px solid #E2E8F0', borderRadius: '8px', overflow: 'hidden' }}>
-                  <summary style={{ padding: '13px 15px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '14px', fontWeight: 600, color: '#1E293B', background: '#F8FAFC' }}>
-                    {faq.question}
-                  </summary>
-                  <div style={{ padding: '13px 15px', fontSize: '14px', lineHeight: 1.7, color: '#374151', fontFamily: 'Inter, sans-serif' }}>
-                    {faq.answer}
-                  </div>
-                </details>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       <CollapsibleBookingForm />
@@ -207,14 +154,12 @@ export default async function TranslatedBlogPost({ params }: Props) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{
         __html: JSON.stringify({
           '@context': 'https://schema.org', '@type': 'BlogPosting',
-          headline: translation.title ?? translation.sourceTitle,
+          headline: localizedTitle,
           description: translation.excerpt ?? undefined,
           url: postUrl, inLanguage: lang,
           datePublished: translation.publishedAt?.toISOString(),
           image: translation.sourceHeroImage ?? undefined,
-          author: translation.sourceAuthor
-            ? { '@type': 'Person', name: translation.sourceAuthor }
-            : { '@type': 'Organization', name: 'VIP Transfer Istanbul', url: SITE.siteUrl },
+          author: { '@type': 'Organization', name: 'VIP Transfer Istanbul', url: SITE.siteUrl },
           publisher: { '@type': 'Organization', name: 'VIP Transfer Istanbul', url: SITE.siteUrl, telephone: cs.phoneE164, email: cs.email },
         }),
       }} />
@@ -224,11 +169,10 @@ export default async function TranslatedBlogPost({ params }: Props) {
           itemListElement: [
             { '@type': 'ListItem', position: 1, name: 'Home', item: SITE.siteUrl },
             { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE.siteUrl}/${lang}/blog` },
-            { '@type': 'ListItem', position: 3, name: translation.title ?? translation.sourceTitle, item: postUrl },
+            { '@type': 'ListItem', position: 3, name: localizedTitle, item: postUrl },
           ],
         }),
       }} />
-      {faqSchema && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />}
     </article>
   );
 }

@@ -8,7 +8,8 @@
 import { useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { LangContext } from '@/lib/i18n/context';
-import { getDictionary, SUPPORTED_LANGS } from '@/lib/i18n';
+import { getDictionary } from '@/lib/i18n';
+import { isLocaleCodeSyntax } from '@/lib/i18n/locale-registry';
 
 interface Props {
   children: React.ReactNode;
@@ -23,7 +24,7 @@ export default function LangProvider({ children, forceLang }: Props) {
     if (forceLang) return forceLang;
     if (!pathname) return 'tr';
     const segment = pathname.split('/')[1];
-    return SUPPORTED_LANGS.includes(segment as (typeof SUPPORTED_LANGS)[number]) ? segment : 'tr';
+    return segment && segment !== 'tr' && isLocaleCodeSyntax(segment) ? segment : 'tr';
   }, [pathname, forceLang]);
 
   const dict = useMemo(() => getDictionary(lang), [lang]);

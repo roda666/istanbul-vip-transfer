@@ -18,6 +18,7 @@ const PRESERVED_VERBATIM = [
 export async function translateServicePageFields(
   fields: Record<string, string>,
   targetLang: string,
+  signal?: AbortSignal,
 ): Promise<ServicePageTranslateResult> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return { ok: false, reason: 'not_configured', message: 'OPENAI_API_KEY is not set' };
@@ -60,15 +61,18 @@ Return the translated JSON with identical keys.`;
     const { OpenAI } = await import('openai');
     const client = new OpenAI({ apiKey });
 
-    const response = await client.chat.completions.create({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user',   content: userPrompt },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.25,
-    });
+    const response = await client.chat.completions.create(
+      {
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user',   content: userPrompt },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.25,
+      },
+      { signal },
+    );
 
     const raw = response.choices[0]?.message?.content;
     if (!raw) return { ok: false, reason: 'api_error', message: 'No content in OpenAI response' };

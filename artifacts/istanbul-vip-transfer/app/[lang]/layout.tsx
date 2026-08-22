@@ -9,8 +9,8 @@
 import { notFound, redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import LangProvider from '@/components/LangProvider';
-import { isValidLang, LANG_LOCALES } from '@/lib/i18n';
-import { isPublicLang } from '@/lib/i18n/active-locales';
+import { isLocaleCodeSyntax } from '@/lib/i18n/locale-registry';
+import { getPublicLanguage } from '@/lib/i18n/active-locales';
 
 interface Props {
   children: React.ReactNode;
@@ -19,15 +19,14 @@ interface Props {
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const { lang } = await params;
-  if (!isValidLang(lang)) return {};
-
-  const locale = LANG_LOCALES[lang as keyof typeof LANG_LOCALES] ?? 'en-GB';
+  const language = await getPublicLanguage(lang);
+  if (!language) return {};
 
   return {
     title: 'Istanbul VIP Transfer | Luxury Airport & City Transfers',
     description: 'Istanbul VIP Transfer — luxury airport transfers, intercity transport, and private tours with Mercedes Vito & Sprinter.',
     openGraph: {
-      locale,
+      locale: language.locale,
     },
     other: {
       'content-language': lang,
@@ -38,24 +37,17 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
 export default async function LangLayout({ children, params }: Props) {
   const { lang } = await params;
 
-  // Only allow valid non-Turkish lang codes with static dictionaries
-  if (!isValidLang(lang)) {
+  const language = await getPublicLanguage(lang);
+  if (!language || lang === 'tr') {
     // Catalog language that exists but is not publicly active (or any other
     // locale-looking segment) → safe redirect to the Turkish root instead of
     // showing a broken page. Non-locale segments fall through to 404.
-    if (/^[a-z]{2,3}(-[A-Za-z]{2,4})?$/.test(lang)) {
+    if (isLocaleCodeSyntax(lang)) {
       // Reset the preference cookie too, so the edge middleware doesn't keep
       // bouncing "/" back to this inactive locale (redirect loop).
       redirect('/data/locale/reset');
     }
     notFound();
-  }
-
-  // Defense in depth: a launched language that an admin disabled/unpublished
-  // must stop being publicly reachable — redirect via the cookie-reset route
-  // (a plain "/" redirect would loop with the middleware's cookie redirect).
-  if (!(await isPublicLang(lang))) {
-    redirect('/data/locale/reset');
   }
 
   return (

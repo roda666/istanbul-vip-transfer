@@ -13,7 +13,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { sanitizeText } from '@/lib/sanitize';
-import { ALL_LOCALE_CODES } from '@/lib/i18n/locale-registry';
 import { isFiveMinuteIncrement, isValidPassengerCount, meetsAllocationMinimum } from '@/lib/booking-rules';
 
 export const dynamic = 'force-dynamic';
@@ -87,7 +86,7 @@ const RequestSchema = z.object({
   telefon:           z.string().min(7).max(30),
   email:             z.string().max(254).nullable().optional(),
   newsletterConsent: z.boolean().optional().default(false),
-  locale:            z.enum(ALL_LOCALE_CODES).optional().default('tr'),
+  locale:            z.string().min(2).max(12).optional().default('tr'),
   _hp:               z.string().optional(),
   formData:          z.record(z.unknown()),
 });
@@ -165,6 +164,14 @@ export async function POST(req: NextRequest) {
   }
 
   const data = parsed.data;
+
+  // A reservation can only claim a language that is actually public. This is
+  // catalog-backed so a future language does not fail schema validation merely
+  // because it was not part of the original static locale tuple.
+  const { getPublicLangCodes } = await import('@/lib/i18n/active-locales');
+  if (!(await getPublicLangCodes()).includes(data.locale)) {
+    return NextResponse.json({ error: 'Unsupported or unpublished locale' }, { status: 422 });
+  }
 
   // Honeypot check — return 200 to not reveal detection, but don't save
   if (data._hp && data._hp.trim().length > 0) {

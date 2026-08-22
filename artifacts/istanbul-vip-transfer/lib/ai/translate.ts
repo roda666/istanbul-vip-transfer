@@ -82,6 +82,7 @@ const PROMPT_VERSION = '1.1';
 export async function translateContent(
   input: TranslationInput,
   targetLang: string,
+  signal?: AbortSignal,
 ): Promise<TranslateResult> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -137,15 +138,18 @@ Image Caption: ${input.imageCaption ?? ''}`;
     const { OpenAI } = await import('openai');
     const client = new OpenAI({ apiKey });
 
-    const response = await client.chat.completions.create({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.3,
-    });
+    const response = await client.chat.completions.create(
+      {
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.3,
+      },
+      { signal },
+    );
 
     const raw = response.choices[0]?.message?.content;
     if (!raw) {

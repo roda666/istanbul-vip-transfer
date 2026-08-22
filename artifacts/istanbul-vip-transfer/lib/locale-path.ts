@@ -1,4 +1,4 @@
-import { SUPPORTED_LANGS } from '@/lib/i18n';
+import { isLocaleCodeSyntax } from '@/lib/i18n/locale-registry';
 
 /**
  * Builds a locale-prefixed internal navigation path.
@@ -22,14 +22,15 @@ export function localePath(path: string, lang: string): string {
   }
 
   // Strip any existing lang prefix to avoid double-prefixing
-  for (const l of SUPPORTED_LANGS) {
-    if (base === `/${l}`) { base = '/'; break; }
-    if (base.startsWith(`/${l}/`)) { base = base.slice(l.length + 1); break; }
+  const firstSegment = base.split('/')[1] ?? '';
+  if (firstSegment !== 'tr' && isLocaleCodeSyntax(firstSegment)) {
+    if (base === `/${firstSegment}`) base = '/';
+    else if (base.startsWith(`/${firstSegment}/`)) base = base.slice(firstSegment.length + 1);
   }
   if (!base.startsWith('/')) base = '/' + base;
 
   // Turkish has no prefix
-  if (lang === 'tr' || !SUPPORTED_LANGS.includes(lang as typeof SUPPORTED_LANGS[number])) {
+  if (lang === 'tr' || !isLocaleCodeSyntax(lang)) {
     return (base || '/') + suffix;
   }
 

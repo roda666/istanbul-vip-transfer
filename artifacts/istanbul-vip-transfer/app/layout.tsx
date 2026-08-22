@@ -9,7 +9,7 @@ import { getServiceVisibilityMap } from '@/lib/service-page-cms';
 import { getContactSettings } from '@/lib/site-settings-server';
 import { SiteSettingsProvider } from '@/components/SiteSettingsContext';
 import { headers } from 'next/headers';
-import { getLangDir, isValidLang } from '@/lib/i18n';
+import { getPublicLanguage } from '@/lib/i18n/active-locales';
 
 /**
  * Self-hosted via next/font — eliminates the external Google Fonts request
@@ -67,7 +67,9 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const requestHeaders = await headers();
   const requestedLang = requestHeaders.get('x-ivt-lang') ?? 'tr';
-  const initialLang = isValidLang(requestedLang) ? requestedLang : 'tr';
+  const activeLanguage = await getPublicLanguage(requestedLang);
+  const initialLang = activeLanguage?.code ?? 'tr';
+  const initialDirection = activeLanguage?.direction ?? 'ltr';
 
   // Fetch nav visibility server-side so Header can filter showInNav=false items.
   // Gracefully falls back to an empty array (all nav items shown) if DB is unavailable.
@@ -80,7 +82,7 @@ export default async function RootLayout({
     .map(([slug]) => slug);
 
   return (
-    <html lang={initialLang} dir={getLangDir(initialLang)} className={`${playfairDisplay.variable} ${inter.variable}`}>
+    <html lang={initialLang} dir={initialDirection} className={`${playfairDisplay.variable} ${inter.variable}`}>
       <body
         className="grain-overlay"
         style={{ backgroundColor: 'var(--pub-page-bg, #F7F5EF)', minHeight: '100dvh' }}

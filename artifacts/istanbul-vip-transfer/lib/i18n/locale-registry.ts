@@ -25,6 +25,14 @@ export interface LocaleEntry {
   flagEmoji: string;
 }
 
+/** A conservative BCP 47-style route/code format accepted by the catalog. */
+export const LOCALE_CODE_PATTERN = /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})?$/;
+
+/** Validates syntax only; public access remains governed by the language catalog. */
+export function isLocaleCodeSyntax(code: string): boolean {
+  return LOCALE_CODE_PATTERN.test(code);
+}
+
 export const LOCALE_REGISTRY: readonly LocaleEntry[] = [
   { code: 'tr', nativeName: 'Türkçe',     englishName: 'Turkish',     dir: 'ltr', locale: 'tr-TR', isSource: true,  flagEmoji: '🇹🇷' },
   { code: 'en', nativeName: 'English',    englishName: 'English',     dir: 'ltr', locale: 'en-GB', isSource: false, flagEmoji: '🇬🇧' },

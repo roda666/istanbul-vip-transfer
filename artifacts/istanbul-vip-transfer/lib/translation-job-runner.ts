@@ -202,7 +202,7 @@ export async function runTranslationTask(params: RunTaskParams): Promise<RunTask
       const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
       let spResult: Awaited<ReturnType<typeof translateServicePageFields>>;
       try {
-        spResult = await translateServicePageFields(spFields, targetLang);
+        spResult = await translateServicePageFields(spFields, targetLang, controller.signal);
       } finally {
         clearTimeout(timer);
       }
@@ -251,7 +251,7 @@ export async function runTranslationTask(params: RunTaskParams): Promise<RunTask
       const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
       let aiResult: Awaited<ReturnType<typeof translateContent>>;
       try {
-        aiResult = await translateContent(sourceInput, targetLang);
+        aiResult = await translateContent(sourceInput, targetLang, controller.signal);
       } finally {
         clearTimeout(timer);
       }

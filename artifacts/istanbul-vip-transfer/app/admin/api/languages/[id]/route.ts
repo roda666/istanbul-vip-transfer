@@ -11,7 +11,9 @@ const patchSchema = z.object({
   nativeName: z.string().min(1).max(100).optional(),
   turkishName: z.string().min(1).max(100).optional(),
   locale: z.string().min(2).max(20).optional(),
+  script: z.string().min(3).max(8).optional(),
   direction: z.enum(['ltr', 'rtl']).optional(),
+  providerSupported: z.boolean().optional(),
   isEnabled: z.boolean().optional(),
   isPublished: z.boolean().optional(),
   displayOrder: z.number().int().optional(),
@@ -62,21 +64,29 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         { status: 400 },
       );
     }
-    // Provider-unsupported languages cannot be enabled or published.
-    if (!existing.providerSupported && (parsed.data.isEnabled === true || parsed.data.isPublished === true)) {
+    // Provider-unsupported languages cannot be enabled or published. An admin
+    // can explicitly mark a newly created language as provider-supported in
+    // the same update before enabling its translation workflow.
+    const providerSupported = parsed.data.providerSupported ?? existing.providerSupported;
+    if (!providerSupported && (parsed.data.isEnabled === true || parsed.data.isPublished === true)) {
       return NextResponse.json(
         { error: 'Çeviri sağlayıcısı bu dili desteklemiyor — etkinleştirilemez veya yayınlanamaz.' },
         { status: 400 },
       );
     }
-    // A language can only be published if the public site can render it —
-    // i.e. its static UI dictionary exists. Others may be enabled for draft
-    // translation preparation, but never exposed publicly.
+    // A language can only be published when every currently published CMS
+    // source has a reviewed target-language counterpart. The public chrome
+    // safely falls back to English for a newly catalogued language, but
+    // visitor content must never fall back to Turkish.
     if (parsed.data.isPublished === true) {
-      const { RENDERABLE_LANGS } = await import('@/lib/i18n/active-locales');
-      if (!RENDERABLE_LANGS.includes(existing.code)) {
+      const { getLanguagePublicationReadiness } = await import('@/lib/i18n/language-publication');
+      const readiness = await getLanguagePublicationReadiness(existing.code);
+      if (!readiness.ready) {
         return NextResponse.json(
-          { error: 'Bu dilin site arayüzü sözlüğü henüz hazır değil — yayınlanamaz. Dili etkinleştirip çeviri taslakları hazırlayabilirsiniz; kamuya açma sözlük eklendiğinde mümkün olur.' },
+          {
+            error: `Dil henüz yayınlanmaya hazır değil. ${readiness.requiredCount - readiness.publishedCount} içerik çevirisi yayınlanmayı bekliyor.`,
+            readiness,
+          },
           { status: 400 },
         );
       }

@@ -21,6 +21,7 @@ import {
   LOCALE_BCP47,
   LOCALE_NATIVE_NAMES,
   RTL_LOCALES,
+  isLocaleCodeSyntax,
 } from './locale-registry';
 
 /**
@@ -41,9 +42,13 @@ export function getDictionary(lang: string): Dictionary {
   return DICTS[lang as SiteLang] ?? DICTS.en;
 }
 
-/** Returns true if `lang` is a valid non-default target language code (has a dictionary). */
-export function isValidLang(lang: string): lang is SupportedLang {
-  return SUPPORTED_LANGS.includes(lang as SupportedLang);
+/**
+ * Returns true for a route-safe non-Turkish locale code. Public access is
+ * separately enforced by the server layout against the language catalog; this
+ * syntax check must not freeze routing to the original dictionary tuple.
+ */
+export function isValidLang(lang: string): boolean {
+  return lang !== 'tr' && isLocaleCodeSyntax(lang);
 }
 
 /** Returns the text direction for a given language code. Derived from the registry. */

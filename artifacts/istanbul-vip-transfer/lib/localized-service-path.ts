@@ -1,4 +1,5 @@
-import { getDictionary, SUPPORTED_LANGS } from '@/lib/i18n';
+import { getDictionary } from '@/lib/i18n';
+import { isLocaleCodeSyntax } from '@/lib/i18n/locale-registry';
 import { localePath } from '@/lib/locale-path';
 import { slugify } from '@/lib/ai/slugify';
 import { SLUG_TO_PAGE_KEY } from '@/lib/service-page-config';
@@ -35,7 +36,7 @@ export function localizedServicePath(canonicalSlug: string, locale: string): str
   if (locale === 'tr') return `/${canonicalSlug}`;
 
   const navKey = SERVICE_NAV_KEYS[canonicalSlug];
-  if (!navKey || !SUPPORTED_LANGS.includes(locale as typeof SUPPORTED_LANGS[number])) {
+  if (!navKey) {
     return localePath(`/${canonicalSlug}`, locale);
   }
 
@@ -50,7 +51,7 @@ export function localizedStaticPath(canonicalSlug: string, locale: string): stri
   if (locale === 'tr') return `/${canonicalSlug}`;
 
   const navKey = STATIC_NAV_KEYS[canonicalSlug];
-  if (!navKey || !SUPPORTED_LANGS.includes(locale as typeof SUPPORTED_LANGS[number])) {
+  if (!navKey) {
     return localePath(`/${canonicalSlug}`, locale);
   }
 
@@ -98,7 +99,7 @@ export function localizedPublicPath(pathname: string, targetLocale: string): str
   const basePath = suffixIndex === -1 ? pathname : pathname.slice(0, suffixIndex);
   const suffix = suffixIndex === -1 ? '' : pathname.slice(suffixIndex);
   const segments = basePath.split('/').filter(Boolean);
-  const sourceLocale = SUPPORTED_LANGS.includes(segments[0] as typeof SUPPORTED_LANGS[number])
+  const sourceLocale = isLocaleCodeSyntax(segments[0] ?? '') && segments[0] !== 'tr'
     ? segments.shift()!
     : 'tr';
 

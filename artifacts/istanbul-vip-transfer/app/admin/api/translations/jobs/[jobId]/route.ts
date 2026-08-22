@@ -32,10 +32,12 @@ export async function GET(
     return NextResponse.json({ error: 'İş bulunamadı.' }, { status: 404 });
   }
 
+  const { recoverStaleTranslationTasks } = await import('@/lib/translation-job-recovery');
+  const recoveredTasks = await recoverStaleTranslationTasks(jobId);
   const tasks = await db
     .select()
     .from(translationJobTasks)
     .where(eq(translationJobTasks.jobId, jobId));
 
-  return NextResponse.json({ job, tasks });
+  return NextResponse.json({ job, tasks, recoveredTasks });
 }

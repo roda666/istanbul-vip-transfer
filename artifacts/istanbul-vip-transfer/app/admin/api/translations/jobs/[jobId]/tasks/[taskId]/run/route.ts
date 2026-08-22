@@ -12,7 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/auth/session';
 import { db } from '@/db';
 import { translationJobs, translationJobTasks } from '@/db/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, inArray, sql } from 'drizzle-orm';
 
 const MAX_ATTEMPTS = 2;
 
@@ -53,6 +53,12 @@ export async function POST(
   if (task.status === 'CANCELLED') {
     return NextResponse.json({ status: 'cancelled', taskId });
   }
+  if (task.status === 'RUNNING') {
+    return NextResponse.json(
+      { status: 'running', taskId, error: 'Bu çeviri görevi zaten çalışıyor.' },
+      { status: 409 },
+    );
+  }
 
   // Enforce max attempts
   const nextAttempt = (task.attempts ?? 0) + 1;
@@ -66,10 +72,23 @@ export async function POST(
   }
 
   // Mark as RUNNING
-  await db
+  const [claimedTask] = await db
     .update(translationJobTasks)
     .set({ status: 'RUNNING', attempts: nextAttempt, startedAt: sql`now()`, updatedAt: sql`now()` })
-    .where(eq(translationJobTasks.id, taskId));
+    .where(and(
+      eq(translationJobTasks.id, taskId),
+      inArray(translationJobTasks.status, ['QUEUED', 'RETRYING']),
+    ))
+    .returning({ id: translationJobTasks.id });
+
+  // A second browser tab may have claimed the task after the initial read.
+  // Do not make a duplicate provider request in that race.
+  if (!claimedTask) {
+    return NextResponse.json(
+      { status: 'running', taskId, error: 'Bu çeviri görevi başka bir oturum tarafından başlatıldı.' },
+      { status: 409 },
+    );
+  }
 
   // ── Execute task ──────────────────────────────────────────────────────────
   const { runTranslationTask } = await import('@/lib/translation-job-runner');

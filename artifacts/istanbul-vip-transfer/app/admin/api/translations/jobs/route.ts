@@ -78,11 +78,13 @@ export async function POST(request: NextRequest) {
 
   // Only reuse if the job is still active (not completed/cancelled)
   if (existing && ['QUEUED', 'RUNNING', 'PARTIAL'].includes(existing.status)) {
+    const { recoverStaleTranslationTasks } = await import('@/lib/translation-job-recovery');
+    const recoveredTasks = await recoverStaleTranslationTasks(existing.id);
     const tasks = await db
       .select()
       .from(translationJobTasks)
       .where(eq(translationJobTasks.jobId, existing.id));
-    return NextResponse.json({ job: existing, tasks }, { status: 200 });
+    return NextResponse.json({ job: existing, tasks, recoveredTasks }, { status: 200 });
   }
 
   // ── Create new job ────────────────────────────────────────────────────────

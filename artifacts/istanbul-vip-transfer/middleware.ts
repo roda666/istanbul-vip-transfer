@@ -11,10 +11,8 @@
  *    - Never touches: /admin, /api, /_next, /data, static assets
  *
  * Locale sets used:
- *   NON_SOURCE_LOCALES  — all 8 non-TR registry codes (used for prefix
- *                         recognition so /es/foo is not treated as Turkish)
- *   RENDERABLE_LOCALES  — all 9 dictionary-backed registry locales
- *                         (used for cookie stamping and root redirect)
+ *   locale-code syntax — used for prefix recognition without querying the DB
+ *   language catalog — the route layout makes the final public-access decision
  *
  * Note: admin API routes live at /admin/api/* (not /api/admin/*) to avoid
  * the Replit proxy routing /api/* to the separate api-server artifact.
@@ -37,29 +35,19 @@ import {
   isPublicAdminApi,
 } from '@/lib/auth/authorization';
 import {
-  NON_SOURCE_LOCALES,
-  RENDERABLE_LOCALES,
+  isLocaleCodeSyntax,
 } from '@/lib/i18n/locale-registry';
 
 const COOKIE_NAME      = 'ivt_admin_session';
 const LANG_PREF_COOKIE = 'ivt_lang_pref';
 
 /**
- * All 8 non-TR locale prefixes from the registry.
- * Used for URL prefix detection only — lets the route layer (layout.tsx) handle
- * 404s for locales that don't have dictionaries yet.
+ * Locale-looking non-Turkish prefixes. Middleware must not rely on a frozen
+ * locale list: it cannot query the catalog on the edge path, while the route
+ * layout can reject a disabled or unpublished catalog record safely.
  */
 function isNonTrLang(s: string): boolean {
-  return (NON_SOURCE_LOCALES as string[]).includes(s);
-}
-
-/**
- * Non-TR locales that have complete UI dictionaries.
- * All eight target locales may be stored in the lang preference cookie and
- * trigger a redirect from the Turkish root to their canonical route.
- */
-function isRenderableNonTrLang(s: string): boolean {
-  return s !== 'tr' && (RENDERABLE_LOCALES as string[]).includes(s);
+  return s !== 'tr' && isLocaleCodeSyntax(s);
 }
 
 function tryGetOptions() {
@@ -248,7 +236,7 @@ export async function middleware(request: NextRequest) {
 
   const response = localizedResponse(
     request,
-    urlLang && isRenderableNonTrLang(urlLang) ? urlLang : 'tr',
+    urlLang ?? 'tr',
   );
   const cookieOpts = {
     path:     '/',
@@ -259,11 +247,7 @@ export async function middleware(request: NextRequest) {
 
   if (urlLang) {
     // Non-Turkish page visited.
-    // Stamp the preference only for dictionary-backed locales. The registry
-    // currently covers all eight non-source locales.
-    if (isRenderableNonTrLang(urlLang)) {
-      response.cookies.set(LANG_PREF_COOKIE, urlLang, cookieOpts);
-    }
+    response.cookies.set(LANG_PREF_COOKIE, urlLang, cookieOpts);
     return response;
   }
 
@@ -275,7 +259,7 @@ export async function middleware(request: NextRequest) {
   // Once a visitor chooses English, German, Russian, Arabic, Spanish, French,
   // Italian, or Dutch, preserve that choice by using the canonical locale URL.
   if (pathname === '/' || pathname === '') {
-    if (pref && isRenderableNonTrLang(pref)) {
+    if (pref && isNonTrLang(pref)) {
       return NextResponse.redirect(new URL(`/${pref}`, request.url));
     }
     if (!pref) response.cookies.set(LANG_PREF_COOKIE, 'tr', cookieOpts);

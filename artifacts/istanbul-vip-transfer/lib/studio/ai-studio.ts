@@ -476,13 +476,6 @@ export async function generateStudioImage(opts: {
 
 // ── 5. Translation ────────────────────────────────────────────────────────────
 
-const LANG_NAMES: Record<string, string> = {
-  en: 'English', de: 'German', ru: 'Russian', ar: 'Arabic',
-  fr: 'French', es: 'Spanish', it: 'Italian', nl: 'Dutch',
-};
-
-const RTL_LANGS = new Set(['ar']);
-
 /**
  * Translate all StudioContent fields from Turkish to the target language.
  *
@@ -499,8 +492,17 @@ export async function translateStudioContent(
   }
 
   const model = getModel();
-  const langName = LANG_NAMES[targetLang] ?? targetLang;
-  const isRtl    = RTL_LANGS.has(targetLang);
+  const { getTranslationTargets, promptLangName } = await import('@/lib/ai/lang-catalog');
+  const target = (await getTranslationTargets([targetLang]))[targetLang];
+  if (target && !target.providerSupported) {
+    return {
+      ok: false,
+      reason: 'api_error',
+      message: `Çeviri sağlayıcısı bu dili desteklemiyor: ${targetLang}`,
+    };
+  }
+  const langName = promptLangName(target, targetLang);
+  const isRtl    = target?.direction === 'rtl';
 
   const systemPrompt = `You are a professional translation specialist for a VIP transportation brand.
 Translate the provided Turkish JSON content to ${langName}.

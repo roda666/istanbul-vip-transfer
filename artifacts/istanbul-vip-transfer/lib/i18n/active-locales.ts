@@ -2,24 +2,15 @@
  * Single source of truth for the publicly visible locale set.
  *
  * A language is PUBLIC when it is both enabled AND published in the languages
- * table AND has a static UI dictionary (RENDERABLE_LOCALES). All nine registry
- * locales currently have UI dictionaries; the database remains the switch that
- * decides whether each target locale is public.
+ * table. Static dictionaries remain preferred for the core locales; a newly
+ * published catalog language safely uses the English UI baseline until a
+ * dedicated dictionary is supplied, while its CMS content remains target-locale
+ * content.
  *
  * Server-only — uses the database with a short in-memory cache and a static
  * fallback so public pages never break if the DB is unavailable.
  */
 import 'server-only';
-import { RENDERABLE_LOCALES } from './locale-registry';
-
-/**
- * Languages the public site can actually RENDER (static UI dictionaries exist).
- * A language outside this set must never go public, whatever the DB says —
- * publishing it would produce broken pages.
- * Source: locale-registry.ts RENDERABLE_LOCALES — not duplicated here.
- */
-export const RENDERABLE_LANGS: readonly string[] = RENDERABLE_LOCALES;
-
 export interface PublicLanguage {
   code: string;
   locale: string;
@@ -62,14 +53,11 @@ export async function getPublicLanguages(): Promise<PublicLanguage[]> {
       .from(languages)
       .where(and(eq(languages.isEnabled, true), eq(languages.isPublished, true)))
       .orderBy(asc(languages.displayOrder));
-    // Defense in depth: only renderable languages (with UI dictionaries) may
-    // ever be exposed publicly, regardless of DB state.
-    const renderable = rows.filter((r) => (RENDERABLE_LANGS as string[]).includes(r.code));
-    if (renderable.length === 0) return FALLBACK_PUBLIC_LANGUAGES;
+    if (rows.length === 0) return FALLBACK_PUBLIC_LANGUAGES;
     // Turkish must always be present, whatever the DB says.
-    const langs = renderable.some((r) => r.code === 'tr')
-      ? renderable
-      : [FALLBACK_PUBLIC_LANGUAGES[0], ...renderable];
+    const langs = rows.some((r) => r.code === 'tr')
+      ? rows
+      : [FALLBACK_PUBLIC_LANGUAGES[0], ...rows];
     cache = { at: Date.now(), langs };
     return langs;
   } catch {
@@ -86,6 +74,11 @@ export async function getPublicLangCodes(): Promise<string[]> {
 /** True if `code` is a publicly visible locale. */
 export async function isPublicLang(code: string): Promise<boolean> {
   return (await getPublicLangCodes()).includes(code);
+}
+
+/** Returns the public catalog record for a locale, if it is currently visible. */
+export async function getPublicLanguage(code: string): Promise<PublicLanguage | null> {
+  return (await getPublicLanguages()).find((language) => language.code === code) ?? null;
 }
 
 /** Invalidate the cache (call after admin changes language state). */

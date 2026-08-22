@@ -246,6 +246,20 @@
       "when": 1788200000000,
       "tag": "0034_route_translation_publication_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1788300000000,
+      "tag": "0035_price_calculator_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1788400000000,
+      "tag": "0036_price_rule_integrity_guards",
+      "breakpoints": true
     }
   ]
 }

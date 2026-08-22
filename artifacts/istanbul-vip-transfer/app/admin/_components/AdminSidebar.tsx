@@ -32,6 +32,7 @@ import {
   Tag,
   BarChart2,
   Database,
+  Banknote,
 } from 'lucide-react';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -77,6 +78,7 @@ function getNavGroups(role: string, isSuperOrAdmin: boolean): NavGroup[] {
         { href: '/admin/istatistikler',       label: 'İstatistikler',        icon: <BarChart2 size={18} /> },
         { href: '/admin/rezervasyon-ayarlari', label: 'Rezervasyon Ayarları', icon: <CalendarClock size={18} /> },
         { href: '/admin/transfer-rotalari',   label: 'Transfer Rotaları',   icon: <MapPin size={18} /> },
+        { href: '/admin/fiyat-kurallari',     label: 'Fiyat Kuralları',     icon: <Banknote size={18} /> },
       ],
     },
     {

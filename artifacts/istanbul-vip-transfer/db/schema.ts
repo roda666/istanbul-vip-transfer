@@ -1051,6 +1051,41 @@ export type NewTransferRoute = typeof transferRoutes.$inferInsert;
 export type TransferRouteTranslation = typeof transferRouteTranslations.$inferSelect;
 export type NewTransferRouteTranslation = typeof transferRouteTranslations.$inferInsert;
 
+// ── Disabled-by-default Price Calculator ─────────────────────────────────────
+// This is intentionally separate from the legacy route-card price ranges. It
+// stores auditable, vehicle-specific estimates for a future public calculator.
+export const priceCalculatorSettings = pgTable('price_calculator_settings', {
+  id:        integer('id').primaryKey().default(1),
+  enabled:   boolean('enabled').default(false).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+});
+
+export const routePriceRules = pgTable('route_price_rules', {
+  id:          uuid('id').primaryKey().defaultRandom(),
+  routeId:     uuid('route_id').notNull().references(() => transferRoutes.id, { onDelete: 'cascade' }),
+  vehicleId:   uuid('vehicle_id').notNull().references(() => vehicles.id, { onDelete: 'cascade' }),
+  /** Integer minor units; e.g. 12500 represents €125.00. */
+  amountCents: integer('amount_cents').notNull(),
+  /** ISO 4217 code. No currency conversion is performed by the calculator. */
+  currency:    text('currency').notNull().default('EUR'),
+  active:      boolean('active').default(true).notNull(),
+  validFrom:   timestamp('valid_from', { withTimezone: true }),
+  validUntil:  timestamp('valid_until', { withTimezone: true }),
+  notes:       text('notes'),
+  createdAt:   timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:   timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  createdBy:   uuid('created_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+  updatedBy:   uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+}, (table) => [
+  index('route_price_rules_route_vehicle_idx').on(table.routeId, table.vehicleId),
+  index('route_price_rules_active_validity_idx').on(table.active, table.validFrom, table.validUntil),
+]);
+
+export type PriceCalculatorSettings = typeof priceCalculatorSettings.$inferSelect;
+export type RoutePriceRule = typeof routePriceRules.$inferSelect;
+export type NewRoutePriceRule = typeof routePriceRules.$inferInsert;
+
 // ── Custom Reservation Fields ─────────────────────────────────────────────────
 // Admin-defined optional fields shown on the booking form per service.
 export const customReservationFields = pgTable('custom_reservation_fields', {

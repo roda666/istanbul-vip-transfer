@@ -57,6 +57,18 @@ const ar: Dictionary = {
     cookieBannerAccept: 'قبول',
     cookieBannerDetails: 'التفاصيل',
   },
+  relatedBlog: {
+    heading: 'مقالات ذات صلة',
+    guideLabel: 'دليل',
+    comparisonLabel: 'مقارنة',
+    airportGuideDescription: 'الأسعار وأنواع السيارات والنصائح',
+    comparisonDescription: 'ما الخيار المناسب لك؟',
+    istanbulDestinationDescription: 'من مطار IST إلى أي وجهة',
+    sabihaDestinationDescription: 'من مطار SAW إلى أي وجهة',
+    istanbulAirportGuideTitle: 'دليل النقل من مطار إسطنبول',
+    sabihaAirportGuideTitle: 'دليل النقل من مطار صبيحة كوكجن',
+    vipVsTaxiTitle: 'ما الفرق بين نقل VIP وسيارة الأجرة؟',
+  },
   booking: {
     sectionLabel: 'حجز سريع',
     sectionTitle: 'طلب سعر وحجز',

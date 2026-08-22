@@ -57,6 +57,18 @@ const ru: Dictionary = {
     cookieBannerAccept: 'Принять',
     cookieBannerDetails: 'Подробнее',
   },
+  relatedBlog: {
+    heading: 'Статьи по теме',
+    guideLabel: 'Гид',
+    comparisonLabel: 'Сравнение',
+    airportGuideDescription: 'Тарифы, типы автомобилей и советы',
+    comparisonDescription: 'Что подходит именно вам?',
+    istanbulDestinationDescription: 'Из IST в любой пункт назначения',
+    sabihaDestinationDescription: 'Из SAW в любой пункт назначения',
+    istanbulAirportGuideTitle: 'Гид по трансферу из аэропорта Стамбула',
+    sabihaAirportGuideTitle: 'Гид по трансферу из аэропорта Сабиха Гёкчен',
+    vipVsTaxiTitle: 'VIP-трансфер и такси: в чём разница?',
+  },
   booking: {
     sectionLabel: 'Быстрое бронирование',
     sectionTitle: 'Запрос цены и резервирования',

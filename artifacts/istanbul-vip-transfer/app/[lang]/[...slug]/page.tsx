@@ -43,6 +43,7 @@ import HakkimizdaPage    from '@/app/hakkimizda/page';
 import IletisimPage      from '@/app/iletisim/page';
 import LocalizedServicesPageContent from '@/components/LocalizedServicesPageContent';
 import ServiceCategoryPageContent, { getServiceCategoryPageCopy } from '@/components/ServiceCategoryPageContent';
+import RelatedBlogSection from '@/components/RelatedBlogSection';
 import { getServiceCategories } from '@/lib/service-category-server';
 
 // ── Non-service static pages ─────────────────────────────────────────────
@@ -340,6 +341,11 @@ export default async function LocalizedPassthrough({ params }: Props) {
     return (
       <>
         <ServicePageRenderer slug={pathKey} lang={lang} canonicalPath={localizedServicePath(pathKey, lang)} />
+        {pathKey === 'istanbul-havalimani-transfer' ||
+        pathKey === 'sabiha-gokcen-havalimani-transfer' ||
+        pathKey === 'vip-transfer' ? (
+          <RelatedBlogSection page={pathKey} lang={lang} />
+        ) : null}
         {scripts}
       </>
     );

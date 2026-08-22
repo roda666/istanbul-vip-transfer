@@ -57,6 +57,18 @@ const nl: Dictionary = {
       cookieBannerAccept: 'Accepteren',
       cookieBannerDetails: 'Details',
     },
+    relatedBlog: {
+      heading: 'Gerelateerde blogartikelen',
+      guideLabel: 'Gids',
+      comparisonLabel: 'Vergelijking',
+      airportGuideDescription: 'Tarieven, voertuigtypen en tips',
+      comparisonDescription: 'Welke keuze past bij u?',
+      istanbulDestinationDescription: 'Van IST naar elke bestemming',
+      sabihaDestinationDescription: 'Van SAW naar elke bestemming',
+      istanbulAirportGuideTitle: 'Gids voor transfers vanaf Istanbul Airport',
+      sabihaAirportGuideTitle: 'Gids voor transfers vanaf Sabiha Gökçen Airport',
+      vipVsTaxiTitle: 'VIP-transfer of taxi: wat zijn de verschillen?',
+    },
     booking: {
       sectionLabel: 'Snel boeken',
       sectionTitle: 'Prijs- en reserveringsaanvraag',

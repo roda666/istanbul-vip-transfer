@@ -61,6 +61,18 @@ export interface Dictionary {
     cookieBannerAccept: string;
     cookieBannerDetails: string;
   };
+  relatedBlog: {
+    heading: string;
+    guideLabel: string;
+    comparisonLabel: string;
+    airportGuideDescription: string;
+    comparisonDescription: string;
+    istanbulDestinationDescription: string;
+    sabihaDestinationDescription: string;
+    istanbulAirportGuideTitle: string;
+    sabihaAirportGuideTitle: string;
+    vipVsTaxiTitle: string;
+  };
   booking: {
     sectionLabel: string;
     sectionTitle: string;

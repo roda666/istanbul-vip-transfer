@@ -57,6 +57,18 @@ const tr: Dictionary = {
     cookieBannerAccept: 'Kabul Et',
     cookieBannerDetails: 'Detaylar',
   },
+  relatedBlog: {
+    heading: 'İlgili Blog Yazıları',
+    guideLabel: 'Rehber',
+    comparisonLabel: 'Karşılaştırma',
+    airportGuideDescription: 'Tarife, araç tipleri ve ipuçları',
+    comparisonDescription: 'Hangisi sizin için doğru seçim?',
+    istanbulDestinationDescription: "IST'den her destinasyona",
+    sabihaDestinationDescription: "SAW'dan her destinasyona",
+    istanbulAirportGuideTitle: 'İstanbul Havalimanı Transfer Rehberi',
+    sabihaAirportGuideTitle: 'Sabiha Gökçen Havalimanı Transfer Rehberi',
+    vipVsTaxiTitle: 'VIP Transfer ile Taksi Arasındaki Farklar',
+  },
   booking: {
     sectionLabel: 'Hızlı Rezervasyon',
     sectionTitle: 'Fiyat ve Rezervasyon Talebi',

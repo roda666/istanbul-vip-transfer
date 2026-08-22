@@ -93,3 +93,59 @@ test.describe('Locale-prefixed service pages — EN / DE / RU / AR', () => {
     }
   }
 });
+
+// ── Related-blog cards ──────────────────────────────────────────────────────
+//
+// The service-page related-blog cards are server-rendered. Keep their visible
+// titles localized so a language switch never leaves Turkish link labels below
+// an otherwise translated service page.
+
+const RELATED_BLOG_LOCALES = [
+  {
+    path: '/en/istanbul-airport-transfer',
+    texts: [
+      'Related Blog Posts',
+      'Istanbul Airport Transfer Guide',
+      'VIP Transfer vs Taxi: What’s the Difference?',
+    ],
+  },
+  {
+    path: '/de/istanbul-flughafen-transfer',
+    texts: [
+      'Verwandte Blogbeiträge',
+      'Istanbul Flughafen Transfer Ratgeber',
+      'VIP-Transfer oder Taxi: Was sind die Unterschiede?',
+    ],
+  },
+  {
+    path: '/ru/transfer-iz-aeroporta-stambula',
+    texts: [
+      'Статьи по теме',
+      'Гид по трансферу из аэропорта Стамбула',
+      'VIP-трансфер и такси: в чём разница?',
+    ],
+  },
+  {
+    path: '/ar/nql-mtar-istnbwl',
+    texts: [
+      'مقالات ذات صلة',
+      'دليل النقل من مطار إسطنبول',
+      'ما الفرق بين نقل VIP وسيارة الأجرة؟',
+    ],
+  },
+] as const;
+
+test.describe('Localized related-blog cards', () => {
+  for (const { path, texts } of RELATED_BLOG_LOCALES) {
+    test(`${path} renders localized related-blog link labels`, async ({ request }) => {
+      const response = await request.get(path);
+      expect(response.status(), `Expected 200 for ${path}`).toBe(200);
+
+      const html = await response.text();
+      for (const text of texts) {
+        expect(html, `Expected localized related-blog text on ${path}: ${text}`).toContain(text);
+      }
+      expect(html).not.toContain('İstanbul Havalimanı Transfer Rehberi');
+    });
+  }
+});

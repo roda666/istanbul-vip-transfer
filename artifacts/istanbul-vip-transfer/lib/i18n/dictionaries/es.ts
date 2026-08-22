@@ -57,6 +57,18 @@ const es: Dictionary = {
       cookieBannerAccept: 'Aceptar',
       cookieBannerDetails: 'Detalles',
     },
+    relatedBlog: {
+      heading: 'Artículos relacionados',
+      guideLabel: 'Guía',
+      comparisonLabel: 'Comparación',
+      airportGuideDescription: 'Tarifas, tipos de vehículos y consejos',
+      comparisonDescription: '¿Cuál es la opción adecuada para usted?',
+      istanbulDestinationDescription: 'Desde IST a cualquier destino',
+      sabihaDestinationDescription: 'Desde SAW a cualquier destino',
+      istanbulAirportGuideTitle: 'Guía de traslados desde el aeropuerto de Istanbul',
+      sabihaAirportGuideTitle: 'Guía de traslados desde el aeropuerto Sabiha Gökçen',
+      vipVsTaxiTitle: 'Traslado VIP o taxi: ¿cuáles son las diferencias?',
+    },
     booking: {
       sectionLabel: 'Reserva rápida',
       sectionTitle: 'Solicitud de precio y reserva',

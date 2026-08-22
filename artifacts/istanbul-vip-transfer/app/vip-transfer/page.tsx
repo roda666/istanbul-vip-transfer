@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import { buildAlternates } from '@/lib/i18n/seo';
 import { getPublishedServicePage, getPublishedServicePageLangs } from '@/lib/service-page-cms';
-import { getServiceHeroImage } from '@/lib/service-og-image';
 import ServicePageRenderer from '@/components/ServicePageRenderer';
 import LocaleLink from '@/components/LocaleLink';
 import { SITE } from '@/lib/site-config';
+import { getServiceOgImageUrl } from '@/lib/service-og-images';
 
 const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/vip-transfer`;
@@ -25,7 +25,7 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: 'VIP Transfer Istanbul',
       locale: 'tr_TR',
       type: 'website',
-      images: [getServiceHeroImage('vip-transfer')],
+      images: [{ url: getServiceOgImageUrl('vip-transfer', SITE.siteUrl), width: 1200, height: 630 }],
     },
     robots: { index: true, follow: true },
   };

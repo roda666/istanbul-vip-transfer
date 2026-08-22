@@ -21,6 +21,7 @@ import {
   getOgLocale,
 } from '@/lib/i18n/seo';
 import { SITE } from '@/lib/site-config';
+import { getServiceOgImageUrl } from '@/lib/service-og-images';
 import { getContactSettings } from '@/lib/site-settings-server';
 import rawPageMeta from '@/lib/page-meta.json';
 import { PAGE_REGISTRY } from '@/lib/page-registry';
@@ -33,7 +34,6 @@ import {
   resolveLocalizedServiceSlug,
   resolveLocalizedStaticSlug,
 } from '@/lib/localized-service-path';
-import { getServiceHeroImage } from '@/lib/service-og-image';
 
 // ── Turkish page components (non-SERVICE pages use these directly) ─────────
 import HizmetlerPage     from '@/app/hizmetler/page';
@@ -142,7 +142,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // Try DB metadata for service pages first
   let title: string | undefined;
   let description: string | undefined;
-  let ogImages: (typeof SITE.ogImage | string)[] = [SITE.ogImage];
+  let ogImages: ({ url: string; width: number; height: number } | typeof SITE.ogImage)[] = [SITE.ogImage];
 
   if (isCategory) {
     const copy = getServiceCategoryPageCopy(lang);
@@ -157,7 +157,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
     title       = dbMeta.title;
     description = dbMeta.description;
-    ogImages = [getServiceHeroImage(pathKey)];
+    ogImages = [{ url: getServiceOgImageUrl(pathKey, SITE.siteUrl), width: 1200, height: 630 }];
   }
 
   // Fall back to page-meta.json

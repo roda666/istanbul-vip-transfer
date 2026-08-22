@@ -17,6 +17,7 @@
     "db:migrate": "drizzle-kit migrate && tsx db/seed-blog-posts.ts && tsx db/seed-new-service-translations-static.ts && tsx db/seed-transfer-routes.ts && tsx db/seed-service-categories.ts",
     "db:push": "drizzle-kit push",
     "generate:og-card": "bash scripts/generate-og-card.sh",
+    "generate:og-service-cards": "bash scripts/generate-service-og-cards.sh",
     "create-admin": "tsx scripts/create-admin.ts",
     "reset-admin-password": "tsx scripts/reset-admin-password.ts",
     "test:e2e": "playwright test",

@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import { buildAlternates } from '@/lib/i18n/seo';
 import { getPublishedServicePage, getPublishedServicePageLangs } from '@/lib/service-page-cms';
-import { getServiceHeroImage } from '@/lib/service-og-image';
 import ServicePageRenderer from '@/components/ServicePageRenderer';
 import { SITE } from '@/lib/site-config';
+import { getServiceOgImageUrl } from '@/lib/service-og-images';
 
 const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/sapanca-masukiye-turu`;
@@ -24,7 +24,7 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: 'VIP Transfer Istanbul',
       locale: 'tr_TR',
       type: 'website',
-      images: [getServiceHeroImage('sapanca-masukiye-turu')],
+      images: [{ url: getServiceOgImageUrl('sapanca-masukiye-turu', SITE.siteUrl), width: 1200, height: 630 }],
     },
     robots: { index: false, follow: true },
   };

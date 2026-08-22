@@ -2,25 +2,29 @@
 # ============================================================
 # generate-og-card.sh
 #
-# Regenerates public/images/og-card.jpg from the site's hero
-# image using ImageMagick (v7 `magick` command).
+# Regenerates OG card images using ImageMagick (v7 `magick` command).
 #
-# Run this whenever:
-#   - The hero photography changes
-#   - The brand colour scheme changes (PANEL_COLOR / ARC_COLOR)
-#   - The brand name or tagline shown on the card changes
+# Can run in two modes:
 #
-# Usage:
-#   bash scripts/generate-og-card.sh
-#   # or via npm script:
-#   pnpm --filter @workspace/istanbul-vip-transfer generate:og-card
+#   1) Default mode — regenerates the global og-card.jpg from the
+#      site hero image (no arguments needed):
+#
+#        bash scripts/generate-og-card.sh
+#        pnpm --filter @workspace/istanbul-vip-transfer generate:og-card
+#
+#   2) Custom mode — accepts explicit arguments to generate any card:
+#
+#        bash scripts/generate-og-card.sh \
+#          --bg   public/images/istanbul-hero.jpg \
+#          --line1 "İSTANBUL" \
+#          --line2 "VIP TRANSFER" \
+#          --tagline "Lüks Havalimanı Transferi" \
+#          --out  public/images/og-custom.jpg
 #
 # Requirements:
 #   - ImageMagick 7  (magick command on PATH)
-#   - Hero image at public/images/istanbul-vip-transfer-hero.webp
 #
-# Output:
-#   public/images/og-card.jpg  (1200 × 630 px, JPEG quality 92)
+# Output: JPEG, 1200 × 630 px, quality 92
 # ============================================================
 
 set -euo pipefail
@@ -28,11 +32,36 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$SCRIPT_DIR/.."
 
-SRC="$ROOT/public/images/istanbul-vip-transfer-hero.webp"
-OUT="$ROOT/public/images/og-card.jpg"
+# ── Defaults (used when no --* flags are passed) ─────────────
+DEFAULT_SRC="$ROOT/public/images/istanbul-vip-transfer-hero.webp"
+DEFAULT_OUT="$ROOT/public/images/og-card.jpg"
+DEFAULT_LINE1="İSTANBUL"
+DEFAULT_LINE2="VIP TRANSFER"
+DEFAULT_TAGLINE="Lüks Havalimanı Transferi"
+
+SRC="$DEFAULT_SRC"
+OUT="$DEFAULT_OUT"
+BRAND_LINE1="$DEFAULT_LINE1"
+BRAND_LINE2="$DEFAULT_LINE2"
+TAGLINE="$DEFAULT_TAGLINE"
+
+# ── Parse optional arguments ──────────────────────────────────
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --bg)      SRC="$2";         shift 2 ;;
+    --line1)   BRAND_LINE1="$2"; shift 2 ;;
+    --line2)   BRAND_LINE2="$2"; shift 2 ;;
+    --tagline) TAGLINE="$2";     shift 2 ;;
+    --out)     OUT="$2";         shift 2 ;;
+    *) echo "Unknown argument: $1"; exit 1 ;;
+  esac
+done
+
+# Resolve relative paths from ROOT
+[[ "$SRC" != /* ]] && SRC="$ROOT/$SRC"
+[[ "$OUT" != /* ]] && OUT="$ROOT/$OUT"
 
 # ── Brand tokens ─────────────────────────────────────────────
-# Update these when the colour scheme or brand wording changes.
 PANEL_COLOR="#0D1B3E"    # Dark navy blue left panel
 ARC_COLOR="#C9A84C"      # Gold accent arc
 TEXT_COLOR="#FFFFFF"     # Primary text
@@ -46,24 +75,20 @@ ARC_R=330     # Radius of the decorative arc circle
 ARC_CX=$((PANEL_W - 10))           # Arc centre x (right edge of panel)
 ARC_CY=$((H / 2))                  # Arc centre y (vertical middle)
 
-# ── Text ─────────────────────────────────────────────────────
-# Update these when the brand name or tagline changes.
-BRAND_LINE1="İSTANBUL"
-BRAND_LINE2="VIP TRANSFER"
-TAGLINE="Lüks Havalimanı Transferi"
-
 if [ ! -f "$SRC" ]; then
-  echo "ERROR: Hero source image not found at $SRC"
-  echo "       Place a suitable hero image there and re-run this script."
+  echo "ERROR: Source image not found at $SRC"
   exit 1
 fi
 
-echo "Generating og-card.jpg from: $SRC"
+# Ensure output directory exists
+mkdir -p "$(dirname "$OUT")"
 
-# Step 1 – crop/resize hero to card dimensions (anchor right so city+bridge stays visible)
+echo "Generating $(basename "$OUT") from: $(basename "$SRC")"
+
+# Step 1 – crop/resize source to card dimensions (anchor right so main subject stays visible)
 # Step 2 – paint the left navy panel
 # Step 3 – draw the gold arc (partial circle peeking out from behind the panel)
-# Step 4 – annotate brand text on the left panel
+# Step 4 – annotate text on the left panel
 # Step 5 – write output
 
 magick \

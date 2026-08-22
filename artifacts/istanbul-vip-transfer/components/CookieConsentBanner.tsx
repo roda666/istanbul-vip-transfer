@@ -39,8 +39,7 @@ export default function CookieConsentBanner({
 
   useEffect(() => {
     // Re-check during hydration in case a consent cookie changed between the
-    // request and client boot. New visitors already see the server-rendered
-    // banner, avoiding a late layout/LCP candidate.
+    // request and client boot. New visitors see the server-rendered banner.
     const current = getCookie(COOKIE_NAME);
     setVisible(!current);
   }, [hasInitialDecision]);

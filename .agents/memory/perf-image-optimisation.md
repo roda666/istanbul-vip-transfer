@@ -29,9 +29,25 @@ Blog hero images use plain `<img loading="lazy" decoding="async">` with explicit
 - `pnpm test:perf:browser` → `playwright test tests/perf.spec.ts` (needs `playwright install --with-deps chromium` on NixOS)
 - Gate: exit code 1 on any error; TTFB threshold 800 ms (warns, not errors, in dev)
 
-## AR RTL check quirk
-`[lang]/layout.tsx` injects inline script: `h.setAttribute('dir','rtl')` — NOT in SSR `<html dir>` attribute.
-Root layout has `suppressHydrationWarning`. Check for `setAttribute.*dir.*rtl` in raw HTML, not `<html dir="rtl">`.
+## AR RTL check
+The locale-aware root layout renders the correct direction directly on the SSR
+`<html>` element. Quality checks should accept that rendered `dir="rtl"` form;
+the old inline-script-only assumption is stale.
+
+## Mobile LCP and entrance motion
+Keep header, homepage hero, and service PageHero entrance animations disabled
+below the mobile breakpoint. Critical content must render fully visible on the
+first frame.
+
+**Why:** opacity/transform entrance animations can prevent the hero from
+becoming the LCP candidate, letting smaller header, breadcrumb, or cookie text
+win instead. A fresh 390px browser check then identified the intended hero
+subheadline/image as LCP, below the 2.5-second target.
+
+**How to apply:** preserve the richer motion treatment on desktop, but include
+new critical above-fold animated classes in the mobile no-animation rule.
+After any new hero or consent UI work, verify the final LCP entry with a
+buffered PerformanceObserver as well as lab auditing.
 
 ## Google Fonts
 Still loaded via CSS `@import` in globals.css. Added `<link rel="preconnect">` hints in layout.tsx to reduce font TTFB.

@@ -482,6 +482,19 @@ html {
   }
 }
 
+/* Mobile visitors benefit more from an immediate, stable first paint than
+   entrance choreography. Keep the richer motion treatment on larger screens. */
+@media (max-width: 767px) {
+  .ivt-hero-badge, .ivt-hero-h1, .ivt-hero-bar, .ivt-hero-sub,
+  .ivt-hero-cta, .ivt-hero-trust, .ivt-hero-img, .ivt-hero-scroll,
+  .ivt-hdr-logo, .ivt-hdr-nav-item, .ivt-hdr-cta, .ivt-hdr-wa,
+  .ivt-ph-badge, .ivt-ph-h1, .ivt-ph-bar, .ivt-ph-sub, .ivt-ph-img {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* Grain overlay (brand texture) — RTL-safe, no directional dependency */
 .grain-overlay::before {
   content: '';

@@ -24,6 +24,7 @@ import {
   isDraftCadencePeriod,
   uniqueTopicOffset,
 } from '@/lib/studio/draft-cadence';
+import { canRunStudioScheduler } from '@/lib/studio/scheduler-policy';
 
 export const dynamic = 'force-dynamic';
 
@@ -257,6 +258,9 @@ async function createAutomaticDraft(topicOffset = 0) {
  * same logic, so an existing weekly external scheduler remains safe.
  */
 export async function POST(req: NextRequest) {
+  if (!canRunStudioScheduler(process.env.STUDIO_SCHEDULER_ENABLED)) {
+    return NextResponse.json({ error: 'Studio scheduler is disabled.' }, { status: 503 });
+  }
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) return NextResponse.json({ error: 'CRON_SECRET not configured.' }, { status: 503 });
   if (req.headers.get('authorization') !== `Bearer ${cronSecret}`) {

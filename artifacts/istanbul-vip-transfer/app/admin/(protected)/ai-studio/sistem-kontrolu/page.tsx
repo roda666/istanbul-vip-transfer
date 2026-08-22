@@ -20,24 +20,27 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { RefreshCw, CheckCircle2, XCircle, AlertTriangle, Loader2, Database, Zap, ImageIcon, Calendar, BookOpen } from 'lucide-react';
 import AdminPageHeader from '../../../_components/AdminPageHeader';
+import { beginSystemHealthRefresh, failSystemHealthRefresh } from '@/lib/studio/system-health-client';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const C = { bg: '#F3F6FA', card: '#FFFFFF', border: '#D8E1E9', navy: '#132A44', gold: '#C99A32', text: '#172B3A', muted: '#52697A' };
 
 interface ConfigData {
-  database:         { ok: boolean; label: string; studioProjects: number };
-  openai:           { configured: boolean; ok: boolean; model: string; label: string };
-  imageGeneration:  { configured: boolean; ok: boolean; model: string | null; label: string };
-  storage:          { configured: boolean; label: string };
-  scheduler:        { ready: boolean; label: string };
-  cms:              { ok: boolean; label: string };
+  database:         { status: HealthStatus; label: string; studioProjects: number | null; migration: { status: HealthStatus; label: string; detail?: string; missing: string[] } };
+  openai:           { configured: boolean; ok: boolean; status: HealthStatus; model: string; label: string };
+  imageGeneration:  { configured: boolean; ok: boolean; status: HealthStatus; model: string | null; label: string };
+  storage:          { configured: boolean; status: HealthStatus; label: string };
+  scheduler:        { ready: boolean; status: HealthStatus; label: string };
+  cms:              { status: HealthStatus; label: string };
+  translation:      { ok: boolean; status: HealthStatus; label: string };
   languages:        Array<{ code: string; name: string; role: string; configured: boolean }>;
   keywordData:      { connected: boolean; label: string; providers: string[] };
   social:           Record<string, { connected: boolean; label: string }>;
   checkedAt:        string;
 }
 
-type StatusLevel = 'ok' | 'warn' | 'error' | 'loading';
+type HealthStatus = 'ok' | 'warn' | 'error';
+type StatusLevel = HealthStatus | 'loading';
 
 function StatusDot({ level }: { level: StatusLevel }) {
   const colors = { ok: '#059669', warn: '#D97706', error: '#DC2626', loading: '#6B7280' };
@@ -100,27 +103,41 @@ export default function SistemKontrolPage() {
   const [checkedAt, setCheckedAt] = useState('');
 
   const check = useCallback(async () => {
+    const reset = beginSystemHealthRefresh();
+    setData(reset.data);
+    setCheckedAt(reset.checkedAt);
     setLoading(true); setError('');
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 25_000);
     try {
-      const res = await fetch('/admin/api/studio/config');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const res = await fetch('/admin/api/studio/config', { signal: controller.signal });
+      if (!res.ok) throw new Error(res.status === 401 ? 'Oturumunuz sona erdi.' : 'Kontrol sonucu alınamadı.');
       const json = await res.json() as ConfigData;
       setData(json);
       setCheckedAt(new Date(json.checkedAt).toLocaleString('tr-TR'));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Sistem kontrolü alınamadı.');
+      // A previous green response is not evidence of current health after a
+      // failed refresh. Clear it instead of presenting stale service status.
+      const failed = failSystemHealthRefresh();
+      setData(failed.data);
+      setCheckedAt(failed.checkedAt);
+      setError(e instanceof DOMException && e.name === 'AbortError'
+        ? 'Sistem kontrolü zaman aşımına uğradı. Lütfen yeniden deneyin.'
+        : 'Sistem kontrolü alınamadı. Lütfen yeniden deneyin.');
     } finally {
+      window.clearTimeout(timeout);
       setLoading(false);
     }
   }, []);
 
   useEffect(() => { void check(); }, [check]);
 
-  const level = (ok: boolean, configured = true): StatusLevel => {
+  const level = (status: HealthStatus | undefined): StatusLevel => {
     if (loading) return 'loading';
-    if (!configured) return 'error';
-    return ok ? 'ok' : 'error';
+    return status ?? 'error';
   };
+  const unavailableLabel = (label: string | undefined) =>
+    label ?? (error ? 'Kontrol sonucu alınamadı — Yenile ile tekrar deneyin' : 'Kontrol sonucu alınamadı.');
 
   return (
     <div style={{ background: C.bg, minHeight: '100vh' }}>
@@ -165,44 +182,53 @@ export default function SistemKontrolPage() {
           <Card
             icon={<Database size={16} color={C.navy} />}
             title="Veritabanı"
-            level={level(data?.database.ok ?? false)}
-            label={data?.database.label ?? 'Kontrol ediliyor…'}
-            detail={data ? `Studio projeleri: ${data.database.studioProjects}` : undefined}
+            level={level(data?.database.status)}
+            label={unavailableLabel(data?.database.label)}
+            detail={data?.database.studioProjects === null || !data
+              ? data?.database.migration.label
+              : `Studio projeleri: ${data.database.studioProjects} · ${data.database.migration.label}`}
           />
           <Card
             icon={<Zap size={16} color={C.navy} />}
             title="OpenAI Metin Modeli"
-            level={level(data?.openai.ok ?? false, data?.openai.configured ?? false)}
-            label={data?.openai.label ?? 'Kontrol ediliyor…'}
+            level={level(data?.openai.status)}
+            label={unavailableLabel(data?.openai.label)}
             detail={data?.openai.ok ? `Model: ${data.openai.model}` : undefined}
           />
           <Card
             icon={<ImageIcon size={16} color={C.navy} />}
             title="DALL-E 3 Görsel Üretimi"
-            level={level(data?.imageGeneration.ok ?? false, data?.imageGeneration.configured ?? false)}
-            label={data?.imageGeneration.label ?? 'Kontrol ediliyor…'}
-            detail={data?.imageGeneration.ok ? 'Boyut: 1792×1024, standard kalite' : 'Manuel yükleme ile devam edebilirsiniz'}
+            level={level(data?.imageGeneration.status)}
+            label={unavailableLabel(data?.imageGeneration.label)}
+            detail={data?.imageGeneration.ok ? 'Erişim, görsel oluşturmadan doğrulandı' : 'Manuel yükleme ile devam edebilirsiniz'}
           />
           <Card
             icon={<Database size={16} color={C.navy} />}
             title="Nesne Depolama"
-            level={data?.storage.configured ? 'ok' : loading ? 'loading' : 'warn'}
-            label={data?.storage.label ?? 'Kontrol ediliyor…'}
-            detail={data?.storage.configured ? undefined : 'PRIVATE_OBJECT_DIR ayarlanmamış — AI görselleri kaybolabilir'}
+            level={level(data?.storage.status)}
+            label={unavailableLabel(data?.storage.label)}
+            detail={data?.storage.configured ? 'İmzalı URL kontrolü yapılır; dosya yazılmaz.' : 'AI görselleri kalıcı olmayabilir'}
           />
           <Card
             icon={<BookOpen size={16} color={C.navy} />}
             title="CMS DRAFT Aktarımı"
-            level={level(data?.cms.ok ?? false)}
-            label={data?.cms.label ?? 'Kontrol ediliyor…'}
+            level={level(data?.cms.status)}
+            label={unavailableLabel(data?.cms.label)}
             detail="Yalnızca Blog/Hizmetler DRAFT — otomatik yayın yok"
           />
           <Card
             icon={<Calendar size={16} color={C.navy} />}
             title="Zamanlanmış Yayın"
-            level={data?.scheduler.ready ? 'ok' : loading ? 'loading' : 'warn'}
-            label={data?.scheduler.label ?? 'Kontrol ediliyor…'}
-            detail={data?.scheduler.ready ? undefined : 'STUDIO_SCHEDULER_ENABLED ayarlanmamış — yalnızca manuel yayın'}
+            level={level(data?.scheduler.status)}
+            label={unavailableLabel(data?.scheduler.label)}
+            detail={data?.scheduler.ready ? 'Cron kimlik doğrulaması ve taslak şeması doğrulandı' : 'Manuel taslak oluşturma kullanılabilir'}
+          />
+          <Card
+            icon={<Zap size={16} color={C.navy} />}
+            title="Çeviri Hazırlığı"
+            level={level(data?.translation.status)}
+            label={unavailableLabel(data?.translation.label)}
+            detail="Hedef diller aynı metin modeli üzerinden çevrilir."
           />
         </div>
 
@@ -215,7 +241,7 @@ export default function SistemKontrolPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: C.muted, fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
               <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Kontrol ediliyor…
             </div>
-          ) : (
+          ) : data ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px' }}>
               {(data?.languages ?? []).map(lang => (
                 <div key={lang.code} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', borderRadius: '8px', background: '#F8FAFC', border: `1px solid ${lang.configured ? '#BBF7D0' : C.border}` }}>
@@ -231,6 +257,10 @@ export default function SistemKontrolPage() {
                 </div>
               ))}
             </div>
+          ) : (
+            <p style={{ margin: 0, fontFamily: 'Inter, sans-serif', fontSize: '13px', color: '#DC2626' }}>
+              Dil hazırlığı kontrolü alınamadı. Yenile ile tekrar deneyin.
+            </p>
           )}
           <div style={{ marginTop: '12px', padding: '10px 12px', background: '#FFFBEB', borderRadius: '8px', border: '1px solid #FDE68A' }}>
             <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: '#92400E', margin: 0 }}>
@@ -292,19 +322,20 @@ export default function SistemKontrolPage() {
             <h3 style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 700, color: C.text, margin: '0 0 12px' }}>Özet</h3>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               {[
-                { label: 'Veritabanı', ok: data.database.ok },
-                { label: 'OpenAI', ok: data.openai.ok },
-                { label: 'DALL-E 3', ok: data.imageGeneration.ok },
-                { label: 'Depolama', ok: data.storage.configured },
-                { label: 'CMS', ok: data.cms.ok },
-                { label: 'Zamanlayıcı', ok: data.scheduler.ready },
-                { label: '9 Dil', ok: data.openai.ok },
-              ].map(({ label, ok }) => (
+                { label: 'Veritabanı', status: data.database.status },
+                { label: 'Studio şeması', status: data.database.migration.status },
+                { label: 'OpenAI', status: data.openai.status },
+                { label: 'DALL-E 3', status: data.imageGeneration.status },
+                { label: 'Depolama', status: data.storage.status },
+                { label: 'CMS', status: data.cms.status },
+                { label: 'Zamanlayıcı', status: data.scheduler.status },
+                { label: '9 Dil', status: data.translation.status },
+              ].map(({ label, status }) => (
                 <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  {ok
+                  {status === 'ok'
                     ? <CheckCircle2 size={14} color="#059669" />
                     : <AlertTriangle size={14} color="#D97706" />}
-                  <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: ok ? '#059669' : '#D97706', fontWeight: 600 }}>{label}</span>
+                  <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: status === 'ok' ? '#059669' : '#D97706', fontWeight: 600 }}>{label}</span>
                 </div>
               ))}
             </div>

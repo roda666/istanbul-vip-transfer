@@ -39,6 +39,7 @@ export default function DraftCadencePanel() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const apply = useCallback((next: CadenceResponse) => {
     setData(next);
@@ -48,32 +49,50 @@ export default function DraftCadencePanel() {
   }, []);
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 15_000);
     try {
-      const res = await fetch('/admin/api/studio/draft-cadence');
-      if (!res.ok) throw new Error('Ayarlar yüklenemedi.');
-      apply(await res.json() as CadenceResponse);
+      const res = await fetch('/admin/api/studio/draft-cadence', { signal: controller.signal });
+      const payload = await res.json().catch(() => null) as (CadenceResponse & { error?: string }) | null;
+      if (!res.ok) throw new Error(payload?.error ?? 'Ayarlar yüklenemedi.');
+      apply(payload as CadenceResponse);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Ayarlar yüklenemedi.');
-    } finally { setLoading(false); }
+      const nextError = error instanceof DOMException && error.name === 'AbortError'
+        ? 'Taslak sıklığı ayarları zaman aşımına uğradı. Lütfen yeniden deneyin.'
+        : error instanceof Error ? error.message : 'Ayarlar yüklenemedi.';
+      setLoadError(nextError);
+    } finally {
+      window.clearTimeout(timeout);
+      setLoading(false);
+    }
   }, [apply]);
   useEffect(() => { void load(); }, [load]);
 
   const save = async () => {
     setSaving(true);
     setMessage(null);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 15_000);
     try {
       const res = await fetch('/admin/api/studio/draft-cadence', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ period, quantity: Number(quantity), timezone }),
+        signal: controller.signal,
       });
-      const payload = await res.json() as CadenceResponse & { error?: string };
-      if (!res.ok) throw new Error(payload.error ?? 'Ayarlar kaydedilemedi.');
-      apply(payload);
-      setMessage(payload.message ?? 'Kaydedildi.');
+      const payload = await res.json().catch(() => null) as (CadenceResponse & { error?: string }) | null;
+      if (!res.ok) throw new Error(payload?.error ?? 'Ayarlar kaydedilemedi.');
+      apply(payload as CadenceResponse);
+      setMessage(payload?.message ?? 'Kaydedildi.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Ayarlar kaydedilemedi.');
-    } finally { setSaving(false); }
+      setMessage(error instanceof DOMException && error.name === 'AbortError'
+        ? 'Kaydetme isteği zaman aşımına uğradı. Lütfen yeniden deneyin.'
+        : error instanceof Error ? error.message : 'Ayarlar kaydedilemedi.');
+    } finally {
+      window.clearTimeout(timeout);
+      setSaving(false);
+    }
   };
 
   const guidance = schedulerGuidance(period);
@@ -89,7 +108,14 @@ export default function DraftCadencePanel() {
         </div>
       </div>
 
-      {loading ? <p style={{ margin: 0, color: '#52697A', fontSize: 12, fontFamily: 'Inter, sans-serif' }}>Ayarlar yükleniyor…</p> : (
+      {loading ? <p style={{ margin: 0, color: '#52697A', fontSize: 12, fontFamily: 'Inter, sans-serif' }}>Ayarlar yükleniyor…</p> : loadError ? (
+        <div role="alert" style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 11px', color: '#B42318', fontSize: 12, lineHeight: 1.45, fontFamily: 'Inter, sans-serif' }}>
+          <p style={{ margin: '0 0 10px' }}>{loadError}</p>
+          <button onClick={() => void load()} style={{ border: '1px solid #FCA5A5', borderRadius: 6, padding: '6px 9px', background: '#fff', color: '#B42318', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+            Tekrar Dene
+          </button>
+        </div>
+      ) : (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 78px', gap: 8 }}>
             <label style={{ display: 'grid', gap: 5, color: '#52697A', fontSize: 11, fontFamily: 'Inter, sans-serif' }}>

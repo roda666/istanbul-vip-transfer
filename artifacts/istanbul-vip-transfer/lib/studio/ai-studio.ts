@@ -676,34 +676,49 @@ Note: Anahtar kelime verisi bağlı değil — AI tahmini. Do not invent data.`;
 // ── 7. Lightweight OpenAI connectivity check (for System Check page) ──────────
 
 export async function checkOpenAIConnectivity(): Promise<{
-  ok: boolean;
-  model: string | null;
-  dalleAvailable: boolean;
-  error?: string;
+  chat: { ok: boolean; model: string | null; error?: string };
+  image: { ok: boolean; model: 'dall-e-3'; error?: string };
 }> {
   const key = process.env.OPENAI_API_KEY;
-  if (!key) return { ok: false, model: null, dalleAvailable: false, error: 'OPENAI_API_KEY yapılandırılmamış.' };
+  if (!key) {
+    return {
+      chat: { ok: false, model: null, error: 'OpenAI anahtarı yapılandırılmamış.' },
+      image: { ok: false, model: 'dall-e-3', error: 'OpenAI anahtarı yapılandırılmamış.' },
+    };
+  }
 
   const model = getModel();
   try {
     const { OpenAI } = await import('openai');
     const client = new OpenAI({ apiKey: key });
 
-    // Minimal completion to verify key + model access
-    const resp = await client.chat.completions.create({
-      model,
-      messages: [{ role: 'user', content: 'ping' }],
-      max_tokens: 5,
-    }, { signal: AbortSignal.timeout(20_000) });
-
-    const ok = !!resp.choices[0];
-
-    // DALL-E availability: check if dall-e-3 is accessible (list models or attempt 1×1 check)
-    // We do NOT generate an actual image — just verify key works for chat
-    // DALL-E is assumed available when chat API works (same key)
-    return { ok, model, dalleAvailable: ok };
-  } catch (err: unknown) {
-    const raw = err instanceof Error ? err.message : String(err);
-    return { ok: false, model, dalleAvailable: false, error: sanitiseError(raw) };
+    const safeHealthError = (err: unknown) => {
+      const raw = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
+      if (raw.includes('401') || raw.includes('authentication')) return 'Kimlik doğrulama reddedildi.';
+      if (raw.includes('429') || raw.includes('rate limit') || raw.includes('quota')) return 'Kota veya hız sınırı aşıldı.';
+      if (raw.includes('timeout') || raw.includes('abort')) return 'Sağlayıcı kontrolü zaman aşımına uğradı.';
+      if (raw.includes('model_not_found') || raw.includes('does not exist')) return 'Model erişilemiyor.';
+      return 'Sağlayıcı erişim kontrolü başarısız.';
+    };
+    const [chat, image] = await Promise.all([
+      client.chat.completions.create({
+        model,
+        messages: [{ role: 'user', content: 'ping' }],
+        max_tokens: 5,
+      }, { signal: AbortSignal.timeout(20_000) })
+        .then((response) => ({ ok: Boolean(response.choices[0]), model }))
+        .catch((error) => ({ ok: false, model, error: safeHealthError(error) })),
+      // This is a no-cost entitlement probe. It deliberately does not generate
+      // an image: a successful chat request must never imply image capability.
+      client.models.retrieve('dall-e-3', { signal: AbortSignal.timeout(15_000) })
+        .then(() => ({ ok: true, model: 'dall-e-3' as const }))
+        .catch((error) => ({ ok: false, model: 'dall-e-3' as const, error: safeHealthError(error) })),
+    ]);
+    return { chat, image };
+  } catch {
+    return {
+      chat: { ok: false, model, error: 'OpenAI istemcisi başlatılamadı.' },
+      image: { ok: false, model: 'dall-e-3', error: 'OpenAI istemcisi başlatılamadı.' },
+    };
   }
 }

@@ -13,6 +13,22 @@ import {
 
 export const dynamic = 'force-dynamic';
 
+function cadenceFailure(error: unknown) {
+  const code = typeof error === 'object' && error !== null && 'code' in error
+    ? String((error as { code?: unknown }).code)
+    : '';
+  if (code === '42P01' || code === '42703') {
+    return {
+      status: 503,
+      error: 'Taslak sıklığı şeması eksik. Sistem Kontrolü sayfasından migration ayrıntılarını inceleyip tekrar deneyin.',
+    };
+  }
+  if (error instanceof Error && /timeout|abort/i.test(error.message)) {
+    return { status: 503, error: 'Taslak sıklığı kontrolü zaman aşımına uğradı. Lütfen tekrar deneyin.' };
+  }
+  return { status: 500, error: 'Taslak sıklığı ayarları okunamadı.' };
+}
+
 async function getOrCreateSettings() {
   const { db } = await import('@/db');
   const { aiDraftCadenceSettings } = await import('@/db/schema');
@@ -56,8 +72,9 @@ export async function GET() {
       },
       scheduler: schedulerGuidance(cadence.period),
     });
-  } catch {
-    return NextResponse.json({ error: 'Taslak sıklığı ayarları okunamadı.' }, { status: 500 });
+  } catch (error) {
+    const failure = cadenceFailure(error);
+    return NextResponse.json({ error: failure.error }, { status: failure.status });
   }
 }
 
@@ -109,7 +126,10 @@ export async function PATCH(req: NextRequest) {
       scheduler: schedulerGuidance(parsed.value.period),
       message: 'Otomatik taslak sıklığı kaydedildi.',
     });
-  } catch {
-    return NextResponse.json({ error: 'Taslak sıklığı ayarları kaydedilemedi.' }, { status: 500 });
+  } catch (error) {
+    const failure = cadenceFailure(error);
+    return NextResponse.json({
+      error: failure.status === 500 ? 'Taslak sıklığı ayarları kaydedilemedi.' : failure.error,
+    }, { status: failure.status });
   }
 }

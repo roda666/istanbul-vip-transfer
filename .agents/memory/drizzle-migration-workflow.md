@@ -27,5 +27,18 @@ or migration row, compare its journal `when` with the latest applied `created_at
 only the new entry forward, re-run `db:migrate`, then verify both the schema and journal
 row through the application's `DATABASE_URL`.
 
+## Verified-schema recovery
+
+When the migration journal reports success but a required table or column is still absent
+from the application's own database, treat the schema as the source of truth and verify
+the exact relation/column through the app's `DATABASE_URL`.
+
+**Why:** Historical journal records can cause `db:migrate` to skip SQL that has never
+actually been applied, leaving a runtime dependency absent despite a successful command.
+
+**How to apply:** Do not add startup DDL or change a historical journal entry blindly.
+After confirming the exact missing migration objects, apply only that existing migration's
+verified DDL to the application database, then query the expected tables and columns again.
+
 ## Migration 0016 note
 `0016_studio.sql` was hand-crafted (not via `db:generate`), so its journal entry was added manually by a Python script. The studio tables (studio_projects, studio_project_translations) were already in the DB via `db:push` before the migration system was set up.

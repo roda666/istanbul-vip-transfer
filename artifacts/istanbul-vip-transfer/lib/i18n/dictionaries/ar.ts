@@ -38,6 +38,7 @@ const ar: Dictionary = {
     cashPayment: 'الدفع نقداً في المركبة',
     bankTransfer: 'تحويل بنكي / EFT',
     googlePlayLabel: 'تحميل التطبيق',
+    googleBusinessLink: 'ملفنا التجاري على Google',
   },
   common: {
     loading: 'جارٍ التحميل...',

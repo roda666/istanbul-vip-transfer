@@ -24,8 +24,10 @@ export const SITE = {
   /** mailto: URI for <a href> */
   emailMailto: 'mailto:info@istanbulviptransfer.com',
 
-  /** Verified Google Business Profile URL — do not change */
-  googleBusinessUrl: 'https://share.google/BaSBZMKi7j4AlQ5hO',
+  /** Verified Google Business Profile URL. */
+  googleBusinessUrl: 'https://share.google/umKdtDsepQm1JxfOy',
+  /** Verified Google review URL — this profile link opens the review destination. */
+  googleReviewUrl: 'https://share.google/umKdtDsepQm1JxfOy',
 
   /** Canonical base URL */
   siteUrl: 'https://www.istanbulviptransfer.com',

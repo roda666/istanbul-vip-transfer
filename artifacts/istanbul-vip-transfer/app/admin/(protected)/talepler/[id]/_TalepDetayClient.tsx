@@ -52,6 +52,7 @@ export default function TalepDetayClient({
   const router = useRouter();
 
   const isLegacy = status === 'SPAM';
+  const reviewLink = googleReviewUrl.trim();
 
   async function saveStatus(newStatus: string) {
     setLoading(true);
@@ -111,9 +112,9 @@ export default function TalepDetayClient({
 
   /** Builds the WhatsApp review-request message and opens it */
   function openReviewWhatsApp() {
+    if (!reviewLink) return;
     const phone     = customerPhone.replace(/\D/g, '');
     const intlPhone = phone.startsWith('0') ? `90${phone.slice(1)}` : phone.startsWith('90') ? phone : `90${phone}`;
-    const reviewLink = googleReviewUrl || 'https://g.page/r/review'; // fallback
     const message = encodeURIComponent(
       `Merhaba ${customerName} 😊\n\nTransfer hizmetimizden memnun kaldıysanız, Google'da kısa bir yorum bırakmanız bize çok yardımcı olur 🙏\n\n⭐ Yorum bağlantısı: ${reviewLink}\n\nTeşekkürler!\nİstanbul VIP Transfer`
     );
@@ -122,7 +123,7 @@ export default function TalepDetayClient({
 
   /** Copies the review message text to clipboard */
   function copyReviewMessage() {
-    const reviewLink = googleReviewUrl || 'https://g.page/r/review';
+    if (!reviewLink) return;
     const text = `Merhaba ${customerName} 😊\n\nTransfer hizmetimizden memnun kaldıysanız, Google'da kısa bir yorum bırakmanız bize çok yardımcı olur 🙏\n\n⭐ Yorum bağlantısı: ${reviewLink}\n\nTeşekkürler!\nİstanbul VIP Transfer`;
     navigator.clipboard.writeText(text).then(() => {
       setCopyDone(true);
@@ -235,10 +236,10 @@ export default function TalepDetayClient({
             padding: '12px', marginBottom: '12px', fontSize: '12px', color: '#374151',
             fontFamily: 'Inter, sans-serif', lineHeight: 1.6, whiteSpace: 'pre-line',
           }}>
-            {`Merhaba ${customerName} 😊\n\nTransfer hizmetimizden memnun kaldıysanız, Google'da kısa bir yorum bırakmanız bize çok yardımcı olur 🙏\n\n⭐ Yorum bağlantısı: ${googleReviewUrl || '(Google Yorum URL\'si ayarlardan girilmeli)'}\n\nTeşekkürler!\nİstanbul VIP Transfer`}
+            {`Merhaba ${customerName} 😊\n\nTransfer hizmetimizden memnun kaldıysanız, Google'da kısa bir yorum bırakmanız bize çok yardımcı olur 🙏\n\n⭐ Yorum bağlantısı: ${reviewLink || '(Google Yorum URL\'si ayarlardan girilmeli)'}\n\nTeşekkürler!\nİstanbul VIP Transfer`}
           </div>
 
-          {!googleReviewUrl && (
+          {!reviewLink && (
             <p style={{ fontSize: '11px', color: '#DC2626', fontFamily: 'Inter, sans-serif', margin: '0 0 10px', background: '#FEF2F2', padding: '6px 10px', borderRadius: '6px', border: '1px solid #FECACA' }}>
               ⚠️ Google Yorum URL&apos;si henüz girilmemiş. Lütfen <strong>Site Ayarları</strong> sayfasından ekleyin.
             </p>
@@ -247,11 +248,12 @@ export default function TalepDetayClient({
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button
               onClick={openReviewWhatsApp}
+              disabled={!reviewLink}
               style={{
                 display: 'flex', alignItems: 'center', gap: '6px',
                 padding: '8px 14px', borderRadius: '8px',
-                background: '#25D366', color: '#FFFFFF',
-                border: 'none', cursor: 'pointer',
+                background: reviewLink ? '#25D366' : '#86D9A5', color: '#FFFFFF',
+                border: 'none', cursor: reviewLink ? 'pointer' : 'not-allowed',
                 fontSize: '12px', fontWeight: 600, fontFamily: 'Inter, sans-serif',
               }}
             >
@@ -260,11 +262,12 @@ export default function TalepDetayClient({
             </button>
             <button
               onClick={copyReviewMessage}
+              disabled={!reviewLink}
               style={{
                 display: 'flex', alignItems: 'center', gap: '6px',
                 padding: '8px 14px', borderRadius: '8px',
-                background: '#F1F5F9', color: '#475569',
-                border: '1px solid #E2E8F0', cursor: 'pointer',
+                background: '#F1F5F9', color: reviewLink ? '#475569' : '#94A3B8',
+                border: '1px solid #E2E8F0', cursor: reviewLink ? 'pointer' : 'not-allowed',
                 fontSize: '12px', fontWeight: 600, fontFamily: 'Inter, sans-serif',
               }}
             >

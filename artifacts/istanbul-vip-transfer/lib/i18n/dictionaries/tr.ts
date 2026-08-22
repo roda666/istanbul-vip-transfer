@@ -38,6 +38,7 @@ const tr: Dictionary = {
     cashPayment: 'Araçta Nakit Ödeme',
     bankTransfer: 'Havale / EFT Ödeme',
     googlePlayLabel: 'Mobil Uygulamayı İndir',
+    googleBusinessLink: 'Google İşletme Profilimiz',
   },
   common: {
     loading: 'Yükleniyor...',

@@ -38,6 +38,7 @@ const de: Dictionary = {
     cashPayment: 'Barzahlung im Fahrzeug',
     bankTransfer: 'Banküberweisung / EFT',
     googlePlayLabel: 'Mobile App herunterladen',
+    googleBusinessLink: 'Unser Google-Unternehmensprofil',
   },
   common: {
     loading: 'Wird geladen...',

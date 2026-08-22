@@ -42,6 +42,7 @@ export interface Dictionary {
     cashPayment: string;
     bankTransfer: string;
     googlePlayLabel: string;
+    googleBusinessLink: string;
   };
   common: {
     loading: string;

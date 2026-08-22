@@ -134,12 +134,20 @@ export default function AyarlarPage() {
               { key: 'phoneInternational' as keyof Settings, label: 'Telefon (E.164)', placeholder: '+905326600847' },
               { key: 'whatsappNumber' as keyof Settings, label: 'WhatsApp Numarası', placeholder: '905326600847' },
               { key: 'email' as keyof Settings, label: 'E-Posta', placeholder: 'info@istanbulviptransfer.com' },
-              { key: 'googleBusinessUrl' as keyof Settings, label: 'Google İşletme URL', placeholder: 'https://maps.app.goo.gl/...' },
-              { key: 'googleReviewUrl' as keyof Settings, label: 'Google Yorum URL (Direkt Link)', placeholder: 'https://g.page/r/xxx/review' },
+              { key: 'googleBusinessUrl' as keyof Settings, label: 'Google İşletme Profili URL', placeholder: 'https://share.google/...' },
+              { key: 'googleReviewUrl' as keyof Settings, label: 'Google Yorum URL', placeholder: 'https://share.google/...' },
             ].map(f => (
               <div key={f.key}>
                 <label style={labelStyle}>{f.label}</label>
-                <input type="text" {...field(f.key)} placeholder={f.placeholder} style={inputStyle} />
+                <input
+                  type={f.key === 'googleBusinessUrl' || f.key === 'googleReviewUrl' ? 'url' : f.key === 'email' ? 'email' : 'text'}
+                  {...field(f.key)}
+                  placeholder={f.placeholder}
+                  style={inputStyle}
+                />
+                {(f.key === 'googleBusinessUrl' || f.key === 'googleReviewUrl') && (
+                  <p style={hintStyle}>Google işletme profili ve yorum bağlantısı için aynı güvenilir HTTPS adresini kullanın.</p>
+                )}
               </div>
             ))}
             <div>

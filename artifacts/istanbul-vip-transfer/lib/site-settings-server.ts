@@ -71,7 +71,7 @@ const STATIC_DEFAULTS: ContactSettings = {
   tursabNo:         '',
   fullAddress:      '',
   googlePlayUrl:    '',
-  googleReviewUrl:  '',
+  googleReviewUrl:  SITE.googleReviewUrl,
 };
 
 // ── Module-level cache ─────────────────────────────────────────────────────────
@@ -114,7 +114,7 @@ function buildFromRow(row: typeof siteSettings.$inferSelect): ContactSettings {
     tursabNo:         (row.tursabNo         ?? '').trim(),
     fullAddress:      (row.fullAddress       ?? '').trim(),
     googlePlayUrl:    (row.googlePlayUrl     ?? '').trim(),
-    googleReviewUrl:  (row.googleReviewUrl   ?? '').trim(),
+    googleReviewUrl:  (row.googleReviewUrl   ?? '').trim() || SITE.googleReviewUrl,
   };
 }
 

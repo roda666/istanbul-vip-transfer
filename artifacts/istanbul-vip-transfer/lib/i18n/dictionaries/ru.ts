@@ -38,6 +38,7 @@ const ru: Dictionary = {
     cashPayment: 'Наличные в автомобиле',
     bankTransfer: 'Банковский перевод / EFT',
     googlePlayLabel: 'Скачать мобильное приложение',
+    googleBusinessLink: 'Наш профиль Google Business',
   },
   common: {
     loading: 'Загрузка...',

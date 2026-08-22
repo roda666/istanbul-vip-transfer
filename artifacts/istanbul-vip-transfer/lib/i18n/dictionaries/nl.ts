@@ -38,6 +38,7 @@ const nl: Dictionary = {
       cashPayment: 'Contant betalen in het voertuig',
       bankTransfer: 'Bankoverschrijving / EFT',
       googlePlayLabel: 'Download de mobiele app',
+      googleBusinessLink: 'Ons Google-bedrijfsprofiel',
     },
     common: {
       loading: 'Laden...',

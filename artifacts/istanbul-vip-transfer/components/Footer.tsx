@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Phone, MapPin, Mail, Lock, ShieldCheck, Banknote, ArrowLeftRight, Smartphone } from 'lucide-react';
+import { Phone, MapPin, Mail, Lock, ShieldCheck, Banknote, ArrowLeftRight, Smartphone, ExternalLink } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
 import { useSiteSettings } from '@/components/SiteSettingsContext';
 import { localizedPublicPath, localizedServicePath } from '@/lib/localized-service-path';
@@ -335,6 +335,24 @@ export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
                   )}
                 </div>
               </li>
+              {cs.googleBusinessUrl && (
+                <li className="flex items-start gap-3">
+                  <MapPin size={15} style={{ color: '#C79A35', flexShrink: 0, marginTop: '2px' }} aria-hidden="true" />
+                  <a
+                    href={cs.googleBusinessUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm inline-flex items-center gap-1.5 transition-colors duration-300 focus:outline-none focus-visible:underline"
+                    style={{ color: 'rgba(255,255,255,0.88)', fontFamily: 'Inter, sans-serif' }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#C79A35'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,0.88)'; }}
+                    data-testid="footer-google-business-link"
+                  >
+                    {dict.footer.googleBusinessLink}
+                    <ExternalLink size={13} aria-hidden="true" />
+                  </a>
+                </li>
+              )}
             </ul>
           </div>
         </div>

@@ -38,6 +38,7 @@ const it: Dictionary = {
       cashPayment: 'Pagamento in contanti nel veicolo',
       bankTransfer: 'Bonifico bancario / EFT',
       googlePlayLabel: "Scarica l'app mobile",
+      googleBusinessLink: 'Il nostro profilo dell’attività su Google',
     },
     common: {
       loading: 'Caricamento...',

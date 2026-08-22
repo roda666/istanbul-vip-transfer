@@ -5,6 +5,7 @@ import {
   localizedServiceCategoryPath,
   localizedServicePath,
   localizedStaticPath,
+  localizedTransferRoutePath,
   resolveLocalizedServiceCategoryPath,
   resolveLocalizedServiceSlug,
   resolveLocalizedStaticSlug,
@@ -80,5 +81,19 @@ describe('localized service paths', () => {
       .toBe('/en/services/airport');
     expect(localizedPathForLanguageSwitch('/en/services/airport', 'tr'))
       .toBe('/hizmetler/airport');
+  });
+
+  it.each(TARGET_LOCALES)('builds a stable localized detail URL for transfer routes in %s', (locale) => {
+    expect(localizedTransferRoutePath('taksim-sabiha', locale))
+      .toBe(`/${locale}/guzergah/taksim-sabiha`);
+  });
+
+  it('keeps a transfer-route slug while changing language', () => {
+    expect(localizedTransferRoutePath('taksim-sabiha', 'tr'))
+      .toBe('/guzergah/taksim-sabiha');
+    expect(localizedPathForLanguageSwitch('/en/guzergah/taksim-sabiha', 'de'))
+      .toBe('/de/guzergah/taksim-sabiha');
+    expect(localizedPublicPath('/de/guzergah/taksim-sabiha', 'tr'))
+      .toBe('/guzergah/taksim-sabiha');
   });
 });

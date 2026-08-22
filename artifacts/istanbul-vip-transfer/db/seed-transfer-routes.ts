@@ -124,6 +124,39 @@ const ROUTES = [
   },
 ];
 
+const ROUTE_LOCALE_COPY = {
+  en: { title: 'Private VIP transfer', description: 'Travel comfortably with a professional chauffeur and a Mercedes Vito or Sprinter VIP vehicle, available around the clock.' },
+  de: { title: 'Privater VIP-Transfer', description: 'Reisen Sie komfortabel mit professionellem Fahrer und einem Mercedes Vito oder Sprinter VIP Fahrzeug, rund um die Uhr verfügbar.' },
+  ru: { title: 'Частный VIP-трансфер', description: 'Путешествуйте с комфортом с профессиональным водителем на Mercedes Vito или Sprinter VIP, доступном круглосуточно.' },
+  ar: { title: 'نقل VIP خاص', description: 'سافر براحة مع سائق محترف وسيارة مرسيدس فيتو أو سبرينتر VIP متاحة على مدار الساعة.' },
+  fr: { title: 'Transfert VIP privé', description: 'Voyagez confortablement avec un chauffeur professionnel et un véhicule Mercedes Vito ou Sprinter VIP, disponible 24h/24.' },
+  es: { title: 'Traslado VIP privado', description: 'Viaje cómodamente con un conductor profesional y un vehículo Mercedes Vito o Sprinter VIP, disponible las 24 horas.' },
+  it: { title: 'Trasferimento VIP privato', description: 'Viaggia comodamente con un autista professionista e un veicolo Mercedes Vito o Sprinter VIP, disponibile 24 ore su 24.' },
+  nl: { title: 'Privé VIP-transfer', description: 'Reis comfortabel met een professionele chauffeur en een Mercedes Vito- of Sprinter VIP-voertuig, 24 uur per dag beschikbaar.' },
+} as const;
+
+function localizedPlace(value: string, locale: keyof typeof ROUTE_LOCALE_COPY) {
+  const airport = {
+    en: 'Istanbul Airport', de: 'Flughafen Istanbul', ru: 'Аэропорт Стамбула', ar: 'مطار إسطنبول',
+    fr: 'Aéroport d’Istanbul', es: 'Aeropuerto de Estambul', it: 'Aeroporto di Istanbul', nl: 'Luchthaven Istanbul',
+  }[locale];
+  const sabiha = {
+    en: 'Sabiha Gökçen Airport', de: 'Flughafen Sabiha Gökçen', ru: 'Аэропорт Сабиха Гёкчен', ar: 'مطار صبيحة كوكجن',
+    fr: 'Aéroport Sabiha Gökçen', es: 'Aeropuerto Sabiha Gökçen', it: 'Aeroporto Sabiha Gökçen', nl: 'Luchthaven Sabiha Gökçen',
+  }[locale];
+  return value.replaceAll('İstanbul Havalimanı', airport).replaceAll('Sabiha Gökçen Havalimanı', sabiha).replaceAll('Şehirlerarası', '');
+}
+
+function relatedServiceSlug(slug: string) {
+  if (slug.includes('sabiha')) return 'sabiha-gokcen-havalimani-transfer';
+  if (slug.includes('havalimani')) return 'istanbul-havalimani-transfer';
+  if (slug.includes('ankara')) return 'ankara-vip-transfer';
+  if (slug.includes('antalya')) return 'antalya-vip-transfer';
+  if (slug.includes('izmir')) return 'izmir-vip-transfer';
+  if (slug.includes('bodrum')) return 'sehirler-arasi-transfer';
+  return 'vip-transfer';
+}
+
 async function seed() {
   console.log('Seeding transfer routes…');
   for (const r of ROUTES) {
@@ -132,7 +165,8 @@ async function seed() {
         slug, name, origin, destination, distance_km, duration_minutes,
         price_vito_min_eur, price_vito_max_eur,
         price_sprinter_min_eur, price_sprinter_max_eur,
-        image_path, display_order, active,
+        image_path, display_order, active, description, seo_title, seo_description,
+        og_title, og_description, related_service_slug, indexable,
         created_at, updated_at
       ) VALUES (
         ${r.slug}, ${r.name}, ${r.origin}, ${r.destination},
@@ -140,10 +174,46 @@ async function seed() {
         ${r.priceVitoMinEur}, ${r.priceVitoMaxEur},
         ${r.priceSprinterMinEur}, ${r.priceSprinterMaxEur},
         ${r.imagePath}, ${r.displayOrder}, true,
+        ${r.origin + ' ile ' + r.destination + ' arasındaki VIP transferiniz için Mercedes Vito ve Sprinter araç seçenekleriyle, deneyimli şoförlerimiz 7/24 hizmetinizdedir.'},
+        ${r.name + ' | İstanbul VIP Transfer'},
+        ${r.origin + ' - ' + r.destination + ' VIP transferi için konforlu araç ve profesyonel şoför hizmeti.'},
+        ${r.name + ' | İstanbul VIP Transfer'},
+        ${r.origin + ' ile ' + r.destination + ' arasında güvenli ve konforlu VIP transfer.'},
+        ${relatedServiceSlug(r.slug)}, true,
         now(), now()
       )
       ON CONFLICT (slug) DO NOTHING
     `;
+    for (const [languageCode, copy] of Object.entries(ROUTE_LOCALE_COPY) as [keyof typeof ROUTE_LOCALE_COPY, typeof ROUTE_LOCALE_COPY[keyof typeof ROUTE_LOCALE_COPY]][]) {
+      const origin = localizedPlace(r.origin, languageCode);
+      const destination = localizedPlace(r.destination, languageCode);
+      const title = `${copy.title}: ${origin} → ${destination}`;
+      await sql`
+        INSERT INTO transfer_route_translations (
+          route_id, language_code, title, description, seo_title, seo_description,
+          og_title, og_description, status, published_at, created_at, updated_at
+        )
+        SELECT id, ${languageCode}, ${title}, ${copy.description},
+          ${title + ' | Istanbul VIP Transfer'}, ${copy.description},
+          ${title + ' | Istanbul VIP Transfer'}, ${copy.description},
+          'PUBLISHED', now(), now(), now()
+        FROM transfer_routes WHERE slug = ${r.slug}
+        ON CONFLICT (route_id, language_code) DO UPDATE
+        SET title = EXCLUDED.title,
+            description = EXCLUDED.description,
+            seo_title = EXCLUDED.seo_title,
+            seo_description = EXCLUDED.seo_description,
+            og_title = EXCLUDED.og_title,
+            og_description = EXCLUDED.og_description,
+            status = 'PUBLISHED',
+            published_at = now(),
+            updated_at = now()
+        -- Repair only the earlier automatic Turkish-title fallback. Existing
+        -- editor-authored locale drafts are never overwritten by the seed.
+        WHERE transfer_route_translations.status = 'DRAFT'
+          AND transfer_route_translations.title = ${r.name}
+      `;
+    }
     console.log(`  ✓ ${r.name}`);
   }
   console.log('Done.');

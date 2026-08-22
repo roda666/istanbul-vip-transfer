@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Pencil, Trash2, X, Check } from 'lucide-react';
-import type { TransferRoute } from '@/db/schema';
+import type { TransferRoute, TransferRouteTranslation } from '@/db/schema';
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 const BORDER = '#D8E1E9';
@@ -28,8 +28,19 @@ const EMPTY: Partial<TransferRoute> = {
   distanceKm: 0, durationMinutes: 0,
   priceVitoMinEur: 0, priceVitoMaxEur: 0,
   priceSprinterMinEur: 0, priceSprinterMaxEur: 0,
-  imagePath: '', displayOrder: 0, active: true,
+  imagePath: '', displayOrder: 0, active: true, description: '', seoTitle: '', seoDescription: '',
+  ogTitle: '', ogDescription: '', relatedServiceSlug: 'vip-transfer', indexable: true,
 };
+
+type RouteTranslationDraft = Pick<TransferRouteTranslation,
+  'languageCode' | 'title' | 'description' | 'seoTitle' | 'seoDescription' | 'ogTitle' | 'ogDescription' | 'status' | 'isManuallyLocked'>;
+type AdminRoute = TransferRoute & { translations: RouteTranslationDraft[] };
+type RouteDraft = Partial<TransferRoute> & { translations?: RouteTranslationDraft[] };
+
+const LOCALES = [
+  ['en', 'English'], ['de', 'Deutsch'], ['ru', 'Русский'], ['ar', 'العربية'],
+  ['fr', 'Français'], ['es', 'Español'], ['it', 'Italiano'], ['nl', 'Nederlands'],
+] as const;
 
 // ── Confirm dialog ────────────────────────────────────────────────────────────
 function ConfirmDialog({ title, message, onConfirm, onCancel }: {
@@ -51,13 +62,35 @@ function ConfirmDialog({ title, message, onConfirm, onCancel }: {
 
 // ── Route form modal ──────────────────────────────────────────────────────────
 function RouteModal({ route, onSave, onClose, saving }: {
-  route: Partial<TransferRoute>;
-  onSave: (data: Partial<TransferRoute>) => void;
+  route: RouteDraft;
+  onSave: (data: RouteDraft) => void;
   onClose: () => void;
   saving: boolean;
 }) {
-  const [form, setForm] = useState<Partial<TransferRoute>>({ ...route });
+  const [form, setForm] = useState<RouteDraft>({ ...route, translations: route.translations ?? [] });
+  const [activeLocale, setActiveLocale] = useState<string>('tr');
   const set = (key: keyof TransferRoute, val: unknown) => setForm(f => ({ ...f, [key]: val }));
+  const translation = form.translations?.find((item) => item.languageCode === activeLocale);
+  const setTranslation = (key: keyof RouteTranslationDraft, value: unknown) => {
+    if (activeLocale === 'tr') return;
+    setForm((current) => {
+      const currentTranslations = current.translations ?? [];
+      const existing = currentTranslations.find((item) => item.languageCode === activeLocale);
+      const next: RouteTranslationDraft = {
+        languageCode: activeLocale,
+        title: existing?.title ?? '',
+        description: existing?.description ?? '',
+        seoTitle: existing?.seoTitle ?? null,
+        seoDescription: existing?.seoDescription ?? null,
+        ogTitle: existing?.ogTitle ?? null,
+        ogDescription: existing?.ogDescription ?? null,
+        status: existing?.status ?? 'DRAFT',
+        isManuallyLocked: existing?.isManuallyLocked ?? false,
+        [key]: value,
+      };
+      return { ...current, translations: [...currentTranslations.filter((item) => item.languageCode !== activeLocale), next] };
+    });
+  };
 
   const numField = (key: keyof TransferRoute, label: string, placeholder?: string) => (
     <div>
@@ -71,7 +104,7 @@ function RouteModal({ route, onSave, onClose, saving }: {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(23,43,58,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
-      <div style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '28px', maxWidth: '600px', width: '100%', boxShadow: '0 8px 40px rgba(23,43,58,0.14)', margin: 'auto' }}>
+      <div style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '28px', maxWidth: '780px', width: '100%', boxShadow: '0 8px 40px rgba(23,43,58,0.14)', margin: 'auto' }}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <h2 style={{ color: TEXT, fontSize: '16px', fontFamily: 'Inter, sans-serif', fontWeight: 700, margin: 0 }}>
@@ -80,11 +113,24 @@ function RouteModal({ route, onSave, onClose, saving }: {
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: MUTED, padding: '4px', borderRadius: '6px' }}><X size={18} /></button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '10px', borderBottom: `1px solid ${BORDER}`, marginBottom: '18px' }}>
+          <button type="button" onClick={() => setActiveLocale('tr')} style={{ border: `1px solid ${activeLocale === 'tr' ? '#2563EB' : BORDER}`, borderRadius: '7px', background: activeLocale === 'tr' ? '#EFF6FF' : BG, color: activeLocale === 'tr' ? '#2563EB' : MUTED, padding: '7px 10px', cursor: 'pointer', fontWeight: 700 }}>Türkçe kaynak</button>
+          {LOCALES.map(([code, label]) => {
+            const status = form.translations?.find((item) => item.languageCode === code)?.status;
+            return <button key={code} type="button" onClick={() => setActiveLocale(code)} style={{ border: `1px solid ${activeLocale === code ? '#2563EB' : BORDER}`, borderRadius: '7px', background: activeLocale === code ? '#EFF6FF' : BG, color: activeLocale === code ? '#2563EB' : MUTED, padding: '7px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>{label}{status === 'PUBLISHED' ? ' • ✓' : ''}</button>;
+          })}
+        </div>
+
+        {activeLocale === 'tr' ? <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {/* Name */}
           <div>
             <label style={labelStyle}>Güzergah Adı *</label>
             <input style={inputStyle} placeholder="örn: Taksim → Sabiha Gökçen Havalimanı" value={form.name ?? ''} onChange={e => set('name', e.target.value)} />
+          </div>
+
+          <div>
+            <label style={labelStyle}>Sayfa Açıklaması *</label>
+            <textarea style={{ ...inputStyle, minHeight: '94px', resize: 'vertical' }} placeholder="Güzergah için ziyaretçiye gösterilecek özgün açıklama" value={form.description ?? ''} onChange={e => set('description', e.target.value)} />
           </div>
 
           {/* Origin / Destination */}
@@ -114,6 +160,16 @@ function RouteModal({ route, onSave, onClose, saving }: {
             </div>
           </div>
 
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div><label style={labelStyle}>SEO Başlığı</label><input style={inputStyle} value={form.seoTitle ?? ''} onChange={e => set('seoTitle', e.target.value)} /></div>
+            <div><label style={labelStyle}>İlgili Hizmet Slug&apos;ı</label><input style={inputStyle} placeholder="vip-transfer" value={form.relatedServiceSlug ?? ''} onChange={e => set('relatedServiceSlug', e.target.value)} /></div>
+          </div>
+          <div><label style={labelStyle}>SEO Açıklaması</label><textarea style={{ ...inputStyle, minHeight: '66px', resize: 'vertical' }} value={form.seoDescription ?? ''} onChange={e => set('seoDescription', e.target.value)} /></div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div><label style={labelStyle}>Open Graph Başlığı</label><input style={inputStyle} value={form.ogTitle ?? ''} onChange={e => set('ogTitle', e.target.value)} /></div>
+            <div><label style={labelStyle}>Open Graph Açıklaması</label><input style={inputStyle} value={form.ogDescription ?? ''} onChange={e => set('ogDescription', e.target.value)} /></div>
+          </div>
+
           {/* Sprinter prices */}
           <div>
             <label style={{ ...labelStyle, marginBottom: '8px' }}>Mercedes Sprinter Fiyat Aralığı (EUR)</label>
@@ -139,9 +195,30 @@ function RouteModal({ route, onSave, onClose, saving }: {
                 <input type="checkbox" checked={form.active ?? true} onChange={e => set('active', e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
                 Aktif (ana sayfada göster)
               </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px', color: TEXT, padding: '3px 0' }}>
+                <input type="checkbox" checked={form.indexable ?? true} onChange={e => set('indexable', e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
+                Arama motorlarında indekslenebilir
+              </label>
             </div>
           </div>
-        </div>
+        </div> : !form.id ? (
+          <div style={{ padding: '20px', borderRadius: '10px', background: '#F8FAFC', color: MUTED, fontSize: '13px', lineHeight: 1.6 }}>Önce Türkçe rotayı kaydedin. Ardından her dil için sayfa metnini ekleyip yayın durumunu seçebilirsiniz.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ background: '#F8FAFC', border: `1px solid ${BORDER}`, padding: '12px', borderRadius: '8px', color: MUTED, fontSize: '12px', lineHeight: 1.55 }}>Bu sayfa yalnızca <strong>PUBLISHED</strong> durumuna getirildiğinde ziyaretçilere, sitemap&apos;e ve hreflang etiketlerine eklenir. Eksik çeviri Türkçe metne düşmez.</div>
+            <div><label style={labelStyle}>Başlık *</label><input style={inputStyle} value={translation?.title ?? ''} onChange={e => setTranslation('title', e.target.value)} /></div>
+            <div><label style={labelStyle}>Sayfa Açıklaması *</label><textarea dir={activeLocale === 'ar' ? 'rtl' : 'ltr'} style={{ ...inputStyle, minHeight: '112px', resize: 'vertical' }} value={translation?.description ?? ''} onChange={e => setTranslation('description', e.target.value)} /></div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div><label style={labelStyle}>SEO Başlığı</label><input style={inputStyle} value={translation?.seoTitle ?? ''} onChange={e => setTranslation('seoTitle', e.target.value)} /></div>
+              <div><label style={labelStyle}>Yayın Durumu</label><select style={inputStyle} value={translation?.status ?? 'DRAFT'} onChange={e => setTranslation('status', e.target.value)}><option value="DRAFT">Taslak</option><option value="REVIEW">İncelemede</option><option value="APPROVED">Onaylandı</option><option value="PUBLISHED">Yayında</option><option value="OUTDATED">Güncellenecek</option></select></div>
+            </div>
+            <div><label style={labelStyle}>SEO Açıklaması</label><textarea style={{ ...inputStyle, minHeight: '66px', resize: 'vertical' }} value={translation?.seoDescription ?? ''} onChange={e => setTranslation('seoDescription', e.target.value)} /></div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div><label style={labelStyle}>Open Graph Başlığı</label><input style={inputStyle} value={translation?.ogTitle ?? ''} onChange={e => setTranslation('ogTitle', e.target.value)} /></div>
+              <div><label style={labelStyle}>Open Graph Açıklaması</label><input style={inputStyle} value={translation?.ogDescription ?? ''} onChange={e => setTranslation('ogDescription', e.target.value)} /></div>
+            </div>
+          </div>
+        )}
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '24px', paddingTop: '20px', borderTop: `1px solid ${BORDER}` }}>
@@ -162,11 +239,11 @@ function RouteModal({ route, onSave, onClose, saving }: {
 
 // ── Main list component ───────────────────────────────────────────────────────
 export default function TransferRotalariList() {
-  const [routes, setRoutes] = useState<TransferRoute[]>([]);
+  const [routes, setRoutes] = useState<AdminRoute[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
-  const [modal, setModal] = useState<Partial<TransferRoute> | null>(null);
+  const [modal, setModal] = useState<RouteDraft | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<TransferRoute | null>(null);
 
@@ -187,7 +264,7 @@ export default function TransferRotalariList() {
 
   useEffect(() => { fetchRoutes(); }, [fetchRoutes]);
 
-  async function handleSave(data: Partial<TransferRoute>) {
+  async function handleSave(data: RouteDraft) {
     setSaving(true);
     setActionError('');
     try {

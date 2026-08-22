@@ -12,7 +12,7 @@ import { SITE } from '@/lib/site-config';
 import { getContactSettings } from '@/lib/site-settings-server';
 // Renamed to avoid conflict with Next.js's `export const dynamic` route segment config
 import lazyLoad from 'next/dynamic';
-import type { TransferRoute } from '@/db/schema';
+import { getHomepageTransferRoutes } from '@/lib/transfer-route-pages';
 import { HomepageCmsProvider } from '@/lib/homepage-cms-context';
 import { getPublishedHomepageData } from '@/lib/homepage-cms';
 import { getServiceVisibilityMap } from '@/lib/service-page-cms';
@@ -33,17 +33,6 @@ const TrustSignals         = lazyLoad(() => import('@/components/TrustSignals'))
 const Reviews              = lazyLoad(() => import('@/components/Reviews'));
 const FAQ                  = lazyLoad(() => import('@/components/FAQ'));
 const Contact              = lazyLoad(() => import('@/components/Contact'));
-
-async function getTransferRoutes(): Promise<TransferRoute[]> {
-  try {
-    const { db } = await import('@/db');
-    const { transferRoutes } = await import('@/db/schema');
-    const { eq, asc } = await import('drizzle-orm');
-    return db.select().from(transferRoutes).where(eq(transferRoutes.active, true)).orderBy(asc(transferRoutes.displayOrder));
-  } catch {
-    return [];
-  }
-}
 
 // ISR: serve pre-rendered HTML instantly; revalidate in background every 5 min.
 // Admin publish routes call revalidatePath() for on-demand invalidation.
@@ -121,7 +110,7 @@ export default async function TranslatedHomePage({ params }: Props) {
     getPublishedHomepageData(lang),
     getServiceVisibilityMap(),
     getContactSettings(),
-    getTransferRoutes(),
+    getHomepageTransferRoutes().catch(() => []),
     getPublishedHomepageReviews(lang),
     getPublishedHomepageFaqs(lang),
     getPublishedHomepageServiceCopy(lang),

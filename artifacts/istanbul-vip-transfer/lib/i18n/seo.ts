@@ -9,6 +9,7 @@ import {
   localizedServiceCategoryPath,
   localizedServicePath,
   localizedStaticPath,
+  localizedTransferRoutePath,
 } from '@/lib/localized-service-path';
 
 export interface HreflangEntry {
@@ -120,6 +121,23 @@ export async function buildServiceCategoryAlternates(categorySlug: string): Prom
     languages[lang.locale] = `${SITE.siteUrl}${localizedServiceCategoryPath(categorySlug, lang.code)}`;
   }
 
+  return { canonical, languages };
+}
+
+/** Builds alternates for route-detail pages that exist in the provided locales. */
+export async function buildTransferRouteAlternates(routeSlug: string, publishedLangs: string[] = []): Promise<AlternatesResult> {
+  const canonical = `${SITE.siteUrl}${localizedTransferRoutePath(routeSlug, 'tr')}`;
+  const languages: Record<string, string> = {
+    'x-default': canonical,
+    [LANG_LOCALES.tr]: canonical,
+  };
+  const { getPublicLanguages } = await import('./active-locales');
+  const publicLangs = await getPublicLanguages();
+  for (const lang of publishedLangs) {
+    if (lang === 'tr') continue;
+    const entry = publicLangs.find((candidate) => candidate.code === lang);
+    if (entry) languages[entry.locale] = `${SITE.siteUrl}${localizedTransferRoutePath(routeSlug, lang)}`;
+  }
   return { canonical, languages };
 }
 

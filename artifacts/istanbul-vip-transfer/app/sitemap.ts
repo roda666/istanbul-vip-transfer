@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { SITE } from '@/lib/site-config';
-import { localizedServicePath, localizedStaticPath } from '@/lib/localized-service-path';
+import { localizedServicePath, localizedStaticPath, localizedTransferRoutePath } from '@/lib/localized-service-path';
 
 const BASE = SITE.siteUrl;
 
@@ -176,7 +176,64 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
-  // ── 5. DB-driven Turkish blog posts ──────────────────────────────────────
+  // ── 5. Transfer-route detail pages ───────────────────────────────────────
+  // Active, indexable Turkish routes are emitted. Locale routes require an
+  // explicit PUBLISHED route translation; no Turkish fallback can enter SEO.
+  try {
+    const { db } = await import('@/db');
+    const { transferRoutes, transferRouteTranslations } = await import('@/db/schema');
+    const { and, eq, inArray } = await import('drizzle-orm');
+    const routes = await db.select({
+      id: transferRoutes.id,
+      slug: transferRoutes.slug,
+      updatedAt: transferRoutes.updatedAt,
+    }).from(transferRoutes).where(and(
+      eq(transferRoutes.active, true),
+      eq(transferRoutes.indexable, true),
+    ));
+
+    if (routes.length > 0) {
+      const routeIds = routes.map((route) => route.id);
+      const translations = await db.select({
+        routeId: transferRouteTranslations.routeId,
+        languageCode: transferRouteTranslations.languageCode,
+        updatedAt: transferRouteTranslations.updatedAt,
+      }).from(transferRouteTranslations).where(and(
+        inArray(transferRouteTranslations.routeId, routeIds),
+        eq(transferRouteTranslations.status, 'PUBLISHED'),
+      ));
+      const publishedByRoute = new Map<string, Map<string, Date | undefined>>();
+      for (const translation of translations) {
+        if (!publicCodes.has(translation.languageCode)) continue;
+        const locales = publishedByRoute.get(translation.routeId) ?? new Map();
+        locales.set(translation.languageCode, translation.updatedAt ?? undefined);
+        publishedByRoute.set(translation.routeId, locales);
+      }
+      for (const route of routes) {
+        push({
+          url: `${BASE}${localizedTransferRoutePath(route.slug, 'tr')}`,
+          ...(route.updatedAt ? { lastModified: route.updatedAt } : {}),
+          changeFrequency: 'monthly',
+          priority: 0.7,
+        });
+        const locales = publishedByRoute.get(route.id);
+        for (const lang of nonTrLangs) {
+          const translatedAt = locales?.get(lang.code);
+          if (!translatedAt) continue;
+          push({
+            url: `${BASE}${localizedTransferRoutePath(route.slug, lang.code)}`,
+            lastModified: translatedAt,
+            changeFrequency: 'monthly',
+            priority: 0.65,
+          });
+        }
+      }
+    }
+  } catch {
+    // A database issue must never cause unverified route locales to be indexed.
+  }
+
+  // ── 6. DB-driven Turkish blog posts ──────────────────────────────────────
   try {
     const { getPublishedBlogPosts } = await import('@/lib/blog-cms');
     const dbBlogPosts = await getPublishedBlogPosts();
@@ -195,7 +252,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // DB unavailable — omit TR blog entries from sitemap
   }
 
-  // ── 6. DB-driven: published BLOG_POST translations ────────────────────────
+  // ── 7. DB-driven: published BLOG_POST translations ────────────────────────
   // Only BLOG_POST source content that is itself PUBLISHED generates translated
   // blog URLs.  Service/Page translations must never appear under /lang/blog/.
   try {

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getHomepageTransferRoutes } from '@/lib/transfer-route-pages';
 
 /**
  * Public endpoint for homepage "Popüler Transfer Bölgeleri" section.
@@ -9,17 +10,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const { db } = await import('@/db');
-    const { transferRoutes } = await import('@/db/schema');
-    const { eq, asc } = await import('drizzle-orm');
-
-    const rows = await db
-      .select()
-      .from(transferRoutes)
-      .where(eq(transferRoutes.active, true))
-      .orderBy(asc(transferRoutes.displayOrder));
-
-    return NextResponse.json({ routes: rows });
+    return NextResponse.json({ routes: await getHomepageTransferRoutes() });
   } catch (err) {
     console.error('transfer-routes public endpoint error:', err);
     return NextResponse.json({ routes: [] }, { status: 200 });

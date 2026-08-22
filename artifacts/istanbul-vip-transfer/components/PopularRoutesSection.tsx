@@ -2,9 +2,9 @@
 
 import Image from 'next/image';
 import { useLang } from '@/lib/i18n/context';
-import type { TransferRoute } from '@/db/schema';
+import type { TransferRouteCard } from '@/lib/transfer-route-pages';
 import { useEffect, useState } from 'react';
-import { localizedServicePath } from '@/lib/localized-service-path';
+import { localizedTransferRoutePath } from '@/lib/localized-service-path';
 
 // ── Design tokens (matches site dark/gold aesthetic) ──────────────────────────
 const DARK_BG    = '#0C1B2A';
@@ -28,37 +28,8 @@ function localize(base: string, translations: Record<string, string> | null | un
   return translations?.[lang] ?? null;
 }
 
-/**
- * Map a route name to the most relevant service page slug.
- * Runs purely on keywords found in the route name.
- */
-function getRouteHref(routeName: string, lang: string): string {
-  const n = routeName.toLowerCase();
-  let slug = '';
-  if (n.includes('sabiha')) {
-    slug = 'sabiha-gokcen-havalimani-transfer';
-  } else if (n.includes('havalimanı') || n.includes('havalimani') || n.includes('airport')) {
-    slug = 'istanbul-havalimani-transfer';
-  } else if (n.includes('antalya')) {
-    slug = 'antalya-vip-transfer';
-  } else if (n.includes('ankara')) {
-    slug = 'ankara-vip-transfer';
-  } else if (n.includes('izmir') || n.includes('İzmir')) {
-    slug = 'izmir-vip-transfer';
-  } else if (n.includes('bursa')) {
-    slug = 'istanbul-bursa-transfer';
-  } else if (n.includes('bodrum') || n.includes('şehirlerarası') || n.includes('intercity')) {
-    slug = 'sehirler-arasi-transfer';
-  } else if (n.includes('otel') || n.includes('boğaz') || n.includes('hotel')) {
-    slug = 'otel-transfer';
-  } else {
-    slug = 'vip-transfer';
-  }
-  return localizedServicePath(slug, lang);
-}
-
 function RouteCard({ route, lang, t }: {
-  route: TransferRoute;
+  route: TransferRouteCard;
   lang: string;
   t: { vito: string; sprinter: string; min: string; h: string; km: string };
 }) {
@@ -66,7 +37,7 @@ function RouteCard({ route, lang, t }: {
   if (!name) return null;
   const vitoRange     = `${route.priceVitoMinEur}–${route.priceVitoMaxEur} €`;
   const sprinterRange = `${route.priceSprinterMinEur}–${route.priceSprinterMaxEur} €`;
-  const href = getRouteHref(route.name, lang);
+  const href = localizedTransferRoutePath(route.slug, lang);
 
   return (
     <a
@@ -150,11 +121,14 @@ function RouteCard({ route, lang, t }: {
   );
 }
 
-export default function PopularRoutesSection({ routes }: { routes: TransferRoute[] }) {
+export default function PopularRoutesSection({ routes }: { routes: TransferRouteCard[] }) {
   const { dict, lang } = useLang();
   const t = dict.routes;
   const [hydrated, setHydrated] = useState(false);
-  const visibleRoutes = routes.filter((route) => localize(route.name, route.nameTranslations, lang));
+  const visibleRoutes = routes.filter((route) => (
+    localize(route.name, route.nameTranslations, lang)
+    && (lang === 'tr' || route.publishedPageLocales.includes(lang))
+  ));
 
   useEffect(() => { setHydrated(true); }, []);
 

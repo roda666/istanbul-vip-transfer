@@ -24,23 +24,12 @@ import {
   getPublishedHomepageServiceCopy,
 } from '@/lib/homepage-public-content';
 import { serializeJsonLd } from '@/lib/json-ld';
-import type { TransferRoute } from '@/db/schema';
+import { getHomepageTransferRoutes } from '@/lib/transfer-route-pages';
 
 // ISR: serve pre-rendered HTML instantly; revalidate in background every 5 min.
 // Admin publish routes call revalidatePath() for on-demand invalidation,
 // so homepage content updates appear within seconds of a publish action.
 export const revalidate = 300;
-
-async function getTransferRoutes(): Promise<TransferRoute[]> {
-  try {
-    const { db } = await import('@/db');
-    const { transferRoutes } = await import('@/db/schema');
-    const { eq, asc } = await import('drizzle-orm');
-    return db.select().from(transferRoutes).where(eq(transferRoutes.active, true)).orderBy(asc(transferRoutes.displayOrder));
-  } catch {
-    return [];
-  }
-}
 
 const BASE = SITE.siteUrl;
 
@@ -85,7 +74,7 @@ export default async function HomePage() {
     getPublishedHomepageData('tr'),
     getServiceVisibilityMap(),
     getContactSettings(),
-    getTransferRoutes(),
+    getHomepageTransferRoutes().catch(() => []),
     getPublishedHomepageReviews('tr'),
     getPublishedHomepageFaqs('tr'),
     getPublishedHomepageServiceCopy('tr'),

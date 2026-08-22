@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/auth/session';
 import { db } from '@/db';
-import { transferRoutes } from '@/db/schema';
-import { asc, sql } from 'drizzle-orm';
+import { transferRoutes, transferRouteTranslations } from '@/db/schema';
+import { asc, sql, inArray } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,7 +40,19 @@ export async function GET() {
 
   try {
     const rows = await db.select().from(transferRoutes).orderBy(asc(transferRoutes.displayOrder));
-    return NextResponse.json({ routes: rows });
+    const routeIds = rows.map((route) => route.id);
+    const translations = routeIds.length
+      ? await db.select().from(transferRouteTranslations).where(inArray(transferRouteTranslations.routeId, routeIds))
+      : [];
+    const translationsByRoute = new Map<string, typeof translations>();
+    for (const translation of translations) {
+      const current = translationsByRoute.get(translation.routeId) ?? [];
+      current.push(translation);
+      translationsByRoute.set(translation.routeId, current);
+    }
+    return NextResponse.json({
+      routes: rows.map((route) => ({ ...route, translations: translationsByRoute.get(route.id) ?? [] })),
+    });
   } catch (err) {
     console.error('admin transfer-routes GET error:', err);
     return NextResponse.json({ error: 'Sunucu hatası' }, { status: 500 });
@@ -56,7 +68,8 @@ export async function POST(req: NextRequest) {
 
   const { name, origin, destination, distanceKm, durationMinutes,
     priceVitoMinEur, priceVitoMaxEur, priceSprinterMinEur, priceSprinterMaxEur,
-    imagePath, displayOrder, active } = body;
+    imagePath, displayOrder, active, description, seoTitle, seoDescription,
+    ogTitle, ogDescription, relatedServiceSlug, indexable } = body;
 
   if (!name || !origin || !destination) {
     return NextResponse.json({ error: 'Güzergah adı, kalkış ve varış zorunludur.' }, { status: 400 });
@@ -83,6 +96,13 @@ export async function POST(req: NextRequest) {
       imagePath: imagePath ? String(imagePath) : null,
       displayOrder: Number(displayOrder ?? 0),
       active: active !== false,
+      description: description ? String(description) : null,
+      seoTitle: seoTitle ? String(seoTitle) : null,
+      seoDescription: seoDescription ? String(seoDescription) : null,
+      ogTitle: ogTitle ? String(ogTitle) : null,
+      ogDescription: ogDescription ? String(ogDescription) : null,
+      relatedServiceSlug: relatedServiceSlug ? slugify(String(relatedServiceSlug)) : 'vip-transfer',
+      indexable: indexable !== false,
     }).returning();
 
     return NextResponse.json({ route: row }, { status: 201 });

@@ -232,6 +232,20 @@
       "when": 1788000000000,
       "tag": "0032_chatbot_knowledge",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1788100000000,
+      "tag": "0033_green_roughhouse",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1788200000000,
+      "tag": "0034_route_translation_publication_guard",
+      "breakpoints": true
     }
   ]
 }

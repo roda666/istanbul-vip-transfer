@@ -66,6 +66,11 @@ export function localizedServiceCategoryPath(categorySlug: string, locale: strin
   return `${localizedStaticPath('hizmetler', locale)}/${categorySlug}`;
 }
 
+/** Builds the stable, locale-aware public URL for a transfer-route detail page. */
+export function localizedTransferRoutePath(routeSlug: string, locale: string): string {
+  return locale === 'tr' ? `/guzergah/${routeSlug}` : `/${locale}/guzergah/${routeSlug}`;
+}
+
 /**
  * Resolves a two-segment service-category route. Category validity is checked
  * against the active database catalog by the route that renders it.
@@ -134,6 +139,9 @@ export function localizedPublicPath(pathname: string, targetLocale: string): str
   }
 
   if (segments.length === 2) {
+    if (segments[0] === 'guzergah') {
+      return localizedTransferRoutePath(segments[1], targetLocale) + suffix;
+    }
     const categorySlug = resolveLocalizedServiceCategoryPath(segments.join('/'), sourceLocale);
     if (categorySlug) return localizedServiceCategoryPath(categorySlug, targetLocale) + suffix;
   }

@@ -1003,6 +1003,16 @@ export const transferRoutes = pgTable('transfer_routes', {
   imagePath:              text('image_path'),
   displayOrder:           integer('display_order').default(0).notNull(),
   active:                 boolean('active').default(true).notNull(),
+  /** Turkish source copy for the public route-detail page. */
+  description:            text('description'),
+  seoTitle:               text('seo_title'),
+  seoDescription:         text('seo_description'),
+  ogTitle:                text('og_title'),
+  ogDescription:          text('og_description'),
+  /** Canonical service slug shown as the recommended service on the route page. */
+  relatedServiceSlug:      text('related_service_slug'),
+  /** Keeps an active route out of search results without hiding it from the admin. */
+  indexable:              boolean('indexable').default(true).notNull(),
   /** JSONB: {"en":"…","de":"…","ru":"…","ar":"…","fr":"…","es":"…","it":"…","nl":"…"} */
   nameTranslations:       jsonb('name_translations').$type<Record<string, string>>(),
   originTranslations:     jsonb('origin_translations').$type<Record<string, string>>(),
@@ -1011,8 +1021,35 @@ export const transferRoutes = pgTable('transfer_routes', {
   updatedAt:              timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+/**
+ * Localized public detail-page copy for a transfer route.
+ * A route locale is public only when this record is PUBLISHED; card labels stay
+ * in the legacy JSONB columns above to keep homepage rendering backwards-compatible.
+ */
+export const transferRouteTranslations = pgTable('transfer_route_translations', {
+  id:              uuid('id').primaryKey().defaultRandom(),
+  routeId:         uuid('route_id').notNull().references(() => transferRoutes.id, { onDelete: 'cascade' }),
+  languageCode:    text('language_code').notNull(),
+  title:           text('title').notNull(),
+  description:     text('description').notNull(),
+  seoTitle:        text('seo_title'),
+  seoDescription:  text('seo_description'),
+  ogTitle:         text('og_title'),
+  ogDescription:   text('og_description'),
+  status:          translationStatusEnum('status').default('NOT_STARTED').notNull(),
+  isManuallyLocked: boolean('is_manually_locked').default(false).notNull(),
+  publishedAt:     timestamp('published_at', { withTimezone: true }),
+  createdAt:       timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:       timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex('transfer_route_translations_route_locale_unique').on(table.routeId, table.languageCode),
+  index('transfer_route_translations_route_status_idx').on(table.routeId, table.status),
+]);
+
 export type TransferRoute = typeof transferRoutes.$inferSelect;
 export type NewTransferRoute = typeof transferRoutes.$inferInsert;
+export type TransferRouteTranslation = typeof transferRouteTranslations.$inferSelect;
+export type NewTransferRouteTranslation = typeof transferRouteTranslations.$inferInsert;
 
 // ── Custom Reservation Fields ─────────────────────────────────────────────────
 // Admin-defined optional fields shown on the booking form per service.

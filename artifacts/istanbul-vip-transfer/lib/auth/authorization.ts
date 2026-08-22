@@ -185,7 +185,9 @@ export function getAdminPagePermission(pathname: string): AdminPermission | unde
   if (pathname === '/admin/erisim-reddedildi' || pathname.startsWith('/admin/hesabim')) {
     return 'ACCOUNT_SELF_MANAGE';
   }
-  if (pathname.startsWith('/admin/sohbet')) return 'CHAT_MANAGE';
+  if (pathname.startsWith('/admin/sohbet') || pathname.startsWith('/admin/chatbot-bilgi-bankasi')) {
+    return 'CHAT_MANAGE';
+  }
   if (pathname.startsWith('/admin/personel')) return 'STAFF_MANAGE';
   if (pathname.startsWith('/admin/e-posta-ayarlari') || pathname.startsWith('/admin/diller')) {
     return 'SECURITY_SETTINGS_MANAGE';

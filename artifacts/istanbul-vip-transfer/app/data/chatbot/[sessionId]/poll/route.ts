@@ -14,6 +14,7 @@ import { db } from '@/db';
 import { chatbotMessages, chatbotSessions } from '@/db/schema';
 import { eq, gt, and, asc, lte } from 'drizzle-orm';
 import { generateAIReply } from '@/lib/chatbot-ai';
+import { persistAssistantReplyForAdmin } from '@/lib/chatbot-response-storage';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,19 +76,11 @@ export async function GET(
         const aiContent = await generateAIReply(session.visitorLang, aiHistory);
 
         if (aiContent) {
-          // Translate AI reply to Turkish so admin sees it in Turkish
-          let aiContentTr = aiContent;
-          try {
-            const { translateToTurkish } = await import('@/lib/chatbot-translate');
-            const tr = await translateToTurkish(aiContent);
-            if (tr) aiContentTr = tr;
-          } catch { /* keep original on error */ }
-          await db.insert(chatbotMessages).values({
+          await persistAssistantReplyForAdmin(
             sessionId,
-            role:      'assistant',
-            content:   aiContent,
-            contentTr: aiContentTr,
-          });
+            aiContent,
+            (message) => db.insert(chatbotMessages).values(message),
+          );
           await db.update(chatbotSessions)
             .set({ lastMessageAt: new Date() })
             .where(eq(chatbotSessions.id, sessionId));

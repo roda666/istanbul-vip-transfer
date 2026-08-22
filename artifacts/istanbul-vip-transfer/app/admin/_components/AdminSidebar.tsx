@@ -31,6 +31,7 @@ import {
   Users,
   Tag,
   BarChart2,
+  Database,
 } from 'lucide-react';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -63,6 +64,7 @@ function getNavGroups(role: string, isSuperOrAdmin: boolean): NavGroup[] {
       label: 'İletişim',
       items: [
         { href: '/admin/sohbet',           label: 'Canlı Sohbet',     icon: <MessageSquare size={18} /> },
+        { href: '/admin/chatbot-bilgi-bankasi', label: 'Chatbot Bilgi Bankası', icon: <Database size={18} /> },
         { href: '/admin/bulten-aboneleri', label: 'Bülten Aboneleri', icon: <Mail size={18} /> },
         ...(isSuperOrAdmin ? [{ href: '/admin/personel', label: 'Personel Yönetimi', icon: <Users size={18} /> }] : []),
       ],

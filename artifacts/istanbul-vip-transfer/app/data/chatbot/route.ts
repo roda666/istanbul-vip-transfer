@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { translateToTurkish } from '@/lib/chatbot-translate';
-import { getOpenAIChatbot, getSystemPrompt, CHATBOT_MODEL } from '@/lib/chatbot-ai';
+import { getOpenAIChatbot, buildChatbotAiMessages, CHATBOT_MODEL } from '@/lib/chatbot-ai';
+import { persistAssistantReplyForAdmin } from '@/lib/chatbot-response-storage';
 
 export const dynamic = 'force-dynamic';
 
@@ -166,13 +167,11 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Stream AI response ─────────────────────────────────────────────────────
+    const aiMessages = await buildChatbotAiMessages(session.visitorLang, messages);
     const aiStream = await getOpenAIChatbot().chat.completions.create({
       model:                 CHATBOT_MODEL,
       max_completion_tokens: 512,
-      messages: [
-        { role: 'system', content: getSystemPrompt(session.visitorLang) },
-        ...messages,
-      ],
+      messages:              aiMessages,
       stream: true,
     });
 
@@ -196,19 +195,11 @@ export async function POST(request: NextRequest) {
         } finally {
           controller.close();
           if (fullResponse) {
-            // Translate AI reply to Turkish so admin sees it in Turkish
-            let contentTrValue = fullResponse;
-            try {
-              const { translateToTurkish } = await import('@/lib/chatbot-translate');
-              const tr = await translateToTurkish(fullResponse);
-              if (tr) contentTrValue = tr;
-            } catch { /* keep original on error */ }
-            db.insert(chatbotMessages).values({
-              sessionId:  sid,
-              role:       'assistant',
-              content:    fullResponse,
-              contentTr:  contentTrValue,
-            }).catch(() => {});
+            persistAssistantReplyForAdmin(
+              sid,
+              fullResponse,
+              (message) => db.insert(chatbotMessages).values(message),
+            ).catch(() => {});
           }
         }
       },

@@ -16,4 +16,8 @@ describe('database backup authorization', () => {
     expect(getAdminApiPermission('/admin/api/database-backup', 'GET')).toBe('DATABASE_BACKUP');
     expect(getAdminPagePermission('/admin/veritabani-yedegi')).toBe('DATABASE_BACKUP');
   });
+
+  it('maps the chatbot knowledge workspace to the chat management capability', () => {
+    expect(getAdminPagePermission('/admin/chatbot-bilgi-bankasi')).toBe('CHAT_MANAGE');
+  });
 });

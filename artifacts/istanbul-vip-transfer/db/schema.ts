@@ -12,6 +12,7 @@ import {
   uuid,
   jsonb,
   uniqueIndex,
+  index,
 } from 'drizzle-orm/pg-core';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 
@@ -700,10 +701,45 @@ export const chatbotMessages = pgTable('chatbot_messages', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+/**
+ * Curated business facts available to the public chatbot.
+ * Turkish records are the editable source; sourceId groups their AI-assisted
+ * language translations without exposing management instructions to visitors.
+ */
+export const chatbotKnowledge = pgTable(
+  'chatbot_knowledge',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    title: text('title').notNull(),
+    question: text('question'),
+    answer: text('answer').notNull(),
+    category: text('category'),
+    language: text('language').notNull().default('tr'),
+    isActive: boolean('is_active').notNull().default(true),
+    sourceId: uuid('source_id').references((): AnyPgColumn => chatbotKnowledge.id, {
+      onDelete: 'cascade',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    activeLanguageIdx: index('chatbot_knowledge_active_language_idx').on(
+      table.isActive,
+      table.language,
+    ),
+    sourceLanguageUnique: uniqueIndex('chatbot_knowledge_source_language_unique').on(
+      table.sourceId,
+      table.language,
+    ),
+  }),
+);
+
 export type ChatbotSession    = typeof chatbotSessions.$inferSelect;
 export type NewChatbotSession = typeof chatbotSessions.$inferInsert;
 export type ChatbotMessage    = typeof chatbotMessages.$inferSelect;
 export type NewChatbotMessage = typeof chatbotMessages.$inferInsert;
+export type ChatbotKnowledge = typeof chatbotKnowledge.$inferSelect;
+export type NewChatbotKnowledge = typeof chatbotKnowledge.$inferInsert;
 
 /**
  * Single-row settings table (id always = 1).

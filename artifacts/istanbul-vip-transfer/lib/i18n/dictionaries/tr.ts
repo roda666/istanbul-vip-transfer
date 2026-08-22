@@ -417,6 +417,9 @@ const tr: Dictionary = {
     invalidEmail: 'Geçerli bir e-posta adresi girin.',
     rateLimit: 'Çok fazla istek gönderildi. Lütfen daha sonra tekrar deneyin.',
     minMessage: 'Mesajınız en az 10 karakter olmalıdır.',
+    newsletterConsent: 'Kampanya, yeni hizmet, gezi ve blog içeriklerini e-posta ile almak istiyorum.',
+    kvkkLink: 'Aydınlatma Metni',
+    commercialLink: 'Ticari İletişim Bilgilendirmesi',
   },
 };
 

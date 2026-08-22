@@ -418,6 +418,9 @@ const nl: Dictionary = {
       invalidEmail: 'Voer een geldig e-mailadres in.',
       rateLimit: 'Te veel verzoeken. Probeer het later opnieuw.',
       minMessage: 'Uw bericht moet minimaal 10 tekens bevatten.',
+    newsletterConsent: 'Ik wil per e-mail campagnes, nieuwe diensten, tours en blogcontent ontvangen.',
+      kvkkLink: 'Privacyverklaring',
+    commercialLink: 'Informatie over commerciële communicatie',
     },
     };
 

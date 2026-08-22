@@ -418,6 +418,9 @@ const fr: Dictionary = {
       invalidEmail: 'Veuillez entrer une adresse e-mail valide.',
       rateLimit: 'Trop de demandes. Veuillez réessayer plus tard.',
       minMessage: 'Votre message doit contenir au moins 10 caractères.',
+    newsletterConsent: 'Je souhaite recevoir par e-mail les campagnes, les nouveaux services, les circuits et les articles du blog.',
+    kvkkLink: 'Avis de confidentialité',
+    commercialLink: 'Avis relatif aux communications commerciales',
     },
     };
 

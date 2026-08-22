@@ -417,6 +417,9 @@ const en: Dictionary = {
     invalidEmail: 'Please enter a valid email address.',
     rateLimit: 'Too many requests. Please try again later.',
     minMessage: 'Your message must be at least 10 characters.',
+    newsletterConsent: 'I would like to receive campaigns, new services, tours and blog content by email.',
+    kvkkLink: 'Privacy Notice',
+    commercialLink: 'Commercial Communication Notice',
   },
 };
 

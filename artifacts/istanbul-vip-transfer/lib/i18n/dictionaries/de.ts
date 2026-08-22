@@ -417,6 +417,9 @@ const de: Dictionary = {
     invalidEmail: 'Bitte geben Sie eine gültige E-Mail-Adresse ein.',
     rateLimit: 'Zu viele Anfragen. Bitte versuchen Sie es später erneut.',
     minMessage: 'Ihre Nachricht muss mindestens 10 Zeichen lang sein.',
+    newsletterConsent: 'Ich möchte Kampagnen, neue Dienste, Touren und Blog-Inhalte per E-Mail erhalten.',
+    kvkkLink: 'Datenschutzhinweis',
+    commercialLink: 'Hinweis zur kommerziellen Kommunikation',
   },
 };
 

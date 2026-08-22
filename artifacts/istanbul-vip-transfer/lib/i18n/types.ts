@@ -464,5 +464,8 @@ export interface Dictionary {
     invalidEmail: string;
     rateLimit: string;
     minMessage: string;
+    newsletterConsent: string;
+    kvkkLink: string;
+    commercialLink: string;
   };
 }

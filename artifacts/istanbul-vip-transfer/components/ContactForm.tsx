@@ -8,6 +8,7 @@
 import { useState, useRef } from 'react';
 import { useLang } from '@/lib/i18n/context';
 import { trackEvent } from '@/lib/analytics';
+import { localePath } from '@/lib/locale-path';
 
 interface FormState {
   name: string;
@@ -27,6 +28,7 @@ export default function ContactForm() {
   const [errors, setErrors]   = useState<Partial<FormState>>({});
   const [status, setStatus]   = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [serverError, setServerError] = useState('');
+  const [newsletterConsent, setNewsletterConsent] = useState(false);
   const honeypotRef = useRef<HTMLInputElement>(null);
 
   function validate(): boolean {
@@ -59,6 +61,7 @@ export default function ContactForm() {
           subject: form.subject.trim(),
           message: form.message.trim(),
           locale:  lang,
+          newsletterConsent,
           _hp:     honeypotRef.current?.value ?? '',
         }),
       });
@@ -249,6 +252,45 @@ export default function ContactForm() {
               {serverError}
             </p>
           )}
+
+          {/* Optional newsletter consent */}
+          <label style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '0.65rem',
+            cursor: 'pointer',
+            color: '#374151',
+            fontSize: '0.9rem',
+            lineHeight: 1.55,
+          }}>
+            <input
+              type="checkbox"
+              checked={newsletterConsent}
+              onChange={(event) => setNewsletterConsent(event.target.checked)}
+              style={{ marginTop: '0.2rem', accentColor: '#1a1a2e', flexShrink: 0, width: '1rem', height: '1rem' }}
+              data-testid="contact-newsletter-checkbox"
+            />
+            <span>
+              {cf.newsletterConsent}{' '}
+              <a
+                href={localePath('/yasal/kvkk-aydinlatma-metni', lang)}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#1d4ed8', textDecoration: 'underline' }}
+              >
+                {cf.kvkkLink}
+              </a>{' '}
+              {lang === 'tr' ? 've' : '/'}{' '}
+              <a
+                href={localePath('/yasal/ticari-iletisim-bilgilendirmesi', lang)}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#1d4ed8', textDecoration: 'underline' }}
+              >
+                {cf.commercialLink}
+              </a>
+            </span>
+          </label>
 
           {/* Submit */}
           <button

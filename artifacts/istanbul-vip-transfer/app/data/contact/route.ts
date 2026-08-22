@@ -74,8 +74,11 @@ const ContactSchema = z.object({
   subject: z.string().min(2).max(200),
   message: z.string().min(10).max(3000),
   locale:  z.string().min(2).max(5).optional().default('tr'),
+  newsletterConsent: z.boolean().optional().default(false),
   _hp:     z.string().optional(),   // honeypot — must be empty
 });
+
+const CONSENT_VERSION = '2026-07-28-v1';
 
 function escapeHtml(value: string): string {
   return value
@@ -124,6 +127,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ referenceNumber: generateRefNumber() });
   }
 
+  // Consent evidence must reflect a real public locale, never an arbitrary
+  // locale value supplied by a direct request.
+  const { getPublicLangCodes } = await import('@/lib/i18n/active-locales');
+  if (!(await getPublicLangCodes()).includes(data.locale)) {
+    return NextResponse.json({ error: 'Unsupported or unpublished locale' }, { status: 422 });
+  }
+
   const referenceNumber = generateRefNumber();
   const contact = {
     name:    sanitizeText(data.name).slice(0, 120),
@@ -147,7 +157,12 @@ export async function POST(req: NextRequest) {
 
   try {
     const { db } = await import('@/db');
-    const { reservationRequests, auditLogs } = await import('@/db/schema');
+    const {
+      reservationRequests,
+      newsletterSubscribers,
+      newsletterConsentEvents,
+      auditLogs,
+    } = await import('@/db/schema');
     const { eq } = await import('drizzle-orm');
 
     await db.insert(reservationRequests).values({
@@ -162,6 +177,44 @@ export async function POST(req: NextRequest) {
       requestData,
       status: 'NEW',
     });
+
+    // Contact enquiries never imply marketing consent. Only an explicit
+    // checkbox choice creates/reactivates a subscriber and records an audit
+    // event, using the same lifecycle as the reservation form.
+    if (data.newsletterConsent) {
+      const existing = await db
+        .select({ id: newsletterSubscribers.id })
+        .from(newsletterSubscribers)
+        .where(eq(newsletterSubscribers.normalizedEmail, contact.email))
+        .limit(1);
+
+      let subscriberId: string;
+      if (existing.length > 0) {
+        subscriberId = existing[0].id;
+        await db
+          .update(newsletterSubscribers)
+          .set({ status: 'ACTIVE', updatedAt: new Date() })
+          .where(eq(newsletterSubscribers.normalizedEmail, contact.email));
+      } else {
+        const [subscriber] = await db.insert(newsletterSubscribers).values({
+          normalizedEmail: contact.email,
+          name: contact.name,
+          preferredLanguage: contact.locale,
+          status: 'ACTIVE',
+          source: 'contact-form',
+        }).returning({ id: newsletterSubscribers.id });
+        subscriberId = subscriber.id;
+      }
+
+      await db.insert(newsletterConsentEvents).values({
+        subscriberId,
+        normalizedEmail: contact.email,
+        action: 'GRANTED',
+        consentTextVersion: CONSENT_VERSION,
+        language: contact.locale,
+        source: 'contact-form',
+      });
+    }
 
     // A saved request is never discarded because mail delivery is unavailable.
     // The notification outcome is persisted for admins without exposing it to

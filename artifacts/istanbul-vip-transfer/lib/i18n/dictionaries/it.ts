@@ -418,6 +418,9 @@ const it: Dictionary = {
       invalidEmail: 'Inserisci un indirizzo e-mail valido.',
       rateLimit: 'Troppe richieste. Riprova più tardi.',
       minMessage: 'Il tuo messaggio deve contenere almeno 10 caratteri.',
+    newsletterConsent: 'Desidero ricevere via email campagne, nuovi servizi, tour e contenuti del blog.',
+      kvkkLink: 'Informativa sulla privacy',
+      commercialLink: 'Informativa sulle comunicazioni commerciali',
     },
     };
 

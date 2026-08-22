@@ -107,7 +107,16 @@ export default function Hero() {
             {/* Subheadline */}
             <p
               className="ivt-hero-sub text-base md:text-lg mb-8 max-w-xl leading-relaxed"
-              style={{ color: '#50677A', fontFamily: 'Inter, sans-serif', fontWeight: 400 }}
+              style={{
+                color: '#50677A',
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 400,
+                // This paragraph is the mobile LCP candidate. Do not make its
+                // first paint wait for the decorative entrance animation.
+                animation: 'none',
+                opacity: 1,
+                transform: 'none',
+              }}
               data-testid="hero-subheadline"
             >
               {h.subheadline}
@@ -200,6 +209,7 @@ export default function Hero() {
                 fill
                 className="object-cover object-center"
                 priority
+                fetchPriority="high"
                 quality={60}
                 sizes="(max-width: 640px) calc(100vw - 2.5rem), (max-width: 1024px) calc(100vw - 4rem), 50vw"
               />

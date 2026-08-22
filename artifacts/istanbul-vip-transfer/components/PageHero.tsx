@@ -215,7 +215,16 @@ export default function PageHero(props: PageHeroProps) {
         {heroImage && !heroImgError && (
           <div
             className="ivt-ph-img mt-10 mx-auto overflow-hidden rounded-2xl shadow-lg"
-            style={{ maxWidth: '720px', aspectRatio: '16/9', position: 'relative' }}
+            style={{
+              maxWidth: '720px',
+              aspectRatio: '16/9',
+              position: 'relative',
+              // This image is the mobile LCP candidate on service pages.
+              // Keep it paintable while the rest of the stylesheet loads.
+              animation: 'none',
+              opacity: 1,
+              transform: 'none',
+            }}
           >
             <Image
               src={heroImage}
@@ -225,6 +234,7 @@ export default function PageHero(props: PageHeroProps) {
               quality={60}
               sizes="(max-width: 768px) calc(100vw - 2.5rem), 720px"
               priority
+              fetchPriority="high"
               onError={() => setHeroImgError(true)}
             />
           </div>

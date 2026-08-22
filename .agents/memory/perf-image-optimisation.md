@@ -49,6 +49,22 @@ new critical above-fold animated classes in the mobile no-animation rule.
 After any new hero or consent UI work, verify the final LCP entry with a
 buffered PerformanceObserver as well as lab auditing.
 
+## Critical hero priority and visibility
+For a hero that Lighthouse identifies as LCP, pass `fetchPriority="high"` in
+addition to Next Image's `priority`. The VIP service route also needs a
+responsive image preload in the document head that matches the optimizer
+`srcset` and `sizes`.
+
+**Why:** `priority` alone did not expose a high-priority image request to the
+Lighthouse audit. The homepage text LCP also retained its CSS entrance delay in
+lab measurements despite a mobile stylesheet override; making the critical
+element explicitly visible in its initial inline style removed that delay.
+
+**How to apply:** retain responsive optimizer URLs in a manual preload rather
+than preloading the raw source image, which could create a duplicate download.
+Never apply a delayed opacity/transform effect to an element that can become
+the mobile LCP candidate.
+
 ## Google Fonts
 Still loaded via CSS `@import` in globals.css. Added `<link rel="preconnect">` hints in layout.tsx to reduce font TTFB.
 Switching to `next/font/google` was skipped because all inline styles use literal `fontFamily: 'Inter, sans-serif'` strings — hashed next/font names would break them without a full-codebase refactor.

@@ -35,7 +35,7 @@ import {
   isPublicAdminApi,
 } from '@/lib/auth/authorization';
 import {
-  isLocaleCodeSyntax,
+  NON_SOURCE_LOCALES,
 } from '@/lib/i18n/locale-registry';
 import { localizedPublicPath } from '@/lib/localized-service-path';
 
@@ -43,12 +43,12 @@ const COOKIE_NAME      = 'ivt_admin_session';
 const LANG_PREF_COOKIE = 'ivt_lang_pref';
 
 /**
- * Locale-looking non-Turkish prefixes. Middleware must not rely on a frozen
- * locale list: it cannot query the catalog on the edge path, while the route
- * layout can reject a disabled or unpublished catalog record safely.
+ * Only known public non-Turkish prefixes are locale routes. Syntax-only BCP 47
+ * matching treats ordinary paths such as /vip-transfer as a language code and
+ * can corrupt the locale preference cookie.
  */
 function isNonTrLang(s: string): boolean {
-  return s !== 'tr' && isLocaleCodeSyntax(s);
+  return (NON_SOURCE_LOCALES as readonly string[]).includes(s);
 }
 
 function tryGetOptions() {
@@ -106,7 +106,11 @@ function isExemptFromLocale(pathname: string): boolean {
 function localizedResponse(request: NextRequest, locale: string): NextResponse {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-ivt-lang', locale);
-  return NextResponse.next({ request: { headers: requestHeaders } });
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  // The document is locale-aware and must never be shared-cached. Avoiding
+  // `no-store` still lets modern browsers use bfcache for an instant back visit.
+  response.headers.set('Cache-Control', 'private, max-age=0, must-revalidate');
+  return response;
 }
 
 export async function middleware(request: NextRequest) {
@@ -268,7 +272,6 @@ export async function middleware(request: NextRequest) {
   // Once a visitor chooses English, German, Russian, Arabic, Spanish, French,
   // Italian, or Dutch, preserve that choice by using the canonical locale URL.
   if (pathname === '/' || pathname === '') {
-    if (!pref) response.cookies.set(LANG_PREF_COOKIE, 'tr', cookieOpts);
     return response;
   }
 
@@ -276,9 +279,6 @@ export async function middleware(request: NextRequest) {
   // explicit locale in the URL.  Stamp "tr" only on first contact so brand-new
   // visitors get the default Turkish experience without overwriting a preference
   // that was legitimately set by visiting /en, /de, etc.
-  if (!pref) {
-    response.cookies.set(LANG_PREF_COOKIE, 'tr', cookieOpts);
-  }
   return response;
 }
 

@@ -189,7 +189,7 @@ export default function Header({ hiddenNavSlugs }: HeaderProps = {}) {
                             >
                               <p
                                 className="text-[10px] tracking-[0.18em] uppercase mb-3"
-                                style={{ color: '#C99A32', fontFamily: 'Inter, sans-serif' }}
+                                style={{ color: '#8A6516', fontFamily: 'Inter, sans-serif' }}
                               >
                                 {group.groupLabel}
                               </p>
@@ -201,9 +201,9 @@ export default function Header({ hiddenNavSlugs }: HeaderProps = {}) {
                                       <Link
                                         href={item.href}
                                         className="text-xs flex items-center gap-2 group transition-colors duration-200 focus:outline-none focus-visible:underline"
-                                        style={{ color: active ? '#C99A32' : '#50677A', fontFamily: 'Inter, sans-serif' }}
-                                        onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#C99A32'; }}
-                                        onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = active ? '#C99A32' : '#50677A'; }}
+                                        style={{ color: active ? '#8A6516' : '#50677A', fontFamily: 'Inter, sans-serif' }}
+                                        onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#8A6516'; }}
+                                        onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = active ? '#8A6516' : '#50677A'; }}
                                         onClick={() => setDropdownOpen(false)}
                                       >
                                         <span
@@ -226,7 +226,7 @@ export default function Header({ hiddenNavSlugs }: HeaderProps = {}) {
                           <Link
                             href={servicesPath}
                             className="text-[10px] tracking-[0.15em] uppercase transition-colors focus:outline-none focus-visible:underline"
-                            style={{ color: '#C99A32', fontFamily: 'Inter, sans-serif' }}
+                            style={{ color: '#8A6516', fontFamily: 'Inter, sans-serif' }}
                             onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = '0.75'; }}
                             onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = '1'; }}
                             onClick={() => setDropdownOpen(false)}
@@ -249,8 +249,8 @@ export default function Header({ hiddenNavSlugs }: HeaderProps = {}) {
                     <Link
                       href={entry.href!}
                       className={navLinkCls}
-                      style={{ fontFamily: 'Inter, sans-serif', color: isActive ? '#C99A32' : '#263F55' }}
-                      onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLAnchorElement).style.color = '#C99A32'; }}
+                      style={{ fontFamily: 'Inter, sans-serif', color: isActive ? '#8A6516' : '#263F55' }}
+                      onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLAnchorElement).style.color = '#8A6516'; }}
                       onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLAnchorElement).style.color = '#263F55'; }}
                       data-testid={`nav-link-${i}`}
                     >

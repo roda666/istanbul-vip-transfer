@@ -222,7 +222,8 @@ export default function PageHero(props: PageHeroProps) {
               alt={display(heroImageAlt ?? title)}
               fill
               className="object-cover"
-              sizes="(max-width: 768px) 100vw, 720px"
+              quality={60}
+              sizes="(max-width: 768px) calc(100vw - 2.5rem), 720px"
               priority
               onError={() => setHeroImgError(true)}
             />

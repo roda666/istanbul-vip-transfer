@@ -8,7 +8,7 @@ import { SITE } from '@/lib/site-config';
 import { getServiceVisibilityMap } from '@/lib/service-page-cms';
 import { getContactSettings } from '@/lib/site-settings-server';
 import { SiteSettingsProvider } from '@/components/SiteSettingsContext';
-import { headers } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { getPublicLanguage } from '@/lib/i18n/active-locales';
 
 /**
@@ -66,7 +66,9 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const requestHeaders = await headers();
+  const cookieStore = await cookies();
   const requestedLang = requestHeaders.get('x-ivt-lang') ?? 'tr';
+  const hasCookieConsentDecision = Boolean(cookieStore.get('ivt_cookie_consent')?.value);
   const activeLanguage = await getPublicLanguage(requestedLang);
   const initialLang = activeLanguage?.code ?? 'tr';
   const initialDirection = activeLanguage?.direction ?? 'ltr';
@@ -90,7 +92,13 @@ export default async function RootLayout({
         {/* PublicLayoutWrapper conditionally adds Header/Footer for public routes.
             Admin routes render their own layout without public chrome. */}
         <SiteSettingsProvider settings={contactSettings}>
-          <PublicLayoutWrapper initialLang={initialLang} hiddenNavSlugs={hiddenNavSlugs}>{children}</PublicLayoutWrapper>
+          <PublicLayoutWrapper
+            initialLang={initialLang}
+            hiddenNavSlugs={hiddenNavSlugs}
+            hasCookieConsentDecision={hasCookieConsentDecision}
+          >
+            {children}
+          </PublicLayoutWrapper>
         </SiteSettingsProvider>
         {/*
          * Privacy-friendly Core Web Vitals reporter — no external service or key.

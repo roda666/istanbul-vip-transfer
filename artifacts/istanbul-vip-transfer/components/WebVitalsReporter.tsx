@@ -22,8 +22,15 @@ interface VitalsPayload {
 
 export default function WebVitalsReporter() {
   useEffect(() => {
-    import('web-vitals')
+    let cancelled = false;
+    const browserWindow = window as Window & {
+      requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+
+    const startReporter = () => import('web-vitals')
       .then(({ onCLS, onINP, onLCP, onFCP, onTTFB }) => {
+        if (cancelled) return;
         const report = ({ name, value, rating }: { name: string; value: number; rating: string }) => {
           const payload: VitalsPayload = {
             name,
@@ -45,6 +52,20 @@ export default function WebVitalsReporter() {
       .catch(() => {
         // web-vitals not available in this browser — silent no-op
       });
+
+    if (typeof browserWindow.requestIdleCallback === 'function') {
+      const idleId = browserWindow.requestIdleCallback(startReporter, { timeout: 3500 });
+      return () => {
+        cancelled = true;
+        browserWindow.cancelIdleCallback?.(idleId);
+      };
+    }
+
+    const timer = window.setTimeout(startReporter, 2500);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, []);
 
   return null;

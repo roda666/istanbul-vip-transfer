@@ -24,12 +24,15 @@ export default function PublicLayoutWrapper({
   children,
   hiddenNavSlugs,
   initialLang,
+  hasCookieConsentDecision,
 }: {
   children: React.ReactNode;
   /** Slugs where admin set showInNav=false — fetched by root server layout. */
   hiddenNavSlugs?: string[];
   /** Resolved by middleware so the shared public chrome hydrates consistently. */
   initialLang: string;
+  /** Read server-side so the banner never appears as a late LCP candidate. */
+  hasCookieConsentDecision: boolean;
 }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith('/admin');
@@ -69,7 +72,7 @@ export default function PublicLayoutWrapper({
           <ChatWidget />
         </>
       )}
-      <CookieConsentBanner />
+      <CookieConsentBanner hasInitialDecision={hasCookieConsentDecision} />
     </LangProvider>
   );
 }

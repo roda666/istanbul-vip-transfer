@@ -7,12 +7,12 @@
  * serviceArea, faqs) with structured data (Service, BreadcrumbList, FAQPage).
  * Falls back to the static i18n `pageKey` approach when the DB has no published content.
  *
- * Shared components (BookingForm, VehicleFleet, Contact) are always rendered.
+ * Shared components (booking, vehicle fleet, Contact) are always rendered.
  */
 import type { ServicePageBody, ServicePageFaq, ServicePageSchemaExtras } from '@/lib/service-page-types';
 import PageHero from '@/components/PageHero';
 import CollapsibleBookingForm from '@/components/CollapsibleBookingForm';
-import VehicleFleet from '@/components/VehicleFleet';
+import DeferredVehicleFleet from '@/components/DeferredVehicleFleet';
 import Contact from '@/components/Contact';
 import TranslationNotice from '@/components/TranslationNotice';
 import { getPublishedServicePage } from '@/lib/service-page-cms';
@@ -371,7 +371,7 @@ export default async function ServicePageRenderer({ slug, lang, canonicalPath }:
         {/* Rich content sections */}
         <ContentSectionsBlock body={dbPage.body} dir={dir} lang={lang} />
 
-        <VehicleFleet />
+        <DeferredVehicleFleet />
 
         {/* Service area */}
         <ServiceAreaBlock body={dbPage.body} dir={dir} lang={lang} />
@@ -394,7 +394,7 @@ export default async function ServicePageRenderer({ slug, lang, canonicalPath }:
         )}
         <PageHero pageKey={pageKey} />
         <CollapsibleBookingForm />
-        <VehicleFleet />
+        <DeferredVehicleFleet />
         {faqFallbackPage?.body?.faqs?.length ? (
           <FaqBlock body={faqFallbackPage.body} dir={dir} lang={lang} />
         ) : null}

@@ -28,15 +28,22 @@ function setCookie(name: string, value: string, maxAge: number) {
   document.cookie = `${name}=${value}; Max-Age=${maxAge}; Path=/; SameSite=Lax`;
 }
 
-export default function CookieConsentBanner() {
+export default function CookieConsentBanner({
+  hasInitialDecision,
+}: {
+  /** Determined server-side from the consent cookie for first-paint stability. */
+  hasInitialDecision: boolean;
+}) {
   const { lang, dict } = useLang();
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(!hasInitialDecision);
 
   useEffect(() => {
-    // Show only when no decision has been made yet
+    // Re-check during hydration in case a consent cookie changed between the
+    // request and client boot. New visitors already see the server-rendered
+    // banner, avoiding a late layout/LCP candidate.
     const current = getCookie(COOKIE_NAME);
-    if (!current) setVisible(true);
-  }, []);
+    setVisible(!current);
+  }, [hasInitialDecision]);
 
   if (!visible) return null;
 
@@ -67,7 +74,7 @@ export default function CookieConsentBanner() {
         zIndex:       9999,
         background:   '#102A43',
         borderTop:    '1px solid rgba(201,168,76,0.35)',
-        padding:      '16px 20px',
+        padding:      '12px 20px',
         display:      'flex',
         alignItems:   'center',
         justifyContent: 'center',
@@ -80,9 +87,10 @@ export default function CookieConsentBanner() {
         style={{
           color:      'rgba(255,255,255,0.80)',
           fontFamily: 'Inter, sans-serif',
-          fontSize:   '13px',
+          fontSize:   '12px',
           margin:     0,
-          flex:       '1 1 240px',
+          flex:       '0 1 280px',
+          maxWidth:   '280px',
           lineHeight: 1.5,
         }}
       >

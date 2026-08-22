@@ -1,12 +1,11 @@
 import type { Metadata } from 'next';
 // Renamed to avoid conflict with Next.js's `export const dynamic` route segment config
 import lazyLoad from 'next/dynamic';
-import { buildAlternates } from '@/lib/i18n/seo';
 // Above-fold: static imports (always in initial bundle)
 import Hero from '@/components/Hero';
-import BookingForm from '@/components/BookingForm';
+import DeferredBookingForm from '@/components/DeferredBookingForm';
+import DeferredVehicleFleet from '@/components/DeferredVehicleFleet';
 // Below-fold: lazy-loaded client components (each gets its own JS chunk)
-const VehicleFleet         = lazyLoad(() => import('@/components/VehicleFleet'));
 const Services             = lazyLoad(() => import('@/components/Services'));
 const PopularRoutesSection = lazyLoad(() => import('@/components/PopularRoutesSection'));
 const TrustSignals         = lazyLoad(() => import('@/components/TrustSignals'));
@@ -39,48 +38,38 @@ async function getTransferRoutes(): Promise<TransferRoute[]> {
 
 const BASE = SITE.siteUrl;
 
-async function getPublishedHomepageLangs(): Promise<string[]> {
-  try {
-    const { db } = await import('@/db');
-    const { contentTranslations } = await import('@/db/schema');
-    const { eq, and } = await import('drizzle-orm');
-    const rows = await db
-      .select({ lang: contentTranslations.targetLanguageCode })
-      .from(contentTranslations)
-      .where(
-        and(
-          eq(contentTranslations.entityType, 'homepage'),
-          eq(contentTranslations.status, 'PUBLISHED'),
-        ),
-      );
-    return rows.map((r) => r.lang).filter((l): l is string => Boolean(l));
-  } catch {
-    // DB unavailable — only emit TR hreflang
-    return [];
-  }
-}
+const TITLE = 'İstanbul VIP Transfer | Vito ve Sprinter Hizmeti';
+const DESCRIPTION = 'İstanbul VIP transfer hizmeti; İstanbul Havalimanı, Sabiha Gökçen, şehir içi ve şehirler arası Mercedes Vito ve Sprinter ulaşımı.';
 
-export async function generateMetadata(): Promise<Metadata> {
-  const publishedLangs = await getPublishedHomepageLangs();
-  const alts = await buildAlternates('/', publishedLangs);
-  return {
-    title: 'İstanbul VIP Transfer | Vito ve Sprinter Hizmeti',
-    description:
-      'İstanbul VIP transfer hizmeti; İstanbul Havalimanı, Sabiha Gökçen, şehir içi ve şehirler arası Mercedes Vito ve Sprinter ulaşımı.',
-    alternates: { canonical: BASE, languages: alts.languages },
-    openGraph: {
-      title: 'İstanbul VIP Transfer | Vito ve Sprinter Hizmeti',
-      description:
-        'İstanbul VIP transfer hizmeti; İstanbul Havalimanı, Sabiha Gökçen, şehir içi ve şehirler arası Mercedes Vito ve Sprinter ulaşımı.',
-      url: BASE,
-      siteName: 'VIP Transfer Istanbul',
-      locale: 'tr_TR',
-      type: 'website',
-      images: [SITE.ogImage],
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: {
+    canonical: BASE,
+    languages: {
+      'x-default': BASE,
+      'tr-TR': BASE,
+      'ar-SA': `${BASE}/ar`,
+      'de-DE': `${BASE}/de`,
+      'en-GB': `${BASE}/en`,
+      'es-ES': `${BASE}/es`,
+      'fr-FR': `${BASE}/fr`,
+      'it-IT': `${BASE}/it`,
+      'nl-NL': `${BASE}/nl`,
+      'ru-RU': `${BASE}/ru`,
     },
-    robots: { index: true, follow: true },
-  };
-}
+  },
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    url: BASE,
+    siteName: 'VIP Transfer Istanbul',
+    locale: 'tr_TR',
+    type: 'website',
+    images: [SITE.ogImage],
+  },
+  robots: { index: true, follow: true },
+};
 
 // localBusinessSchema is built inside HomePage() so contact fields reflect DB values.
 
@@ -153,8 +142,8 @@ export default async function HomePage() {
   return (
     <HomepageCmsProvider data={cmsData}>
       <Hero />
-      <BookingForm />
-      <VehicleFleet />
+      <DeferredBookingForm />
+      <DeferredVehicleFleet />
       <Services hiddenSlugs={hiddenServiceSlugs} />
       <PopularRoutesSection routes={transferRoutes} />
       <TrustSignals />

@@ -263,7 +263,7 @@ function getIstanbulToday(): string {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function BookingForm() {
+export default function BookingForm({ sectionId = 'rezervasyon' }: { sectionId?: string }) {
   const { dict, lang } = useLang();
   const b = dict.booking;
   const ui = getPublicUiCopy(lang);
@@ -475,7 +475,7 @@ export default function BookingForm() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <section
-      id="rezervasyon"
+      id={sectionId}
       className="py-24 relative scroll-mt-24"
       style={{ background: 'linear-gradient(160deg, #F8F0DF 0%, #E4F1F8 48%, #EEEAF8 100%)' }}
       data-testid="booking-section"

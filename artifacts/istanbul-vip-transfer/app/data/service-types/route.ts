@@ -28,17 +28,23 @@ export async function GET() {
       .where(eq(serviceTypes.enabled, true))
       .orderBy(asc(serviceTypes.displayOrder));
 
-    return NextResponse.json({ items });
+    return NextResponse.json(
+      { items },
+      { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30' } },
+    );
   } catch (err) {
     console.error('Public service-types error:', err);
     // Return hardcoded fallback so form always works
-    return NextResponse.json({
-      items: [
-        { id: '1', key: 'AIRPORT_TRANSFER', label: 'Havalimanı / Şehir İçi Transfer', description: null, quoteEnabled: true, reservationEnabled: true, displayOrder: 0 },
-        { id: '2', key: 'INTERCITY', label: 'Şehirler Arası Transfer', description: null, quoteEnabled: true, reservationEnabled: true, displayOrder: 1 },
-        { id: '3', key: 'ALLOCATION', label: 'Araç Tahsisi', description: null, quoteEnabled: true, reservationEnabled: true, displayOrder: 2 },
-        { id: '4', key: 'TOUR', label: 'Özel Tur / Gezi', description: null, quoteEnabled: true, reservationEnabled: true, displayOrder: 3 },
-      ],
-    });
+    return NextResponse.json(
+      {
+        items: [
+          { id: '1', key: 'AIRPORT_TRANSFER', label: 'Havalimanı / Şehir İçi Transfer', description: null, quoteEnabled: true, reservationEnabled: true, displayOrder: 0 },
+          { id: '2', key: 'INTERCITY', label: 'Şehirler Arası Transfer', description: null, quoteEnabled: true, reservationEnabled: true, displayOrder: 1 },
+          { id: '3', key: 'ALLOCATION', label: 'Araç Tahsisi', description: null, quoteEnabled: true, reservationEnabled: true, displayOrder: 2 },
+          { id: '4', key: 'TOUR', label: 'Özel Tur / Gezi', description: null, quoteEnabled: true, reservationEnabled: true, displayOrder: 3 },
+        ],
+      },
+      { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30' } },
+    );
   }
 }

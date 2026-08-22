@@ -69,6 +69,7 @@ const nextConfig: NextConfig = {
   // so they are not subject to remotePatterns validation.
   images: {
     formats:     ['image/avif', 'image/webp'],
+    qualities:   [60, 75],
     deviceSizes: [320, 390, 640, 768, 1024, 1280, 1440, 1920],
     imageSizes:  [64, 128, 256, 384],
     remotePatterns: [

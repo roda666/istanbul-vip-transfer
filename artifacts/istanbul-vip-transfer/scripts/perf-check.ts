@@ -122,16 +122,15 @@ async function checkPage(
       warns.push('Missing <meta property="og:image">');
     }
 
-    // ── RTL: inline script must set dir="rtl" client-side ───────────────────
-    // The root layout renders html[dir="ltr"] with suppressHydrationWarning.
-    // [lang]/layout.tsx injects a synchronous inline script that immediately
-    // calls h.setAttribute('dir','rtl') before React hydration — this is the
-    // correct pattern to check in SSR HTML.
+    // ── RTL: rendered direction or synchronous client-side direction ─────────
+    // New pages render html[dir="rtl"] directly from the locale-aware root
+    // layout. The legacy inline-script form remains valid for streamed pages.
     if (rtl) {
-      const hasRtlScript = /setAttribute\s*\(\s*['"]dir['"]\s*,\s*['"]rtl['"]\s*\)/i.test(html)
+      const hasRtlDirection = /<html[^>]+\bdir=["']rtl["']/i.test(html)
+        || /setAttribute\s*\(\s*['"]dir['"]\s*,\s*['"]rtl['"]\s*\)/i.test(html)
         || /['"]dir['"]\s*,\s*['"]rtl['"]/i.test(html);
-      if (!hasRtlScript) {
-        errors.push('Arabic page missing inline RTL script (setAttribute dir/rtl)');
+      if (!hasRtlDirection) {
+        errors.push('Arabic page missing RTL html direction');
       }
     }
 

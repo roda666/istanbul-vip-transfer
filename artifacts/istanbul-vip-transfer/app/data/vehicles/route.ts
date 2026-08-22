@@ -45,9 +45,15 @@ export async function GET(request: Request) {
       return localized ? [localized] : [];
     });
 
-    return NextResponse.json({ vehicles: resolved });
+    return NextResponse.json(
+      { vehicles: resolved },
+      { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30' } },
+    );
   } catch (err) {
     console.error('Vehicles GET error:', err);
-    return NextResponse.json({ vehicles: [] });
+    return NextResponse.json(
+      { vehicles: [] },
+      { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30' } },
+    );
   }
 }

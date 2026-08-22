@@ -49,3 +49,4 @@
 - [Localized public URLs](localized-service-urls.md) — service and registered static page paths derive from translated navigation labels; legacy locale links permanently redirect.
 - [Service social preview images](service-social-preview-images.md) — every service share uses its own public hero asset across Turkish and localized routes.
 - [Post-merge database setup](post-merge-database-setup.md) — post-merge uses app migration journal, never the separate workspace DB push command.
+- [Initial head metadata](initial-head-metadata.md) — static core metadata prevents streamed DB lookups from hiding SEO tags from audits and crawlers.

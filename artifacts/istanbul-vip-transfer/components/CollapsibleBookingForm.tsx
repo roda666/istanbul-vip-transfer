@@ -1,9 +1,11 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { ChevronDown, CalendarCheck } from 'lucide-react';
-import BookingForm from './BookingForm';
 import { useLang } from '@/lib/i18n/context';
+
+const BookingForm = dynamic(() => import('./BookingForm'), { ssr: false });
 
 /**
  * Wraps BookingForm in a collapsible accordion for service and blog pages.
@@ -125,7 +127,7 @@ export default function CollapsibleBookingForm() {
           }}
         >
           <style>{`@keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}`}</style>
-          <BookingForm />
+          <BookingForm sectionId="booking-form-content" />
         </div>
       )}
     </div>

@@ -35,6 +35,7 @@ export default function Hero() {
       };
 
   const scrollToBooking = () => {
+    document.dispatchEvent(new Event('ivt:booking-open'));
     document.querySelector('#rezervasyon')?.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -199,6 +200,7 @@ export default function Hero() {
                 fill
                 className="object-cover object-center"
                 priority
+                quality={60}
                 sizes="(max-width: 640px) calc(100vw - 2.5rem), (max-width: 1024px) calc(100vw - 4rem), 50vw"
               />
             </div>

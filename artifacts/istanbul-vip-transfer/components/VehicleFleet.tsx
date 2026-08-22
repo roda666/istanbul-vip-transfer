@@ -23,6 +23,9 @@ const SAFE_NEUTRAL_FEATURE_LABELS: Record<string, string> = {
   MEET_GREET: 'Meet & Greet',
 };
 
+const DRAG_START_THRESHOLD_PX = 6;
+const DRAG_CLICK_SUPPRESSION_MS = 350;
+
 interface DbVehicle {
   id: number;
   displayName: string;
@@ -262,8 +265,17 @@ export default function VehicleFleet() {
   const isDragging = useRef(false);
   const startX = useRef(0);
   const scrollLeft = useRef(0);
+  const activePointerId = useRef<number | null>(null);
+  const didDrag = useRef(false);
+  const suppressClicksUntil = useRef(0);
+  const cleanupPointerTracking = useRef<(() => void) | null>(null);
+
+  useEffect(() => () => {
+    cleanupPointerTracking.current?.();
+  }, []);
 
   const scrollToBooking = () => {
+    document.dispatchEvent(new Event('ivt:booking-open'));
     document.querySelector('#rezervasyon')?.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -307,23 +319,71 @@ export default function VehicleFleet() {
     el.scrollBy({ left: dir === 'next' ? cardWidth : -cardWidth, behavior: 'smooth' });
   }
 
-  // Mouse drag support (desktop)
-  function onMouseDown(e: React.MouseEvent) {
-    isDragging.current = true;
-    startX.current = e.pageX - (trackRef.current?.offsetLeft ?? 0);
-    scrollLeft.current = trackRef.current?.scrollLeft ?? 0;
-    if (trackRef.current) trackRef.current.style.cursor = 'grabbing';
-  }
-  function onMouseUp() {
+  function finishPointerDrag() {
+    if (!isDragging.current) return;
+
     isDragging.current = false;
+    activePointerId.current = null;
+    if (didDrag.current) {
+      // Click follows pointerup in the browser event sequence. Hold a brief,
+      // drag-only guard so releasing over a card CTA cannot activate it.
+      suppressClicksUntil.current = Date.now() + DRAG_CLICK_SUPPRESSION_MS;
+    }
+    cleanupPointerTracking.current?.();
+    cleanupPointerTracking.current = null;
     if (trackRef.current) trackRef.current.style.cursor = 'grab';
   }
-  function onMouseMove(e: React.MouseEvent) {
-    if (!isDragging.current || !trackRef.current) return;
+
+  // Window-level pointer tracking preserves the drag lifecycle after the
+  // pointer leaves the track without retargeting a normal CTA click to the
+  // track (as element-level pointer capture would). Touch pointers are left to
+  // native scrolling so mobile, trackpad and keyboard behaviour stay unchanged.
+  function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (e.pointerType !== 'mouse' || e.button !== 0) return;
+
+    const el = e.currentTarget;
+    // A new pointer sequence is an intentional fresh interaction, not the
+    // synthetic click that follows the previous drag's pointerup.
+    suppressClicksUntil.current = 0;
+    isDragging.current = true;
+    activePointerId.current = e.pointerId;
+    didDrag.current = false;
+    startX.current = e.clientX;
+    scrollLeft.current = el.scrollLeft;
+    el.style.cursor = 'grabbing';
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (activePointerId.current !== event.pointerId) return;
+
+      const distance = event.clientX - startX.current;
+      if (!didDrag.current && Math.abs(distance) < DRAG_START_THRESHOLD_PX) return;
+
+      didDrag.current = true;
+      event.preventDefault();
+      el.scrollLeft = scrollLeft.current - distance * 1.5;
+    };
+    const handlePointerEnd = (event: PointerEvent) => {
+      if (activePointerId.current === event.pointerId) finishPointerDrag();
+    };
+    const cleanup = () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerEnd);
+      window.removeEventListener('pointercancel', handlePointerEnd);
+      window.removeEventListener('blur', finishPointerDrag);
+    };
+
+    cleanupPointerTracking.current?.();
+    cleanupPointerTracking.current = cleanup;
+    window.addEventListener('pointermove', handlePointerMove, { passive: false });
+    window.addEventListener('pointerup', handlePointerEnd);
+    window.addEventListener('pointercancel', handlePointerEnd);
+    window.addEventListener('blur', finishPointerDrag);
+  }
+
+  function suppressClickAfterDrag(e: React.MouseEvent<HTMLDivElement>) {
+    if (Date.now() >= suppressClicksUntil.current) return;
     e.preventDefault();
-    const x = e.pageX - trackRef.current.offsetLeft;
-    const walk = (x - startX.current) * 1.5;
-    trackRef.current.scrollLeft = scrollLeft.current - walk;
+    e.stopPropagation();
   }
 
   const GOLD = '#C79A35';
@@ -402,10 +462,10 @@ export default function VehicleFleet() {
           {/* Scrollable track */}
           <div
             ref={trackRef}
-            onMouseDown={onMouseDown}
-            onMouseUp={onMouseUp}
-            onMouseLeave={onMouseUp}
-            onMouseMove={onMouseMove}
+            onPointerDown={onPointerDown}
+            onClickCapture={suppressClickAfterDrag}
+            onDragStart={e => e.preventDefault()}
+            data-testid="vehicle-track"
             style={{
               display: 'flex',
               gap: '24px',
@@ -413,6 +473,7 @@ export default function VehicleFleet() {
               scrollSnapType: 'x mandatory',
               paddingBottom: '12px',
               cursor: 'grab',
+              userSelect: 'none',
               /* Hide scrollbar visually but keep function */
               scrollbarWidth: 'none',
               msOverflowStyle: 'none',

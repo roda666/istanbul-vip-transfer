@@ -18,6 +18,7 @@ import {
   RefreshCw, Calendar, ChevronRight,
 } from 'lucide-react';
 import AdminPageHeader from '../../_components/AdminPageHeader';
+import DraftCadencePanel from './DraftCadencePanel';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const C = {
@@ -314,6 +315,7 @@ export default function AiStudioPage() {
           {/* Right column: config status */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {config && <ConfigStatus config={config} />}
+            <DraftCadencePanel />
 
             {/* System Check link */}
             <Link href="/admin/ai-studio/sistem-kontrolu" style={{ textDecoration: 'none' }}>

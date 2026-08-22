@@ -898,6 +898,37 @@ export const studioSchedules = pgTable('studio_schedules', {
   createdAt:       timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+/**
+ * Singleton cadence selected by the admin for automatic AI Studio drafts.
+ * `next_due_at` stays on the current slot until the cron claims it.
+ */
+export const aiDraftCadenceSettings = pgTable('ai_draft_cadence_settings', {
+  id:             integer('id').primaryKey().default(1),
+  period:         text('period').notNull().default('weekly'),
+  quantity:       integer('quantity').notNull().default(1),
+  timezone:       text('timezone').notNull().default('Europe/Istanbul'),
+  lastExecutedAt: timestamp('last_executed_at', { withTimezone: true }),
+  nextDueAt:      timestamp('next_due_at', { withTimezone: true }),
+  configVersion:  integer('config_version').notNull().default(1),
+  updatedAt:      timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedBy:      uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+});
+
+/** One durable claim per calendar slot prevents duplicate cron work on retries. */
+export const aiDraftCadenceRuns = pgTable('ai_draft_cadence_runs', {
+  id:               uuid('id').primaryKey().defaultRandom(),
+  slotKey:          text('slot_key').notNull().unique(),
+  period:           text('period').notNull(),
+  timezone:         text('timezone').notNull(),
+  plannedQuantity:  integer('planned_quantity').notNull(),
+  generatedCount:   integer('generated_count').notNull().default(0),
+  projectIds:       jsonb('project_ids').$type<string[]>().notNull().default([]),
+  status:           text('status').notNull().default('running'),
+  failureMessage:   text('failure_message'),
+  claimedAt:        timestamp('claimed_at', { withTimezone: true }).defaultNow().notNull(),
+  completedAt:      timestamp('completed_at', { withTimezone: true }),
+});
+
 // ── Social publishing platforms ───────────────────────────────────────────────
 // Credentials are encrypted before being stored. App-level secrets always remain
 // in Replit Secrets; this table only holds connection-specific user/page tokens.
@@ -975,6 +1006,8 @@ export type StudioResearch = typeof studioResearch.$inferSelect;
 export type StudioDistributionRow = typeof studioDistribution.$inferSelect;
 export type StudioAuditRow = typeof studioAudit.$inferSelect;
 export type StudioSchedule = typeof studioSchedules.$inferSelect;
+export type AiDraftCadenceSettings = typeof aiDraftCadenceSettings.$inferSelect;
+export type AiDraftCadenceRun = typeof aiDraftCadenceRuns.$inferSelect;
 export type SocialPlatform = typeof socialPlatforms.$inferSelect;
 export type NewSocialPlatform = typeof socialPlatforms.$inferInsert;
 

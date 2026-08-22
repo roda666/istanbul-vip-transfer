@@ -211,6 +211,20 @@
       "when": 1787402800748,
       "tag": "0029_whole_johnny_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1787429476344,
+      "tag": "0030_same_mojo",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1787430230579,
+      "tag": "0031_giant_vapor",
+      "breakpoints": true
     }
   ]
 }

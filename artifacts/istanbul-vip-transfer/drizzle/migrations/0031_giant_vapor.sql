@@ -1,0 +1,1 @@
+ALTER TABLE "ai_draft_cadence_settings" ADD COLUMN "config_version" integer DEFAULT 1 NOT NULL;

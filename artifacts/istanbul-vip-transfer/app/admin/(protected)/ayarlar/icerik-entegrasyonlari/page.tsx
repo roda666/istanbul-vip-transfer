@@ -505,17 +505,17 @@ export default async function IcerikEntegrasyonlariPage({
         </div>
       </div>
 
-      {/* ── Haftalık Cron ─────────────────────────────────────────────────── */}
+      {/* ── Otomatik Taslak Cron ───────────────────────────────────────────── */}
       <div style={card}>
         <div style={cardHead}>
           <BarChart2 size={18} color={cronSecretOk ? '#168C5B' : '#D97706'} />
-          <h2 style={headTitle}>Haftalık Otomatik Taslak</h2>
+          <h2 style={headTitle}>Otomatik Taslak Zamanlayıcısı</h2>
           <StatusBadge ok={cronSecretOk} label={cronSecretOk ? 'Secret Hazır' : 'Secret Eksik'} />
         </div>
         <div style={row}>
           <div style={{ flex: 1 }}>
             <p style={labelStyle}>Cron Secret</p>
-            <p style={hint}>Haftalık cron endpoint&apos;ini korumak için gerekli. Replit Secrets&apos;a ekleyin:</p>
+            <p style={hint}>Otomatik taslak endpoint&apos;ini korumak için gerekli. Replit Secrets&apos;a ekleyin:</p>
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>{codePill('CRON_SECRET')}</div>
           </div>
           <StatusBadge ok={cronSecretOk} />
@@ -523,12 +523,12 @@ export default async function IcerikEntegrasyonlariPage({
         <div style={{ ...row, borderBottom: 'none' }}>
           <div style={{ flex: 1 }}>
             <p style={labelStyle}>Cron Endpoint</p>
-            <p style={hint}>Her Pazartesi bu URL&apos;ye POST isteği gönderecek bir zamanlayıcı kurun:</p>
+            <p style={hint}>AI Stüdyo&apos;daki seçili sıklığa göre bu URL&apos;ye POST isteği gönderen bir zamanlayıcı kurun:</p>
             <code style={{ fontSize: '12px', background: '#F1F5F9', color: '#334155', padding: '8px 12px', borderRadius: '6px', display: 'block', marginBottom: '8px', wordBreak: 'break-all' }}>
-              POST /admin/api/cron/weekly-draft
+              POST /admin/api/cron/draft-cadence
             </code>
             <p style={hint}>Header: <code style={{ fontSize: '11px', background: '#F1F5F9', padding: '2px 5px', borderRadius: '4px' }}>Authorization: Bearer {'<CRON_SECRET>'}</code></p>
-            <p style={{ ...hint, marginBottom: 0 }}>Replit Scheduled Deployment veya harici bir cron servisi (cron-job.org, GitHub Actions) kullanabilirsiniz.</p>
+            <p style={{ ...hint, marginBottom: 0 }}>Eski <code>/admin/api/cron/weekly-draft</code> çağrıları geriye dönük uyumludur ve kayıtlı ayarı kullanır. Günlük hedef seçildiğinde harici zamanlayıcıyı en az günlük tetiklemeye güncelleyin.</p>
           </div>
         </div>
       </div>

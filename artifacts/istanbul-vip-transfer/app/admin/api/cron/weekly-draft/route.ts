@@ -17,6 +17,13 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import 'server-only';
+import {
+  DEFAULT_DRAFT_CADENCE,
+  getDraftCadenceSlot,
+  isCadenceDue,
+  isDraftCadencePeriod,
+  uniqueTopicOffset,
+} from '@/lib/studio/draft-cadence';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,38 +65,18 @@ function isoWeekOfYear(d: Date = new Date()): number {
   return Math.ceil(((d.getTime() - jan1.getTime()) / 86_400_000 + jan1.getDay() + 1) / 7);
 }
 
-export async function POST(req: NextRequest) {
-  // ── Auth: CRON_SECRET check ────────────────────────────────────────────────
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json({ error: 'CRON_SECRET not configured.' }, { status: 503 });
-  }
-  const auth = req.headers.get('authorization') ?? '';
-  if (auth !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+function fallbackTopic(topicOffset: number) {
+  return FALLBACK_TOPICS[(isoWeekOfYear() + topicOffset) % FALLBACK_TOPICS.length];
+}
 
+/**
+ * Creates exactly one draft and never publishes it. The cadence runner owns
+ * when this can be called and how many unique items a calendar slot produces.
+ */
+async function createAutomaticDraft(topicOffset = 0) {
   try {
     const { db } = await import('@/db');
     const { studioProjects } = await import('@/db/schema');
-    const { desc, gte } = await import('drizzle-orm');
-
-    // ── Idempotency: skip if draft created in last 5 days ─────────────────
-    const since = new Date(Date.now() - 5 * 86_400_000);
-    const [recent] = await db
-      .select({ id: studioProjects.id, createdAt: studioProjects.createdAt })
-      .from(studioProjects)
-      .where(gte(studioProjects.createdAt, since))
-      .orderBy(desc(studioProjects.createdAt))
-      .limit(1);
-
-    if (recent) {
-      return NextResponse.json({
-        ok: true,
-        skipped: true,
-        reason: `Recent draft already exists (id: ${recent.id}, created: ${recent.createdAt?.toISOString()})`,
-      });
-    }
 
     // ── Pick topic ─────────────────────────────────────────────────────────
     let topicTitle: string;
@@ -119,7 +106,7 @@ export async function POST(req: NextRequest) {
       } else {
         console.warn('[cron/weekly-draft] GSC connected but no opportunity data:', opResult);
         // GSC connected but insufficient data — fall to AI
-        const fallback = FALLBACK_TOPICS[isoWeekOfYear() % FALLBACK_TOPICS.length];
+        const fallback = fallbackTopic(topicOffset);
         topicTitle     = fallback.title;
         primaryKeyword = fallback.keyword;
         searchIntent   = fallback.intent;
@@ -138,7 +125,7 @@ export async function POST(req: NextRequest) {
         dataSourceNote = `Google Ads Keyword Planner: ~${top.monthlySearches.toLocaleString('tr-TR')} aylık arama, rekabet: ${top.competition}`;
       } else {
         console.warn('[cron/weekly-draft] Google Ads connected but no data:', adsResult);
-        const fallback = FALLBACK_TOPICS[isoWeekOfYear() % FALLBACK_TOPICS.length];
+        const fallback = fallbackTopic(topicOffset);
         topicTitle     = fallback.title;
         primaryKeyword = fallback.keyword;
         searchIntent   = fallback.intent;
@@ -147,7 +134,7 @@ export async function POST(req: NextRequest) {
       }
     } else {
       // ── Priority 3: AI estimation (curated fallback pool) ─────────────────
-      const fallback = FALLBACK_TOPICS[isoWeekOfYear() % FALLBACK_TOPICS.length];
+      const fallback = fallbackTopic(topicOffset);
       topicTitle     = fallback.title;
       primaryKeyword = fallback.keyword;
       searchIntent   = fallback.intent;
@@ -260,7 +247,116 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message.slice(0, 300) : 'unknown';
-    console.error('[cron/weekly-draft] Fatal error:', msg);
+    console.error('[cron/draft-cadence] Draft generation failed:', msg);
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+  }
+}
+
+/**
+ * Stable bearer-secret trigger. The legacy /weekly-draft endpoint uses this
+ * same logic, so an existing weekly external scheduler remains safe.
+ */
+export async function POST(req: NextRequest) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) return NextResponse.json({ error: 'CRON_SECRET not configured.' }, { status: 503 });
+  if (req.headers.get('authorization') !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    const { db } = await import('@/db');
+    const { aiDraftCadenceRuns, aiDraftCadenceSettings } = await import('@/db/schema');
+    const { and, eq } = await import('drizzle-orm');
+    const now = new Date();
+
+    await db.insert(aiDraftCadenceSettings).values({
+      id: 1,
+      ...DEFAULT_DRAFT_CADENCE,
+      nextDueAt: getDraftCadenceSlot(now, DEFAULT_DRAFT_CADENCE.period, DEFAULT_DRAFT_CADENCE.timezone).startsAt,
+    }).onConflictDoNothing();
+
+    const [stored] = await db.select().from(aiDraftCadenceSettings)
+      .where(eq(aiDraftCadenceSettings.id, 1)).limit(1);
+    const period = isDraftCadencePeriod(stored?.period) ? stored.period : DEFAULT_DRAFT_CADENCE.period;
+    const quantity = stored && Number.isInteger(stored.quantity) && stored.quantity >= 1 && stored.quantity <= 10
+      ? stored.quantity
+      : DEFAULT_DRAFT_CADENCE.quantity;
+    const timezone = stored?.timezone || DEFAULT_DRAFT_CADENCE.timezone;
+    const configVersion = stored?.configVersion ?? 1;
+    const slot = getDraftCadenceSlot(now, period, timezone);
+
+    if (!isCadenceDue(now, stored?.nextDueAt)) {
+      return NextResponse.json({
+        ok: true, skipped: true, reason: 'not_due',
+        period, quantity, timezone, nextDueAt: stored?.nextDueAt?.toISOString() ?? slot.nextDueAt.toISOString(),
+      });
+    }
+
+    const [claim] = await db.insert(aiDraftCadenceRuns).values({
+      slotKey: slot.key,
+      period,
+      timezone,
+      plannedQuantity: quantity,
+      status: 'running',
+    }).onConflictDoNothing().returning();
+
+    if (!claim) {
+      // A completed (or concurrently running) slot is already sufficient proof
+      // that this calendar window was handled. Advance the singleton so a
+      // settings re-save cannot leave it perpetually due on the old slot.
+      await db.update(aiDraftCadenceSettings).set({
+        nextDueAt: slot.nextDueAt,
+        updatedAt: now,
+      }).where(and(
+        eq(aiDraftCadenceSettings.id, 1),
+        eq(aiDraftCadenceSettings.configVersion, configVersion),
+      ));
+      return NextResponse.json({
+        ok: true, skipped: true, reason: 'slot_already_claimed',
+        slotKey: slot.key, period, quantity, timezone,
+      });
+    }
+
+    const projectIds: string[] = [];
+    const failures: string[] = [];
+    for (let ordinal = 0; ordinal < quantity; ordinal += 1) {
+      const response = await createAutomaticDraft(uniqueTopicOffset(slot.key, ordinal));
+      const result = await response.json() as { ok?: boolean; projectId?: string; error?: string };
+      if (response.ok && result.ok && result.projectId) projectIds.push(result.projectId);
+      else failures.push(result.error?.slice(0, 160) ?? 'Taslak oluşturulamadı.');
+    }
+
+    const completedAt = new Date();
+    const status = failures.length === 0 ? 'completed' : 'failed';
+    await db.update(aiDraftCadenceRuns).set({
+      generatedCount: projectIds.length,
+      projectIds,
+      status,
+      failureMessage: failures.length ? failures.join(' | ').slice(0, 500) : null,
+      completedAt,
+    }).where(eq(aiDraftCadenceRuns.id, claim.id));
+    await db.update(aiDraftCadenceSettings).set({
+      lastExecutedAt: completedAt,
+      nextDueAt: slot.nextDueAt,
+      updatedAt: completedAt,
+    }).where(and(
+      eq(aiDraftCadenceSettings.id, 1),
+      eq(aiDraftCadenceSettings.configVersion, configVersion),
+    ));
+
+    return NextResponse.json({
+      ok: failures.length === 0,
+      slotKey: slot.key,
+      period,
+      quantity,
+      generatedCount: projectIds.length,
+      projectIds,
+      nextDueAt: slot.nextDueAt.toISOString(),
+      status,
+    }, { status: failures.length === 0 ? 200 : 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message.slice(0, 180) : 'unknown';
+    console.error('[cron/draft-cadence] Run failed:', message);
+    return NextResponse.json({ ok: false, error: 'Cadenced draft run failed.' }, { status: 500 });
   }
 }

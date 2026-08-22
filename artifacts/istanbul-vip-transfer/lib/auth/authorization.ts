@@ -174,7 +174,7 @@ export function isPublicAdminApi(pathname: string): boolean {
 }
 
 export function isCronAdminApi(pathname: string): boolean {
-  return pathname === '/admin/api/cron/weekly-draft';
+  return pathname === '/admin/api/cron/weekly-draft' || pathname === '/admin/api/cron/draft-cadence';
 }
 
 /**

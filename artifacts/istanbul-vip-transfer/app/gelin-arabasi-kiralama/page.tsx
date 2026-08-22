@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { buildAlternates } from '@/lib/i18n/seo';
 import { getPublishedServicePage, getPublishedServicePageLangs } from '@/lib/service-page-cms';
+import { getServiceHeroImage } from '@/lib/service-og-image';
 import ServicePageRenderer from '@/components/ServicePageRenderer';
 import { SITE } from '@/lib/site-config';
 
@@ -19,7 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       title: cmsPage?.title ?? 'Gelin Arabası Kiralama İstanbul | Lüks Düğün Mercedes',
       description: cmsPage?.excerpt ?? 'İstanbul\'da Mercedes Vito ve Sprinter ile lüks gelin arabası kiralama. Özel süsleme, profesyonel şoför.',
-      url: PAGE, siteName: 'VIP Transfer Istanbul', locale: 'tr_TR', type: 'website', images: [SITE.ogImage],
+      url: PAGE, siteName: 'VIP Transfer Istanbul', locale: 'tr_TR', type: 'website', images: [getServiceHeroImage(SLUG)],
     },
     robots: { index: true, follow: true },
   };

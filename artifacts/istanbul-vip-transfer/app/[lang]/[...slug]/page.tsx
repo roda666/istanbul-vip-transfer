@@ -33,6 +33,7 @@ import {
   resolveLocalizedServiceSlug,
   resolveLocalizedStaticSlug,
 } from '@/lib/localized-service-path';
+import { getServiceHeroImage } from '@/lib/service-og-image';
 
 // ── Turkish page components (non-SERVICE pages use these directly) ─────────
 import HizmetlerPage     from '@/app/hizmetler/page';
@@ -95,7 +96,7 @@ interface Props {
 }
 
 // ── Helper: fetch DB metadata for a service page ───────────────────────────
-async function getDbMeta(slug: string, lang: string): Promise<{ title?: string; description?: string; ogImage?: string } | null> {
+async function getDbMeta(slug: string, lang: string): Promise<{ title?: string; description?: string } | null> {
   try {
     const { getPublishedServicePage } = await import('@/lib/service-page-cms');
     const page = await getPublishedServicePage(slug, lang);
@@ -103,7 +104,6 @@ async function getDbMeta(slug: string, lang: string): Promise<{ title?: string; 
     return {
       title:       page.seoTitle ?? page.title ?? undefined,
       description: page.seoDescription ?? undefined,
-      ogImage:     page.ogImage ?? undefined,
     };
   } catch {
     return null;
@@ -157,10 +157,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
     title       = dbMeta.title;
     description = dbMeta.description;
-    if (dbMeta.ogImage) {
-      const abs = dbMeta.ogImage.startsWith('http') ? dbMeta.ogImage : `${SITE.siteUrl}${dbMeta.ogImage}`;
-      ogImages = [abs];
-    }
+    ogImages = [getServiceHeroImage(pathKey)];
   }
 
   // Fall back to page-meta.json

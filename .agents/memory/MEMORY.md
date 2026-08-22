@@ -46,3 +46,4 @@
 - [Playwright Nix dependencies](playwright-nix-dependencies.md) — headless Chromium needs explicit Nix shared libraries; verify with ldd before treating browser failures as app regressions.
 - [Nine-language product baseline](nine-language-baseline.md) — Turkish source plus EN/DE/RU/AR/FR/ES/IT/NL is the required public-language scope for future work.
 - [Localized public URLs](localized-service-urls.md) — service and registered static page paths derive from translated navigation labels; legacy locale links permanently redirect.
+- [Service social preview images](service-social-preview-images.md) — every service share uses its own public hero asset across Turkish and localized routes.

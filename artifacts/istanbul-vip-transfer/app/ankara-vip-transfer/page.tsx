@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { buildAlternates } from '@/lib/i18n/seo';
 import { getPublishedServicePage, getPublishedServicePageLangs } from '@/lib/service-page-cms';
+import { getServiceHeroImage } from '@/lib/service-og-image';
 import ServicePageRenderer from '@/components/ServicePageRenderer';
 import { SITE } from '@/lib/site-config';
 
@@ -19,7 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       title: cmsPage?.title ?? 'Ankara VIP Transfer | Esenboğa Havalimanı Özel Araç',
       description: cmsPage?.excerpt ?? 'Ankara Esenboğa Havalimanı\'ndan şehir içi noktalara Mercedes ile özel VIP transfer hizmeti.',
-      url: PAGE, siteName: 'VIP Transfer Istanbul', locale: 'tr_TR', type: 'website', images: [SITE.ogImage],
+      url: PAGE, siteName: 'VIP Transfer Istanbul', locale: 'tr_TR', type: 'website', images: [getServiceHeroImage(SLUG)],
     },
     robots: { index: true, follow: true },
   };

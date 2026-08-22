@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { buildAlternates } from '@/lib/i18n/seo';
 import { getPublishedServicePage, getPublishedServicePageLangs } from '@/lib/service-page-cms';
+import { getServiceHeroImage } from '@/lib/service-og-image';
 import ServicePageRenderer from '@/components/ServicePageRenderer';
 import { SITE } from '@/lib/site-config';
 
@@ -19,7 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       title: cmsPage?.title ?? 'Günlük Villa Kiralama İstanbul | Özel Havuzlu VIP Villa',
       description: cmsPage?.excerpt ?? 'İstanbul çevresinde günlük lüks villa kiralama. Özel havuz, bahçe, transfer dahil.',
-      url: PAGE, siteName: 'VIP Transfer Istanbul', locale: 'tr_TR', type: 'website', images: [SITE.ogImage],
+      url: PAGE, siteName: 'VIP Transfer Istanbul', locale: 'tr_TR', type: 'website', images: [getServiceHeroImage(SLUG)],
     },
     robots: { index: true, follow: true },
   };

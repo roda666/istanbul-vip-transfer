@@ -31,8 +31,8 @@ import { GET as handleGoogleAdsCallback } from '@/app/admin/api/google-ads/callb
 
 const APP_ORIGIN = 'https://preview.example';
 
-function request(path: string) {
-  return new NextRequest(`${APP_ORIGIN}${path}`);
+function request(path: string, headers?: Record<string, string>) {
+  return new NextRequest(`${APP_ORIGIN}${path}`, { headers });
 }
 
 function callbackRequest(path: string, cookie: string) {
@@ -54,23 +54,29 @@ describe('Google OAuth routes', () => {
   });
 
   it('starts Search Console OAuth with the registered callback and readonly scope', async () => {
-    const response = await startGscConnect(request('/admin/api/gsc/connect'));
+    const response = await startGscConnect(request('/admin/api/gsc/connect', {
+      host: '0.0.0.0:26004',
+      'x-forwarded-host': 'preview.example',
+    }));
     const redirect = new URL(response.headers.get('location')!);
 
     expect(response.status).toBe(307);
     expect(redirect.origin + redirect.pathname).toBe('https://accounts.google.com/o/oauth2/v2/auth');
-    expect(redirect.searchParams.get('redirect_uri')).toBe('https://www.istanbulviptransfer.com/admin/api/gsc/callback');
+    expect(redirect.searchParams.get('redirect_uri')).toBe('https://preview.example/admin/api/gsc/callback');
     expect(redirect.searchParams.get('scope')).toBe('https://www.googleapis.com/auth/webmasters.readonly');
     expect(redirect.searchParams.get('prompt')).toBe('consent');
     expect(response.headers.get('set-cookie')).toContain('gsc_oauth_state=');
   });
 
   it('starts Google Ads OAuth with the registered callback and Keyword Planner scope', async () => {
-    const response = await startGoogleAdsConnect(request('/admin/api/google-ads/connect'));
+    const response = await startGoogleAdsConnect(request('/admin/api/google-ads/connect', {
+      host: '0.0.0.0:26004',
+      'x-forwarded-host': 'preview.example',
+    }));
     const redirect = new URL(response.headers.get('location')!);
 
     expect(response.status).toBe(307);
-    expect(redirect.searchParams.get('redirect_uri')).toBe('https://www.istanbulviptransfer.com/admin/api/google-ads/callback');
+    expect(redirect.searchParams.get('redirect_uri')).toBe('https://preview.example/admin/api/google-ads/callback');
     expect(redirect.searchParams.get('scope')).toContain('https://www.googleapis.com/auth/adwords');
     expect(redirect.searchParams.get('prompt')).toBe('consent');
     expect(response.headers.get('set-cookie')).toContain('gads_oauth_state=');

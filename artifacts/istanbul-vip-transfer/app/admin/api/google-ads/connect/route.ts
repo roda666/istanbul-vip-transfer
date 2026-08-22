@@ -3,11 +3,12 @@
  * Starts the Google OAuth2 flow for Ads API (Keyword Planner) access.
  * Adds both Search Console AND Google Ads scopes so a single consent covers both.
  *
- * Registered redirect URI in Google Cloud Console:
- *   https://www.istanbulviptransfer.com/admin/api/google-ads/callback
+ * The redirect URI is derived from the public request host so preview and
+ * production OAuth flows can each use their own registered URI.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/auth/session';
+import { getPublicUrl } from '@/lib/social-public-url';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,8 +23,9 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Hard-coded — must match exactly what is registered in Google Cloud Console
-  const redirectUri = 'https://www.istanbulviptransfer.com/admin/api/google-ads/callback';
+  // Google requires an exact match. Store the dynamic public URI so the
+  // callback token exchange uses exactly the URI sent to Google's consent page.
+  const redirectUri = getPublicUrl(req, '/admin/api/google-ads/callback');
 
   const state = Buffer.from(JSON.stringify({ ts: Date.now(), svc: 'google_ads' })).toString('base64url');
 

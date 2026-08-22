@@ -9,6 +9,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/auth/session';
+import { getPublicUrl } from '@/lib/social-public-url';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,11 +25,10 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Redirect URI must be hardcoded — Google requires an exact string match against the
-  // registered Authorized Redirect URI. Dynamic host detection produces different strings
-  // in dev (Replit preview domain) vs production and causes redirect_uri_mismatch.
-  // Registered in Google Cloud Console: https://www.istanbulviptransfer.com/admin/api/gsc/callback
-  const redirectUri = 'https://www.istanbulviptransfer.com/admin/api/gsc/callback';
+  // Google requires an exact match, so use the same public origin for the
+  // authorization request and callback token exchange. This supports both
+  // Replit preview and the production host.
+  const redirectUri = getPublicUrl(req, '/admin/api/gsc/callback');
 
   // CSRF state — base64url-encoded JSON, verified in callback
   const state = Buffer.from(JSON.stringify({ ts: Date.now() })).toString('base64url');

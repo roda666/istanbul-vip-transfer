@@ -23,8 +23,6 @@ Never put Next.js route handlers under `app/api/` in this project. They will nev
 - Deleted old unreachable files
 
 ## Google Cloud Console
-The OAuth callback URL registered in Google Cloud Console must be:
-```
-https://www.istanbulviptransfer.com/admin/api/gsc/callback
-```
-(Previously documented as `/api/auth/gsc/callback` — that URL never worked.)
+GSC OAuth callback URI, isteğin public HTTPS host’undan oluşturulur. Google exact-match ister; bu nedenle Cloud Console’da hem production callback hem de aktif Replit preview host’unun aynı `/admin/api/gsc/callback` yolu kayıtlı olmalıdır.
+
+**Why:** Önizleme isteğinin geri dönüşü preview host’una yapılır; yalnızca production URI kayıtlıysa Google `redirect_uri_mismatch` döndürür. Buna karşılık internal `localhost` veya proxy URL’leri hiçbir zaman kayıt edilmemelidir.

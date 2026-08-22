@@ -7,8 +7,7 @@ description: Architecture, API version, OAuth callback URI, data source priority
 
 - **API version**: v18 (`https://googleads.googleapis.com/v18/customers/{id}:generateKeywordIdeas`)
 - **Secrets**: `GOOGLE_ADS_DEVELOPER_TOKEN` and `GOOGLE_ADS_LOGIN_CUSTOMER_ID` (stripe dashes before storing customerId)
-- **OAuth callback URI** (hard-coded, must match Google Cloud Console exactly):
-  `https://www.istanbulviptransfer.com/admin/api/google-ads/callback`
+- **OAuth callback URI**: Public isteğin HTTPS host’undan türetilir; Google Cloud Console’da hem production hem de aktif preview host’unun aynı `/admin/api/google-ads/callback` yolu exact-match olarak kayıtlı olmalıdır.
 - **DB table**: `google_ads_connections` — single-row pattern (DELETE + INSERT on upsert, same as gsc_connections); migration 0027 applied directly via `psql -f` because drizzle migrate only ran seed scripts, not the DDL.
 - **Geo/lang**: Turkey = `geoTargetConstants/2792`, Turkish = `languageConstants/1011`
 - **Scope**: `https://www.googleapis.com/auth/adwords` (plus `userinfo.email` for display)
@@ -29,4 +28,4 @@ description: Architecture, API version, OAuth callback URI, data source priority
 - `findKeywordOpportunitiesFromAds(limit)` — curated seeds → top by monthly volume
 - `disconnectGoogleAds()` — DELETE FROM google_ads_connections
 
-**Why:** Google Cloud Console redirect URI must be exact; dynamic host detection causes `redirect_uri_mismatch`. Pattern copied from GSC integration.
+**Why:** Google Cloud Console redirect URI exact-match ister. Public proxy host’u kullanmak preview ve production akışlarının her birini kendi kayıtlı URI’siyle çalıştırır; internal backend host’ları kullanılmaz.

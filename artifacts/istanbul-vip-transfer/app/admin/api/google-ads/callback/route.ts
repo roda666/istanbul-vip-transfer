@@ -3,8 +3,8 @@
  * Handles the Google OAuth2 callback for Google Ads API (Keyword Planner).
  * Exchanges the code for tokens and stores them in google_ads_connections.
  *
- * Registered in Google Cloud Console as:
- *   https://www.istanbulviptransfer.com/admin/api/google-ads/callback
+ * The callback URI is provided by the short-lived OAuth cookie created by
+ * /admin/api/google-ads/connect, allowing preview and production hosts.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/auth/session';

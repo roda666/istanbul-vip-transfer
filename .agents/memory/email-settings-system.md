@@ -21,4 +21,6 @@ description: AES-256-GCM SMTP password encryption, DB-driven email config, admin
 
 **Rate limits (IP-keyed)**: `email-settings` 10/15min · `email-test-conn` 5/15min · `email-test-send` 5/15min (same `rateLimit()` from `lib/auth/rate-limit.ts`).
 
-**How to apply:** Any future email-sending feature should call `sendEmail()` from `lib/email.ts` — no need to read SMTP env vars directly. Admin notification recipients: call `getAdminNotifyEmails()`.
+**Delivery evidence:** SMTP connection verification and server acceptance are distinct. A send is successful only when the recipient is explicitly accepted by the SMTP server; this proves handoff to SMTP, not mailbox delivery or an open/read receipt. Public form submissions persist independently of notification delivery, while admins can inspect the notification state.
+
+**How to apply:** Any future email-sending feature should call `sendEmail()` from `lib/email.ts` — no need to read SMTP env vars directly. Use the detailed result only in protected server flows and expose categorical, non-secret evidence rather than raw SMTP responses. Admin notification recipients: call `getAdminNotifyEmails()`.

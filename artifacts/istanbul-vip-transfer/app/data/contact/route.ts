@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { sanitizeText } from '@/lib/sanitize';
+import { getAdminNotifyEmails, sendEmailDetailed } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
 
@@ -76,6 +77,15 @@ const ContactSchema = z.object({
   _hp:     z.string().optional(),   // honeypot — must be empty
 });
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 // ── Route handler ─────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   // Enforce JSON
@@ -115,26 +125,123 @@ export async function POST(req: NextRequest) {
   }
 
   const referenceNumber = generateRefNumber();
+  const contact = {
+    name:    sanitizeText(data.name).slice(0, 120),
+    phone:   data.phone ? sanitizeText(data.phone).slice(0, 30) : '',
+    email:   data.email.trim().toLowerCase(),
+    subject: sanitizeText(data.subject).slice(0, 200),
+    message: sanitizeText(data.message).slice(0, 3000),
+    locale:  data.locale ?? 'tr',
+  };
+  const requestData = {
+    subject: contact.subject,
+    message: contact.message,
+    emailNotification: {
+      status: 'pending',
+      attemptedAt: null,
+      recipientCount: 0,
+      acceptedCount: 0,
+      failureCodes: [],
+    },
+  };
 
   try {
     const { db } = await import('@/db');
-    const { reservationRequests } = await import('@/db/schema');
+    const { reservationRequests, auditLogs } = await import('@/db/schema');
+    const { eq } = await import('drizzle-orm');
 
     await db.insert(reservationRequests).values({
       referenceNumber,
       intent:      'QUOTE',
       serviceType: 'CONTACT_INQUIRY',
-      name:        sanitizeText(data.name).slice(0, 120),
-      phone:       data.phone ? sanitizeText(data.phone).slice(0, 30) : '',
-      normalizedEmail: data.email.trim().toLowerCase(),
-      locale:      data.locale ?? 'tr',
+      name:        contact.name,
+      phone:       contact.phone,
+      normalizedEmail: contact.email,
+      locale:      contact.locale,
       source:      'contact-form',
-      requestData: {
-        subject: sanitizeText(data.subject).slice(0, 200),
-        message: sanitizeText(data.message).slice(0, 3000),
-      },
+      requestData,
       status: 'NEW',
     });
+
+    // A saved request is never discarded because mail delivery is unavailable.
+    // The notification outcome is persisted for admins without exposing it to
+    // public callers or writing form content to server logs.
+    try {
+      const recipients = await getAdminNotifyEmails();
+      const deliveries = await Promise.all(
+        recipients.map(to => sendEmailDetailed({
+          to,
+          subject: `Yeni iletişim talebi — ${referenceNumber}`,
+          text: [
+            `Referans: ${referenceNumber}`,
+            `Ad Soyad: ${contact.name}`,
+            `E-posta: ${contact.email}`,
+            contact.phone ? `Telefon: ${contact.phone}` : null,
+            `Konu: ${contact.subject}`,
+            '',
+            contact.message,
+          ].filter(Boolean).join('\n'),
+          html: `
+            <div style="font-family:Inter,Arial,sans-serif;max-width:640px;margin:0 auto;padding:24px;color:#172B3A;">
+              <h2 style="color:#C99A32;margin:0 0 16px;">Yeni İletişim Talebi</h2>
+              <p style="margin:0 0 16px;"><strong>Referans:</strong> ${escapeHtml(referenceNumber)}</p>
+              <table style="border-collapse:collapse;width:100%;font-size:14px;">
+                <tr><td style="padding:8px 0;color:#52697A;width:120px;">Ad Soyad</td><td style="padding:8px 0;">${escapeHtml(contact.name)}</td></tr>
+                <tr><td style="padding:8px 0;color:#52697A;">E-posta</td><td style="padding:8px 0;">${escapeHtml(contact.email)}</td></tr>
+                ${contact.phone ? `<tr><td style="padding:8px 0;color:#52697A;">Telefon</td><td style="padding:8px 0;">${escapeHtml(contact.phone)}</td></tr>` : ''}
+                <tr><td style="padding:8px 0;color:#52697A;">Konu</td><td style="padding:8px 0;">${escapeHtml(contact.subject)}</td></tr>
+              </table>
+              <div style="margin-top:16px;padding:14px;background:#F3F6FA;border-radius:8px;white-space:pre-wrap;">${escapeHtml(contact.message)}</div>
+            </div>`,
+        })),
+      );
+      const acceptedCount = deliveries.filter(result => result.ok).length;
+      const failedCodes = [...new Set(deliveries.filter(result => !result.ok).map(result => result.code))];
+      const notification = {
+        status: recipients.length === 0
+          ? 'not-configured'
+          : acceptedCount === recipients.length
+            ? 'sent'
+            : acceptedCount > 0
+              ? 'partial'
+              : 'failed',
+        attemptedAt: new Date().toISOString(),
+        recipientCount: recipients.length,
+        acceptedCount,
+        failureCodes: failedCodes,
+      };
+
+      await db.update(reservationRequests)
+        .set({ requestData: { ...requestData, emailNotification: notification } })
+        .where(eq(reservationRequests.referenceNumber, referenceNumber));
+
+      await db.insert(auditLogs).values({
+        action: 'CONTACT_EMAIL_NOTIFICATION',
+        entityType: 'ReservationRequest',
+        entityId: referenceNumber,
+        metadata: notification,
+      }).catch(() => {});
+    } catch {
+      const notification = {
+        status: 'failed',
+        attemptedAt: new Date().toISOString(),
+        recipientCount: 0,
+        acceptedCount: 0,
+        failureCodes: ['NOTIFICATION_PROCESSING_FAILED'],
+      };
+      await db.update(reservationRequests)
+        .set({ requestData: { ...requestData, emailNotification: notification } })
+        .where(eq(reservationRequests.referenceNumber, referenceNumber))
+        .catch(() => {});
+      await db.insert(auditLogs).values({
+        action: 'CONTACT_EMAIL_NOTIFICATION',
+        entityType: 'ReservationRequest',
+        entityId: referenceNumber,
+        metadata: notification,
+      }).catch(() => {});
+      // The incoming request remains saved. No personal form details are logged.
+      console.error('[contact] Admin email notification processing failed.');
+    }
 
     return NextResponse.json({ referenceNumber });
   } catch (err) {

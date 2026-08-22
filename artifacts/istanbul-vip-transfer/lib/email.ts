@@ -6,7 +6,8 @@
  *   2. Environment variable fallback (SMTP_HOST/USER/PASS/PORT/SECURE/FROM)
  *
  * The plaintext SMTP password is NEVER logged or exposed.
- * sendEmail() never throws — it returns false on any failure.
+ * sendEmailDetailed() never throws — it returns a sanitized SMTP outcome.
+ * sendEmail() remains as a boolean compatibility wrapper for existing callers.
  *
  * Convenience exports:
  *   getAdminNotifyEmails() — DB adminNotifyEmails list or ADMIN_EMAIL env var
@@ -20,6 +21,34 @@ export interface SendEmailOptions {
   text?: string;
 }
 
+export type EmailDeliveryCode =
+  | 'SMTP_NOT_CONFIGURED'
+  | 'SMTP_CONFIG_INCOMPLETE'
+  | 'SMTP_PASSWORD_MISSING'
+  | 'SMTP_PASSWORD_UNREADABLE'
+  | 'SMTP_CONNECTION_FAILED'
+  | 'SMTP_AUTH_FAILED'
+  | 'SMTP_RECIPIENT_REJECTED'
+  | 'SMTP_ACCEPTANCE_UNCONFIRMED'
+  | 'SMTP_SEND_FAILED'
+  | 'SMTP_ACCEPTED';
+
+export interface EmailDeliveryResult {
+  ok: boolean;
+  code: EmailDeliveryCode;
+  message: string;
+  acceptedCount: number;
+  rejectedCount: number;
+  messageId?: string;
+  smtpResponseCode?: number;
+}
+
+export interface SmtpConnectionResult {
+  ok: boolean;
+  code: Exclude<EmailDeliveryCode, 'SMTP_RECIPIENT_REJECTED' | 'SMTP_ACCEPTANCE_UNCONFIRMED' | 'SMTP_SEND_FAILED' | 'SMTP_ACCEPTED'> | 'SMTP_CONNECTED';
+  message: string;
+}
+
 interface ResolvedSmtpConfig {
   host: string;
   port: number;
@@ -30,12 +59,27 @@ interface ResolvedSmtpConfig {
   replyTo?: string;
 }
 
+type SmtpConfigResolution =
+  | { config: ResolvedSmtpConfig }
+  | {
+      config: null;
+      code: Extract<EmailDeliveryCode, 'SMTP_NOT_CONFIGURED' | 'SMTP_CONFIG_INCOMPLETE' | 'SMTP_PASSWORD_MISSING' | 'SMTP_PASSWORD_UNREADABLE'>;
+      message: string;
+    };
+
+function configFailure(
+  code: Extract<EmailDeliveryCode, 'SMTP_NOT_CONFIGURED' | 'SMTP_CONFIG_INCOMPLETE' | 'SMTP_PASSWORD_MISSING' | 'SMTP_PASSWORD_UNREADABLE'>,
+  message: string,
+): SmtpConfigResolution {
+  return { config: null, code, message };
+}
+
 /**
  * Load the active SMTP configuration.
- * Tries the DB row first, then falls back to environment variables.
- * Returns null if no usable config is found.
+ * An enabled but incomplete DB configuration is an explicit error. It must not
+ * silently fall back to environment values and make the admin test misleading.
  */
-async function getSmtpConfig(): Promise<ResolvedSmtpConfig | null> {
+async function getSmtpConfig(): Promise<SmtpConfigResolution> {
   // 1. Try DB settings
   try {
     const { db }           = await import('@/db');
@@ -43,27 +87,39 @@ async function getSmtpConfig(): Promise<ResolvedSmtpConfig | null> {
     const rows = await db.select().from(emailSettings).limit(1);
     const row  = rows[0];
 
-    if (row?.enabled && row.smtpHost && row.smtpUser) {
-      let pass = '';
-      if (row.smtpPassEncrypted) {
-        const { decrypt } = await import('@/lib/email-crypto');
-        pass = decrypt(row.smtpPassEncrypted) ?? '';
+    if (row?.enabled) {
+      if (!row.smtpHost || !row.smtpUser) {
+        return configFailure('SMTP_CONFIG_INCOMPLETE', 'Etkin SMTP ayarlarında sunucu adresi veya kullanıcı adı eksik.');
+      }
+      if (!row.smtpPassEncrypted) {
+        return configFailure('SMTP_PASSWORD_MISSING', 'Etkin SMTP ayarlarında parola kayıtlı değil.');
+      }
+
+      const { decrypt } = await import('@/lib/email-crypto');
+      const pass = decrypt(row.smtpPassEncrypted);
+      if (!pass) {
+        return configFailure('SMTP_PASSWORD_UNREADABLE', 'SMTP parolası çözülemedi. Parolayı yeniden kaydedin ve şifreleme anahtarını kontrol edin.');
       }
 
       const port   = row.smtpPort ?? 587;
+      if (!Number.isInteger(port) || port < 1 || port > 65535) {
+        return configFailure('SMTP_CONFIG_INCOMPLETE', 'Etkin SMTP ayarlarındaki port geçerli değil.');
+      }
       const secure = row.smtpSecure === 'ssl';
       const from   = row.fromName && row.fromEmail
         ? `${row.fromName} <${row.fromEmail}>`
         : (row.fromEmail ?? row.smtpUser);
 
       return {
-        host: row.smtpHost,
-        port,
-        secure,
-        user: row.smtpUser,
-        pass,
-        from,
-        replyTo: row.replyToEmail ?? undefined,
+        config: {
+          host: row.smtpHost,
+          port,
+          secure,
+          user: row.smtpUser,
+          pass,
+          from,
+          replyTo: row.replyToEmail ?? undefined,
+        },
       };
     }
   } catch {
@@ -73,17 +129,76 @@ async function getSmtpConfig(): Promise<ResolvedSmtpConfig | null> {
   // 2. Env var fallback
   const host = process.env.SMTP_HOST;
   const user = process.env.SMTP_USER;
-  if (!host || !user) return null;
+  const pass = process.env.SMTP_PASS;
+  if (!host && !user && !pass) {
+    return configFailure('SMTP_NOT_CONFIGURED', 'SMTP yapılandırması bulunamadı.');
+  }
+  if (!host || !user) {
+    return configFailure('SMTP_CONFIG_INCOMPLETE', 'SMTP ortam ayarlarında sunucu adresi veya kullanıcı adı eksik.');
+  }
+  if (!pass) {
+    return configFailure('SMTP_PASSWORD_MISSING', 'SMTP ortam ayarlarında parola eksik.');
+  }
+
+  const port = parseInt(process.env.SMTP_PORT ?? '587', 10);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    return configFailure('SMTP_CONFIG_INCOMPLETE', 'SMTP ortam ayarlarındaki port geçerli değil.');
+  }
 
   return {
-    host,
-    port:   parseInt(process.env.SMTP_PORT ?? '587', 10),
-    secure: process.env.SMTP_SECURE === 'true',
-    user,
-    pass:   process.env.SMTP_PASS ?? '',
-    from:   process.env.SMTP_FROM
-              ?? `VIP Transfer Admin <${user}>`,
+    config: {
+      host,
+      port,
+      secure: process.env.SMTP_SECURE === 'true',
+      user,
+      pass,
+      from: process.env.SMTP_FROM ?? `VIP Transfer Admin <${user}>`,
+    },
   };
+}
+
+function getSmtpResponseCode(value: unknown): number | undefined {
+  if (typeof value !== 'string') return undefined;
+  const match = value.trim().match(/^(\d{3})\b/);
+  return match ? Number(match[1]) : undefined;
+}
+
+function classifyTransportFailure(error: unknown): {
+  code: 'SMTP_CONNECTION_FAILED' | 'SMTP_AUTH_FAILED';
+  message: string;
+} {
+  const code = (
+    typeof error === 'object'
+    && error !== null
+    && 'code' in error
+    && typeof error.code === 'string'
+  ) ? error.code : '';
+  if (code === 'EAUTH') {
+    return {
+      code: 'SMTP_AUTH_FAILED',
+      message: 'SMTP kimlik doğrulaması başarısız oldu. Kullanıcı adı ve parolayı kontrol edin.',
+    };
+  }
+
+  // Nodemailer error details are not returned because some transports can embed
+  // connection information. Only a safe, actionable category is exposed.
+  return {
+    code: 'SMTP_CONNECTION_FAILED',
+    message: 'SMTP sunucusuna bağlanılamadı veya kimlik doğrulaması başarısız oldu.',
+  };
+}
+
+async function createSmtpTransport(cfg: ResolvedSmtpConfig) {
+  const nodemailer = await import('nodemailer');
+  return nodemailer.createTransport({
+    host: cfg.host,
+    port: cfg.port,
+    secure: cfg.secure,
+    auth: { user: cfg.user, pass: cfg.pass },
+    connectionTimeout: 8_000,
+    greetingTimeout: 8_000,
+    socketTimeout: 15_000,
+  });
 }
 
 /**
@@ -107,31 +222,51 @@ export async function getAdminNotifyEmails(): Promise<string[]> {
 }
 
 /**
- * Sends an email via the resolved SMTP config.
- * Returns true only when the message is confirmed accepted by the server.
- * Returns false (never throws) in every other case.
+ * Verifies the resolved SMTP configuration without sending a message.
  */
-export async function sendEmail(opts: SendEmailOptions): Promise<boolean> {
-  const cfg = await getSmtpConfig();
-
-  if (!cfg) {
-    console.warn('[email] SMTP not configured — would have sent:', {
-      to: opts.to, subject: opts.subject,
-    });
-    console.info('[email] Body (plain):', opts.text ?? '(no plain text)');
-    return false;
+export async function verifySmtpConnection(): Promise<SmtpConnectionResult> {
+  const resolution = await getSmtpConfig();
+  if (!resolution.config) {
+    return {
+      ok: false,
+      code: resolution.code,
+      message: resolution.message,
+    };
   }
 
   try {
-    const nodemailer = await import('nodemailer');
+    const transporter = await createSmtpTransport(resolution.config);
+    await transporter.verify();
+    return {
+      ok: true,
+      code: 'SMTP_CONNECTED',
+      message: 'SMTP bağlantısı ve kimlik doğrulaması başarılı. Bu test e-posta göndermez.',
+    };
+  } catch (error) {
+    const failure = classifyTransportFailure(error);
+    return { ok: false, ...failure };
+  }
+}
 
-    const transporter = nodemailer.createTransport({
-      host:   cfg.host,
-      port:   cfg.port,
-      secure: cfg.secure,
-      auth:   { user: cfg.user, pass: cfg.pass },
-    });
+/**
+ * Sends an email and returns an evidence-based result. `ok` is true only when
+ * the SMTP server explicitly accepted at least one recipient and rejected none.
+ */
+export async function sendEmailDetailed(opts: SendEmailOptions): Promise<EmailDeliveryResult> {
+  const resolution = await getSmtpConfig();
+  if (!resolution.config) {
+    return {
+      ok: false,
+      code: resolution.code,
+      message: resolution.message,
+      acceptedCount: 0,
+      rejectedCount: 0,
+    };
+  }
 
+  try {
+    const cfg = resolution.config;
+    const transporter = await createSmtpTransport(cfg);
     const mailOpts: Record<string, unknown> = {
       from:    cfg.from,
       to:      opts.to,
@@ -157,21 +292,51 @@ export async function sendEmail(opts: SendEmailOptions): Promise<boolean> {
       r => r.toLowerCase() === toAddr || r.toLowerCase().includes(`<${toAddr}>`),
     );
 
-    if (wasRejected || (!wasAccepted && rejected.length > 0)) {
-      console.error('[email] Recipient rejected:', opts.to, '— rejected:', rejected);
-      return false;
+    if (wasRejected || rejected.length > 0) {
+      return {
+        ok: false,
+        code: 'SMTP_RECIPIENT_REJECTED',
+        message: 'SMTP sunucusu alıcıyı kabul etmedi.',
+        acceptedCount: accepted.length,
+        rejectedCount: rejected.length,
+        messageId: typeof info.messageId === 'string' ? info.messageId : undefined,
+        smtpResponseCode: getSmtpResponseCode(info.response),
+      };
     }
 
-    if (!wasAccepted && accepted.length === 0 && rejected.length === 0) {
-      console.info('[email] Sent (no accepted/rejected arrays) —', opts.subject);
-      return true;
+    if (!wasAccepted || accepted.length === 0) {
+      return {
+        ok: false,
+        code: 'SMTP_ACCEPTANCE_UNCONFIRMED',
+        message: 'SMTP sunucusu alıcının kabul edildiğini doğrulamadı.',
+        acceptedCount: accepted.length,
+        rejectedCount: rejected.length,
+        messageId: typeof info.messageId === 'string' ? info.messageId : undefined,
+        smtpResponseCode: getSmtpResponseCode(info.response),
+      };
     }
 
-    console.info('[email] Sent to', opts.to, '—', opts.subject);
-    return true;
-  } catch {
-    // Never log the error object — it may contain credentials in some transports
-    console.error('[email] Transport error while sending to', opts.to);
-    return false;
+    return {
+      ok: true,
+      code: 'SMTP_ACCEPTED',
+      message: 'SMTP sunucusu mesajı alıcı için kabul etti.',
+      acceptedCount: accepted.length,
+      rejectedCount: rejected.length,
+      messageId: typeof info.messageId === 'string' ? info.messageId : undefined,
+      smtpResponseCode: getSmtpResponseCode(info.response),
+    };
+  } catch (error) {
+    const failure = classifyTransportFailure(error);
+    return {
+      ok: false,
+      ...failure,
+      acceptedCount: 0,
+      rejectedCount: 0,
+    };
   }
+}
+
+/** Compatibility wrapper for existing notification callers. */
+export async function sendEmail(opts: SendEmailOptions): Promise<boolean> {
+  return (await sendEmailDetailed(opts)).ok;
 }

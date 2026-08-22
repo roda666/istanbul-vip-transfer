@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdminSession } from '@/lib/auth/session';
 import { rateLimit } from '@/lib/auth/rate-limit';
-import { sendEmail } from '@/lib/email';
+import { sendEmailDetailed } from '@/lib/email';
 
 const bodySchema = z.object({
   to: z.string().email('Geçerli bir e-posta adresi girin.').max(320),
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
 
   const { to } = parsed.data;
 
-  const delivered = await sendEmail({
+  const delivery = await sendEmailDetailed({
     to,
     subject: 'VIP Transfer — E-posta Testi',
     html: `
@@ -67,10 +67,17 @@ export async function POST(request: NextRequest) {
     text: 'Test E-postası — Istanbul VIP Transfer SMTP yapılandırmanız çalışıyor.',
   });
 
-  if (!delivered) {
+  if (!delivery.ok) {
     return NextResponse.json({
       success: false,
-      error: 'E-posta gönderilemedi. SMTP ayarlarını ve alıcı adresini kontrol edin.',
+      error: delivery.message,
+      delivery: {
+        code: delivery.code,
+        acceptedCount: delivery.acceptedCount,
+        rejectedCount: delivery.rejectedCount,
+        messageId: delivery.messageId,
+        smtpResponseCode: delivery.smtpResponseCode,
+      },
     }, { status: 400 });
   }
 
@@ -82,8 +89,23 @@ export async function POST(request: NextRequest) {
     action:      'EMAIL_TEST_SENT',
     entityType:  'EmailSettings',
     entityId:    '1',
-    metadata:    { ip, to },
+    metadata:    {
+      ip,
+      result: delivery.code,
+      messageId: delivery.messageId ?? null,
+      acceptedCount: delivery.acceptedCount,
+    },
   }).catch(() => {});
 
-  return NextResponse.json({ success: true, message: `Test e-postası ${to} adresine gönderildi.` });
+  return NextResponse.json({
+    success: true,
+    message: delivery.message,
+    delivery: {
+      code: delivery.code,
+      acceptedCount: delivery.acceptedCount,
+      rejectedCount: delivery.rejectedCount,
+      messageId: delivery.messageId,
+      smtpResponseCode: delivery.smtpResponseCode,
+    },
+  });
 }

@@ -207,8 +207,20 @@ export default function EmailSettingsClient() {
       const res  = await fetch('/admin/api/email-settings/test-send', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: sendTo.trim() }),
       });
-      const data = await res.json().catch(() => ({})) as { message?: string; error?: string };
-      setSendResult({ ok: res.ok, text: (res.ok ? data.message : data.error) ?? (res.ok ? 'Gönderildi.' : 'Gönderilemedi.') });
+      const data = await res.json().catch(() => ({})) as {
+        message?: string;
+        error?: string;
+        delivery?: { messageId?: string; smtpResponseCode?: number; acceptedCount?: number; rejectedCount?: number };
+      };
+      const base = (res.ok ? data.message : data.error) ?? (res.ok ? 'Gönderildi.' : 'Gönderilemedi.');
+      const details = res.ok
+        ? [
+            `Kabul edilen alıcı: ${data.delivery?.acceptedCount ?? 0}.`,
+            data.delivery?.messageId ? `Mesaj no: ${data.delivery.messageId}` : '',
+            data.delivery?.smtpResponseCode ? `SMTP yanıt kodu: ${data.delivery.smtpResponseCode}` : '',
+          ].filter(Boolean).join(' ')
+        : data.delivery?.smtpResponseCode ? `SMTP yanıt kodu: ${data.delivery.smtpResponseCode}` : '';
+      setSendResult({ ok: res.ok, text: [base, details].filter(Boolean).join(' ') });
     } catch {
       setSendResult({ ok: false, text: 'Sunucu hatası.' });
     } finally {

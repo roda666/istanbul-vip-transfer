@@ -142,8 +142,24 @@ export default async function TalepDetayPage({ params }: { params: Promise<{ id:
   const formData = (req.requestData as Record<string, unknown>) ?? {};
   // Filter out empty values and internal fields
   const displayFields = Object.entries(formData).filter(([k, v]) =>
-    v !== null && v !== '' && v !== undefined && k !== '_hp',
+    v !== null && v !== '' && v !== undefined && k !== '_hp' && k !== 'emailNotification',
   );
+  const emailNotification = (
+    typeof formData.emailNotification === 'object'
+    && formData.emailNotification !== null
+    && !Array.isArray(formData.emailNotification)
+  ) ? formData.emailNotification as Record<string, unknown> : null;
+  const emailNotificationLabel = emailNotification?.status === 'sent'
+    ? 'SMTP kabul edildi'
+    : emailNotification?.status === 'partial'
+      ? 'Kısmen kabul edildi'
+      : emailNotification?.status === 'not-configured'
+        ? 'SMTP / bildirim adresi yapılandırılmamış'
+        : emailNotification?.status === 'failed'
+          ? 'SMTP bildirimi başarısız'
+          : emailNotification?.status === 'pending'
+            ? 'Gönderim sonucu bekleniyor veya kaydedilemedi'
+          : 'Henüz kontrol edilmedi';
 
   return (
     <div style={{ padding: '28px 24px', maxWidth: '960px' }}>
@@ -169,6 +185,21 @@ export default async function TalepDetayPage({ params }: { params: Promise<{ id:
           <div style={rowStyle}><span style={labelStyle}>E-posta</span><span style={valueStyle}>{req.normalizedEmail ?? '—'}</span></div>
           <div style={rowStyle}><span style={labelStyle}>Dil</span><span style={valueStyle}>{req.locale?.toUpperCase() ?? 'TR'}</span></div>
           <div style={rowStyle}><span style={labelStyle}>Kaynak</span><span style={valueStyle}>{formatSource(req.source)}</span></div>
+           {req.source === 'contact-form' && emailNotification && (
+             <div style={rowStyle}>
+               <span style={labelStyle}>E-posta Bildirimi</span>
+               <span style={{
+                 ...valueStyle,
+                 color: emailNotification.status === 'sent' ? '#168C5B' : '#B45309',
+                 fontWeight: 600,
+               }}>
+                 {emailNotificationLabel}
+                 {typeof emailNotification.acceptedCount === 'number' && typeof emailNotification.recipientCount === 'number'
+                   ? ` (${emailNotification.acceptedCount}/${emailNotification.recipientCount})`
+                   : ''}
+               </span>
+             </div>
+           )}
           <div style={{ ...rowStyle, borderBottom: 'none' }}><span style={labelStyle}>Kayıt Tarihi</span><span style={valueStyle}>{formatDate(req.createdAt)}</span></div>
         </div>
 

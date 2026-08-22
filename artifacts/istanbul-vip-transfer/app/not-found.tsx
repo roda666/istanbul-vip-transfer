@@ -7,13 +7,21 @@
 
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
+import { getDictionary } from '@/lib/i18n';
+import { localizedPublicPath } from '@/lib/localized-service-path';
 
 export const metadata: Metadata = {
   title: 'Sayfa Bulunamadı — Istanbul VIP Transfer',
   robots: { index: false, follow: false },
 };
 
-export default function NotFound() {
+export default async function NotFound() {
+  const requestedLang = (await headers()).get('x-ivt-lang') ?? 'tr';
+  const dict = getDictionary(requestedLang);
+  const homePath = localizedPublicPath('/', requestedLang);
+  const contactPath = localizedPublicPath('/iletisim', requestedLang);
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -65,7 +73,7 @@ export default function NotFound() {
           marginBottom: '1rem',
           lineHeight: 1.3,
         }}>
-          Bu sayfa bulunamadı
+          {dict.common.notFound}
         </h1>
 
         {/* Sub-message */}
@@ -77,14 +85,13 @@ export default function NotFound() {
           maxWidth: 400,
           margin: '0 auto 2.5rem',
         }}>
-          Aradığınız sayfa taşınmış, silinmiş ya da hiç var olmamış olabilir.
-          Hizmetlerimiz veya rezervasyon için ana sayfamızı ziyaret edin.
+          {dict.common.error} {dict.common.contactUs}
         </p>
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
           <Link
-            href="/"
+            href={homePath}
             style={{
               padding: '0.8rem 1.75rem',
               background: '#C99A32',
@@ -97,10 +104,10 @@ export default function NotFound() {
               letterSpacing: '0.02em',
             }}
           >
-            Ana Sayfaya Dön
+            {dict.nav.home}
           </Link>
           <Link
-            href="/iletisim"
+            href={contactPath}
             style={{
               padding: '0.8rem 1.75rem',
               background: 'rgba(255,255,255,0.08)',
@@ -113,7 +120,7 @@ export default function NotFound() {
               display: 'inline-block',
             }}
           >
-            İletişime Geç
+            {dict.nav.contact}
           </Link>
         </div>
 

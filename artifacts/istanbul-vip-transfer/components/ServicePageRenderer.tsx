@@ -21,7 +21,7 @@ import { SITE } from '@/lib/site-config';
 import { getContactSettings, type ContactSettings } from '@/lib/site-settings-server';
 import { getDictionary } from '@/lib/i18n';
 import { getContentDirection, isolateLtrValues } from '@/lib/i18n/bidi';
-import { localizedServicePath } from '@/lib/localized-service-path';
+import { localizedServicePath, localizedStaticPath } from '@/lib/localized-service-path';
 
 interface Props {
   slug: string;
@@ -85,15 +85,16 @@ function buildBreadcrumbJsonLd({ name, slug, lang, canonicalUrl }: { name: strin
   const siteBase = SITE.siteUrl;
   const base     = `${siteBase}/${lang}`;
   const home     = lang === 'tr' ? siteBase : base;
-  const services = lang === 'tr' ? `${siteBase}/hizmetler` : `${base}/hizmetler`;
+  const services = `${siteBase}${localizedStaticPath('hizmetler', lang)}`;
+  const dict = getDictionary(lang);
   const items = [
-    { '@type': 'ListItem', position: 1, name: lang === 'tr' ? 'Ana Sayfa' : 'Home', item: home },
+    { '@type': 'ListItem', position: 1, name: dict.nav.home, item: home },
     { '@type': 'ListItem', position: 2, name },
   ];
   if (!TWO_CRUMB_SLUGS.has(slug)) {
     items.splice(1, 0, {
       '@type': 'ListItem', position: 2,
-      name: lang === 'tr' ? 'Hizmetler' : 'Services',
+       name: dict.nav.services,
       item: services,
     });
     items[2] = { '@type': 'ListItem', position: 3, name, item: canonicalUrl };
@@ -245,22 +246,10 @@ function ServiceAreaBlock({ body, dir, lang }: { body: ServicePageBody; dir?: st
   );
 }
 
-const FAQ_HEADING: Record<string, string> = {
-  tr: 'Sık Sorulan Sorular',
-  en: 'Frequently Asked Questions',
-  de: 'Häufig gestellte Fragen',
-  ru: 'Часто задаваемые вопросы',
-  ar: 'الأسئلة الشائعة',
-  fr: 'Questions fréquentes',
-  es: 'Preguntas frecuentes',
-  it: 'Domande frequenti',
-  nl: 'Veelgestelde vragen',
-};
-
 function FaqBlock({ body, dir, lang }: { body: ServicePageBody; dir?: string; lang?: string }) {
   const faqs = body.faqs;
   if (!faqs || faqs.length === 0) return null;
-  const heading = FAQ_HEADING[lang ?? 'tr'] ?? 'Sık Sorulan Sorular';
+  const heading = getDictionary(lang ?? 'en').faq.heading;
 
   return (
     <section style={{ padding: '48px 24px', maxWidth: '900px', margin: '0 auto' }}>

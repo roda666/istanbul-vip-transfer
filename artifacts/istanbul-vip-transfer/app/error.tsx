@@ -10,6 +10,9 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
+import { useLang } from '@/lib/i18n/context';
+import { getPublicUiCopy } from '@/lib/i18n/public-ui';
+import { localizedPublicPath } from '@/lib/localized-service-path';
 
 export default function ErrorPage({
   error,
@@ -18,6 +21,9 @@ export default function ErrorPage({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { lang } = useLang();
+  const copy = getPublicUiCopy(lang).errors;
+
   useEffect(() => {
     // Server-side logging already captures the stack; this catches client-side
     // errors in browser console without leaking details to the UI.
@@ -63,7 +69,7 @@ export default function ErrorPage({
           color: '#C99A32',
           marginBottom: '0.75rem',
         }}>
-          Beklenmeyen Bir Hata
+          {copy.label}
         </p>
 
         {/* Heading */}
@@ -74,7 +80,7 @@ export default function ErrorPage({
           marginBottom: '1rem',
           lineHeight: 1.25,
         }}>
-          Bir şeyler ters gitti
+          {copy.heading}
         </h1>
 
         {/* Message */}
@@ -84,8 +90,7 @@ export default function ErrorPage({
           lineHeight: 1.7,
           marginBottom: '2rem',
         }}>
-          İşleminiz gerçekleştirilirken beklenmeyen bir hata oluştu.
-          Tekrar deneyebilir ya da ana sayfaya dönebilirsiniz.
+          {copy.message}
         </p>
 
         {/* Actions */}
@@ -104,10 +109,10 @@ export default function ErrorPage({
               fontFamily: 'inherit',
             }}
           >
-            Tekrar Dene
+            {copy.retry}
           </button>
           <Link
-            href="/"
+            href={localizedPublicPath('/', lang)}
             style={{
               padding: '0.7rem 1.5rem',
               background: 'transparent',
@@ -120,7 +125,7 @@ export default function ErrorPage({
               display: 'inline-block',
             }}
           >
-            Ana Sayfaya Dön
+            {copy.home}
           </Link>
         </div>
       </div>

@@ -11,6 +11,8 @@ import { SITE } from '@/lib/site-config';
 import { getContactSettings } from '@/lib/site-settings-server';
 import { getPublishedBlogTranslations } from '@/lib/blog-cms';
 import { ArrowRight } from 'lucide-react';
+import { localizedPublicPath } from '@/lib/localized-service-path';
+import { getContentDirection } from '@/lib/i18n/bidi';
 
 interface Props {
   params: Promise<{ lang: string }>;
@@ -67,7 +69,7 @@ export default async function TranslatedBlogPage({ params }: Props) {
 
   const dict   = getDictionary(lang);
   const [posts, cs] = await Promise.all([getPublishedBlogTranslations(lang), getContactSettings()]);
-  const isRtl  = lang === 'ar';
+  const isRtl  = getContentDirection(lang) === 'rtl';
 
   const headings: Record<string, string> = {
     tr: 'Makaleler & Rehberler', en: 'Articles & Guides', de: 'Artikel & Ratgeber',
@@ -82,11 +84,7 @@ export default async function TranslatedBlogPage({ params }: Props) {
     it: 'Gli articoli in italiano saranno disponibili a breve.',
     nl: 'Artikelen in het Nederlands zijn binnenkort beschikbaar.',
   };
-  const readTrMsg: Record<string, string> = {
-    en: 'Read in Turkish', de: 'Auf Türkisch lesen', ru: 'Читать на турецком',
-    ar: 'اقرأ باللغة التركية', es: 'Leer en turco', fr: 'Lire en turc',
-    it: 'Leggi in turco', nl: 'Lees in het Turks',
-  };
+  const safePosts = posts.filter((post) => Boolean(post.title?.trim()));
 
   return (
     <>
@@ -99,18 +97,18 @@ export default async function TranslatedBlogPage({ params }: Props) {
             </h1>
           </div>
 
-          {posts.length === 0 ? (
+          {safePosts.length === 0 ? (
             <div className="rounded-2xl p-12 text-center" style={{ background: '#FFFFFF', border: '1px solid #D9E2EC' }}>
               <p style={{ color: '#50677A', fontFamily: 'Inter, sans-serif', fontSize: '15px' }}>
                 {emptyMsg[lang] ?? emptyMsg.en}
               </p>
-              <Link href="/blog" className="inline-flex items-center gap-2 mt-6 text-sm font-medium focus:outline-none focus-visible:underline" style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}>
-                {lang === 'ar' ? '← ' : ''}{readTrMsg[lang] ?? readTrMsg.en}{lang !== 'ar' ? ' →' : ''}
+              <Link href={localizedPublicPath('/', lang)} className="inline-flex items-center gap-2 mt-6 text-sm font-medium focus:outline-none focus-visible:underline" style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}>
+                {dict.nav.home}
               </Link>
             </div>
           ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {posts.map(post => {
+              {safePosts.map(post => {
                 const postSlug = post.slug ?? post.sourceSlug;
                 return (
                   <Link
@@ -125,7 +123,7 @@ export default async function TranslatedBlogPage({ params }: Props) {
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={post.sourceHeroImage}
-                          alt={post.sourceHeroImageAlt ?? post.title ?? post.sourceSlug}
+                          alt={post.title!}
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                           loading="lazy"
                           decoding="async"
@@ -135,13 +133,8 @@ export default async function TranslatedBlogPage({ params }: Props) {
                       </div>
                     )}
                     <div className="p-6">
-                      {post.sourceCategory && (
-                        <p className="text-[10px] tracking-[0.2em] uppercase mb-2" style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}>
-                          {post.sourceCategory}
-                        </p>
-                      )}
                       <h2 className="text-base font-semibold mb-2 leading-snug" style={{ color: '#102A43', fontFamily: 'Playfair Display, Georgia, serif' }}>
-                        {post.title ?? post.sourceSlug}
+                        {post.title}
                       </h2>
                       {post.excerpt && (
                         <p className="text-sm leading-relaxed mb-4 line-clamp-3" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
@@ -173,8 +166,8 @@ export default async function TranslatedBlogPage({ params }: Props) {
         __html: JSON.stringify({
           '@context': 'https://schema.org', '@type': 'BreadcrumbList',
           itemListElement: [
-            { '@type': 'ListItem', position: 1, name: 'Home', item: SITE.siteUrl },
-            { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE.siteUrl}/${lang}/blog` },
+            { '@type': 'ListItem', position: 1, name: dict.nav.home, item: SITE.siteUrl },
+            { '@type': 'ListItem', position: 2, name: dict.nav.blog, item: `${SITE.siteUrl}/${lang}/blog` },
           ],
         }),
       }} />

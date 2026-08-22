@@ -167,8 +167,8 @@ export default async function TranslatedBlogPost({ params }: Props) {
         __html: JSON.stringify({
           '@context': 'https://schema.org', '@type': 'BreadcrumbList',
           itemListElement: [
-            { '@type': 'ListItem', position: 1, name: 'Home', item: SITE.siteUrl },
-            { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE.siteUrl}/${lang}/blog` },
+            { '@type': 'ListItem', position: 1, name: dict.nav.home, item: SITE.siteUrl },
+            { '@type': 'ListItem', position: 2, name: dict.nav.blog, item: `${SITE.siteUrl}/${lang}/blog` },
             { '@type': 'ListItem', position: 3, name: localizedTitle, item: postUrl },
           ],
         }),

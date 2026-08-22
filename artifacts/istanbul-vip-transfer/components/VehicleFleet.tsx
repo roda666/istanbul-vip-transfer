@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Users, Luggage, Wifi, Wind, UserCheck, Droplets, Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
+import { getPublicUiCopy } from '@/lib/i18n/public-ui';
 import { isolateLtrValues } from '@/lib/i18n/bidi';
 import type { Dictionary } from '@/lib/i18n/types';
 
@@ -254,6 +255,7 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
 export default function VehicleFleet() {
   const { dict, lang } = useLang();
   const v = dict.vehicles;
+  const ui = getPublicUiCopy(lang);
   const trackRef = useRef<HTMLDivElement>(null);
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(true);
@@ -383,7 +385,7 @@ export default function VehicleFleet() {
               onClick={() => scrollBy('prev')}
               disabled={!canPrev}
               style={{ ...NAV_BTN, opacity: canPrev ? 1 : 0.35, color: GOLD }}
-              aria-label="Önceki araç"
+              aria-label={ui.vehicles.previous}
             >
               <ChevronLeft size={18} />
             </button>
@@ -391,7 +393,7 @@ export default function VehicleFleet() {
               onClick={() => scrollBy('next')}
               disabled={!canNext}
               style={{ ...NAV_BTN, opacity: canNext ? 1 : 0.35, color: GOLD }}
-              aria-label="Sonraki araç"
+              aria-label={ui.vehicles.next}
             >
               <ChevronRight size={18} />
             </button>
@@ -441,7 +443,7 @@ export default function VehicleFleet() {
                   if (!el) return;
                   el.scrollTo({ left: i * (320 + 24), behavior: 'smooth' });
                 }}
-                aria-label={`Araç ${i + 1}`}
+                aria-label={ui.vehicles.slide(i + 1)}
                 style={{
                   width: '8px', height: '8px', borderRadius: '50%',
                   background: GOLD, border: 'none', cursor: 'pointer',

@@ -20,18 +20,22 @@ interface LocationGroup {
   options: LocationOption[];
 }
 
+interface LocationLabels {
+  airport: string;
+  province: string;
+  district: string;
+  region: string;
+  hotelZone: string;
+  other: string;
+  loading: string;
+  selectOrType: string;
+  noResults: string;
+  clearSelection: string;
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 const TYPE_ORDER = ['AIRPORT', 'PROVINCE', 'DISTRICT', 'REGION', 'HOTEL_ZONE', 'CUSTOM'];
-
-const TYPE_LABELS: Record<string, string> = {
-  AIRPORT: 'Havalimanları',
-  PROVINCE: 'İller',
-  DISTRICT: 'İstanbul İlçeleri',
-  REGION: 'Bölgeler',
-  HOTEL_ZONE: 'Otel Bölgeleri',
-  CUSTOM: 'Diğer',
-};
 
 function normalizeTurkish(str: string): string {
   return str
@@ -45,7 +49,15 @@ function normalizeTurkish(str: string): string {
     .replace(/ç/g, 'c');
 }
 
-function groupLocations(options: LocationOption[]): LocationGroup[] {
+function groupLocations(options: LocationOption[], labels: LocationLabels): LocationGroup[] {
+  const typeLabels: Record<string, string> = {
+    AIRPORT: labels.airport,
+    PROVINCE: labels.province,
+    DISTRICT: labels.district,
+    REGION: labels.region,
+    HOTEL_ZONE: labels.hotelZone,
+    CUSTOM: labels.other,
+  };
   const map = new Map<string, LocationOption[]>();
   for (const type of TYPE_ORDER) map.set(type, []);
   for (const opt of options) {
@@ -56,7 +68,7 @@ function groupLocations(options: LocationOption[]): LocationGroup[] {
     .filter(([, opts]) => opts.length > 0)
     .map(([type, opts]) => ({
       type,
-      label: TYPE_LABELS[type] ?? type,
+      label: typeLabels[type] ?? type,
       options: opts,
     }));
 }
@@ -74,6 +86,8 @@ interface Props {
   /** Translated "Loading…" text shown while options are being fetched.
    *  Prevents the Turkish default from appearing in non-TR SSR output. */
   loadingText?: string;
+  /** Fully localized labels for the picker UI. */
+  labels: LocationLabels;
   error?: boolean;
   /** Exclude a specific location name (e.g. already-selected origin) */
   excludeName?: string;
@@ -86,6 +100,7 @@ export default function LocationCombobox({
   onChange,
   placeholder,
   loadingText,
+  labels,
   error,
   excludeName,
 }: Props) {
@@ -132,7 +147,7 @@ export default function LocationCombobox({
     return normalizeTurkish(o.name).includes(normalizeTurkish(search));
   });
 
-  const groups = groupLocations(filtered);
+  const groups = groupLocations(filtered, labels);
   const flat = groups.flatMap((g) => g.options);
 
   function handleSelect(opt: LocationOption) {
@@ -196,7 +211,7 @@ export default function LocationCombobox({
           aria-autocomplete="list"
           aria-controls={open ? 'location-combobox-listbox' : undefined}
           value={displayValue}
-          placeholder={loading ? (loadingText ?? 'Yükleniyor…') : (placeholder ?? 'Lokasyon seçin veya yazın')}
+          placeholder={loading ? (loadingText ?? labels.loading) : (placeholder ?? labels.selectOrType)}
           onChange={handleInputChange}
           onFocus={handleFocus}
           onKeyDown={handleKeyDown}
@@ -212,7 +227,7 @@ export default function LocationCombobox({
           <button
             type="button"
             onClick={handleClear}
-            aria-label="Seçimi temizle"
+            aria-label={labels.clearSelection}
             style={{
               position: 'absolute',
               right: '10px',
@@ -261,7 +276,7 @@ export default function LocationCombobox({
                 fontFamily: 'Inter, sans-serif',
               }}
             >
-              {loading ? 'Yükleniyor…' : 'Sonuç bulunamadı'}
+              {loading ? (loadingText ?? labels.loading) : labels.noResults}
             </div>
           ) : (
             groups.map((group) => (

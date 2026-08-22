@@ -37,6 +37,7 @@ import {
 import {
   isLocaleCodeSyntax,
 } from '@/lib/i18n/locale-registry';
+import { localizedPublicPath } from '@/lib/localized-service-path';
 
 const COOKIE_NAME      = 'ivt_admin_session';
 const LANG_PREF_COOKIE = 'ivt_lang_pref';
@@ -233,6 +234,16 @@ export async function middleware(request: NextRequest) {
   // Detect whether this request is for a lang-prefixed page, e.g. /en, /en/blog
   const firstSegment = pathname.split('/')[1] ?? '';
   const urlLang: string | null = isNonTrLang(firstSegment) ? firstSegment : null;
+  const pref = request.cookies.get(LANG_PREF_COOKIE)?.value;
+  const preferredNonTr = pref && isNonTrLang(pref) ? pref : null;
+
+  // A stale, unprefixed internal link must not silently render Turkish after a
+  // visitor selected another language. Redirect it to the canonical localized
+  // URL instead, including recognized translated service/static slugs.
+  if (!urlLang && preferredNonTr) {
+    const requestedPath = `${pathname}${request.nextUrl.search}`;
+    return NextResponse.redirect(new URL(localizedPublicPath(requestedPath, preferredNonTr), request.url));
+  }
 
   const response = localizedResponse(
     request,
@@ -253,15 +264,10 @@ export async function middleware(request: NextRequest) {
 
   // Turkish pages have no locale prefix. Preserve an existing non-TR
   // preference so links never silently reset the visitor's language.
-  const pref = request.cookies.get(LANG_PREF_COOKIE)?.value;
-
   // The root is Turkish only for visitors without a selected target locale.
   // Once a visitor chooses English, German, Russian, Arabic, Spanish, French,
   // Italian, or Dutch, preserve that choice by using the canonical locale URL.
   if (pathname === '/' || pathname === '') {
-    if (pref && isNonTrLang(pref)) {
-      return NextResponse.redirect(new URL(`/${pref}`, request.url));
-    }
     if (!pref) response.cookies.set(LANG_PREF_COOKIE, 'tr', cookieOpts);
     return response;
   }

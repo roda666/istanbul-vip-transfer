@@ -56,7 +56,7 @@ export const blogPosts: BlogPost[] = [
     publishedAt: '2026-07-27',
     category: 'Transfer Rehberi',
     image: '/images/blog/istanbul-havalimani-transfer-rehberi.jpg',
-    imageAlt: 'İstanbul gece manzarası ve Boğaziçi Köprüsü — İstanbul Havalimanı Transfer Rehberi',
+    imageAlt: 'İstanbul Havalimanı terminalinde bekleyen siyah VIP sedan — İstanbul Havalimanı Transfer Rehberi',
     relatedServices: [
       { label: 'İstanbul Havalimanı Transfer', href: '/istanbul-havalimani-transfer' },
       { label: 'Otel Transfer', href: '/otel-transfer' },
@@ -164,7 +164,7 @@ Her iki terminalden de karşılama yapılmaktadır. Rezervasyon sırasında term
     publishedAt: '2026-07-27',
     category: 'Transfer Rehberi',
     image: '/images/blog/sabiha-gokcen-transfer-rehberi.jpg',
-    imageAlt: 'Mercedes Sprinter VIP transfer aracı — Sabiha Gökçen Havalimanı transfer planlaması',
+    imageAlt: 'Sabiha Gökçen Havalimanı önünde yolcu alımına hazır VIP minibüs — Sabiha Gökçen Havalimanı Transfer Rehberi',
     relatedServices: [
       { label: 'Sabiha Gökçen Transfer', href: '/sabiha-gokcen-havalimani-transfer' },
       { label: 'Otel Transfer', href: '/otel-transfer' },
@@ -263,7 +263,7 @@ Mümkün olduğunca erkenden rezervasyon yapılması önerilir. Sabah erken veya
     publishedAt: '2026-07-27',
     category: 'VIP Ulaşım',
     image: '/images/blog/vip-transfer-ile-taksi-arasindaki-farklar.jpg',
-    imageAlt: 'Mercedes Vito VIP araç iç mekanı — özel transfer ve taksi karşılaştırması',
+    imageAlt: 'İstanbul caddesinde VIP minibüs ve sarı taksinin karşılaştırmalı görünümü — VIP Transfer ile Taksi Arasındaki Farklar',
     relatedServices: [
       { label: 'VIP Transfer', href: '/vip-transfer' },
       { label: 'İstanbul Havalimanı Transfer', href: '/istanbul-havalimani-transfer' },

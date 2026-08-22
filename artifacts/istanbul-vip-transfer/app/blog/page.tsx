@@ -4,6 +4,7 @@ import { buildAlternates } from '@/lib/i18n/seo';
 import Link from 'next/link';
 import PageHero from '@/components/PageHero';
 import { getPublishedBlogPosts } from '@/lib/blog-cms';
+import { getBlogPost } from '@/lib/blog-data';
 import { SITE } from '@/lib/site-config';
 import { getContactSettings } from '@/lib/site-settings-server';
 
@@ -42,6 +43,13 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function BlogPage() {
   const [posts, cs] = await Promise.all([getPublishedBlogPosts(), getContactSettings()]);
+  const listingPosts = posts.map((post) => {
+    const sourcePost = getBlogPost(post.slug);
+    const thumbnailSrc = post.heroImage?.trim() || sourcePost?.image;
+    const thumbnailAlt = post.heroImageAlt?.trim() || sourcePost?.imageAlt || post.title;
+
+    return { ...post, thumbnailSrc, thumbnailAlt };
+  });
 
   const blogListingSchema = {
     '@context': 'https://schema.org',
@@ -68,20 +76,20 @@ export default async function BlogPage() {
       />
 
       <section className="py-16 md:py-20 max-w-7xl mx-auto px-5 md:px-8">
-        {posts.length > 0 ? (
+        {listingPosts.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {posts.map((post) => (
+            {listingPosts.map((post) => (
               <article
                 key={post.slug}
                 className="rounded-sm overflow-hidden group flex flex-col"
                 style={{ background: '#FFFFFF', border: '1px solid #D9E2EC' }}
               >
-                {post.heroImage && (
+                {post.thumbnailSrc && (
                   <div className="aspect-video overflow-hidden flex-shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={post.heroImage}
-                      alt={post.heroImageAlt ?? post.title}
+                      src={post.thumbnailSrc}
+                      alt={post.thumbnailAlt}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       loading="lazy"
                       decoding="async"

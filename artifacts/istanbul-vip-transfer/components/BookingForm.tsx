@@ -26,6 +26,7 @@ import {
 } from '@/lib/booking-rules';
 import { isolateLtrValues } from '@/lib/i18n/bidi';
 import { getPublicUiCopy } from '@/lib/i18n/public-ui';
+import { localizedPublicPath } from '@/lib/localized-service-path';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -38,6 +39,12 @@ interface CustomField {
   fieldType: string;
   isActive: boolean;
   sortOrder: number;
+}
+
+interface CustomFieldAnswer {
+  id: number;
+  label: string;
+  value: boolean | string;
 }
 
 // ── Service type defs ─────────────────────────────────────────────────────────
@@ -168,6 +175,7 @@ function buildWhatsAppMessage(
   activeService: string,
   b: import('@/lib/i18n/types').Dictionary['booking'],
   locale: string,
+  customFieldAnswers: CustomFieldAnswer[],
 ): string {
   const displayValue = (value: string | undefined) => isolateLtrValues(value ?? '', locale);
   const saat      = `${data.saatSaat}:${data.saatDakika}`;
@@ -219,6 +227,13 @@ function buildWhatsAppMessage(
     `${b.waPhone}: ${displayValue(data.telefon)}`,
   );
   if (data.email?.trim()) lines.push(`${b.waEmail}: ${displayValue(data.email.trim())}`);
+  for (const field of customFieldAnswers) {
+    if (field.value === true) {
+      lines.push(`✓ ${displayValue(field.label)}`);
+    } else if (typeof field.value === 'string' && field.value.trim()) {
+      lines.push(`${displayValue(field.label)}: ${displayValue(field.value.trim())}`);
+    }
+  }
 
   return encodeURIComponent(lines.join('\n'));
 }
@@ -275,7 +290,7 @@ export default function BookingForm() {
   const honeypotRef = useRef<HTMLInputElement>(null);
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
   // State values for custom checkbox fields (keyed by field id)
-  const [customFieldValues, setCustomFieldValues] = useState<Record<number, boolean>>({});
+  const [customFieldValues, setCustomFieldValues] = useState<Record<number, boolean | string>>({});
 
   // Fetch admin-defined custom fields for this service slug
   useEffect(() => {
@@ -410,7 +425,17 @@ export default function BookingForm() {
     setSubmitting(true);
 
     const serviceLabel = ST_LABELS[activeService] ?? activeST?.label ?? activeService;
-    const msg = buildWhatsAppMessage(data, serviceLabel, activeService, b, lang);
+    const customFieldAnswers = customFields.flatMap((field): CustomFieldAnswer[] => {
+      const value = customFieldValues[field.id];
+      if (field.fieldType === 'checkbox') {
+        return value === true ? [{ id: field.id, label: field.label, value: true }] : [];
+      }
+      return typeof value === 'string' && value.trim()
+        ? [{ id: field.id, label: field.label, value: value.trim() }]
+        : [];
+    });
+    const submittedFormData = { ...data, customFields: customFieldAnswers };
+    const msg = buildWhatsAppMessage(data, serviceLabel, activeService, b, lang, customFieldAnswers);
     const waUrl = `https://wa.me/${WA_NUMBER}?text=${msg}`;
 
     // Persist the request before navigating away. The timeout keeps WhatsApp as
@@ -430,7 +455,7 @@ export default function BookingForm() {
           newsletterConsent,
           locale:           lang,
           _hp:              honeypotRef.current?.value ?? '',
-          formData:         data,
+          formData:         submittedFormData,
         }),
       });
     } catch {
@@ -800,32 +825,35 @@ export default function BookingForm() {
                 <div className={panelA} data-testid="optional-fields-panel">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
                     {/* Admin-defined custom fields */}
-                    {customFields.map(field => (
-                      <div key={field.id} className={field.fieldType === 'text' ? 'md:col-span-2' : ''}>
-                        {field.fieldType === 'checkbox' ? (
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px', color: '#263F55' }}>
-                            <input
-                              type="checkbox"
-                              checked={!!customFieldValues[field.id]}
-                              onChange={e => setCustomFieldValues(prev => ({ ...prev, [field.id]: e.target.checked }))}
-                              style={{ width: '16px', height: '16px', accentColor: '#C79A35', flexShrink: 0 }}
-                            />
-                            {field.label}
-                          </label>
-                        ) : (
-                          <>
-                            <label style={labelStyle}>{field.label}</label>
-                            <input
-                              type="text"
-                              className="vip-input"
-                              placeholder={field.label}
-                              value={typeof customFieldValues[field.id] === 'string' ? customFieldValues[field.id] as unknown as string : ''}
-                              onChange={e => setCustomFieldValues(prev => ({ ...prev, [field.id]: e.target.value as unknown as boolean }))}
-                            />
-                          </>
-                        )}
-                      </div>
-                    ))}
+                    {customFields.map(field => {
+                      const customValue = customFieldValues[field.id];
+                      return (
+                        <div key={field.id} className={field.fieldType === 'text' ? 'md:col-span-2' : ''} data-testid={`custom-field-${field.id}`}>
+                          {field.fieldType === 'checkbox' ? (
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px', color: '#263F55' }}>
+                              <input
+                                type="checkbox"
+                                checked={customValue === true}
+                                onChange={e => setCustomFieldValues(prev => ({ ...prev, [field.id]: e.target.checked }))}
+                                style={{ width: '16px', height: '16px', accentColor: '#C79A35', flexShrink: 0 }}
+                              />
+                              {field.label}
+                            </label>
+                          ) : (
+                            <>
+                              <label style={labelStyle}>{field.label}</label>
+                              <input
+                                type="text"
+                                className="vip-input"
+                                placeholder={field.label}
+                                value={typeof customValue === 'string' ? customValue : ''}
+                                onChange={e => setCustomFieldValues(prev => ({ ...prev, [field.id]: e.target.value }))}
+                              />
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -861,12 +889,12 @@ export default function BookingForm() {
                       />
                       <span>
                         {b.newsletterConsent}{' '}
-                        <a href="/kvkk" target="_blank" rel="noopener noreferrer"
+                        <a href={localizedPublicPath('/yasal/kvkk-aydinlatma-metni', lang)} target="_blank" rel="noopener noreferrer"
                           style={{ color: '#2563EB', textDecoration: 'underline' }}>
                           {b.kvkkLink}
                         </a>{' '}
                         {lang === 'tr' ? 've' : '/'}{' '}
-                        <a href="/ticari-iletisim" target="_blank" rel="noopener noreferrer"
+                        <a href={localizedPublicPath('/yasal/ticari-iletisim-bilgilendirmesi', lang)} target="_blank" rel="noopener noreferrer"
                           style={{ color: '#2563EB', textDecoration: 'underline' }}>
                           {b.commercialLink}
                         </a>

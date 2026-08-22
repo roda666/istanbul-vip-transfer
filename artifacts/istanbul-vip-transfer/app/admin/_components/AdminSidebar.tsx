@@ -105,6 +105,7 @@ function getNavGroups(role: string, isSuperOrAdmin: boolean): NavGroup[] {
       label: 'Ayarlar',
       items: [
         { href: '/admin/e-posta-ayarlari',                  label: 'E-posta Ayarları',       icon: <MailOpen size={18} /> },
+        ...(role === 'SUPER_ADMIN' ? [{ href: '/admin/veritabani-yedegi', label: 'Veritabanı Yedeği', icon: <History size={18} /> }] : []),
         { href: '/admin/ayarlar',                           label: 'Site Ayarları',           icon: <Settings size={18} /> },
         { href: '/admin/ayarlar/icerik-entegrasyonlari',    label: 'İçerik Entegrasyonları', icon: <Settings size={18} /> },
         { href: '/admin/gecmis',                            label: 'İşlem Geçmişi',          icon: <History size={18} /> },

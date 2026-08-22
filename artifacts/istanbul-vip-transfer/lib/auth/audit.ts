@@ -7,7 +7,7 @@ type AuditMetadata = Record<string, string | number | boolean | null | undefined
 const ADMIN_API_AUDIT_CATEGORIES = new Set([
   'ai-content', 'ai-suggestions', 'analytics', 'auth', 'blog', 'categories',
   'change-password', 'chatbot', 'content', 'cron', 'custom-fields',
-  'email-settings', 'faqs', 'google-ads', 'gsc', 'homepage', 'languages',
+  'database-backup', 'email-settings', 'faqs', 'google-ads', 'gsc', 'homepage', 'languages',
   'locations', 'login', 'logout', 'nav', 'newsletter', 'newsletter-export',
   'requests', 'reservation-settings', 'service-pages', 'service-types',
   'settings', 'social-platforms', 'staff', 'storage', 'studio',
@@ -46,7 +46,10 @@ export type AdminAuditReason =
   | 'unmapped_admin_route'
   | 'csrf_origin_mismatch'
   | 'storage_unavailable'
-  | 'storage_signing_failed';
+  | 'storage_signing_failed'
+  | 'database_backup_unavailable'
+  | 'database_backup_failed'
+  | 'database_backup_timed_out';
 
 export type AdminSecurityAuditRecord = {
   adminUserId: string | null;

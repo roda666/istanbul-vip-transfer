@@ -30,6 +30,7 @@ export const ADMIN_PERMISSIONS = [
   'MEDIA_MANAGE',
   'STAFF_MANAGE',
   'AUDIT_READ',
+  'DATABASE_BACKUP',
   'ACCOUNT_SELF_MANAGE',
 ] as const;
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
@@ -122,6 +123,7 @@ export function getAdminApiPermission(pathname: string, method: string): AdminPe
   if (pathname === '/admin/api/logout' || pathname === '/admin/api/change-password') {
     return 'ACCOUNT_SELF_MANAGE';
   }
+  if (pathname.startsWith('/admin/api/database-backup')) return 'DATABASE_BACKUP';
   if (pathname.startsWith('/admin/api/staff')) return 'STAFF_MANAGE';
   if (pathname.startsWith('/admin/api/email-settings')) return 'SECURITY_SETTINGS_MANAGE';
   if (pathname.startsWith('/admin/api/social-platforms') ||
@@ -188,6 +190,7 @@ export function getAdminPagePermission(pathname: string): AdminPermission | unde
   if (pathname.startsWith('/admin/e-posta-ayarlari') || pathname.startsWith('/admin/diller')) {
     return 'SECURITY_SETTINGS_MANAGE';
   }
+  if (pathname.startsWith('/admin/veritabani-yedegi')) return 'DATABASE_BACKUP';
   if (pathname.startsWith('/admin/ayarlar') || pathname.startsWith('/admin/rezervasyon-ayarlari')) {
     return 'SITE_SETTINGS_MANAGE';
   }

@@ -7,12 +7,12 @@ import {
 } from '../../lib/booking-rules';
 
 describe('booking date formatting', () => {
-  it('keeps the Turkish WhatsApp date in DD/MM/YYYY', () => {
-    expect(formatServiceDate('2026-08-21', 'tr')).toBe('21/08/2026');
+  it('keeps the WhatsApp date in DD.MM.YYYY', () => {
+    expect(formatServiceDate('2026-08-21', 'tr')).toBe('21.08.2026');
   });
 
-  it('uses the visitor locale without a timezone day shift', () => {
-    expect(formatServiceDate('2026-08-21', 'en')).toBe('21/08/2026');
+  it('keeps the operational format independent of the visitor locale', () => {
+    expect(formatServiceDate('2026-08-21', 'en')).toBe('21.08.2026');
     expect(formatServiceDate('2026-08-21', 'de')).toBe('21.08.2026');
   });
 });

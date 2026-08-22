@@ -105,6 +105,25 @@ function getFormString(formData: Record<string, unknown>, key: string): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+type SubmittedCustomFieldValue = { id: number; value: boolean | string };
+
+function getSubmittedCustomFields(value: unknown): SubmittedCustomFieldValue[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.slice(0, 20).flatMap((item): SubmittedCustomFieldValue[] => {
+    if (!item || typeof item !== 'object') return [];
+    const record = item as Record<string, unknown>;
+    const id = record.id;
+    const rawValue = record.value;
+    if (!Number.isInteger(id) || (id as number) < 1) return [];
+    if (rawValue === true) return [{ id: id as number, value: true }];
+    if (typeof rawValue === 'string' && rawValue.trim()) {
+      return [{ id: id as number, value: sanitizeText(rawValue).slice(0, 500) }];
+    }
+    return [];
+  });
+}
+
 /**
  * Keep API validation aligned with the public form. Client validation improves
  * feedback; these checks prevent direct POSTs from bypassing booking limits.
@@ -199,13 +218,44 @@ export async function POST(req: NextRequest) {
       safeFormData[k] = v;
     }
   }
+  const submittedCustomFields = getSubmittedCustomFields(data.formData.customFields);
 
   const referenceNumber = generateRefNumber();
 
   try {
     const { db } = await import('@/db');
-    const { reservationRequests, newsletterSubscribers, newsletterConsentEvents } = await import('@/db/schema');
-    const { eq } = await import('drizzle-orm');
+    const {
+      reservationRequests,
+      newsletterSubscribers,
+      newsletterConsentEvents,
+      customReservationFields,
+    } = await import('@/db/schema');
+    const { eq, and, inArray } = await import('drizzle-orm');
+
+    // A browser may only submit values for existing active admin-defined
+    // fields. Labels always come from the server record, never the request.
+    if (submittedCustomFields.length > 0) {
+      const ids = [...new Set(submittedCustomFields.map((field) => field.id))];
+      const configured = await db
+        .select({
+          id: customReservationFields.id,
+          label: customReservationFields.label,
+        })
+        .from(customReservationFields)
+        .where(and(
+          eq(customReservationFields.isActive, true),
+          inArray(customReservationFields.id, ids),
+        ));
+      const labelsById = new Map(configured.map((field) => [field.id, field.label]));
+      const savedCustomFields = submittedCustomFields.flatMap((field) => {
+        const label = labelsById.get(field.id);
+        return label ? [{ id: field.id, label, value: field.value }] : [];
+      });
+      if (savedCustomFields.length > 0) safeFormData.customFields = savedCustomFields;
+      else delete safeFormData.customFields;
+    } else {
+      delete safeFormData.customFields;
+    }
 
     // Save reservation request
     await db.insert(reservationRequests).values({

@@ -1,28 +1,14 @@
 /** Formats a YYYY-MM-DD service date without timezone-based calendar shifts. */
 
-const DATE_LOCALES: Record<string, string> = {
-  en: 'en-GB',
-  de: 'de-DE',
-  ru: 'ru-RU',
-  ar: 'ar-SA',
-  fr: 'fr-FR',
-  es: 'es-ES',
-  it: 'it-IT',
-  nl: 'nl-NL',
-};
-
+/** WhatsApp requests are read by the Turkish operations team, so dates must
+ * always remain in the unambiguous DD.MM.YYYY format regardless of visitor UI
+ * locale. Keeping this independent of Intl also avoids non-Latin numerals. */
 export function formatServiceDate(isoDate: string, locale: string): string {
+  // Kept in the public helper signature so callers do not need locale-specific
+  // branching; the operations format intentionally remains locale-independent.
+  void locale;
   const [year, month, day] = isoDate.split('-');
   if (!year || !month || !day) return isoDate;
-  if (locale === 'tr') return `${day}/${month}/${year}`;
-
-  const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
-  if (Number.isNaN(date.getTime())) return isoDate;
-
-  return new Intl.DateTimeFormat(DATE_LOCALES[locale] ?? 'en-GB', {
-    timeZone: 'UTC',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(date);
+  if (!/^\d{4}$/.test(year) || !/^\d{2}$/.test(month) || !/^\d{2}$/.test(day)) return isoDate;
+  return `${day}.${month}.${year}`;
 }

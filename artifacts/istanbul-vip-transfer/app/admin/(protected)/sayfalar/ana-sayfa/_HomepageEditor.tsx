@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import type { HomepageAdminRecord } from '@/lib/homepage-cms';
 import { ImageUploadField } from '@/app/admin/_components/ImageUploadField';
+import { AIWriteAssist, type AIWritingField } from '@/app/admin/_components/AIWriteAssist';
 import type {
   HomepageSections, HeroSection, HeroStat, ServicesSectionData,
   TrustSectionData, VehiclesSectionData, ReviewsSectionData,
@@ -96,6 +97,13 @@ function Field({ name, value, onChange, multiline, rows, dir, hint, readOnly }: 
   name: string; value: string; onChange?: (v: string) => void;
   multiline?: boolean; rows?: number; dir?: string; hint?: string; readOnly?: boolean;
 }) {
+  const technicalField = /(yolu|görsel|image|url|telefon|e-posta|adres|route|path)/i.test(name);
+  const aiField: AIWritingField = /seo|meta|og/i.test(name)
+    ? (/(açıklama|description)/i.test(name) ? 'seo_description' : 'seo_title')
+    : /cta|buton/i.test(name) ? 'cta'
+    : /(başlık|heading|headline)/i.test(name) ? 'title'
+    : /(açıklama|alt başlık|subheadline)/i.test(name) ? 'description'
+    : 'short_text';
   return (
     <div style={{ marginBottom: '14px' }}>
       <label style={lbl}>{name}</label>
@@ -104,6 +112,9 @@ function Field({ name, value, onChange, multiline, rows, dir, hint, readOnly }: 
         : <input className="hpe-field-input" style={{ ...inp(dir), opacity: readOnly ? 0.6 : 1 }} value={value} onChange={e => onChange?.(e.target.value)} dir={dir} readOnly={readOnly} />
       }
       {hint && <p style={{ fontSize: '11px', color: '#94A3B8', marginTop: '3px', fontFamily: 'Inter, sans-serif' }}>{hint}</p>}
+      {onChange && !readOnly && !technicalField && (
+        <AIWriteAssist context="homepage" field={aiField} label={name} value={value} onChange={onChange} />
+      )}
     </div>
   );
 }

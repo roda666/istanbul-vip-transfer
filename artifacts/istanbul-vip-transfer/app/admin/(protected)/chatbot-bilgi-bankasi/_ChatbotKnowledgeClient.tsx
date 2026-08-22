@@ -5,6 +5,9 @@ import { LOCALE_REGISTRY } from '@/lib/i18n/locale-registry';
 import { 
   Plus, Edit2, Trash2, Globe, X, Filter, AlertCircle, Save, Loader2, Database 
 } from 'lucide-react';
+import { AIWriteAssist } from '@/app/admin/_components/AIWriteAssist';
+
+type AIWritingLanguage = 'tr' | 'en' | 'de' | 'ru' | 'ar' | 'fr' | 'es' | 'it' | 'nl';
 
 interface KnowledgeRecord {
   id: string;
@@ -325,6 +328,7 @@ export default function ChatbotKnowledgeClient() {
                   value={editForm.title || ''}
                   onChange={e => setEditForm({ ...editForm, title: e.target.value })}
                 />
+                <AIWriteAssist context="chatbot" field="title" label="Bilgi başlığı" value={editForm.title || ''} onChange={v => setEditForm({ ...editForm, title: v })} language={(editForm.language || 'tr') as AIWritingLanguage} />
               </div>
 
               <div>
@@ -360,6 +364,7 @@ export default function ChatbotKnowledgeClient() {
                   value={editForm.question || ''}
                   onChange={e => setEditForm({ ...editForm, question: e.target.value })}
                 />
+                <AIWriteAssist context="chatbot" field="faq_question" label="Soru varyasyonu" value={editForm.question || ''} onChange={v => setEditForm({ ...editForm, question: v })} language={(editForm.language || 'tr') as AIWritingLanguage} />
               </div>
 
               <div>
@@ -371,6 +376,7 @@ export default function ChatbotKnowledgeClient() {
                   value={editForm.answer || ''}
                   onChange={e => setEditForm({ ...editForm, answer: e.target.value })}
                 />
+                <AIWriteAssist context="chatbot" field="chatbot_answer" label="Chatbot yanıtı" value={editForm.answer || ''} onChange={v => setEditForm({ ...editForm, answer: v })} language={(editForm.language || 'tr') as AIWritingLanguage} maxLength={5_000} />
               </div>
 
               <div>

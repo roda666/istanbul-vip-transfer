@@ -11,6 +11,7 @@ import type {
 } from '@/lib/service-page-types';
 import { LOCALE_REGISTRY } from '@/lib/i18n/locale-registry';
 import { ImageUploadField } from '@/app/admin/_components/ImageUploadField';
+import { AIWriteAssist, type AIWritingField } from '@/app/admin/_components/AIWriteAssist';
 import FacebookShareButton from '@/app/admin/_components/FacebookShareButton';
 import XShareButton from '@/app/admin/_components/XShareButton';
 import { SITE } from '@/lib/site-config';
@@ -78,11 +79,11 @@ const btnSecondary: React.CSSProperties = {
 
 // ── Reusable field components ───────────────────────────────────────────────
 
-function Field({ name, value, onChange, multiline, rows, dir, hint, readOnly, maxLen }: {
+function Field({ name, value, onChange, multiline, rows, dir, hint, readOnly, maxLen, aiField }: {
   name: string; value: string; onChange?: (v: string) => void;
   multiline?: boolean; rows?: number; dir?: string; hint?: string; readOnly?: boolean;
   /** When set, shows a live character count badge and a red border when exceeded. */
-  maxLen?: number;
+  maxLen?: number; aiField?: AIWritingField;
 }) {
   const over = maxLen !== undefined && value.length > maxLen;
   const near = maxLen !== undefined && !over && value.length > Math.floor(maxLen * 0.85);
@@ -107,6 +108,9 @@ function Field({ name, value, onChange, multiline, rows, dir, hint, readOnly, ma
             onChange={e => onChange?.(e.target.value)} dir={dir} readOnly={readOnly} />
       }
       {hint && <p style={{ fontSize: '11px', color: '#94A3B8', marginTop: '3px', fontFamily: 'Inter, sans-serif' }}>{hint}</p>}
+      {aiField && onChange && !readOnly && (
+        <AIWriteAssist context="service" field={aiField} label={name} value={value} onChange={onChange} maxLength={maxLen} />
+      )}
     </div>
   );
 }
@@ -239,12 +243,14 @@ function ContentSectionsEditor({ sections, onChange, dir, readOnly }: {
             <input style={{ ...inp(dir), opacity: readOnly ? 0.6 : 1 }}
               value={s.heading} onChange={e => !readOnly && update(s.id, 'heading', e.target.value)}
               dir={dir} readOnly={readOnly} placeholder="Bölüm başlığını girin…" />
+             {!readOnly && <AIWriteAssist context="service" field="title" label={`Bölüm ${i + 1} Başlığı`} value={s.heading} onChange={v => update(s.id, 'heading', v)} />}
           </div>
           <div>
             <label style={lbl}>Bölüm İçeriği</label>
             <textarea style={{ ...ta(dir, 5), opacity: readOnly ? 0.6 : 1 }}
               value={s.body} onChange={e => !readOnly && update(s.id, 'body', e.target.value)}
               dir={dir} readOnly={readOnly} placeholder="Bölüm metnini girin…" />
+             {!readOnly && <AIWriteAssist context="service" field="body" label="Bölüm İçeriği" value={s.body} onChange={v => update(s.id, 'body', v)} maxLength={5_000} />}
           </div>
         </div>
       ))}
@@ -300,12 +306,14 @@ function FaqsEditor({ faqs, onChange, dir, readOnly }: {
             <input style={{ ...inp(dir), opacity: readOnly ? 0.6 : 1 }}
               value={f.question} onChange={e => !readOnly && update(f.id, 'question', e.target.value)}
               dir={dir} readOnly={readOnly} placeholder="Sık sorulan soru…" />
+            {!readOnly && <AIWriteAssist context="service" field="faq_question" label="SSS Sorusu" value={f.question} onChange={v => update(f.id, 'question', v)} />}
           </div>
           <div>
             <label style={lbl}>Cevap</label>
             <textarea style={{ ...ta(dir, 4), opacity: readOnly ? 0.6 : 1 }}
               value={f.answer} onChange={e => !readOnly && update(f.id, 'answer', e.target.value)}
               dir={dir} readOnly={readOnly} placeholder="Cevabı girin…" />
+            {!readOnly && <AIWriteAssist context="service" field="faq_answer" label="SSS Cevabı" value={f.answer} onChange={v => update(f.id, 'answer', v)} maxLength={2_000} />}
           </div>
         </div>
       ))}
@@ -336,9 +344,9 @@ function ServiceAreaEditor({ serviceArea, onChange, dir, readOnly }: {
     <div>
       <Field name="Başlık" value={sa.title}
         onChange={v => !readOnly && set('title', v)} dir={dir} readOnly={readOnly}
-        hint="Örn: Hizmet Alanlarımız" />
+        hint="Örn: Hizmet Alanlarımız" aiField="title" />
       <Field name="Açıklama" value={sa.description}
-        onChange={v => !readOnly && set('description', v)} dir={dir} multiline rows={3} readOnly={readOnly} />
+        onChange={v => !readOnly && set('description', v)} dir={dir} multiline rows={3} readOnly={readOnly} aiField="description" />
       <div style={{ marginBottom: '14px' }}>
         <label style={lbl}>Bölgeler / Lokasyonlar</label>
         <textarea
@@ -893,9 +901,9 @@ export default function ServicePageEditor({ initialRecord }: Props) {
         <>
           {/* Temel Bilgiler */}
           <SectionCard title="Temel Bilgiler">
-            <Field name="Sayfa Başlığı (Admin)" value={title} onChange={setTitle} />
+            <Field name="Sayfa Başlığı (Admin)" value={title} onChange={setTitle} aiField="title" />
             <Field name="Kısa Açıklama (Excerpt)" value={excerpt} onChange={setExcerpt} multiline rows={3}
-              hint="Hizmet kartlarında ve meta açıklamada kullanılabilir." />
+              hint="Hizmet kartlarında ve meta açıklamada kullanılabilir." aiField="description" />
             <div className="spe-cols-2-16">
               <div>
                 <label style={lbl}>Kategori</label>
@@ -935,14 +943,14 @@ export default function ServicePageEditor({ initialRecord }: Props) {
 
           {/* Hero */}
           <SectionCard title="Hero Bölümü">
-            <Field name="Badge / Rozet" value={body.hero.badge} onChange={v => setHero('badge', v)} />
-            <Field name="Başlık (H1)" value={body.hero.title} onChange={v => setHero('title', v)} />
-            <Field name="Alt Başlık" value={body.hero.subtitle} onChange={v => setHero('subtitle', v)} multiline rows={3} />
+            <Field name="Badge / Rozet" value={body.hero.badge} onChange={v => setHero('badge', v)} aiField="short_text" />
+            <Field name="Başlık (H1)" value={body.hero.title} onChange={v => setHero('title', v)} aiField="title" />
+            <Field name="Alt Başlık" value={body.hero.subtitle} onChange={v => setHero('subtitle', v)} multiline rows={3} aiField="description" />
             <Field name="Breadcrumb Etiketi" value={body.hero.crumb} onChange={v => setHero('crumb', v)}
               hint="Navigasyonda görünecek kısa etiket" />
             <div className="spe-cols-2">
-              <Field name="CTA Birincil" value={body.hero.ctaPrimary} onChange={v => setHero('ctaPrimary', v)} />
-              <Field name="CTA İkincil" value={body.hero.ctaSecondary} onChange={v => setHero('ctaSecondary', v)} />
+              <Field name="CTA Birincil" value={body.hero.ctaPrimary} onChange={v => setHero('ctaPrimary', v)} aiField="cta" />
+              <Field name="CTA İkincil" value={body.hero.ctaSecondary} onChange={v => setHero('ctaSecondary', v)} aiField="cta" />
             </div>
           </SectionCard>
 
@@ -957,6 +965,7 @@ export default function ServicePageEditor({ initialRecord }: Props) {
               onChange={v => setBody(b => ({ ...b, introBody: v || undefined }))}
               multiline rows={6}
               hint="Bu metin otomatik olarak çevrilir."
+              aiField="body"
             />
           </SectionCard>
 
@@ -1029,13 +1038,13 @@ export default function ServicePageEditor({ initialRecord }: Props) {
           {/* SEO */}
           <SectionCard title="SEO">
             <Field name="OG Başlık (Sosyal Paylaşım)" value={body.seo.ogTitle}
-              onChange={v => setSeo('ogTitle', v)} maxLen={60} />
+              onChange={v => setSeo('ogTitle', v)} maxLen={60} aiField="seo_title" />
             <Field name="OG Açıklama" value={body.seo.ogDescription}
-              onChange={v => setSeo('ogDescription', v)} multiline rows={3} maxLen={160} />
+              onChange={v => setSeo('ogDescription', v)} multiline rows={3} maxLen={160} aiField="seo_description" />
             <Field name="Meta Başlık (Tarayıcı Sekmesi)" value={seoTitle} onChange={setSeoTitle}
-              maxLen={60} hint="Tarayıcı sekmesi ve Google arama sonucu başlığı. Yayımlamak için zorunlu." />
+              maxLen={60} hint="Tarayıcı sekmesi ve Google arama sonucu başlığı. Yayımlamak için zorunlu." aiField="seo_title" />
             <Field name="Meta Açıklama" value={seoDesc} onChange={setSeoDesc}
-              multiline rows={3} maxLen={160} hint="Google arama sonucu açıklama metni." />
+              multiline rows={3} maxLen={160} hint="Google arama sonucu açıklama metni." aiField="seo_description" />
             <div style={{ marginTop: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                 <label style={{ ...lbl, marginBottom: 0 }}>Canonical URL</label>

@@ -153,6 +153,7 @@ export function getAdminApiPermission(pathname: string, method: string): AdminPe
   if (pathname.startsWith('/admin/api/translations')) return 'TRANSLATIONS_MANAGE';
   if (pathname.startsWith('/admin/api/studio')) return studioPermission(pathname, method);
   if (pathname.startsWith('/admin/api/ai-content')) return 'AI_USE';
+  if (pathname.startsWith('/admin/api/ai-writing')) return 'AI_USE';
 
   if (pathname.startsWith('/admin/api/content') ||
       pathname.startsWith('/admin/api/blog') ||

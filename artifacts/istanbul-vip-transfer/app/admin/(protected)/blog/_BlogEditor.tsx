@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { BlogAdminRecord } from '@/lib/blog-cms';
 import { ImageUploadField } from '@/app/admin/_components/ImageUploadField';
+import { AIWriteAssist, type AIWritingField } from '@/app/admin/_components/AIWriteAssist';
 import FacebookShareButton from '@/app/admin/_components/FacebookShareButton';
 import XShareButton from '@/app/admin/_components/XShareButton';
 import { SITE } from '@/lib/site-config';
@@ -96,10 +97,10 @@ function StatusBadge({ status, map }: { status: string; map: typeof SRC_STATUS }
   );
 }
 
-function Field({ label, value, onChange, multiline, rows, dir, hint, maxLen, readOnly, type }: {
+function Field({ label, value, onChange, multiline, rows, dir, hint, maxLen, readOnly, type, aiField }: {
   label: string; value: string; onChange?: (v: string) => void;
   multiline?: boolean; rows?: number; dir?: string; hint?: string; maxLen?: number; readOnly?: boolean;
-  type?: string;
+  type?: string; aiField?: AIWritingField;
 }) {
   const over  = maxLen !== undefined && value.length > maxLen;
   const near  = maxLen !== undefined && !over && value.length > Math.floor(maxLen * 0.85);
@@ -120,6 +121,9 @@ function Field({ label, value, onChange, multiline, rows, dir, hint, maxLen, rea
             value={value} onChange={e => onChange?.(e.target.value)} readOnly={readOnly} />
       }
       {hint && <p style={s.hint}>{hint}</p>}
+      {aiField && onChange && !readOnly && (
+        <AIWriteAssist context="blog" field={aiField} label={label} value={value} onChange={onChange} maxLength={maxLen} />
+      )}
     </div>
   );
 }
@@ -533,7 +537,7 @@ export default function BlogEditor({ blogId, initial }: Props) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             {/* Title + slug */}
             <div style={{ gridColumn: '1/-1' }}>
-              <Field label="Başlık *" value={title} onChange={v => { setTitle(v); markDirty(); }} maxLen={300} />
+              <Field label="Başlık *" value={title} onChange={v => { setTitle(v); markDirty(); }} maxLen={300} aiField="title" />
             </div>
             <div>
               <div style={s.fld}>
@@ -575,7 +579,7 @@ export default function BlogEditor({ blogId, initial }: Props) {
             <TagsInput tags={tags} onChange={v => { setTags(v); markDirty(); }} />
           </div>
 
-          <Field label="Özet (excerpt)" value={excerpt} onChange={v => { setExcerpt(v); markDirty(); }} multiline rows={3} maxLen={500}
+          <Field label="Özet (excerpt)" value={excerpt} onChange={v => { setExcerpt(v); markDirty(); }} multiline rows={3} maxLen={500} aiField="description"
             hint="105–155 karakter ideal SEO özeti." />
 
           {/* Hero image */}
@@ -606,15 +610,16 @@ export default function BlogEditor({ blogId, initial }: Props) {
             <textarea value={body} onChange={e => { setBody(e.target.value); markDirty(); }}
               style={{ ...s.ta('ltr', 20), fontFamily: 'ui-monospace, monospace', fontSize: '12px' }} />
             <p style={s.hint}>## H2 başlık, ### H3, **kalın**, [bağlantı](url), - madde</p>
+            <AIWriteAssist context="blog" field="body" label="İçerik (Markdown)" value={body} onChange={v => { setBody(v); markDirty(); }} maxLength={12_000} />
           </div>
 
           {/* SEO */}
           <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
             <p style={{ fontSize: '12px', fontWeight: 700, color: '#374151', marginBottom: '12px' }}>SEO & Open Graph</p>
-            <Field label="SEO Başlığı" value={seoTitle} onChange={v => { setSeoTitle(v); markDirty(); }} maxLen={70} />
-            <Field label="SEO Açıklaması" value={seoDescription} onChange={v => { setSeoDescription(v); markDirty(); }} multiline rows={2} maxLen={160} />
-            <Field label="OG Başlığı" value={ogTitle} onChange={v => { setOgTitle(v); markDirty(); }} maxLen={100} />
-            <Field label="OG Açıklaması" value={ogDescription} onChange={v => { setOgDescription(v); markDirty(); }} multiline rows={2} maxLen={200} />
+            <Field label="SEO Başlığı" value={seoTitle} onChange={v => { setSeoTitle(v); markDirty(); }} maxLen={70} aiField="seo_title" />
+            <Field label="SEO Açıklaması" value={seoDescription} onChange={v => { setSeoDescription(v); markDirty(); }} multiline rows={2} maxLen={160} aiField="seo_description" />
+            <Field label="OG Başlığı" value={ogTitle} onChange={v => { setOgTitle(v); markDirty(); }} maxLen={100} aiField="seo_title" />
+            <Field label="OG Açıklaması" value={ogDescription} onChange={v => { setOgDescription(v); markDirty(); }} multiline rows={2} maxLen={200} aiField="seo_description" />
             <div style={s.fld}>
               <label style={s.lbl}>OG Görseli</label>
               <ImageUploadField value={ogImage} onChange={url => { setOgImage(url); markDirty(); }} namespace="blog" />

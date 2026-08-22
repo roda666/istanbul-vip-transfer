@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Pencil, Trash2, X, Check, Loader2 } from 'lucide-react';
 import AdminPageHeader from '../../_components/AdminPageHeader';
+import { AIWriteAssist } from '../../_components/AIWriteAssist';
 
 interface FAQ {
   id: string;
@@ -138,10 +139,12 @@ export default function SssPage() {
             <div>
               <label style={labelStyle}>Soru *</label>
               <input type="text" value={question} onChange={(e) => setQuestion(e.target.value)} style={inputStyle} required maxLength={500} placeholder="Sıkça sorulan soru" />
+              <AIWriteAssist context="faq" field="faq_question" label="SSS sorusu" value={question} onChange={setQuestion} maxLength={500} />
             </div>
             <div>
               <label style={labelStyle}>Cevap *</label>
               <textarea value={answer} onChange={(e) => setAnswer(e.target.value)} style={{ ...inputStyle, minHeight: '100px', resize: 'vertical' }} required />
+              <AIWriteAssist context="faq" field="faq_answer" label="SSS cevabı" value={answer} onChange={setAnswer} maxLength={5_000} />
             </div>
             <div>
               <label style={labelStyle}>Sıra</label>

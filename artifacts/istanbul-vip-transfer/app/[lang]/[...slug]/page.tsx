@@ -32,7 +32,7 @@ import AraclarPage       from '@/app/araclar/page';
 import VehiclesPageContent from '@/components/VehiclesPageContent';
 import HakkimizdaPage    from '@/app/hakkimizda/page';
 import IletisimPage      from '@/app/iletisim/page';
-import { LocalizedServicesPageContent } from '@/app/[lang]/hizmetler/page';
+import LocalizedServicesPageContent from '@/components/LocalizedServicesPageContent';
 
 // ── Non-service static pages ─────────────────────────────────────────────
 // When adding a new WebPage slug:

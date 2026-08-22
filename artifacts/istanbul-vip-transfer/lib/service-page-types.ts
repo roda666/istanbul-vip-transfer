@@ -82,6 +82,39 @@ export interface ServicePageBody {
   schemaExtras?: ServicePageSchemaExtras;
 }
 
+/**
+ * Keep the FAQ list usable when a locale translation is incomplete.
+ *
+ * FAQ ids and ordering come from the Turkish source body. A translated
+ * question/answer wins only when it has the same stable FAQ id; otherwise
+ * the corresponding Turkish field remains visible. Translation-only entries
+ * are intentionally omitted once their source FAQ has been deleted.
+ * This lets the public page avoid silently dropping or mismatching an FAQ
+ * while keeping all translated content in the CMS.
+ */
+export function mergeFaqFallback(
+  translated: ServicePageBody,
+  turkish: ServicePageBody | null | undefined,
+): ServicePageBody {
+  const sourceFaqs = turkish?.faqs ?? [];
+  const translatedFaqs = translated.faqs ?? [];
+  if (sourceFaqs.length === 0) return translated;
+  const translatedById = new Map(
+    translatedFaqs.map((faq) => [faq.id, faq]),
+  );
+
+  const faqs = sourceFaqs.map((sourceFaq) => {
+    const translatedFaq = translatedById.get(sourceFaq.id);
+    return {
+      ...sourceFaq,
+      question: translatedFaq?.question?.trim() ? translatedFaq.question : sourceFaq.question,
+      answer: translatedFaq?.answer?.trim() ? translatedFaq.answer : sourceFaq.answer,
+    };
+  });
+
+  return { ...translated, faqs };
+}
+
 // ── Type guard ────────────────────────────────────────────────────────────────
 
 /** Accepts both v1 and v2 bodies. */

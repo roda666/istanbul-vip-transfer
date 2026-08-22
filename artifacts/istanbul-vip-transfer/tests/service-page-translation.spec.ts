@@ -18,6 +18,7 @@ import { test, expect } from '@playwright/test';
 import {
   extractTranslatableFields,
   applyTranslatedFields,
+  mergeFaqFallback,
   isServicePageBody,
   parseServicePageBody,
   type ServicePageBody,
@@ -98,6 +99,35 @@ test('applyTranslatedFields produces a valid ServicePageBody', () => {
 
   expect(isServicePageBody(result)).toBe(true);
   expect(result.version).toBe(1);
+});
+
+test('mergeFaqFallback matches source FAQ ids when translations are reordered or orphaned', () => {
+  const turkish: ServicePageBody = {
+    ...SOURCE_BODY,
+    version: 2,
+    faqs: [
+      { id: 'faq-first', question: 'İlk Türkçe soru', answer: 'İlk Türkçe cevap' },
+      { id: 'faq-second', question: 'İkinci Türkçe soru', answer: 'İkinci Türkçe cevap' },
+    ],
+  };
+  const translated: ServicePageBody = {
+    ...turkish,
+    faqs: [
+      // The translated list is deliberately reordered.
+      { id: 'faq-second', question: 'Second translated question', answer: 'Second translated answer' },
+      // This FAQ was deleted from the Turkish source and must not be published.
+      { id: 'faq-deleted', question: 'Orphaned question', answer: 'Orphaned answer' },
+      // An incomplete translation falls back only for its matching source id.
+      { id: 'faq-first', question: 'First translated question', answer: '' },
+    ],
+  };
+
+  const result = mergeFaqFallback(translated, turkish);
+
+  expect(result.faqs).toEqual([
+    { id: 'faq-first', question: 'First translated question', answer: 'İlk Türkçe cevap' },
+    { id: 'faq-second', question: 'Second translated question', answer: 'Second translated answer' },
+  ]);
 });
 
 test('translated hero.title reflects AI output (maps to content_translations.title)', () => {

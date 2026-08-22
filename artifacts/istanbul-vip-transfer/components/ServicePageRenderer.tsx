@@ -291,6 +291,12 @@ export default async function ServicePageRenderer({ slug, lang, canonicalPath }:
     getPublishedServicePage(slug, lang),
     getContactSettings(),
   ]);
+  // If the locale has no published CMS row, keep the page's existing
+  // localized static fallback but still show the source FAQ rather than
+  // silently dropping the section altogether.
+  const faqFallbackPage = !dbPage && lang !== 'tr'
+    ? await getPublishedServicePage(slug, 'tr')
+    : null;
   const pageKey = SLUG_TO_PAGE_KEY[slug];
   const canonicalUrl = `${SITE.siteUrl}${canonicalPath ?? localizedServicePath(slug, lang)}`;
 
@@ -389,6 +395,9 @@ export default async function ServicePageRenderer({ slug, lang, canonicalPath }:
         <PageHero pageKey={pageKey} />
         <CollapsibleBookingForm />
         <VehicleFleet />
+        {faqFallbackPage?.body?.faqs?.length ? (
+          <FaqBlock body={faqFallbackPage.body} dir={dir} lang={lang} />
+        ) : null}
         <Contact />
       </>
     );

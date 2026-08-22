@@ -6,7 +6,13 @@
  * entity_type = 'service_page'  (distinct from 'content' used by blog posts)
  */
 import 'server-only';
-import { parseServicePageBody, type ServicePageBody, type ServicePageRecord, type ServicePageTranslation } from './service-page-types';
+import {
+  mergeFaqFallback,
+  parseServicePageBody,
+  type ServicePageBody,
+  type ServicePageRecord,
+  type ServicePageTranslation,
+} from './service-page-types';
 
 export const ENTITY_TYPE = 'service_page';
 
@@ -136,7 +142,7 @@ export async function getPublishedServicePage(
       indexable:      src.indexable,
       isActive:       src.isActive,
       category:       src.category ?? null,
-      body:           translatedBody,
+      body:           mergeFaqFallback(translatedBody, parseServicePageBody(src.body)),
       translationStatus: tx.status === 'OUTDATED' ? 'OUTDATED' : null,
     };
   } catch {

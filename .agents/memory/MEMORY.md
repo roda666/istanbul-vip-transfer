@@ -43,6 +43,7 @@
 - [Google Ads Keyword Planner integration](google-ads-kp.md) — lib/google-ads.ts uses Ads REST API v18; DB table google_ads_connections (migration 0027 applied manually); data priority: GSC > Google Ads > AI fallback; callback URI must be registered in Google Cloud Console.
 - [Social OAuth public origin](social-oauth-public-origin.md) — build callbacks and error redirects from forwarded public host with forced HTTPS.
 - [Social publishing public assets](social-publishing-public-assets.md) — resolve test images against the active public origin, not a fixed site hostname.
+- [Manual X & Facebook sharing](manual-x-sharing.md) — token gerektirmeyen web paylaşımı, otomatik OAuth/API yayıncılığından bağımsız kalır.
 - [Admin audit resilience](admin-audit-resilience.md) — audit failures stay observable but never alter authorization; persist only normalized, allowlisted route categories.
 - [Playwright Nix dependencies](playwright-nix-dependencies.md) — headless Chromium needs explicit Nix shared libraries; verify with ldd before treating browser failures as app regressions.
 - [Nine-language product baseline](nine-language-baseline.md) — Turkish source plus EN/DE/RU/AR/FR/ES/IT/NL is the required public-language scope for future work.

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, CheckCircle2, ExternalLink, Link2, Loader2, Power, RefreshCw, Send } from 'lucide-react';
 import { getSocialOAuthMessage, getSocialPlatformLastErrorMessage } from '@/lib/social-oauth-feedback';
+import FacebookShareButton from '@/app/admin/_components/FacebookShareButton';
+import XShareButton from '@/app/admin/_components/XShareButton';
 
 type Platform = {
   key: string;
@@ -18,6 +20,12 @@ type Platform = {
   lastError: string | null;
 };
 
+type LatestPublishedBlog = {
+  title: string;
+  summary: string | null;
+  url: string;
+};
+
 const connectHref = (platform: Platform) =>
   platform.authType === 'meta_oauth'
     ? '/admin/api/social-platforms/meta/connect'
@@ -31,16 +39,27 @@ export default function SocialPlatformsPanel() {
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [latestBlog, setLatestBlog] = useState<LatestPublishedBlog | null>(null);
   const popupPollRef = useRef<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/admin/api/social-platforms', { cache: 'no-store' });
+      const [response, latestBlogResponse] = await Promise.all([
+        fetch('/admin/api/social-platforms', { cache: 'no-store' }),
+        fetch('/admin/api/social-platforms/latest-blog', { cache: 'no-store' }),
+      ]);
       const payload = await response.json() as { platforms?: Platform[]; error?: string };
       if (!response.ok || !payload.platforms) throw new Error(payload.error ?? 'Platformlar yüklenemedi.');
       setPlatforms(payload.platforms);
+
+      if (latestBlogResponse.ok) {
+        const latestBlogPayload = await latestBlogResponse.json() as { post?: LatestPublishedBlog };
+        setLatestBlog(latestBlogPayload.post ?? null);
+      } else {
+        setLatestBlog(null);
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Platformlar yüklenemedi.');
     } finally {
@@ -241,6 +260,38 @@ export default function SocialPlatformsPanel() {
                   <Power size={12} /> {platform.enabled ? 'Aktif' : 'Pasif'}
                 </button>
               </div>
+              {platform.key === 'x' && (
+                <div style={{ marginTop: 10 }}>
+                  {latestBlog ? (
+                    <XShareButton
+                      title={latestBlog.title}
+                      summary={latestBlog.summary}
+                      url={latestBlog.url}
+                      label="Son yayınlanan yazıyı X'te paylaş"
+                      style={{ width: '100%', background: '#172B3A', borderColor: '#172B3A' }}
+                    />
+                  ) : (
+                    <p style={{ margin: 0, color: '#64748B', fontFamily: 'Inter, sans-serif', fontSize: 11 }}>
+                      Manuel paylaşım için önce bir blog yazısı yayımlayın.
+                    </p>
+                  )}
+                </div>
+              )}
+              {platform.key === 'facebook' && (
+                <div style={{ marginTop: 10 }}>
+                  {latestBlog ? (
+                    <FacebookShareButton
+                      url={latestBlog.url}
+                      label="Son yayınlanan yazıyı Facebook'ta paylaş"
+                      style={{ width: '100%' }}
+                    />
+                  ) : (
+                    <p style={{ margin: 0, color: '#64748B', fontFamily: 'Inter, sans-serif', fontSize: 11 }}>
+                      Manuel paylaşım için önce bir blog yazısı yayımlayın.
+                    </p>
+                  )}
+                </div>
+              )}
               {(['facebook', 'instagram', 'x'].includes(platform.key) && platform.connected && platform.enabled) && (
                 <button onClick={() => void testLatestBlog(platform)} disabled={busyKey === `${platform.key}-test`} style={{ marginTop: 10, width: '100%', border: '1px solid #BFDBFE', background: '#EFF6FF', color: '#1D4ED8', borderRadius: 7, padding: '7px 9px', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, cursor: busyKey === `${platform.key}-test` ? 'wait' : 'pointer' }}>
                   <Send size={12} style={{ verticalAlign: 'middle', marginRight: 5 }} /> {busyKey === `${platform.key}-test` ? 'Gönderiliyor…' : 'Yayınlanmış blogla test paylaşımı yap'}

@@ -3,6 +3,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { BlogAdminRecord } from '@/lib/blog-cms';
 import { ImageUploadField } from '@/app/admin/_components/ImageUploadField';
+import FacebookShareButton from '@/app/admin/_components/FacebookShareButton';
+import XShareButton from '@/app/admin/_components/XShareButton';
+import { SITE } from '@/lib/site-config';
 
 // ── Safe JSON fetch ─────────────────────────────────────────────────────────
 async function safeJson<T = Record<string, unknown>>(res: Response): Promise<T> {
@@ -395,6 +398,8 @@ export default function BlogEditor({ blogId, initial }: Props) {
   }, [rec.translations]);
 
   const currentStatus = rec.status;
+  const publishedBlogUrl = rec.canonicalUrl?.trim() || `${SITE.siteUrl}/blog/${rec.slug}`;
+  const shareSummary = rec.seoDescription ?? rec.ogDescription ?? rec.excerpt;
 
   // ── Source status machine buttons ─────────────────────────────────────────
   function SourceStatusButtons() {
@@ -457,6 +462,18 @@ export default function BlogEditor({ blogId, initial }: Props) {
           {saving && <span style={{ fontSize: '11px', color: '#2563EB' }}>Kaydediliyor…</span>}
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <FacebookShareButton
+              url={publishedBlogUrl}
+              label="Bu yazıyı Facebook'ta paylaş"
+              disabled={currentStatus !== 'PUBLISHED'}
+            />
+            <XShareButton
+              title={rec.title}
+              summary={shareSummary}
+              url={publishedBlogUrl}
+              label="Bu yazıyı X'te paylaş"
+              disabled={currentStatus !== 'PUBLISHED'}
+            />
           <button disabled={saving} onClick={() => { markDirty(); saveSource({ saveAsDraft: true }); }}
             style={{ ...s.btn('#374151', '#F3F4F6', '1px solid #D1D5DB'), opacity: saving ? 0.6 : 1 }}>
             Taslak Kaydet

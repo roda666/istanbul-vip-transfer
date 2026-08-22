@@ -11,6 +11,9 @@ import type {
 } from '@/lib/service-page-types';
 import { LOCALE_REGISTRY } from '@/lib/i18n/locale-registry';
 import { ImageUploadField } from '@/app/admin/_components/ImageUploadField';
+import FacebookShareButton from '@/app/admin/_components/FacebookShareButton';
+import XShareButton from '@/app/admin/_components/XShareButton';
+import { SITE } from '@/lib/site-config';
 
 // ── Safe JSON fetch ────────────────────────────────────────────────────────
 async function safeJson<T = Record<string, unknown>>(res: Response): Promise<T> {
@@ -713,6 +716,8 @@ export default function ServicePageEditor({ initialRecord }: Props) {
 
   // Canonical URL (auto-generated, read-only)
   const canonicalUrl = `https://www.istanbulviptransfer.com/tr/${record.slug}`;
+  const publishedServiceUrl = `${SITE.siteUrl}/${record.slug}`;
+  const serviceShareSummary = record.excerpt ?? body.hero.subtitle;
 
   // Only APPROVED translations may be bulk-published (spec: no AI-generated
   // translation may be published without admin approval).
@@ -790,6 +795,20 @@ export default function ServicePageEditor({ initialRecord }: Props) {
         </div>
         {activeLocale === 'tr' && (
           <div className="spe-action-btns">
+            <FacebookShareButton
+              url={publishedServiceUrl}
+              label="Bu hizmeti Facebook'ta paylaş"
+              disabled={record.status !== 'PUBLISHED' || !record.isActive}
+              style={{ padding: '10px 16px', fontSize: 13 }}
+            />
+            <XShareButton
+              title={record.title}
+              summary={serviceShareSummary}
+              url={publishedServiceUrl}
+              label="Bu hizmeti X'te paylaş"
+              disabled={record.status !== 'PUBLISHED' || !record.isActive}
+              style={{ background: '#172B3A', borderColor: '#172B3A', padding: '10px 16px', fontSize: 13 }}
+            />
             <button onClick={() => doSave(true)} disabled={saving} style={{ ...btnSecondary, opacity: saving ? 0.5 : 1 }}>
               {saving ? 'Kaydediliyor…' : (record.status === 'PUBLISHED' ? 'Taslak Kaydet' : 'Taslak Kaydet ve Çevir')}
             </button>

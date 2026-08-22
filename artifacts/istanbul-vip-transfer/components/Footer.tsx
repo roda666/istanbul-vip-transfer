@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Phone, MapPin, Mail, Lock, ShieldCheck, Banknote, ArrowLeftRight, Smartphone, ExternalLink } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
+import type { HomepageSections } from '@/lib/homepage-types';
 import { useSiteSettings } from '@/components/SiteSettingsContext';
 import { localizedPublicPath, localizedServicePath } from '@/lib/localized-service-path';
 import LanguageSelector from './LanguageSelector';
@@ -11,6 +12,8 @@ import { trackEvent } from '@/lib/analytics';
 interface FooterProps {
   /** Slugs where admin set showInNav=false — passed from the root server layout. */
   hiddenNavSlugs?: string[];
+  /** CMS footer copy is intentionally scoped to the shared public footer. */
+  homepageFooter?: HomepageSections['footerSection'] | null;
 }
 
 // ── Visa SVG badge ────────────────────────────────────────────────────────────
@@ -128,9 +131,10 @@ function TursabBadge({ tursabNo, label }: { tursabNo: string; label: string }) {
   );
 }
 
-export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
+export default function Footer({ hiddenNavSlugs, homepageFooter }: FooterProps = {}) {
   const { lang, dict } = useLang();
   const cs = useSiteSettings();
+  const footer = homepageFooter;
   const p = (path: string) => localizedPublicPath(path, lang);
   const servicePath = (slug: string) => localizedServicePath(slug, lang);
   const hidden = new Set(hiddenNavSlugs ?? []);
@@ -182,12 +186,12 @@ export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
                   className="text-[10px] tracking-[0.35em] uppercase"
                   style={{ color: 'rgba(255,255,255,0.65)', fontFamily: 'Inter, sans-serif' }}
                 >
-                  Istanbul
+                  {footer?.premiumTagline ?? 'Istanbul'}
                 </div>
               </Link>
             </div>
             <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.65)', fontFamily: 'Inter, sans-serif' }}>
-              {dict.footer.tagline}
+              {footer?.tagline ?? dict.footer.tagline}
             </p>
             {/* Company legal name (small, below tagline) */}
             {cs.companyLegalName && (
@@ -204,7 +208,7 @@ export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
               className="text-xs tracking-[0.2em] uppercase mb-6"
               style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
             >
-              {dict.footer.quickLinks}
+              {footer?.col1Heading ?? dict.footer.quickLinks}
             </h3>
             <ul className="space-y-3">
               {quickLinks.map((link) => (
@@ -234,7 +238,7 @@ export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
               className="text-xs tracking-[0.2em] uppercase mb-6"
               style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
             >
-              {dict.footer.services}
+              {footer?.col2Heading ?? dict.footer.services}
             </h3>
             <ul className="space-y-3">
               {services.map((service) => (
@@ -274,7 +278,7 @@ export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
               className="text-xs tracking-[0.2em] uppercase mb-6"
               style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
             >
-              {dict.footer.contact}
+              {footer?.col3Heading ?? dict.footer.contact}
             </h3>
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
@@ -483,7 +487,7 @@ export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
         >
           <div className="text-center md:text-left">
             <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Inter, sans-serif' }}>
-              &copy; {new Date().getFullYear()} VIP Transfer Istanbul. {dict.footer.copyright}
+              &copy; {new Date().getFullYear()} VIP Transfer Istanbul. {footer?.copyrightText ?? dict.footer.copyright}
             </p>
             {cs.companyLegalName && (
               <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.55)', fontFamily: 'Inter, sans-serif' }}>

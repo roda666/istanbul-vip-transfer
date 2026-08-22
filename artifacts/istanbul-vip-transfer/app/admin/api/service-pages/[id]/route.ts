@@ -10,6 +10,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdminSession } from '@/lib/auth/session';
+import {
+  revalidateAllHomepagesForServiceChange,
+  revalidateHomepageForServiceTranslation,
+} from '@/lib/homepage-revalidation';
 import { getServicePageAdminRecord, ENTITY_TYPE } from '@/lib/service-page-cms';
 import {
   parseServicePageBody,
@@ -318,6 +322,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (db.update(content).set(updateFields as any).where(eq(content.id, id)));
+  if (!savingDraftOfPublished) revalidateAllHomepagesForServiceChange();
 
   // Write audit log
   await writeAuditLog({
@@ -387,6 +392,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       .set({ status: 'ARCHIVED', updatedAt: new Date() } as never)
       .where(eq(content.id, id));
     await writeAuditLog({ contentId: id, action: 'archive_source', adminUserId });
+    revalidateAllHomepagesForServiceChange();
     const record = await getServicePageAdminRecord(id);
     return NextResponse.json({ record });
   }
@@ -400,6 +406,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       } as never)
       .where(eq(content.id, id));
     await writeAuditLog({ contentId: id, action: 'publish_source', adminUserId });
+    revalidateAllHomepagesForServiceChange();
     const record = await getServicePageAdminRecord(id);
     return NextResponse.json({ record });
   }
@@ -409,6 +416,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       .set({ status: 'DRAFT', updatedAt: new Date() } as never)
       .where(eq(content.id, id));
     await writeAuditLog({ contentId: id, action: 'unpublish_source', adminUserId });
+    revalidateAllHomepagesForServiceChange();
     const record = await getServicePageAdminRecord(id);
     return NextResponse.json({ record });
   }
@@ -522,12 +530,14 @@ export async function POST(req: NextRequest, { params }: Params) {
       .set({ status: 'PUBLISHED', publishedAt: new Date(), updatedAt: new Date() })
       .where(eq(contentTranslations.id, existing.id));
     await writeAuditLog({ contentId: id, action: 'publish_translation', locale, adminUserId });
+    revalidateHomepageForServiceTranslation(locale);
   } else if (action === 'unpublish') {
     await db
       .update(contentTranslations)
       .set({ status: 'DRAFT', publishedAt: null, updatedAt: new Date() })
       .where(eq(contentTranslations.id, existing.id));
     await writeAuditLog({ contentId: id, action: 'unpublish_translation', locale, adminUserId });
+    revalidateHomepageForServiceTranslation(locale);
   }
 
   const record = await getServicePageAdminRecord(id);

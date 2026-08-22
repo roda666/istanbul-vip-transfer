@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import Header from './Header';
 import Footer from './Footer';
+import type { HomepageSections } from '@/lib/homepage-types';
 
 import LangProvider from './LangProvider';
 import CookieConsentBanner from './CookieConsentBanner';
@@ -25,6 +26,7 @@ export default function PublicLayoutWrapper({
   hiddenNavSlugs,
   initialLang,
   hasCookieConsentDecision,
+  homepageFooter,
 }: {
   children: React.ReactNode;
   /** Slugs where admin set showInNav=false — fetched by root server layout. */
@@ -33,6 +35,8 @@ export default function PublicLayoutWrapper({
   initialLang: string;
   /** Read server-side so the banner never appears as a late LCP candidate. */
   hasCookieConsentDecision: boolean;
+  /** Footer is the sole homepage-CMS field used by public chrome. */
+  homepageFooter: HomepageSections['footerSection'] | null;
 }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith('/admin');
@@ -65,7 +69,7 @@ export default function PublicLayoutWrapper({
     <LangProvider forceLang={initialLang}>
       <Header hiddenNavSlugs={hiddenNavSlugs} />
       <main>{children}</main>
-      <Footer hiddenNavSlugs={hiddenNavSlugs} />
+      <Footer hiddenNavSlugs={hiddenNavSlugs} homepageFooter={homepageFooter} />
       {supportWidgetsReady && (
         <>
           <WhatsAppFloat />

@@ -5,6 +5,8 @@ import { motion } from 'framer-motion';
 import { Plane, Hotel, Map, Briefcase, PartyPopper, Route, ArrowRight, Heart, Building2, Home } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
 import { localizedPublicPath } from '@/lib/localized-service-path';
+import { useHomepageCms } from '@/lib/homepage-cms-context';
+import type { HomepageServiceCopy } from '@/lib/homepage-public-content';
 
 interface Props {
   /**
@@ -13,12 +15,18 @@ interface Props {
    * Passed from the parent server component after a DB visibility fetch.
    */
   hiddenSlugs?: Set<string>;
+  serviceCopy?: HomepageServiceCopy;
+  homepageMode?: boolean;
 }
 
-export default function Services({ hiddenSlugs }: Props = {}) {
+export default function Services({ hiddenSlugs, serviceCopy, homepageMode = false }: Props = {}) {
   const { lang, dict } = useLang();
   const s = dict.services;
+  const cms = useHomepageCms();
+  const section = homepageMode ? cms?.servicesSection : null;
   const p = (path: string) => localizedPublicPath(path, lang);
+
+  if (section && !section.enabled) return null;
 
   /**
    * Pick the localised string for the current locale.
@@ -327,6 +335,11 @@ export default function Services({ hiddenSlugs }: Props = {}) {
     },
   // Filter out services hidden by admin (showOnHomepage=false in CMS)
   ].filter(svc => !svc.slug || !hiddenSlugs?.has(svc.slug));
+  const allServicesHref = section?.allServicesRoute?.startsWith('/')
+    ? (section.allServicesRoute.startsWith(`/${lang}/`) || section.allServicesRoute === `/${lang}`
+      ? section.allServicesRoute
+      : p(section.allServicesRoute))
+    : p('/hizmetler');
 
   return (
     <section
@@ -349,28 +362,31 @@ export default function Services({ hiddenSlugs }: Props = {}) {
             className="text-xs tracking-[0.3em] uppercase mb-4 block"
             style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
           >
-            {s.sectionLabel}
+            {section?.eyebrow ?? s.sectionLabel}
           </span>
           <h2
             className="text-4xl md:text-5xl font-bold mb-5"
             style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}
           >
-            {s.heading}
+            {section?.heading ?? s.heading}
           </h2>
           <div
             className="mx-auto mb-6"
             style={{ width: '60px', height: '3px', background: 'linear-gradient(90deg, #C79A35, #E4B84B)', borderRadius: '2px' }}
           />
           <p className="text-base max-w-xl mx-auto" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
-            {s.subheading}
+            {section?.description ?? s.subheading}
           </p>
         </motion.div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {services.map((service, i) => {
+            const managedCopy = service.slug ? serviceCopy?.[service.slug] : undefined;
+            const title = managedCopy?.title ?? service.title;
+            const description = managedCopy?.description ?? service.description;
             const card = (
               <motion.div
-                key={service.title}
+                key={service.slug ?? String(service.title)}
                 className="group relative p-7 rounded-2xl overflow-hidden cursor-pointer h-full"
                 style={{
                   background: '#FFFFFF',
@@ -400,10 +416,10 @@ export default function Services({ hiddenSlugs }: Props = {}) {
                   className="text-lg font-semibold mb-3 transition-colors duration-300 group-hover:text-[#C79A35]"
                   style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}
                 >
-                  {service.title}
+                  {title}
                 </h3>
                 <p className="text-sm leading-relaxed" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
-                  {service.description}
+                  {description}
                 </p>
                 {'href' in service && (
                   <div
@@ -423,13 +439,23 @@ export default function Services({ hiddenSlugs }: Props = {}) {
               </motion.div>
             );
             return 'href' in service ? (
-              <Link key={service.title} href={service.href!} title={typeof service.title === 'string' ? service.title : undefined} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C79A35] rounded-2xl">
+              <Link key={service.slug ?? String(service.title)} href={service.href!} title={typeof title === 'string' ? title : undefined} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C79A35] rounded-2xl">
                 {card}
               </Link>
             ) : (
-              <div key={service.title}>{card}</div>
+              <div key={service.slug ?? String(service.title)}>{card}</div>
             );
           })}
+        </div>
+        <div className="text-center mt-10">
+          <Link
+            href={allServicesHref}
+            className="inline-flex items-center gap-2 text-sm font-semibold tracking-wide focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C79A35] rounded"
+            style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
+          >
+            {section?.allServicesText ?? s.detailsLink}
+            <ArrowRight size={15} aria-hidden="true" />
+          </Link>
         </div>
       </div>
     </section>

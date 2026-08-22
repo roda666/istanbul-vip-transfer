@@ -6,6 +6,7 @@ import WebVitalsReporter from '@/components/WebVitalsReporter';
 import GoogleAnalyticsConsent from '@/components/GoogleAnalyticsConsent';
 import { SITE } from '@/lib/site-config';
 import { getServiceVisibilityMap } from '@/lib/service-page-cms';
+import { getPublishedHomepageData } from '@/lib/homepage-cms';
 import { getContactSettings } from '@/lib/site-settings-server';
 import { SiteSettingsProvider } from '@/components/SiteSettingsContext';
 import { cookies, headers } from 'next/headers';
@@ -75,9 +76,10 @@ export default async function RootLayout({
 
   // Fetch nav visibility server-side so Header can filter showInNav=false items.
   // Gracefully falls back to an empty array (all nav items shown) if DB is unavailable.
-  const [visibilityMap, contactSettings] = await Promise.all([
+  const [visibilityMap, contactSettings, homepageCmsData] = await Promise.all([
     getServiceVisibilityMap().catch(() => new Map<string, { showOnHomepage: boolean; showInNav: boolean }>()),
     getContactSettings(),
+    getPublishedHomepageData(initialLang),
   ]);
   const hiddenNavSlugs = [...visibilityMap.entries()]
     .filter(([, flags]) => !flags.showInNav)
@@ -96,6 +98,7 @@ export default async function RootLayout({
             initialLang={initialLang}
             hiddenNavSlugs={hiddenNavSlugs}
             hasCookieConsentDecision={hasCookieConsentDecision}
+            homepageFooter={homepageCmsData?.footerSection ?? null}
           >
             {children}
           </PublicLayoutWrapper>

@@ -4,6 +4,8 @@ import { motion } from 'framer-motion';
 import { Star, Quote, ExternalLink } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
 import { useSiteSettings } from '@/components/SiteSettingsContext';
+import { useHomepageCms } from '@/lib/homepage-cms-context';
+import type { HomepageReview } from '@/lib/homepage-public-content';
 
 interface Review {
   name: string;
@@ -178,13 +180,22 @@ function GoogleMark({ size = 16 }: { size?: number }) {
   );
 }
 
-export default function Reviews() {
+export default function Reviews({
+  items,
+  homepageMode = false,
+}: {
+  items?: HomepageReview[];
+  homepageMode?: boolean;
+}) {
   const { lang, dict } = useLang();
   const cs = useSiteSettings();
   const r = dict.reviews;
+  const cms = useHomepageCms();
+  const section = homepageMode ? cms?.reviewsSection : null;
+  if (section && !section.enabled) return null;
   // A malformed locale must not make an international visitor see Turkish
   // review copy. Turkish is used only for an explicit Turkish route.
-  const reviews = REVIEWS_BY_LANG[lang] ?? REVIEWS_BY_LANG.en;
+  const reviews = items && items.length > 0 ? items : (REVIEWS_BY_LANG[lang] ?? REVIEWS_BY_LANG.en);
 
   return (
     <section
@@ -212,14 +223,14 @@ export default function Reviews() {
               className="text-xs tracking-[0.2em] uppercase"
               style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
             >
-              {r.sectionLabel}
+            {section?.eyebrow ?? r.sectionLabel}
             </span>
           </div>
           <h2
             className="text-4xl md:text-5xl font-bold mb-5"
             style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}
           >
-            {r.heading}
+            {section?.heading ?? r.heading}
           </h2>
           <div
             className="mx-auto"
@@ -310,7 +321,7 @@ export default function Reviews() {
             }}
             data-testid="google-reviews-button"
           >
-            {r.viewAll}
+            {section?.viewAllText ?? r.viewAll}
             <ExternalLink size={16} aria-hidden="true" />
           </a>
         </motion.div>

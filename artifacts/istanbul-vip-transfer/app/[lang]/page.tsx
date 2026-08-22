@@ -16,6 +16,12 @@ import type { TransferRoute } from '@/db/schema';
 import { HomepageCmsProvider } from '@/lib/homepage-cms-context';
 import { getPublishedHomepageData } from '@/lib/homepage-cms';
 import { getServiceVisibilityMap } from '@/lib/service-page-cms';
+import {
+  getPublishedHomepageFaqs,
+  getPublishedHomepageReviews,
+  getPublishedHomepageServiceCopy,
+} from '@/lib/homepage-public-content';
+import { serializeJsonLd } from '@/lib/json-ld';
 // Above-fold: static imports
 import BookingForm from '@/components/BookingForm';
 import Hero from '@/components/Hero';
@@ -111,11 +117,14 @@ export default async function TranslatedHomePage({ params }: Props) {
   if (!isValidLang(lang)) notFound();
 
   // Read published CMS data and service visibility server-side
-  const [cmsData, visibilityMap, cs, transferRoutes] = await Promise.all([
+  const [cmsData, visibilityMap, cs, transferRoutes, reviews, homepageFaqs, serviceCopy] = await Promise.all([
     getPublishedHomepageData(lang),
     getServiceVisibilityMap(),
     getContactSettings(),
     getTransferRoutes(),
+    getPublishedHomepageReviews(lang),
+    getPublishedHomepageFaqs(lang),
+    getPublishedHomepageServiceCopy(lang),
   ]);
 
   const hiddenServiceSlugs = new Set(
@@ -149,18 +158,18 @@ export default async function TranslatedHomePage({ params }: Props) {
 
   return (
     <HomepageCmsProvider data={cmsData}>
-      <Hero />
-      <BookingForm />
-      <VehicleFleet />
-      <Services hiddenSlugs={hiddenServiceSlugs} />
+      <Hero homepageMode />
+      <BookingForm homepageMode />
+      <VehicleFleet homepageMode />
+      <Services hiddenSlugs={hiddenServiceSlugs} serviceCopy={serviceCopy} homepageMode />
       <PopularRoutesSection routes={transferRoutes} />
-      <TrustSignals />
-      <Reviews />
-      <FAQ />
-      <Contact />
+      <TrustSignals homepageMode />
+      <Reviews items={reviews} homepageMode />
+      <FAQ items={homepageFaqs} />
+      <Contact homepageMode />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(webPageSchema) }}
       />
     </HomepageCmsProvider>
   );

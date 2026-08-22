@@ -5,11 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Minus } from 'lucide-react';
 import { getFaqs } from '@/lib/faq-data';
 import { useLang } from '@/lib/i18n/context';
+import type { HomepageFaq } from '@/lib/homepage-public-content';
 
-export default function FAQ() {
+export default function FAQ({ items }: { items?: HomepageFaq[] }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const { lang, dict } = useLang();
-  const faqs = getFaqs(lang);
+  const faqs = items && items.length > 0 ? items : getFaqs(lang);
 
   return (
     <section

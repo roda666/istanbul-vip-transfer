@@ -12,12 +12,18 @@ const TrustSignals         = lazyLoad(() => import('@/components/TrustSignals'))
 const Reviews              = lazyLoad(() => import('@/components/Reviews'));
 const FAQ                  = lazyLoad(() => import('@/components/FAQ'));
 const Contact              = lazyLoad(() => import('@/components/Contact'));
-import { faqs } from '@/lib/faq-data';
+import { getFaqs } from '@/lib/faq-data';
 import { SITE } from '@/lib/site-config';
 import { getContactSettings } from '@/lib/site-settings-server';
 import { HomepageCmsProvider } from '@/lib/homepage-cms-context';
 import { getPublishedHomepageData } from '@/lib/homepage-cms';
 import { getServiceVisibilityMap } from '@/lib/service-page-cms';
+import {
+  getPublishedHomepageFaqs,
+  getPublishedHomepageReviews,
+  getPublishedHomepageServiceCopy,
+} from '@/lib/homepage-public-content';
+import { serializeJsonLd } from '@/lib/json-ld';
 import type { TransferRoute } from '@/db/schema';
 
 // ISR: serve pre-rendered HTML instantly; revalidate in background every 5 min.
@@ -73,24 +79,27 @@ export const metadata: Metadata = {
 
 // localBusinessSchema is built inside HomePage() so contact fields reflect DB values.
 
-const faqSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'FAQPage',
-  mainEntity: faqs.map((f) => ({
-    '@type': 'Question',
-    name: f.question,
-    acceptedAnswer: { '@type': 'Answer', text: f.answer },
-  })),
-};
-
 export default async function HomePage() {
   // Read published CMS data server-side; falls back to static i18n if DB unavailable
-  const [cmsData, visibilityMap, cs, transferRoutes] = await Promise.all([
+  const [cmsData, visibilityMap, cs, transferRoutes, reviews, homepageFaqs, serviceCopy] = await Promise.all([
     getPublishedHomepageData('tr'),
     getServiceVisibilityMap(),
     getContactSettings(),
     getTransferRoutes(),
+    getPublishedHomepageReviews('tr'),
+    getPublishedHomepageFaqs('tr'),
+    getPublishedHomepageServiceCopy('tr'),
   ]);
+  const faqItems = homepageFaqs.length > 0 ? homepageFaqs : getFaqs('tr');
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqItems.map((faq) => ({
+      '@type': 'Question',
+      name: faq.question,
+      acceptedAnswer: { '@type': 'Answer', text: faq.answer },
+    })),
+  };
 
   const localBusinessSchema = {
     '@context': 'https://schema.org',
@@ -141,22 +150,22 @@ export default async function HomePage() {
 
   return (
     <HomepageCmsProvider data={cmsData}>
-      <Hero />
+      <Hero homepageMode />
       <DeferredBookingForm />
-      <DeferredVehicleFleet />
-      <Services hiddenSlugs={hiddenServiceSlugs} />
+      <DeferredVehicleFleet homepageMode />
+      <Services hiddenSlugs={hiddenServiceSlugs} serviceCopy={serviceCopy} homepageMode />
       <PopularRoutesSection routes={transferRoutes} />
-      <TrustSignals />
-      <Reviews />
-      <FAQ />
-      <Contact />
+      <TrustSignals homepageMode />
+      <Reviews items={reviews} homepageMode />
+      <FAQ items={homepageFaqs} />
+      <Contact homepageMode />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(localBusinessSchema) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(faqSchema) }}
       />
     </HomepageCmsProvider>
   );

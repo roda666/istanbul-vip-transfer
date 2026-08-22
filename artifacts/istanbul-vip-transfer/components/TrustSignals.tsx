@@ -3,17 +3,41 @@
 import { motion } from 'framer-motion';
 import { Clock, Plane, Car, User } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
+import { useHomepageCms } from '@/lib/homepage-cms-context';
 
-export default function TrustSignals() {
+export default function TrustSignals({ homepageMode = false }: { homepageMode?: boolean }) {
   const { dict } = useLang();
   const t = dict.trust;
+  const cms = useHomepageCms();
+  const section = homepageMode ? cms?.trustSection : null;
 
-  const stats = [
-    { icon: Clock,  number: '7/24',            label: t.stat247Label,      description: t.stat247Desc },
-    { icon: Plane,  number: 'IST & SAW',        label: t.statAirportLabel,  description: t.statAirportDesc },
-    { icon: Car,    number: 'Vito & Sprinter',  label: t.statVehiclesLabel, description: t.statVehiclesDesc },
-    { icon: User,   number: 'Meet & Greet',     label: t.statMeetLabel,     description: t.statMeetDesc },
+  if (section && !section.enabled) return null;
+
+  const iconByName = { Clock, Plane, Car, User };
+  const fallbackCards = [
+    { id: '247', icon: Clock, number: '7/24', label: t.stat247Label, description: t.stat247Desc, order: 0 },
+    { id: 'airport', icon: Plane, number: 'IST & SAW', label: t.statAirportLabel, description: t.statAirportDesc, order: 1 },
+    { id: 'vehicles', icon: Car, number: 'Vito & Sprinter', label: t.statVehiclesLabel, description: t.statVehiclesDesc, order: 2 },
+    { id: 'meet', icon: User, number: 'Meet & Greet', label: t.statMeetLabel, description: t.statMeetDesc, order: 3 },
   ];
+  const fixedNumbers: Record<string, string> = {
+    '247': '7/24',
+    airport: 'IST & SAW',
+    vehicles: 'Vito & Sprinter',
+    meet: 'Meet & Greet',
+  };
+  const stats = section
+    ? section.cards
+      .filter((card) => card.enabled)
+      .sort((a, b) => a.order - b.order)
+      .map((card) => ({
+        id: card.id,
+        icon: iconByName[card.icon as keyof typeof iconByName] ?? User,
+        number: fixedNumbers[card.id] ?? '',
+        label: card.title,
+        description: card.description,
+      }))
+    : fallbackCards;
 
   return (
     <section
@@ -36,13 +60,13 @@ export default function TrustSignals() {
             className="text-xs tracking-[0.3em] uppercase mb-4 block"
             style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
           >
-            {t.sectionLabel}
+            {section?.eyebrow ?? t.sectionLabel}
           </span>
           <h2
             className="text-4xl md:text-5xl font-bold mb-5"
             style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}
           >
-            {t.heading}
+            {section?.heading ?? t.heading}
           </h2>
           <div
             className="mx-auto"
@@ -53,7 +77,7 @@ export default function TrustSignals() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {stats.map((stat, i) => (
             <motion.div
-              key={stat.label}
+              key={stat.id}
               className="relative text-center p-8 rounded-2xl overflow-hidden group"
               style={{
                 background: '#FFFFFF',

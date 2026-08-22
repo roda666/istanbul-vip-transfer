@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useEffect, useRef, useState } from 'react';
 import { useLang } from '@/lib/i18n/context';
+import { useHomepageCms } from '@/lib/homepage-cms-context';
 
 // The full reservation UI includes validation, location comboboxes and several
 // optional-field requests. It is intentionally split out of the initial hero
@@ -23,6 +24,8 @@ export default function DeferredBookingForm() {
   const [shouldLoad, setShouldLoad] = useState(false);
   const { dict } = useLang();
   const b = dict.booking;
+  const cms = useHomepageCms();
+  const homepageSection = cms?.reservationSection;
 
   useEffect(() => {
     const loadForm = () => setShouldLoad(true);
@@ -51,6 +54,8 @@ export default function DeferredBookingForm() {
     };
   }, []);
 
+  if (homepageSection && !homepageSection.enabled) return null;
+
   return (
     <section
       ref={sectionRef}
@@ -59,7 +64,7 @@ export default function DeferredBookingForm() {
       data-testid="booking-section-shell"
     >
       {shouldLoad ? (
-        <BookingForm sectionId="booking-form-content" />
+        <BookingForm sectionId="booking-form-content" homepageMode />
       ) : (
         <div
           className="py-16 px-5 text-center"
@@ -69,16 +74,16 @@ export default function DeferredBookingForm() {
             className="text-xs tracking-[0.3em] uppercase mb-4 block"
             style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
           >
-            {b.sectionLabel}
+            {homepageSection?.eyebrow ?? b.sectionLabel}
           </span>
           <h2
             className="text-3xl sm:text-4xl font-bold mb-4"
             style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}
           >
-            {b.sectionTitle}
+            {homepageSection?.heading ?? b.sectionTitle}
           </h2>
           <p className="text-base max-w-lg mx-auto mb-7" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
-            {b.sectionDescription}
+            {homepageSection?.description ?? b.sectionDescription}
           </p>
           <button
             type="button"

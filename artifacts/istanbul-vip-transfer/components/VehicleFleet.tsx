@@ -5,6 +5,8 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Users, Luggage, Wifi, Wind, UserCheck, Droplets, Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
+import { useHomepageCms } from '@/lib/homepage-cms-context';
+import { resolveHomepageCtaAction } from '@/lib/homepage-cta-route';
 import { getPublicUiCopy } from '@/lib/i18n/public-ui';
 import { isolateLtrValues } from '@/lib/i18n/bidi';
 import type { Dictionary } from '@/lib/i18n/types';
@@ -255,9 +257,11 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
   );
 }
 
-export default function VehicleFleet() {
+export default function VehicleFleet({ homepageMode = false }: { homepageMode?: boolean }) {
   const { dict, lang } = useLang();
   const v = dict.vehicles;
+  const cms = useHomepageCms();
+  const section = homepageMode ? cms?.vehiclesSection : null;
   const ui = getPublicUiCopy(lang);
   const trackRef = useRef<HTMLDivElement>(null);
   const [canPrev, setCanPrev] = useState(false);
@@ -275,8 +279,14 @@ export default function VehicleFleet() {
   }, []);
 
   const scrollToBooking = () => {
-    document.dispatchEvent(new Event('ivt:booking-open'));
-    document.querySelector('#rezervasyon')?.scrollIntoView({ behavior: 'smooth' });
+    const action = resolveHomepageCtaAction(section?.ctaRoute, lang);
+    if (action.kind === 'navigate') {
+      window.location.assign(action.href);
+      return;
+    }
+
+    if (action.target === '#rezervasyon') document.dispatchEvent(new Event('ivt:booking-open'));
+    document.querySelector(action.target)?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const [dbVehicles, setDbVehicles] = useState<DisplayVehicle[]>([]);
@@ -398,6 +408,8 @@ export default function VehicleFleet() {
     flexShrink: 0,
   };
 
+  if (section && !section.enabled) return null;
+
   return (
     <section
       id="araclar"
@@ -426,14 +438,14 @@ export default function VehicleFleet() {
             className="text-4xl md:text-5xl font-bold mb-5"
             style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}
           >
-            {v.heading}
+            {section?.heading ?? v.heading}
           </h2>
           <div
             className="mx-auto mb-6"
             style={{ width: '60px', height: '3px', background: 'linear-gradient(90deg, #C79A35, #E4B84B)', borderRadius: '2px' }}
           />
           <p className="text-base max-w-xl mx-auto" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
-            {v.subheading}
+            {section?.description ?? v.subheading}
           </p>
         </motion.div>
 
@@ -484,7 +496,7 @@ export default function VehicleFleet() {
                 key={vehicle.name}
                 vehicle={vehicle}
                 i={i}
-                cta={v.cta}
+                cta={section?.ctaText ?? v.cta}
                 popular={v.popular}
                 passengers={v.passengers}
                 luggage={v.luggage}

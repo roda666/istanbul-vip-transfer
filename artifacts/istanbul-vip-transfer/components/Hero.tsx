@@ -6,33 +6,43 @@ import { useLang } from '@/lib/i18n/context';
 import { useSiteSettings } from '@/components/SiteSettingsContext';
 import { useHomepageCms } from '@/lib/homepage-cms-context';
 
-export default function Hero() {
+export default function Hero({ homepageMode = false }: { homepageMode?: boolean }) {
   const { dict } = useLang();
   const cms = useHomepageCms();
   const cs = useSiteSettings();
+  const homepageCms = homepageMode ? cms : null;
+
+  if (homepageCms?.hero && !homepageCms.hero.enabled) return null;
 
   // Use CMS data where published; fall back to static i18n dictionary
-  const h = cms?.hero
+  const h = homepageCms?.hero
     ? {
-        badge:             cms.hero.badge,
-        headline1:         cms.hero.headline1,
-        headlineAccent:    cms.hero.headlineAccent,
-        headline2:         cms.hero.headline2,
-        subheadline:       cms.hero.subheadline,
-        ctaBooking:        cms.hero.ctaBookingText,
-        ctaCall:           cms.hero.ctaCallText,
-        trustAirportLabel: cms.heroStats.find(s => s.key === 'airport')?.label ?? dict.hero.trustAirportLabel,
-        trustSupportLabel: cms.heroStats.find(s => s.key === 'support')?.label ?? dict.hero.trustSupportLabel,
-        trustVehiclesLabel:cms.heroStats.find(s => s.key === 'vehicles')?.label ?? dict.hero.trustVehiclesLabel,
+        badge:             homepageCms.hero.badge,
+        headline1:         homepageCms.hero.headline1,
+        headlineAccent:    homepageCms.hero.headlineAccent,
+        headline2:         homepageCms.hero.headline2,
+        subheadline:       homepageCms.hero.subheadline,
+        ctaBooking:        homepageCms.hero.ctaBookingText,
+        ctaCall:           homepageCms.hero.ctaCallText,
         scrollHint:        dict.hero.scrollHint,
         scrollAriaLabel:   dict.hero.scrollAriaLabel,
-        imageAlt:          cms.hero.imageAlt,
-        imageSrc:          cms.hero.imagePath,
+        imageAlt:          homepageCms.hero.imageAlt,
+        imageSrc:          homepageCms.hero.imagePath,
       }
     : {
         ...dict.hero,
         imageSrc: '/images/istanbul-vip-transfer-hero.webp',
       };
+  const trustItems = homepageCms?.heroStats
+    ? homepageCms.heroStats
+      .filter((stat) => stat.enabled)
+      .sort((a, b) => a.order - b.order)
+      .map((stat) => ({ number: stat.numberText, label: stat.label }))
+    : [
+      { number: 'IST & SAW', label: dict.hero.trustAirportLabel },
+      { number: '7/24', label: dict.hero.trustSupportLabel },
+      { number: 'Vito & Sprinter', label: dict.hero.trustVehiclesLabel },
+    ];
 
   const scrollToBooking = () => {
     document.dispatchEvent(new Event('ivt:booking-open'));
@@ -158,11 +168,7 @@ export default function Hero() {
               style={{ borderTop: '1px solid #D9E2EC' }}
               data-testid="hero-trust-bar"
             >
-              {[
-                { number: 'IST & SAW', label: h.trustAirportLabel },
-                { number: '7/24',      label: h.trustSupportLabel },
-                { number: 'Vito & Sprinter', label: h.trustVehiclesLabel },
-              ].map((item, i) => (
+              {trustItems.map((item, i) => (
                 <div key={i} className="flex flex-col" data-testid={`hero-trust-item-${i}`}>
                   <span
                     className="text-lg sm:text-xl font-bold"

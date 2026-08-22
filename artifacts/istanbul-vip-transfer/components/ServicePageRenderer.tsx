@@ -22,6 +22,7 @@ import { getContactSettings, type ContactSettings } from '@/lib/site-settings-se
 import { getDictionary } from '@/lib/i18n';
 import { getContentDirection, isolateLtrValues } from '@/lib/i18n/bidi';
 import { localizedServicePath, localizedStaticPath } from '@/lib/localized-service-path';
+import { serializeJsonLd } from '@/lib/json-ld';
 
 interface Props {
   slug: string;
@@ -33,22 +34,6 @@ interface Props {
    * Defaults to "/${lang}/${slug}".
    */
   canonicalPath?: string;
-}
-
-/**
- * Safely serialise an object to JSON for use in a script[type=application/ld+json]
- * tag via dangerouslySetInnerHTML.  Raw JSON.stringify can emit `</script>` and
- * Unicode line/paragraph separators that escape the script block and allow stored
- * XSS.  Replacing the relevant characters with their Unicode escapes is the
- * standard OWASP-recommended mitigation.
- */
-function safeJsonLd(obj: unknown): string {
-  return JSON.stringify(obj)
-    .replace(/</g, '\\u003c')
-    .replace(/>/g, '\\u003e')
-    .replace(/&/g, '\\u0026')
-    .replace(/\u2028/g, '\\u2028')
-    .replace(/\u2029/g, '\\u2029');
 }
 
 // ── JSON-LD helpers ───────────────────────────────────────────────────────────
@@ -328,16 +313,16 @@ export default async function ServicePageRenderer({ slug, lang, canonicalPath }:
         {/* Structured data */}
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: safeJsonLd(serviceSchema) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(serviceSchema) }}
         />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbSchema) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbSchema) }}
         />
         {faqSchema && (
           <script
             type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: safeJsonLd(faqSchema) }}
+            dangerouslySetInnerHTML={{ __html: serializeJsonLd(faqSchema) }}
           />
         )}
 

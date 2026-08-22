@@ -27,6 +27,7 @@ import {
 import { isolateLtrValues } from '@/lib/i18n/bidi';
 import { getPublicUiCopy } from '@/lib/i18n/public-ui';
 import { localizedPublicPath } from '@/lib/localized-service-path';
+import { useHomepageCms } from '@/lib/homepage-cms-context';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -263,10 +264,19 @@ function getIstanbulToday(): string {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function BookingForm({ sectionId = 'rezervasyon' }: { sectionId?: string }) {
+export default function BookingForm({
+  sectionId = 'rezervasyon',
+  homepageMode = false,
+}: {
+  sectionId?: string;
+  /** Only the homepage booking section is managed by homepage CMS. */
+  homepageMode?: boolean;
+}) {
   const { dict, lang } = useLang();
   const b = dict.booking;
   const ui = getPublicUiCopy(lang);
+  const cms = useHomepageCms();
+  const homepageSection = homepageMode ? cms?.reservationSection : null;
 
   // Localised service-type card labels — DB labels are always Turkish
   const ST_LABELS: Record<string, string> = {
@@ -473,6 +483,8 @@ export default function BookingForm({ sectionId = 'rezervasyon' }: { sectionId?:
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
+  if (homepageSection && !homepageSection.enabled) return null;
+
   return (
     <section
       id={sectionId}
@@ -486,13 +498,13 @@ export default function BookingForm({ sectionId = 'rezervasyon' }: { sectionId?:
         {/* Header */}
         <div className="text-center mb-12 ivt-booking-header">
           <span className="text-xs tracking-[0.3em] uppercase mb-4 block" style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}>
-            {b.sectionLabel}
+            {homepageSection?.eyebrow ?? b.sectionLabel}
           </span>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4" style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}>
-            {b.sectionTitle}
+            {homepageSection?.heading ?? b.sectionTitle}
           </h2>
           <p className="text-base max-w-lg mx-auto" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
-            {b.sectionDescription}
+            {homepageSection?.description ?? b.sectionDescription}
           </p>
         </div>
 

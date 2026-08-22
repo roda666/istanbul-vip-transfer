@@ -2,15 +2,26 @@ import PageHero from '@/components/PageHero';
 import VehicleFleet from '@/components/VehicleFleet';
 import BookingForm from '@/components/BookingForm';
 import Contact from '@/components/Contact';
-import { getDictionary, type SiteLang } from '@/lib/i18n';
+import { getDictionary } from '@/lib/i18n';
 import { SITE } from '@/lib/site-config';
+import { resolvePublicVehicle } from '@/lib/vehicle-localization';
 
 const BASE = SITE.siteUrl;
 const ROOT_PAGE = `${BASE}/araclar`;
 
+function safeJsonLd(value: unknown): string {
+  return JSON.stringify(value)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
 interface DbVehicle {
   id: string;
   name: string;
+  slug: string;
   short_description: string | null;
   full_description: string | null;
   passenger_capacity: number | null;
@@ -19,33 +30,44 @@ interface DbVehicle {
   cover_image: string | null;
   name_translations: Record<string, string> | null;
   short_desc_translations: Record<string, string> | null;
+  tagline_translations: Record<string, string> | null;
+  features: Array<{ icon?: string; label?: string }> | null;
+  is_featured: boolean;
+  display_order: number;
 }
 
-async function getVehicles(locale: SiteLang): Promise<DbVehicle[]> {
+async function getVehicles(locale: string): Promise<DbVehicle[]> {
   try {
     const { db } = await import('@/db');
-    const result = await db.execute(
-      `SELECT id, name, short_description, full_description,
-              passenger_capacity, luggage_capacity, vehicle_type, cover_image,
-              name_translations, short_desc_translations
-       FROM vehicles
-       WHERE archived_at IS NULL
-       ORDER BY display_order NULLS LAST, name` as never,
-    );
-    const rows = (result as unknown as DbVehicle[]) ?? [];
-    if (locale === 'tr') return rows;
+    const { vehicles } = await import('@/db/schema');
+    const { asc, eq } = await import('drizzle-orm');
+    const rows = await db
+      .select()
+      .from(vehicles)
+      .where(eq(vehicles.status, 'PUBLISHED'))
+      .orderBy(asc(vehicles.displayOrder), asc(vehicles.name));
 
-    // Do not serialize Turkish source names or descriptions into a localized
-    // vehicle schema. An incomplete translation is omitted until it is ready.
     return rows.flatMap((vehicle) => {
-      const name = vehicle.name_translations?.[locale];
-      const description = vehicle.short_desc_translations?.[locale];
-      if (!name || !description) return [];
+      const localized = resolvePublicVehicle(vehicle, locale);
+      if (!localized) return [];
       return [{
-        ...vehicle,
-        name,
-        short_description: description,
-        full_description: description,
+        id: localized.id,
+        name: localized.displayName,
+        slug: localized.slug,
+        short_description: localized.displayShortDesc,
+        // Full descriptions have no translation column. The localized short
+        // description is deliberately used in JSON-LD rather than Turkish.
+        full_description: localized.displayShortDesc,
+        passenger_capacity: localized.passengerCapacity,
+        luggage_capacity: localized.luggageCapacity,
+        vehicle_type: localized.vehicleType,
+        cover_image: localized.coverImage,
+        name_translations: null,
+        short_desc_translations: null,
+        tagline_translations: null,
+        features: null,
+        is_featured: localized.isFeatured,
+        display_order: localized.displayOrder,
       }];
     });
   } catch {
@@ -59,7 +81,7 @@ function buildImageUrl(path: string | null): string {
   return `${BASE}${path}`;
 }
 
-function buildVehicleSchema(vehicles: DbVehicle[], locale: SiteLang) {
+function buildVehicleSchema(vehicles: DbVehicle[], locale: string) {
   if (vehicles.length === 0) return null;
   const dict = getDictionary(locale);
   const pageUrl = locale === 'tr' ? ROOT_PAGE : `${BASE}/${locale}/araclar`;
@@ -105,7 +127,7 @@ function buildVehicleSchema(vehicles: DbVehicle[], locale: SiteLang) {
   };
 }
 
-function buildBreadcrumbSchema(locale: SiteLang) {
+function buildBreadcrumbSchema(locale: string) {
   const dict = getDictionary(locale);
   const pageUrl = locale === 'tr' ? ROOT_PAGE : `${BASE}/${locale}/araclar`;
   return {
@@ -118,7 +140,7 @@ function buildBreadcrumbSchema(locale: SiteLang) {
   };
 }
 
-export default async function VehiclesPageContent({ locale }: { locale: SiteLang }) {
+export default async function VehiclesPageContent({ locale }: { locale: string }) {
   const vehicles = await getVehicles(locale);
   const vehicleSchema = buildVehicleSchema(vehicles, locale);
   const breadcrumbSchema = buildBreadcrumbSchema(locale);
@@ -131,12 +153,12 @@ export default async function VehiclesPageContent({ locale }: { locale: SiteLang
       <Contact />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbSchema) }}
       />
       {vehicleSchema && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(vehicleSchema) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(vehicleSchema) }}
         />
       )}
     </>

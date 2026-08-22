@@ -326,7 +326,7 @@ export default async function LocalizedPassthrough({ params }: Props) {
 
   return (
     <>
-      {pathKey === 'araclar' ? <VehiclesPageContent locale={lang as import('@/lib/i18n').SiteLang} /> : <Page />}
+      {pathKey === 'araclar' ? <VehiclesPageContent locale={lang} /> : <Page />}
       {scripts}
     </>
   );

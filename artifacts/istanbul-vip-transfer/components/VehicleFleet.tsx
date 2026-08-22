@@ -17,6 +17,11 @@ const FEATURE_ICON_MAP: Record<string, React.ElementType> = {
   WATER:      Droplets,
 };
 
+const SAFE_NEUTRAL_FEATURE_LABELS: Record<string, string> = {
+  WIFI: 'WiFi',
+  MEET_GREET: 'Meet & Greet',
+};
+
 interface DbVehicle {
   id: number;
   displayName: string;
@@ -26,7 +31,7 @@ interface DbVehicle {
   coverImageAlt: string | null;
   passengerCapacity: number;
   luggageCapacity: number;
-  features: Array<{ icon: string; label: string }>;
+  features: Array<{ icon: string; label: string } | string>;
   isFeatured: boolean;
 }
 
@@ -42,10 +47,20 @@ interface DisplayVehicle {
   featured: boolean;
 }
 
+function getFeatureParts(
+  feature: DbVehicle['features'][number],
+): { code: string; storedLabel?: string } {
+  return typeof feature === 'string'
+    ? { code: feature }
+    : { code: feature.icon, storedLabel: feature.label };
+}
+
 function localizeFeatureLabel(
   feature: DbVehicle['features'][number],
   labels: Dictionary['vehicles'],
+  lang: string,
 ): string {
+  const { code, storedLabel } = getFeatureParts(feature);
   const localizedLabels: Partial<Record<string, string>> = {
     CLIMATE: labels.featureClimate,
     LEATHER: labels.featureLeather,
@@ -55,10 +70,18 @@ function localizeFeatureLabel(
 
   // Feature codes are language-neutral; prefer their current-locale labels so
   // legacy Turkish labels stored with vehicles cannot leak into public pages.
-  return localizedLabels[feature.icon] ?? feature.label;
+  return localizedLabels[code]
+    ?? SAFE_NEUTRAL_FEATURE_LABELS[code]
+    // Stored feature labels are Turkish source content, so they may only be
+    // used on the Turkish page. Other locales receive no unsafe fallback.
+    ?? (lang === 'tr' ? storedLabel ?? code : '');
 }
 
-function adaptDbVehicle(vehicle: DbVehicle, labels: Dictionary['vehicles']): DisplayVehicle {
+function adaptDbVehicle(
+  vehicle: DbVehicle,
+  labels: Dictionary['vehicles'],
+  lang: string,
+): DisplayVehicle {
   return {
     name:        vehicle.displayName,
     alt:         vehicle.coverImageAlt ?? vehicle.displayName,
@@ -68,8 +91,8 @@ function adaptDbVehicle(vehicle: DbVehicle, labels: Dictionary['vehicles']): Dis
     luggage:     vehicle.luggageCapacity,
     description: vehicle.displayShortDesc,
     features:    (vehicle.features ?? []).map(f => ({
-      icon:  FEATURE_ICON_MAP[f.icon] ?? Star,
-      label: localizeFeatureLabel(f, labels),
+      icon:  FEATURE_ICON_MAP[getFeatureParts(f).code] ?? Star,
+      label: localizeFeatureLabel(f, labels, lang),
     })),
     featured: vehicle.isFeatured,
   };
@@ -242,56 +265,22 @@ export default function VehicleFleet() {
     document.querySelector('#rezervasyon')?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const staticVehicles: DisplayVehicle[] = [
-    {
-      name: 'Mercedes Vito',
-      alt: v.vitoAlt,
-      tagline: v.vitoTagline,
-      image: '/images/mercedes-vito.jpg',
-      passengers: 7,
-      luggage: 7,
-      description: v.vitoDesc,
-      features: [
-        { icon: Wifi,      label: 'WiFi' },
-        { icon: Wind,      label: v.featureClimate },
-        { icon: UserCheck, label: 'Meet & Greet' },
-        { icon: Star,      label: v.featureLeather },
-      ],
-      featured: false,
-    },
-    {
-      name: 'Mercedes Sprinter VIP',
-      alt: v.sprinterAlt,
-      tagline: v.sprinterTagline,
-      image: '/images/mercedes-sprinter.jpg',
-      passengers: 13,
-      luggage: 13,
-      description: v.sprinterDesc,
-      features: [
-        { icon: Wifi,      label: 'WiFi' },
-        { icon: Wind,      label: v.featureClimate },
-        { icon: UserCheck, label: 'Meet & Greet' },
-        { icon: Star,      label: v.featureLuxury },
-        { icon: Droplets,  label: v.featureWater },
-      ],
-      featured: true,
-    },
-  ];
-
-  const [dbVehicles, setDbVehicles] = useState<DisplayVehicle[] | null>(null);
+  const [dbVehicles, setDbVehicles] = useState<DisplayVehicle[]>([]);
 
   useEffect(() => {
+    let active = true;
+    setDbVehicles([]);
     fetch(`/data/vehicles?lang=${encodeURIComponent(lang)}`)
       .then(r => r.ok ? r.json() : null)
       .then((d: { vehicles?: DbVehicle[] } | null) => {
-        if (d?.vehicles?.length) {
-          setDbVehicles(d.vehicles.map(vehicle => adaptDbVehicle(vehicle, v)));
-        }
+        if (!active) return;
+        setDbVehicles((d?.vehicles ?? []).map(vehicle => adaptDbVehicle(vehicle, v, lang)));
       })
-      .catch(() => {});
+      .catch(() => { if (active) setDbVehicles([]); });
+    return () => { active = false; };
   }, [lang, v]);
 
-  const displayVehicles: DisplayVehicle[] = dbVehicles ?? staticVehicles;
+  const displayVehicles = dbVehicles;
 
   // Update prev/next button state on scroll
   function updateScrollState() {

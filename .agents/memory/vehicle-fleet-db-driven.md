@@ -1,21 +1,20 @@
 ---
 name: Vehicle Fleet DB-driven system
-description: VehicleFleet component is now DB-driven; 6 vehicles seeded with 9-lang translations; migration 0023 applied.
+description: Public vehicle cards and vehicle-page schema share a DB-backed localization contract with no Turkish fallback.
 ---
 
 ## Rule
-`VehicleFleet` fetches `/data/vehicles?lang=` on mount and uses DB data if non-empty, falling back to static array.
+Public vehicle cards and vehicle-page JSON-LD must use the same resolver. For a non-Turkish locale, a vehicle is omitted unless its localized name, short description, and tagline are all present; neither the API nor the UI may fall back to Turkish or static cards.
 
-**Why:** Admin needs to manage fleet without code changes. DB gives CMS-like control.
+**Why:** A static fallback can show archived or untranslated vehicles even when the database safely filters them, while separate SSR logic can leak Turkish descriptions into structured data.
 
-## Key types / helpers (in `components/VehicleFleet.tsx`)
-- `FEATURE_ICON_MAP: Record<string, React.ElementType>` — maps string keys (`WIFI`, `CLIMATE`, `MEET_GREET`, `LEATHER`, `LUXURY`, `WATER`) to lucide-react components.
-- `adaptDbVehicle(v: DbVehicle): DisplayVehicle` — converts DB row to the static vehicle shape the card renderer expects.
-- State: `const [dbVehicles, setDbVehicles] = useState<DisplayVehicle[] | null>(null);` — null means "not yet loaded, use static"; empty array after fetch means "DB returned nothing, fall back to static".
+## Key behavior
+- Vehicle features may arrive as legacy code strings or `{ icon, label }` objects. Render feature codes through localized labels and never expose an admin-stored Turkish label on a non-Turkish page.
+- JSON-LD built from vehicle translations must use safe JSON serialization because vehicle copy is admin-controlled.
 
 ## DB schema
 `vehicles` table has `name_translations`, `short_desc_translations`, `tagline_translations` JSONB (migration 0023).
 Public API at `app/data/vehicles/route.ts` returns `displayName`, `displayShortDesc`, `displayTagline` resolved from JSONB per `?lang=`.
 
 ## How to apply
-Any future admin vehicle CRUD UI should POST/PATCH to a new `/admin/api/vehicles` route and invalidate the 60s cache on `GET /data/vehicles`. The VehicleFleet component will automatically pick up changes on the next page load.
+Any future admin vehicle CRUD UI must keep the three public translation maps complete before publishing a non-Turkish vehicle card. Reuse the shared resolver for new public surfaces rather than implementing per-page fallback logic.

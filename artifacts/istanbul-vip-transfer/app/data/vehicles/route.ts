@@ -4,14 +4,14 @@
  */
 export const dynamic = 'force-dynamic';
 
-const PUBLIC_LOCALES = new Set(['tr', 'en', 'de', 'ru', 'ar', 'fr', 'es', 'it', 'nl']);
-const LOCALIZED_FEATURE_CODES = new Set(['WIFI', 'CLIMATE', 'MEET_GREET', 'LEATHER', 'LUXURY', 'WATER']);
+import { isLocaleCodeSyntax } from '@/lib/i18n/locale-registry';
+import { resolvePublicVehicle } from '@/lib/vehicle-localization';
 
 export async function GET(request: Request) {
   const { NextResponse } = await import('next/server');
   const url = new URL(request.url);
   const requestedLang = url.searchParams.get('lang') ?? 'tr';
-  const lang = PUBLIC_LOCALES.has(requestedLang) ? requestedLang : 'en';
+  const lang = requestedLang === 'tr' || isLocaleCodeSyntax(requestedLang) ? requestedLang : 'en';
 
   try {
     const { db } = await import('@/db');
@@ -40,41 +40,9 @@ export async function GET(request: Request) {
       .where(eq(vehicles.status, 'PUBLISHED'))
       .orderBy(asc(vehicles.displayOrder));
 
-    // A non-Turkish public request must never expose Turkish source fields as
-    // fallback content. Hide incomplete vehicle cards until the requested
-    // translation is available instead.
-    const resolved = rows.flatMap((v) => {
-      const displayName = lang === 'tr'
-        ? (v.nameTranslations?.tr ?? v.name)
-        : v.nameTranslations?.[lang];
-      const displayShortDesc = lang === 'tr'
-        ? (v.shortDescTranslations?.tr ?? v.shortDescription ?? '')
-        : v.shortDescTranslations?.[lang];
-      const displayTagline = lang === 'tr'
-        ? (v.taglineTranslations?.tr ?? '')
-        : v.taglineTranslations?.[lang];
-
-      if (!displayName || !displayShortDesc || !displayTagline) return [];
-
-      return [{
-        id: v.id,
-        slug: v.slug,
-        passengerCapacity: v.passengerCapacity,
-        luggageCapacity: v.luggageCapacity,
-        vehicleType: v.vehicleType,
-        features: (v.features ?? []).filter((feature) => (
-          lang === 'tr' || LOCALIZED_FEATURE_CODES.has(feature)
-        )),
-        coverImage: v.coverImage,
-        // Image alt text has no locale-specific database column. Reuse the
-        // verified display name rather than exposing a Turkish source alt.
-        coverImageAlt: displayName,
-        isFeatured: v.isFeatured,
-        displayOrder: v.displayOrder,
-        displayName,
-        displayShortDesc,
-        displayTagline,
-      }];
+    const resolved = rows.flatMap((vehicle) => {
+      const localized = resolvePublicVehicle(vehicle, lang);
+      return localized ? [localized] : [];
     });
 
     return NextResponse.json({ vehicles: resolved });

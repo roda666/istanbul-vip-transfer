@@ -47,3 +47,4 @@
 - [Nine-language product baseline](nine-language-baseline.md) — Turkish source plus EN/DE/RU/AR/FR/ES/IT/NL is the required public-language scope for future work.
 - [Localized public URLs](localized-service-urls.md) — service and registered static page paths derive from translated navigation labels; legacy locale links permanently redirect.
 - [Service social preview images](service-social-preview-images.md) — every service share uses its own public hero asset across Turkish and localized routes.
+- [Post-merge database setup](post-merge-database-setup.md) — post-merge uses app migration journal, never the separate workspace DB push command.

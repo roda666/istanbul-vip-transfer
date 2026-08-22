@@ -271,7 +271,7 @@ const ru: Dictionary = {
   },
   vehicles: {
     sectionLabel: 'Наш автопарк',
-    heading: 'Наш автопарк Mercedes класса люкс',
+    heading: 'Наш парк VIP-автомобилей',
     subheading: 'Два первоклассных варианта автомобилей для любых нужд — оба полностью оснащены для вашего комфорта.',
     passengers: 'Пассажиры',
     luggage: 'Багаж',

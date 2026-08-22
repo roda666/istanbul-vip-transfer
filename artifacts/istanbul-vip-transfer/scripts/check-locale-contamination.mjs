@@ -31,7 +31,7 @@ const TURKISH_UI_PHRASES = [
   'Hizmet Anlayışımız',
   'Hizmetlerimiz',
   'Her İhtiyaca Uygun',
-  'Lüks Mercedes Filomuz',
+  'VIP Araç Filomuz',
   'Tüm Hizmetler',
 ];
 

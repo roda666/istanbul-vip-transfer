@@ -271,7 +271,7 @@ const en: Dictionary = {
   },
   vehicles: {
     sectionLabel: 'Our Fleet',
-    heading: 'Our Luxury Mercedes Fleet',
+    heading: 'Our VIP Vehicle Fleet',
     subheading: 'Two top-tier vehicle options for every need — both fully equipped for your comfort.',
     passengers: 'Passengers',
     luggage: 'Luggage',

@@ -271,7 +271,7 @@ const ar: Dictionary = {
   },
   vehicles: {
     sectionLabel: 'أسطولنا',
-    heading: 'أسطول مرسيدس الفاخر',
+    heading: 'أسطول سيارات VIP لدينا',
     subheading: 'خياران من أرقى السيارات لكل احتياج — كلاهما مجهز بالكامل لراحتك.',
     passengers: 'ركاب',
     luggage: 'أمتعة',

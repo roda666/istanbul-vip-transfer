@@ -271,7 +271,7 @@ const tr: Dictionary = {
   },
   vehicles: {
     sectionLabel: 'Araç Filosu',
-    heading: 'Lüks Mercedes Filomuz',
+    heading: 'VIP Araç Filomuz',
     subheading: 'Her ihtiyaca özel, en yüksek standartta iki araç seçeneği — her ikisi de tam konforlu.',
     passengers: 'Yolcu',
     luggage: 'Bagaj',

@@ -271,7 +271,7 @@ const es: Dictionary = {
     },
     vehicles: {
       sectionLabel: 'Nuestra flota',
-      heading: 'Nuestra flota Mercedes de lujo',
+      heading: 'Nuestra flota de vehículos VIP',
       subheading: 'Dos opciones de vehículos de alta gama para cada necesidad, totalmente equipadas para su comodidad.',
       passengers: 'Pasajeros',
       luggage: 'Equipaje',

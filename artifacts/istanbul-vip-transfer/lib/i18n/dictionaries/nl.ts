@@ -271,7 +271,7 @@ const nl: Dictionary = {
     },
     vehicles: {
       sectionLabel: 'Ons wagenpark',
-      heading: 'Ons luxe Mercedes-wagenpark',
+      heading: 'Ons VIP-wagenpark',
       subheading: 'Twee eersteklas voertuigopties voor elke behoefte — beide volledig uitgerust voor uw comfort.',
       passengers: 'Passagiers',
       luggage: 'Bagage',

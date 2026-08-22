@@ -271,7 +271,7 @@ const de: Dictionary = {
   },
   vehicles: {
     sectionLabel: 'Unser Fuhrpark',
-    heading: 'Unser Luxus-Mercedes-Fuhrpark',
+    heading: 'Unser VIP-Fuhrpark',
     subheading: 'Zwei erstklassige Fahrzeugoptionen für jeden Bedarf — beide vollständig ausgestattet für Ihren Komfort.',
     passengers: 'Passagiere',
     luggage: 'Gepäck',

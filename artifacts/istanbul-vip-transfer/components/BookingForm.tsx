@@ -362,7 +362,7 @@ export default function BookingForm() {
   const activeST = serviceTypes.find((s) => s.key === activeService);
 
   const optionalBadge = (
-    <span style={{ color: '#718596', fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: '11px' }}>
+    <span style={{ color: '#4E6275', fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: '11px' }}>
       &nbsp;({b.optional})
     </span>
   );
@@ -555,6 +555,7 @@ export default function BookingForm() {
                 type="text"
                 name="_hp"
                 tabIndex={-1}
+                aria-label="Leave this field empty"
                 autoComplete="off"
                 style={{ position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0 }}
               />
@@ -572,17 +573,17 @@ export default function BookingForm() {
                   {/* AIRPORT_TRANSFER */}
                   {activeService === 'AIRPORT_TRANSFER' && (<>
                     <div data-testid="field-alis-lokasyon">
-                      <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.pickupLocation}</label>
+                      <label htmlFor="bf-alis-lokasyon" style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.pickupLocation}</label>
                       <Controller control={control} name="alisLokasyonu" render={({ field }) => (
-                        <LocationCombobox for="pickup" scope="local" value={field.value ?? ''} onChange={field.onChange}
+                        <LocationCombobox id="bf-alis-lokasyon" ariaLabel={b.pickupLocation} for="pickup" scope="local" value={field.value ?? ''} onChange={field.onChange}
                           placeholder={b.pickupPlaceholder} loadingText={dict.common.loading} labels={ui.location} error={!!errors.alisLokasyonu} excludeName={varisLokasyonuValue} />
                       )} />
                       {errors.alisLokasyonu && <p role="alert" style={errorStyle}>{errors.alisLokasyonu.message}</p>}
                     </div>
                     <div data-testid="field-varis-lokasyon">
-                      <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.dropoffLocation}</label>
+                      <label htmlFor="bf-varis-lokasyon" style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.dropoffLocation}</label>
                       <Controller control={control} name="varisLokasyonu" render={({ field }) => (
-                        <LocationCombobox for="dropoff" scope="local" value={field.value ?? ''} onChange={field.onChange}
+                        <LocationCombobox id="bf-varis-lokasyon" ariaLabel={b.dropoffLocation} for="dropoff" scope="local" value={field.value ?? ''} onChange={field.onChange}
                           placeholder={b.dropoffPlaceholder} loadingText={dict.common.loading} labels={ui.location} error={!!errors.varisLokasyonu} excludeName={alisLokasyonuValue} />
                       )} />
                       {errors.varisLokasyonu && <p role="alert" style={errorStyle}>{errors.varisLokasyonu.message}</p>}
@@ -602,17 +603,17 @@ export default function BookingForm() {
                   {/* INTERCITY */}
                   {activeService === 'INTERCITY' && (<>
                     <div data-testid="field-kalkis-ili">
-                      <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.departureCity}</label>
+                      <label htmlFor="bf-kalkis-ili" style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.departureCity}</label>
                       <Controller control={control} name="kalkisIli" render={({ field }) => (
-                        <LocationCombobox for="pickup" scope="intercity" value={field.value ?? ''} onChange={field.onChange}
+                        <LocationCombobox id="bf-kalkis-ili" ariaLabel={b.departureCity} for="pickup" scope="intercity" value={field.value ?? ''} onChange={field.onChange}
                           placeholder={b.departureCityPlaceholder} loadingText={dict.common.loading} labels={ui.location} error={!!errors.kalkisIli} excludeName={varisIliValue} />
                       )} />
                       {errors.kalkisIli && <p role="alert" style={errorStyle}>{errors.kalkisIli.message}</p>}
                     </div>
                     <div data-testid="field-varis-ili">
-                      <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.arrivalCity}</label>
+                      <label htmlFor="bf-varis-ili" style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.arrivalCity}</label>
                       <Controller control={control} name="varisIli" render={({ field }) => (
-                        <LocationCombobox for="dropoff" scope="intercity" value={field.value ?? ''} onChange={field.onChange}
+                        <LocationCombobox id="bf-varis-ili" ariaLabel={b.arrivalCity} for="dropoff" scope="intercity" value={field.value ?? ''} onChange={field.onChange}
                           placeholder={b.arrivalCityPlaceholder} loadingText={dict.common.loading} labels={ui.location} error={!!errors.varisIli} excludeName={kalkisIliValue} />
                       )} />
                       {errors.varisIli && <p role="alert" style={errorStyle}>{errors.varisIli.message}</p>}
@@ -632,9 +633,9 @@ export default function BookingForm() {
                   {/* ALLOCATION */}
                   {activeService === 'ALLOCATION' && (<>
                     <div data-testid="field-alis-alloc">
-                      <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.allocationLocation}</label>
+                      <label htmlFor="bf-alis-lokasyon" style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.allocationLocation}</label>
                       <Controller control={control} name="alisLokasyonu" render={({ field }) => (
-                        <LocationCombobox for="pickup" scope="local" value={field.value ?? ''} onChange={field.onChange}
+                        <LocationCombobox id="bf-alis-lokasyon" ariaLabel={b.allocationLocation} for="pickup" scope="local" value={field.value ?? ''} onChange={field.onChange}
                           placeholder={b.tourPickupPlaceholder} loadingText={dict.common.loading} labels={ui.location} error={!!errors.alisLokasyonu} />
                       )} />
                       {errors.alisLokasyonu && <p role="alert" style={errorStyle}>{errors.alisLokasyonu.message}</p>}
@@ -686,9 +687,9 @@ export default function BookingForm() {
                   {/* TOUR */}
                   {activeService === 'TOUR' && (<>
                     <div data-testid="field-alis-tour">
-                      <label style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.allocationLocation}</label>
+                      <label htmlFor="bf-alis-lokasyon" style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.allocationLocation}</label>
                       <Controller control={control} name="alisLokasyonu" render={({ field }) => (
-                        <LocationCombobox for="pickup" scope="local" value={field.value ?? ''} onChange={field.onChange}
+                        <LocationCombobox id="bf-alis-lokasyon" ariaLabel={b.allocationLocation} for="pickup" scope="local" value={field.value ?? ''} onChange={field.onChange}
                           placeholder={b.tourPickupPlaceholder} loadingText={dict.common.loading} labels={ui.location} error={!!errors.alisLokasyonu} />
                       )} />
                       {errors.alisLokasyonu && <p role="alert" style={errorStyle}>{errors.alisLokasyonu.message}</p>}
@@ -841,8 +842,9 @@ export default function BookingForm() {
                             </label>
                           ) : (
                             <>
-                              <label style={labelStyle}>{field.label}</label>
+                          <label htmlFor={`bf-custom-${field.id}`} style={labelStyle}>{field.label}</label>
                               <input
+                            id={`bf-custom-${field.id}`}
                                 type="text"
                                 className="vip-input"
                                 placeholder={field.label}
@@ -924,7 +926,7 @@ export default function BookingForm() {
                   className="inline-flex items-center justify-center gap-3 w-full sm:w-auto px-8 sm:px-10 py-4 rounded-xl text-sm font-semibold tracking-wider uppercase transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#C79A35] disabled:opacity-70 disabled:cursor-not-allowed"
                   style={{
                     background:    '#25D366',
-                    color:         '#FFFFFF',
+                    color:         '#102A43',
                     fontFamily:    'Inter, sans-serif',
                     letterSpacing: '0.05em',
                     minHeight:     '56px',

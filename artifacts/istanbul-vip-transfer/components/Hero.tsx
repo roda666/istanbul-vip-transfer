@@ -199,7 +199,7 @@ export default function Hero() {
                 fill
                 className="object-cover object-center"
                 priority
-                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 50vw"
+                sizes="(max-width: 640px) calc(100vw - 2.5rem), (max-width: 1024px) calc(100vw - 4rem), 50vw"
               />
             </div>
           </div>

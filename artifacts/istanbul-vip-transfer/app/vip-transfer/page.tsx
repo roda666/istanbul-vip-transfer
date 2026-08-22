@@ -13,14 +13,16 @@ export async function generateMetadata(): Promise<Metadata> {
   const publishedLangs = await getPublishedServicePageLangs('vip-transfer');
   const alts = await buildAlternates('/vip-transfer', publishedLangs);
   const cmsPage = await getPublishedServicePage('vip-transfer', 'tr');
+  const title = cmsPage?.title?.trim() || 'VIP Transfer İstanbul | Vito ve Sprinter';
+  const description = cmsPage?.excerpt?.trim()
+    || 'İstanbul\'da Mercedes Vito ve Sprinter araçlarla havalimanı, otel, kurumsal ve şehirler arası VIP transfer hizmeti.';
   return {
-    title: cmsPage?.title ?? 'VIP Transfer İstanbul | Vito ve Sprinter',
-    description:
-      cmsPage?.excerpt ?? 'İstanbul\'da Mercedes Vito ve Sprinter araçlarla havalimanı, otel, kurumsal ve şehirler arası VIP transfer hizmeti.',
+    title,
+    description,
     alternates: { canonical: PAGE, languages: alts.languages },
     openGraph: {
-      title: cmsPage?.title ?? 'VIP Transfer İstanbul | Vito ve Sprinter',
-      description: cmsPage?.excerpt ?? 'İstanbul\'da Mercedes Vito ve Sprinter araçlarla havalimanı, otel, kurumsal ve şehirler arası VIP transfer hizmeti.',
+      title,
+      description,
       url: PAGE,
       siteName: 'VIP Transfer Istanbul',
       locale: 'tr_TR',

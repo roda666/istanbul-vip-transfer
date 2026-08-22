@@ -76,6 +76,10 @@ function groupLocations(options: LocationOption[], labels: LocationLabels): Loca
 // ── Component ─────────────────────────────────────────────────────────────────
 
 interface Props {
+  /** Connects the custom input to its visible form label. */
+  id: string;
+  /** Accessible name, matching the visible form label. */
+  ariaLabel: string;
   /** Which endpoint filter to use */
   for: 'pickup' | 'dropoff';
   /** Optional scope: 'local' for Istanbul/city, 'intercity' for provinces */
@@ -94,6 +98,8 @@ interface Props {
 }
 
 export default function LocationCombobox({
+  id,
+  ariaLabel,
   for: forProp,
   scope,
   value,
@@ -205,11 +211,13 @@ export default function LocationCombobox({
         <input
           ref={inputRef}
           type="text"
+          id={id}
           role="combobox"
+          aria-label={ariaLabel}
           aria-expanded={open}
           aria-haspopup="listbox"
           aria-autocomplete="list"
-          aria-controls={open ? 'location-combobox-listbox' : undefined}
+          aria-controls={open ? `${id}-listbox` : undefined}
           value={displayValue}
           placeholder={loading ? (loadingText ?? labels.loading) : (placeholder ?? labels.selectOrType)}
           onChange={handleInputChange}
@@ -251,6 +259,7 @@ export default function LocationCombobox({
 
       {open && (
         <div
+          id={`${id}-listbox`}
           role="listbox"
           style={{
             position: 'absolute',

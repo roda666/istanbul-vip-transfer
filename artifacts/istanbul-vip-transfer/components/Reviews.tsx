@@ -254,6 +254,7 @@ export default function Reviews() {
               </div>
               <div
                 className="flex items-center gap-1 mb-4"
+                role="img"
                 aria-label={`${review.rating} stars`}
                 data-testid={`review-stars-${i}`}
               >

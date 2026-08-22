@@ -36,6 +36,7 @@ function VisaBadge() {
 function MastercardBadge() {
   return (
     <span
+      role="img"
       aria-label="Mastercard"
       style={{
         display: 'inline-flex', alignItems: 'center', gap: '3px',
@@ -257,7 +258,7 @@ export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
                 <Link
                   href={p('/hizmetler')}
                   className="text-xs tracking-wider uppercase transition-colors duration-300 mt-2 block focus:outline-none focus-visible:underline"
-                  style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif', opacity: 0.75 }}
+                style={{ color: '#E4C06D', fontFamily: 'Inter, sans-serif', opacity: 1 }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = '1'; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = '0.75'; }}
                 >
@@ -350,7 +351,7 @@ export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
               <div className="flex flex-col gap-2">
                 <p
                   className="text-xs tracking-[0.15em] uppercase mb-1"
-                  style={{ color: 'rgba(255,255,255,0.35)', fontFamily: 'Inter, sans-serif' }}
+                   style={{ color: '#B8C7D4', fontFamily: 'Inter, sans-serif' }}
                 >
                   {dict.footer.tursabLabel}
                 </p>
@@ -362,7 +363,7 @@ export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
             <div className="flex flex-col gap-3">
               <p
                 className="text-xs tracking-[0.15em] uppercase"
-                style={{ color: 'rgba(255,255,255,0.35)', fontFamily: 'Inter, sans-serif' }}
+                 style={{ color: '#B8C7D4', fontFamily: 'Inter, sans-serif' }}
               >
                 {dict.footer.paymentMethods}
               </p>
@@ -406,7 +407,7 @@ export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
               <div className="flex flex-col gap-2">
                 <p
                   className="text-xs tracking-[0.15em] uppercase mb-1"
-                  style={{ color: 'rgba(255,255,255,0.35)', fontFamily: 'Inter, sans-serif' }}
+                   style={{ color: '#B8C7D4', fontFamily: 'Inter, sans-serif' }}
                 >
                   {dict.footer.googlePlayLabel}
                 </p>
@@ -448,9 +449,9 @@ export default function Footer({ hiddenNavSlugs }: FooterProps = {}) {
               key={link.href}
               href={link.href}
               className="text-xs transition-colors duration-300 focus:outline-none focus-visible:underline"
-              style={{ color: 'rgba(255,255,255,0.42)', fontFamily: 'Inter, sans-serif' }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,0.75)'; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,0.42)'; }}
+               style={{ color: '#B8C7D4', fontFamily: 'Inter, sans-serif' }}
+               onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#FFFFFF'; }}
+               onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#B8C7D4'; }}
             >
               {link.label}
             </Link>

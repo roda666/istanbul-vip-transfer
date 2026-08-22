@@ -51,8 +51,10 @@ export default function ChatWidget() {
     return () => clearTimeout(t);
   }, []);
 
-  // Restore session ID from sessionStorage and load history
+  // Restore history only when the visitor opens the panel. This avoids an API
+  // request and state work for a widget that may never be used.
   useEffect(() => {
+    if (!open) return;
     const sid = sessionStorage.getItem(SESSION_KEY);
     if (!sid) return;
     sessionIdRef.current = sid;
@@ -73,7 +75,7 @@ export default function ChatWidget() {
         })));
       })
       .catch(() => {/* ignore — fresh start is fine */});
-  }, []);
+  }, [open]);
 
   // Scroll to bottom
   useEffect(() => {
@@ -86,10 +88,11 @@ export default function ChatWidget() {
   }, [open]);
 
   // ── Persistent admin-reply polling ──────────────────────────────────────
-  // Runs continuously once the component mounts. If there is no sessionId yet
-  // the fetch is skipped. Only 'admin' role messages are applied here —
-  // AI messages arrive via SSE streaming and are already in local state.
+  // Poll only while the conversation panel is open. A visitor who reopens it
+  // receives the complete history above, so no human reply is lost while the
+  // widget is closed.
   useEffect(() => {
+    if (!open) return;
     let cancelled = false;
 
     const poll = async () => {
@@ -152,7 +155,7 @@ export default function ChatWidget() {
       cancelled = true;
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     };
-  }, []); // mount-once, reads sessionIdRef dynamically
+  }, [open]); // reads sessionIdRef dynamically so a newly-created session is included
 
   // ── Send message ─────────────────────────────────────────────────────────
   const sendMessage = useCallback(async () => {
@@ -405,6 +408,7 @@ export default function ChatWidget() {
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKey}
               placeholder={cb.placeholder}
+              aria-label={cb.placeholder}
               disabled={streaming}
               dir={isRtl ? 'rtl' : 'ltr'}
               style={{

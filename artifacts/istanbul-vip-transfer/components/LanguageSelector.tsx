@@ -117,7 +117,7 @@ export default function LanguageSelector({ variant = 'light', className = '' }: 
         type="button"
         onClick={() => setOpen((o) => !o)}
         disabled={pending !== null}
-        aria-label={dict.langSelector.ariaLabel}
+         aria-label={`${nativeNameOf(pending ?? lang)} — ${dict.langSelector.ariaLabel}`}
         aria-expanded={open}
         aria-haspopup="listbox"
         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C79A35]"

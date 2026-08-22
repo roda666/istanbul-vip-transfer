@@ -74,7 +74,7 @@ export default function RelatedBlogSection({ page, lang }: Props) {
               href={card.href}
               className="block bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md hover:border-amber-400 transition-all"
             >
-              <p className="text-xs font-semibold uppercase tracking-wide text-amber-600 mb-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-amber-800 mb-2">
                 {card.category === 'guide' ? dict.relatedBlog.guideLabel : dict.relatedBlog.comparisonLabel}
               </p>
               <h3 className="font-semibold text-gray-900 leading-snug">{dict.relatedBlog[card.title]}</h3>

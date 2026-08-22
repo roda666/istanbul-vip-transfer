@@ -6,14 +6,19 @@
  * Wraps public pages with LangProvider so Header, Footer, and BookingForm
  * can access the active language and dictionary.
  */
+import dynamic from 'next/dynamic';
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import Header from './Header';
 import Footer from './Footer';
 
-import WhatsAppFloat from './WhatsAppFloat';
-import ChatWidget from './ChatWidget';
 import LangProvider from './LangProvider';
 import CookieConsentBanner from './CookieConsentBanner';
+
+// Support widgets are useful after a visitor starts exploring, but they should
+// not compete with the hero, reservation form, and navigation during first paint.
+const WhatsAppFloat = dynamic(() => import('./WhatsAppFloat'), { ssr: false });
+const ChatWidget = dynamic(() => import('./ChatWidget'), { ssr: false });
 
 export default function PublicLayoutWrapper({
   children,
@@ -28,6 +33,25 @@ export default function PublicLayoutWrapper({
 }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith('/admin');
+  const [supportWidgetsReady, setSupportWidgetsReady] = useState(false);
+
+  useEffect(() => {
+    if (isAdmin) return;
+
+    const enableWidgets = () => setSupportWidgetsReady(true);
+    const browserWindow = window as Window & {
+      requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+
+    if (typeof browserWindow.requestIdleCallback === 'function') {
+      const idleId = browserWindow.requestIdleCallback(enableWidgets, { timeout: 3000 });
+      return () => browserWindow.cancelIdleCallback?.(idleId);
+    }
+
+    const timer = window.setTimeout(enableWidgets, 1800);
+    return () => window.clearTimeout(timer);
+  }, [isAdmin]);
 
   if (isAdmin) {
     // Admin pages manage their own layout
@@ -39,8 +63,12 @@ export default function PublicLayoutWrapper({
       <Header hiddenNavSlugs={hiddenNavSlugs} />
       <main>{children}</main>
       <Footer hiddenNavSlugs={hiddenNavSlugs} />
-      <WhatsAppFloat />
-      <ChatWidget />
+      {supportWidgetsReady && (
+        <>
+          <WhatsAppFloat />
+          <ChatWidget />
+        </>
+      )}
       <CookieConsentBanner />
     </LangProvider>
   );

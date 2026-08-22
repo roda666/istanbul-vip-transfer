@@ -445,8 +445,8 @@ export default function VehicleFleet() {
                 }}
                 aria-label={ui.vehicles.slide(i + 1)}
                 style={{
-                  width: '8px', height: '8px', borderRadius: '50%',
-                  background: GOLD, border: 'none', cursor: 'pointer',
+                  width: '44px', height: '44px', borderRadius: '50%',
+                  background: `radial-gradient(circle, ${GOLD} 0 4px, transparent 5px)`, border: 'none', cursor: 'pointer',
                   opacity: 0.3, padding: 0,
                   transition: 'opacity 0.2s',
                 }}

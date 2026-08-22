@@ -78,6 +78,7 @@ export default function Header({ hiddenNavSlugs }: HeaderProps = {}) {
 
   const mainEntries = nav.filter((e) => !e.cta);
   const ctaEntry = nav.find((e) => e.cta);
+  const accessibleGold = '#9A6A12';
 
   // German has longer nav labels — tighten tracking + padding to avoid wrapping
   const isDE = lang === 'de';
@@ -103,7 +104,7 @@ export default function Header({ hiddenNavSlugs }: HeaderProps = {}) {
               <Link href={homePath} className="flex flex-col leading-none" data-testid="logo-link">
                 <span
                   className="text-xl md:text-2xl font-bold tracking-widest uppercase whitespace-nowrap"
-                  style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#C99A32', letterSpacing: '0.15em' }}
+                   style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#9A6A12', letterSpacing: '0.15em' }}
                 >
                   VIP Transfer
                 </span>
@@ -133,8 +134,8 @@ export default function Header({ hiddenNavSlugs }: HeaderProps = {}) {
                       <Link
                         href={entry.href!}
                         className={navLinkCls}
-                        style={{ fontFamily: 'Inter, sans-serif', color: isActive ? '#C99A32' : '#263F55' }}
-                        onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLAnchorElement).style.color = '#C99A32'; }}
+                        style={{ fontFamily: 'Inter, sans-serif', color: isActive ? accessibleGold : '#263F55' }}
+                        onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLAnchorElement).style.color = accessibleGold; }}
                         onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLAnchorElement).style.color = '#263F55'; }}
                         data-testid="nav-hizmetler-link"
                       >
@@ -146,11 +147,11 @@ export default function Header({ hiddenNavSlugs }: HeaderProps = {}) {
                         aria-expanded={dropdownOpen}
                         aria-controls="hizmetler-dropdown"
                         aria-label={dict.header.servicesSubmenuToggle}
-                        className="flex items-center justify-center w-5 h-5 mr-1 rounded transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C79A35]"
-                        style={{ color: isActive ? '#C99A32' : '#50677A' }}
+                        className="flex items-center justify-center w-11 h-11 mr-1 rounded transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C79A35]"
+                        style={{ color: isActive ? accessibleGold : '#50677A' }}
                         onClick={() => setDropdownOpen((o) => !o)}
-                        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#C99A32'; }}
-                        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = isActive ? '#C99A32' : '#50677A'; }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = accessibleGold; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = isActive ? accessibleGold : '#50677A'; }}
                       >
                         <ChevronDown
                           size={12}
@@ -282,7 +283,7 @@ export default function Header({ hiddenNavSlugs }: HeaderProps = {}) {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="ivt-hdr-wa flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#16A36A]"
-                style={{ background: '#16A36A', color: '#FFFFFF', fontFamily: 'Inter, sans-serif' }}
+                style={{ background: '#16A36A', color: '#102A43', fontFamily: 'Inter, sans-serif' }}
                 data-testid="header-whatsapp-cta"
               >
                 <Phone size={13} aria-hidden="true" />
@@ -468,7 +469,7 @@ export default function Header({ hiddenNavSlugs }: HeaderProps = {}) {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2.5 px-6 py-4 rounded-xl text-base font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-[#16A36A]"
-                style={{ background: '#16A36A', color: '#FFFFFF', fontFamily: 'Inter, sans-serif', minHeight: '52px' }}
+                style={{ background: '#16A36A', color: '#102A43', fontFamily: 'Inter, sans-serif', minHeight: '52px' }}
                 data-testid="mobile-whatsapp-cta"
               >
                 <Phone size={18} aria-hidden="true" />

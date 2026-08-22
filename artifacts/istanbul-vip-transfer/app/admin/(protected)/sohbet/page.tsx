@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import AdminPageHeader from '../../_components/AdminPageHeader';
+import ChatbotQuestionReport from '@/components/ChatbotQuestionReport';
 import SohbetClient from './_SohbetClient';
 
 export const metadata: Metadata = {
@@ -16,6 +17,7 @@ export default function SohbetPage() {
         title="Canlı Sohbet"
         description="Ziyaretçilerle gerçek zamanlı sohbet — müşteri mesajları Türkçe gösterilir, yanıtlarınız otomatik çevrilir"
       />
+      <ChatbotQuestionReport />
       <SohbetClient />
     </div>
   );

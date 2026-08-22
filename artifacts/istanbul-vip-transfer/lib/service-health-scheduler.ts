@@ -138,7 +138,18 @@ function buildAlertEmail(items: Array<{ slug: string; title: string | null; issu
  * All heavy imports (db, email, health logic) are dynamic so webpack does not
  * attempt to bundle Node.js-only code into the client-fallback bundle.
  */
-export async function runServiceHealthCheck(): Promise<void> {
+export type ServiceHealthCheckResult =
+  | { status: 'complete'; unhealthyCount: number }
+  | { status: 'skipped_missing_tables' }
+  | { status: 'failed' };
+
+export function isMissingHealthTableError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return (msg.includes('relation') && msg.includes('does not exist'))
+    || (err as { code?: string }).code === '42P01';
+}
+
+export async function runServiceHealthCheck(): Promise<ServiceHealthCheckResult> {
   try {
     // Dynamic imports — keeps postgres, nodemailer, crypto out of the static
     // module graph that webpack analyses for the client-development-fallback.
@@ -180,7 +191,7 @@ export async function runServiceHealthCheck(): Promise<void> {
 
     if (unhealthy.length === 0) {
       console.info('[health-check] All service pages healthy ✓');
-      return;
+      return { status: 'complete', unhealthyCount: 0 };
     }
 
     console.warn('[health-check]', unhealthy.length, 'unhealthy service page(s):', unhealthy.map(i => i.slug));
@@ -203,7 +214,7 @@ export async function runServiceHealthCheck(): Promise<void> {
 
     if (toAlert.length === 0) {
       console.info('[health-check] All unhealthy slugs are within cooldown — no email sent.');
-      return;
+      return { status: 'complete', unhealthyCount: unhealthy.length };
     }
 
     // 4. Send alert email — only advance cooldown if delivery is confirmed.
@@ -214,7 +225,7 @@ export async function runServiceHealthCheck(): Promise<void> {
       // No recipient configured: log but do NOT record cooldown so the next
       // run will attempt again once email addresses are configured.
       console.warn('[health-check] No admin notification emails configured — skipping email. Cooldown NOT recorded.');
-      return;
+      return { status: 'complete', unhealthyCount: unhealthy.length };
     }
 
     const { html, text } = buildAlertEmail(toAlert);
@@ -229,7 +240,7 @@ export async function runServiceHealthCheck(): Promise<void> {
       // Transport error or SMTP not configured: the admin was NOT notified.
       // Do NOT advance cooldown so the next run will retry immediately.
       console.warn('[health-check] Email not delivered — cooldown NOT recorded; will retry next run.');
-      return;
+      return { status: 'complete', unhealthyCount: unhealthy.length };
     }
 
     // 5. Upsert alert timestamps ONLY after confirmed delivery.
@@ -242,22 +253,23 @@ export async function runServiceHealthCheck(): Promise<void> {
           set:    { lastAlertAt: new Date(), issues: item.issues },
         });
     }
+    return { status: 'complete', unhealthyCount: unhealthy.length };
   } catch (err) {
     // PostgreSQL error code 42P01 = "relation does not exist" — almost always
     // means the migration for health tables (0009_service_health_monitoring.sql)
     // has not been applied yet.  Log a targeted warning with guidance rather than
     // a generic error, and skip the run silently so the server stays up.
-    const msg = err instanceof Error ? err.message : String(err);
-    const isRelationMissing = msg.includes('relation') && msg.includes('does not exist')
-      || (err as { code?: string }).code === '42P01';
+    const isRelationMissing = isMissingHealthTableError(err);
 
     if (isRelationMissing) {
       console.warn(
         '[health-check] Skipped — required DB tables are missing. ' +
         'Run `pnpm db:migrate` (or `pnpm db:push`) to create them.',
       );
+      return { status: 'skipped_missing_tables' };
     } else {
       console.error('[health-check] Error during service health check:', err);
+      return { status: 'failed' };
     }
   }
 }

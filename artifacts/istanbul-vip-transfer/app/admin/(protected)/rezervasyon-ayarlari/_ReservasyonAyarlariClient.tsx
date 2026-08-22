@@ -834,7 +834,8 @@ export default function ReservasyonAyarlariClient() {
                 Henüz özel alan eklenmedi. Yukarıdan yeni alan ekleyebilirsiniz.
               </div>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <div style={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '620px' }}>
                 <thead>
                   <tr style={{ background: '#F8FAFC', borderBottom: `1px solid ${BORDER}` }}>
                     {['Etiket', 'Tür', 'Geçerli Hizmetler', 'Aktif', ''].map((h, i) => (
@@ -882,7 +883,8 @@ export default function ReservasyonAyarlariClient() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+                </table>
+              </div>
             )}
           </div>
         </div>

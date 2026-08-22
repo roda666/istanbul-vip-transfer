@@ -9,6 +9,7 @@
  */
 import { useState, useEffect } from 'react';
 import type { ServiceCategoryItem } from '@/lib/service-category-server';
+import { localizedServiceCategoryPath } from '@/lib/localized-service-path';
 
 interface Props {
   locale:     string;
@@ -62,24 +63,46 @@ export default function HizmetlerCategoryNav({ locale, categories }: Props) {
       {categories.map(cat => {
         const isActive = active === cat.slug;
         return (
-          <button
+          <div
             key={cat.slug}
-            onClick={() => scrollTo(cat.slug)}
             style={{
-              padding: '8px 18px', borderRadius: '8px',
+              display: 'inline-flex',
+              borderRadius: '8px',
               border: isActive ? `1px solid ${GOLD}` : '1px solid transparent',
               background: isActive ? GOLD : 'transparent',
-              color: isActive ? '#102A43' : '#50677A',
-              fontFamily: 'Inter, sans-serif', fontSize: '13px',
-              fontWeight: isActive ? 700 : 400,
-              cursor: 'pointer', transition: 'all 0.2s',
-              whiteSpace: 'nowrap',
-              letterSpacing: isActive ? '0.02em' : undefined,
+              overflow: 'hidden',
             }}
-            aria-current={isActive ? 'true' : undefined}
           >
-            {cat.label}
-          </button>
+            <button
+              onClick={() => scrollTo(cat.slug)}
+              style={{
+                padding: '8px 14px', border: 'none',
+                background: 'transparent',
+                color: isActive ? '#102A43' : '#50677A',
+                fontFamily: 'Inter, sans-serif', fontSize: '13px',
+                fontWeight: isActive ? 700 : 400,
+                cursor: 'pointer', transition: 'all 0.2s',
+                whiteSpace: 'nowrap',
+                letterSpacing: isActive ? '0.02em' : undefined,
+              }}
+              aria-current={isActive ? 'true' : undefined}
+            >
+              {cat.label}
+            </button>
+            <a
+              href={localizedServiceCategoryPath(cat.slug, locale)}
+              aria-label={`${cat.label} kategori sayfasını aç`}
+              title="Kategori sayfasını aç"
+              style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: '32px', color: isActive ? '#102A43' : GOLD,
+                borderInlineStart: `1px solid ${isActive ? 'rgba(16,42,67,0.14)' : 'rgba(201,168,76,0.22)'}`,
+                textDecoration: 'none', fontSize: '14px', fontWeight: 700,
+              }}
+            >
+              ↗
+            </a>
+          </div>
         );
       })}
     </div>

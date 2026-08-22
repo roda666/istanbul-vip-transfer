@@ -13,7 +13,13 @@
 import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { isValidLang, SUPPORTED_LANGS } from '@/lib/i18n';
-import { buildAlternates, buildServiceAlternates, buildStaticAlternates, getOgLocale } from '@/lib/i18n/seo';
+import {
+  buildAlternates,
+  buildServiceAlternates,
+  buildServiceCategoryAlternates,
+  buildStaticAlternates,
+  getOgLocale,
+} from '@/lib/i18n/seo';
 import { SITE } from '@/lib/site-config';
 import { getContactSettings } from '@/lib/site-settings-server';
 import rawPageMeta from '@/lib/page-meta.json';
@@ -21,7 +27,9 @@ import { PAGE_REGISTRY } from '@/lib/page-registry';
 import { STATIC_PAGE_SLUGS } from '@/lib/static-page-slugs';
 import {
   localizedServicePath,
+  localizedServiceCategoryPath,
   localizedStaticPath,
+  resolveLocalizedServiceCategoryPath,
   resolveLocalizedServiceSlug,
   resolveLocalizedStaticSlug,
 } from '@/lib/localized-service-path';
@@ -33,6 +41,8 @@ import VehiclesPageContent from '@/components/VehiclesPageContent';
 import HakkimizdaPage    from '@/app/hakkimizda/page';
 import IletisimPage      from '@/app/iletisim/page';
 import LocalizedServicesPageContent from '@/components/LocalizedServicesPageContent';
+import ServiceCategoryPageContent, { getServiceCategoryPageCopy } from '@/components/ServiceCategoryPageContent';
+import { getServiceCategories } from '@/lib/service-category-server';
 
 // ── Non-service static pages ─────────────────────────────────────────────
 // When adding a new WebPage slug:
@@ -108,14 +118,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const requestedPath = slug.join('/');
   const serviceSlug = resolveLocalizedServiceSlug(requestedPath, lang);
   const staticSlug = resolveLocalizedStaticSlug(requestedPath, lang);
-  const pathKey = serviceSlug ?? staticSlug ?? requestedPath;
+  const categorySlug = resolveLocalizedServiceCategoryPath(requestedPath, lang);
+  const category = categorySlug
+    ? (await getServiceCategories(lang)).find((item) => item.slug === categorySlug) ?? null
+    : null;
+  const pathKey = serviceSlug ?? staticSlug ?? categorySlug ?? requestedPath;
   const inRegistry = PAGE_REGISTRY[pathKey];
   const isService = serviceSlug !== null;
   const isStatic  = staticSlug !== null;
+  const isCategory = category !== null;
 
-  if (!inRegistry && !isService && !isStatic) return {};
+  if (!inRegistry && !isService && !isStatic && !isCategory) return {};
 
-  const canonicalPath = isService
+  const canonicalPath = isCategory
+    ? localizedServiceCategoryPath(category.slug, lang)
+    : isService
     ? localizedServicePath(pathKey, lang)
     : isStatic
       ? localizedStaticPath(pathKey, lang)
@@ -127,7 +144,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   let description: string | undefined;
   let ogImages: (typeof SITE.ogImage | string)[] = [SITE.ogImage];
 
-  if (isService) {
+  if (isCategory) {
+    const copy = getServiceCategoryPageCopy(lang);
+    title = `${category.label} | Istanbul VIP Transfer`;
+    description = `${category.label} — ${copy.intro}`;
+  } else if (isService) {
     const dbMeta = await getDbMeta(pathKey, lang);
     if (!dbMeta) {
       // No published translation for this service page in this locale —
@@ -154,13 +175,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // For static non-service pages the locale routes always exist, so we
   // include all supported languages.
   let publishedLangs: string[];
-  if (isService) {
+  if (isCategory) {
+    publishedLangs = [...SUPPORTED_LANGS];
+  } else if (isService) {
     const { getPublishedServicePageLangs } = await import('@/lib/service-page-cms');
     publishedLangs = await getPublishedServicePageLangs(pathKey);
   } else {
     publishedLangs = [...SUPPORTED_LANGS];
   }
-  const alternates = isService
+  const alternates = isCategory
+    ? await buildServiceCategoryAlternates(category.slug)
+    : isService
     ? await buildServiceAlternates(pathKey, publishedLangs)
     : isStatic
       ? await buildStaticAlternates(pathKey)
@@ -194,16 +219,21 @@ export default async function LocalizedPassthrough({ params }: Props) {
   const requestedPath = slug.join('/');
   const serviceSlug = resolveLocalizedServiceSlug(requestedPath, lang);
   const staticSlug = resolveLocalizedStaticSlug(requestedPath, lang);
-  const pathKey = serviceSlug ?? staticSlug ?? requestedPath;
+  const categorySlug = resolveLocalizedServiceCategoryPath(requestedPath, lang);
+  const category = categorySlug
+    ? (await getServiceCategories(lang)).find((item) => item.slug === categorySlug) ?? null
+    : null;
+  const pathKey = serviceSlug ?? staticSlug ?? categorySlug ?? requestedPath;
   const cs = await getContactSettings();
 
   // Validate route exists
   const inRegistry = PAGE_REGISTRY[pathKey];
   const isService  = serviceSlug !== null;
   const isStatic   = staticSlug !== null;
+  const isCategory = category !== null;
   const StaticPage = STATIC_PAGE_MAP[pathKey];
 
-  if (!inRegistry && !isService && !StaticPage) notFound();
+  if (!inRegistry && !isService && !isCategory && !StaticPage) notFound();
 
   // Legacy locale-prefixed Turkish service slugs are redirected to the
   // localized canonical URL so shared/indexed links stay valid without
@@ -219,6 +249,13 @@ export default async function LocalizedPassthrough({ params }: Props) {
     if (`/${lang}/${requestedPath}` !== localizedPath) {
       permanentRedirect(localizedPath);
     }
+  }
+  if (isCategory) {
+    const localizedPath = localizedServiceCategoryPath(category.slug, lang);
+    if (`/${lang}/${requestedPath}` !== localizedPath) {
+      permanentRedirect(localizedPath);
+    }
+    return <ServiceCategoryPageContent locale={lang} category={category} />;
   }
 
   const schemaType = inRegistry?.schemaType ?? (isService ? 'Service' : 'WebPage');

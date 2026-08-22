@@ -30,6 +30,9 @@ const STATIC_NAV_KEYS: Record<string, keyof ReturnType<typeof getDictionary>['na
 
 const SERVICE_SLUGS = new Set(Object.keys(SLUG_TO_PAGE_KEY));
 const STATIC_SLUGS = new Set(Object.keys(STATIC_NAV_KEYS));
+// Existing admin-created categories use underscores (for example `city_vip`);
+// keep those persistent slugs routable alongside conventional hyphenated ones.
+const CATEGORY_SLUG_PATTERN = /^[a-z0-9]+(?:[-_][a-z0-9]+)*$/;
 
 /** Builds the public path for a canonical service slug in the requested locale. */
 export function localizedServicePath(canonicalSlug: string, locale: string): string {
@@ -56,6 +59,24 @@ export function localizedStaticPath(canonicalSlug: string, locale: string): stri
   }
 
   return `/${locale}/${slugify(getDictionary(locale).nav[navKey], canonicalSlug)}`;
+}
+
+/** Builds a locale-aware, browsable service-category URL. */
+export function localizedServiceCategoryPath(categorySlug: string, locale: string): string {
+  return `${localizedStaticPath('hizmetler', locale)}/${categorySlug}`;
+}
+
+/**
+ * Resolves a two-segment service-category route. Category validity is checked
+ * against the active database catalog by the route that renders it.
+ */
+export function resolveLocalizedServiceCategoryPath(routePath: string, locale: string): string | null {
+  const segments = routePath.split('/').filter(Boolean);
+  if (segments.length !== 2 || !CATEGORY_SLUG_PATTERN.test(segments[1])) return null;
+
+  return resolveLocalizedStaticSlug(segments[0], locale) === 'hizmetler'
+    ? segments[1]
+    : null;
 }
 
 /** Returns the canonical Turkish CMS slug for a localized or legacy route segment. */
@@ -110,6 +131,11 @@ export function localizedPublicPath(pathname: string, targetLocale: string): str
 
     const staticSlug = resolveLocalizedStaticSlug(routeSlug, sourceLocale);
     if (staticSlug) return localizedStaticPath(staticSlug, targetLocale) + suffix;
+  }
+
+  if (segments.length === 2) {
+    const categorySlug = resolveLocalizedServiceCategoryPath(segments.join('/'), sourceLocale);
+    if (categorySlug) return localizedServiceCategoryPath(categorySlug, targetLocale) + suffix;
   }
 
   return localePath(pathname, targetLocale);

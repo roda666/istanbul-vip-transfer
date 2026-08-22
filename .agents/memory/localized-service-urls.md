@@ -14,3 +14,9 @@ The locale preference cookie is also authoritative for unprefixed public request
 **Why:** A direct or stale Turkish internal URL otherwise overwrites the visitor’s language context even though their active preference is already known.
 
 **How to apply:** Preserve query strings while canonicalizing through the shared public-path helper. Exempt API, asset, admin, and locale-switch endpoints so this rule only governs visitor-facing navigation.
+
+Service categories use the same localized services-base pattern as nested public landing pages: Turkish `/hizmetler/{category}`, and translated `/{locale}/{localized-services}/{category}` routes for every visitor language. Persisted category slugs may contain underscores as well as hyphens.
+
+**Why:** Categories need stable, shareable URLs without changing the existing grouped services index. Admin-created legacy category slugs include underscores (for example `city_vip`), so treating only hyphenated values as valid silently makes real catalog pages unreachable.
+
+**How to apply:** Build category links, language switches, canonical/hreflang values, and route resolution through the shared category-path helper. Keep category-slug validation strict to a single lowercase alphanumeric segment separated by hyphens or underscores; verify every seeded category, not only hyphen-free examples.

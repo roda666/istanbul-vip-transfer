@@ -54,11 +54,16 @@ function serviceHref(slug: string, locale: string): string {
 }
 
 interface Props {
-  locale:     string;
-  categories?: ServiceCategoryItem[];
+  locale:       string;
+  categories?:  ServiceCategoryItem[];
+  categorySlug?: string;
 }
 
-export default async function HizmetlerServiceGridCms({ locale, categories: catsProp }: Props) {
+export default async function HizmetlerServiceGridCms({
+  locale,
+  categories: catsProp,
+  categorySlug,
+}: Props) {
   const isRtl = RTL_LOCALES.includes(locale);
   const Arrow = isRtl ? ArrowLeft : ArrowRight;
   const moreLabel = MORE_LABEL[locale] ?? MORE_LABEL.en;
@@ -68,7 +73,11 @@ export default async function HizmetlerServiceGridCms({ locale, categories: cats
     catsProp ? Promise.resolve(catsProp) : getServiceCategories(locale),
   ]);
 
-  if (services.length === 0) {
+  const visibleServices = categorySlug
+    ? services.filter((service) => service.category === categorySlug)
+    : services;
+
+  if (visibleServices.length === 0) {
     return (
       <p style={{
         color: '#777', fontFamily: 'Inter, sans-serif', fontSize: '15px',
@@ -81,7 +90,7 @@ export default async function HizmetlerServiceGridCms({ locale, categories: cats
 
   // Group services by category slug
   const grouped = new Map<string, typeof services>();
-  for (const svc of services) {
+  for (const svc of visibleServices) {
     const cat = svc.category ?? '__other__';
     if (!grouped.has(cat)) grouped.set(cat, []);
     grouped.get(cat)!.push(svc);

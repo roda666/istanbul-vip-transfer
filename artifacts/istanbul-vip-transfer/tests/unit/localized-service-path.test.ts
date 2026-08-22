@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   localizedPathForLanguageSwitch,
   localizedPublicPath,
+  localizedServiceCategoryPath,
   localizedServicePath,
   localizedStaticPath,
+  resolveLocalizedServiceCategoryPath,
   resolveLocalizedServiceSlug,
   resolveLocalizedStaticSlug,
 } from '../../lib/localized-service-path';
@@ -57,5 +59,26 @@ describe('localized service paths', () => {
     expect(localizedPublicPath('/hizmetler', 'de')).toBe('/de/dienstleistungen');
     expect(localizedPathForLanguageSwitch('/de/dienstleistungen', 'en')).toBe('/en/services');
     expect(localizedPathForLanguageSwitch('/en/services', 'tr')).toBe('/hizmetler');
+  });
+
+  it.each(TARGET_LOCALES)('uses the localized services base for category pages in %s', (locale) => {
+    const path = localizedServiceCategoryPath('airport', locale);
+    const routePath = path.split('/').slice(2).join('/');
+
+    expect(resolveLocalizedServiceCategoryPath(routePath, locale)).toBe('airport');
+  });
+
+  it('keeps persisted underscore category slugs routable in Turkish and English', () => {
+    expect(resolveLocalizedServiceCategoryPath('hizmetler/city_vip', 'tr')).toBe('city_vip');
+    expect(resolveLocalizedServiceCategoryPath('services/city_vip', 'en')).toBe('city_vip');
+    expect(localizedPathForLanguageSwitch('/hizmetler/city_vip', 'en'))
+      .toBe('/en/services/city_vip');
+  });
+
+  it('preserves the category while switching languages', () => {
+    expect(localizedPathForLanguageSwitch('/de/dienstleistungen/airport', 'en'))
+      .toBe('/en/services/airport');
+    expect(localizedPathForLanguageSwitch('/en/services/airport', 'tr'))
+      .toBe('/hizmetler/airport');
   });
 });

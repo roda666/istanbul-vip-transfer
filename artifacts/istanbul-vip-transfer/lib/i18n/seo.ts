@@ -5,7 +5,11 @@
 import { SITE } from '@/lib/site-config';
 import { LANG_LOCALES, SUPPORTED_LANGS, type SiteLang } from './index';
 import { LOCALE_BCP47 } from './locale-registry';
-import { localizedServicePath, localizedStaticPath } from '@/lib/localized-service-path';
+import {
+  localizedServiceCategoryPath,
+  localizedServicePath,
+  localizedStaticPath,
+} from '@/lib/localized-service-path';
 
 export interface HreflangEntry {
   hrefLang: string;
@@ -95,6 +99,25 @@ export async function buildStaticAlternates(canonicalSlug: string): Promise<Alte
   for (const lang of publicLangs) {
     if (lang.code === 'tr') continue;
     languages[lang.locale] = `${SITE.siteUrl}${localizedStaticPath(canonicalSlug, lang.code)}`;
+  }
+
+  return { canonical, languages };
+}
+
+/** Builds hreflang entries for service category landing pages. */
+export async function buildServiceCategoryAlternates(categorySlug: string): Promise<AlternatesResult> {
+  const canonical = `${SITE.siteUrl}${localizedServiceCategoryPath(categorySlug, 'tr')}`;
+  const languages: Record<string, string> = {
+    'x-default': canonical,
+    [LANG_LOCALES.tr]: canonical,
+  };
+
+  const { getPublicLanguages } = await import('./active-locales');
+  const publicLangs = await getPublicLanguages();
+
+  for (const lang of publicLangs) {
+    if (lang.code === 'tr') continue;
+    languages[lang.locale] = `${SITE.siteUrl}${localizedServiceCategoryPath(categorySlug, lang.code)}`;
   }
 
   return { canonical, languages };

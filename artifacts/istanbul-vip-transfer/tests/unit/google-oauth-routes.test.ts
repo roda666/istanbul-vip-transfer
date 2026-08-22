@@ -1,0 +1,145 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { NextRequest } from 'next/server';
+
+const mocks = vi.hoisted(() => ({
+  requireAdminSession: vi.fn(),
+  dbExecute: vi.fn(),
+  dbUpdate: vi.fn(),
+  fetch: vi.fn(),
+}));
+
+vi.mock('@/lib/auth/session', () => ({
+  requireAdminSession: mocks.requireAdminSession,
+}));
+
+vi.mock('@/db', () => ({
+  db: {
+    execute: mocks.dbExecute,
+    update: mocks.dbUpdate,
+  },
+}));
+
+vi.mock('@/db/schema', () => ({
+  gscConnections: {},
+  googleAdsConnections: {},
+}));
+
+import { GET as startGscConnect } from '@/app/admin/api/gsc/connect/route';
+import { GET as handleGscCallback } from '@/app/admin/api/gsc/callback/route';
+import { GET as startGoogleAdsConnect } from '@/app/admin/api/google-ads/connect/route';
+import { GET as handleGoogleAdsCallback } from '@/app/admin/api/google-ads/callback/route';
+
+const APP_ORIGIN = 'https://preview.example';
+
+function request(path: string) {
+  return new NextRequest(`${APP_ORIGIN}${path}`);
+}
+
+function callbackRequest(path: string, cookie: string) {
+  return new NextRequest(`${APP_ORIGIN}${path}`, {
+    headers: { cookie },
+  });
+}
+
+describe('Google OAuth routes', () => {
+  beforeEach(() => {
+    mocks.requireAdminSession.mockReset();
+    mocks.requireAdminSession.mockResolvedValue({ isLoggedIn: true, role: 'ADMIN' });
+    vi.stubEnv('GOOGLE_CLIENT_ID', 'test-client-id');
+    vi.stubEnv('GOOGLE_CLIENT_SECRET', 'test-client-secret');
+    mocks.dbExecute.mockReset();
+    mocks.dbUpdate.mockReset();
+    mocks.fetch.mockReset();
+    vi.stubGlobal('fetch', mocks.fetch);
+  });
+
+  it('starts Search Console OAuth with the registered callback and readonly scope', async () => {
+    const response = await startGscConnect(request('/admin/api/gsc/connect'));
+    const redirect = new URL(response.headers.get('location')!);
+
+    expect(response.status).toBe(307);
+    expect(redirect.origin + redirect.pathname).toBe('https://accounts.google.com/o/oauth2/v2/auth');
+    expect(redirect.searchParams.get('redirect_uri')).toBe('https://www.istanbulviptransfer.com/admin/api/gsc/callback');
+    expect(redirect.searchParams.get('scope')).toBe('https://www.googleapis.com/auth/webmasters.readonly');
+    expect(redirect.searchParams.get('prompt')).toBe('consent');
+    expect(response.headers.get('set-cookie')).toContain('gsc_oauth_state=');
+  });
+
+  it('starts Google Ads OAuth with the registered callback and Keyword Planner scope', async () => {
+    const response = await startGoogleAdsConnect(request('/admin/api/google-ads/connect'));
+    const redirect = new URL(response.headers.get('location')!);
+
+    expect(response.status).toBe(307);
+    expect(redirect.searchParams.get('redirect_uri')).toBe('https://www.istanbulviptransfer.com/admin/api/google-ads/callback');
+    expect(redirect.searchParams.get('scope')).toContain('https://www.googleapis.com/auth/adwords');
+    expect(redirect.searchParams.get('prompt')).toBe('consent');
+    expect(response.headers.get('set-cookie')).toContain('gads_oauth_state=');
+  });
+
+  it('rejects invalid state before either callback can exchange a code', async () => {
+    const [gscResponse, adsResponse] = await Promise.all([
+      handleGscCallback(request('/admin/api/gsc/callback?code=code&state=bad-state')),
+      handleGoogleAdsCallback(request('/admin/api/google-ads/callback?code=code&state=bad-state')),
+    ]);
+
+    expect(new URL(gscResponse.headers.get('location')!).searchParams.get('error')).toBe('invalid_state');
+    expect(new URL(adsResponse.headers.get('location')!).searchParams.get('error')).toBe('gads_invalid_state');
+  });
+
+  it('maps cancellation to safe, user-facing callback results', async () => {
+    const [gscResponse, adsResponse] = await Promise.all([
+      handleGscCallback(request('/admin/api/gsc/callback?error=access_denied')),
+      handleGoogleAdsCallback(request('/admin/api/google-ads/callback?error=access_denied')),
+    ]);
+
+    expect(new URL(gscResponse.headers.get('location')!).searchParams.get('error')).toBe('user_cancelled');
+    expect(new URL(adsResponse.headers.get('location')!).searchParams.get('error')).toBe('gads_user_cancelled');
+  });
+
+  it('writes active GSC status and redirects to success after a valid callback', async () => {
+    const state = 'gsc-state';
+    mocks.fetch
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        access_token: 'test-access-token',
+        refresh_token: 'test-refresh-token',
+        expires_in: 3600,
+        scope: 'https://www.googleapis.com/auth/webmasters.readonly',
+      })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ email: 'admin@example.com' })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        siteEntry: [{ siteUrl: 'https://www.istanbulviptransfer.com/', permissionLevel: 'siteOwner' }],
+      })));
+
+    const response = await handleGscCallback(callbackRequest(
+      `/admin/api/gsc/callback?code=test-code&state=${state}`,
+      `gsc_oauth_state=${state}; gsc_redirect_uri=https://www.istanbulviptransfer.com/admin/api/gsc/callback`,
+    ));
+
+    expect(new URL(response.headers.get('location')!).searchParams.get('success')).toBe('gsc_connected');
+    expect(mocks.dbExecute).toHaveBeenCalledTimes(2);
+    expect(String(mocks.dbExecute.mock.calls[1]?.[0])).toContain('connected, enabled, last_error');
+    expect(String(mocks.dbExecute.mock.calls[1]?.[0])).toContain('TRUE, TRUE, NULL');
+  });
+
+  it('writes active Google Ads status and redirects to success after a valid callback', async () => {
+    const state = 'ads-state';
+    mocks.fetch
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        access_token: 'test-access-token',
+        refresh_token: 'test-refresh-token',
+        expires_in: 3600,
+        scope: 'https://www.googleapis.com/auth/adwords',
+      })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ email: 'admin@example.com' })));
+
+    const response = await handleGoogleAdsCallback(callbackRequest(
+      `/admin/api/google-ads/callback?code=test-code&state=${state}`,
+      `gads_oauth_state=${state}; gads_redirect_uri=https://www.istanbulviptransfer.com/admin/api/google-ads/callback`,
+    ));
+
+    expect(new URL(response.headers.get('location')!).searchParams.get('success')).toBe('gads_connected');
+    expect(mocks.dbExecute).toHaveBeenCalledTimes(2);
+    expect(String(mocks.dbExecute.mock.calls[1]?.[0])).toContain('connected, enabled, last_error');
+    expect(String(mocks.dbExecute.mock.calls[1]?.[0])).toContain('TRUE, TRUE, NULL');
+  });
+});

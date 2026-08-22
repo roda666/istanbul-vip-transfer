@@ -8,8 +8,19 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/auth/session';
+import { classifyGoogleOAuthProviderError } from '@/lib/google-oauth-feedback';
 
 export const dynamic = 'force-dynamic';
+
+async function persistGoogleAdsConnectionError(error: string) {
+  try {
+    const { db } = await import('@/db');
+    const { googleAdsConnections } = await import('@/db/schema');
+    await db.update(googleAdsConnections).set({ lastError: error, updatedAt: new Date() });
+  } catch {
+    // The redirect must still succeed if the connection table is unavailable.
+  }
+}
 
 export async function GET(req: NextRequest) {
   try { await requireAdminSession(); }
@@ -24,7 +35,7 @@ export async function GET(req: NextRequest) {
   const errorRedirect = (err: string) =>
     NextResponse.redirect(new URL(`${settingsBase}?error=gads_${err}`, req.url));
 
-  if (errParam) return errorRedirect(errParam);
+  if (errParam) return errorRedirect(classifyGoogleOAuthProviderError(errParam));
 
   // CSRF check
   const storedState = req.cookies.get('gads_oauth_state')?.value;
@@ -52,7 +63,8 @@ export async function GET(req: NextRequest) {
     });
 
     if (!tokenRes.ok) {
-      console.error('[Ads callback] Token exchange failed:', tokenRes.status, await tokenRes.text());
+      console.error('[Ads callback] Token exchange failed:', tokenRes.status);
+      await persistGoogleAdsConnectionError('token_exchange_failed');
       return errorRedirect('token_exchange_failed');
     }
 
@@ -63,7 +75,10 @@ export async function GET(req: NextRequest) {
       scope:          string;
     };
 
-    if (!tokens.refresh_token) return errorRedirect('no_refresh_token');
+    if (!tokens.refresh_token) {
+      await persistGoogleAdsConnectionError('no_refresh_token');
+      return errorRedirect('no_refresh_token');
+    }
 
     // Get user email (non-fatal)
     let email: string | null = null;
@@ -82,9 +97,10 @@ export async function GET(req: NextRequest) {
     await db.execute(`DELETE FROM google_ads_connections` as never);
     await db.execute(
       `INSERT INTO google_ads_connections
-         (access_token, refresh_token, token_expiry, scope, connected_email, connected_at, updated_at)
+         (access_token, refresh_token, connected, enabled, last_error, token_expiry, scope, connected_email, connected_at, updated_at)
        VALUES
          ('${tokens.access_token}', '${tokens.refresh_token}',
+          TRUE, TRUE, NULL,
           '${expiry.toISOString()}', '${tokens.scope}',
           ${email ? `'${email.replace(/'/g, "''")}'` : 'NULL'},
           NOW(), NOW())` as never,
@@ -95,8 +111,9 @@ export async function GET(req: NextRequest) {
     response.cookies.delete('gads_oauth_state');
     response.cookies.delete('gads_redirect_uri');
     return response;
-  } catch (err) {
-    console.error('[Ads callback]', err instanceof Error ? err.message : 'unknown');
+  } catch {
+    console.error('[Ads callback] server_error');
+    await persistGoogleAdsConnectionError('server_error');
     return errorRedirect('server_error');
   }
 }

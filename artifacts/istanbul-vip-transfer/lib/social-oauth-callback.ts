@@ -21,11 +21,14 @@ export function socialOAuthCallbackResponse(
   fallbackUrl: string,
 ) {
   const origin = getPublicOrigin(req);
+  const isSuccess = payload.success;
+  const title = isSuccess ? 'Bağlantı tamamlandı' : 'Bağlantı tamamlanamadı';
+  const bodyMessage = isSuccess ? 'Bağlantı tamamlandı. Bu pencere kapanıyor…' : 'Bağlantı tamamlanamadı. Bu pencere kapanıyor…';
   const html = `<!doctype html>
 <html lang="tr">
-  <head><meta charset="utf-8"><title>Bağlantı tamamlandı</title></head>
+  <head><meta charset="utf-8"><title>${title}</title></head>
   <body>
-    <p>Bağlantı tamamlandı. Bu pencere kapanıyor…</p>
+    <p>${bodyMessage}</p>
     <script>
       (() => {
         const payload = ${serializeForScript(payload)};

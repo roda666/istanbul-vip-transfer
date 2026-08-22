@@ -11,6 +11,10 @@ export interface GscConnection {
   siteUrl: string;
   connectedEmail: string | null;
   connectedAt: Date;
+  connected: boolean;
+  enabled: boolean;
+  lastError: string | null;
+  updatedAt: Date;
 }
 
 export interface SearchRow {
@@ -38,18 +42,24 @@ async function getRawConnection(): Promise<{
   site_url: string;
   access_token: string | null;
   refresh_token: string;
+  connected: boolean;
+  enabled: boolean;
+  last_error: string | null;
   token_expiry: Date | null;
   connected_email: string | null;
   connected_at: Date;
+  updated_at: Date;
 } | null> {
   try {
     const { db } = await import('@/db');
     const result = await db.execute(
-      `SELECT site_url, access_token, refresh_token, token_expiry, connected_email, connected_at
+      `SELECT site_url, access_token, refresh_token, connected, enabled, last_error,
+              token_expiry, connected_email, connected_at, updated_at
        FROM gsc_connections ORDER BY id DESC LIMIT 1` as never
     ) as unknown as Array<{
       site_url: string; access_token: string | null; refresh_token: string;
-      token_expiry: Date | null; connected_email: string | null; connected_at: Date;
+      connected: boolean; enabled: boolean; last_error: string | null;
+      token_expiry: Date | null; connected_email: string | null; connected_at: Date; updated_at: Date;
     }>;
     return (result as unknown as typeof result)[0] ?? null;
   } catch {
@@ -60,7 +70,7 @@ async function getRawConnection(): Promise<{
 /** Returns true if GSC tokens are stored in the DB */
 export async function isGscConnected(): Promise<boolean> {
   const conn = await getRawConnection();
-  return !!conn?.refresh_token;
+  return !!conn?.connected && !!conn.refresh_token;
 }
 
 /** Returns public connection info (no tokens) */
@@ -71,6 +81,10 @@ export async function getGscConnection(): Promise<GscConnection | null> {
     siteUrl: conn.site_url,
     connectedEmail: conn.connected_email,
     connectedAt: conn.connected_at,
+    connected: conn.connected,
+    enabled: conn.enabled,
+    lastError: conn.last_error,
+    updatedAt: conn.updated_at,
   };
 }
 

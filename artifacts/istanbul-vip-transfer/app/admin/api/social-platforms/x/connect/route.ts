@@ -1,22 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TwitterApi } from 'twitter-api-v2';
-import { requireSocialPlatformAdmin, socialAuthErrorResponse } from '@/lib/social-auth';
+import { requireSocialPlatformAdmin } from '@/lib/social-auth';
 import { encrypt, isEncryptionReady } from '@/lib/email-crypto';
 import { getSocialCallbackUrl, getSocialSettingsUrl } from '@/lib/social-public-url';
+import { socialOAuthCallbackResponse } from '@/lib/social-oauth-callback';
+import { classifyXOAuthFailure } from '@/lib/social-oauth-feedback';
 
 export const dynamic = 'force-dynamic';
 
+function errorResponse(req: NextRequest, error: string) {
+  const fallback = getSocialSettingsUrl(req, { social_error: error });
+  return socialOAuthCallbackResponse(req, { provider: 'x', success: false, error }, fallback);
+}
+
 export async function GET(req: NextRequest) {
   try { await requireSocialPlatformAdmin(); }
-  catch (error) {
-    const response = socialAuthErrorResponse(error);
-    return NextResponse.json({ error: response.error }, { status: response.status });
-  }
+  catch { return errorResponse(req, 'x_unauthorized'); }
 
   const consumerKey = process.env.X_CONSUMER_KEY;
   const consumerSecret = process.env.X_CONSUMER_SECRET;
   if (!consumerKey || !consumerSecret || !isEncryptionReady()) {
-    return NextResponse.redirect(getSocialSettingsUrl(req, { social_error: 'x_credentials_missing' }));
+    return errorResponse(req, 'x_credentials_missing');
   }
 
   try {
@@ -34,7 +38,8 @@ export async function GET(req: NextRequest) {
     redirect.cookies.set('x_oauth_request_secret', encryptedSecret, options);
     return redirect;
   } catch (error) {
-    console.error('[x connect]', error instanceof Error ? error.message : 'unknown');
-    return NextResponse.redirect(getSocialSettingsUrl(req, { social_error: 'x_request_token_failed' }));
+    const code = classifyXOAuthFailure(error);
+    console.error('[x connect]', code);
+    return errorResponse(req, code);
   }
 }

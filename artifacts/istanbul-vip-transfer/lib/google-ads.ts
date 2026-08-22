@@ -48,16 +48,20 @@ const ADS_API_BASE = 'https://googleads.googleapis.com/v18';
 async function getRawConnection(): Promise<{
   access_token: string | null;
   refresh_token: string;
+  connected: boolean;
+  enabled: boolean;
+  last_error: string | null;
   token_expiry: Date | null;
   connected_email: string | null;
 } | null> {
   try {
     const { db } = await import('@/db');
     const result = await db.execute(
-      `SELECT access_token, refresh_token, token_expiry, connected_email
+      `SELECT access_token, refresh_token, connected, enabled, last_error, token_expiry, connected_email
        FROM google_ads_connections ORDER BY id DESC LIMIT 1` as never
     ) as unknown as Array<{
       access_token: string | null; refresh_token: string;
+      connected: boolean; enabled: boolean; last_error: string | null;
       token_expiry: Date | null; connected_email: string | null;
     }>;
     return (result as unknown as typeof result)[0] ?? null;
@@ -68,20 +72,36 @@ async function getRawConnection(): Promise<{
 
 export async function isGoogleAdsConnected(): Promise<boolean> {
   const conn = await getRawConnection();
-  return !!conn?.refresh_token;
+  return !!conn?.connected && !!conn.refresh_token;
 }
 
 export async function getGoogleAdsConnection(): Promise<{
-  connectedEmail: string | null; connectedAt?: Date | null;
+  connectedEmail: string | null;
+  connectedAt: Date | null;
+  connected: boolean;
+  enabled: boolean;
+  lastError: string | null;
+  updatedAt: Date;
 } | null> {
   try {
     const { db } = await import('@/db');
     const result = await db.execute(
-      `SELECT connected_email, connected_at FROM google_ads_connections ORDER BY id DESC LIMIT 1` as never
-    ) as unknown as Array<{ connected_email: string | null; connected_at: Date | null }>;
+      `SELECT connected_email, connected_at, connected, enabled, last_error, updated_at
+       FROM google_ads_connections ORDER BY id DESC LIMIT 1` as never
+    ) as unknown as Array<{
+      connected_email: string | null; connected_at: Date | null; connected: boolean;
+      enabled: boolean; last_error: string | null; updated_at: Date;
+    }>;
     const row = (result as unknown as typeof result)[0];
     if (!row) return null;
-    return { connectedEmail: row.connected_email, connectedAt: row.connected_at };
+    return {
+      connectedEmail: row.connected_email,
+      connectedAt: row.connected_at,
+      connected: row.connected,
+      enabled: row.enabled,
+      lastError: row.last_error,
+      updatedAt: row.updated_at,
+    };
   } catch { return null; }
 }
 

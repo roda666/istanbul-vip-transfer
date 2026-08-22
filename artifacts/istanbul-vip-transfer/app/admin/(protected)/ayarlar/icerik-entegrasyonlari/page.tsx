@@ -12,28 +12,43 @@ import AdminPageHeader from '../../../_components/AdminPageHeader';
 import DisconnectGscButton from './DisconnectGscButton';
 import DisconnectGadsButton from './DisconnectGadsButton';
 import SocialPlatformsPanel from './SocialPlatformsPanel';
+import { getSocialOAuthMessage } from '@/lib/social-oauth-feedback';
 
 export const metadata: Metadata = { title: 'İçerik Entegrasyonları | Admin', robots: { index: false } };
 export const dynamic = 'force-dynamic';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+type DatabaseConnectionStatus = {
+  connected: boolean;
+  enabled: boolean;
+  lastError: string | null;
+  updatedAt: Date | null;
+  statusReadFailed?: boolean;
+};
+
 async function getGscStatus(): Promise<{
   connected: boolean;
+  enabled: boolean;
+  lastError: string | null;
+  updatedAt: Date | null;
   email?: string | null;
   siteUrl?: string;
-  error?: string;
 }> {
-  const hasCredentials = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
-  if (!hasCredentials) return { connected: false };
   try {
-    const { isGscConnected, getGscConnection } = await import('@/lib/gsc');
-    const connected = await isGscConnected();
-    if (!connected) return { connected: false };
+    const { getGscConnection } = await import('@/lib/gsc');
     const conn = await getGscConnection();
-    return { connected: true, email: conn?.connectedEmail, siteUrl: conn?.siteUrl };
-  } catch (err) {
-    return { connected: false, error: err instanceof Error ? err.message : 'Hata' };
+    if (!conn) return { connected: false, enabled: false, lastError: null, updatedAt: null };
+    return {
+      connected: conn.connected,
+      enabled: conn.enabled,
+      lastError: conn.lastError,
+      updatedAt: conn.updatedAt,
+      email: conn.connectedEmail,
+      siteUrl: conn.siteUrl,
+    };
+  } catch {
+    return { connected: false, enabled: false, lastError: null, updatedAt: null };
   }
 }
 
@@ -48,23 +63,32 @@ async function getTopOpportunities() {
 
 async function getGoogleAdsStatus(): Promise<{
   connected: boolean;
+  enabled: boolean;
+  lastError: string | null;
+  updatedAt: Date | null;
   email?: string | null;
   hasDevToken: boolean;
   hasLoginCustomerId: boolean;
-  error?: string;
 }> {
   const hasDevToken        = !!(process.env.GOOGLE_ADS_DEVELOPER_TOKEN);
   const hasLoginCustomerId = !!(process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID);
-  const hasCredentials = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
-  if (!hasCredentials) return { connected: false, hasDevToken, hasLoginCustomerId };
   try {
-    const { isGoogleAdsConnected, getGoogleAdsConnection } = await import('@/lib/google-ads');
-    const connected = await isGoogleAdsConnected();
-    if (!connected) return { connected: false, hasDevToken, hasLoginCustomerId };
+    const { getGoogleAdsConnection } = await import('@/lib/google-ads');
     const conn = await getGoogleAdsConnection();
-    return { connected: true, email: conn?.connectedEmail, hasDevToken, hasLoginCustomerId };
-  } catch (err) {
-    return { connected: false, hasDevToken, hasLoginCustomerId, error: err instanceof Error ? err.message : 'Hata' };
+    if (!conn) {
+      return { connected: false, enabled: false, lastError: null, updatedAt: null, hasDevToken, hasLoginCustomerId };
+    }
+    return {
+      connected: conn.connected,
+      enabled: conn.enabled,
+      lastError: conn.lastError,
+      updatedAt: conn.updatedAt,
+      email: conn.connectedEmail,
+      hasDevToken,
+      hasLoginCustomerId,
+    };
+  } catch {
+    return { connected: false, enabled: false, lastError: null, updatedAt: null, hasDevToken, hasLoginCustomerId };
   }
 }
 
@@ -112,12 +136,53 @@ function StatusBadge({ ok, label }: { ok: boolean; label?: string }) {
   );
 }
 
+function formatConnectionError(error: string | null) {
+  const errorMessages: Record<string, string> = {
+    token_exchange_failed: 'Token alışverişi başarısız oldu.',
+    no_refresh_token: 'Google refresh token döndürmedi.',
+    server_error: 'Son bağlantı işlemi sunucu hatasıyla tamamlanamadı.',
+  };
+  return error ? (errorMessages[error] ?? 'Son bağlantı işlemi tamamlanamadı.') : '—';
+}
+
+function formatUpdatedAt(value: Date | null) {
+  if (!value) return '—';
+  return new Intl.DateTimeFormat('tr-TR', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Europe/Istanbul',
+  }).format(new Date(value));
+}
+
+function DatabaseStatusDetails({ status }: { status: DatabaseConnectionStatus }) {
+  const items = [
+    ['connected', status.connected ? 'true (bağlı)' : 'false (bağlı değil)'],
+    ['enabled', status.enabled ? 'true (aktif)' : 'false (pasif)'],
+    ['last_error', formatConnectionError(status.lastError)],
+    ['updated_at', formatUpdatedAt(status.updatedAt)],
+  ];
+
+  return (
+    <div style={{ padding: '14px 20px', background: '#F8FAFC', borderBottom: '1px solid #E8EDF2' }}>
+      <p style={{ ...labelStyle, marginBottom: '10px' }}>Veritabanı Bağlantı Durumu</p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(155px, 1fr))', gap: '8px 16px' }}>
+        {items.map(([label, value]) => (
+          <div key={label}>
+            <code style={{ display: 'block', color: '#64748B', fontSize: '10px', marginBottom: '3px' }}>{label}</code>
+            <span style={{ color: '#172B3A', fontFamily: 'Inter, sans-serif', fontSize: '12px', fontWeight: 600 }}>{value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function IcerikEntegrasyonlariPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; success?: string }>;
+  searchParams: Promise<{ error?: string; success?: string; social_error?: string; social_success?: string }>;
 }) {
   const sp           = await searchParams;
   const [gscStatus, gadsStatus] = await Promise.all([getGscStatus(), getGoogleAdsStatus()]);
@@ -145,6 +210,10 @@ export default async function IcerikEntegrasyonlariPage({
     gads_server_error:         'Sunucu hatası. Sunucu loglarını kontrol edin.',
     gads_user_cancelled:       'Google Ads bağlantısı kullanıcı tarafından iptal edildi.',
   };
+  const visibleError = sp.error ?? sp.social_error;
+  const visibleErrorMessage = sp.social_error
+    ? getSocialOAuthMessage(sp.social_error)
+    : visibleError ? (ERROR_MSGS[visibleError] ?? 'Bağlantı tamamlanamadı. Lütfen tekrar deneyin.') : null;
 
   return (
     <div style={{ padding: '28px 24px', maxWidth: '860px' }}>
@@ -154,11 +223,11 @@ export default async function IcerikEntegrasyonlariPage({
       />
 
       {/* Error / Success banners */}
-      {sp.error && (
+      {visibleError && (
         <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px', padding: '14px 18px', marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
           <AlertCircle size={16} color="#D64545" style={{ flexShrink: 0, marginTop: 2 }} />
           <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: '#991B1B', margin: 0 }}>
-            {ERROR_MSGS[sp.error] ?? `Hata: ${sp.error}`}
+            {visibleErrorMessage}
           </p>
         </div>
       )}
@@ -178,6 +247,14 @@ export default async function IcerikEntegrasyonlariPage({
           </p>
         </div>
       )}
+      {sp.social_success === 'x_connected' && (
+        <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '10px', padding: '14px 18px', marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <CheckCircle2 size={16} color="#168C5B" />
+          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: '#14532D', margin: 0 }}>
+            X bağlantısı başarıyla tamamlandı.
+          </p>
+        </div>
+      )}
 
       {/* ── Google Search Console ───────────────────────────────────────── */}
       <div style={card}>
@@ -186,6 +263,7 @@ export default async function IcerikEntegrasyonlariPage({
           <h2 style={headTitle}>Google Search Console</h2>
           <StatusBadge ok={gscStatus.connected} />
         </div>
+        <DatabaseStatusDetails status={gscStatus} />
 
         {!hasGscCredentials ? (
           /* Credentials not configured — show setup instructions */
@@ -314,6 +392,7 @@ export default async function IcerikEntegrasyonlariPage({
           <h2 style={headTitle}>Google Ads — Keyword Planner</h2>
           <StatusBadge ok={gadsStatus.connected} />
         </div>
+        <DatabaseStatusDetails status={gadsStatus} />
 
         {/* Secrets / credentials missing */}
         {(!gadsStatus.hasDevToken || !gadsStatus.hasLoginCustomerId) && (

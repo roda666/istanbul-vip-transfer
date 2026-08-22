@@ -8,8 +8,19 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/auth/session';
+import { classifyGoogleOAuthProviderError } from '@/lib/google-oauth-feedback';
 
 export const dynamic = 'force-dynamic';
+
+async function persistGscConnectionError(error: string) {
+  try {
+    const { db } = await import('@/db');
+    const { gscConnections } = await import('@/db/schema');
+    await db.update(gscConnections).set({ lastError: error, updatedAt: new Date() });
+  } catch {
+    // The redirect must still succeed if the connection table is unavailable.
+  }
+}
 
 export async function GET(req: NextRequest) {
   try { await requireAdminSession(); }
@@ -26,7 +37,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL(`${settingsBase}?error=${err}`, req.url));
   }
 
-  if (errParam) return errorRedirect(errParam);
+  if (errParam) return errorRedirect(classifyGoogleOAuthProviderError(errParam));
 
   // CSRF check
   const storedState = req.cookies.get('gsc_oauth_state')?.value;
@@ -55,7 +66,8 @@ export async function GET(req: NextRequest) {
     });
 
     if (!tokenRes.ok) {
-      console.error('[GSC callback] Token exchange failed:', tokenRes.status, await tokenRes.text());
+      console.error('[GSC callback] Token exchange failed:', tokenRes.status);
+      await persistGscConnectionError('token_exchange_failed');
       return errorRedirect('token_exchange_failed');
     }
 
@@ -66,7 +78,10 @@ export async function GET(req: NextRequest) {
       scope:         string;
     };
 
-    if (!tokens.refresh_token) return errorRedirect('no_refresh_token');
+    if (!tokens.refresh_token) {
+      await persistGscConnectionError('no_refresh_token');
+      return errorRedirect('no_refresh_token');
+    }
 
     // Get connected user email
     let email: string | null = null;
@@ -104,9 +119,10 @@ export async function GET(req: NextRequest) {
     await db.execute(`DELETE FROM gsc_connections` as never);
     await db.execute(
       `INSERT INTO gsc_connections
-         (site_url, access_token, refresh_token, token_expiry, scope, connected_email, connected_at, updated_at)
+         (site_url, access_token, refresh_token, connected, enabled, last_error, token_expiry, scope, connected_email, connected_at, updated_at)
        VALUES
          ('${siteUrl}', '${tokens.access_token}', '${tokens.refresh_token}',
+          TRUE, TRUE, NULL,
           '${expiry.toISOString()}', '${tokens.scope}',
           ${email ? `'${email.replace(/'/g, "''")}'` : 'NULL'},
           NOW(), NOW())` as never,
@@ -119,8 +135,9 @@ export async function GET(req: NextRequest) {
     response.cookies.delete('gsc_redirect_uri');
     return response;
 
-  } catch (err) {
-    console.error('[GSC callback]', err instanceof Error ? err.message : 'unknown');
+  } catch {
+    console.error('[GSC callback] server_error');
+    await persistGscConnectionError('server_error');
     return errorRedirect('server_error');
   }
 }

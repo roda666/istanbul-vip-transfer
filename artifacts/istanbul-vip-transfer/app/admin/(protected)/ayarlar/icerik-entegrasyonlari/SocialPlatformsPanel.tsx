@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, CheckCircle2, ExternalLink, Link2, Loader2, Power, RefreshCw, Send } from 'lucide-react';
+import { getSocialOAuthMessage, getSocialPlatformLastErrorMessage } from '@/lib/social-oauth-feedback';
 
 type Platform = {
   key: string;
@@ -74,7 +75,7 @@ export default function SocialPlatformsPanel() {
         setMessage(event.data.message ?? 'Bağlantı tamamlandı.');
       } else {
         setMessage(null);
-        setError(event.data.error ?? 'OAuth bağlantısı tamamlanamadı.');
+        setError(getSocialOAuthMessage(event.data.error));
       }
       void load();
     }
@@ -118,6 +119,7 @@ export default function SocialPlatformsPanel() {
           popupPollRef.current = null;
         }
         setBusyKey(null);
+        setError((current) => current ?? 'Bağlantı penceresi kapandı. Yetkilendirme tamamlanmadıysa tekrar deneyin.');
         void load();
       }
     }, 500);
@@ -249,7 +251,11 @@ export default function SocialPlatformsPanel() {
                   Son paylaşımı aç <ExternalLink size={11} style={{ verticalAlign: 'middle' }} />
                 </a>
               )}
-              {platform.lastError && <p style={{ fontFamily: 'Inter, sans-serif', color: '#B45309', fontSize: 10, margin: '9px 0 0' }}>{platform.lastError}</p>}
+              {platform.lastError && (
+                <p style={{ fontFamily: 'Inter, sans-serif', color: '#B45309', fontSize: 10, margin: '9px 0 0' }}>
+                  {getSocialPlatformLastErrorMessage(platform.key, platform.lastError)}
+                </p>
+              )}
             </div>
           );
         })}

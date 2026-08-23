@@ -5,6 +5,7 @@ import Link from 'next/link';
 import PageHero from '@/components/PageHero';
 import CollapsibleBookingForm from '@/components/CollapsibleBookingForm';
 import ArticleBody from '@/components/ArticleBody';
+import SafeArticleImage from '@/components/SafeArticleImage';
 import { getPublishedBlogPost, getPublishedBlogPosts } from '@/lib/blog-cms';
 import { SITE } from '@/lib/site-config';
 
@@ -130,9 +131,8 @@ export default async function BlogArticlePage({ params }: Props) {
       {/* Article image */}
       {post.heroImage && (
         <div className="max-w-4xl mx-auto px-5 md:px-8 pt-10">
-          <div className="aspect-video rounded-sm overflow-hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={post.heroImage} alt={post.heroImageAlt ?? post.title} className="w-full h-full object-cover" />
+          <div className="relative aspect-video rounded-sm overflow-hidden">
+            <SafeArticleImage src={post.heroImage} alt={post.heroImageAlt} fallbackAlt={post.title} priority className="object-cover" sizes="(max-width: 1024px) 100vw, 896px" fill />
           </div>
         </div>
       )}

@@ -15,6 +15,8 @@ import { SITE } from '@/lib/site-config';
 import { getContactSettings } from '@/lib/site-settings-server';
 import CollapsibleBookingForm from '@/components/CollapsibleBookingForm';
 import { getPublicLanguage } from '@/lib/i18n/active-locales';
+import ArticleBody from '@/components/ArticleBody';
+import SafeArticleImage from '@/components/SafeArticleImage';
 
 interface Props {
   params: Promise<{ lang: string; slug: string }>;
@@ -86,20 +88,8 @@ export default async function TranslatedBlogPost({ params }: Props) {
 
         {/* Cover image from source */}
         {translation.sourceHeroImage && (
-          <div className="rounded-2xl overflow-hidden mb-8 aspect-video">
-            {/* External URL set by admin — domain unknown, served as-is.
-                fetchPriority="high" because this is the topmost visual on the page
-                (potential LCP candidate). No lazy-loading on detail pages. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={translation.sourceHeroImage}
-              alt={localizedTitle}
-              className="w-full h-full object-cover"
-              decoding="async"
-              fetchPriority="high"
-              width={800}
-              height={450}
-            />
+          <div className="relative rounded-2xl overflow-hidden mb-8 aspect-video">
+            <SafeArticleImage src={translation.sourceHeroImage} fallbackAlt={localizedTitle} priority className="object-cover" sizes="(max-width: 768px) 100vw, 768px" fill />
           </div>
         )}
 
@@ -135,11 +125,9 @@ export default async function TranslatedBlogPost({ params }: Props) {
             )}
 
             {translation.body ? (
-              <div
-                className="prose prose-slate max-w-none"
-                dangerouslySetInnerHTML={{ __html: translation.body }}
-                style={{ fontFamily: 'Inter, sans-serif', lineHeight: 1.8, color: '#2D3748' }}
-              />
+              <div className="max-w-none">
+                <ArticleBody body={translation.body} />
+              </div>
             ) : (
               <p style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>{dict.common.loading}</p>
             )}

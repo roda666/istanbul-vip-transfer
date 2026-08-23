@@ -236,7 +236,7 @@ export interface StudioProject {
 
 export type AIResult<T> =
   | { ok: true; data: T; model: string; tokens?: number }
-  | { ok: false; reason: 'not_configured' | 'rate_limited' | 'api_error' | 'parse_error' | 'truncated'; message: string };
+  | { ok: false; reason: 'not_configured' | 'credit_exhausted' | 'rate_limited' | 'api_error' | 'parse_error' | 'truncated'; message: string };
 
 // ── Stage ordering ────────────────────────────────────────────────────────────
 

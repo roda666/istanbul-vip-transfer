@@ -9,6 +9,7 @@ import { notFound } from 'next/navigation';
 import { isValidLang, SUPPORTED_LANGS } from '@/lib/i18n';
 import { buildAlternates, getOgLocale } from '@/lib/i18n/seo';
 import { SITE } from '@/lib/site-config';
+import { getServiceOgImageUrl } from '@/lib/service-og-images';
 import { getContactSettings } from '@/lib/site-settings-server';
 // Renamed to avoid conflict with Next.js's `export const dynamic` route segment config
 import lazyLoad from 'next/dynamic';
@@ -69,7 +70,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         siteName: 'VIP Transfer Istanbul',
         locale: 'tr_TR',
         type: 'website',
-        images: [SITE.ogImage],
+        images: [{
+          url: getServiceOgImageUrl(service.slug, SITE.siteUrl),
+          width: 1200,
+          height: 630,
+        }],
       },
       robots: { index: true, follow: true },
     };

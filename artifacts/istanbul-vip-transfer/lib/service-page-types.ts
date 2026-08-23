@@ -36,6 +36,14 @@ export interface ServicePageContentSection {
   body: string;
 }
 
+/** A CMS-managed inline image. Source paths are restricted by the admin API. */
+export interface ServicePageInlineImage {
+  /** Stable key for React rendering; never translated. */
+  id: string;
+  src: string;
+  alt: string;
+}
+
 /** Geographic / operational area information for the service. */
 export interface ServicePageServiceArea {
   title: string;
@@ -74,6 +82,8 @@ export interface ServicePageBody {
   introBody?: string;
   /** Ordered list of H2/H3 content sections. */
   contentSections?: ServicePageContentSection[];
+  /** Ordered inline images rendered with the service body. */
+  inlineImages?: ServicePageInlineImage[];
   /** Service area coverage block. */
   serviceArea?: ServicePageServiceArea;
   /** FAQ items rendered with FAQPage JSON-LD. */
@@ -138,6 +148,18 @@ export function parseServicePageBody(body: string | null | undefined): ServicePa
   } catch {
     return null;
   }
+}
+
+/** Add a safe inline image while preserving the structured service-body JSON. */
+export function appendServiceInlineImage(
+  body: ServicePageBody,
+  image: ServicePageInlineImage,
+): ServicePageBody {
+  return {
+    ...body,
+    version: 2,
+    inlineImages: [...(body.inlineImages ?? []), image],
+  };
 }
 
 // ── Translatable field extraction ─────────────────────────────────────────────

@@ -1,5 +1,6 @@
 /** Shared, side-effect-free OpenAI model selection for server jobs and tests. */
 export const DEFAULT_OPENAI_MODEL = 'gpt-5.4-mini';
+export const DEFAULT_OPENAI_IMAGE_MODEL = 'gpt-image-2';
 
 function configuredModel(...names: string[]): string | undefined {
   for (const name of names) {
@@ -19,6 +20,11 @@ export function getOpenAiContentModel(): string {
 export function getOpenAiTranslationModel(): string {
   return configuredModel('OPENAI_MODEL', 'OPENAI_TRANSLATION_MODEL', 'OPENAI_CONTENT_MODEL')
     ?? DEFAULT_OPENAI_MODEL;
+}
+
+/** Image generation is deliberately independent from content/translation models. */
+export function getOpenAiImageModel(): string {
+  return configuredModel('OPENAI_IMAGE_MODEL') ?? DEFAULT_OPENAI_IMAGE_MODEL;
 }
 
 /** Backwards-compatible general model selection for status/display callers. */

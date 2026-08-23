@@ -15,7 +15,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   Sparkles, Plus, BookOpen, Wrench, Clock, CheckCircle2,
-  RefreshCw, Calendar, ChevronRight,
+  RefreshCw, Calendar, ChevronRight, ImagePlus,
 } from 'lucide-react';
 import AdminPageHeader from '../../_components/AdminPageHeader';
 import DraftCadencePanel from './DraftCadencePanel';
@@ -316,6 +316,23 @@ export default function AiStudioPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {config && <ConfigStatus config={config} />}
             <DraftCadencePanel />
+
+            {/* Image generation link */}
+            <Link href="/admin/ai-studio/gorsel-uret" style={{ textDecoration: 'none' }}>
+              <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: '12px', padding: '12px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}
+                onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(19,42,68,0.08)')}
+                onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
+              >
+                <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: '#FFF7E6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <ImagePlus size={14} color={C.gold} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', fontWeight: 700, color: C.text, margin: 0 }}>AI Görsel Üretimi</p>
+                  <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: C.muted, margin: 0 }}>Görsel üret, önizle ve içeriğe ekle</p>
+                </div>
+                <ChevronRight size={14} color={C.muted} />
+              </div>
+            </Link>
 
             {/* System Check link */}
             <Link href="/admin/ai-studio/sistem-kontrolu" style={{ textDecoration: 'none' }}>

@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import SafeArticleImage from '@/components/SafeArticleImage';
+import { isSafeLinkHref, parseMarkdownImage, parsePipeTable } from '@/lib/blog-markdown';
 
 /**
  * Renders a markdown-like body string to styled JSX.
@@ -8,7 +10,9 @@ import type { ReactNode } from 'react';
  *   ## Heading 2
  *   ### Heading 3
  *   - list item
- *   [anchor text](url)   – internal (starts with /) or external
+ *   [anchor text](url)   – safe internal or HTTP(S) external links
+ *   ![alt text](url)     – local/approved optimized image or safe HTTP image
+ *   | Header | Header |   – pipe tables with a Markdown divider row
  *   **bold text**
  *   Empty line           – ends a list block; paragraphs are individual lines
  */
@@ -20,6 +24,7 @@ function parseInline(text: string, baseKey: number): ReactNode {
     const linkMatch = part.match(/^\[(.+?)\]\((.+?)\)$/);
     if (linkMatch) {
       const [, label, href] = linkMatch;
+      if (!isSafeLinkHref(href)) return label;
       if (href.startsWith('/') || href.startsWith('#')) {
         return (
           <Link
@@ -124,6 +129,50 @@ export default function ArticleBody({ body }: { body: string }) {
       flushList();
     } else {
       flushList();
+      const image = parseMarkdownImage(line);
+      if (image) {
+        elements.push(
+          <figure key={ek++} className="mb-6">
+            <div className="relative aspect-video overflow-hidden rounded-sm bg-[#EDF3F7]">
+              <SafeArticleImage
+                src={image.src}
+                alt={image.alt}
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 768px"
+                fill
+              />
+            </div>
+            {image.alt !== 'Article image' && (
+              <figcaption className="mt-2 text-xs" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
+                {image.alt}
+              </figcaption>
+            )}
+          </figure>
+        );
+        continue;
+      }
+      const table = parsePipeTable(lines, li);
+      if (table) {
+        const tableEk = ek++;
+        elements.push(
+          <div key={tableEk} className="mb-6 overflow-x-auto rounded-sm border border-[#D8E1E8]" role="region" aria-label="Article table" tabIndex={0}>
+            <table className="min-w-full border-collapse text-left text-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <thead className="bg-[#EDF3F7]" style={{ color: '#102A43' }}>
+                <tr>{table.headers.map((header, index) => <th key={index} scope="col" className="whitespace-nowrap border-b border-[#D8E1E8] px-4 py-3 font-semibold">{parseInline(header, tableEk * 100 + index)}</th>)}</tr>
+              </thead>
+              <tbody style={{ color: '#263F55' }}>
+                {table.rows.map((row, rowIndex) => (
+                  <tr key={rowIndex} className="border-b border-[#E8EEF2] last:border-0">
+                    {row.map((cell, cellIndex) => <td key={cellIndex} className="whitespace-nowrap px-4 py-3">{parseInline(cell, tableEk * 1000 + rowIndex * 100 + cellIndex)}</td>)}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>,
+        );
+        li = table.endIndex - 1;
+        continue;
+      }
       const lineEk = ek;
       elements.push(
         <p

@@ -5,6 +5,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/auth/session';
+import { verifyLegacyImageFormat } from '@/lib/studio/image-media';
 import 'server-only';
 
 export const dynamic = 'force-dynamic';
@@ -86,7 +87,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }, { status: result.reason === 'not_configured' ? 503 : 500 });
   }
 
-  // Upload base64 image to object storage via sidecar
+  // Download the provider image server-side and upload verified bytes via sidecar.
   const SIDECAR = 'http://127.0.0.1:1106';
   const privateDir = process.env.PRIVATE_OBJECT_DIR ?? '';
   let imageUrl: string | null = null;
@@ -101,13 +102,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const slash      = cleaned.indexOf('/');
       const bucketName = slash === -1 ? cleaned : cleaned.slice(0, slash);
       const prefix     = slash === -1 ? '' : cleaned.slice(slash + 1);
-      const entityId   = `studio/${id}/${Date.now()}.webp`;
-      const objectName = [prefix, entityId].filter(Boolean).join('/');
-
-      // Download from OpenAI CDN then re-upload to our storage
-      const [imgFetch, signRes] = await Promise.all([
-        fetch(tempUrl, { signal: AbortSignal.timeout(30_000) }),
-        fetch(`${SIDECAR}/object-storage/signed-object-url`, {
+      // Download first so the persisted extension and Content-Type match the
+      // verified provider bytes. DALL-E URL responses are normally PNG.
+      const imgFetch = await fetch(tempUrl, { signal: AbortSignal.timeout(30_000) });
+      if (imgFetch.ok) {
+        const imgBytes = new Uint8Array(await imgFetch.arrayBuffer());
+        const format = imgBytes.length <= 10 * 1024 * 1024
+          ? verifyLegacyImageFormat(imgFetch.headers.get('content-type'), imgBytes)
+          : null;
+        if (!format) throw new Error('Unsupported legacy image format');
+        const entityId = `studio/${id}/${Date.now()}.${format.extension}`;
+        const objectName = [prefix, entityId].filter(Boolean).join('/');
+        const signRes = await fetch(`${SIDECAR}/object-storage/signed-object-url`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -115,24 +121,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             method: 'PUT', expires_at: new Date(Date.now() + 900_000).toISOString(),
           }),
           signal: AbortSignal.timeout(30_000),
-        }),
-      ]);
-
-      if (imgFetch.ok && signRes.ok) {
+        });
+        if (!signRes.ok) throw new Error('Storage signing failed');
         const { signed_url } = await signRes.json() as { signed_url: string };
-        const imgBuffer = await imgFetch.arrayBuffer();
         const putRes = await fetch(signed_url, {
           method: 'PUT',
-          body: imgBuffer,
-          headers: { 'Content-Type': 'image/webp' },
+          body: imgBytes,
+          headers: { 'Content-Type': format.contentType },
         });
         if (putRes.ok) {
           objectPath = entityId;
           imageUrl   = `/api/storage/objects/${entityId}`;
-        }
-      }
-    } catch (uploadErr) {
-      console.error('[studio/image] upload failed — using temp URL:', uploadErr);
+        } else throw new Error('Storage upload failed');
+      } else throw new Error('Provider image download failed');
+    } catch {
+      // Do not log signed/provider URLs or potentially credential-bearing errors.
+      console.error('[studio/image] upload failed — using temporary image URL');
       imageUrl = tempUrl; // fall back to temporary CDN URL
     }
   } else {

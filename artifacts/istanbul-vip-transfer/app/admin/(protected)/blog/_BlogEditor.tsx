@@ -622,7 +622,7 @@ export default function BlogEditor({ blogId, initial }: Props) {
             </div>
             <textarea value={body} onChange={e => { setBody(e.target.value); markDirty(); }}
               style={{ ...s.ta('ltr', 20), fontFamily: 'ui-monospace, monospace', fontSize: '12px' }} />
-            <p style={s.hint}>## H2 başlık, ### H3, **kalın**, [bağlantı](url), - madde</p>
+            <p style={s.hint}>## H2, ### H3, **kalın**, [bağlantı](url), - madde, ![alt metin](/gorsel.jpg). Tablo: | Başlık | Değer | ardından | --- | --- | satırı.</p>
             <AIWriteAssist context="blog" field="body" label="İçerik (Markdown)" value={body} onChange={v => { setBody(v); markDirty(); }} maxLength={12_000} />
           </div>
 
@@ -770,6 +770,7 @@ export default function BlogEditor({ blogId, initial }: Props) {
               </div>
               <textarea value={fld.body} onChange={e => updateTxField(activeTab, 'body', e.target.value)} dir={dir}
                 style={{ ...s.ta(dir, 16) }} />
+              <p style={s.hint}>Markdown kullanın: ![alt metin](https://...), tablo için | Başlık | Değer | ve alt satırda | --- | --- |.</p>
             </div>
             <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
               <p style={{ fontSize: '12px', fontWeight: 700, color: '#374151', marginBottom: '12px' }}>SEO</p>

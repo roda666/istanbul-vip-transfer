@@ -23,7 +23,7 @@
 import 'server-only';
 
 import type { AIResult, StudioConfig, StudioContent, SeoScore } from './types';
-import { getOpenAiContentModel } from '@/lib/ai/model-config';
+import { getOpenAiContentModel, getOpenAiImageModel } from '@/lib/ai/model-config';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -58,24 +58,26 @@ function getModel() {
   return getOpenAiContentModel();
 }
 
-function getImageModel(): 'dall-e-3' { return 'dall-e-3'; }
+function getImageModel(): string { return getOpenAiImageModel(); }
 
 /** Sanitise OpenAI error messages — strip any API key fragments before surfacing */
 function sanitiseError(raw: string): string {
   return raw
     .replace(/sk-[A-Za-z0-9_-]{10,}/g, '[KEY_REDACTED]')
     .replace(/Bearer\s+\S+/gi, 'Bearer [REDACTED]')
+    .replace(/(api[_-]?key|authorization)\s*[=:]\s*[^\s,;]+/gi, '$1=[REDACTED]')
     .slice(0, 400);
 }
 
-function classifyError(err: unknown): { ok: false; reason: 'not_configured' | 'rate_limited' | 'api_error' | 'parse_error' | 'truncated'; message: string } {
+export function classifyOpenAiError(err: unknown): { ok: false; reason: 'not_configured' | 'credit_exhausted' | 'rate_limited' | 'api_error' | 'parse_error' | 'truncated'; message: string } {
   const raw = err instanceof Error ? err.message : String(err);
   const msg = sanitiseError(raw);
-  if (raw.includes('429') || raw.toLowerCase().includes('rate limit')) {
-    return { ok: false, reason: 'rate_limited', message: 'API hız sınırı aşıldı. Lütfen 1 dakika sonra tekrar deneyin.' };
+  const status = typeof err === 'object' && err !== null && 'status' in err ? Number((err as { status?: unknown }).status) : 0;
+  if (status === 402 || raw.includes('402') || raw.toLowerCase().includes('insufficient credit') || raw.toLowerCase().includes('insufficient_quota') || raw.toLowerCase().includes('billing')) {
+    return { ok: false, reason: 'credit_exhausted', message: 'OpenAI bakiye veya kredi limiti yetersiz. Yönetici hesabındaki faturalandırmayı kontrol edin.' };
   }
-  if (raw.toLowerCase().includes('billing') || raw.includes('insufficient_quota')) {
-    return { ok: false, reason: 'rate_limited', message: 'OpenAI kota/bakiye sınırına ulaşıldı. Hesabınızı kontrol edin.' };
+  if (status === 429 || raw.includes('429') || raw.toLowerCase().includes('rate limit')) {
+    return { ok: false, reason: 'rate_limited', message: 'API hız sınırı aşıldı. Lütfen 1 dakika sonra tekrar deneyin.' };
   }
   if (raw.toLowerCase().includes('model_not_found') || raw.includes('does not exist')) {
     return { ok: false, reason: 'api_error', message: `Model bulunamadı: ${msg.split('\n')[0]}` };
@@ -85,6 +87,8 @@ function classifyError(err: unknown): { ok: false; reason: 'not_configured' | 'r
   }
   return { ok: false, reason: 'api_error', message: `API hatası: ${msg.split('\n')[0]}` };
 }
+
+const classifyError = classifyOpenAiError;
 
 export type AdminFieldDraftRequest = {
   context: 'blog' | 'service' | 'homepage' | 'chatbot' | 'faq';
@@ -497,6 +501,74 @@ export function runSeoCheck(
 
 // ── 4. Image generation ───────────────────────────────────────────────────────
 
+export type GeneratedImageAsset = {
+  bytes: Uint8Array;
+  contentType: 'image/webp';
+  prompt: string;
+  altText: string;
+  model: string;
+};
+
+/**
+ * Generate an image for a server-side caller. The prompt and alt text are
+ * intentionally explicit: this helper never derives user-visible alt text and
+ * never returns a provider URL or provider response.
+ */
+export async function generateImageAsset(opts: {
+  prompt: string;
+  altText: string;
+}): Promise<AIResult<GeneratedImageAsset>> {
+  const prompt = opts.prompt.trim();
+  const altText = opts.altText.trim();
+  if (!prompt || !altText) {
+    return { ok: false, reason: 'api_error', message: 'Görsel açıklaması ve üretim istemi zorunludur.' };
+  }
+  const client = await getClient();
+  if (!client) {
+    return { ok: false, reason: 'not_configured', message: 'OpenAI görsel servisi yapılandırılmamış.' };
+  }
+
+  const model = getImageModel();
+  try {
+    // GPT Image supports WebP output. `as never` keeps compatibility with
+    // installed SDK declarations that predate output_format.
+    const response = await client.images.generate({
+      model,
+      prompt,
+      n: 1,
+      size: '1536x1024',
+      output_format: 'webp',
+    } as never, { signal: AbortSignal.timeout(60_000) });
+    const image = response.data?.[0] as { b64_json?: string | null; url?: string | null } | undefined;
+    let bytes: Uint8Array | null = null;
+    if (image?.b64_json) {
+      const decoded = Buffer.from(image.b64_json, 'base64');
+      if (decoded.length > 0 && decoded.length <= 10 * 1024 * 1024) bytes = new Uint8Array(decoded);
+    } else if (image?.url) {
+      // Provider URLs are consumed only on the server and are never persisted.
+      const download = await fetch(image.url, { signal: AbortSignal.timeout(30_000) });
+      const contentType = download.headers.get('content-type')?.toLowerCase() ?? '';
+      const length = Number(download.headers.get('content-length') ?? 0);
+      if (download.ok && contentType.split(';')[0] === 'image/webp' && (!length || length <= 10 * 1024 * 1024)) {
+        const downloaded = new Uint8Array(await download.arrayBuffer());
+        if (downloaded.length > 0 && downloaded.length <= 10 * 1024 * 1024) bytes = downloaded;
+      }
+    }
+    if (!bytes) {
+      return { ok: false, reason: 'api_error', message: 'Görsel güvenli biçimde alınamadı. Lütfen tekrar deneyin.' };
+    }
+    const isWebp = bytes.length >= 12
+      && String.fromCharCode(...bytes.slice(0, 4)) === 'RIFF'
+      && String.fromCharCode(...bytes.slice(8, 12)) === 'WEBP';
+    if (!isWebp) {
+      return { ok: false, reason: 'api_error', message: 'Görsel beklenen WebP biçiminde alınamadı.' };
+    }
+    return { ok: true, model, data: { bytes, contentType: 'image/webp', prompt, altText, model } };
+  } catch (error) {
+    return classifyError(error);
+  }
+}
+
 export interface ImageGenResult {
   imageUrl: string;   // temporary OpenAI CDN URL (expires ~1 h) — upload to storage ASAP
   prompt: string;
@@ -533,7 +605,10 @@ export async function generateStudioImage(opts: {
   try {
     // Use URL format — response_format: 'b64_json' was removed in OpenAI SDK 6.x for newer API versions
     const resp = await client.images.generate({
-      model: getImageModel(),
+      // This legacy project-workflow helper persists a temporary provider URL
+      // and uses a DALL·E-only size. New AI Studio image generation uses
+      // generateImageAsset() with OPENAI_IMAGE_MODEL and permanent WebP storage.
+      model: 'dall-e-3',
       prompt,
       n: 1,
       size: '1792x1024',
@@ -550,7 +625,7 @@ export async function generateStudioImage(opts: {
 
     return {
       ok: true,
-      model: getImageModel(),
+      model: 'dall-e-3',
       data: {
         imageUrl,   // temporary CDN URL (~1 h) — caller should upload to permanent storage
         prompt,

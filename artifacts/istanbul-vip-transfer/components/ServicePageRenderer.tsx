@@ -23,6 +23,7 @@ import { getDictionary } from '@/lib/i18n';
 import { getContentDirection, isolateLtrValues } from '@/lib/i18n/bidi';
 import { localizedServicePath, localizedStaticPath } from '@/lib/localized-service-path';
 import { serializeJsonLd } from '@/lib/json-ld';
+import SafeArticleImage from '@/components/SafeArticleImage';
 
 interface Props {
   slug: string;
@@ -194,6 +195,24 @@ function ContentSectionsBlock({ body, dir, lang }: { body: ServicePageBody; dir?
   );
 }
 
+function InlineImagesBlock({ body }: { body: ServicePageBody }) {
+  if (!body.inlineImages?.length) return null;
+  return (
+    <section style={{ padding: '0 24px 40px', maxWidth: '900px', margin: '0 auto' }}>
+      {body.inlineImages.map((image) => (
+        <figure key={image.id} style={{ margin: '0 0 28px' }}>
+          <SafeArticleImage
+            src={image.src}
+            alt={image.alt}
+            sizes="(max-width: 900px) 100vw, 900px"
+            className="block w-full h-auto rounded-xl"
+          />
+        </figure>
+      ))}
+    </section>
+  );
+}
+
 function ServiceAreaBlock({ body, dir, lang }: { body: ServicePageBody; dir?: string; lang: string }) {
   const sa = body.serviceArea;
   if (!sa || (!sa.title && !sa.description && sa.areas.length === 0)) return null;
@@ -345,6 +364,7 @@ export default async function ServicePageRenderer({ slug, lang, canonicalPath }:
         {dbPage.body.introBody && (
           <IntroSection text={dbPage.body.introBody} dir={dir} lang={lang} />
         )}
+        <InlineImagesBlock body={dbPage.body} />
 
         {/* Features list */}
         {dbPage.body.features && dbPage.body.features.length > 0 && (

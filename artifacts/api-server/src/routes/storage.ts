@@ -114,18 +114,24 @@ router.get(
  * GET /storage/objects/*
  *
  * Serve object entities from PRIVATE_OBJECT_DIR.
- * Scoped to the service-pages/ namespace — objects outside that prefix are not
+ * Scoped to approved public namespaces — objects outside those prefixes are not
  * served publicly (they would require auth or a different route).
- * Service-page hero and OG images are intentionally public so they can be
- * rendered on the public-facing website.
+ * Service-page assets, explicitly generated AI images, and the narrowly scoped
+ * legacy Studio image layout are intentionally public so public pages can render
+ * them. Everything else remains private.
  */
 router.get('/storage/objects/*path', async (req: Request, res: Response) => {
   try {
     const raw = req.params.path;
     const wildcardPath = Array.isArray(raw) ? raw.join('/') : raw;
 
-    // Restrict to the service-pages/ namespace — reject everything else
-    if (!wildcardPath.startsWith('service-pages/')) {
+    // Keep namespace validation strict; do not turn this into a general private
+    // bucket proxy. AI assets have a fixed target/slug/UUID WebP layout.
+    const isServicePage = /^service-pages\/[a-z0-9-]+\/[a-z0-9-]+\.(?:jpe?g|png|webp|gif|avif)$/i.test(wildcardPath);
+    const isAiImage = /^ai-images\/(?:blog|service)\/[a-z0-9-]+\/[0-9a-f-]{36}\.webp$/i.test(wildcardPath);
+    // Legacy Studio project images are retained for already-created projects.
+    const isLegacyStudioImage = /^studio\/[0-9a-f-]{36}\/\d+\.(?:png|webp)$/i.test(wildcardPath);
+    if (!isServicePage && !isAiImage && !isLegacyStudioImage) {
       res.status(403).json({ error: 'Access restricted' });
       return;
     }

@@ -22,6 +22,7 @@ const SERVICE_HERO_IMAGES: Record<string, string> = {
   'sapanca-masukiye-turu': '/hero-images/sapanca-masukiye-turu.jpg',
   'bursa-gunubirlik-tur': '/hero-images/bursa-gunubirlik-tur.jpg',
   'yalova-gunubirlik-tur': '/hero-images/yalova-gunubirlik-tur.jpg',
+  'ucus-karsilama-meet-greet': '/hero-images/ucus-karsilama-meet-greet.jpg',
   'ankara-vip-transfer': '/hero-images/ankara-vip-transfer.jpg',
   'antalya-vip-transfer': '/hero-images/antalya-vip-transfer.jpg',
   'izmir-vip-transfer': '/hero-images/izmir-vip-transfer.jpg',
@@ -32,7 +33,12 @@ const SERVICE_HERO_IMAGES: Record<string, string> = {
 
 export function getServiceHeroImage(slug: string): string {
   const path = SERVICE_HERO_IMAGES[slug];
-  return path ? `${SITE.siteUrl}${path}` : SITE.ogImage.url;
+  if (!path) {
+    throw new Error(
+      `Missing service-specific hero image for "${slug}". Register a public hero asset before publishing this service.`,
+    );
+  }
+  return `${SITE.siteUrl}${path}`;
 }
 
 export function getRegisteredServiceHeroSlugs(): string[] {

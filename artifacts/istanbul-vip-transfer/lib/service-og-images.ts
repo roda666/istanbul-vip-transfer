@@ -12,31 +12,22 @@
  *  - Turkish unprefixed service pages (app/<slug>/page.tsx)
  *  - Localised catch-all (app/[lang]/[...slug]/page.tsx).
  *
- * Services added after this card set use the existing service-specific hero
- * image registry until a branded card is generated for them.
+ * The map is derived from the service hero registry, so a newly registered
+ * service is expected to receive a matching card from the generator.
  */
-import { getServiceHeroImage } from '@/lib/service-og-image';
+import {
+  getRegisteredServiceHeroSlugs,
+  getServiceHeroImage,
+} from '@/lib/service-og-image';
 
-export const SERVICE_OG_IMAGES: Record<string, string> = {
-  'istanbul-havalimani-transfer':        '/images/og/og-istanbul-havalimani-transfer.jpg',
-  'sabiha-gokcen-havalimani-transfer':   '/images/og/og-sabiha-gokcen-havalimani-transfer.jpg',
-  'vip-transfer':                        '/images/og/og-vip-transfer.jpg',
-  'sehirler-arasi-transfer':             '/images/og/og-sehirler-arasi-transfer.jpg',
-  'soforlu-arac-kiralama':               '/images/og/og-soforlu-arac-kiralama.jpg',
-  'otel-transfer':                       '/images/og/og-otel-transfer.jpg',
-  'saglik-turizmi-transfer':             '/images/og/og-saglik-turizmi-transfer.jpg',
-  'kurumsal-vip-transfer':               '/images/og/og-kurumsal-vip-transfer.jpg',
-  'istanbul-bursa-transfer':             '/images/og/og-istanbul-bursa-transfer.jpg',
-  'istanbul-sapanca-transfer':           '/images/og/og-istanbul-sapanca-transfer.jpg',
-  'istanbul-gunubirlik-turlar':          '/images/og/og-istanbul-gunubirlik-turlar.jpg',
-  'sapanca-masukiye-turu':               '/images/og/og-sapanca-masukiye-turu.jpg',
-  'bursa-gunubirlik-tur':                '/images/og/og-bursa-gunubirlik-tur.jpg',
-  'yalova-gunubirlik-tur':               '/images/og/og-yalova-gunubirlik-tur.jpg',
-};
+export const SERVICE_OG_IMAGES: Record<string, string> = Object.fromEntries(
+  getRegisteredServiceHeroSlugs().map((slug) => [slug, `/images/og/og-${slug}.jpg`]),
+);
 
 /**
- * Returns a card when one exists; otherwise preserves the mapped
- * service-specific hero image used by newer service pages.
+ * Returns a branded card for every registered service. The hero fallback only
+ * applies to an unregistered slug, so a bad CMS value can never collapse
+ * service shares onto the global site preview.
  */
 export function getServiceOgImageUrl(slug: string, siteUrl: string): string {
   const path = SERVICE_OG_IMAGES[slug];

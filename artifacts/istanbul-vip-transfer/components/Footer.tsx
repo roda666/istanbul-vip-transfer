@@ -400,10 +400,11 @@ export default function Footer({ hiddenNavSlugs, homepageFooter }: FooterProps =
                 <span
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: '5px',
-                    background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
+                    background: 'rgba(199,154,53,0.18)', border: '1px solid rgba(199,154,53,0.58)',
                     borderRadius: '5px', padding: '3px 8px', height: '28px',
-                    color: 'rgba(255,255,255,0.7)', fontFamily: 'Inter, sans-serif',
+                    color: 'rgba(255,255,255,0.94)', fontFamily: 'Inter, sans-serif',
                     fontSize: '10px', fontWeight: 500, whiteSpace: 'nowrap',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.09)',
                   }}
                 >
                   <Banknote size={11} strokeWidth={2} />
@@ -412,10 +413,11 @@ export default function Footer({ hiddenNavSlugs, homepageFooter }: FooterProps =
                 <span
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: '5px',
-                    background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
+                    background: 'rgba(199,154,53,0.18)', border: '1px solid rgba(199,154,53,0.58)',
                     borderRadius: '5px', padding: '3px 8px', height: '28px',
-                    color: 'rgba(255,255,255,0.7)', fontFamily: 'Inter, sans-serif',
+                    color: 'rgba(255,255,255,0.94)', fontFamily: 'Inter, sans-serif',
                     fontSize: '10px', fontWeight: 500, whiteSpace: 'nowrap',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.09)',
                   }}
                 >
                   <ArrowLeftRight size={11} strokeWidth={2} />

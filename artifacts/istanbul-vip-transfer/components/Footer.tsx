@@ -7,6 +7,7 @@ import type { HomepageSections } from '@/lib/homepage-types';
 import { useSiteSettings } from '@/components/SiteSettingsContext';
 import { localizedPublicPath, localizedServicePath } from '@/lib/localized-service-path';
 import type { PublicServiceNavigationItem } from '@/lib/public-service-catalog-types';
+import { selectFooterServiceLinks } from '@/lib/footer-service-links';
 import LanguageSelector from './LanguageSelector';
 import { trackEvent } from '@/lib/analytics';
 
@@ -149,7 +150,7 @@ export default function Footer({ serviceLinks = [], homepageFooter }: FooterProp
     { label: dict.footer.contactLink,     href: p('/iletisim') },
   ];
 
-  const services = serviceLinks.map((service) => ({
+  const services = selectFooterServiceLinks(serviceLinks).map((service) => ({
     ...service,
     href: servicePath(service.slug),
   }));

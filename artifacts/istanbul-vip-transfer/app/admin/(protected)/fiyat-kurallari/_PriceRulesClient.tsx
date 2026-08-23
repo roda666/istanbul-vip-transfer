@@ -225,26 +225,20 @@ export default function PriceRulesClient() {
   const [rules, setRules] = useState<Rule[]>([]);
   const [routes, setRoutes] = useState<RouteOption[]>([]);
   const [vehicles, setVehicles] = useState<VehicleOption[]>([]);
-  const [enabled, setEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [changingState, setChangingState] = useState(false);
   const [modalRule, setModalRule] = useState<Rule | null | undefined>(undefined);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const [rulesResponse, stateResponse] = await Promise.all([
-        fetch('/admin/api/price-rules'),
-        fetch('/admin/api/price-calculator'),
-      ]);
-      if (!rulesResponse.ok || !stateResponse.ok) throw new Error('load');
-      const [rulesData, stateData] = await Promise.all([rulesResponse.json(), stateResponse.json()]);
+      const rulesResponse = await fetch('/admin/api/price-rules');
+      if (!rulesResponse.ok) throw new Error('load');
+      const rulesData = await rulesResponse.json();
       setRules(rulesData.rules ?? []);
       setRoutes(rulesData.routes ?? []);
       setVehicles(rulesData.vehicles ?? []);
-      setEnabled(stateData.settings?.enabled === true);
     } catch {
       setError('Fiyat kuralları yüklenemedi. Lütfen sayfayı yenileyin.');
     } finally {
@@ -255,29 +249,6 @@ export default function PriceRulesClient() {
   useEffect(() => { void load(); }, [load]);
 
   const activeRuleCount = useMemo(() => rules.filter((rule) => rule.active).length, [rules]);
-
-  async function setFeatureEnabled(nextEnabled: boolean) {
-    const confirmation = nextEnabled
-      ? 'Tahmini fiyat API erişimi açılacak. Ziyaretçiler için henüz bir hesaplayıcı arayüzü eklenmemiştir. Devam edilsin mi?'
-      : 'Tahmini fiyat API erişimi kapatılacak. Devam edilsin mi?';
-    if (!window.confirm(confirmation)) return;
-    setChangingState(true);
-    setError('');
-    try {
-      const response = await fetch('/admin/api/price-calculator', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled: nextEnabled }),
-      });
-      const json = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(json.error ?? 'update');
-      setEnabled(json.settings.enabled === true);
-    } catch {
-      setError('Özellik bayrağı güncellenemedi.');
-    } finally {
-      setChangingState(false);
-    }
-  }
 
   async function removeRule(rule: Rule) {
     if (!window.confirm(`"${rule.routeName}" / "${rule.vehicleName}" fiyat kuralı silinsin mi?`)) return;
@@ -294,13 +265,13 @@ export default function PriceRulesClient() {
 
   return (
     <div>
-      <section style={{ marginBottom: '22px', padding: '18px 20px', borderRadius: '12px', border: `1px solid ${enabled ? '#FCD34D' : '#BFDBFE'}`, background: enabled ? '#FFFBEB' : '#EFF6FF' }}>
+      <section style={{ marginBottom: '22px', padding: '18px 20px', borderRadius: '12px', border: '1px solid #BFDBFE', background: '#EFF6FF' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '18px', flexWrap: 'wrap' }}>
           <div>
-            <h2 style={{ margin: 0, color: NAVY, fontFamily: 'Inter, sans-serif', fontSize: '15px' }}>{enabled ? 'Tahmini fiyat API erişimi açık' : 'Hesaplayıcı kapalı — varsayılan güvenli durum'}</h2>
-            <p style={{ margin: '6px 0 0', color: MUTED, fontFamily: 'Inter, sans-serif', fontSize: '13px', lineHeight: 1.55, maxWidth: '730px' }}>Bu sayfa yalnızca fiyat altyapısını yönetir. Ziyaretçi sayfalarında, navigasyonda, rezervasyon formunda ve chatbotta hesaplayıcı gösterilmez. Bayrak kapalıyken public tahmin isteği de `FEATURE_DISABLED` ile kapatılır.</p>
+            <h2 style={{ margin: 0, color: NAVY, fontFamily: 'Inter, sans-serif', fontSize: '15px' }}>Public fiyat hesaplama kalıcı olarak kapalı</h2>
+            <p style={{ margin: '6px 0 0', color: MUTED, fontFamily: 'Inter, sans-serif', fontSize: '13px', lineHeight: 1.55, maxWidth: '730px' }}>Yeni TRY-temelli fiyat motoru yalnız yetkili yönetici uçlarında çalışır. Ziyaretçiler, rezervasyon formu ve chatbot hiçbir fiyat/formül veya operasyon maliyeti alamaz. Aşağıdaki eski sabit kurallar geçmiş kayıtları korumak içindir; yeni motor bunları kullanmaz.</p>
           </div>
-          <button type="button" disabled={changingState} onClick={() => void setFeatureEnabled(!enabled)} style={{ border: 'none', borderRadius: '8px', background: enabled ? '#B45309' : BLUE, color: '#FFFFFF', padding: '9px 14px', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: '13px', cursor: changingState ? 'wait' : 'pointer', opacity: changingState ? 0.7 : 1 }}>{enabled ? 'API erişimini kapat' : 'API erişimini aç'}</button>
+          <span style={{ borderRadius: '999px', background: '#DBEAFE', color: '#1D4ED8', padding: '7px 10px', fontSize: '12px', fontWeight: 700, fontFamily: 'Inter, sans-serif' }}>Yalnız yönetici</span>
         </div>
       </section>
 

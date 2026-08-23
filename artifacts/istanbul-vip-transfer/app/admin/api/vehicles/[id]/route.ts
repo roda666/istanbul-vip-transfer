@@ -15,6 +15,8 @@ const updateSchema = z.object({
   passengerCapacity: z.number().int().min(1).max(99).optional().nullable(),
   luggageCapacity: z.number().int().min(0).max(99).optional().nullable(),
   vehicleType: z.enum(VEHICLE_TYPE_VALUES).optional().nullable(),
+  priceCalculationEligible: z.boolean().optional(),
+  pricingClass: z.enum(['minivan', 'minibus', 'midibus', 'bus']).optional(),
   features: z.array(z.string().max(200)).optional(),
   coverImage: z.string().max(500).optional().nullable(),
   coverImageAlt: z.string().max(300).optional().nullable(),
@@ -135,6 +137,8 @@ export async function PUT(request: NextRequest, { params }: Params) {
     if (data.luggageCapacity !== undefined) updateValues.luggageCapacity = data.luggageCapacity;
     if (data.vehicleType !== undefined)
       updateValues.vehicleType = data.vehicleType ? sanitizeText(data.vehicleType) : null;
+    if (data.priceCalculationEligible !== undefined) updateValues.priceCalculationEligible = data.priceCalculationEligible;
+    if (data.pricingClass !== undefined) updateValues.pricingClass = data.pricingClass;
     if (data.features !== undefined)
       updateValues.features = data.features.map((f) => sanitizeText(f));
     if (data.coverImage !== undefined)

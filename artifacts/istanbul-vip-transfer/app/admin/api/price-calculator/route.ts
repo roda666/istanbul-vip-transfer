@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 import { eq } from 'drizzle-orm';
 import { requireAdminSession } from '@/lib/auth/session';
 import { db } from '@/db';
@@ -7,9 +6,7 @@ import { auditLogs, priceCalculatorSettings } from '@/db/schema';
 
 export const dynamic = 'force-dynamic';
 
-const featureSchema = z.object({ enabled: z.boolean() });
-
-/** GET /admin/api/price-calculator — operational state for the hidden feature. */
+/** GET /admin/api/price-calculator — public pricing is permanently disabled. */
 export async function GET() {
   try {
     await requireAdminSession();
@@ -23,15 +20,15 @@ export async function GET() {
       .from(priceCalculatorSettings)
       .where(eq(priceCalculatorSettings.id, 1))
       .limit(1);
-    return NextResponse.json({ settings: rows[0] ?? { enabled: false, updatedAt: null } });
+    return NextResponse.json({ settings: { enabled: false, updatedAt: rows[0]?.updatedAt ?? null, publicPricingLocked: true } });
   } catch (error) {
     console.error('Price calculator settings GET error:', error);
     return NextResponse.json({ error: 'Veritabanı hatası.' }, { status: 503 });
   }
 }
 
-/** PUT /admin/api/price-calculator — turns public estimate access on or off. */
-export async function PUT(request: NextRequest) {
+/** PUT is retained only to migrate historic settings safely; it never enables public pricing. */
+export async function PUT(_request: NextRequest) {
   let session;
   try {
     session = await requireAdminSession();
@@ -39,24 +36,13 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: 'Geçersiz JSON.' }, { status: 400 });
-  }
-  const parsed = featureSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: 'Geçersiz özellik ayarı.' }, { status: 422 });
-  }
-
   try {
     const [settings] = await db
       .insert(priceCalculatorSettings)
-      .values({ id: 1, enabled: parsed.data.enabled, updatedAt: new Date(), updatedBy: session.adminId })
+      .values({ id: 1, enabled: false, updatedAt: new Date(), updatedBy: session.adminId })
       .onConflictDoUpdate({
         target: priceCalculatorSettings.id,
-        set: { enabled: parsed.data.enabled, updatedAt: new Date(), updatedBy: session.adminId },
+        set: { enabled: false, updatedAt: new Date(), updatedBy: session.adminId },
       })
       .returning({ enabled: priceCalculatorSettings.enabled, updatedAt: priceCalculatorSettings.updatedAt });
 
@@ -65,10 +51,10 @@ export async function PUT(request: NextRequest) {
       action: 'UPDATE',
       entityType: 'PriceCalculatorSettings',
       entityId: '1',
-      metadata: { enabled: parsed.data.enabled },
+      metadata: { enabled: false, publicPricingLocked: true },
     }).catch(() => {});
 
-    return NextResponse.json({ settings });
+    return NextResponse.json({ settings: { ...settings, publicPricingLocked: true } });
   } catch (error) {
     console.error('Price calculator settings PUT error:', error);
     return NextResponse.json({ error: 'Veritabanı hatası.' }, { status: 503 });

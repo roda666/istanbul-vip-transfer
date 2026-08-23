@@ -135,6 +135,12 @@ export function getAdminApiPermission(pathname: string, method: string): AdminPe
   if (pathname === '/admin/api/homepage/media') return 'MEDIA_MANAGE';
 
   if (pathname.startsWith('/admin/api/requests')) return readOrWrite(method, 'RESERVATIONS_READ', 'RESERVATIONS_MANAGE');
+  // Pricing never has a public route. Formula profiles are fleet data; tax/rate
+  // policy is a site setting; generated quotes can be attached to reservations.
+  if (pathname.startsWith('/admin/api/pricing/profiles')) return 'FLEET_MANAGE';
+  if (pathname.startsWith('/admin/api/pricing/settings') ||
+      pathname.startsWith('/admin/api/pricing/exchange-rates')) return 'SITE_SETTINGS_MANAGE';
+  if (pathname.startsWith('/admin/api/pricing/quote')) return 'RESERVATIONS_MANAGE';
   if (pathname.startsWith('/admin/api/newsletter')) return readOrWrite(method, 'NEWSLETTER_READ', 'NEWSLETTER_MANAGE');
   if (pathname.startsWith('/admin/api/chatbot/settings')) return 'SITE_SETTINGS_MANAGE';
   if (pathname.startsWith('/admin/api/chatbot')) return 'CHAT_MANAGE';

@@ -23,6 +23,8 @@ interface FormState {
   shortDescription: string;
   fullDescription: string;
   vehicleType: string;
+  priceCalculationEligible: boolean;
+  pricingClass: string;
   passengerCapacity: string;
   luggageCapacity: string;
   coverImage: string;
@@ -57,6 +59,8 @@ function vehicleToForm(v: Vehicle): FormState {
     shortDescription: v.shortDescription ?? '',
     fullDescription: v.fullDescription ?? '',
     vehicleType: normalizeVehicleType(v.vehicleType) ?? '',
+    priceCalculationEligible: v.priceCalculationEligible,
+    pricingClass: v.pricingClass,
     passengerCapacity: v.passengerCapacity != null ? String(v.passengerCapacity) : '',
     luggageCapacity: v.luggageCapacity != null ? String(v.luggageCapacity) : '',
     coverImage: v.coverImage ?? '',
@@ -83,6 +87,8 @@ const emptyForm: FormState = {
   shortDescription: '',
   fullDescription: '',
   vehicleType: '',
+  priceCalculationEligible: false,
+  pricingClass: 'minivan',
   passengerCapacity: '',
   luggageCapacity: '',
   coverImage: '',
@@ -497,6 +503,8 @@ export default function VehicleForm({ vehicle, userRole }: Props) {
       passengerCapacity: form.passengerCapacity ? parseInt(form.passengerCapacity, 10) : null,
       luggageCapacity: form.luggageCapacity ? parseInt(form.luggageCapacity, 10) : null,
       vehicleType: form.vehicleType || null,
+      priceCalculationEligible: form.priceCalculationEligible,
+      pricingClass: form.pricingClass,
       features: form.features.filter(Boolean),
       coverImage: form.coverImage || null,
       coverImageAlt: form.coverImageAlt || null,
@@ -652,6 +660,29 @@ export default function VehicleForm({ vehicle, userRole }: Props) {
           placeholder="Araç hakkında detaylı açıklama"
           rows={6}
         />
+      </div>
+
+      {/* ── Fiyat Hesaplama ─────────────────────────────── */}
+      <SectionTitle>Fiyat Hesaplama</SectionTitle>
+      <div style={{ background: '#F8FAFC', border: `1px solid ${BORDER}`, borderRadius: '8px', padding: '14px 16px', marginBottom: '16px' }}>
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '9px', cursor: 'pointer', color: '#172B3A', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>
+          <input
+            type="checkbox"
+            checked={form.priceCalculationEligible}
+            onChange={(event) => setForm((current) => ({ ...current, priceCalculationEligible: event.target.checked }))}
+            style={{ accentColor: '#2563EB', width: '15px', height: '15px', marginTop: '2px' }}
+          />
+          <span><strong>Bu araç otomatik fiyat hesaplamasına uygundur</strong><br /><span style={{ color: '#52697A', fontSize: '12px', lineHeight: 1.5 }}>Kapalıysa araç yayınlanmaya devam eder; yönetici fiyat merkezinde “teklif iste” olarak görünür.</span></span>
+        </label>
+      </div>
+      <div style={{ marginBottom: '16px' }}>
+        <Label>Geçiş Tarife Sınıfı</Label>
+        <select value={form.pricingClass} onChange={(event) => setForm((current) => ({ ...current, pricingClass: event.target.value }))} style={{ width: '100%', background: BG2, border: `1px solid ${BORDER}`, borderRadius: '6px', color: '#172B3A', fontSize: '13px', fontFamily: 'Inter, sans-serif', padding: '8px 12px', outline: 'none', boxSizing: 'border-box' }}>
+          <option value="minivan">Minivan / otomobil</option>
+          <option value="minibus">Minibüs</option>
+          <option value="midibus">Midibüs</option>
+          <option value="bus">Otobüs</option>
+        </select>
       </div>
 
       {/* ── Görsel ─────────────────────────────────────── */}

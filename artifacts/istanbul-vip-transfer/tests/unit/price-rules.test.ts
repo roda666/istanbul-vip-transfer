@@ -60,4 +60,12 @@ describe('price calculator access policy', () => {
     expect(getAdminApiPermission('/admin/api/price-calculator', 'PUT')).toBe('FLEET_MANAGE');
     expect(getAdminPagePermission('/admin/fiyat-kurallari')).toBe('FLEET_MANAGE');
   });
+
+  it('maps every admin-only pricing endpoint before middleware can deny it', () => {
+    expect(getAdminApiPermission('/admin/api/pricing/profiles', 'GET')).toBe('FLEET_MANAGE');
+    expect(getAdminApiPermission('/admin/api/pricing/profiles', 'POST')).toBe('FLEET_MANAGE');
+    expect(getAdminApiPermission('/admin/api/pricing/settings', 'PUT')).toBe('SITE_SETTINGS_MANAGE');
+    expect(getAdminApiPermission('/admin/api/pricing/exchange-rates', 'POST')).toBe('SITE_SETTINGS_MANAGE');
+    expect(getAdminApiPermission('/admin/api/pricing/quote', 'POST')).toBe('RESERVATIONS_MANAGE');
+  });
 });

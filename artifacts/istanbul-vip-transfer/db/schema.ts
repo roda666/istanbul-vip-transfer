@@ -69,6 +69,12 @@ export const locationTypeEnum = pgEnum('location_type', [
 /** LOCAL = only in local (Istanbul) transfer form, INTERCITY = only in intercity form, BOTH = appears in both. */
 export const locationScopeEnum = pgEnum('location_scope', ['LOCAL', 'INTERCITY', 'BOTH']);
 
+export const pricingModeEnum = pgEnum('pricing_mode', ['DISTANCE', 'HOURLY']);
+export const includedKmModeEnum = pgEnum('included_km_mode', ['PER_HOUR', 'PACKAGE']);
+export const fxModeEnum = pgEnum('fx_mode', ['LIVE', 'MANUAL']);
+export const vatDisplayModeEnum = pgEnum('vat_display_mode', ['EXCLUDED', 'INCLUDED']);
+export const tollPointTypeEnum = pgEnum('toll_point_type', ['BRIDGE', 'TUNNEL', 'HIGHWAY']);
+
 /** Status lifecycle for translation jobs. */
 export const translationStatusEnum = pgEnum('translation_status', [
   'NOT_STARTED',
@@ -363,6 +369,10 @@ export const vehicles = pgTable('vehicles', {
   passengerCapacity: integer('passenger_capacity'),
   luggageCapacity: integer('luggage_capacity'),
   vehicleType: text('vehicle_type'),
+  /** Pricing eligibility is intentionally independent from public publishing. */
+  priceCalculationEligible: boolean('price_calculation_eligible').default(false).notNull(),
+  /** Toll tariff class: minivan | minibus | midibus | bus. */
+  pricingClass: text('pricing_class').default('minivan').notNull(),
   features: jsonb('features').$type<string[]>().default([]).notNull(),
   coverImage: text('cover_image'),
   coverImageAlt: text('cover_image_alt'),
@@ -596,6 +606,8 @@ export const reservationRequests = pgTable('reservation_requests', {
   normalizedEmail: text('normalized_email'),
   locale:          text('locale').default('tr').notNull(),
   requestData:     jsonb('request_data').notNull().default({}),
+  /** Optional immutable admin-created quote. Public request payloads can never set this. */
+  priceQuoteSnapshotId: uuid('price_quote_snapshot_id').references(() => priceQuoteSnapshots.id, { onDelete: 'set null' }),
   status:          requestStatusEnum('status').default('NEW').notNull(),
   adminNotes:      text('admin_notes'),
   source:          text('source').default('booking-form').notNull(),
@@ -1098,7 +1110,14 @@ export type NewTransferRouteTranslation = typeof transferRouteTranslations.$infe
 // stores auditable, vehicle-specific estimates for a future public calculator.
 export const priceCalculatorSettings = pgTable('price_calculator_settings', {
   id:        integer('id').primaryKey().default(1),
+  /** Legacy public estimate flag. It remains false and public access is hard-blocked. */
   enabled:   boolean('enabled').default(false).notNull(),
+  vatRateBasisPoints: integer('vat_rate_basis_points').default(2000).notNull(),
+  vatDisplayMode: vatDisplayModeEnum('vat_display_mode').default('EXCLUDED').notNull(),
+  eurRoundingKurus: integer('eur_rounding_kurus').default(500).notNull(),
+  usdRoundingCents: integer('usd_rounding_cents').default(500).notNull(),
+  tryRoundingKurus: integer('try_rounding_kurus').default(5000).notNull(),
+  settingsVersion: integer('settings_version').default(1).notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
 });
@@ -1138,6 +1157,159 @@ export const flightMeetGreetSettings = pgTable('flight_meet_greet_settings', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
 });
+
+/** Admin-only, TRY-native profile for distance or allocation pricing. */
+export const vehiclePricingProfiles = pgTable('vehicle_pricing_profiles', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  vehicleId: uuid('vehicle_id').notNull().references(() => vehicles.id, { onDelete: 'cascade' }),
+  mode: pricingModeEnum('mode').notNull(),
+  active: boolean('active').default(true).notNull(),
+  validFrom: timestamp('valid_from', { withTimezone: true }),
+  validUntil: timestamp('valid_until', { withTimezone: true }),
+  // Distance: opening + first coefficient up to threshold + second coefficient above it.
+  distanceOpeningKurus: integer('distance_opening_kurus'),
+  distanceFirstKmKurus: integer('distance_first_km_kurus'),
+  distanceThresholdKm: integer('distance_threshold_km'),
+  distanceSecondKmKurus: integer('distance_second_km_kurus'),
+  // Hourly: minimum duration, included kilometres, and independent excesses.
+  hourlyRateKurus: integer('hourly_rate_kurus'),
+  minimumHours: integer('minimum_hours'),
+  includedKmMode: includedKmModeEnum('included_km_mode'),
+  includedKm: integer('included_km'),
+  excessKmKurus: integer('excess_km_kurus'),
+  excessHourKurus: integer('excess_hour_kurus'),
+  notes: text('notes'),
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  createdBy: uuid('created_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+  updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+}, (table) => [
+  index('vehicle_pricing_profiles_lookup_idx').on(table.vehicleId, table.mode, table.active, table.validFrom, table.validUntil),
+]);
+
+/** Time-bounded TRY override; this replaces a formula but not tax/FX processing. */
+export const fixedPriceOverrides = pgTable('fixed_price_overrides', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  routeId: uuid('route_id').notNull().references(() => transferRoutes.id, { onDelete: 'cascade' }),
+  vehicleId: uuid('vehicle_id').notNull().references(() => vehicles.id, { onDelete: 'cascade' }),
+  amountKurus: integer('amount_kurus').notNull(),
+  active: boolean('active').default(true).notNull(),
+  validFrom: timestamp('valid_from', { withTimezone: true }),
+  validUntil: timestamp('valid_until', { withTimezone: true }),
+  notes: text('notes'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  createdBy: uuid('created_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+  updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+}, (table) => [
+  index('fixed_price_overrides_lookup_idx').on(table.routeId, table.vehicleId, table.active, table.validFrom, table.validUntil),
+]);
+
+/** Central toll definition; routes only choose alternatives and never own a price. */
+export const tollPoints = pgTable('toll_points', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  type: tollPointTypeEnum('type').notNull(),
+  active: boolean('active').default(true).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  createdBy: uuid('created_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+  updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+});
+
+export const tollTariffs = pgTable('toll_tariffs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tollPointId: uuid('toll_point_id').notNull().references(() => tollPoints.id, { onDelete: 'cascade' }),
+  vehicleClass: text('vehicle_class').notNull(),
+  amountKurus: integer('amount_kurus').notNull(),
+  validFrom: timestamp('valid_from', { withTimezone: true }),
+  validUntil: timestamp('valid_until', { withTimezone: true }),
+  active: boolean('active').default(true).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  createdBy: uuid('created_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+  updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+}, (table) => [
+  index('toll_tariffs_lookup_idx').on(table.tollPointId, table.vehicleClass, table.active, table.validFrom, table.validUntil),
+]);
+
+export const routeTollAlternatives = pgTable('route_toll_alternatives', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  routeId: uuid('route_id').notNull().references(() => transferRoutes.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  active: boolean('active').default(true).notNull(),
+  isDefault: boolean('is_default').default(false).notNull(),
+  displayOrder: integer('display_order').default(0).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const routeTollAlternativeItems = pgTable('route_toll_alternative_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  alternativeId: uuid('alternative_id').notNull().references(() => routeTollAlternatives.id, { onDelete: 'cascade' }),
+  tollPointId: uuid('toll_point_id').notNull().references(() => tollPoints.id, { onDelete: 'restrict' }),
+  displayOrder: integer('display_order').default(0).notNull(),
+}, (table) => [
+  uniqueIndex('route_toll_alternative_item_unique').on(table.alternativeId, table.tollPointId),
+]);
+
+/** Shared paid-service catalog used by the admin quote engine. Public rendering stays opt-in. */
+export const optionalServices = pgTable('optional_services', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  key: text('key').notNull().unique(),
+  name: text('name').notNull(),
+  currency: text('currency').default('TRY').notNull(),
+  unitAmount: integer('unit_amount').notNull(),
+  chargeType: text('charge_type').default('PER_BOOKING').notNull(),
+  maximumQuantity: integer('maximum_quantity').default(1).notNull(),
+  includedInTransfer: boolean('included_in_transfer').default(false).notNull(),
+  automaticServiceTypes: jsonb('automatic_service_types').$type<string[]>().default([]).notNull(),
+  active: boolean('active').default(true).notNull(),
+  displayOrder: integer('display_order').default(0).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  createdBy: uuid('created_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+  updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+});
+
+export const exchangeRateSettings = pgTable('exchange_rate_settings', {
+  id: integer('id').primaryKey().default(1),
+  eurTryMode: fxModeEnum('eur_try_mode').default('LIVE').notNull(),
+  eurUsdMode: fxModeEnum('eur_usd_mode').default('LIVE').notNull(),
+  manualEurTryMicros: integer('manual_eur_try_micros'),
+  manualEurUsdMicros: integer('manual_eur_usd_micros'),
+  refreshMinutes: integer('refresh_minutes').default(60).notNull(),
+  deviationBasisPoints: integer('deviation_basis_points').default(1000).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+});
+
+export const exchangeRateHistory = pgTable('exchange_rate_history', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  source: text('source').notNull(),
+  eurTryMicros: integer('eur_try_micros').notNull(),
+  usdTryMicros: integer('usd_try_micros').notNull(),
+  eurUsdMicros: integer('eur_usd_micros').notNull(),
+  fetchedAt: timestamp('fetched_at', { withTimezone: true }).defaultNow().notNull(),
+  publishedAt: timestamp('published_at', { withTimezone: true }),
+  errorMessage: text('error_message'),
+  createdBy: uuid('created_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+}, (table) => [
+  index('exchange_rate_history_fetched_idx').on(table.fetchedAt),
+]);
+
+/** Immutable quote proof: calculation inputs and every intermediate output are frozen as JSON. */
+export const priceQuoteSnapshots = pgTable('price_quote_snapshots', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  routeId: uuid('route_id').references(() => transferRoutes.id, { onDelete: 'set null' }),
+  vehicleId: uuid('vehicle_id').notNull().references(() => vehicles.id, { onDelete: 'restrict' }),
+  snapshot: jsonb('snapshot').$type<Record<string, unknown>>().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  createdBy: uuid('created_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+}, (table) => [
+  index('price_quote_snapshots_route_vehicle_idx').on(table.routeId, table.vehicleId, table.createdAt),
+]);
 
 export type FlightMeetGreetSettings = typeof flightMeetGreetSettings.$inferSelect;
 

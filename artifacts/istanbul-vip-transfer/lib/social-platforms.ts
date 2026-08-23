@@ -20,7 +20,7 @@ export type SocialPlatformKey = (typeof SOCIAL_PLATFORM_KEYS)[number];
 export type SocialPlatformDefinition = {
   key: SocialPlatformKey;
   name: string;
-  authType: 'meta_oauth' | 'x_oauth1' | 'future';
+  authType: 'meta_oauth' | 'x_oauth1' | 'google_oauth' | 'future';
   requiredSecrets: string[];
   canConnect: boolean;
   description: string;
@@ -78,10 +78,10 @@ export const SOCIAL_PLATFORM_CATALOG: SocialPlatformDefinition[] = [
   {
     key: 'google_business',
     name: 'Google Business Profile',
-    authType: 'future',
-    requiredSecrets: [],
-    canConnect: false,
-    description: 'Google Posts ve yerel SEO için hazır.',
+    authType: 'google_oauth',
+    requiredSecrets: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'],
+    canConnect: true,
+    description: 'Google Posts yayınları ve gerçek müşteri yorumlarının güvenli senkronizasyonu.',
   },
   {
     key: 'telegram',
@@ -174,6 +174,12 @@ export async function setSocialPlatformEnabled(key: SocialPlatformKey, enabled: 
 
   if (!platform) throw new Error('Platform bulunamadı.');
   if (enabled && !platform.connected) throw new Error('Önce platform bağlantısı tamamlanmalı.');
+  if (enabled && key === 'google_business') {
+    const meta = platform.connectionMeta as { accountName?: unknown; locationName?: unknown };
+    if (typeof meta.accountName !== 'string' || typeof meta.locationName !== 'string') {
+      throw new Error('Google Business Profile için önce hesap ve işletme konumu seçilmeli.');
+    }
+  }
 
   const [updated] = await db.update(socialPlatforms)
     .set({ enabled, updatedAt: new Date() })

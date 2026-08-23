@@ -63,7 +63,8 @@ export async function POST(req: NextRequest) {
       reviewDate:            data.reviewDate ? new Date(data.reviewDate) : null,
       isVisible:             data.isVisible,
       sortOrder:             data.sortOrder,
-      googleSourceIndicator: true,
+      // Manually entered content must never be presented as a Google review.
+      googleSourceIndicator: false,
     }).returning();
 
     await db.insert(auditLogs).values({

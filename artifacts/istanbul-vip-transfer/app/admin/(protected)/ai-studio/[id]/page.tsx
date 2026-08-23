@@ -877,11 +877,11 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
 
   function DistributionPanel() {
     const drafts = p.distribution;
-    const PLATFORM_LABELS: Record<string, string> = { newsletter: 'Bülten', instagram: 'Instagram', facebook: 'Facebook', twitter: 'Twitter / X', linkedin: 'LinkedIn' };
+    const PLATFORM_LABELS: Record<string, string> = { newsletter: 'Bülten', instagram: 'Instagram', facebook: 'Facebook', twitter: 'Twitter / X', linkedin: 'LinkedIn', google_business: 'Google Business Profile' };
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         <Alert type="info">
-          Dağıtım taslakları yalnızca admin panelinde kaydedilir. Bu panelden harici platformlara otomatik paylaşım yapılmaz.
+          Dağıtım taslakları yönetici onayı olmadan yayımlanmaz. Google Business gönderisi yalnızca onaylı ve CMS’te yayınlanmış makale için, aşağıdaki açık onayla paylaşılır.
         </Alert>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <button style={btn('primary')} disabled={working || !p.trContent}
@@ -895,6 +895,25 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
               {PLATFORM_LABELS[d.platform] ?? d.platform}
             </h3>
             <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: C.muted, whiteSpace: 'pre-wrap', margin: 0, lineHeight: 1.6 }}>{d.content}</p>
+            {d.platform === 'google_business' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
+                <button
+                  style={btn('primary')}
+                  disabled={working || !p.trApprovedAt || d.status === 'published'}
+                  onClick={() => run(
+                    () => api('/distribution/google-business/publish', 'POST'),
+                    d.status === 'published' ? 'Google Business gönderisi zaten yayımlandı.' : 'Google Business gönderisi yayımlandı!',
+                  )}
+                >
+                  {working ? <Spin /> : <Send size={15} />} {d.status === 'published' ? 'Yayımlandı' : 'Google’da Yayımla'}
+                </button>
+                {d.status === 'failed' && (
+                  <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: '#B91C1C' }}>
+                    Yayın başarısız. Bağlantı ve işletme konumunu kontrol edin.
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         ))}
         {drafts.length === 0 && !working && (

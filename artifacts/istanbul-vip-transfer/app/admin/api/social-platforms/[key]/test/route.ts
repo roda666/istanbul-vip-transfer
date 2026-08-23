@@ -4,12 +4,13 @@ import { db } from '@/db';
 import { auditLogs, content } from '@/db/schema';
 import { requireSocialPlatformAdmin, socialAuthErrorResponse } from '@/lib/social-auth';
 import { publishFacebookPost, publishInstagramPost, publishXTweet } from '@/lib/social-publish';
+import { publishGoogleBusinessPost } from '@/lib/google-business';
 import { getPublicOrigin } from '@/lib/social-public-url';
 
 export const dynamic = 'force-dynamic';
 
 const SITE_URL = 'https://www.istanbulviptransfer.com';
-const SUPPORTED_KEYS = ['facebook', 'instagram', 'x'] as const;
+const SUPPORTED_KEYS = ['facebook', 'instagram', 'x', 'google_business'] as const;
 type TestableKey = (typeof SUPPORTED_KEYS)[number];
 
 function isTestableKey(key: string): key is TestableKey {
@@ -62,7 +63,9 @@ export async function POST(_req: Request, { params }: { params: Promise<{ key: s
             imageUrl: publicImageUrl(blog.heroImage, _req),
           })
           : (() => { throw new Error('Instagram test paylaşımı için blog kapak görseli gerekli.'); })()
-        : await publishXTweet(`Yeni blog yazımız: ${blog.title.slice(0, 220)}\n${blogUrl}`);
+        : key === 'x'
+          ? await publishXTweet(`Yeni blog yazımız: ${blog.title.slice(0, 220)}\n${blogUrl}`)
+          : await publishGoogleBusinessPost({ text: summary, url: blogUrl });
 
     await db.insert(auditLogs).values({
       adminUserId: session.adminId,

@@ -23,15 +23,27 @@ export type HomepageServiceCopy = Record<string, {
 }>;
 
 /**
- * Returns visible reviews entered in the admin review manager for one locale.
- * We do not fall back to Turkish here: an international visitor should keep the
- * localized static fallback until a matching review translation is available.
+ * Returns reviews synchronized from the selected Google Business Profile location.
+ * Manual/legacy rows are deliberately excluded: public visitors must never see
+ * editor-written text presented as a Google review. Google does not translate
+ * review text, so the original verified text is shown for every locale.
  */
 export async function getPublishedHomepageReviews(locale: string): Promise<HomepageReview[]> {
+  void locale;
   try {
     const { db } = await import('@/db');
-    const { googleReviews } = await import('@/db/schema');
+    const { googleReviews, socialPlatforms } = await import('@/db/schema');
     const { and, asc, desc, eq } = await import('drizzle-orm');
+
+    const [platform] = await db.select({ connectionMeta: socialPlatforms.connectionMeta })
+      .from(socialPlatforms)
+      .where(and(
+        eq(socialPlatforms.key, 'google_business'),
+        eq(socialPlatforms.connected, true),
+      ))
+      .limit(1);
+    const locationName = platform?.connectionMeta?.locationName;
+    if (typeof locationName !== 'string') return [];
 
     const rows = await db
       .select({
@@ -43,7 +55,8 @@ export async function getPublishedHomepageReviews(locale: string): Promise<Homep
       .from(googleReviews)
       .where(and(
         eq(googleReviews.isVisible, true),
-        eq(googleReviews.reviewLanguage, locale),
+          eq(googleReviews.source, 'google_business'),
+          eq(googleReviews.locationResourceName, locationName),
       ))
       .orderBy(asc(googleReviews.sortOrder), desc(googleReviews.createdAt))
       .limit(3);

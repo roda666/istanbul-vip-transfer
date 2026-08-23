@@ -11,6 +11,16 @@ const SOCIAL_OAUTH_MESSAGES: Record<string, string> = {
     'X güvenlik doğrulaması geçersiz veya süresi dolmuş. Bağlantıyı yeniden başlatın.',
   x_access_token_failed:
     'X yetkilendirmesi tamamlanamadı. İzni tekrar verip yeniden deneyin.',
+  google_business_credentials_missing:
+    'Google Business Profile bağlantısı için Google OAuth istemci ayarları eksik.',
+  google_business_consent_denied:
+    'Google Business Profile erişim izni verilmedi. İşletme yöneticisi hesabıyla tekrar deneyin.',
+  google_business_invalid_state:
+    'Google Business Profile güvenlik doğrulaması geçersiz veya süresi dolmuş. Bağlantıyı yeniden başlatın.',
+  google_business_token_exchange_failed:
+    'Google Business Profile yetkilendirmesi tamamlanamadı. İzni tekrar verip yeniden deneyin.',
+  google_business_connection_failed:
+    'Google Business Profile bağlantısı tamamlanamadı. OAuth ayarlarını ve işletme yetkilerini kontrol edin.',
 };
 
 export function getSocialOAuthMessage(code: string | null | undefined): string {

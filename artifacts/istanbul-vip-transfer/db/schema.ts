@@ -616,6 +616,11 @@ export type NewNewsletterConsentEvent = typeof newsletterConsentEvents.$inferIns
 
 export const googleReviews = pgTable('google_reviews', {
   id:                    uuid('id').primaryKey().defaultRandom(),
+  /** Google Business Profile review resource name. Legacy/admin-entered rows remain NULL. */
+  externalReviewId:      text('external_review_id'),
+  /** Only google_business rows can be rendered on the public homepage. */
+  source:                text('source').notNull().default('manual'),
+  locationResourceName:  text('location_resource_name'),
   reviewerName:          text('reviewer_name').notNull(),
   reviewText:            text('review_text').notNull(),
   rating:                integer('rating').notNull().default(5),
@@ -909,6 +914,11 @@ export const studioDistribution = pgTable('studio_distribution', {
   platform:   text('platform').notNull(),
   content:    text('content').notNull().default(''),
   status:     text('status').notNull().default('draft'),
+  remoteId:   text('remote_id'),
+  remoteUrl:  text('remote_url'),
+  lastError:  text('last_error'),
+  retryCount: integer('retry_count').notNull().default(0),
+  publishedAt: timestamp('published_at', { withTimezone: true }),
   createdAt:  timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt:  timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
@@ -978,6 +988,8 @@ export const socialPlatforms = pgTable('social_platforms', {
   enabled:                boolean('enabled').notNull().default(false),
   accessTokenEncrypted:   text('access_token_encrypted'),
   accessTokenSecretEncrypted: text('access_token_secret_encrypted'),
+  /** OAuth access-token expiry. Refresh tokens stay encrypted in accessTokenSecretEncrypted. */
+  tokenExpiresAt:         timestamp('token_expires_at', { withTimezone: true }),
   connectionMeta:         jsonb('connection_meta').$type<Record<string, unknown>>().notNull().default({} as never),
   lastPublishId:          text('last_publish_id'),
   lastPublishUrl:         text('last_publish_url'),

@@ -45,11 +45,15 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const now = new Date();
-  const platforms = ['newsletter', 'instagram', 'facebook', 'twitter', 'linkedin'] as const;
+  const platforms = ['newsletter', 'instagram', 'facebook', 'twitter', 'linkedin', 'google_business'] as const;
 
   // Upsert each platform
   for (const platform of platforms) {
-    const platformContent = result.data[platform as keyof typeof result.data];
+    // Google Business Profile accepts the same concise, link-first copy as
+    // Facebook. It remains a draft until an administrator explicitly publishes it.
+    const platformContent = platform === 'google_business'
+      ? result.data.facebook
+      : result.data[platform as Exclude<typeof platform, 'google_business'>];
     await db.insert(studioDistribution).values({
       projectId: id,
       platform,
@@ -59,7 +63,15 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       updatedAt: now,
     }).onConflictDoUpdate({
       target:  [studioDistribution.projectId, studioDistribution.platform],
-      set:     { content: platformContent, status: 'draft', updatedAt: now },
+      set:     {
+        content: platformContent,
+        status: 'draft',
+        remoteId: null,
+        remoteUrl: null,
+        lastError: null,
+        publishedAt: null,
+        updatedAt: now,
+      },
     } as never);
   }
 

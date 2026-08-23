@@ -1,10 +1,12 @@
 import type { NextRequest } from 'next/server';
+import { SITE } from '@/lib/site-config';
 
 export const SOCIAL_SETTINGS_PATH = '/admin/ayarlar/icerik-entegrasyonlari';
 
 export const SOCIAL_CALLBACK_PATHS = {
   meta: '/admin/api/social-platforms/meta/callback',
   x: '/admin/api/social-platforms/x/callback',
+  google_business: '/admin/api/social-platforms/google-business/callback',
 } as const;
 
 const INTERNAL_HOST = /^(?:0\.0\.0\.0|localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?::\d+)?$/i;
@@ -19,18 +21,34 @@ function normalizeHost(value: string | null) {
   return INTERNAL_HOST.test(host) ? null : host;
 }
 
+function configuredPublicHosts() {
+  const hosts = new Set<string>();
+  try {
+    hosts.add(new URL(SITE.siteUrl).host);
+  } catch {
+    // SITE.siteUrl is a code-owned constant. Keep the safe fallback below.
+  }
+  for (const value of [process.env.REPLIT_DOMAINS, process.env.REPLIT_DEV_DOMAIN]) {
+    for (const host of value?.split(',') ?? []) {
+      const normalized = normalizeHost(host.trim());
+      if (normalized) hosts.add(normalized);
+    }
+  }
+  return hosts;
+}
+
 function getPublicHost(req: Request) {
+  const allowedHosts = configuredPublicHosts();
   const forwardedHost = normalizeHost(firstHeaderValue(req.headers.get('x-forwarded-host')));
-  if (forwardedHost) return forwardedHost;
+  if (forwardedHost && allowedHosts.has(forwardedHost)) return forwardedHost;
 
   const requestHost = normalizeHost(firstHeaderValue(req.headers.get('host')));
-  if (requestHost) return requestHost;
+  if (requestHost && allowedHosts.has(requestHost)) return requestHost;
 
-  const configuredHost = normalizeHost(firstHeaderValue(process.env.REPLIT_DEV_DOMAIN ?? null))
-    ?? normalizeHost(firstHeaderValue(process.env.REPLIT_DOMAINS ?? null));
-  if (configuredHost) return configuredHost;
+  const canonicalHost = normalizeHost(new URL(SITE.siteUrl).host);
+  if (canonicalHost) return canonicalHost;
 
-  throw new Error('Public OAuth host belirlenemedi.');
+  throw new Error('Güvenilir public OAuth host belirlenemedi.');
 }
 
 export function getPublicOrigin(req: Request) {

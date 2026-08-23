@@ -43,6 +43,23 @@ export async function PATCH(
     const { db } = await import('@/db');
     const { googleReviews, auditLogs } = await import('@/db/schema');
     const { eq } = await import('drizzle-orm');
+    const [existing] = await db.select({
+      source: googleReviews.source,
+    }).from(googleReviews).where(eq(googleReviews.id, id)).limit(1);
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    const changesGoogleSourceText = [
+      data.reviewerName,
+      data.reviewText,
+      data.rating,
+      data.reviewLanguage,
+      data.reviewDate,
+    ].some((value) => value !== undefined);
+    if (existing.source === 'google_business' && changesGoogleSourceText) {
+      return NextResponse.json({
+        error: 'Google’dan senkronlanan yorumların metni, yazarı, puanı veya tarihi değiştirilemez. Yalnızca görünürlük ve sıralama ayarlanabilir.',
+      }, { status: 409 });
+    }
 
     const [updated] = await db
       .update(googleReviews)
@@ -86,6 +103,15 @@ export async function DELETE(
     const { db } = await import('@/db');
     const { googleReviews, auditLogs } = await import('@/db/schema');
     const { eq } = await import('drizzle-orm');
+    const [existing] = await db.select({
+      source: googleReviews.source,
+    }).from(googleReviews).where(eq(googleReviews.id, id)).limit(1);
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (existing.source === 'google_business') {
+      return NextResponse.json({
+        error: 'Google’dan senkronlanan yorumlar silinemez. Public görünümden kaldırmak için görünürlüğünü kapatın.',
+      }, { status: 409 });
+    }
 
     const [deleted] = await db.delete(googleReviews).where(eq(googleReviews.id, id)).returning({ id: googleReviews.id });
     if (!deleted) return NextResponse.json({ error: 'Not found' }, { status: 404 });

@@ -45,7 +45,8 @@ export type DistributionPlatform =
   | 'instagram'
   | 'facebook'
   | 'twitter'
-  | 'linkedin';
+  | 'linkedin'
+  | 'google_business';
 
 // ── Target languages (TR is source, these are the 8 targets) ─────────────────
 
@@ -166,7 +167,13 @@ export interface DistributionDraft {
   platform: DistributionPlatform;
   content: string;
   status: string;
+  remoteId?: string | null;
+  remoteUrl?: string | null;
+  lastError?: string | null;
+  retryCount?: number;
+  publishedAt?: string | null;
   createdAt: string;
+  updatedAt?: string;
 }
 
 // ── Audit log entry ───────────────────────────────────────────────────────────

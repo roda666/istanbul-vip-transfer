@@ -193,6 +193,9 @@ export default function Reviews({
   const cms = useHomepageCms();
   const section = homepageMode ? cms?.reviewsSection : null;
   if (section && !section.enabled) return null;
+  // The homepage may label these as Google reviews only when a successful
+  // Google Business Profile sync supplied real source records.
+  if (homepageMode && (!items || items.length === 0)) return null;
   // A malformed locale must not make an international visitor see Turkish
   // review copy. Turkish is used only for an explicit Turkish route.
   const reviews = items && items.length > 0 ? items : (REVIEWS_BY_LANG[lang] ?? REVIEWS_BY_LANG.en);

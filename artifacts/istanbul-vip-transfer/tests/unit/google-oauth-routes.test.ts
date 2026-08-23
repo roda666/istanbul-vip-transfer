@@ -62,7 +62,7 @@ describe('Google OAuth routes', () => {
 
     expect(response.status).toBe(307);
     expect(redirect.origin + redirect.pathname).toBe('https://accounts.google.com/o/oauth2/v2/auth');
-    expect(redirect.searchParams.get('redirect_uri')).toBe('https://preview.example/admin/api/gsc/callback');
+    expect(redirect.searchParams.get('redirect_uri')).toBe('https://www.istanbulviptransfer.com/admin/api/gsc/callback');
     expect(redirect.searchParams.get('scope')).toBe('https://www.googleapis.com/auth/webmasters.readonly');
     expect(redirect.searchParams.get('prompt')).toBe('consent');
     expect(response.headers.get('set-cookie')).toContain('gsc_oauth_state=');
@@ -76,7 +76,7 @@ describe('Google OAuth routes', () => {
     const redirect = new URL(response.headers.get('location')!);
 
     expect(response.status).toBe(307);
-    expect(redirect.searchParams.get('redirect_uri')).toBe('https://preview.example/admin/api/google-ads/callback');
+    expect(redirect.searchParams.get('redirect_uri')).toBe('https://www.istanbulviptransfer.com/admin/api/google-ads/callback');
     expect(redirect.searchParams.get('scope')).toContain('https://www.googleapis.com/auth/adwords');
     expect(redirect.searchParams.get('prompt')).toBe('consent');
     expect(response.headers.get('set-cookie')).toContain('gads_oauth_state=');

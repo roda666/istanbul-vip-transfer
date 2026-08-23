@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireSocialPlatformAdmin, socialAuthErrorResponse } from '@/lib/social-auth';
 import { isSocialPlatformKey } from '@/lib/social-platforms';
 import { publishFacebookPost, publishInstagramPost, publishXTweet } from '@/lib/social-publish';
+import { publishGoogleBusinessPost } from '@/lib/google-business';
 import { db } from '@/db';
 import { auditLogs } from '@/db/schema';
 
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ key
     return NextResponse.json({ error: response.error }, { status: response.status });
   }
   const { key } = await params;
-  if (!isSocialPlatformKey(key) || !['facebook', 'instagram', 'x'].includes(key)) {
+  if (!isSocialPlatformKey(key) || !['facebook', 'instagram', 'x', 'google_business'].includes(key)) {
     return NextResponse.json({ error: 'Bu platform için yayınlama henüz desteklenmiyor.' }, { status: 400 });
   }
   let body: unknown;
@@ -35,7 +36,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ key
       ? await publishFacebookPost({ message: parsed.data.text, link: parsed.data.url })
       : key === 'instagram'
         ? await publishInstagramPost({ caption: parsed.data.text, imageUrl: parsed.data.imageUrl ?? '' })
-        : await publishXTweet(parsed.data.text);
+        : key === 'x'
+          ? await publishXTweet(parsed.data.text)
+          : await publishGoogleBusinessPost({ text: parsed.data.text, url: parsed.data.url });
     await db.insert(auditLogs).values({
       adminUserId: session.adminId,
       action: 'SOCIAL_PUBLISH',

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getPublicOrigin } from '@/lib/social-public-url';
 
 type SocialOAuthCallbackPayload = {
-  provider: 'meta' | 'x';
+  provider: 'meta' | 'x' | 'google_business';
   success: boolean;
   message?: string;
   error?: string;

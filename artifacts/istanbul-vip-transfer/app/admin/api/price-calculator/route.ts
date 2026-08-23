@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { requireAdminSession } from '@/lib/auth/session';
 import { db } from '@/db';
@@ -28,7 +28,7 @@ export async function GET() {
 }
 
 /** PUT is retained only to migrate historic settings safely; it never enables public pricing. */
-export async function PUT(_request: NextRequest) {
+export async function PUT() {
   let session;
   try {
     session = await requireAdminSession();

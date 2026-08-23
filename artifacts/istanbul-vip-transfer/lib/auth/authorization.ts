@@ -154,7 +154,9 @@ export function getAdminApiPermission(pathname: string, method: string): AdminPe
   if (pathname.startsWith('/admin/api/flight-meet-greet')) return 'SITE_SETTINGS_MANAGE';
   if (pathname.startsWith('/admin/api/reservation-settings') ||
       pathname.startsWith('/admin/api/custom-fields') ||
-      pathname.startsWith('/admin/api/service-types')) return 'SITE_SETTINGS_MANAGE';
+      pathname.startsWith('/admin/api/service-types') ||
+      pathname.startsWith('/admin/api/ek-hizmetler')) return 'SITE_SETTINGS_MANAGE';
+  if (pathname.startsWith('/admin/api/location-distance')) return 'FLEET_MANAGE';
   if (pathname.startsWith('/admin/api/settings') || pathname.startsWith('/admin/api/languages')) {
     return 'SECURITY_SETTINGS_MANAGE';
   }
@@ -207,6 +209,7 @@ export function getAdminPagePermission(pathname: string): AdminPermission | unde
     return 'SITE_SETTINGS_MANAGE';
   }
   if (pathname.startsWith('/admin/ucus-karsilama')) return 'SITE_SETTINGS_MANAGE';
+  if (pathname.startsWith('/admin/ek-hizmetler')) return 'SITE_SETTINGS_MANAGE';
   if (pathname.startsWith('/admin/talepler')) return 'RESERVATIONS_READ';
   if (pathname.startsWith('/admin/bulten-aboneleri')) return 'NEWSLETTER_READ';
   if (pathname.startsWith('/admin/araclar') || pathname.startsWith('/admin/transfer-rotalari') || pathname.startsWith('/admin/fiyat-kurallari')) return 'FLEET_MANAGE';

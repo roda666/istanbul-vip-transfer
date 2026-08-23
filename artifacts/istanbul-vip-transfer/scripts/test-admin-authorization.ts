@@ -116,10 +116,13 @@ assert.equal(getAdminApiPermission('/admin/api/studio/projects/id/publish', 'POS
 assert.equal(getAdminApiPermission('/admin/api/studio/projects/id/schedule', 'POST'), 'CONTENT_PUBLISH');
 assert.equal(getAdminApiPermission('/admin/api/studio/projects/id/schedule', 'GET'), 'AI_USE');
 assert.equal(getAdminApiPermission('/admin/api/studio/projects/id', 'DELETE'), 'CONTENT_DELETE');
+assert.equal(getAdminApiPermission('/admin/api/ek-hizmetler', 'GET'), 'SITE_SETTINGS_MANAGE');
+assert.equal(getAdminApiPermission('/admin/api/location-distance', 'POST'), 'FLEET_MANAGE');
 assert.equal(getAdminApiPermission('/admin/api/unknown', 'GET'), undefined);
 
 assert.equal(getAdminPagePermission('/admin/sohbet'), 'CHAT_MANAGE');
 assert.equal(getAdminPagePermission('/admin/personel'), 'STAFF_MANAGE');
+assert.equal(getAdminPagePermission('/admin/ek-hizmetler'), 'SITE_SETTINGS_MANAGE');
 assert.equal(getAdminPagePermission('/admin/not-a-real-page'), undefined);
 
 // Inventory guard: every actual admin route method is deliberately public,

@@ -13,16 +13,27 @@ const createSchema = z.object({
     .regex(/^[a-z0-9-]+$/, 'Slug yalnızca küçük harf, rakam ve tire içerebilir'),
   city: z.string().max(100).default('İstanbul'),
   district: z.string().max(200).optional().nullable(),
+  latitude: z.number().finite().min(-90).max(90).optional().nullable(),
+  longitude: z.number().finite().min(-180).max(180).optional().nullable(),
+  coordinateSource: z.string().max(100).optional().nullable(),
+  coordinateAccuracyMeters: z.number().int().min(0).max(100_000).optional().nullable(),
   type: z.enum(LOCATION_TYPES).default('DISTRICT'),
   scope: z.enum(LOCATION_SCOPES).default('LOCAL'),
   pickupEnabled: z.boolean().default(true),
   dropoffEnabled: z.boolean().default(true),
   isActive: z.boolean().default(true),
   displayOrder: z.number().int().min(0).default(0),
-}).refine(
-  (d) => d.pickupEnabled || d.dropoffEnabled,
-  { message: 'En az biri etkin olmalıdır: Alış veya Bırakış.' },
-);
+}).superRefine((data, ctx) => {
+  if (!data.pickupEnabled && !data.dropoffEnabled) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'En az biri etkin olmalıdır: Alış veya Bırakış.' });
+  }
+  if ((data.latitude == null) !== (data.longitude == null)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Enlem ve boylam birlikte girilmelidir.' });
+  }
+  if (data.coordinateAccuracyMeters != null && data.latitude == null) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Koordinat doğruluğu için enlem ve boylam girilmelidir.' });
+  }
+});
 
 /** GET /admin/api/locations */
 export async function GET(request: NextRequest) {
@@ -37,6 +48,7 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get('type') ?? '';
   const scopeFilter = searchParams.get('scope') ?? '';
   const activeOnly = searchParams.get('active') === 'true';
+  const includeArchived = searchParams.get('archived') === 'true';
   const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
   const limit = Math.min(300, Math.max(1, parseInt(searchParams.get('limit') || '100', 10)));
   const offset = (page - 1) * limit;
@@ -46,7 +58,7 @@ export async function GET(request: NextRequest) {
     const { locations } = await import('@/db/schema');
     const { eq, asc, ilike, and, isNull, count } = await import('drizzle-orm');
 
-    const conditions = [isNull(locations.archivedAt)];
+    const conditions = includeArchived ? [] : [isNull(locations.archivedAt)];
     if (search) conditions.push(ilike(locations.name, `%${search}%`));
     if (type) conditions.push(eq(locations.type, type as typeof LOCATION_TYPES[number]));
     if (scopeFilter) conditions.push(eq(locations.scope, scopeFilter as typeof LOCATION_SCOPES[number]));
@@ -111,6 +123,10 @@ export async function POST(request: NextRequest) {
         slug: data.slug,
         city: sanitizeText(data.city),
         district: data.district ? sanitizeText(data.district) : null,
+        latitude: data.latitude ?? null,
+        longitude: data.longitude ?? null,
+        coordinateSource: data.coordinateSource ? sanitizeText(data.coordinateSource) : null,
+        coordinateAccuracyMeters: data.coordinateAccuracyMeters ?? null,
         type: data.type,
         scope: data.scope,
         pickupEnabled: data.pickupEnabled,

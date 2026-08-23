@@ -100,6 +100,23 @@ const DISCONTINUED_FORM_FIELDS = new Set([
   'seyahatYonu',
 ]);
 
+const LOCATION_FIELD_KEYS = [
+  'alisLokasyonu',
+  'varisLokasyonu',
+  'kalkisIli',
+  'varisIli',
+] as const;
+
+const LOCATION_FIELD_REQUIREMENTS: Record<typeof LOCATION_FIELD_KEYS[number], {
+  scope: 'LOCAL' | 'INTERCITY';
+  direction: 'pickup' | 'dropoff';
+}> = {
+  alisLokasyonu: { scope: 'LOCAL', direction: 'pickup' },
+  varisLokasyonu: { scope: 'LOCAL', direction: 'dropoff' },
+  kalkisIli: { scope: 'INTERCITY', direction: 'pickup' },
+  varisIli: { scope: 'INTERCITY', direction: 'dropoff' },
+};
+
 function getFormString(formData: Record<string, unknown>, key: string): string {
   const value = formData[key];
   return typeof value === 'string' ? value.trim() : '';
@@ -229,8 +246,9 @@ export async function POST(req: NextRequest) {
       newsletterSubscribers,
       newsletterConsentEvents,
       customReservationFields,
+      locations,
     } = await import('@/db/schema');
-    const { eq, and, inArray } = await import('drizzle-orm');
+    const { eq, and, inArray, isNull } = await import('drizzle-orm');
 
     // A browser may only submit values for existing active admin-defined
     // fields. Labels always come from the server record, never the request.
@@ -255,6 +273,49 @@ export async function POST(req: NextRequest) {
       else delete safeFormData.customFields;
     } else {
       delete safeFormData.customFields;
+    }
+
+    // Location controls submit stable IDs. Resolve every selected ID on the
+    // server, so a stale/disabled location cannot be persisted and human-facing
+    // output never has to trust a client-provided label. The name fallback keeps
+    // historic form posts readable during a rolling deployment.
+    const submittedLocationValues = LOCATION_FIELD_KEYS.flatMap((field) => {
+      const value = getFormString(data.formData, field);
+      return value ? [{ field, value }] : [];
+    });
+    if (submittedLocationValues.length > 0) {
+      const activeLocations = await db
+        .select({
+          id: locations.id,
+          name: locations.name,
+          city: locations.city,
+          district: locations.district,
+          type: locations.type,
+          scope: locations.scope,
+          pickupEnabled: locations.pickupEnabled,
+          dropoffEnabled: locations.dropoffEnabled,
+        })
+        .from(locations)
+        .where(and(eq(locations.isActive, true), isNull(locations.archivedAt)));
+      const references: Record<string, { id: string; name: string; city: string; district: string | null; type: string }> = {};
+
+      for (const submitted of submittedLocationValues) {
+        const location = activeLocations.find((candidate) => (
+          candidate.id === submitted.value || candidate.name === submitted.value
+        ));
+        const requirement = LOCATION_FIELD_REQUIREMENTS[submitted.field];
+        const directionEnabled = requirement.direction === 'pickup'
+          ? location?.pickupEnabled
+          : location?.dropoffEnabled;
+        const scopeAllowed = location?.scope === requirement.scope || location?.scope === 'BOTH';
+        if (!location || !scopeAllowed || !directionEnabled) {
+          return NextResponse.json({ error: 'Seçilen lokasyon artık kullanılamıyor.' }, { status: 422 });
+        }
+        references[submitted.field] = location;
+        safeFormData[submitted.field] = location.city ? `${location.name} (${location.city})` : location.name;
+        safeFormData[`${submitted.field}Id`] = location.id;
+      }
+      safeFormData.locationReferences = references;
     }
 
     // Save reservation request

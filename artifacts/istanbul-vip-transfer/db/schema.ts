@@ -13,6 +13,7 @@ import {
   jsonb,
   uniqueIndex,
   index,
+  doublePrecision,
 } from 'drizzle-orm/pg-core';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 
@@ -184,6 +185,8 @@ export const siteSettings = pgTable('site_settings', {
   timeStepMinutes: integer('time_step_minutes').default(5).notNull(),
   exactAddressRequired: boolean('exact_address_required').default(false).notNull(),
   locationSearchEnabled: boolean('location_search_enabled').default(true).notNull(),
+  /** Conservative road-distance factor used only when no managed route distance exists. */
+  roadDistanceMultiplier: doublePrecision('road_distance_multiplier').default(1.25).notNull(),
   // Optional booking form fields (admin toggles each on/off; default off = current slim form)
   showLuggageCount: boolean('show_luggage_count').default(false).notNull(),
   showChildSeatCount: boolean('show_child_seat_count').default(false).notNull(),
@@ -394,6 +397,11 @@ export const locations = pgTable('locations', {
   slug: text('slug').notNull().unique(),
   city: text('city').default('İstanbul').notNull(),
   district: text('district'),
+  /** Optional WGS84 coordinates used for admin-only distance estimation. */
+  latitude: doublePrecision('latitude'),
+  longitude: doublePrecision('longitude'),
+  coordinateSource: text('coordinate_source'),
+  coordinateAccuracyMeters: integer('coordinate_accuracy_meters'),
   type: locationTypeEnum('type').default('DISTRICT').notNull(),
   /** LOCAL = only local transfer form; INTERCITY = only intercity form; BOTH = both forms. */
   scope: locationScopeEnum('scope').default('LOCAL').notNull(),
@@ -1025,6 +1033,9 @@ export const transferRoutes = pgTable('transfer_routes', {
   name:                   text('name').notNull(),
   origin:                 text('origin').notNull(),
   destination:            text('destination').notNull(),
+  /** Stable location identity for new and maintained routes. Legacy name columns stay readable. */
+  originLocationId:       uuid('origin_location_id').references(() => locations.id, { onDelete: 'set null' }),
+  destinationLocationId:  uuid('destination_location_id').references(() => locations.id, { onDelete: 'set null' }),
   distanceKm:             integer('distance_km').notNull(),
   durationMinutes:        integer('duration_minutes').notNull(),
   priceVitoMinEur:        integer('price_vito_min_eur').notNull(),

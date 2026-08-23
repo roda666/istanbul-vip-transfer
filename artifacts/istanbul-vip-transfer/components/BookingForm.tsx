@@ -186,8 +186,10 @@ function buildWhatsAppMessage(
   b: import('@/lib/i18n/types').Dictionary['booking'],
   locale: string,
   customFieldAnswers: CustomFieldAnswer[],
+  locationLabels: Record<string, string>,
 ): string {
   const displayValue = (value: string | undefined) => isolateLtrValues(value ?? '', locale);
+  const locationLabel = (field: keyof FormData) => locationLabels[field] ?? (data[field] as string | undefined);
   const saat      = `${data.saatSaat}:${data.saatDakika}`;
   const fmtDate   = formatServiceDate(data.tarih, locale);
   const lines: string[] = [];
@@ -195,21 +197,21 @@ function buildWhatsAppMessage(
   lines.push(b.waHeading, `${b.waService}: ${displayValue(serviceLabel)}`, '');
 
   if (activeService === 'AIRPORT_TRANSFER') {
-    lines.push(`${b.waPickup}: ${displayValue(data.alisLokasyonu)}`);
+    lines.push(`${b.waPickup}: ${displayValue(locationLabel('alisLokasyonu'))}`);
     if (data.alisAdresi?.trim())  lines.push(`${b.waPickupAddress}: ${displayValue(data.alisAdresi)}`);
-    lines.push(`${b.waDropoff}: ${displayValue(data.varisLokasyonu)}`);
+    lines.push(`${b.waDropoff}: ${displayValue(locationLabel('varisLokasyonu'))}`);
     if (data.varisAdresi?.trim()) lines.push(`${b.waDropoffAddress}: ${displayValue(data.varisAdresi)}`);
     lines.push(`${b.waDate}: ${displayValue(fmtDate)}`, `${b.waTime}: ${displayValue(saat)}`);
 
   } else if (activeService === 'INTERCITY') {
-    lines.push(`${b.waDepartureCity}: ${displayValue(data.kalkisIli)}`);
+    lines.push(`${b.waDepartureCity}: ${displayValue(locationLabel('kalkisIli'))}`);
     if (data.kalkisAdres?.trim()) lines.push(`${b.waDepartureAddress}: ${displayValue(data.kalkisAdres)}`);
-    lines.push(`${b.waArrivalCity}: ${displayValue(data.varisIli)}`);
+    lines.push(`${b.waArrivalCity}: ${displayValue(locationLabel('varisIli'))}`);
     if (data.varisAdres?.trim())  lines.push(`${b.waArrivalAddress}: ${displayValue(data.varisAdres)}`);
     lines.push(`${b.waDate}: ${displayValue(fmtDate)}`, `${b.waTime}: ${displayValue(saat)}`);
 
   } else if (activeService === 'ALLOCATION') {
-    lines.push(`${b.waPickup}: ${displayValue(data.alisLokasyonu)}`);
+    lines.push(`${b.waPickup}: ${displayValue(locationLabel('alisLokasyonu'))}`);
     if (data.alisAdresi?.trim())  lines.push(`${b.waPickupAddress}: ${displayValue(data.alisAdresi)}`);
     lines.push(`${b.waStartDate}: ${displayValue(fmtDate)}`, `${b.waStartTime}: ${displayValue(saat)}`);
     if (data.tahsisSuresi) {
@@ -219,7 +221,7 @@ function buildWhatsAppMessage(
     if (data.rotaAciklama?.trim()) lines.push(`${b.waRouteDescription}: ${data.rotaAciklama}`);
 
   } else if (activeService === 'TOUR') {
-    lines.push(`${b.waPickup}: ${displayValue(data.alisLokasyonu)}`);
+    lines.push(`${b.waPickup}: ${displayValue(locationLabel('alisLokasyonu'))}`);
     if (data.alisAdresi?.trim())  lines.push(`${b.waPickupAddress}: ${displayValue(data.alisAdresi)}`);
     lines.push(`${b.waTourRoute}: ${displayValue(data.talepsRota)}`);
     if (data.talepsYerler?.trim()) lines.push(`${b.waTourPlaces}: ${displayValue(data.talepsYerler)}`);
@@ -311,6 +313,16 @@ export default function BookingForm({
   // State values for custom checkbox fields (keyed by field id)
   const [customFieldValues, setCustomFieldValues] = useState<Record<number, boolean | string>>({});
   const [publishedVehicles, setPublishedVehicles] = useState<PublishedVehicleOption[]>([]);
+  const [locationLabels, setLocationLabels] = useState<Record<string, string>>({});
+
+  function rememberLocationLabel(field: keyof FormData, option: import('./LocationCombobox').LocationOption | null) {
+    setLocationLabels((current) => {
+      const next = { ...current };
+      if (option) next[field] = option.city ? `${option.name} (${option.city})` : option.name;
+      else delete next[field];
+      return next;
+    });
+  }
 
   // Fetch admin-defined custom fields for this service slug
   useEffect(() => {
@@ -470,7 +482,7 @@ export default function BookingForm({
         : [];
     });
     const submittedFormData = { ...data, customFields: customFieldAnswers };
-    const msg = buildWhatsAppMessage(data, serviceLabel, activeService, b, lang, customFieldAnswers);
+    const msg = buildWhatsAppMessage(data, serviceLabel, activeService, b, lang, customFieldAnswers, locationLabels);
     const waUrl = `https://wa.me/${WA_NUMBER}?text=${msg}`;
 
     // Persist the request before navigating away. The timeout keeps WhatsApp as
@@ -613,7 +625,8 @@ export default function BookingForm({
                       <label htmlFor="bf-alis-lokasyon" style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.pickupLocation}</label>
                       <Controller control={control} name="alisLokasyonu" render={({ field }) => (
                         <LocationCombobox id="bf-alis-lokasyon" ariaLabel={b.pickupLocation} for="pickup" scope="local" value={field.value ?? ''} onChange={field.onChange}
-                          placeholder={b.pickupPlaceholder} loadingText={dict.common.loading} labels={ui.location} error={!!errors.alisLokasyonu} excludeName={varisLokasyonuValue} />
+                          onOptionChange={(option) => rememberLocationLabel('alisLokasyonu', option)}
+                          placeholder={b.pickupPlaceholder} loadingText={dict.common.loading} labels={ui.location} error={!!errors.alisLokasyonu} excludeId={varisLokasyonuValue} />
                       )} />
                       {errors.alisLokasyonu && <p role="alert" style={errorStyle}>{errors.alisLokasyonu.message}</p>}
                     </div>
@@ -621,7 +634,8 @@ export default function BookingForm({
                       <label htmlFor="bf-varis-lokasyon" style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.dropoffLocation}</label>
                       <Controller control={control} name="varisLokasyonu" render={({ field }) => (
                         <LocationCombobox id="bf-varis-lokasyon" ariaLabel={b.dropoffLocation} for="dropoff" scope="local" value={field.value ?? ''} onChange={field.onChange}
-                          placeholder={b.dropoffPlaceholder} loadingText={dict.common.loading} labels={ui.location} error={!!errors.varisLokasyonu} excludeName={alisLokasyonuValue} />
+                          onOptionChange={(option) => rememberLocationLabel('varisLokasyonu', option)}
+                          placeholder={b.dropoffPlaceholder} loadingText={dict.common.loading} labels={ui.location} error={!!errors.varisLokasyonu} excludeId={alisLokasyonuValue} />
                       )} />
                       {errors.varisLokasyonu && <p role="alert" style={errorStyle}>{errors.varisLokasyonu.message}</p>}
                     </div>
@@ -643,7 +657,8 @@ export default function BookingForm({
                       <label htmlFor="bf-kalkis-ili" style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.departureCity}</label>
                       <Controller control={control} name="kalkisIli" render={({ field }) => (
                         <LocationCombobox id="bf-kalkis-ili" ariaLabel={b.departureCity} for="pickup" scope="intercity" value={field.value ?? ''} onChange={field.onChange}
-                          placeholder={b.departureCityPlaceholder} loadingText={dict.common.loading} labels={ui.location} error={!!errors.kalkisIli} excludeName={varisIliValue} />
+                          onOptionChange={(option) => rememberLocationLabel('kalkisIli', option)}
+                          placeholder={b.departureCityPlaceholder} loadingText={dict.common.loading} labels={ui.location} error={!!errors.kalkisIli} excludeId={varisIliValue} />
                       )} />
                       {errors.kalkisIli && <p role="alert" style={errorStyle}>{errors.kalkisIli.message}</p>}
                     </div>
@@ -651,7 +666,8 @@ export default function BookingForm({
                       <label htmlFor="bf-varis-ili" style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.arrivalCity}</label>
                       <Controller control={control} name="varisIli" render={({ field }) => (
                         <LocationCombobox id="bf-varis-ili" ariaLabel={b.arrivalCity} for="dropoff" scope="intercity" value={field.value ?? ''} onChange={field.onChange}
-                          placeholder={b.arrivalCityPlaceholder} loadingText={dict.common.loading} labels={ui.location} error={!!errors.varisIli} excludeName={kalkisIliValue} />
+                          onOptionChange={(option) => rememberLocationLabel('varisIli', option)}
+                          placeholder={b.arrivalCityPlaceholder} loadingText={dict.common.loading} labels={ui.location} error={!!errors.varisIli} excludeId={kalkisIliValue} />
                       )} />
                       {errors.varisIli && <p role="alert" style={errorStyle}>{errors.varisIli.message}</p>}
                     </div>
@@ -673,6 +689,7 @@ export default function BookingForm({
                       <label htmlFor="bf-alis-lokasyon" style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.allocationLocation}</label>
                       <Controller control={control} name="alisLokasyonu" render={({ field }) => (
                         <LocationCombobox id="bf-alis-lokasyon" ariaLabel={b.allocationLocation} for="pickup" scope="local" value={field.value ?? ''} onChange={field.onChange}
+                          onOptionChange={(option) => rememberLocationLabel('alisLokasyonu', option)}
                           placeholder={b.tourPickupPlaceholder} loadingText={dict.common.loading} labels={ui.location} error={!!errors.alisLokasyonu} />
                       )} />
                       {errors.alisLokasyonu && <p role="alert" style={errorStyle}>{errors.alisLokasyonu.message}</p>}
@@ -727,6 +744,7 @@ export default function BookingForm({
                       <label htmlFor="bf-alis-lokasyon" style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.allocationLocation}</label>
                       <Controller control={control} name="alisLokasyonu" render={({ field }) => (
                         <LocationCombobox id="bf-alis-lokasyon" ariaLabel={b.allocationLocation} for="pickup" scope="local" value={field.value ?? ''} onChange={field.onChange}
+                          onOptionChange={(option) => rememberLocationLabel('alisLokasyonu', option)}
                           placeholder={b.tourPickupPlaceholder} loadingText={dict.common.loading} labels={ui.location} error={!!errors.alisLokasyonu} />
                       )} />
                       {errors.alisLokasyonu && <p role="alert" style={errorStyle}>{errors.alisLokasyonu.message}</p>}

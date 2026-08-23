@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/auth/session';
 import { db } from '@/db';
-import { transferRoutes, transferRouteTranslations } from '@/db/schema';
-import { asc, sql, inArray } from 'drizzle-orm';
+import { locations, transferRoutes, transferRouteTranslations } from '@/db/schema';
+import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,10 +69,28 @@ export async function POST(req: NextRequest) {
   const { name, origin, destination, distanceKm, durationMinutes,
     priceVitoMinEur, priceVitoMaxEur, priceSprinterMinEur, priceSprinterMaxEur,
     imagePath, displayOrder, active, description, seoTitle, seoDescription,
-    ogTitle, ogDescription, relatedServiceSlug, indexable } = body;
+    ogTitle, ogDescription, relatedServiceSlug, indexable,
+    originLocationId, destinationLocationId } = body;
 
   if (!name || !origin || !destination) {
     return NextResponse.json({ error: 'Güzergah adı, kalkış ve varış zorunludur.' }, { status: 400 });
+  }
+  if ((originLocationId == null) !== (destinationLocationId == null)) {
+    return NextResponse.json({ error: 'Kalkış ve varış lokasyon kimlikleri birlikte seçilmelidir.' }, { status: 422 });
+  }
+
+  const locationIds = originLocationId && destinationLocationId
+    ? [String(originLocationId), String(destinationLocationId)]
+    : [];
+  if (locationIds.length) {
+    const selected = await db.select({ id: locations.id }).from(locations).where(and(
+      inArray(locations.id, locationIds),
+      eq(locations.isActive, true),
+      isNull(locations.archivedAt),
+    ));
+    if (selected.length !== 2 || selected[0]?.id === selected[1]?.id) {
+      return NextResponse.json({ error: 'Geçerli ve farklı iki aktif lokasyon seçilmelidir.' }, { status: 422 });
+    }
   }
 
   const baseSlug = (body.slug as string | undefined)?.trim()
@@ -87,6 +105,8 @@ export async function POST(req: NextRequest) {
       name: String(name),
       origin: String(origin),
       destination: String(destination),
+      originLocationId: locationIds[0] ?? null,
+      destinationLocationId: locationIds[1] ?? null,
       distanceKm: Number(distanceKm ?? 0),
       durationMinutes: Number(durationMinutes ?? 0),
       priceVitoMinEur: Number(priceVitoMinEur ?? 0),

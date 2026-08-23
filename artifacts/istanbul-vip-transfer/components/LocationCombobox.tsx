@@ -15,9 +15,10 @@ export interface LocationOption {
 }
 
 interface LocationGroup {
-  type: string;
+  id: string;
   label: string;
   options: LocationOption[];
+  collapsible?: boolean;
 }
 
 interface LocationLabels {
@@ -35,8 +36,6 @@ interface LocationLabels {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-const TYPE_ORDER = ['AIRPORT', 'PROVINCE', 'DISTRICT', 'REGION', 'HOTEL_ZONE', 'CUSTOM'];
-
 function normalizeTurkish(str: string): string {
   return str
     .toLowerCase()
@@ -49,28 +48,52 @@ function normalizeTurkish(str: string): string {
     .replace(/ç/g, 'c');
 }
 
-function groupLocations(options: LocationOption[], labels: LocationLabels): LocationGroup[] {
-  const typeLabels: Record<string, string> = {
-    AIRPORT: labels.airport,
-    PROVINCE: labels.province,
-    DISTRICT: labels.district,
-    REGION: labels.region,
-    HOTEL_ZONE: labels.hotelZone,
-    CUSTOM: labels.other,
-  };
-  const map = new Map<string, LocationOption[]>();
-  for (const type of TYPE_ORDER) map.set(type, []);
-  for (const opt of options) {
-    if (!map.has(opt.type)) map.set(opt.type, []);
-    map.get(opt.type)!.push(opt);
+const turkishCollator = new Intl.Collator('tr-TR', { sensitivity: 'base' });
+
+function sortOptions(options: LocationOption[]): LocationOption[] {
+  return [...options].sort((left, right) => {
+    const leftIsCenter = normalizeTurkish(left.name) === 'merkez';
+    const rightIsCenter = normalizeTurkish(right.name) === 'merkez';
+    if (leftIsCenter !== rightIsCenter) return leftIsCenter ? -1 : 1;
+    return turkishCollator.compare(left.name, right.name);
+  });
+}
+
+function groupLocations(options: LocationOption[], labels: LocationLabels, searching: boolean): LocationGroup[] {
+  if (searching) {
+    return [{ id: 'search-results', label: 'Sonuçlar', options: sortOptions(options) }];
   }
-  return Array.from(map.entries())
-    .filter(([, opts]) => opts.length > 0)
-    .map(([type, opts]) => ({
-      type,
-      label: typeLabels[type] ?? type,
-      options: opts,
+
+  const airports = sortOptions(options.filter((option) => option.type === 'AIRPORT'));
+  const istanbul = sortOptions(options.filter((option) => (
+    option.type !== 'AIRPORT' && normalizeTurkish(option.city) === 'istanbul'
+  )));
+  const provinceMap = new Map<string, LocationOption[]>();
+  for (const option of options) {
+    if (option.type === 'AIRPORT' || normalizeTurkish(option.city) === 'istanbul') continue;
+    const current = provinceMap.get(option.city) ?? [];
+    current.push(option);
+    provinceMap.set(option.city, current);
+  }
+  const provinces = Array.from(provinceMap.entries())
+    .sort(([left], [right]) => turkishCollator.compare(left, right))
+    .map(([city, cityOptions]) => ({
+      id: `province-${normalizeTurkish(city)}`,
+      label: city,
+      options: sortOptions(cityOptions),
+      collapsible: true,
     }));
+
+  return [
+    ...(airports.length ? [{ id: 'airports', label: labels.airport, options: airports }] : []),
+    ...(istanbul.length ? [{ id: 'istanbul', label: 'İstanbul', options: istanbul }] : []),
+    ...provinces,
+  ];
+}
+
+function formatOptionLabel(option: LocationOption): string {
+  if (option.type === 'AIRPORT') return option.name;
+  return option.city ? `${option.name} (${option.city})` : option.name;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -93,8 +116,10 @@ interface Props {
   /** Fully localized labels for the picker UI. */
   labels: LocationLabels;
   error?: boolean;
-  /** Exclude a specific location name (e.g. already-selected origin) */
-  excludeName?: string;
+  /** Exclude a stable location ID (e.g. already-selected origin). */
+  excludeId?: string;
+  /** Lets the parent keep readable labels for WhatsApp while form values stay stable IDs. */
+  onOptionChange?: (option: LocationOption | null) => void;
 }
 
 export default function LocationCombobox({
@@ -108,13 +133,15 @@ export default function LocationCombobox({
   loadingText,
   labels,
   error,
-  excludeName,
+  excludeId,
+  onOptionChange,
 }: Props) {
   const [allOptions, setAllOptions] = useState<LocationOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [activeIdx, setActiveIdx] = useState(-1);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -148,16 +175,22 @@ export default function LocationCombobox({
 
   // Filter options
   const filtered = allOptions.filter((o) => {
-    if (excludeName && o.name === excludeName) return false;
+    if (excludeId && o.id === excludeId) return false;
     if (!search) return true;
-    return normalizeTurkish(o.name).includes(normalizeTurkish(search));
+    const query = normalizeTurkish(search);
+    return normalizeTurkish(o.name).includes(query)
+      || normalizeTurkish(o.city).includes(query)
+      || normalizeTurkish(o.district ?? '').includes(query);
   });
 
-  const groups = groupLocations(filtered, labels);
-  const flat = groups.flatMap((g) => g.options);
+  const groups = groupLocations(filtered, labels, Boolean(search));
+  const flat = groups.flatMap((group) => (
+    group.collapsible && !expandedGroups.has(group.id) ? [] : group.options
+  ));
 
   function handleSelect(opt: LocationOption) {
-    onChange(opt.name);
+    onChange(opt.id);
+    onOptionChange?.(opt);
     setSearch('');
     setOpen(false);
     setActiveIdx(-1);
@@ -167,6 +200,7 @@ export default function LocationCombobox({
     e.preventDefault();
     e.stopPropagation();
     onChange('');
+    onOptionChange?.(null);
     setSearch('');
     inputRef.current?.focus();
   }
@@ -203,7 +237,8 @@ export default function LocationCombobox({
     }
   }
 
-  const displayValue = open ? search : value;
+  const selectedOption = allOptions.find((option) => option.id === value);
+  const displayValue = open ? search : (selectedOption ? formatOptionLabel(selectedOption) : '');
 
   return (
     <div ref={containerRef} style={{ position: 'relative' }}>
@@ -218,6 +253,7 @@ export default function LocationCombobox({
           aria-haspopup="listbox"
           aria-autocomplete="list"
           aria-controls={open ? `${id}-listbox` : undefined}
+           aria-activedescendant={activeIdx >= 0 ? `${id}-option-${activeIdx}` : undefined}
           value={displayValue}
           placeholder={loading ? (loadingText ?? labels.loading) : (placeholder ?? labels.selectOrType)}
           onChange={handleInputChange}
@@ -288,8 +324,46 @@ export default function LocationCombobox({
               {loading ? (loadingText ?? labels.loading) : labels.noResults}
             </div>
           ) : (
-            groups.map((group) => (
-              <div key={group.type}>
+            groups.map((group) => {
+              const expanded = !group.collapsible || expandedGroups.has(group.id);
+              return (
+              <div key={group.id}>
+                {group.collapsible ? (
+                  <button
+                    type="button"
+                    aria-expanded={expanded}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => setExpandedGroups((current) => {
+                      const next = new Set(current);
+                      if (next.has(group.id)) next.delete(group.id);
+                      else next.add(group.id);
+                      return next;
+                    })}
+                    style={{
+                      width: '100%',
+                      border: 'none',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '9px 14px 6px',
+                      fontSize: '10px',
+                      letterSpacing: '0.12em',
+                      textTransform: 'uppercase',
+                      color: '#C99A32',
+                      fontFamily: 'Inter, sans-serif',
+                      fontWeight: 700,
+                      background: '#FAFBFC',
+                      borderBottom: '1px solid #F0F4F8',
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 1,
+                    }}
+                  >
+                    {group.label}<span aria-hidden="true">{expanded ? '−' : '+'}</span>
+                  </button>
+                ) : (
                 <div
                   style={{
                     padding: '8px 14px 4px',
@@ -307,13 +381,15 @@ export default function LocationCombobox({
                 >
                   {group.label}
                 </div>
-                {group.options.map((opt) => {
+                )}
+                {expanded && group.options.map((opt) => {
                   const idx = flat.indexOf(opt);
                   const isActive = idx === activeIdx;
-                  const isSelected = value === opt.name;
+                  const isSelected = value === opt.id;
                   return (
                     <div
                       key={opt.id}
+                      id={`${id}-option-${idx}`}
                       role="option"
                       aria-selected={isSelected}
                       onMouseDown={(e) => e.preventDefault()}
@@ -335,12 +411,18 @@ export default function LocationCombobox({
                       {isSelected && (
                         <span style={{ color: '#1D5FD1', flexShrink: 0, fontSize: '12px' }}>✓</span>
                       )}
-                      {opt.name}
+                      <span>{opt.name}</span>
+                      {opt.city && (
+                        <span style={{ marginLeft: 'auto', color: '#718596', fontSize: '11px', fontWeight: 400 }}>
+                          ({opt.city})
+                        </span>
+                      )}
                     </div>
                   );
                 })}
               </div>
-            ))
+              );
+            })
           )}
         </div>
       )}

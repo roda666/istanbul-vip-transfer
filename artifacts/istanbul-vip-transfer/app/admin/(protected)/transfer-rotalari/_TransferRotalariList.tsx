@@ -36,6 +36,11 @@ type RouteTranslationDraft = Pick<TransferRouteTranslation,
   'languageCode' | 'title' | 'description' | 'seoTitle' | 'seoDescription' | 'ogTitle' | 'ogDescription' | 'status' | 'isManuallyLocked'>;
 type AdminRoute = TransferRoute & { translations: RouteTranslationDraft[] };
 type RouteDraft = Partial<TransferRoute> & { translations?: RouteTranslationDraft[] };
+type ManagedLocation = {
+  id: string;
+  name: string;
+  city: string;
+};
 
 const LOCALES = [
   ['en', 'English'], ['de', 'Deutsch'], ['ru', 'Русский'], ['ar', 'العربية'],
@@ -61,8 +66,9 @@ function ConfirmDialog({ title, message, onConfirm, onCancel }: {
 }
 
 // ── Route form modal ──────────────────────────────────────────────────────────
-function RouteModal({ route, onSave, onClose, saving }: {
+function RouteModal({ route, locationOptions, onSave, onClose, saving }: {
   route: RouteDraft;
+  locationOptions: ManagedLocation[];
   onSave: (data: RouteDraft) => void;
   onClose: () => void;
   saving: boolean;
@@ -143,6 +149,25 @@ function RouteModal({ route, onSave, onClose, saving }: {
               <label style={labelStyle}>Varış *</label>
               <input style={inputStyle} placeholder="örn: Sabiha Gökçen Havalimanı" value={form.destination ?? ''} onChange={e => set('destination', e.target.value)} />
             </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', padding: '12px', border: `1px solid ${BORDER}`, borderRadius: '8px', background: '#F8FAFC' }}>
+            <div>
+              <label style={labelStyle}>Doğrulanmış Kalkış Lokasyonu</label>
+              <select style={inputStyle} value={form.originLocationId ?? ''} onChange={e => set('originLocationId', e.target.value || null)}>
+                <option value="">Yalnızca mevcut metin rotası</option>
+                {locationOptions.map((location) => <option key={location.id} value={location.id}>{location.name} ({location.city})</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Doğrulanmış Varış Lokasyonu</label>
+              <select style={inputStyle} value={form.destinationLocationId ?? ''} onChange={e => set('destinationLocationId', e.target.value || null)}>
+                <option value="">Yalnızca mevcut metin rotası</option>
+                {locationOptions.map((location) => <option key={location.id} value={location.id}>{location.name} ({location.city})</option>)}
+              </select>
+            </div>
+            <p style={{ gridColumn: '1 / -1', color: MUTED, fontSize: '11px', fontFamily: 'Inter, sans-serif', lineHeight: 1.5, margin: 0 }}>
+              İki doğrulanmış lokasyonu birlikte seçin. Tanımlı rota mesafesi bu kimlik çifti için öncelikli olur; boş bırakırsanız mevcut metin tabanlı rota korunur.
+            </p>
           </div>
 
           {/* Distance / Duration */}
@@ -246,6 +271,7 @@ export default function TransferRotalariList() {
   const [modal, setModal] = useState<RouteDraft | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<TransferRoute | null>(null);
+  const [locationOptions, setLocationOptions] = useState<ManagedLocation[]>([]);
 
   const fetchRoutes = useCallback(async () => {
     setLoading(true);
@@ -263,6 +289,12 @@ export default function TransferRotalariList() {
   }, []);
 
   useEffect(() => { fetchRoutes(); }, [fetchRoutes]);
+  useEffect(() => {
+    fetch('/admin/api/locations?active=true')
+      .then((response) => response.ok ? response.json() : { locations: [] })
+      .then((payload) => setLocationOptions(payload.items ?? []))
+      .catch(() => setLocationOptions([]));
+  }, []);
 
   async function handleSave(data: RouteDraft) {
     setSaving(true);
@@ -427,6 +459,7 @@ export default function TransferRotalariList() {
       {modal && (
         <RouteModal
           route={modal}
+          locationOptions={locationOptions}
           onSave={handleSave}
           onClose={() => setModal(null)}
           saving={saving}

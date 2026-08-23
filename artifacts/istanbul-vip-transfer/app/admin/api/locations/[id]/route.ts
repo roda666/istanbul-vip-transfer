@@ -13,6 +13,10 @@ const updateSchema = z.object({
     .optional(),
   city: z.string().max(100).optional(),
   district: z.string().max(200).optional().nullable(),
+  latitude: z.number().finite().min(-90).max(90).optional().nullable(),
+  longitude: z.number().finite().min(-180).max(180).optional().nullable(),
+  coordinateSource: z.string().max(100).optional().nullable(),
+  coordinateAccuracyMeters: z.number().int().min(0).max(100_000).optional().nullable(),
   type: z.enum(LOCATION_TYPES).optional(),
   scope: z.enum(LOCATION_SCOPES).optional(),
   pickupEnabled: z.boolean().optional(),
@@ -76,7 +80,13 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const { eq } = await import('drizzle-orm');
 
   const [current] = await db
-    .select({ id: locations.id, pickupEnabled: locations.pickupEnabled, dropoffEnabled: locations.dropoffEnabled })
+    .select({
+      id: locations.id,
+      pickupEnabled: locations.pickupEnabled,
+      dropoffEnabled: locations.dropoffEnabled,
+      latitude: locations.latitude,
+      longitude: locations.longitude,
+    })
     .from(locations).where(eq(locations.id, id)).limit(1).catch(() => []);
   if (!current) return NextResponse.json({ error: 'Bulunamadı.' }, { status: 404 });
 
@@ -88,6 +98,14 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       { status: 422 },
     );
   }
+  const nextLatitude = data.latitude === undefined ? current.latitude : data.latitude;
+  const nextLongitude = data.longitude === undefined ? current.longitude : data.longitude;
+  if ((nextLatitude == null) !== (nextLongitude == null)) {
+    return NextResponse.json({ error: 'Enlem ve boylam birlikte girilmelidir.' }, { status: 422 });
+  }
+  if (data.coordinateAccuracyMeters != null && nextLatitude == null) {
+    return NextResponse.json({ error: 'Koordinat doğruluğu için enlem ve boylam girilmelidir.' }, { status: 422 });
+  }
 
   const { sanitizeText } = await import('@/lib/sanitize');
   const updateValues: Record<string, unknown> = { updatedAt: new Date(), updatedBy: session.adminId };
@@ -96,6 +114,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (data.slug !== undefined) updateValues.slug = data.slug;
   if (data.city !== undefined) updateValues.city = sanitizeText(data.city);
   if (data.district !== undefined) updateValues.district = data.district ? sanitizeText(data.district) : null;
+  if (data.latitude !== undefined) updateValues.latitude = data.latitude;
+  if (data.longitude !== undefined) updateValues.longitude = data.longitude;
+  if (data.coordinateSource !== undefined) updateValues.coordinateSource = data.coordinateSource ? sanitizeText(data.coordinateSource) : null;
+  if (data.coordinateAccuracyMeters !== undefined) updateValues.coordinateAccuracyMeters = data.coordinateAccuracyMeters;
   if (data.type !== undefined) updateValues.type = data.type;
   if (data.scope !== undefined) updateValues.scope = data.scope;
   if (data.pickupEnabled !== undefined) updateValues.pickupEnabled = data.pickupEnabled;

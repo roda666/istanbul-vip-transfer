@@ -24,6 +24,10 @@ interface Location {
   slug: string;
   city: string;
   district: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  coordinateSource: string | null;
+  coordinateAccuracyMeters: number | null;
   type: LocationType;
   scope: LocationScope;
   pickupEnabled: boolean;
@@ -39,6 +43,7 @@ interface FormSettings {
   timeStepMinutes: number;
   exactAddressRequired: boolean;
   locationSearchEnabled: boolean;
+  roadDistanceMultiplier: number;
   showLuggageCount:      boolean;
   showChildSeatCount:    boolean;
   showVehiclePreference: boolean;
@@ -170,6 +175,7 @@ function ConfirmDialog({ title, message, confirmLabel, danger, onConfirm, onCanc
 // ── Location Modal ─────────────────────────────────────────────────────────────
 interface LocationFormState {
   name: string; slug: string; city: string; district: string;
+  latitude: string; longitude: string; coordinateSource: string; coordinateAccuracyMeters: string;
   type: LocationType; scope: LocationScope;
   pickupEnabled: boolean; dropoffEnabled: boolean;
   isActive: boolean; displayOrder: string;
@@ -177,12 +183,15 @@ interface LocationFormState {
 
 const EMPTY_FORM: LocationFormState = {
   name: '', slug: '', city: 'İstanbul', district: '', type: 'DISTRICT', scope: 'LOCAL',
+  latitude: '', longitude: '', coordinateSource: '', coordinateAccuracyMeters: '',
   pickupEnabled: true, dropoffEnabled: true, isActive: true, displayOrder: '0',
 };
 
 function locationToForm(loc: Location): LocationFormState {
   return {
     name: loc.name, slug: loc.slug, city: loc.city, district: loc.district ?? '',
+    latitude: loc.latitude?.toString() ?? '', longitude: loc.longitude?.toString() ?? '',
+    coordinateSource: loc.coordinateSource ?? '', coordinateAccuracyMeters: loc.coordinateAccuracyMeters?.toString() ?? '',
     type: loc.type, scope: loc.scope,
     pickupEnabled: loc.pickupEnabled, dropoffEnabled: loc.dropoffEnabled,
     isActive: loc.isActive, displayOrder: String(loc.displayOrder),
@@ -213,6 +222,10 @@ function LocationModal({ loc, onSave, onClose }: { loc?: Location; onSave: () =>
     setSaving(true);
     const payload = {
       name: form.name, slug: form.slug, city: form.city, district: form.district || null,
+      latitude: form.latitude.trim() ? Number(form.latitude) : null,
+      longitude: form.longitude.trim() ? Number(form.longitude) : null,
+      coordinateSource: form.coordinateSource.trim() || null,
+      coordinateAccuracyMeters: form.coordinateAccuracyMeters.trim() ? Number(form.coordinateAccuracyMeters) : null,
       type: form.type, scope: form.scope,
       pickupEnabled: form.pickupEnabled, dropoffEnabled: form.dropoffEnabled,
       isActive: form.isActive, displayOrder: parseInt(form.displayOrder, 10) || 0,
@@ -274,6 +287,22 @@ function LocationModal({ loc, onSave, onClose }: { loc?: Location; onSave: () =>
           <div>
             <Label>İlçe</Label>
             <FieldInput value={form.district} onChange={v => set('district', v)} placeholder="ör. Kadıköy" />
+          </div>
+          <div>
+            <Label>Enlem</Label>
+            <FieldInput value={form.latitude} onChange={v => set('latitude', v)} type="number" placeholder="41.0082" />
+          </div>
+          <div>
+            <Label>Boylam</Label>
+            <FieldInput value={form.longitude} onChange={v => set('longitude', v)} type="number" placeholder="28.9784" />
+          </div>
+          <div>
+            <Label>Koordinat Kaynağı</Label>
+            <FieldInput value={form.coordinateSource} onChange={v => set('coordinateSource', v)} placeholder="örn. doğrulanmış adres" />
+          </div>
+          <div>
+            <Label>Doğruluk (metre)</Label>
+            <FieldInput value={form.coordinateAccuracyMeters} onChange={v => set('coordinateAccuracyMeters', v)} type="number" placeholder="örn. 50" />
           </div>
           <div>
             <Label>Sıralama</Label>
@@ -402,7 +431,7 @@ export default function ReservasyonAyarlariClient() {
   const [stLoading, setStLoading] = useState(true);
 
   // ── Form Ayarları state ──
-  const [settings, setSettings] = useState<FormSettings>({ timeStepMinutes: 5, exactAddressRequired: false, locationSearchEnabled: true, showLuggageCount: false, showChildSeatCount: false, showVehiclePreference: false, showAdditionalNotes: false });
+  const [settings, setSettings] = useState<FormSettings>({ timeStepMinutes: 5, exactAddressRequired: false, locationSearchEnabled: true, roadDistanceMultiplier: 1.25, showLuggageCount: false, showChildSeatCount: false, showVehiclePreference: false, showAdditionalNotes: false });
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsMsg, setSettingsMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -421,12 +450,12 @@ export default function ReservasyonAyarlariClient() {
     if (search) params.set('search', search);
     if (typeFilter) params.set('type', typeFilter);
     if (scopeFilter) params.set('scope', scopeFilter);
+    if (showArchived) params.set('archived', 'true');
     try {
       const res = await fetch(`/admin/api/locations?${params}`);
       const json = await res.json();
       const all: Location[] = json.items ?? [];
-      const visible = showArchived ? all : all.filter(l => !l.archivedAt);
-      setItems(visible);
+      setItems(all);
       setTotal(json.total ?? 0);
     } catch { /* ignore */ }
     setLoading(false);
@@ -725,6 +754,18 @@ export default function ReservasyonAyarlariClient() {
                   onChange={v => setSettings(s => ({ ...s, locationSearchEnabled: v }))}
                   label="Lokasyon Arama Etkin (Formda arama kutusu göster)"
                 />
+                <div>
+                  <Label required>Tahmini Mesafe Yol Katsayısı</Label>
+                  <FieldInput
+                    value={String(settings.roadDistanceMultiplier)}
+                    onChange={v => setSettings(s => ({ ...s, roadDistanceMultiplier: Math.min(3, Math.max(1, Number(v) || 1.25)) }))}
+                    type="number"
+                    placeholder="1.25"
+                  />
+                  <p style={{ color: MUTED, fontSize: '11px', fontFamily: 'Inter, sans-serif', marginTop: '5px' }}>
+                    Tanımlı rota mesafesi yoksa kuş uçuşu mesafesi bu katsayıyla çarpılır. 1 ile 3 arasında olmalıdır.
+                  </p>
+                </div>
                 <Toggle
                   checked={settings.exactAddressRequired}
                   onChange={v => setSettings(s => ({ ...s, exactAddressRequired: v }))}

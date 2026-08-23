@@ -78,9 +78,11 @@ async function uploadWebp(bytes: Uint8Array, objectName: string): Promise<string
   if (!sign.ok) throw new Error(`Storage signing failed (${sign.status})`);
   const signed = await sign.json() as { signed_url?: unknown };
   if (typeof signed.signed_url !== 'string') throw new Error('Storage signing returned an invalid response');
+  const uploadBody = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(uploadBody).set(bytes);
   const upload = await fetch(signed.signed_url, {
     method: 'PUT', headers: { 'Content-Type': 'image/webp', 'Content-Length': String(bytes.byteLength) },
-    body: bytes, signal: AbortSignal.timeout(60_000),
+    body: uploadBody, signal: AbortSignal.timeout(60_000),
   });
   if (!upload.ok) throw new Error(`Storage upload failed (${upload.status})`);
   return `/api/storage/objects/${objectName}`;

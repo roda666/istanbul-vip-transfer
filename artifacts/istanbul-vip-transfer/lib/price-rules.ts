@@ -21,7 +21,9 @@ export function isSupportedPriceCurrency(currency: string): currency is Supporte
  * control. Historical validity dates remain in the database but never affect
  * selection, because the admin UI no longer manages date windows.
  */
-export function selectApplicablePriceRule<T extends PriceRuleWindow>(rules: T[], _at?: Date): T | null {
+export function selectApplicablePriceRule<T extends PriceRuleWindow>(rules: T[], at?: Date): T | null {
+  // Keep the timestamp argument for callers that used the legacy date-window API.
+  void at;
   return rules
     .filter((rule) => rule.active)
     .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime() || b.id.localeCompare(a.id))[0] ?? null;

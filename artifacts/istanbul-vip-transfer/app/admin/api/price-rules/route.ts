@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { and, eq } from 'drizzle-orm';
-import { z } from 'zod';
 import { requireAdminSession } from '@/lib/auth/session';
 import { db } from '@/db';
 import { auditLogs, routePriceRules, transferRoutes, vehicles } from '@/db/schema';

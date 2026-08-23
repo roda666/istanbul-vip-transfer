@@ -27,7 +27,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Doğrulama hatası.' }, { status: 422 });
   }
-  const { routePriceRules: rules, transferRoutes, vehicles } = await import('@/db/schema');
+  const { transferRoutes, vehicles } = await import('@/db/schema');
   const [route, vehicle] = await Promise.all([
     db.select({ id: transferRoutes.id }).from(transferRoutes).where(eq(transferRoutes.id, parsed.data.routeId)).limit(1),
     db.select({ id: vehicles.id }).from(vehicles).where(eq(vehicles.id, parsed.data.vehicleId)).limit(1),

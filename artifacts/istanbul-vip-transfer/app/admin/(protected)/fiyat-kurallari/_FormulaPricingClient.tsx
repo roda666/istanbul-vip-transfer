@@ -78,6 +78,60 @@ type QuoteResult = {
   includedKmAllowance?: number;
 };
 
+type ExchangeRatePreview = {
+  requiresConfirmation: true;
+  candidate: {
+    eurTryMicros: number;
+    eurUsdMicros: number;
+  };
+  deviation?: {
+    eurTry: number;
+    eurUsd: number;
+  };
+};
+
+type PricingSettingsDraft = {
+  vatRate: number;
+  vatMode: 'INCLUDED' | 'EXCLUDED';
+  eurRounding: number;
+  usdRounding: number;
+  tryRounding: number;
+  eurTryMode: 'LIVE' | 'MANUAL';
+  eurUsdMode: 'LIVE' | 'MANUAL';
+  manualEurTry: number;
+  manualEurUsd: number;
+  refreshMinutes: number;
+  deviationLimit: number;
+};
+
+type ProfilePayload = {
+  vehicleId: string;
+  active: boolean;
+  mode: 'DISTANCE' | 'HOURLY';
+  notes: string | null;
+  distanceOpeningKurus?: number;
+  distanceFirstKmKurus?: number;
+  distanceThresholdKm?: number;
+  distanceSecondKmKurus?: number;
+  hourlyRateKurus?: number;
+  minimumHours?: number;
+  includedKmMode?: 'PER_HOUR' | 'PACKAGE';
+  includedKm?: number;
+  excessKmKurus?: number;
+  excessHourKurus?: number;
+};
+
+function isExchangeRatePreview(value: unknown): value is ExchangeRatePreview {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = (value as { candidate?: unknown }).candidate;
+  if (!candidate || typeof candidate !== 'object') return false;
+  const preview = value as Partial<ExchangeRatePreview>;
+  const rateCandidate = candidate as Partial<ExchangeRatePreview['candidate']>;
+  return preview.requiresConfirmation === true
+    && typeof rateCandidate.eurTryMicros === 'number'
+    && typeof rateCandidate.eurUsdMicros === 'number';
+}
+
 // --- Helpers ---
 
 const formatMoneyCents = (cents: number, currency: string) => 
@@ -189,7 +243,7 @@ function FastQuotePanel({ vehicles }: { vehicles: Vehicle[] }) {
       } else {
         setQuoteResult({ state: 'UNAVAILABLE', reason: data.error || 'Bilinmeyen Hata' });
       }
-    } catch (err) {
+    } catch {
       setQuoteResult({ state: 'UNAVAILABLE', reason: 'Bağlantı hatası' });
     } finally {
       setQuoting(false);
@@ -298,7 +352,7 @@ function FastQuotePanel({ vehicles }: { vehicles: Vehicle[] }) {
 }
 
 function TcmbWidget({ settings, onApply }: { settings: Settings | null, onApply: () => void }) {
-  const [previewData, setPreviewData] = useState<any>(null);
+  const [previewData, setPreviewData] = useState<ExchangeRatePreview | null>(null);
   const [confirmText, setConfirmText] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -308,8 +362,8 @@ function TcmbWidget({ settings, onApply }: { settings: Settings | null, onApply:
       const res = await fetch('/admin/api/pricing/exchange-rates', {
         method: 'POST', body: JSON.stringify({ action: 'preview' })
       });
-      const data = await res.json();
-      if (data.requiresConfirmation) {
+      const data: unknown = await res.json();
+      if (isExchangeRatePreview(data)) {
         setPreviewData(data);
         setConfirmText('');
       }
@@ -408,7 +462,7 @@ function TcmbWidget({ settings, onApply }: { settings: Settings | null, onApply:
 }
 
 function SettingsPanel({ settings, onSave }: { settings: Settings | null, onSave: () => void }) {
-  const [edit, setEdit] = useState<any>({
+  const [edit, setEdit] = useState<PricingSettingsDraft>({
     vatRate: 20,
     vatMode: 'INCLUDED',
     eurRounding: 500,
@@ -485,7 +539,7 @@ function SettingsPanel({ settings, onSave }: { settings: Settings | null, onSave
            <AmountInput label="KDV Oranı (%)" value={edit.vatRate * 10} onChange={v => setEdit({...edit, vatRate: v / 10})} symbol="%" decimals={1} />
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">KDV Modu</label>
-            <select className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={edit.vatMode} onChange={e => setEdit({...edit, vatMode: e.target.value})}>
+              <select className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={edit.vatMode} onChange={e => setEdit({...edit, vatMode: e.target.value as PricingSettingsDraft['vatMode']})}>
               <option value="INCLUDED">Fiyatlara Dahil</option>
               <option value="EXCLUDED">Fiyatlara Hariç (+KDV)</option>
             </select>
@@ -501,7 +555,7 @@ function SettingsPanel({ settings, onSave }: { settings: Settings | null, onSave
           <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3">Döviz Kaynakları</h3>
           <div>
              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">EUR/TRY Kur Kaynağı</label>
-             <select className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={edit.eurTryMode} onChange={e => setEdit({...edit, eurTryMode: e.target.value})}>
+             <select className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={edit.eurTryMode} onChange={e => setEdit({...edit, eurTryMode: e.target.value as PricingSettingsDraft['eurTryMode']})}>
                <option value="LIVE">TCMB Canlı</option>
                <option value="MANUAL">Manuel Sabit</option>
              </select>
@@ -512,7 +566,7 @@ function SettingsPanel({ settings, onSave }: { settings: Settings | null, onSave
           
           <div className="pt-2">
              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">EUR/USD Kur Kaynağı</label>
-             <select className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={edit.eurUsdMode} onChange={e => setEdit({...edit, eurUsdMode: e.target.value})}>
+             <select className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={edit.eurUsdMode} onChange={e => setEdit({...edit, eurUsdMode: e.target.value as PricingSettingsDraft['eurUsdMode']})}>
                <option value="LIVE">TCMB Canlı</option>
                <option value="MANUAL">Manuel Sabit</option>
              </select>
@@ -626,7 +680,7 @@ function ProfilesPanel({ profiles, vehicles, onReload }: { profiles: Profile[], 
         <ProfileModal 
           isOpen={modalOpen} 
           cloneData={cloneData} 
-          vehicles={vehicles} 
+          vehicles={vehicles}
           onClose={() => setModalOpen(false)} 
           onSaved={() => { setModalOpen(false); onReload(); }} 
         />
@@ -635,7 +689,13 @@ function ProfilesPanel({ profiles, vehicles, onReload }: { profiles: Profile[], 
   );
 }
 
-function ProfileModal({ isOpen, cloneData, vehicles, onClose, onSaved }: any) {
+function ProfileModal({ isOpen, cloneData, vehicles, onClose, onSaved }: {
+  isOpen: boolean;
+  cloneData: Profile | null;
+  vehicles: Vehicle[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
   const [saving, setSaving] = useState(false);
   
   const [fMode, setFMode] = useState<'DISTANCE' | 'HOURLY'>('DISTANCE');
@@ -686,7 +746,7 @@ function ProfileModal({ isOpen, cloneData, vehicles, onClose, onSaved }: any) {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const payload: any = {
+      const payload: ProfilePayload = {
         vehicleId: fVehicleId, active: fActive, mode: fMode, notes: fNotes || null
       };
       if (fMode === 'DISTANCE') {

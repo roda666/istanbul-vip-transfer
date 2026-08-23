@@ -34,6 +34,7 @@ import {
   Database,
   Banknote,
   Plane,
+  PackagePlus,
 } from 'lucide-react';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -55,6 +56,7 @@ interface NavItem {
 interface NavGroup {
   key: string;
   label: string;
+  icon: React.ReactNode;
   items: NavItem[];
 }
 
@@ -63,29 +65,48 @@ function getNavGroups(role: string, isSuperOrAdmin: boolean): NavGroup[] {
   return [
     {
       key: 'iletisim',
-      label: 'İletişim',
+      label: 'Müşteri ve İletişim',
+      icon: <MessageSquare size={16} />,
       items: [
         { href: '/admin/sohbet',           label: 'Canlı Sohbet',     icon: <MessageSquare size={18} /> },
         { href: '/admin/chatbot-bilgi-bankasi', label: 'Chatbot Bilgi Bankası', icon: <Database size={18} /> },
         { href: '/admin/bulten-aboneleri', label: 'Bülten Aboneleri', icon: <Mail size={18} /> },
-        ...(isSuperOrAdmin ? [{ href: '/admin/personel', label: 'Personel Yönetimi', icon: <Users size={18} /> }] : []),
       ],
     },
     {
       key: 'operasyon',
       label: 'Operasyon',
+      icon: <ClipboardList size={16} />,
       items: [
         { href: '/admin/talepler',             label: 'Talepler',            icon: <ClipboardList size={18} /> },
         { href: '/admin/istatistikler',       label: 'İstatistikler',        icon: <BarChart2 size={18} /> },
         { href: '/admin/rezervasyon-ayarlari', label: 'Rezervasyon Ayarları', icon: <CalendarClock size={18} /> },
-        { href: '/admin/transfer-rotalari',   label: 'Transfer Rotaları',   icon: <MapPin size={18} /> },
-        { href: '/admin/fiyat-kurallari',     label: 'Fiyat Kuralları',     icon: <Banknote size={18} /> },
-        { href: '/admin/ucus-karsilama',      label: 'Uçuşla Karşılama',    icon: <Plane size={18} /> },
       ],
     },
     {
+      key: 'transferler',
+      label: 'Araçlar ve Transferler',
+      icon: <Car size={16} />,
+      items: [
+        { href: '/admin/araclar',             label: 'Araçlar',             icon: <Car size={18} /> },
+        { href: '/admin/transfer-rotalari',   label: 'Transfer Rotaları',   icon: <MapPin size={18} /> },
+        { href: '/admin/fiyat-kurallari',     label: 'Fiyat Kuralları',     icon: <Banknote size={18} /> },
+        { href: '/admin/ek-hizmetler',        label: 'Ek Hizmetler',        icon: <PackagePlus size={18} /> },
+        { href: '/admin/ucus-karsilama',      label: 'Uçuşla Karşılama',    icon: <Plane size={18} /> },
+      ],
+    },
+    ...(isSuperOrAdmin ? [{
+      key: 'personel',
+      label: 'Personel',
+      icon: <Users size={16} />,
+      items: [
+        { href: '/admin/personel', label: 'Personel Yönetimi', icon: <Users size={18} /> },
+      ],
+    }] : []),
+    {
       key: 'icerik',
       label: 'İçerik',
+      icon: <BookOpen size={16} />,
       items: [
         { href: '/admin/blog',           label: 'Blog',            icon: <BookOpen size={18} /> },
         { href: '/admin/sayfalar',       label: 'Sayfalar',        icon: <FileText size={18} /> },
@@ -99,16 +120,17 @@ function getNavGroups(role: string, isSuperOrAdmin: boolean): NavGroup[] {
     },
     {
       key: 'site',
-      label: 'Site Yönetimi',
+      label: 'Sayfalar ve Site',
+      icon: <LayoutDashboard size={16} />,
       items: [
         { href: '/admin/sayfalar/ana-sayfa', label: 'Ana Sayfa Düzenleyici', icon: <LayoutDashboard size={18} /> },
         { href: '/admin/menu',              label: 'Menü Yönetimi',          icon: <MenuIcon size={18} /> },
-        { href: '/admin/araclar',           label: 'Araçlar',               icon: <Car size={18} /> },
       ],
     },
     {
       key: 'ayarlar',
       label: 'Ayarlar',
+      icon: <Settings size={16} />,
       items: [
         { href: '/admin/e-posta-ayarlari',                  label: 'E-posta Ayarları',       icon: <MailOpen size={18} /> },
         ...(role === 'SUPER_ADMIN' ? [{ href: '/admin/veritabani-yedegi', label: 'Veritabanı Yedeği', icon: <History size={18} /> }] : []),
@@ -118,7 +140,10 @@ function getNavGroups(role: string, isSuperOrAdmin: boolean): NavGroup[] {
         { href: '/admin/hesabim',                           label: 'Hesabım',               icon: <UserCircle size={18} /> },
       ],
     },
-  ];
+  ].sort((left, right) => {
+    const order = ['operasyon', 'transferler', 'iletisim', 'personel', 'icerik', 'site', 'ayarlar'];
+    return order.indexOf(left.key) - order.indexOf(right.key);
+  });
 }
 
 const CHAT_STAFF_ITEMS: NavItem[] = [
@@ -126,16 +151,9 @@ const CHAT_STAFF_ITEMS: NavItem[] = [
   { href: '/admin/hesabim', label: 'Hesabım', icon: <UserCircle size={18} /> },
 ];
 
-/** Returns a flat list of nav items visible to the given role (used by mobile drawer). */
-function getVisibleItems(role: string): NavItem[] {
-  if (role === 'CHAT_STAFF') return CHAT_STAFF_ITEMS;
-  const isSuperOrAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN';
-  return getNavGroups(role, isSuperOrAdmin).flatMap(g => g.items);
-}
-
 // ── NavGroup collapsible section ──────────────────────────────────────────────
 function NavGroup({ group, collapsed, openGroups, toggleGroup, renderNavItem }: {
-  group: { key: string; label: string; items: NavItem[] };
+  group: NavGroup;
   collapsed: boolean;
   openGroups: Set<string>;
   toggleGroup: (key: string) => void;
@@ -143,29 +161,34 @@ function NavGroup({ group, collapsed, openGroups, toggleGroup, renderNavItem }: 
 }) {
   const isOpen = openGroups.has(group.key);
   return (
-    <div style={{ marginBottom: '4px' }}>
+    <section style={{ marginBottom: '8px' }}>
       {!collapsed && (
         <button
           onClick={() => toggleGroup(group.key)}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            width: '100%', padding: '6px 12px',
-            background: 'none', border: 'none', cursor: 'pointer',
-            borderRadius: '6px',
+            width: '100%', minHeight: '42px', padding: '9px 11px',
+            background: isOpen ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.10)', cursor: 'pointer',
+            borderRadius: '8px', transition: 'background 0.15s, border-color 0.15s',
           }}
           aria-expanded={isOpen}
+          aria-controls={`admin-nav-group-${group.key}`}
         >
-          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.38)' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '9px', fontFamily: 'Inter, sans-serif', fontSize: '12px', fontWeight: 700, letterSpacing: '0.02em', color: 'rgba(255,255,255,0.90)' }}>
+            <span style={{ color: GOLD, display: 'inline-flex' }}>{group.icon}</span>
             {group.label}
           </span>
           <ChevronRight
-            size={12}
-            style={{ color: 'rgba(255,255,255,0.30)', transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}
+            size={16}
+            style={{ color: 'rgba(255,255,255,0.75)', transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}
           />
         </button>
       )}
-      {(isOpen || collapsed) && group.items.map(item => renderNavItem(item))}
-    </div>
+      <div id={`admin-nav-group-${group.key}`} style={{ paddingTop: collapsed ? 0 : '4px' }}>
+        {(isOpen || collapsed) && group.items.map(item => renderNavItem(item))}
+      </div>
+    </section>
   );
 }
 
@@ -184,25 +207,56 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
   const [newCount,    setNewCount]    = useState(0);
   const [chatCount,   setChatCount]   = useState(0);
   const [studioCount, setStudioCount] = useState(0);
+  const [groupPreferencesReady, setGroupPreferencesReady] = useState(false);
 
   const isChatStaff    = userRole === 'CHAT_STAFF';
   const isSuperOrAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
 
-  // Determine which groups are open by default (auto-expand if active item is inside)
+  // All groups begin open. Stored choices are restored after mount, while the
+  // active route remains accessible even if it was previously collapsed.
   function getDefaultOpen(): Set<string> {
-    const s = new Set<string>();
-    for (const g of getNavGroups(userRole, isSuperOrAdmin)) {
-      if (g.items.some(item => pathname === item.href || pathname.startsWith(item.href + '/'))) {
-        s.add(g.key);
-      }
-    }
-    // If nothing is active, open the first group
-    if (s.size === 0) s.add('iletisim');
-    return s;
+    return new Set(getNavGroups(userRole, isSuperOrAdmin).map(group => group.key));
   }
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => getDefaultOpen());
+
+  useEffect(() => {
+    const groups = getNavGroups(userRole, isSuperOrAdmin);
+    const validKeys = new Set(groups.map(group => group.key));
+    const activeKeys = groups
+      .filter(group => group.items.some(item => pathname === item.href || pathname.startsWith(item.href + '/')))
+      .map(group => group.key);
+    try {
+      const saved = window.localStorage.getItem('istanbul-vip-admin-open-nav-groups');
+      const parsed = saved ? JSON.parse(saved) : null;
+      const restored = Array.isArray(parsed)
+        ? parsed.filter((key): key is string => typeof key === 'string' && validKeys.has(key))
+        : [...validKeys];
+      setOpenGroups(new Set([...restored, ...activeKeys]));
+    } catch {
+      setOpenGroups(new Set([...validKeys, ...activeKeys]));
+    } finally {
+      setGroupPreferencesReady(true);
+    }
+  }, [pathname, userRole, isSuperOrAdmin]);
+
+  useEffect(() => {
+    if (!groupPreferencesReady) return;
+    try {
+      window.localStorage.setItem('istanbul-vip-admin-open-nav-groups', JSON.stringify([...openGroups]));
+    } catch {
+      // Navigation remains fully usable when browser storage is unavailable.
+    }
+  }, [openGroups, groupPreferencesReady]);
+
+  function isGroupActive(key: string) {
+    return getNavGroups(userRole, isSuperOrAdmin)
+      .find(group => group.key === key)
+      ?.items.some(item => pathname === item.href || pathname.startsWith(item.href + '/')) ?? false;
+  }
+
   function toggleGroup(key: string) {
     setOpenGroups(prev => {
+      if (prev.has(key) && isGroupActive(key)) return prev;
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -294,12 +348,15 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
         key={item.href}
         href={item.href}
         onClick={() => setMobileOpen(false)}
-        style={{ textDecoration: 'none', display: 'block', marginBottom: '2px' }}
+        aria-current={active ? 'page' : undefined}
+        title={collapsed ? item.label : undefined}
+        style={{ textDecoration: 'none', display: 'block', marginBottom: '3px' }}
       >
         <div
           style={{
             display: 'flex', alignItems: 'center', gap: '10px',
-            padding: collapsed ? '9px' : '9px 12px',
+            minHeight: '44px',
+            padding: collapsed ? '11px' : '11px 12px',
             borderRadius: '8px',
             justifyContent: collapsed ? 'center' : 'flex-start',
             background: active ? NAV_ACTIVE_BG : 'transparent',
@@ -317,7 +374,7 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
           </span>
           {!collapsed && (
             <>
-              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: active ? '#fff' : NAV_TEXT, fontWeight: active ? 600 : 400, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', lineHeight: 1.3, color: active ? '#fff' : 'rgba(255,255,255,0.86)', fontWeight: active ? 700 : 500, flex: 1, minWidth: 0 }}>
                 {item.label}
               </span>
               {hasBadge && (
@@ -432,8 +489,8 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
       {/* Desktop sidebar */}
       <div
         style={{
-          width:    collapsed ? '60px' : '220px',
-          minWidth: collapsed ? '60px' : '220px',
+          width:    collapsed ? '64px' : '280px',
+          minWidth: collapsed ? '64px' : '280px',
           height: '100vh',
           position: 'sticky',
           top: 0,
@@ -557,65 +614,23 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
               padding: '10px 8px',
               WebkitOverflowScrolling: 'touch',
             }}>
-              {getVisibleItems(userRole).map(item => {
-                const active = isActive(item.href);
-                const count = item.href === '/admin/talepler'  ? newCount
-                           : item.href === '/admin/sohbet'    ? chatCount
-                           : item.href === '/admin/ai-studio' ? studioCount
-                           : 0;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setMobileOpen(false)}
-                    style={{ textDecoration: 'none', display: 'block', marginBottom: '2px' }}
-                  >
-                    <div style={{
-                      display: 'flex', alignItems: 'center', gap: '10px',
-                      padding: '11px 12px', borderRadius: '8px',
-                      minHeight: '44px',
-                      background: active ? NAV_ACTIVE_BG : 'transparent',
-                      transition: 'background 0.15s', position: 'relative',
-                    }}>
-                      <span style={{ color: active ? GOLD : NAV_TEXT, flexShrink: 0 }}>
-                        {item.icon}
-                      </span>
-                      <span style={{
-                        fontFamily: 'Inter, sans-serif', fontSize: '13px',
-                        color: active ? '#fff' : NAV_TEXT,
-                        fontWeight: active ? 600 : 400,
-                        flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                      }}>
-                        {item.label}
-                      </span>
-                      {item.badge && (
-                        <span style={{
-                          fontSize: '9px', fontFamily: 'Inter, sans-serif', fontWeight: 700,
-                          background: GOLD, color: '#fff', padding: '1px 5px',
-                          borderRadius: '4px', letterSpacing: '0.05em',
-                        }}>
-                          {item.badge}
-                        </span>
-                      )}
-                      {count > 0 && (
-                        <span style={{
-                          fontSize: '11px', fontFamily: 'Inter, sans-serif', fontWeight: 700,
-                          background: '#EF4444', color: '#fff', borderRadius: '10px',
-                          padding: '1px 6px', minWidth: '18px', textAlign: 'center',
-                        }}>
-                          {count > 99 ? '99+' : count}
-                        </span>
-                      )}
-                      {active && (
-                        <div style={{
-                          position: 'absolute', left: 0, top: '6px', bottom: '6px',
-                          width: '3px', background: GOLD, borderRadius: '0 2px 2px 0',
-                        }} />
-                      )}
-                    </div>
-                  </Link>
-                );
-              })}
+              {isChatStaff ? (
+                CHAT_STAFF_ITEMS.map(item => renderNavItem(item))
+              ) : (
+                <>
+                  {renderNavItem({ href: '/admin/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> })}
+                  {getNavGroups(userRole, isSuperOrAdmin).map(group => (
+                    <NavGroup
+                      key={group.key}
+                      group={group}
+                      collapsed={false}
+                      openGroups={openGroups}
+                      toggleGroup={toggleGroup}
+                      renderNavItem={renderNavItem}
+                    />
+                  ))}
+                </>
+              )}
             </nav>
 
             {/* ③ FOOTER — always visible, safe bottom inset */}

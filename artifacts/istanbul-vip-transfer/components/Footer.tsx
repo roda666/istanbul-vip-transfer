@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Phone, MapPin, Mail, Lock, ShieldCheck, Banknote, ArrowLeftRight, Smartphone, ExternalLink } from 'lucide-react';
+import { Phone, MapPin, Mail, Lock, ShieldCheck, Banknote, ArrowLeftRight, Smartphone, ExternalLink, Music2, Youtube } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
 import type { HomepageSections } from '@/lib/homepage-types';
 import { useSiteSettings } from '@/components/SiteSettingsContext';
@@ -153,6 +153,10 @@ export default function Footer({ serviceLinks = [], homepageFooter }: FooterProp
     ...service,
     href: servicePath(service.slug),
   }));
+  const socialLinks = [
+    cs.tiktokUrl ? { label: 'TikTok', href: cs.tiktokUrl, Icon: Music2 } : null,
+    cs.youtubeUrl ? { label: 'YouTube', href: cs.youtubeUrl, Icon: Youtube } : null,
+  ].filter((link): link is { label: string; href: string; Icon: typeof Music2 } => Boolean(link));
 
   const linkHoverStyle = {
     color: 'rgba(255,255,255,0.65)',
@@ -194,6 +198,28 @@ export default function Footer({ serviceLinks = [], homepageFooter }: FooterProp
                 {cs.companyLegalName}
                 {cs.companyTradeName && ` · ${cs.companyTradeName}`}
               </p>
+            )}
+            {socialLinks.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16 }}>
+                {socialLinks.map(({ label, href, Icon }) => (
+                  <a
+                    key={label}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`${label} profilini aç`}
+                    title={label}
+                    data-testid={`footer-social-${label.toLowerCase()}`}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      width: 32, height: 32, borderRadius: 7, color: '#FFFFFF',
+                      background: 'rgba(255,255,255,0.11)', border: '1px solid rgba(255,255,255,0.16)',
+                    }}
+                  >
+                    <Icon size={16} aria-hidden="true" />
+                  </a>
+                ))}
+              </div>
             )}
           </div>
 

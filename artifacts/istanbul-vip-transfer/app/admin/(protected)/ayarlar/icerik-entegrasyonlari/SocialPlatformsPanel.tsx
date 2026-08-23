@@ -5,6 +5,8 @@ import { AlertCircle, CheckCircle2, ExternalLink, Link2, Loader2, Power, Refresh
 import { getSocialOAuthMessage, getSocialPlatformLastErrorMessage } from '@/lib/social-oauth-feedback';
 import FacebookShareButton from '@/app/admin/_components/FacebookShareButton';
 import XShareButton from '@/app/admin/_components/XShareButton';
+import LinkedInShareButton from '@/app/admin/_components/LinkedInShareButton';
+import TelegramShareButton from '@/app/admin/_components/TelegramShareButton';
 
 type Platform = {
   key: string;
@@ -49,6 +51,7 @@ export default function SocialPlatformsPanel() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [latestBlog, setLatestBlog] = useState<LatestPublishedBlog | null>(null);
+  const [profileLinks, setProfileLinks] = useState({ tiktokUrl: '', youtubeUrl: '' });
   const [googleLocations, setGoogleLocations] = useState<GoogleBusinessLocation[]>([]);
   const popupPollRef = useRef<number | null>(null);
 
@@ -56,9 +59,10 @@ export default function SocialPlatformsPanel() {
     setLoading(true);
     setError(null);
     try {
-      const [response, latestBlogResponse] = await Promise.all([
+      const [response, latestBlogResponse, settingsResponse] = await Promise.all([
         fetch('/admin/api/social-platforms', { cache: 'no-store' }),
         fetch('/admin/api/social-platforms/latest-blog', { cache: 'no-store' }),
+        fetch('/admin/api/settings', { cache: 'no-store' }),
       ]);
       const payload = await response.json() as { platforms?: Platform[]; error?: string };
       if (!response.ok || !payload.platforms) throw new Error(payload.error ?? 'Platformlar yüklenemedi.');
@@ -77,6 +81,15 @@ export default function SocialPlatformsPanel() {
         setLatestBlog(latestBlogPayload.post ?? null);
       } else {
         setLatestBlog(null);
+      }
+      if (settingsResponse.ok) {
+        const settingsPayload = await settingsResponse.json() as {
+          settings?: { tiktokUrl?: string | null; youtubeUrl?: string | null };
+        };
+        setProfileLinks({
+          tiktokUrl: settingsPayload.settings?.tiktokUrl ?? '',
+          youtubeUrl: settingsPayload.settings?.youtubeUrl ?? '',
+        });
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Platformlar yüklenemedi.');
@@ -194,6 +207,30 @@ export default function SocialPlatformsPanel() {
       await load();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Test paylaşımı gönderilemedi.');
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
+  async function saveProfileLink(key: 'tiktokUrl' | 'youtubeUrl') {
+    setBusyKey(key);
+    setError(null);
+    setMessage(null);
+    try {
+      const response = await fetch('/admin/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [key]: profileLinks[key].trim() || null }),
+      });
+      const payload = await response.json() as { error?: string; settings?: { tiktokUrl?: string | null; youtubeUrl?: string | null } };
+      if (!response.ok) throw new Error(payload.error ?? 'Bağlantı kaydedilemedi.');
+      setProfileLinks({
+        tiktokUrl: payload.settings?.tiktokUrl ?? '',
+        youtubeUrl: payload.settings?.youtubeUrl ?? '',
+      });
+      setMessage(key === 'tiktokUrl' ? 'TikTok bağlantısı kaydedildi.' : 'YouTube bağlantısı kaydedildi.');
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Bağlantı kaydedilemedi.');
     } finally {
       setBusyKey(null);
     }
@@ -359,6 +396,65 @@ export default function SocialPlatformsPanel() {
                       Manuel paylaşım için önce bir blog yazısı yayımlayın.
                     </p>
                   )}
+                </div>
+              )}
+              {platform.key === 'linkedin' && (
+                <div style={{ marginTop: 10 }}>
+                  {latestBlog ? (
+                    <LinkedInShareButton
+                      url={latestBlog.url}
+                      label="Son yayınlanan yazıyı LinkedIn'de paylaş"
+                      style={{ width: '100%' }}
+                    />
+                  ) : (
+                    <p style={{ margin: 0, color: '#64748B', fontFamily: 'Inter, sans-serif', fontSize: 11 }}>
+                      Manuel paylaşım için önce bir blog yazısı yayımlayın.
+                    </p>
+                  )}
+                </div>
+              )}
+              {platform.key === 'telegram' && (
+                <div style={{ marginTop: 10 }}>
+                  {latestBlog ? (
+                    <TelegramShareButton
+                      title={latestBlog.title}
+                      url={latestBlog.url}
+                      label="Son yayınlanan yazıyı Telegram'da paylaş"
+                      style={{ width: '100%' }}
+                    />
+                  ) : (
+                    <p style={{ margin: 0, color: '#64748B', fontFamily: 'Inter, sans-serif', fontSize: 11 }}>
+                      Manuel paylaşım için önce bir blog yazısı yayımlayın.
+                    </p>
+                  )}
+                </div>
+              )}
+              {(platform.key === 'tiktok' || platform.key === 'youtube') && (
+                <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #E8EDF2' }}>
+                  <label style={{ display: 'block', color: '#52697A', fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 700, marginBottom: 5 }}>
+                    {platform.key === 'tiktok' ? 'TikTok profil veya video linki' : 'YouTube kanal veya video linki'}
+                  </label>
+                  <input
+                    type="url"
+                    value={platform.key === 'tiktok' ? profileLinks.tiktokUrl : profileLinks.youtubeUrl}
+                    onChange={(event) => setProfileLinks((current) => ({
+                      ...current,
+                      [platform.key === 'tiktok' ? 'tiktokUrl' : 'youtubeUrl']: event.target.value,
+                    }))}
+                    placeholder={platform.key === 'tiktok' ? 'https://www.tiktok.com/@hesabiniz' : 'https://www.youtube.com/@kanaliniz'}
+                    style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #CBD5E1', borderRadius: 7, padding: '7px 8px', color: '#172B3A', background: '#fff', fontSize: 11 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void saveProfileLink(platform.key === 'tiktok' ? 'tiktokUrl' : 'youtubeUrl')}
+                    disabled={busyKey === (platform.key === 'tiktok' ? 'tiktokUrl' : 'youtubeUrl')}
+                    style={{ marginTop: 8, width: '100%', border: '1px solid #BFDBFE', background: '#EFF6FF', color: '#1D4ED8', borderRadius: 7, padding: '7px 9px', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    {busyKey === (platform.key === 'tiktok' ? 'tiktokUrl' : 'youtubeUrl') ? 'Kaydediliyor…' : 'Linki Kaydet'}
+                  </button>
+                  <p style={{ margin: '7px 0 0', color: '#64748B', fontFamily: 'Inter, sans-serif', fontSize: 10, lineHeight: 1.4 }}>
+                    Kaydedilen geçerli bağlantı footer&apos;da yeni sekmede gösterilir. Video platformları için otomatik paylaşım yapılmaz.
+                  </p>
                 </div>
               )}
               {platform.key === 'google_business' && platform.connected && (

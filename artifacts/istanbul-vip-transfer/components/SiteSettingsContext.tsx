@@ -42,6 +42,8 @@ const DEFAULT_SETTINGS: ContactSettings = {
   fullAddress:      '',
   googlePlayUrl:    '',
   googleReviewUrl:  SITE.googleReviewUrl,
+  tiktokUrl:        '',
+  youtubeUrl:       '',
 };
 
 // ── Context ───────────────────────────────────────────────────────────────────

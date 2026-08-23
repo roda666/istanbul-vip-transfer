@@ -4,7 +4,7 @@ const SOCIAL_OAUTH_MESSAGES: Record<string, string> = {
   x_unauthorized:
     'X bağlantısını başlatmak için yönetici oturumunuzla yeniden giriş yapın.',
   x_credits_depleted:
-    'X API erişimi plan veya kredi limiti nedeniyle reddedildi. X Developer Portal üzerinden kredi/plan durumunu güncelleyip tekrar deneyin.',
+    'X API kredisi gerekiyor. X Developer Portal üzerinden kredi/plan durumunu güncelleyip tekrar deneyin.',
   x_request_token_failed:
     'X yetkilendirme isteği başlatılamadı. X uygulama ayarlarını ve API erişim planını kontrol edip tekrar deneyin.',
   x_invalid_state:
@@ -44,20 +44,35 @@ export function getSocialPlatformLastErrorMessage(platformKey: string, error: st
  */
 export function classifyXOAuthFailure(error: unknown): 'x_credits_depleted' | 'x_request_token_failed' {
   const details = getProviderErrorDetails(error).toLowerCase();
-  if (/(credits?\s+depleted|payment\s+required|quota\s+(?:exceeded|depleted)|billing)/i.test(details)) {
+  if (/(?:^|\D)402(?:\D|$)|credits?\s+depleted|payment\s+required|quota\s+(?:exceeded|depleted)|billing/i.test(details)) {
     return 'x_credits_depleted';
   }
   return 'x_request_token_failed';
 }
 
 function getProviderErrorDetails(error: unknown): string {
-  if (typeof error === 'string') return error;
-  if (error instanceof Error) return error.message;
-  if (error && typeof error === 'object') {
-    const value = error as Record<string, unknown>;
-    return [value.message, value.detail, value.title, value.code]
-      .filter((item): item is string => typeof item === 'string')
-      .join(' ');
-  }
-  return '';
+  const parts: string[] = [];
+  const visited = new Set<unknown>();
+  const collect = (value: unknown, depth = 0): void => {
+    if (depth > 3 || value === null || value === undefined || visited.has(value)) return;
+    if (typeof value === 'string' || typeof value === 'number') {
+      parts.push(String(value));
+      return;
+    }
+    if (value instanceof Error) {
+      visited.add(value);
+      parts.push(value.message);
+      collect(value.cause, depth + 1);
+      return;
+    }
+    if (typeof value === 'object') {
+      visited.add(value);
+      const record = value as Record<string, unknown>;
+      for (const key of ['message', 'detail', 'title', 'code', 'status', 'statusCode', 'error', 'data', 'response', 'body']) {
+        collect(record[key], depth + 1);
+      }
+    }
+  };
+  collect(error);
+  return parts.join(' ');
 }

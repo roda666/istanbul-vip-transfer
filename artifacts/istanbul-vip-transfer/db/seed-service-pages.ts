@@ -217,6 +217,99 @@ const SERVICES: ServiceSeed[] = [
     heroBadge: 'Şehir Turu',
     features: ['İstanbul\'dan hareket', 'Özel araç ve sürücü', 'Termal bölge erişimi', '7/24 rezervasyon'],
   },
+  {
+    slug: 'ucus-karsilama-meet-greet',
+    displayOrder: 21,
+    title: 'Uçuş Karşılama (Meet & Greet)',
+    excerpt: 'İstanbul Havalimanı ve Sabiha Gökçen’de isminize hazırlanan tabela, bagaj yardımı ve araca kadar eşlik ile kişisel uçuş karşılama hizmeti.',
+    seoTitle: 'Uçuş Karşılama (Meet & Greet) | İstanbul Havalimanı',
+    seoDescription: 'İstanbul Havalimanı ve Sabiha Gökçen’de isim tabelası, bagaj yardımı ve özel araç bağlantısı ile profesyonel Meet & Greet hizmeti.',
+    heroTitle: 'Uçuş Karşılama (Meet & Greet)',
+    heroSubtitle: 'İstanbul Havalimanı ve Sabiha Gökçen’de, isminize hazırlanan tabela ile karşılanın; bagaj alımından özel aracınıza kadar size eşlik edelim.',
+    heroCrumb: 'Uçuş Karşılama',
+    heroBadge: 'Havalimanı Karşılama',
+    features: [
+      'İsminize hazırlanan karşılama tabelası',
+      'Terminalde kişisel karşılama ve yönlendirme',
+      'Bagaj alımından araca kadar eşlik',
+      'Özel transfer aracınızla koordineli çıkış',
+      'Uçuş bilgilerinizle planlanan karşılama',
+      '7/24 rezervasyon desteği',
+    ],
+    category: 'airport',
+    showOnHomepage: true,
+    bodyOverride: JSON.stringify({
+      version: 2,
+      hero: {
+        badge: 'Havalimanı Karşılama',
+        title: 'Uçuş Karşılama (Meet & Greet)',
+        subtitle: 'İstanbul Havalimanı ve Sabiha Gökçen’de, isminize hazırlanan tabela ile karşılanın; bagaj alımından özel aracınıza kadar size eşlik edelim.',
+        crumb: 'Uçuş Karşılama',
+        ctaPrimary: 'Rezervasyon ve Fiyat',
+        ctaSecondary: 'Hemen Ara',
+      },
+      features: [
+        'İsminize hazırlanan karşılama tabelası',
+        'Terminalde kişisel karşılama ve yönlendirme',
+        'Bagaj alımından araca kadar eşlik',
+        'Özel transfer aracınızla koordineli çıkış',
+        'Uçuş bilgilerinizle planlanan karşılama',
+        '7/24 rezervasyon desteği',
+      ],
+      seo: {
+        ogTitle: 'Uçuş Karşılama (Meet & Greet) | İstanbul Havalimanı',
+        ogDescription: 'İstanbul Havalimanı ve Sabiha Gökçen’de isim tabelası, bagaj yardımı ve özel araç bağlantısı ile profesyonel Meet & Greet hizmeti.',
+      },
+      introBody: 'Havalimanına inişten sonraki ilk anların rahat ve düzenli geçmesi için uçuş karşılama hizmeti, terminalde size özel bir buluşma noktası sunar. Karşılama görevlisi isminizin yazılı olduğu tabela ile sizi karşılar, bagaj alanından çıkışa kadar yönlendirme sağlar ve transfer aracınızla buluşmanıza eşlik eder.',
+      contentSections: [
+        {
+          id: 'meet-greet-nasil-isler',
+          headingLevel: 'h2',
+          heading: 'Uçuş Karşılama Hizmeti Nasıl İşler?',
+          body: 'Rezervasyon sırasında uçuş numaranızı, iniş tarihinizi ve yolcu adınızı paylaşırsınız. Ekip, verdiğiniz uçuş bilgisine göre karşılama planını oluşturur. Terminale ulaştığınızda isminizin yazılı olduğu tabela ile karşılanır, bagaj alımından sonra çıkış noktasına ve transfer aracınıza yönlendirilirsiniz.',
+        },
+        {
+          id: 'meet-greet-terminaller',
+          headingLevel: 'h2',
+          heading: 'İstanbul Havalimanı ve Sabiha Gökçen Terminalleri',
+          body: 'Hizmet, İstanbul Havalimanı (IST) ve Sabiha Gökçen Havalimanı (SAW) varış terminallerinde planlanabilir. Buluşma noktası ve karşılama bilgileri rezervasyonunuz doğrultusunda önceden netleştirilir.',
+        },
+        {
+          id: 'meet-greet-transfer-baglantisi',
+          headingLevel: 'h2',
+          heading: 'Transfer Aracınıza Rahat Geçiş',
+          body: 'Karşılama hizmeti, havalimanı transferinizle birlikte planlandığında terminalden araca geçişinizi kolaylaştırır. Bagajlarınız için destek sağlanır ve aracınızla buluşmanız koordineli biçimde gerçekleştirilir.',
+        },
+      ],
+      serviceArea: {
+        title: 'Hizmet Noktaları',
+        description: 'İstanbul’un iki ana havalimanının varış terminallerinde uçuş karşılama hizmeti sunulur.',
+        areas: ['İstanbul Havalimanı (IST)', 'Sabiha Gökçen Havalimanı (SAW)'],
+      },
+      faqs: [
+        {
+          id: 'meet-greet-faq-1',
+          question: 'Karşılama görevlisini nerede bulurum?',
+          answer: 'Karşılama görevlisi, rezervasyonunuzdaki yolcu adıyla hazırlanmış tabela ile varış terminalinde belirlenen buluşma alanında sizi karşılar.',
+        },
+        {
+          id: 'meet-greet-faq-2',
+          question: 'Hizmet transferden bağımsız alınabilir mi?',
+          answer: 'Uçuş karşılama hizmeti, transfer planınıza göre organize edilir. Rezervasyon sırasında ihtiyacınızı paylaşarak uygun düzenlemeyi netleştirebilirsiniz.',
+        },
+        {
+          id: 'meet-greet-faq-3',
+          question: 'Uçuş bilgisi neden gerekiyor?',
+          answer: 'Karşılama planının doğru terminal ve zaman için hazırlanabilmesi amacıyla uçuş numarası ve iniş tarihi istenir.',
+        },
+      ],
+      schemaExtras: {
+        serviceType: 'Airport Meet and Greet',
+        openingHours: 'Mo-Su 00:00-24:00',
+        availableLanguage: ['Turkish', 'English', 'German', 'Russian', 'Arabic', 'French', 'Spanish', 'Italian', 'Dutch'],
+      },
+    }),
+  },
   // ── New services added (v2 body with full rich content) ──────────────────
   {
     slug: 'ankara-vip-transfer',
@@ -349,14 +442,14 @@ async function seed() {
         og_image, hero_image, hero_image_alt,
         seo_title, seo_description,
         status, is_active, indexable, display_order,
-        category, show_on_homepage,
+        category, show_on_homepage, show_in_nav,
         published_at, created_at, updated_at
       ) VALUES (
         'SERVICE', ${s.title}, ${s.slug}, ${s.excerpt}, ${body},
         ${heroImg}, ${heroImg}, ${s.heroTitle},
         ${s.seoTitle}, ${s.seoDescription},
         'PUBLISHED', true, true, ${s.displayOrder},
-        ${s.category ?? null}, ${s.showOnHomepage ?? false},
+        ${s.category ?? null}, ${s.showOnHomepage ?? false}, true,
         now(), now(), now()
       )
       ON CONFLICT (slug) DO UPDATE SET

@@ -6,6 +6,8 @@ import { ImageUploadField } from '@/app/admin/_components/ImageUploadField';
 import { AIWriteAssist, type AIWritingField } from '@/app/admin/_components/AIWriteAssist';
 import FacebookShareButton from '@/app/admin/_components/FacebookShareButton';
 import XShareButton from '@/app/admin/_components/XShareButton';
+import LinkedInShareButton from '@/app/admin/_components/LinkedInShareButton';
+import TelegramShareButton from '@/app/admin/_components/TelegramShareButton';
 import { SITE } from '@/lib/site-config';
 
 // ── Safe JSON fetch ─────────────────────────────────────────────────────────
@@ -476,6 +478,17 @@ export default function BlogEditor({ blogId, initial }: Props) {
               summary={shareSummary}
               url={publishedBlogUrl}
               label="Bu yazıyı X'te paylaş"
+              disabled={currentStatus !== 'PUBLISHED'}
+            />
+            <LinkedInShareButton
+              url={publishedBlogUrl}
+              label="Bu yazıyı LinkedIn'de paylaş"
+              disabled={currentStatus !== 'PUBLISHED'}
+            />
+            <TelegramShareButton
+              title={rec.title}
+              url={publishedBlogUrl}
+              label="Bu yazıyı Telegram'da paylaş"
               disabled={currentStatus !== 'PUBLISHED'}
             />
           <button disabled={saving} onClick={() => { markDirty(); saveSource({ saveAsDraft: true }); }}

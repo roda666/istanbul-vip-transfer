@@ -10,6 +10,14 @@ describe('social OAuth feedback', () => {
     expect(code).toBe('x_credits_depleted');
     expect(getSocialOAuthMessage(code)).toContain('X Developer Portal');
     expect(getSocialOAuthMessage(code)).not.toContain('402');
+    expect(getSocialOAuthMessage(code)).toContain('X API kredisi gerekiyor');
+  });
+
+  it('recognizes structured X API payment-required errors without exposing provider details', () => {
+    expect(classifyXOAuthFailure({ status: 402, error: { detail: 'upstream details' } })).toBe('x_credits_depleted');
+    expect(classifyXOAuthFailure({
+      response: { status: 402, data: { errors: [{ message: 'request was rejected' }] } },
+    })).toBe('x_credits_depleted');
   });
 
   it('keeps unknown provider failures generic and safe', () => {

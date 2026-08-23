@@ -52,6 +52,10 @@ export type ContactSettings = {
   googlePlayUrl: string;
   /** Direct Google review link (e.g. https://g.page/r/xxx/review) */
   googleReviewUrl: string;
+  /** Public TikTok profile or video URL (optional) */
+  tiktokUrl: string;
+  /** Public YouTube channel or video URL (optional) */
+  youtubeUrl: string;
 };
 
 // ── Fallback (static SITE values) ─────────────────────────────────────────────
@@ -72,6 +76,8 @@ const STATIC_DEFAULTS: ContactSettings = {
   fullAddress:      '',
   googlePlayUrl:    '',
   googleReviewUrl:  SITE.googleReviewUrl,
+  tiktokUrl:        '',
+  youtubeUrl:       '',
 };
 
 // ── Module-level cache ─────────────────────────────────────────────────────────
@@ -115,6 +121,8 @@ function buildFromRow(row: typeof siteSettings.$inferSelect): ContactSettings {
     fullAddress:      (row.fullAddress       ?? '').trim(),
     googlePlayUrl:    (row.googlePlayUrl     ?? '').trim(),
     googleReviewUrl:  (row.googleReviewUrl   ?? '').trim() || SITE.googleReviewUrl,
+    tiktokUrl:        (row.tiktokUrl         ?? '').trim(),
+    youtubeUrl:       (row.youtubeUrl        ?? '').trim(),
   };
 }
 

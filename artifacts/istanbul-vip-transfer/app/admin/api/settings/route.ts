@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { invalidateContactSettings } from '@/lib/site-settings-server';
 
-const optionalHttpsUrl = z.string()
-  .url()
-  .max(500)
-  .refine((value) => new URL(value).protocol === 'https:', 'URL HTTPS ile başlamalıdır.')
-  .optional()
-  .nullable();
+const optionalHttpsUrl = z.preprocess(
+  (value) => value === '' ? null : value,
+  z.string()
+    .url()
+    .max(500)
+    .refine((value) => new URL(value).protocol === 'https:', 'URL HTTPS ile başlamalıdır.')
+    .optional()
+    .nullable(),
+);
 
 const settingsSchema = z.object({
   businessName: z.string().max(200).optional().nullable(),
@@ -27,6 +30,8 @@ const settingsSchema = z.object({
   fullAddress: z.string().max(500).optional().nullable(),
   googlePlayUrl:   z.string().max(500).optional().nullable(),
   googleReviewUrl: optionalHttpsUrl,
+  tiktokUrl:       optionalHttpsUrl,
+  youtubeUrl:      optionalHttpsUrl,
 });
 
 export async function GET() {

@@ -13,6 +13,19 @@ New schema changes must go through `pnpm db:generate` then `pnpm db:migrate`. Do
 2. `pnpm db:generate` — creates a new versioned SQL file in `drizzle/migrations/` and updates `_journal.json`
 3. `pnpm db:migrate` — applies unapplied migrations and records them in `drizzle.__drizzle_migrations`
 
+## Generated migration scope check
+
+Always inspect a newly generated SQL migration before applying it. If its metadata snapshot
+lags changes that were already recorded by manually managed migrations, Drizzle can include
+unrelated historical DDL alongside the intended schema change.
+
+**Why:** Applying that generated catch-up SQL can recreate existing objects or bundle
+unrelated product work into a focused change.
+
+**How to apply:** Keep the generated journal/snapshot state, but reduce the new SQL migration
+to the exact intended DDL after comparing it with the task scope; then run `pnpm db:migrate`
+and verify the new columns/table exist.
+
 ## Journal timestamp ordering
 
 The `when` value for a newly generated journal entry must be greater than the latest

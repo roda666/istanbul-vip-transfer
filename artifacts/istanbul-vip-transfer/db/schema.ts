@@ -196,6 +196,8 @@ export const siteSettings = pgTable('site_settings', {
   fullAddress:      text('full_address'),         // Full registered address
   googlePlayUrl:    text('google_play_url'),      // Mobile app link (optional)
   googleReviewUrl:  text('google_review_url'),    // Direct Google review link
+  tiktokUrl:        text('tiktok_url'),           // Public TikTok profile or video link
+  youtubeUrl:       text('youtube_url'),          // Public YouTube channel or video link
 });
 
 export const navigationItems = pgTable('navigation_items', {

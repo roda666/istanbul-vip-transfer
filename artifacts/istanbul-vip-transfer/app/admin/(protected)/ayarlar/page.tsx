@@ -22,6 +22,8 @@ interface Settings {
   fullAddress?: string | null;
   googlePlayUrl?: string | null;
   googleReviewUrl?: string | null;
+  tiktokUrl?: string | null;
+  youtubeUrl?: string | null;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -121,6 +123,16 @@ export default function AyarlarPage() {
               <label style={labelStyle}>Google Play URL (Opsiyonel)</label>
               <input type="url" {...field('googlePlayUrl')} style={inputStyle} placeholder="https://play.google.com/store/apps/details?id=..." />
               <p style={hintStyle}>Dolu ise footer&apos;da &ldquo;Mobil Uygulamayı İndir&rdquo; rozeti gösterilir.</p>
+            </div>
+            <div>
+              <label style={labelStyle}>TikTok Profil / Video URL&apos;si (Opsiyonel)</label>
+              <input type="url" {...field('tiktokUrl')} style={inputStyle} placeholder="https://www.tiktok.com/@hesabiniz" />
+              <p style={hintStyle}>Dolu ise footer&apos;da TikTok ikonu görünür. Platform kartından da güncellenebilir.</p>
+            </div>
+            <div>
+              <label style={labelStyle}>YouTube Kanal / Video URL&apos;si (Opsiyonel)</label>
+              <input type="url" {...field('youtubeUrl')} style={inputStyle} placeholder="https://www.youtube.com/@kanaliniz" />
+              <p style={hintStyle}>Dolu ise footer&apos;da YouTube ikonu görünür. Platform kartından da güncellenebilir.</p>
             </div>
           </div>
         </div>

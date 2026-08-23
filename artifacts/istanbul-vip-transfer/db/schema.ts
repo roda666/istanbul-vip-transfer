@@ -1086,6 +1086,19 @@ export type PriceCalculatorSettings = typeof priceCalculatorSettings.$inferSelec
 export type RoutePriceRule = typeof routePriceRules.$inferSelect;
 export type NewRoutePriceRule = typeof routePriceRules.$inferInsert;
 
+// ── Disabled-by-default Flight Meet & Greet ───────────────────────────────────
+// Provider credentials intentionally do not belong in this table. A future
+// server-only provider adapter will read its credentials from environment secrets.
+export const flightMeetGreetSettings = pgTable('flight_meet_greet_settings', {
+  id:        integer('id').primaryKey().default(1),
+  enabled:   boolean('enabled').default(false).notNull(),
+  providerId: text('provider_id').default('NONE').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+});
+
+export type FlightMeetGreetSettings = typeof flightMeetGreetSettings.$inferSelect;
+
 // ── Custom Reservation Fields ─────────────────────────────────────────────────
 // Admin-defined optional fields shown on the booking form per service.
 export const customReservationFields = pgTable('custom_reservation_fields', {

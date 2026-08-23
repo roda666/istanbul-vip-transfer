@@ -8,8 +8,6 @@
  * <html> and <body> tags.
  */
 
-import { useEffect } from 'react';
-
 export default function GlobalError({
   error,
   reset,
@@ -17,10 +15,6 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  useEffect(() => {
-    console.error('[global-error]', error);
-  }, [error]);
-
   return (
     <html lang="tr">
       <head>
@@ -76,6 +70,7 @@ export default function GlobalError({
             Beklenmeyen bir sorun nedeniyle sayfa yüklenemedi.
             Lütfen sayfayı yenileyerek tekrar deneyin.
           </p>
+           {error.digest ? <p className="digest">Destek kodu: {error.digest}</p> : null}
           <div className="actions">
             <button onClick={reset}>Sayfayı Yenile</button>
             {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}

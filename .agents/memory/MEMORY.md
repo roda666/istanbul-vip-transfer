@@ -59,3 +59,4 @@
 - [Post-merge database setup](post-merge-database-setup.md) — post-merge uses app migration journal, never the separate workspace DB push command.
 - [Initial head metadata](initial-head-metadata.md) — static core metadata prevents streamed DB lookups from hiding SEO tags from audits and crawlers.
 - [Deterministic performance work](local-lighthouse-audits.md) — apply known web-vital fixes directly; do not run Lighthouse, PageSpeed Insights, or other performance measurement tools.
+- [Security hardening baseline](security-hardening-baseline.md) — OAuth state uses a CSPRNG nonce; reset-token schema is migration-tracked; CSP permits GA only after consent.

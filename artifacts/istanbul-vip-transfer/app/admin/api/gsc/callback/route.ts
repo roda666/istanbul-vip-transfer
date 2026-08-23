@@ -9,8 +9,45 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/auth/session';
 import { classifyGoogleOAuthProviderError } from '@/lib/google-oauth-feedback';
+import { getPublicUrl } from '@/lib/social-public-url';
 
 export const dynamic = 'force-dynamic';
+const OAUTH_STATE_MAX_AGE_MS = 10 * 60 * 1000;
+const MAX_TOKEN_EXPIRY_SECONDS = 24 * 60 * 60;
+
+type GoogleTokenPayload = {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  scope: string;
+};
+
+function isFreshGscState(value: string): boolean {
+  try {
+    const parsed: unknown = JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
+    if (!parsed || typeof parsed !== 'object') return false;
+    const state = parsed as { ts?: unknown; nonce?: unknown };
+    const timestamp = state.ts;
+    return typeof timestamp === 'number'
+      && Number.isSafeInteger(timestamp)
+      && timestamp <= Date.now() + 60_000
+      && Date.now() - timestamp <= OAUTH_STATE_MAX_AGE_MS
+      && typeof state.nonce === 'string'
+      && /^[A-Za-z0-9_-]{43}$/.test(state.nonce);
+  } catch {
+    return false;
+  }
+}
+
+function isValidGscTokenPayload(value: unknown): value is GoogleTokenPayload {
+  if (!value || typeof value !== 'object') return false;
+  const token = value as Record<string, unknown>;
+  return typeof token.access_token === 'string' && token.access_token.length > 0 && token.access_token.length <= 8_192
+    && typeof token.refresh_token === 'string' && token.refresh_token.length > 0 && token.refresh_token.length <= 8_192
+    && typeof token.expires_in === 'number' && Number.isFinite(token.expires_in)
+    && token.expires_in > 0 && token.expires_in <= MAX_TOKEN_EXPIRY_SECONDS
+    && typeof token.scope === 'string' && token.scope.split(/\s+/).includes('https://www.googleapis.com/auth/webmasters.readonly');
+}
 
 async function persistGscConnectionError(error: string) {
   try {
@@ -34,17 +71,25 @@ export async function GET(req: NextRequest) {
   const settingsBase = '/admin/ayarlar/icerik-entegrasyonlari';
 
   function errorRedirect(err: string) {
-    return NextResponse.redirect(new URL(`${settingsBase}?error=${err}`, req.url));
+    const response = NextResponse.redirect(new URL(`${settingsBase}?error=${err}`, req.url));
+    response.cookies.delete('gsc_oauth_state');
+    response.cookies.delete('gsc_redirect_uri');
+    return response;
   }
 
   if (errParam) return errorRedirect(classifyGoogleOAuthProviderError(errParam));
 
   // CSRF check
   const storedState = req.cookies.get('gsc_oauth_state')?.value;
-  if (!storedState || storedState !== state) return errorRedirect('invalid_state');
+  if (!storedState || storedState !== state || !isFreshGscState(storedState)) {
+    return errorRedirect('invalid_state');
+  }
 
   const redirectUri = req.cookies.get('gsc_redirect_uri')?.value;
-  if (!code || !redirectUri) return errorRedirect('missing_code');
+  const expectedRedirectUri = getPublicUrl(req, '/admin/api/gsc/callback');
+  if (!code || code.length > 8_192 || redirectUri !== expectedRedirectUri) {
+    return errorRedirect('missing_code');
+  }
 
   const clientId     = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -59,7 +104,7 @@ export async function GET(req: NextRequest) {
         code,
         client_id:     clientId,
         client_secret: clientSecret,
-        redirect_uri:  redirectUri,
+        redirect_uri:  expectedRedirectUri,
         grant_type:    'authorization_code',
       }),
       signal: AbortSignal.timeout(10_000),
@@ -71,16 +116,10 @@ export async function GET(req: NextRequest) {
       return errorRedirect('token_exchange_failed');
     }
 
-    const tokens = await tokenRes.json() as {
-      access_token:  string;
-      refresh_token?: string;
-      expires_in:    number;
-      scope:         string;
-    };
-
-    if (!tokens.refresh_token) {
-      await persistGscConnectionError('no_refresh_token');
-      return errorRedirect('no_refresh_token');
+    const tokens: unknown = await tokenRes.json();
+    if (!isValidGscTokenPayload(tokens)) {
+      await persistGscConnectionError('invalid_token_response');
+      return errorRedirect('invalid_token_response');
     }
 
     // Get connected user email

@@ -10,6 +10,7 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { isValidLang } from '@/lib/i18n';
 
 const MESSAGES: Record<string, {
   label: string;
@@ -81,9 +82,10 @@ const FALLBACK = MESSAGES.tr;
 
 export default function LangNotFound() {
   const params  = useParams();
-  const lang    = (typeof params?.lang === 'string' ? params.lang : 'tr') as string;
-  const t       = MESSAGES[lang] ?? FALLBACK;
-  const homeHref    = lang === 'tr' ? '/' : `/${lang}`;
+  const requestedLang = typeof params?.lang === 'string' ? params.lang : 'tr';
+  const lang = isValidLang(requestedLang) ? requestedLang : 'tr';
+  const t = MESSAGES[lang] ?? FALLBACK;
+  const homeHref = lang === 'tr' ? '/' : `/${lang}`;
   const contactHref = lang === 'tr' ? '/iletisim' : `/${lang}/iletisim`;
 
   return (

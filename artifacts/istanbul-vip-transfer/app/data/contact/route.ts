@@ -6,7 +6,7 @@
  * Security:
  *  - JSON content-type enforced
  *  - Honeypot field (_hp must be empty)
- *  - In-memory rate limit: 5 per hour per IP
+ *  - Database-backed rate limit: 5 per hour per IP
  *  - Inputs sanitized and length-capped
  *  - Personal data never written to application logs
  */
@@ -14,42 +14,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { sanitizeText } from '@/lib/sanitize';
 import { getAdminNotifyEmails, sendEmailDetailed } from '@/lib/email';
+import { rateLimit } from '@/lib/auth/rate-limit';
 
 export const dynamic = 'force-dynamic';
-
-// ── Rate limiter: 5 per hour per IP (more conservative than booking form) ────
-const contactStore = new Map<string, { count: number; resetAt: number }>();
-
-/**
- * Periodic cleanup — removes expired entries so the Map doesn't grow
- * unboundedly on a long-running server. Runs every 30 minutes, same pattern
- * as lib/auth/rate-limit.ts. `.unref()` lets the process exit cleanly.
- */
-const CONTACT_CLEANUP_INTERVAL_MS = 30 * 60 * 1000;
-let contactCleanupHandle: ReturnType<typeof setInterval> | null = null;
-function ensureContactCleanup() {
-  if (contactCleanupHandle) return;
-  contactCleanupHandle = setInterval(() => {
-    const now = Date.now();
-    for (const [key, entry] of contactStore.entries()) {
-      if (entry.resetAt < now) contactStore.delete(key);
-    }
-  }, CONTACT_CLEANUP_INTERVAL_MS);
-  contactCleanupHandle.unref?.();
-}
-
-function checkRateLimit(ip: string): boolean {
-  ensureContactCleanup();
-  const now = Date.now();
-  const entry = contactStore.get(ip);
-  if (!entry || entry.resetAt < now) {
-    contactStore.set(ip, { count: 1, resetAt: now + 3_600_000 });
-    return true;
-  }
-  if (entry.count >= 5) return false;
-  entry.count++;
-  return true;
-}
 
 // ── Reference number generator ────────────────────────────────────────────────
 function getIstanbulDateStamp(): string {
@@ -99,8 +66,21 @@ export async function POST(req: NextRequest) {
 
   // Rate limit by IP
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
-  if (!checkRateLimit(ip)) {
-    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  try {
+    const limit = await rateLimit(`contact:${ip}`, {
+      maxAttempts: 5,
+      windowMs: 60 * 60 * 1000,
+    });
+    if (!limit.success) {
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } },
+      );
+    }
+  } catch {
+    // Fail closed when the persistent guard is unavailable rather than making
+    // the public form an unbounded abuse path.
+    return NextResponse.json({ error: 'Temporarily unavailable' }, { status: 503 });
   }
 
   // Parse body

@@ -108,6 +108,28 @@ export const adminUsers = pgTable('admin_users', {
   sessionVersion: integer('session_version').default(1).notNull(),
 });
 
+/**
+ * Single-use admin password reset links. Expired records are removed by the
+ * server scheduler; tracked schema keeps clean deployments consistent.
+ */
+export const passwordResetTokens = pgTable(
+  'password_reset_tokens',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    adminUserId: uuid('admin_user_id')
+      .notNull()
+      .references(() => adminUsers.id, { onDelete: 'cascade' }),
+    token: text('token').notNull().unique(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('password_reset_tokens_expires_at_idx').on(table.expiresAt),
+    index('password_reset_tokens_admin_user_id_idx').on(table.adminUserId),
+  ],
+);
+
 export const content = pgTable('content', {
   id: uuid('id').primaryKey().defaultRandom(),
   contentType: contentTypeEnum('content_type').notNull(),

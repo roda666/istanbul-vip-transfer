@@ -8,6 +8,7 @@
  * artifact. Next.js route handlers placed under /api/ are unreachable.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { randomBytes } from 'node:crypto';
 import { requireAdminSession } from '@/lib/auth/session';
 import { getPublicUrl } from '@/lib/social-public-url';
 
@@ -30,8 +31,12 @@ export async function GET(req: NextRequest) {
   // Replit preview and the production host.
   const redirectUri = getPublicUrl(req, '/admin/api/gsc/callback');
 
-  // CSRF state — base64url-encoded JSON, verified in callback
-  const state = Buffer.from(JSON.stringify({ ts: Date.now() })).toString('base64url');
+  // CSRF state: timestamp is only for expiry; the random nonce supplies the
+  // unguessable binding that is compared to the short-lived HttpOnly cookie.
+  const state = Buffer.from(JSON.stringify({
+    ts: Date.now(),
+    nonce: randomBytes(32).toString('base64url'),
+  })).toString('base64url');
 
   const params = new URLSearchParams({
     client_id:     clientId,

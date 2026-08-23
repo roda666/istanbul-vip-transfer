@@ -114,7 +114,10 @@ describe('Google OAuth routes', () => {
   });
 
   it('writes active GSC status and redirects to success after a valid callback', async () => {
-    const state = 'gsc-state';
+    const state = Buffer.from(JSON.stringify({
+      ts: Date.now(),
+      nonce: 'a'.repeat(43),
+    })).toString('base64url');
     mocks.fetch
       .mockResolvedValueOnce(new Response(JSON.stringify({
         access_token: 'test-access-token',
@@ -144,7 +147,11 @@ describe('Google OAuth routes', () => {
   });
 
   it('writes active Google Ads status and redirects to success after a valid callback', async () => {
-    const state = 'ads-state';
+    const state = Buffer.from(JSON.stringify({
+      ts: Date.now(),
+      svc: 'google_ads',
+      nonce: 'a'.repeat(43),
+    })).toString('base64url');
     mocks.fetch
       .mockResolvedValueOnce(new Response(JSON.stringify({
         access_token: 'test-access-token',

@@ -4,5 +4,7 @@
  * import is guarded by a runtime check in instrumentation.ts.
  */
 import { startServiceHealthScheduler } from '@/lib/service-health-scheduler';
+import { startPasswordResetTokenCleanup } from '@/lib/auth/password-reset-token-cleanup';
 
 startServiceHealthScheduler();
+startPasswordResetTokenCleanup();

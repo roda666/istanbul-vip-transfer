@@ -9,8 +9,45 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/auth/session';
 import { classifyGoogleOAuthProviderError } from '@/lib/google-oauth-feedback';
+import { getPublicUrl } from '@/lib/social-public-url';
 
 export const dynamic = 'force-dynamic';
+const OAUTH_STATE_MAX_AGE_MS = 10 * 60 * 1000;
+const MAX_TOKEN_EXPIRY_SECONDS = 24 * 60 * 60;
+
+type GoogleAdsTokenPayload = {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  scope: string;
+};
+
+function isFreshGoogleAdsState(value: string): boolean {
+  try {
+    const parsed: unknown = JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
+    if (!parsed || typeof parsed !== 'object') return false;
+    const state = parsed as { ts?: unknown; svc?: unknown; nonce?: unknown };
+    return state.svc === 'google_ads'
+      && typeof state.ts === 'number'
+      && Number.isSafeInteger(state.ts)
+      && state.ts <= Date.now() + 60_000
+      && Date.now() - state.ts <= OAUTH_STATE_MAX_AGE_MS
+      && typeof state.nonce === 'string'
+      && /^[A-Za-z0-9_-]{43}$/.test(state.nonce);
+  } catch {
+    return false;
+  }
+}
+
+function isValidGoogleAdsTokenPayload(value: unknown): value is GoogleAdsTokenPayload {
+  if (!value || typeof value !== 'object') return false;
+  const token = value as Record<string, unknown>;
+  return typeof token.access_token === 'string' && token.access_token.length > 0 && token.access_token.length <= 8_192
+    && typeof token.refresh_token === 'string' && token.refresh_token.length > 0 && token.refresh_token.length <= 8_192
+    && typeof token.expires_in === 'number' && Number.isFinite(token.expires_in)
+    && token.expires_in > 0 && token.expires_in <= MAX_TOKEN_EXPIRY_SECONDS
+    && typeof token.scope === 'string' && token.scope.split(/\s+/).includes('https://www.googleapis.com/auth/adwords');
+}
 
 async function persistGoogleAdsConnectionError(error: string) {
   try {
@@ -32,17 +69,26 @@ export async function GET(req: NextRequest) {
   const errParam = url.searchParams.get('error');
 
   const settingsBase = '/admin/ayarlar/icerik-entegrasyonlari';
-  const errorRedirect = (err: string) =>
-    NextResponse.redirect(new URL(`${settingsBase}?error=gads_${err}`, req.url));
+  const errorRedirect = (err: string) => {
+    const response = NextResponse.redirect(new URL(`${settingsBase}?error=gads_${err}`, req.url));
+    response.cookies.delete('gads_oauth_state');
+    response.cookies.delete('gads_redirect_uri');
+    return response;
+  };
 
   if (errParam) return errorRedirect(classifyGoogleOAuthProviderError(errParam));
 
   // CSRF check
   const storedState = req.cookies.get('gads_oauth_state')?.value;
-  if (!storedState || storedState !== state) return errorRedirect('invalid_state');
+  if (!storedState || storedState !== state || !isFreshGoogleAdsState(storedState)) {
+    return errorRedirect('invalid_state');
+  }
 
   const redirectUri = req.cookies.get('gads_redirect_uri')?.value;
-  if (!code || !redirectUri) return errorRedirect('missing_code');
+  const expectedRedirectUri = getPublicUrl(req, '/admin/api/google-ads/callback');
+  if (!code || code.length > 8_192 || redirectUri !== expectedRedirectUri) {
+    return errorRedirect('missing_code');
+  }
 
   const clientId     = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -56,7 +102,7 @@ export async function GET(req: NextRequest) {
         code,
         client_id:     clientId,
         client_secret: clientSecret,
-        redirect_uri:  redirectUri,
+        redirect_uri:  expectedRedirectUri,
         grant_type:    'authorization_code',
       }),
       signal: AbortSignal.timeout(10_000),
@@ -68,16 +114,10 @@ export async function GET(req: NextRequest) {
       return errorRedirect('token_exchange_failed');
     }
 
-    const tokens = await tokenRes.json() as {
-      access_token:   string;
-      refresh_token?: string;
-      expires_in:     number;
-      scope:          string;
-    };
-
-    if (!tokens.refresh_token) {
-      await persistGoogleAdsConnectionError('no_refresh_token');
-      return errorRedirect('no_refresh_token');
+    const tokens: unknown = await tokenRes.json();
+    if (!isValidGoogleAdsTokenPayload(tokens)) {
+      await persistGoogleAdsConnectionError('invalid_token_response');
+      return errorRedirect('invalid_token_response');
     }
 
     // Get user email (non-fatal)

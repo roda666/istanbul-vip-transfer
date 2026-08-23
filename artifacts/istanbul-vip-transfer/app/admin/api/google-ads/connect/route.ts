@@ -7,6 +7,7 @@
  * production OAuth flows can each use their own registered URI.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { randomBytes } from 'node:crypto';
 import { requireAdminSession } from '@/lib/auth/session';
 import { getPublicUrl } from '@/lib/social-public-url';
 
@@ -27,7 +28,11 @@ export async function GET(req: NextRequest) {
   // callback token exchange uses exactly the URI sent to Google's consent page.
   const redirectUri = getPublicUrl(req, '/admin/api/google-ads/callback');
 
-  const state = Buffer.from(JSON.stringify({ ts: Date.now(), svc: 'google_ads' })).toString('base64url');
+  const state = Buffer.from(JSON.stringify({
+    ts: Date.now(),
+    svc: 'google_ads',
+    nonce: randomBytes(32).toString('base64url'),
+  })).toString('base64url');
 
   const params = new URLSearchParams({
     client_id:     clientId,

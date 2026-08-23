@@ -128,14 +128,14 @@ const nextConfig: NextConfig = {
       ? [
           "default-src 'self'",
           // unsafe-eval: Next.js HMR + Replit bridge script need it in dev.
-          "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com",
           // fonts.googleapis.com removed: migrated to next/font (self-hosted).
           "style-src 'self' 'unsafe-inline'",
           // fonts.gstatic.com removed: same reason.
           "font-src 'self' data:",
           "img-src 'self' data: blob: https:",
           // wss: needed for Next.js HMR websocket connection.
-          "connect-src 'self' wss:",
+          "connect-src 'self' wss: https://www.googletagmanager.com https://www.google-analytics.com https://region1.google-analytics.com",
           "media-src 'self'",
           "object-src 'none'",
           "worker-src 'none'",
@@ -147,7 +147,8 @@ const nextConfig: NextConfig = {
         ].join('; ')
       : [
           "default-src 'self'",
-          "script-src 'self' 'unsafe-inline'",
+          // Google Analytics is only injected after an explicit visitor consent.
+          "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com",
           // fonts.googleapis.com removed: migrated to next/font (self-hosted).
           "style-src 'self' 'unsafe-inline'",
           // fonts.gstatic.com removed: same reason.
@@ -156,8 +157,9 @@ const nextConfig: NextConfig = {
           // blob: covers canvas/object-URL previews;
           // https: covers arbitrary admin-entered blog hero image URLs.
           "img-src 'self' data: blob: https:",
-          // connect-src: all API calls are same-origin (chatbot, admin, vitals).
-          "connect-src 'self'",
+          // All application APIs are same-origin. The named Google endpoints are
+          // used only by consent-gated Google Analytics telemetry.
+          "connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com https://region1.google-analytics.com",
           "media-src 'self'",
           "object-src 'none'",
           "worker-src 'none'",

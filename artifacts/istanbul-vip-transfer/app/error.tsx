@@ -8,7 +8,6 @@
  * users see a friendly branded message.
  */
 
-import { useEffect } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/lib/i18n/context';
 import { getPublicUiCopy } from '@/lib/i18n/public-ui';
@@ -23,12 +22,6 @@ export default function ErrorPage({
 }) {
   const { lang } = useLang();
   const copy = getPublicUiCopy(lang).errors;
-
-  useEffect(() => {
-    // Server-side logging already captures the stack; this catches client-side
-    // errors in browser console without leaking details to the UI.
-    console.error('[app/error]', error);
-  }, [error]);
 
   return (
     <div style={{
@@ -92,6 +85,11 @@ export default function ErrorPage({
         }}>
           {copy.message}
         </p>
+        {error.digest ? (
+          <p style={{ fontSize: '0.75rem', color: '#64748B', margin: '-1rem 0 2rem' }}>
+            Destek kodu: {error.digest}
+          </p>
+        ) : null}
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>

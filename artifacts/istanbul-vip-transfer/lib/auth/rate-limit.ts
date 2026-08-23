@@ -12,6 +12,11 @@ import postgres from 'postgres';
 const MAX_ATTEMPTS = 5;
 const WINDOW_MS    = 15 * 60 * 1000; // 15 minutes
 
+export interface RateLimitOptions {
+  maxAttempts?: number;
+  windowMs?: number;
+}
+
 export interface RateLimitResult {
   success: boolean;
   remaining: number;
@@ -48,11 +53,14 @@ async function ensureTable() {
  * Check and increment the rate limit counter for an identifier (e.g. IP address).
  * Returns whether the request is allowed and how many attempts remain.
  */
-export async function rateLimit(identifier: string): Promise<RateLimitResult> {
+export async function rateLimit(
+  identifier: string,
+  { maxAttempts = MAX_ATTEMPTS, windowMs = WINDOW_MS }: RateLimitOptions = {},
+): Promise<RateLimitResult> {
   await ensureTable();
   const sql = getSql();
   const now  = BigInt(Date.now());
-  const resetAt = now + BigInt(WINDOW_MS);
+  const resetAt = now + BigInt(windowMs);
 
   // Upsert: if the key doesn't exist or the window has expired, start a fresh window.
   // Otherwise increment the attempt counter.
@@ -75,7 +83,7 @@ export async function rateLimit(identifier: string): Promise<RateLimitResult> {
 
   const { attempts, reset_at } = rows[0];
 
-  if (attempts > MAX_ATTEMPTS) {
+  if (attempts > maxAttempts) {
     const retryAfterMs = Number(BigInt(reset_at) - now);
     return {
       success: false,
@@ -86,7 +94,7 @@ export async function rateLimit(identifier: string): Promise<RateLimitResult> {
 
   return {
     success: true,
-    remaining: MAX_ATTEMPTS - attempts,
+    remaining: maxAttempts - attempts,
     retryAfterSeconds: 0,
   };
 }

@@ -8,7 +8,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
-import { getDictionary } from '@/lib/i18n';
+import { getDictionary, isValidLang } from '@/lib/i18n';
 import { localizedPublicPath } from '@/lib/localized-service-path';
 
 export const metadata: Metadata = {
@@ -18,9 +18,10 @@ export const metadata: Metadata = {
 
 export default async function NotFound() {
   const requestedLang = (await headers()).get('x-ivt-lang') ?? 'tr';
-  const dict = getDictionary(requestedLang);
-  const homePath = localizedPublicPath('/', requestedLang);
-  const contactPath = localizedPublicPath('/iletisim', requestedLang);
+  const lang = isValidLang(requestedLang) ? requestedLang : 'tr';
+  const dict = getDictionary(lang);
+  const homePath = localizedPublicPath('/', lang);
+  const contactPath = localizedPublicPath('/iletisim', lang);
 
   return (
     <div style={{

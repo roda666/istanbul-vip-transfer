@@ -30,7 +30,7 @@ function parseInline(text: string, baseKey: number): ReactNode {
           <Link
             key={`${baseKey}-${i}`}
             href={href}
-            className="underline underline-offset-2 transition-colors hover:text-[#174EA6]"
+            className="rounded-sm underline underline-offset-2 transition-colors hover:text-[#174EA6] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#102A43] focus-visible:ring-offset-2"
             style={{ color: '#1D5FD1' }}
           >
             {label}
@@ -43,7 +43,7 @@ function parseInline(text: string, baseKey: number): ReactNode {
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className="underline underline-offset-2 transition-colors hover:text-[#174EA6]"
+          className="rounded-sm underline underline-offset-2 transition-colors hover:text-[#174EA6] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#102A43] focus-visible:ring-offset-2"
           style={{ color: '#1D5FD1' }}
         >
           {label}
@@ -118,7 +118,7 @@ export default function ArticleBody({ body }: { body: string }) {
         <h3
           key={ek++}
           className="text-base font-semibold mt-6 mb-3"
-          style={{ fontFamily: 'Inter, sans-serif', color: '#C9A84C', letterSpacing: '0.02em' }}
+          style={{ fontFamily: 'Inter, sans-serif', color: '#8A651C', letterSpacing: '0.02em' }}
         >
           {line.slice(4)}
         </h3>

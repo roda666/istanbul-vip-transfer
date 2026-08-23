@@ -272,8 +272,8 @@ const tr: Dictionary = {
   },
   vehicles: {
     sectionLabel: 'Araç Filosu',
-    heading: 'VIP Araç Filomuz',
-    subheading: 'Her ihtiyaca özel, en yüksek standartta iki araç seçeneği — her ikisi de tam konforlu.',
+    heading: 'VIP Transfer Araç Filomuz',
+    subheading: 'Minivanlardan minibüs, midibüs ve otobüslere; her grup büyüklüğü için konforlu seçenekler.',
     passengers: 'Yolcu',
     luggage: 'Bagaj',
     popular: 'En Popüler',
@@ -317,8 +317,8 @@ const tr: Dictionary = {
   pages: {
     servicesTitle: 'Hizmetlerimiz',
     servicesSubtitle: 'İstanbul ve çevresinde Mercedes Vito ve Sprinter araçlarla sunduğumuz tüm transfer ve tur hizmetleri.',
-    vehiclesTitle: 'Lüks Mercedes Araç Filosumuz',
-    vehiclesSubtitle: 'Bireysel yolculardan büyük gruplara — her ihtiyaca uygun iki VIP araç seçeneği.',
+    vehiclesTitle: 'VIP Transfer Araç Filomuz',
+    vehiclesSubtitle: 'Minivan, minibüs, midibüs ve otobüs seçenekleriyle her grup büyüklüğüne konforlu transfer.',
     aboutTitle: 'Hakkımızda',
     aboutSubtitle: 'VIP Transfer Istanbul olarak hizmet anlayışımız, araç filomuz ve müşteri memnuniyetine verdiğimiz önem hakkında bilgi edinin.',
     contactTitle: 'İletişim',

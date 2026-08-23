@@ -84,7 +84,7 @@ export default async function HizmetlerServiceGridCms({
   if (visibleServices.length === 0) {
     return (
       <p style={{
-        color: '#777', fontFamily: 'Inter, sans-serif', fontSize: '15px',
+        color: '#596775', fontFamily: 'Inter, sans-serif', fontSize: '15px',
         textAlign: isRtl ? 'right' : 'left', padding: '20px 0',
       }}>
         {EMPTY_MSG[locale] ?? EMPTY_MSG.en}
@@ -110,7 +110,7 @@ export default async function HizmetlerServiceGridCms({
   ];
 
   return (
-    <div dir={isRtl ? 'rtl' : 'ltr'} style={{ display: 'flex', flexDirection: 'column', gap: '52px' }}>
+    <div className="ivt-service-grid" dir={isRtl ? 'rtl' : 'ltr'} style={{ display: 'flex', flexDirection: 'column', gap: '52px' }}>
       {sortedGroups.map((cat, catIdx) => {
         const items = grouped.get(cat)!;
         const groupLabel = cat === '__other__'
@@ -118,23 +118,23 @@ export default async function HizmetlerServiceGridCms({
           : (catLabelMap[cat] ?? cat);
 
         return (
-          <section key={cat} id={`hiz-cat-${cat}`} style={{ scrollMarginTop: '90px' }}>
-            {/* Category heading */}
-            <h2
+          <div key={cat} id={`hiz-cat-${cat}`} style={{ scrollMarginTop: '90px' }}>
+            {/* Category label; service titles are the page's H2 headings. */}
+            <p
               style={{
                 fontFamily: 'Inter, sans-serif',
                 fontSize: '11px',
                 fontWeight: 700,
                 letterSpacing: '0.2em',
                 textTransform: 'uppercase',
-                color: '#C9A84C',
+                color: '#8A651C',
                 marginBottom: '20px',
                 paddingBottom: '10px',
                 borderBottom: '1px solid rgba(201,168,76,0.18)',
               }}
             >
                {isolateLtrValues(groupLabel, locale)}
-            </h2>
+            </p>
 
             {/* Service cards grid */}
             <div
@@ -148,6 +148,7 @@ export default async function HizmetlerServiceGridCms({
                 <Link
                   key={svc.slug}
                   href={serviceHref(svc.slug, locale)}
+                  className="ivt-svc-card-anchor"
                   style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column' }}
                 >
                   <article
@@ -227,7 +228,7 @@ export default async function HizmetlerServiceGridCms({
                         flex: 1,
                       }}
                     >
-                      <h3
+                      <h2
                         style={{
                           fontFamily: '"Playfair Display", Georgia, serif',
                           fontSize: '16px',
@@ -238,7 +239,7 @@ export default async function HizmetlerServiceGridCms({
                         }}
                       >
                          {isolateLtrValues(svc.title, locale)}
-                      </h3>
+                      </h2>
 
                       {svc.excerpt && (
                         <p
@@ -274,31 +275,36 @@ export default async function HizmetlerServiceGridCms({
                             fontFamily: 'Inter, sans-serif',
                             fontSize: '12px',
                             fontWeight: 600,
-                            color: '#C9A84C',
+                             color: '#8A651C',
                             letterSpacing: '0.04em',
                           }}
                         >
                           {moreLabel}
                         </span>
-                        <Arrow size={13} color="#C9A84C" />
+                         <Arrow size={13} color="#8A651C" />
                       </div>
                     </div>
                   </article>
                 </Link>
               ))}
             </div>
-          </section>
+          </div>
         );
       })}
 
       {/* Hover styles injected globally via style tag */}
       <style>{`
-        .ivt-svc-card:hover {
+        .ivt-service-grid .ivt-svc-card:hover {
           box-shadow: 0 8px 32px rgba(0,0,0,0.10);
           transform: translateY(-2px);
         }
-        .ivt-svc-card:hover .ivt-svc-card-overlay {
+        .ivt-service-grid .ivt-svc-card:hover .ivt-svc-card-overlay {
           background: rgba(201,168,76,0.08) !important;
+        }
+        .ivt-service-grid .ivt-svc-card-anchor:focus-visible {
+          border-radius: 12px;
+          outline: 3px solid #102A43;
+          outline-offset: 3px;
         }
       `}</style>
     </div>

@@ -10,6 +10,8 @@ import { resolveHomepageCtaAction } from '@/lib/homepage-cta-route';
 import { getPublicUiCopy } from '@/lib/i18n/public-ui';
 import { isolateLtrValues } from '@/lib/i18n/bidi';
 import type { Dictionary } from '@/lib/i18n/types';
+import { groupFleetVehicles, normalizeVehicleType, type VehicleType } from '@/lib/vehicle-options';
+import { isSuccessfulVehicleResponse } from '@/lib/vehicle-api-contract';
 
 const FEATURE_ICON_MAP: Record<string, React.ElementType> = {
   WIFI:       Wifi,
@@ -33,12 +35,13 @@ interface DbVehicle {
   displayName: string;
   displayShortDesc: string;
   displayTagline: string;
-  coverImage: string | null;
-  coverImageAlt: string | null;
+  coverImage: string;
+  coverImageAlt: string;
   passengerCapacity: number;
   luggageCapacity: number;
   features: Array<{ icon: string; label: string } | string>;
   isFeatured: boolean;
+  vehicleType: string | null;
 }
 
 interface DisplayVehicle {
@@ -47,10 +50,12 @@ interface DisplayVehicle {
   tagline: string;
   image: string;
   passengers: number;
+  passengerCapacity: number;
   luggage: number;
   description: string;
   features: Array<{ icon: React.ElementType; label: string }>;
   featured: boolean;
+  vehicleType: string | null;
 }
 
 function getFeatureParts(
@@ -90,10 +95,11 @@ function adaptDbVehicle(
 ): DisplayVehicle {
   return {
     name:        vehicle.displayName,
-    alt:         vehicle.coverImageAlt ?? vehicle.displayName,
+    alt:         vehicle.coverImageAlt,
     tagline:     vehicle.displayTagline,
-    image:       vehicle.coverImage ?? '/images/mercedes-vito.jpg',
+    image:       vehicle.coverImage,
     passengers:  vehicle.passengerCapacity,
+    passengerCapacity: vehicle.passengerCapacity,
     luggage:     vehicle.luggageCapacity,
     description: vehicle.displayShortDesc,
     features:    (vehicle.features ?? []).map(f => ({
@@ -101,6 +107,7 @@ function adaptDbVehicle(
       label: localizeFeatureLabel(f, labels, lang),
     })),
     featured: vehicle.isFeatured,
+    vehicleType: normalizeVehicleType(vehicle.vehicleType),
   };
 }
 
@@ -174,7 +181,7 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
       <div className="p-6">
         <span
           className="text-xs tracking-[0.2em] uppercase font-semibold block mb-1"
-          style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
+          style={{ color: '#8A651C', fontFamily: 'Inter, sans-serif' }}
         >
           {isolateLtrValues(vehicle.tagline, lang)}
         </span>
@@ -194,15 +201,15 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
           style={{ borderBottom: '1px solid #D9E2EC' }}
         >
           <div className="flex items-center gap-1.5">
-            <Users size={14} style={{ color: '#C99A32' }} aria-hidden="true" />
+            <Users size={14} style={{ color: '#8A651C' }} aria-hidden="true" />
             <span className="text-sm" style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}>
-              <strong dir="ltr" style={{ color: '#C99A32', unicodeBidi: 'isolate' }}>{vehicle.passengers}</strong> {passLabel}
+              <strong dir="ltr" style={{ color: '#8A651C', unicodeBidi: 'isolate' }}>{vehicle.passengers}</strong> {passLabel}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <Luggage size={14} style={{ color: '#C99A32' }} aria-hidden="true" />
+            <Luggage size={14} style={{ color: '#8A651C' }} aria-hidden="true" />
             <span className="text-sm" style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}>
-              <strong dir="ltr" style={{ color: '#C99A32', unicodeBidi: 'isolate' }}>{vehicle.luggage}</strong> {lugLabel}
+              <strong dir="ltr" style={{ color: '#8A651C', unicodeBidi: 'isolate' }}>{vehicle.luggage}</strong> {lugLabel}
             </span>
           </div>
         </div>
@@ -219,7 +226,7 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
                 fontFamily: 'Inter, sans-serif',
               }}
             >
-              <feature.icon size={11} style={{ color: '#C79A35' }} aria-hidden="true" />
+              <feature.icon size={11} style={{ color: '#8A651C' }} aria-hidden="true" />
               <span className="text-xs" style={{ color: '#263F55' }}>{isolateLtrValues(feature.label, lang)}</span>
             </div>
           ))}
@@ -290,21 +297,41 @@ export default function VehicleFleet({ homepageMode = false }: { homepageMode?: 
   };
 
   const [dbVehicles, setDbVehicles] = useState<DisplayVehicle[]>([]);
+  const [vehiclesLoading, setVehiclesLoading] = useState(true);
+  const [vehiclesError, setVehiclesError] = useState(false);
+  const [vehiclesRequest, setVehiclesRequest] = useState(0);
 
   useEffect(() => {
     let active = true;
     setDbVehicles([]);
+    setVehiclesLoading(true);
+    setVehiclesError(false);
     fetch(`/data/vehicles?lang=${encodeURIComponent(lang)}`)
-      .then(r => r.ok ? r.json() : null)
+      .then(async (response) => {
+        if (!isSuccessfulVehicleResponse(response)) throw new Error(`Vehicle request failed (${response.status})`);
+        return response.json() as Promise<{ vehicles?: DbVehicle[] }>;
+      })
       .then((d: { vehicles?: DbVehicle[] } | null) => {
         if (!active) return;
-        setDbVehicles((d?.vehicles ?? []).map(vehicle => adaptDbVehicle(vehicle, v, lang)));
+        if (!d || !Array.isArray(d.vehicles)) {
+          setVehiclesError(true);
+          return;
+        }
+        setDbVehicles(d.vehicles.map(vehicle => adaptDbVehicle(vehicle, v, lang)));
       })
-      .catch(() => { if (active) setDbVehicles([]); });
+      .catch(() => { if (active) setVehiclesError(true); })
+      .finally(() => { if (active) setVehiclesLoading(false); });
     return () => { active = false; };
-  }, [lang, v]);
+  }, [lang, v, vehiclesRequest]);
 
   const displayVehicles = dbVehicles;
+  const fleetGroups = groupFleetVehicles(displayVehicles);
+  const fleetGroupLabels: Record<VehicleType, string> = {
+    minivan: 'Minivan',
+    minibus: 'Minibüs',
+    midibus: 'Midibüs',
+    bus: 'Otobüs',
+  };
 
   // Update prev/next button state on scroll
   function updateScrollState() {
@@ -430,7 +457,7 @@ export default function VehicleFleet({ homepageMode = false }: { homepageMode?: 
         >
           <span
             className="text-xs tracking-[0.3em] uppercase mb-4 block"
-            style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
+            style={{ color: '#8A651C', fontFamily: 'Inter, sans-serif' }}
           >
             {v.sectionLabel}
           </span>
@@ -449,13 +476,61 @@ export default function VehicleFleet({ homepageMode = false }: { homepageMode?: 
           </p>
         </motion.div>
 
-        {/* Carousel */}
-        <div style={{ position: 'relative' }}>
+          {/* Homepage is a compact carousel. The dedicated fleet page keeps
+              the same cards but makes the authoritative classes explicit. */}
+          {vehiclesLoading && (
+            <div role="status" aria-live="polite" aria-label={ui.location.loading} className="flex gap-6 overflow-hidden pb-3">
+              <span className="sr-only">{ui.location.loading}</span>
+              {[0, 1, 2].map((index) => (
+                <div key={index} aria-hidden="true" className="h-[390px] min-w-[320px] animate-pulse rounded-2xl border border-[#D9E2EC] bg-white">
+                  <div className="h-[200px] bg-[#EAF2F8]" />
+                  <div className="space-y-4 p-6">
+                    <div className="h-3 w-1/3 rounded bg-[#EAF2F8]" />
+                    <div className="h-6 w-2/3 rounded bg-[#EAF2F8]" />
+                    <div className="h-3 w-full rounded bg-[#EAF2F8]" />
+                    <div className="h-3 w-4/5 rounded bg-[#EAF2F8]" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {vehiclesError && !vehiclesLoading && (
+            <div role="alert" className="rounded-xl border border-[#D9E2EC] bg-white p-6 text-center">
+              <p className="mb-4 text-sm" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>{ui.errors.message}</p>
+              <button type="button" onClick={() => setVehiclesRequest((request) => request + 1)}
+                className="rounded-lg border border-[#102A43] px-4 py-2 text-sm font-semibold"
+                style={{ color: '#102A43', fontFamily: 'Inter, sans-serif' }}>
+                {ui.errors.retry}
+              </button>
+            </div>
+          )}
+          {!vehiclesLoading && !vehiclesError && !homepageMode && fleetGroups.length > 0 && (
+            <div className="space-y-10">
+              {fleetGroups.map((group) => (
+                <div key={group.type}>
+                  <h3 className="mb-4 text-xl font-bold" style={{ color: '#102A43', fontFamily: 'Playfair Display, Georgia, serif' }}>
+                    {fleetGroupLabels[group.type]}
+                  </h3>
+                  <div className="flex gap-6 overflow-x-auto pb-3" style={{ scrollbarWidth: 'none' }}>
+                    {group.vehicles.map((vehicle, i) => (
+                      <VehicleCard key={vehicle.name} vehicle={vehicle} i={i}
+                        cta={section?.ctaText ?? v.cta} popular={v.popular}
+                        passengers={v.passengers} luggage={v.luggage} lang={lang}
+                        scrollToBooking={scrollToBooking} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {!vehiclesLoading && !vehiclesError && homepageMode && (
+            <div style={{ position: 'relative' }}>
           {/* Nav buttons */}
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginBottom: '16px' }}>
             <button
               onClick={() => scrollBy('prev')}
               disabled={!canPrev}
+              className="focus:outline-none focus-visible:ring-2 focus-visible:ring-[#102A43] focus-visible:ring-offset-2"
               style={{ ...NAV_BTN, opacity: canPrev ? 1 : 0.35, color: GOLD }}
               aria-label={ui.vehicles.previous}
             >
@@ -464,12 +539,13 @@ export default function VehicleFleet({ homepageMode = false }: { homepageMode?: 
             <button
               onClick={() => scrollBy('next')}
               disabled={!canNext}
+              className="focus:outline-none focus-visible:ring-2 focus-visible:ring-[#102A43] focus-visible:ring-offset-2"
               style={{ ...NAV_BTN, opacity: canNext ? 1 : 0.35, color: GOLD }}
               aria-label={ui.vehicles.next}
             >
               <ChevronRight size={18} />
             </button>
-          </div>
+            </div>
 
           {/* Scrollable track */}
           <div
@@ -517,6 +593,7 @@ export default function VehicleFleet({ homepageMode = false }: { homepageMode?: 
                   el.scrollTo({ left: i * (320 + 24), behavior: 'smooth' });
                 }}
                 aria-label={ui.vehicles.slide(i + 1)}
+                className="focus:outline-none focus-visible:ring-2 focus-visible:ring-[#102A43] focus-visible:ring-offset-2"
                 style={{
                   width: '44px', height: '44px', borderRadius: '50%',
                   background: `radial-gradient(circle, ${GOLD} 0 4px, transparent 5px)`, border: 'none', cursor: 'pointer',
@@ -528,8 +605,9 @@ export default function VehicleFleet({ homepageMode = false }: { homepageMode?: 
               />
             ))}
           </div>
+            </div>
+          )}
         </div>
-      </div>
 
       {/* Hide scrollbar in WebKit browsers */}
       <style>{`

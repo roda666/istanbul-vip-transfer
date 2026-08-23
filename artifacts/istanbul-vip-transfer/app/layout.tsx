@@ -5,12 +5,11 @@ import PublicLayoutWrapper from '@/components/PublicLayoutWrapper';
 import WebVitalsReporter from '@/components/WebVitalsReporter';
 import GoogleAnalyticsConsent from '@/components/GoogleAnalyticsConsent';
 import { SITE } from '@/lib/site-config';
-import { getPublicServiceCatalog } from '@/lib/public-service-catalog';
-import { getPublishedHomepageData } from '@/lib/homepage-cms';
 import { getContactSettings } from '@/lib/site-settings-server';
 import { SiteSettingsProvider } from '@/components/SiteSettingsContext';
 import { cookies, headers } from 'next/headers';
 import { getPublicLanguage } from '@/lib/i18n/active-locales';
+import { getPublicChrome, type PublicChromePayload } from '@/lib/public-chrome';
 
 /**
  * Self-hosted via next/font — eliminates the external Google Fonts request
@@ -41,9 +40,9 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   // Plain string fallback — all public pages set their own complete title.
-  title: 'İstanbul VIP Transfer | Vito ve Sprinter Hizmeti',
+  title: 'İstanbul VIP Transfer | Minivan, Minibüs ve Otobüs',
   description:
-    'İstanbul VIP transfer hizmeti; İstanbul Havalimanı, Sabiha Gökçen, şehir içi ve şehirler arası Mercedes Vito ve Sprinter ulaşımı.',
+    'İstanbul VIP transfer hizmeti; İstanbul Havalimanı, Sabiha Gökçen, şehir içi ve şehirler arası minivan, minibüs, midibüs ve otobüs seçenekleri.',
   metadataBase: new URL(SITE.siteUrl),
   icons: {
     // SVG favicon for modern browsers (served via app/icon.svg)
@@ -59,33 +58,36 @@ export const metadata: Metadata = {
   },
 };
 
-// Force-dynamic ensures the root layout re-runs on every request so service
-// category moves and visibility changes take effect in Header/Footer immediately.
-export const dynamic = 'force-dynamic';
+const EMPTY_PUBLIC_CHROME: PublicChromePayload = {
+  contactSettings: {
+    phoneDisplay: '', phoneTel: '', phoneE164: '', whatsappNumber: '',
+    whatsappUrl: '', whatsappFloatUrl: '', email: '', emailMailto: '',
+    googleBusinessUrl: '', companyLegalName: '', companyTradeName: '',
+    tursabNo: '', fullAddress: '', googlePlayUrl: '', googleReviewUrl: '',
+    tiktokUrl: '', youtubeUrl: '',
+  },
+  serviceNavigationGroups: [],
+  serviceLinks: [],
+  homepageFooter: null,
+};
 
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const requestHeaders = await headers();
   const cookieStore = await cookies();
+  // Only middleware-marked public documents read the shared chrome cache.
+  // Admin routes remain request-specific and never populate/read that cache.
+  const isPublicRequest = requestHeaders.has('x-ivt-lang');
   const requestedLang = requestHeaders.get('x-ivt-lang') ?? 'tr';
   const hasCookieConsentDecision = Boolean(cookieStore.get('ivt_cookie_consent')?.value);
-  const activeLanguage = await getPublicLanguage(requestedLang);
+  const activeLanguage = isPublicRequest ? await getPublicLanguage(requestedLang) : null;
   const initialLang = activeLanguage?.code ?? 'tr';
   const initialDirection = activeLanguage?.direction ?? 'ltr';
 
-  const [serviceCatalog, contactSettings, homepageCmsData] = await Promise.all([
-    getPublicServiceCatalog(initialLang).catch(() => ({
-      categories: [],
-      services: [],
-      navigationGroups: [],
-    })),
-    getContactSettings(),
-    getPublishedHomepageData(initialLang),
-  ]);
-  const footerServiceLinks = serviceCatalog.services
-    .filter((service) => service.showInNav)
-    .map((service) => ({ slug: service.slug, label: service.title }));
+  const publicChrome = isPublicRequest
+    ? await getPublicChrome(initialLang).catch((): PublicChromePayload => EMPTY_PUBLIC_CHROME)
+    : { ...EMPTY_PUBLIC_CHROME, contactSettings: await getContactSettings() };
 
   return (
     <html lang={initialLang} dir={initialDirection} className={`${playfairDisplay.variable} ${inter.variable}`}>
@@ -95,13 +97,13 @@ export default async function RootLayout({
       >
         {/* PublicLayoutWrapper conditionally adds Header/Footer for public routes.
             Admin routes render their own layout without public chrome. */}
-        <SiteSettingsProvider settings={contactSettings}>
+        <SiteSettingsProvider settings={publicChrome.contactSettings}>
           <PublicLayoutWrapper
             initialLang={initialLang}
-            serviceNavigationGroups={serviceCatalog.navigationGroups}
-            serviceLinks={footerServiceLinks}
+            serviceNavigationGroups={publicChrome.serviceNavigationGroups}
+            serviceLinks={publicChrome.serviceLinks}
             hasCookieConsentDecision={hasCookieConsentDecision}
-            homepageFooter={homepageCmsData?.footerSection ?? null}
+            homepageFooter={publicChrome.homepageFooter}
           >
             {children}
           </PublicLayoutWrapper>

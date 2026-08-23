@@ -5,7 +5,7 @@
 export const dynamic = 'force-dynamic';
 
 import { isLocaleCodeSyntax } from '@/lib/i18n/locale-registry';
-import { resolvePublicVehicle } from '@/lib/vehicle-localization';
+import { resolvePublishedVehicles } from '@/lib/vehicle-localization';
 
 export async function GET(request: Request) {
   const { NextResponse } = await import('next/server');
@@ -40,10 +40,7 @@ export async function GET(request: Request) {
       .where(eq(vehicles.status, 'PUBLISHED'))
       .orderBy(asc(vehicles.displayOrder));
 
-    const resolved = rows.flatMap((vehicle) => {
-      const localized = resolvePublicVehicle(vehicle, lang);
-      return localized ? [localized] : [];
-    });
+    const resolved = resolvePublishedVehicles(rows, lang);
 
     return NextResponse.json(
       { vehicles: resolved },
@@ -52,8 +49,14 @@ export async function GET(request: Request) {
   } catch (err) {
     console.error('Vehicles GET error:', err);
     return NextResponse.json(
-      { vehicles: [] },
-      { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30' } },
+      // An empty catalog is a valid 200 response; a query failure is not. The
+      // client needs this distinction to expose its retry control instead of
+      // presenting an apparently valid blank fleet.
+      { error: 'Vehicle fleet is temporarily unavailable.' },
+      {
+        status: 503,
+        headers: { 'Cache-Control': 'no-store' },
+      },
     );
   }
 }

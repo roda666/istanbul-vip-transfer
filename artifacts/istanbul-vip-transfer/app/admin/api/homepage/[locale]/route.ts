@@ -17,7 +17,8 @@ import {
   isHomepageSyncCurrent,
 } from '@/lib/homepage-sync';
 import { translateHomepageFields } from '@/lib/ai/translate-homepage';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
+import { PUBLIC_CHROME_TAG } from '@/lib/public-chrome-cache';
 import 'server-only';
 
 /**
@@ -212,7 +213,10 @@ export async function PATCH(
     });
 
     // Revalidate TR homepage cache immediately after save
-    if (autoPublish) revalidatePath('/');
+    if (autoPublish) {
+      revalidatePath('/');
+      revalidateTag(PUBLIC_CHROME_TAG);
+    }
 
     const trHash = computeTranslatableHash(sections);
     const trFields = extractTranslatableFields(sections);
@@ -324,6 +328,7 @@ export async function PATCH(
           // Revalidate even for DRAFT/APPROVED rows; only a published route
           // has a visible cache entry, making this safe and idempotent.
           revalidatePath(`/${targetLocale}`);
+          revalidateTag(PUBLIC_CHROME_TAG);
           syncResults[targetLocale] = {
             status: 'skipped',
             reason: 'Hash unchanged; shared fields synchronized',
@@ -680,7 +685,10 @@ export async function PATCH(
         metadata: { locale: targetLocale, model: aiResult.model, status: txStatus },
       });
 
-      if (autoPublish) revalidatePath(`/${targetLocale}`);
+      if (autoPublish) {
+        revalidatePath(`/${targetLocale}`);
+        revalidateTag(PUBLIC_CHROME_TAG);
+      }
       syncResults[targetLocale] = { status: autoPublish ? 'published' : 'translated', jobId, aiModel: aiResult.model };
     }
 

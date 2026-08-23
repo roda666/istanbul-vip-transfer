@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { invalidateContactSettings } from '@/lib/site-settings-server';
+import { revalidateTag } from 'next/cache';
+import { PUBLIC_CHROME_TAG } from '@/lib/public-chrome-cache';
 
 const optionalHttpsUrl = z.preprocess(
   (value) => value === '' ? null : value,
@@ -77,6 +79,7 @@ export async function POST(request: NextRequest) {
 
     await db.insert(auditLogs).values({ adminUserId: session.adminId, action: 'UPDATE', entityType: 'SiteSettings', entityId: '1' }).catch(() => {});
     invalidateContactSettings(); // flush module-level cache so next request reflects updated values
+    revalidateTag(PUBLIC_CHROME_TAG);
     return NextResponse.json({ settings: updated });
   } catch (err) {
     console.error('Settings POST error:', err);

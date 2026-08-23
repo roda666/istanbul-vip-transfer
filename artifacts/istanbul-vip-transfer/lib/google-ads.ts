@@ -2,7 +2,7 @@
  * Google Ads — Keyword Planner helper (server-only)
  *
  * Tokens are stored in `google_ads_connections` (single-row pattern, same as GSC).
- * All calls use the Google Ads REST API v18 — no npm client needed.
+ * All calls use the Google Ads REST API — no npm client needed.
  *
  * API docs: https://developers.google.com/google-ads/api/docs/keyword-planning/generate-keyword-ideas
  *
@@ -12,6 +12,7 @@
  *  • login-customer-id is read from GOOGLE_ADS_LOGIN_CUSTOMER_ID env secret.
  */
 import 'server-only';
+import { sql } from 'drizzle-orm';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -26,22 +27,28 @@ export interface KeywordIdea {
   highTopOfPageBidMicros: number | null;
 }
 
-export interface KeywordPlanResult {
-  ok: true;
-  ideas: KeywordIdea[];
-  dataSource: 'google_ads';
-}
-
-export interface KeywordPlanError {
-  ok: false;
-  reason: 'not_connected' | 'not_configured' | 'api_error' | 'token_refresh_failed';
-  message: string;
+/** Safe, server-side-only failure. Its message deliberately contains no provider detail. */
+export class GoogleAdsUnavailableError extends Error {
+  constructor() {
+    super('Google Ads Keyword Planner unavailable');
+    this.name = 'GoogleAdsUnavailableError';
+  }
 }
 
 // Turkey geoTargetConstant = 2792, Turkish languageConstant = 1011
 const GEO_TARGET   = 'geoTargetConstants/2792';
 const LANGUAGE     = 'languageConstants/1011';
-const ADS_API_BASE = 'https://googleads.googleapis.com/v18';
+const DEFAULT_ADS_API_VERSION = 'v24';
+
+/** Only accept a version segment, never an arbitrary URL supplied through env. */
+export function getGoogleAdsApiVersion(): string {
+  const configured = process.env.GOOGLE_ADS_API_VERSION?.trim();
+  return configured && /^v\d{1,3}$/.test(configured) ? configured : DEFAULT_ADS_API_VERSION;
+}
+
+export function getGoogleAdsApiBase(): string {
+  return `https://googleads.googleapis.com/${getGoogleAdsApiVersion()}`;
+}
 
 // ── Token management ──────────────────────────────────────────────────────────
 
@@ -139,13 +146,15 @@ async function getAccessToken(): Promise<string | null> {
     const newExpiry = new Date(Date.now() + data.expires_in * 1_000);
 
     const { db } = await import('@/db');
-    await db.execute(
-      `UPDATE google_ads_connections SET access_token = '${data.access_token}', token_expiry = '${newExpiry.toISOString()}', updated_at = NOW() WHERE id = (SELECT id FROM google_ads_connections ORDER BY id DESC LIMIT 1)` as never
-    );
+    const { googleAdsConnections } = await import('@/db/schema');
+    await db.update(googleAdsConnections)
+      .set({ accessToken: data.access_token, tokenExpiry: newExpiry, updatedAt: new Date() })
+      .where(sql`${googleAdsConnections.id} = (SELECT id FROM google_ads_connections ORDER BY id DESC LIMIT 1)`);
 
     return data.access_token;
-  } catch (err) {
-    console.error('[Google Ads] Token refresh error:', err instanceof Error ? err.message : 'unknown');
+  } catch {
+    // Do not log OAuth/provider error messages; they may contain request details.
+    console.error('[Google Ads] Token refresh error');
     return null;
   }
 }
@@ -162,25 +171,25 @@ async function getAccessToken(): Promise<string | null> {
 export async function generateKeywordIdeas(
   seedKeywords: string[],
   limit = 20,
-): Promise<KeywordPlanResult | KeywordPlanError> {
+): Promise<KeywordIdea[]> {
   const devToken      = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
   const loginCustId   = process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID;
   if (!devToken || !loginCustId) {
-    return { ok: false, reason: 'not_configured', message: 'GOOGLE_ADS_DEVELOPER_TOKEN veya GOOGLE_ADS_LOGIN_CUSTOMER_ID eksik.' };
+    throw new GoogleAdsUnavailableError();
   }
 
   const conn = await getRawConnection();
-  if (!conn) return { ok: false, reason: 'not_connected', message: 'Google Ads bağlı değil. Önce OAuth ile bağlanın.' };
+  if (!conn) throw new GoogleAdsUnavailableError();
 
   const accessToken = await getAccessToken();
-  if (!accessToken) return { ok: false, reason: 'token_refresh_failed', message: 'Google Ads token yenileme başarısız.' };
+  if (!accessToken) throw new GoogleAdsUnavailableError();
 
   // Use the login customer as the "customer" for keyword planning (MCC account)
   const customerId = loginCustId.replace(/-/g, '');
 
   try {
     const res = await fetch(
-      `${ADS_API_BASE}/customers/${customerId}:generateKeywordIdeas`,
+      `${getGoogleAdsApiBase()}/customers/${customerId}:generateKeywordIdeas`,
       {
         method: 'POST',
         headers: {
@@ -201,11 +210,10 @@ export async function generateKeywordIdeas(
     );
 
     if (!res.ok) {
-      const txt = await res.text().catch(() => '');
-      // Strip any token fragments from error before logging
-      const safe = txt.replace(/Bearer\s+\S+/gi, 'Bearer [REDACTED]').slice(0, 400);
-      console.error('[Google Ads] generateKeywordIdeas error:', res.status, safe);
-      return { ok: false, reason: 'api_error', message: `API ${res.status}: ${safe}` };
+      // Provider bodies can contain request/customer details. Deliberately do
+      // not read, log, persist, or return them.
+      console.error('[Google Ads] Keyword Planner request failed:', res.status);
+      throw new GoogleAdsUnavailableError();
     }
 
     const data = await res.json() as {
@@ -236,11 +244,10 @@ export async function generateKeywordIdeas(
       .filter(i => i.text && i.avgMonthlySearches > 0)
       .sort((a, b) => b.avgMonthlySearches - a.avgMonthlySearches);
 
-    return { ok: true, ideas, dataSource: 'google_ads' };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message.slice(0, 300) : 'unknown';
-    console.error('[Google Ads] generateKeywordIdeas exception:', msg);
-    return { ok: false, reason: 'api_error', message: `Bağlantı hatası: ${msg}` };
+    return ideas;
+  } catch {
+    console.error('[Google Ads] Keyword Planner request failed');
+    throw new GoogleAdsUnavailableError();
   }
 }
 
@@ -249,11 +256,9 @@ export async function generateKeywordIdeas(
  * Picks the seed keyword with the highest monthly search volume
  * from a curated list of transfer-related seeds.
  */
-export async function findKeywordOpportunitiesFromAds(limit = 5): Promise<{
-  ok: true;
-  opportunities: Array<{ keyword: string; monthlySearches: number; competition: string }>;
-  dataSource: 'google_ads';
-} | { ok: false; reason: string }> {
+export async function findKeywordOpportunitiesFromAds(limit = 5): Promise<
+  Array<{ keyword: string; monthlySearches: number; competition: string }>
+> {
   // Curated seeds relevant to the business — not invented data
   const seeds = [
     'istanbul vip transfer',
@@ -265,17 +270,16 @@ export async function findKeywordOpportunitiesFromAds(limit = 5): Promise<{
     'istanbul ankara vip',
   ];
 
-  const result = await generateKeywordIdeas(seeds, 30);
-  if (!result.ok) return { ok: false, reason: result.message };
+  const ideas = await generateKeywordIdeas(seeds, 30);
 
   // Top by search volume, deduplicated
   const seen = new Set<string>();
-  const opportunities = result.ideas
+  const opportunities = ideas
     .filter(i => { if (seen.has(i.text)) return false; seen.add(i.text); return true; })
     .slice(0, limit)
     .map(i => ({ keyword: i.text, monthlySearches: i.avgMonthlySearches, competition: i.competition }));
 
-  return { ok: true, opportunities, dataSource: 'google_ads' };
+  return opportunities;
 }
 
 export async function disconnectGoogleAds(): Promise<void> {

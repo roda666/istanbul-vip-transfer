@@ -21,6 +21,7 @@ import { formatServiceDate } from '@/lib/booking-date';
 import {
   isFiveMinuteIncrement,
   isValidPassengerCount,
+  findSmallestFittingVehicle,
   meetsAllocationMinimum,
   MIN_ALLOCATION_HOURS,
 } from '@/lib/booking-rules';
@@ -57,6 +58,14 @@ interface ServiceTypeOption {
   description: string | null;
   quoteEnabled: boolean;
   reservationEnabled: boolean;
+}
+
+interface PublishedVehicleOption {
+  id: string;
+  slug: string;
+  displayName: string;
+  passengerCapacity: number | null;
+  vehicleType: string | null;
 }
 
 const SERVICE_ICONS: Record<string, React.ReactNode> = {
@@ -301,6 +310,7 @@ export default function BookingForm({
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
   // State values for custom checkbox fields (keyed by field id)
   const [customFieldValues, setCustomFieldValues] = useState<Record<number, boolean | string>>({});
+  const [publishedVehicles, setPublishedVehicles] = useState<PublishedVehicleOption[]>([]);
 
   // Fetch admin-defined custom fields for this service slug
   useEffect(() => {
@@ -320,6 +330,19 @@ export default function BookingForm({
   useEffect(() => {
     setToday(getIstanbulToday());
   }, []);
+
+  // Recommendations must always use the public endpoint: it already excludes
+  // archived, unpublished and incomplete-translation records.
+  useEffect(() => {
+    let active = true;
+    fetch(`/data/vehicles?lang=${encodeURIComponent(lang)}`)
+      .then((response) => response.ok ? response.json() : null)
+      .then((data: { vehicles?: PublishedVehicleOption[] } | null) => {
+        if (active) setPublishedVehicles(data?.vehicles ?? []);
+      })
+      .catch(() => { if (active) setPublishedVehicles([]); });
+    return () => { active = false; };
+  }, [lang]);
 
   // Load service types once on mount
   useEffect(() => {
@@ -368,6 +391,8 @@ export default function BookingForm({
   const kalkisIliValue      = watch('kalkisIli');
   const varisIliValue       = watch('varisIli');
   const tahsisSuresiUnit    = watch('tahsisSuresiUnit');
+  const yolcuSayisi = watch('yolcuSayisi');
+  const recommendedVehicle = findSmallestFittingVehicle(publishedVehicles, yolcuSayisi);
 
   const activeST = serviceTypes.find((s) => s.key === activeService);
 
@@ -798,11 +823,15 @@ export default function BookingForm({
                   <div data-testid="field-yolcu">
                     <label htmlFor="bf-yolcu" style={labelStyle}><Users size={12} aria-hidden="true" /> {b.passengerCount}</label>
                     <select id="bf-yolcu" {...register('yolcuSayisi')} className="vip-input vip-select" data-testid="input-yolcu">
-                      {Array.from({ length: 30 }, (_, i) => i + 1).map((n) => (
+                      {Array.from({ length: 45 }, (_, i) => i + 1).map((n) => (
                         <option key={n} value={String(n)}>{n} {b.passengerSuffix}</option>
                       ))}
                     </select>
-                    <p style={hintStyle}>{b.vehicleHint}</p>
+                    <p style={hintStyle}>
+                      {recommendedVehicle
+                        ? `${b.vehicleHint} ${recommendedVehicle.displayName} (${recommendedVehicle.passengerCapacity} ${b.passengerSuffix})`
+                        : b.vehicleHint}
+                    </p>
                   </div>
 
                 </div>

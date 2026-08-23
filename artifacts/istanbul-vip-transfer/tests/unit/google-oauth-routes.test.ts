@@ -5,6 +5,9 @@ const mocks = vi.hoisted(() => ({
   requireAdminSession: vi.fn(),
   dbExecute: vi.fn(),
   dbUpdate: vi.fn(),
+  dbDelete: vi.fn(),
+  dbInsert: vi.fn(),
+  dbValues: vi.fn(),
   fetch: vi.fn(),
 }));
 
@@ -16,6 +19,8 @@ vi.mock('@/db', () => ({
   db: {
     execute: mocks.dbExecute,
     update: mocks.dbUpdate,
+    delete: mocks.dbDelete,
+    insert: mocks.dbInsert,
   },
 }));
 
@@ -49,6 +54,12 @@ describe('Google OAuth routes', () => {
     vi.stubEnv('GOOGLE_CLIENT_SECRET', 'test-client-secret');
     mocks.dbExecute.mockReset();
     mocks.dbUpdate.mockReset();
+    mocks.dbDelete.mockReset();
+    mocks.dbInsert.mockReset();
+    mocks.dbValues.mockReset();
+    mocks.dbDelete.mockResolvedValue(undefined);
+    mocks.dbInsert.mockReturnValue({ values: mocks.dbValues });
+    mocks.dbValues.mockResolvedValue(undefined);
     mocks.fetch.mockReset();
     vi.stubGlobal('fetch', mocks.fetch);
   });
@@ -122,9 +133,14 @@ describe('Google OAuth routes', () => {
     ));
 
     expect(new URL(response.headers.get('location')!).searchParams.get('success')).toBe('gsc_connected');
-    expect(mocks.dbExecute).toHaveBeenCalledTimes(2);
-    expect(String(mocks.dbExecute.mock.calls[1]?.[0])).toContain('connected, enabled, last_error');
-    expect(String(mocks.dbExecute.mock.calls[1]?.[0])).toContain('TRUE, TRUE, NULL');
+    expect(mocks.dbDelete).toHaveBeenCalledTimes(1);
+    expect(mocks.dbValues).toHaveBeenCalledWith(expect.objectContaining({
+      accessToken: 'test-access-token',
+      refreshToken: 'test-refresh-token',
+      connected: true,
+      enabled: true,
+    }));
+    expect(String(mocks.dbValues.mock.calls[0]?.[0])).not.toContain("'");
   });
 
   it('writes active Google Ads status and redirects to success after a valid callback', async () => {
@@ -144,8 +160,12 @@ describe('Google OAuth routes', () => {
     ));
 
     expect(new URL(response.headers.get('location')!).searchParams.get('success')).toBe('gads_connected');
-    expect(mocks.dbExecute).toHaveBeenCalledTimes(2);
-    expect(String(mocks.dbExecute.mock.calls[1]?.[0])).toContain('connected, enabled, last_error');
-    expect(String(mocks.dbExecute.mock.calls[1]?.[0])).toContain('TRUE, TRUE, NULL');
+    expect(mocks.dbDelete).toHaveBeenCalledTimes(1);
+    expect(mocks.dbValues).toHaveBeenCalledWith(expect.objectContaining({
+      accessToken: 'test-access-token',
+      refreshToken: 'test-refresh-token',
+      connected: true,
+      enabled: true,
+    }));
   });
 });

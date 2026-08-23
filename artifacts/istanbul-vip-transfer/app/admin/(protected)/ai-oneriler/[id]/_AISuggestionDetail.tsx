@@ -12,6 +12,8 @@ import {
   FileText, Share2, Globe, LayoutGrid, ExternalLink, Copy, Check,
 } from 'lucide-react';
 import AdminPageHeader from '../../../_components/AdminPageHeader';
+import { safeResearchSourceHref } from '@/lib/research-source-url';
+import { searchResearchDisplay } from '@/lib/search-research';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -32,6 +34,19 @@ interface Suggestion {
   customerProfile: string | null;
   targetCountry: string | null;
   targetLanguage: string;
+  suggestedKeywordsJson?: {
+    dataSourceNote?: string;
+    searchResearch?: {
+      source: 'gsc' | 'google_ads' | 'combined' | 'none'; fetchedAt: string;
+      sourceState: { gsc: string; googleAds: string };
+       sourceGroups?: {
+         gsc: { label: 'nearby_gains'; provenance: 'actual_site_queries' };
+         googleAds: { label: 'new_market_opportunities'; provenance: 'keyword_planner_market_data' };
+       };
+      gscRows?: Array<{ query: string; clicks: number; impressions: number; ctr: number; position: number; opportunity?: 'weak_ranking'; isQuestion?: boolean }>;
+      adsRows?: Array<{ keyword: string; monthlySearches: number; competition: string }>;
+    };
+  } | null;
   contentBrief: { tone?: string; wordCountTarget?: number; competitorContext?: string } | null;
   qualityScore: {
     intentAlignment: number; uniqueness: number; titleHierarchy: number;
@@ -48,7 +63,10 @@ interface Suggestion {
   createdAt: string;
 }
 
-interface ResearchSource { id: string; title: string | null; url: string | null; claimSupported: string | null; sourceType: string; }
+interface ResearchSource {
+  id: string; title: string | null; url: string | null; claimSupported: string | null;
+  sourceType: string; provenanceStatus?: string | null;
+}
 interface ClusterOption  { id: string; pillarTitle: string; pillarSlug: string; }
 
 // ── Shared styles ──────────────────────────────────────────────────────────────
@@ -182,6 +200,14 @@ export default function AISuggestionDetail({
 
   const qScore = sug.qualityScore;
   const hasDraft = Boolean(sug.contentDraft || sug.draftBlogPostId);
+  const searchResearch = sug.suggestedKeywordsJson?.searchResearch;
+  const gscResearchRows = searchResearch?.gscRows ?? [];
+  const adsResearchRows = searchResearch?.adsRows ?? [];
+  const researchDisplay = searchResearchDisplay(searchResearch);
+  const sourceLabels: Record<'gsc' | 'google_ads' | 'combined' | 'none', string> = {
+    gsc: 'Google Search Console', google_ads: 'Google Ads Keyword Planner',
+    combined: 'Google Search Console + Google Ads Keyword Planner', none: 'Bağlı kullanılabilir veri yok',
+  };
 
   return (
     <div style={{ padding: '28px 24px', maxWidth: '860px' }}>
@@ -243,6 +269,64 @@ export default function AISuggestionDetail({
         </div>
       </div>
 
+      {/* Search research is provenance for this suggestion, not model research. */}
+      <div style={{ ...card, border: gscResearchRows.length ? '1px solid #BFDBFE' : card.border }}>
+        <div style={cardHeader}>
+          <Globe size={15} style={{ color: '#2563EB' }} />
+          <span style={{ fontSize: '13px', fontWeight: 700, color: '#172B3A', fontFamily: 'Inter, sans-serif' }}>Arama Verisi ve Fırsatlar</span>
+        </div>
+        <div style={cardBody}>
+          <p style={{ ...valSt, fontWeight: 700 }}>{searchResearch ? sourceLabels[searchResearch.source] : 'Eski öneride arama veri kaydı yok'}</p>
+          <p style={{ fontSize: '11px', color: '#718596', fontFamily: 'Inter, sans-serif', margin: '5px 0 12px' }}>
+            {searchResearch ? `Getirildi: ${new Date(searchResearch.fetchedAt).toLocaleString('tr-TR')}` : sug.suggestedKeywordsJson?.dataSourceNote || ''}
+          </p>
+          {searchResearch && (
+            <p style={{ fontSize: '11px', color: '#52697A', fontFamily: 'Inter, sans-serif', margin: '0 0 12px' }}>
+              {researchDisplay.stateText}
+            </p>
+          )}
+          {gscResearchRows.length > 0 && (
+            <>
+              <p style={{ ...labelSt, color: '#D97706' }}>{researchDisplay.gscHeading} <span style={{ display: 'inline-block', padding: '1px 5px', borderRadius: '4px', background: '#EFF6FF', color: '#2563EB' }}>{researchDisplay.gscBadge}</span></p>
+              {gscResearchRows.filter(row => row.opportunity === 'weak_ranking').map(row => (
+                <div key={row.query} style={{ background: '#FFF7ED', borderRadius: '7px', padding: '8px 10px', marginBottom: '6px', fontSize: '11px', fontFamily: 'Inter, sans-serif', color: '#172B3A' }}>
+                  <strong>{row.query}</strong>{row.isQuestion ? ' · Soru sorgusu' : ''}<br />
+                  Tıklama: {row.clicks} · Gösterim: {row.impressions} · TO: {(row.ctr * 100).toFixed(2)}% · Ort. konum: {row.position.toFixed(1)}
+                </div>
+              ))}
+              {gscResearchRows.filter(row => row.opportunity === 'weak_ranking').length === 0 && <p style={{ ...valSt, color: '#52697A' }}>Kullanılabilir sorgular var, ancak zayıf sıralama eşiğini karşılayan satır yok.</p>}
+              <p style={{ ...labelSt, marginTop: '16px' }}>Modele gönderilen tüm Search Console sorguları</p>
+              <div style={{ overflowX: 'auto', border: '1px solid #E8EDF2', borderRadius: '8px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', fontFamily: 'Inter, sans-serif', color: '#172B3A' }}>
+                  <thead><tr style={{ background: '#F8FAFC', textAlign: 'left' }}>
+                    {['Sorgu', 'Tıklama', 'Gösterim', 'TO', 'Konum', 'Soru', 'Zayıf'].map(h => <th key={h} style={{ padding: '8px', whiteSpace: 'nowrap' }}>{h}</th>)}
+                  </tr></thead>
+                  <tbody>{gscResearchRows.map(row => (
+                    <tr key={`${row.query}-${row.position}`} style={{ borderTop: '1px solid #EDF2F7' }}>
+                      <td style={{ padding: '8px', minWidth: '200px' }}>{row.query}</td><td style={{ padding: '8px' }}>{row.clicks}</td>
+                      <td style={{ padding: '8px' }}>{row.impressions}</td><td style={{ padding: '8px' }}>{(row.ctr * 100).toFixed(2)}%</td>
+                      <td style={{ padding: '8px' }}>{row.position.toFixed(1)}</td><td style={{ padding: '8px' }}>{row.isQuestion ? 'Evet' : '—'}</td>
+                      <td style={{ padding: '8px', color: row.opportunity === 'weak_ranking' ? '#D97706' : undefined }}>{row.opportunity === 'weak_ranking' ? 'Evet' : '—'}</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+            </>
+          )}
+          {adsResearchRows.length > 0 && <>
+            <p style={{ ...labelSt, color: '#2563EB', marginTop: '16px' }}>{researchDisplay.adsHeading} <span style={{ display: 'inline-block', padding: '1px 5px', borderRadius: '4px', background: '#F0FDF4', color: '#168C5B' }}>{researchDisplay.adsBadge}</span></p>
+            <p style={{ fontSize: '11px', color: '#718596', fontFamily: 'Inter, sans-serif', margin: '0 0 8px' }}>Bu fikirler, kayıtlı GSC sorgularıyla eşleşmeyen anahtar kelimelerdir.</p>
+            <div style={{ overflowX: 'auto', border: '1px solid #BFDBFE', borderRadius: '8px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', fontFamily: 'Inter, sans-serif', color: '#172B3A' }}>
+              <thead><tr style={{ background: '#EFF6FF', textAlign: 'left' }}><th style={{ padding: '8px' }}>Anahtar kelime</th><th style={{ padding: '8px' }}>Aylık arama</th><th style={{ padding: '8px' }}>Rekabet</th></tr></thead>
+              <tbody>{adsResearchRows.map(row => <tr key={row.keyword} style={{ borderTop: '1px solid #EDF2F7' }}><td style={{ padding: '8px' }}>{row.keyword}</td><td style={{ padding: '8px' }}>{row.monthlySearches}</td><td style={{ padding: '8px' }}>{row.competition}</td></tr>)}</tbody>
+            </table>
+            </div>
+          </>}
+          {searchResearch?.source === 'none' && <p style={{ ...valSt, color: '#52697A' }}>Bu öneri metrik olmadan oluşturuldu; kaynak durumları yukarıdadır.</p>}
+        </div>
+      </div>
+
       {/* 2. Taslak Üretme */}
       <div style={card}>
         <div style={cardHeader}>
@@ -252,8 +336,8 @@ export default function AISuggestionDetail({
         </div>
         <div style={cardBody}>
           {sug.draftError && (
-            <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', padding: '12px', marginBottom: '14px' }}>
-              <p style={{ color: '#D64545', fontSize: '12px', fontFamily: 'Inter, sans-serif', margin: 0 }}>Son hata: {sug.draftError}</p>
+            <div style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '8px', padding: '12px', marginBottom: '14px' }}>
+              <p style={{ color: '#9A3412', fontSize: '12px', fontFamily: 'Inter, sans-serif', margin: 0 }}>⚠ Taslak uyarısı: {sug.draftError}</p>
             </div>
           )}
           {genError && (
@@ -380,19 +464,32 @@ export default function AISuggestionDetail({
             <span style={{ fontSize: '13px', fontWeight: 700, color: '#172B3A', fontFamily: 'Inter, sans-serif' }}>Araştırma Kaynakları ({sources.length})</span>
           </div>
           <div style={cardBody}>
-            {sources.map(src => (
+            <div style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '8px', padding: '10px 14px', marginBottom: '12px' }}>
+              <p style={{ color: '#9A3412', fontSize: '11px', fontFamily: 'Inter, sans-serif', margin: 0 }}>
+                ⚠ Bu kaynaklar harici olarak doğrulanmamıştır. Model önerisi ve eski kayıtlar doğrulanmış kaynak olarak kabul edilmez.
+              </p>
+            </div>
+            {sources.map(src => {
+              // This is intentionally repeated at the UI boundary for legacy
+              // and manually-entered DB rows that bypassed generation guards.
+              const safeHref = safeResearchSourceHref(src.url);
+              return (
               <div key={src.id} style={{ padding: '10px 14px', background: '#F8FAFC', borderRadius: '8px', marginBottom: '8px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '4px' }}>
                   <p style={{ fontSize: '12px', color: '#172B3A', fontFamily: 'Inter, sans-serif', fontWeight: 600, margin: 0 }}>{src.title || '(başlıksız)'}</p>
-                  {src.url && (
-                    <a href={src.url} target="_blank" rel="noreferrer" style={{ color: '#2563EB', flexShrink: 0 }}><ExternalLink size={12} /></a>
+                  {safeHref && (
+                    <a href={safeHref} target="_blank" rel="noopener noreferrer" style={{ color: '#2563EB', flexShrink: 0 }}><ExternalLink size={12} /></a>
                   )}
                 </div>
                 {src.claimSupported && (
                   <p style={{ fontSize: '11px', color: '#52697A', fontFamily: 'Inter, sans-serif', margin: 0 }}>{src.claimSupported}</p>
                 )}
+                <p style={{ fontSize: '10px', color: '#9A3412', fontFamily: 'Inter, sans-serif', margin: '5px 0 0', fontWeight: 700 }}>
+                  {src.provenanceStatus === 'VERIFIED' ? 'Doğrulanmış' : 'Doğrulanmamış / model veya eski kayıt'}
+                </p>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

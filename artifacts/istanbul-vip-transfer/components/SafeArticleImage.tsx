@@ -6,6 +6,7 @@ interface SafeArticleImageProps {
   alt?: string | null;
   fallbackAlt?: string;
   priority?: boolean;
+  quality?: number;
   className?: string;
   sizes: string;
   fill?: boolean;
@@ -16,7 +17,7 @@ interface SafeArticleImageProps {
  * next.config.ts. Other HTTP(S) sources remain a safe, non-optimized image.
  */
 export default function SafeArticleImage({
-  src, alt, fallbackAlt, priority = false, className, sizes, fill = false,
+  src, alt, fallbackAlt, priority = false, quality = 75, className, sizes, fill = false,
 }: SafeArticleImageProps) {
   const source = getSafeImageSource(src);
   if (!source) return null;
@@ -31,8 +32,9 @@ export default function SafeArticleImage({
         width={fill ? undefined : 1200}
         height={fill ? undefined : 675}
         sizes={sizes}
-        quality={75}
+        quality={quality}
         priority={priority}
+        fetchPriority={priority ? 'high' : undefined}
         className={className}
       />
     );
@@ -48,7 +50,7 @@ export default function SafeArticleImage({
       height={fill ? undefined : 675}
       sizes={sizes}
       loading={priority ? 'eager' : 'lazy'}
-      fetchPriority={priority ? 'high' : 'auto'}
+       fetchPriority={priority ? 'high' : 'auto'}
       decoding="async"
       className={className}
     />

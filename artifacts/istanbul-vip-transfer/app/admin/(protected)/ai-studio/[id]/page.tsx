@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   RefreshCw, Sparkles, CheckCircle2, AlertTriangle,
-  Send, Globe, ImageIcon, Calendar, FileText,
+  Send, Globe, Calendar, FileText,
   Download, ExternalLink, Loader2,
 } from 'lucide-react';
 import AdminPageHeader from '../../../_components/AdminPageHeader';
@@ -487,42 +487,15 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
   }
 
   function VisualPanel() {
-    const [uploading, setUploading] = useState(false);
-    const [uploadFile, setUploadFile] = useState<File | null>(null);
-
     async function handleGenerate() {
-      await run(async () => {
-        const data = await api('/image');
-        if (data.fallback) throw new Error(String(data.error));
-      }, 'Görsel üretildi!');
-    }
-
-    async function handleUpload() {
-      if (!uploadFile) return;
-      setUploading(true);
-      try {
-        const signRes = await fetch('/admin/api/storage/request-url', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: uploadFile.name, size: uploadFile.size, contentType: uploadFile.type, namespace: `studio/${id}` }),
-        });
-        const { uploadURL, serveUrl } = await signRes.json() as { uploadURL: string; serveUrl: string };
-        await fetch(uploadURL, { method: 'PUT', body: uploadFile, headers: { 'Content-Type': uploadFile.type } });
-        await api('/image', 'POST', { url: serveUrl, altText: uploadFile.name });
-        flash('Görsel yüklendi!', 'ok');
-        await load();
-      } catch (e) {
-        flash(e instanceof Error ? e.message : 'Yükleme hatası.', 'err');
-      } finally {
-        setUploading(false);
-      }
+      router.push('/admin/ai-studio/gorsel-uret');
     }
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         <Alert type="info">
           <strong>Görsel Politikası:</strong> Gerçek kişi, plaka, marka logosu veya yanıltıcı müşteri görseli üretilmez.
-          AI üretimi için DALL-E 3 kullanılır. Yükleme seçeneğiyle kendi görselinizi ekleyebilirsiniz.
+          Kalıcı GPT Image 2 görselleri yalnızca içerik hedefi seçilerek Görsel Üret aracından eklenir.
         </Alert>
 
         {/* Approved cover */}
@@ -578,20 +551,12 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '16px' }}>
             <button style={btn('primary')} disabled={working}
               onClick={handleGenerate}>
-              {working ? <Spin /> : <Sparkles size={16} />} AI Görsel Üret (DALL-E 3)
+              <Sparkles size={16} /> GPT Image 2 Görsel Aracını Aç
             </button>
           </div>
-          <div style={{ background: '#F8FAFC', border: `2px dashed ${C.border}`, borderRadius: '8px', padding: '20px', textAlign: 'center' }}>
-            <ImageIcon size={24} color={C.border} style={{ display: 'block', margin: '0 auto 8px' }} />
-            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: C.muted, margin: '0 0 10px' }}>Kendi görselinizi yükleyin (JPG, PNG, WebP — maks. 10MB)</p>
-            <input type="file" accept="image/*" onChange={e => setUploadFile(e.target.files?.[0] ?? null)}
-              style={{ display: 'block', margin: '0 auto 10px', fontFamily: 'Inter, sans-serif', fontSize: '12px' }} />
-            {uploadFile && (
-              <button style={btn('primary')} disabled={uploading} onClick={handleUpload}>
-                {uploading ? <Spin /> : null} Yükle: {uploadFile.name}
-              </button>
-            )}
-          </div>
+          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: C.muted, margin: 0 }}>
+            Eski proje görseli üretme ve yükleme akışı kalıcı hedefi olmayan URL’ler kaydetmemek için devre dışı bırakıldı.
+          </p>
         </div>
 
         {approvedImage && (

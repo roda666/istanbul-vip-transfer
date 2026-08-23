@@ -5,6 +5,7 @@ import Contact from '@/components/Contact';
 import { getDictionary } from '@/lib/i18n';
 import { SITE } from '@/lib/site-config';
 import { resolvePublicVehicle } from '@/lib/vehicle-localization';
+import { resolveVehicleBrand } from '@/lib/vehicle-brand';
 
 const BASE = SITE.siteUrl;
 const ROOT_PAGE = `${BASE}/araclar`;
@@ -90,6 +91,10 @@ function buildVehicleSchema(vehicles: DbVehicle[], locale: string) {
     MPV: 'Car',
     MINIVAN: 'Car',
     MINIBUS: 'BusOrCoach',
+    minivan: 'Car',
+    minibus: 'BusOrCoach',
+    midibus: 'BusOrCoach',
+    bus: 'BusOrCoach',
     SUV: 'Car',
   };
 
@@ -110,7 +115,7 @@ function buildVehicleSchema(vehicles: DbVehicle[], locale: string) {
         image: buildImageUrl(vehicle.cover_image),
         url: `${pageUrl}#${vehicle.id}`,
         vehicleSeatingCapacity: vehicle.passenger_capacity ?? undefined,
-        brand: { '@type': 'Brand', name: 'Mercedes-Benz' },
+        ...(resolveVehicleBrand(vehicle.name) ? { brand: resolveVehicleBrand(vehicle.name) } : {}),
         offers: {
           '@type': 'Offer',
           seller: {

@@ -25,6 +25,7 @@ export interface LocalizableVehicle {
   vehicleType: string | null;
   features: Feature[] | null;
   coverImage: string | null;
+  coverImageAlt?: string | null;
   isFeatured: boolean;
   displayOrder: number;
   nameTranslations: Record<string, string> | null;
@@ -46,6 +47,17 @@ export interface ResolvedPublicVehicle {
   displayName: string;
   displayShortDesc: string;
   displayTagline: string;
+}
+
+export function resolvePublishedVehicles<T extends LocalizableVehicle & { status?: string }>(
+  vehicles: T[],
+  locale: string,
+): ResolvedPublicVehicle[] {
+  return vehicles.flatMap((vehicle) => {
+    if (vehicle.status !== undefined && vehicle.status !== 'PUBLISHED') return [];
+    const localized = resolvePublicVehicle(vehicle, locale);
+    return localized ? [localized] : [];
+  });
 }
 
 function nonEmpty(value: string | null | undefined): string | null {
@@ -74,7 +86,11 @@ export function resolvePublicVehicle(
     isTurkish ? vehicle.taglineTranslations?.tr : vehicle.taglineTranslations?.[locale],
   );
 
-  if (!displayName || !displayShortDesc || !displayTagline) return null;
+  // A fleet card must represent the actual vehicle. Do not substitute another
+  // vehicle's image (historically Vito) when its own cover is absent.
+  const coverImage = nonEmpty(vehicle.coverImage);
+  const coverImageAlt = nonEmpty(vehicle.coverImageAlt);
+  if (!displayName || !displayShortDesc || !displayTagline || !coverImage || !coverImageAlt) return null;
 
   return {
     id: vehicle.id,
@@ -85,7 +101,7 @@ export function resolvePublicVehicle(
     features: (vehicle.features ?? []).filter((feature) => (
       isTurkish || LOCALIZED_FEATURE_CODES.has(featureCode(feature) ?? '')
     )),
-    coverImage: vehicle.coverImage,
+    coverImage,
     // There is no localized alt-text field. The localized vehicle name is the
     // safe, meaningful alternative to a potentially Turkish source alt text.
     coverImageAlt: displayName,

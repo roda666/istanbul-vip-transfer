@@ -6,7 +6,7 @@ import PageHero from '@/components/PageHero';
 import CollapsibleBookingForm from '@/components/CollapsibleBookingForm';
 import ArticleBody from '@/components/ArticleBody';
 import SafeArticleImage from '@/components/SafeArticleImage';
-import { getPublishedBlogPost, getPublishedBlogPosts } from '@/lib/blog-cms';
+import { getPublishedBlogPost, getPublishedBlogSlugs, getRelatedPublishedBlogPosts } from '@/lib/blog-cms';
 import { SITE } from '@/lib/site-config';
 
 const BASE = SITE.siteUrl;
@@ -16,8 +16,8 @@ interface Props {
 }
 
 export async function generateStaticParams() {
-  const posts = await getPublishedBlogPosts();
-  return posts.map(p => ({ slug: p.slug }));
+  const slugs = await getPublishedBlogSlugs();
+  return slugs.map(slug => ({ slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -27,7 +27,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const PAGE = `${BASE}/blog/${post.slug}`;
   const title = post.seoTitle ?? post.ogTitle ?? post.title;
-  const description = post.seoDescription ?? post.ogDescription ?? post.excerpt ?? undefined;
+  const description = [
+    post.seoDescription,
+    post.ogDescription,
+    post.excerpt,
+  ].find(value => value?.trim()) ?? 'İstanbul havalimanı transferi ve VIP ulaşım hakkında güvenilir rehber.';
   const { trCanonical, languages } = await buildBlogAlternates(post.slug);
 
   return {
@@ -59,7 +63,7 @@ export default async function BlogArticlePage({ params }: Props) {
   const PAGE = `${BASE}/blog/${post.slug}`;
 
   // Fetch FAQs and other posts in parallel
-  const [faqs, allPosts] = await Promise.all([
+  const [faqs, otherPosts] = await Promise.all([
     (async () => {
       try {
         const { db }      = await import('@/db');
@@ -70,10 +74,8 @@ export default async function BlogArticlePage({ params }: Props) {
           .orderBy(asc(faqsTable.sortOrder));
       } catch { return []; }
     })(),
-    getPublishedBlogPosts(),
+    getRelatedPublishedBlogPosts(post.slug),
   ]);
-
-  const otherPosts = allPosts.filter(p => p.slug !== post.slug);
 
   const blogPostingSchema: Record<string, unknown> = {
     '@context': 'https://schema.org',
@@ -132,7 +134,7 @@ export default async function BlogArticlePage({ params }: Props) {
       {post.heroImage && (
         <div className="max-w-4xl mx-auto px-5 md:px-8 pt-10">
           <div className="relative aspect-video rounded-sm overflow-hidden">
-            <SafeArticleImage src={post.heroImage} alt={post.heroImageAlt} fallbackAlt={post.title} priority className="object-cover" sizes="(max-width: 1024px) 100vw, 896px" fill />
+            <SafeArticleImage src={post.heroImage} alt={post.heroImageAlt} fallbackAlt={post.title} priority quality={60} className="object-cover" sizes="(max-width: 1024px) 100vw, 896px" fill />
           </div>
         </div>
       )}
@@ -163,7 +165,7 @@ export default async function BlogArticlePage({ params }: Props) {
         )}
 
         <div className="mt-8">
-          <Link href="/blog" className="text-sm tracking-wider uppercase transition-colors hover:text-[#E5C36A]" style={{ color: '#C9A84C', fontFamily: 'Inter, sans-serif' }}>
+          <Link href="/blog" className="text-sm tracking-wider uppercase transition-colors hover:text-[#755700]" style={{ color: '#755700', fontFamily: 'Inter, sans-serif' }}>
             ← Tüm Yazılar
           </Link>
         </div>
@@ -196,27 +198,32 @@ export default async function BlogArticlePage({ params }: Props) {
       {otherPosts.length > 0 && (
         <section className="py-14 md:py-16" style={{ background: '#EDF3F7' }}>
           <div className="max-w-5xl mx-auto px-5 md:px-8">
-            <p className="text-xs tracking-[0.25em] uppercase mb-8 text-center" style={{ color: '#C9A84C', fontFamily: 'Inter, sans-serif' }}>
+            <p className="text-xs tracking-[0.25em] uppercase mb-8 text-center" style={{ color: '#755700', fontFamily: 'Inter, sans-serif' }}>
               Diğer Yazılar
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {otherPosts.slice(0, 4).map((other) => (
+              {otherPosts.map((other) => (
                 <Link key={other.slug} href={`/blog/${other.slug}`}
                   className="group flex gap-4 p-5 rounded transition-colors duration-200"
                   style={{ border: '1px solid #D8E1E8', background: '#FFFFFF', textDecoration: 'none' }}>
                   {other.heroImage && (
                     <div className="flex-shrink-0 rounded overflow-hidden" style={{ width: '80px', height: '60px' }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={other.heroImage} alt={other.heroImageAlt ?? other.title} className="w-full h-full object-cover" />
+                      <SafeArticleImage
+                        src={other.heroImage}
+                        alt={other.heroImageAlt}
+                        fallbackAlt={other.title}
+                        className="w-full h-full object-cover"
+                        sizes="80px"
+                      />
                     </div>
                   )}
                   <div className="min-w-0">
                     {other.category && (
-                      <p className="text-[10px] tracking-[0.15em] uppercase mb-1" style={{ color: '#C9A84C', fontFamily: 'Inter, sans-serif' }}>
+                      <p className="text-[10px] tracking-[0.15em] uppercase mb-1" style={{ color: '#755700', fontFamily: 'Inter, sans-serif' }}>
                         {other.category}
                       </p>
                     )}
-                    <p className="text-sm font-medium leading-snug transition-colors duration-200 group-hover:text-[#C9A84C]"
+                    <p className="text-sm font-medium leading-snug transition-colors duration-200 group-hover:text-[#755700]"
                       style={{ color: '#263F55', fontFamily: 'Playfair Display, Georgia, serif' }}>
                       {other.title}
                     </p>

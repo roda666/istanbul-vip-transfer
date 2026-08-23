@@ -272,8 +272,8 @@ const de: Dictionary = {
   },
   vehicles: {
     sectionLabel: 'Unser Fuhrpark',
-    heading: 'Unser VIP-Fuhrpark',
-    subheading: 'Zwei erstklassige Fahrzeugoptionen für jeden Bedarf — beide vollständig ausgestattet für Ihren Komfort.',
+    heading: 'Unsere VIP-Transferflotte',
+    subheading: 'Komfortable Minivan-, Minibus-, Midibus- und Reisebusoptionen für jede Gruppengröße.',
     passengers: 'Passagiere',
     luggage: 'Gepäck',
     popular: 'Beliebteste Wahl',
@@ -317,8 +317,8 @@ const de: Dictionary = {
   pages: {
     servicesTitle: 'Unsere Dienstleistungen',
     servicesSubtitle: 'Alle unsere Transfer- und Tourdienste in und um Istanbul mit Mercedes Vito und Sprinter.',
-    vehiclesTitle: 'Unsere Luxusfahrzeugflotte',
-    vehiclesSubtitle: 'Von Einzelreisenden bis zu großen Gruppen — zwei Premium-VIP-Fahrzeugoptionen für jeden Bedarf.',
+    vehiclesTitle: 'Unsere VIP-Transferflotte',
+    vehiclesSubtitle: 'Komfortable Minivan-, Minibus-, Midibus- und Reisebusoptionen für jede Gruppengröße.',
     aboutTitle: 'Über uns',
     aboutSubtitle: 'Erfahren Sie mehr über unsere Servicephilosophie, unsere Fahrzeugflotte und unser Engagement für Kundenzufriedenheit.',
     contactTitle: 'Kontakt',

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { VEHICLE_TYPE_VALUES } from '@/lib/vehicle-options';
 
 const updateSchema = z.object({
   name: z.string().min(1, 'Araç adı gereklidir').max(200).optional(),
@@ -13,7 +14,7 @@ const updateSchema = z.object({
   fullDescription: z.string().optional().nullable(),
   passengerCapacity: z.number().int().min(1).max(99).optional().nullable(),
   luggageCapacity: z.number().int().min(0).max(99).optional().nullable(),
-  vehicleType: z.string().max(100).optional().nullable(),
+  vehicleType: z.enum(VEHICLE_TYPE_VALUES).optional().nullable(),
   features: z.array(z.string().max(200)).optional(),
   coverImage: z.string().max(500).optional().nullable(),
   coverImageAlt: z.string().max(300).optional().nullable(),
@@ -319,6 +320,37 @@ export async function POST(request: NextRequest, { params }: Params) {
     if (!current.approvedAt || !current.approvedBy) {
       return NextResponse.json(
         { error: 'Yayınlamak için önce onay gereklidir.' },
+        { status: 422 },
+      );
+    }
+    if (
+      !current.coverImage?.trim()
+      || !current.coverImageAlt?.trim()
+      || !current.vehicleType
+      || !VEHICLE_TYPE_VALUES.includes(current.vehicleType as (typeof VEHICLE_TYPE_VALUES)[number])
+      || !current.passengerCapacity
+      || current.passengerCapacity < 1
+      || current.luggageCapacity === null
+      || current.luggageCapacity < 0
+    ) {
+      return NextResponse.json(
+        { error: 'Yayınlamak için geçerli araç tipi, yolcu/bagaj kapasitesi ve kapak görseli ile ALT metni gereklidir.' },
+        { status: 422 },
+      );
+    }
+    const { and, eq, ne } = await import('drizzle-orm');
+    const duplicateCover = await db
+      .select({ id: vehicles.id })
+      .from(vehicles)
+      .where(and(
+        eq(vehicles.coverImage, current.coverImage),
+        eq(vehicles.status, 'PUBLISHED'),
+        ne(vehicles.id, id),
+      ))
+      .limit(1);
+    if (duplicateCover.length > 0) {
+      return NextResponse.json(
+        { error: 'Yayınlanan her araç için başka bir kayıtta kullanılmayan benzersiz bir kapak görseli gereklidir.' },
         { status: 422 },
       );
     }

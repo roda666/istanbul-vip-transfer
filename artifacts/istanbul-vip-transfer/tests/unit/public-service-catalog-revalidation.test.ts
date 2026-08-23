@@ -2,11 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { getDictionary } from '@/lib/i18n';
 import { getNav } from '@/lib/nav-config';
 
-const { revalidatePath } = vi.hoisted(() => ({
+const { revalidatePath, revalidateTag } = vi.hoisted(() => ({
   revalidatePath: vi.fn(),
+  revalidateTag: vi.fn(),
 }));
 
-vi.mock('next/cache', () => ({ revalidatePath }));
+vi.mock('next/cache', () => ({ revalidatePath, revalidateTag }));
 
 import { revalidatePublicServiceCatalog } from '@/lib/homepage-revalidation';
 
@@ -48,6 +49,7 @@ describe('public service catalog invalidation', () => {
   it('revalidates public chrome, listing, category and sitemap for every locale', () => {
     revalidatePublicServiceCatalog({ categorySlugs: ['airport'] });
 
+    expect(revalidateTag).toHaveBeenCalledWith('public-chrome');
     expect(revalidatePath).toHaveBeenCalledWith('/', 'layout');
     expect(revalidatePath).toHaveBeenCalledWith('/sitemap.xml');
     expect(revalidatePath).toHaveBeenCalledWith('/hizmetler');

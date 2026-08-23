@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { VEHICLE_TYPE_VALUES } from '@/lib/vehicle-options';
 
 const createSchema = z.object({
   name: z.string().min(1, 'Araç adı gereklidir').max(200),
@@ -12,7 +13,7 @@ const createSchema = z.object({
   fullDescription: z.string().optional().nullable(),
   passengerCapacity: z.number().int().min(1).max(99).optional().nullable(),
   luggageCapacity: z.number().int().min(0).max(99).optional().nullable(),
-  vehicleType: z.string().max(100).optional().nullable(),
+  vehicleType: z.enum(VEHICLE_TYPE_VALUES).optional().nullable(),
   features: z.array(z.string().max(200)).default([]),
   coverImage: z.string().max(500).optional().nullable(),
   coverImageAlt: z.string().max(300).optional().nullable(),

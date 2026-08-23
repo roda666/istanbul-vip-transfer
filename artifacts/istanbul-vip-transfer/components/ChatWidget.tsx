@@ -26,12 +26,21 @@ interface Message {
 const SESSION_KEY = 'ivt_chat_sid';
 const ADMIN_POLL_INTERVAL = 3000; // ms
 
-export default function ChatWidget() {
+export default function ChatWidget({
+  initialOpen = false,
+  modal = false,
+}: {
+  initialOpen?: boolean;
+  /** Used by DeferredChatLauncher so its explicit-open flow is a real modal. */
+  modal?: boolean;
+}) {
   const { dict, lang } = useLang();
   const cb = dict.chatbot;
 
-  const [open, setOpen]         = useState(false);
-  const [appeared, setAppeared] = useState(false);
+  const [open, setOpen]         = useState(initialOpen);
+  // When opened from the deferred launcher, keep the return target visible
+  // immediately if the visitor closes the dialog before the usual entrance delay.
+  const [appeared, setAppeared] = useState(initialOpen);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput]       = useState('');
   const [streaming, setStreaming] = useState(false);
@@ -41,6 +50,8 @@ export default function ChatWidget() {
   const sessionIdRef  = useRef<string | null>(null);
   const bottomRef     = useRef<HTMLDivElement>(null);
   const inputRef      = useRef<HTMLInputElement>(null);
+  const dialogRef     = useRef<HTMLDivElement>(null);
+  const launcherRef   = useRef<HTMLButtonElement>(null);
   const abortRef      = useRef<AbortController | null>(null);
   const pollTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastPollTime  = useRef<string>(new Date().toISOString());
@@ -276,6 +287,37 @@ export default function ChatWidget() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
+  const closeChat = useCallback(() => {
+    setOpen(false);
+    // Once the panel is gone, return keyboard users to the same launcher that
+    // will reopen it rather than leaving focus on removed dialog content.
+    window.setTimeout(() => launcherRef.current?.focus(), 0);
+  }, []);
+
+  const trapDialogFocus = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeChat();
+      return;
+    }
+    if (e.key !== 'Tab') return;
+
+    const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+    );
+    if (!focusable?.length) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+
   const isRtl = lang === 'ar';
 
   // Remove pending bubble when real admin message arrives
@@ -305,15 +347,35 @@ export default function ChatWidget() {
 
   return (
     <>
+      {/* This backdrop is intentionally non-interactive: it prevents pointer
+          and touch input from reaching the public page while the modal is open.
+          10000 sits above CookieConsentBanner's documented z-index of 9999. */}
+      {open && modal && (
+        <div
+          aria-hidden="true"
+          role="presentation"
+          style={{
+            position: 'fixed',
+            zIndex: 10000,
+            inset: 0,
+            background: 'rgba(16,42,67,0.28)',
+            touchAction: 'none',
+          }}
+        />
+      )}
       {/* Panel */}
       {open && (
         <div
+          ref={dialogRef}
           role="dialog"
+          aria-modal={modal || undefined}
           aria-label={cb.title}
+          aria-labelledby="ivt-chat-title"
           dir={isRtl ? 'rtl' : 'ltr'}
+          onKeyDown={trapDialogFocus}
           style={{
             position: 'fixed',
-            zIndex: 51,
+            zIndex: modal ? 10001 : 51,
             bottom: 'calc(8.5rem + env(safe-area-inset-bottom, 0px))',
             right:  'calc(1.25rem + env(safe-area-inset-right, 0px))',
             width:  'min(340px, calc(100vw - 2rem))',
@@ -347,7 +409,7 @@ export default function ChatWidget() {
                   <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
                 </svg>
               </span>
-              <span style={{ color: '#fff', fontWeight: 600, fontSize: '0.9rem' }}>{cb.title}</span>
+              <span id="ivt-chat-title" style={{ color: '#fff', fontWeight: 600, fontSize: '0.9rem' }}>{cb.title}</span>
               {adminMode && (
                 <span style={{
                   background: '#16A36A', color: '#fff',
@@ -356,7 +418,7 @@ export default function ChatWidget() {
                 }}>LIVE</span>
               )}
             </div>
-            <button onClick={() => setOpen(false)} aria-label={cb.close}
+            <button onClick={closeChat} aria-label={cb.close} className="ivt-chat-control"
               style={{ background:'transparent', border:'none', cursor:'pointer',
                 color:'rgba(255,255,255,0.7)', padding:'0.25rem', borderRadius:'0.25rem',
                 lineHeight:1, fontSize:'1.2rem' }}>×</button>
@@ -410,6 +472,7 @@ export default function ChatWidget() {
               placeholder={cb.placeholder}
               aria-label={cb.placeholder}
               disabled={streaming}
+              className="ivt-chat-control"
               dir={isRtl ? 'rtl' : 'ltr'}
               style={{
                 flex: 1, border: '1px solid #D9E2EC', borderRadius: '0.5rem',
@@ -421,6 +484,7 @@ export default function ChatWidget() {
               onClick={sendMessage}
               disabled={!input.trim() || streaming}
               aria-label={cb.send}
+              className="ivt-chat-control"
               style={{
                 background: '#C99A32', border: 'none', borderRadius: '0.5rem',
                 width: 38, height: 38,
@@ -440,11 +504,14 @@ export default function ChatWidget() {
 
       {/* Floating button */}
       <button
-        onClick={() => setOpen(v => !v)}
+        ref={launcherRef}
+        onClick={() => open ? closeChat() : setOpen(true)}
         aria-label={cb.aria}
         aria-expanded={open}
+        className="ivt-chat-control"
         style={{
-          position: 'fixed', zIndex: 50,
+          position: 'fixed',
+          zIndex: open && modal ? 59 : 50,
           bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))',
           right:  'calc(1.25rem + env(safe-area-inset-right, 0px))',
           width: 52, height: 52, borderRadius: '50%',

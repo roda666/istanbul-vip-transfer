@@ -3,20 +3,16 @@
  * Run: node scripts/seed-vehicles.mjs
  */
 import postgres from '../node_modules/postgres/src/index.js';
-import OpenAI from '../node_modules/openai/index.js';
+import { ARCHIVED_SLUGS, VEHICLES } from './fleet-data.mjs';
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) { console.error('DATABASE_URL not set'); process.exit(1); }
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-if (!OPENAI_API_KEY) { console.error('OPENAI_API_KEY not set'); process.exit(1); }
-
 const sql = postgres(DATABASE_URL, { ssl: 'require', max: 1 });
-const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 const LANGS = ['en', 'de', 'ru', 'ar', 'fr', 'es', 'it', 'nl'];
 
-const VEHICLES = [
+const LEGACY_VEHICLES = [
   {
     name: 'Mercedes Vito',
     slug: 'mercedes-vito',
@@ -135,19 +131,9 @@ const VEHICLES = [
 ];
 
 async function translateText(text, fromLang, toLang) {
-  const resp = await openai.chat.completions.create({
-    model: 'gpt-5.4-mini',
-    messages: [
-      {
-        role: 'system',
-        content: `You are a professional translator specializing in luxury travel and VIP transportation. Translate the following Turkish text to ${toLang}. Return ONLY the translated text, no explanations or quotes.`,
-      },
-      { role: 'user', content: text },
-    ],
-    temperature: 0.3,
-    max_tokens: 200,
-  });
-  return resp.choices[0]?.message?.content?.trim() ?? text;
+  void fromLang;
+  void toLang;
+  return text;
 }
 
 const LANG_NAMES = {
@@ -189,7 +175,11 @@ async function main() {
   for (const v of VEHICLES) {
     console.log(`\n→ Processing: ${v.name}`);
 
-    const translations = await translateVehicle(v);
+    const translations = {
+      nameTranslations: v.nameTranslations,
+      shortDescTranslations: v.shortDescTranslations,
+      taglineTranslations: v.taglineTranslations,
+    };
 
     await sql`
       INSERT INTO vehicles (
@@ -213,6 +203,9 @@ async function main() {
         luggage_capacity = EXCLUDED.luggage_capacity,
         features = EXCLUDED.features,
         display_order = EXCLUDED.display_order,
+        vehicle_type = EXCLUDED.vehicle_type,
+        cover_image = EXCLUDED.cover_image,
+        cover_image_alt = EXCLUDED.cover_image_alt,
         is_featured = EXCLUDED.is_featured,
         status = EXCLUDED.status,
         name_translations = EXCLUDED.name_translations,
@@ -222,6 +215,9 @@ async function main() {
     `;
     console.log(`  ✅ Saved ${v.name}`);
   }
+
+  await sql`UPDATE vehicles SET status = 'ARCHIVED', archived_at = now(), updated_at = now()
+    WHERE slug IN ${sql(ARCHIVED_SLUGS)} AND status <> 'ARCHIVED'`;
 
   console.log('\n✅ Vehicle seeding complete!');
   await sql.end();

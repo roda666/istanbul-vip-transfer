@@ -208,7 +208,7 @@ export default function AiOnerilerPage() {
                 AI Konu + Anahtar Kelime Önerisi
               </h3>
               <p style={{ color: '#52697A', fontSize: '11px', fontFamily: 'Inter, sans-serif', margin: 0 }}>
-                Anahtar kelime hacmi uydurulmaz — veri kaynağı bağlı değilse açıkça belirtilir.
+                Search Console yakın kazanımları ve Google Ads yeni pazar fırsatları birlikte araştırılır; hiçbir metrik uydurulmaz.
               </p>
             </div>
             <button onClick={() => { setShowForm(false); resetForm(); }} style={{ background: 'none', border: 'none', color: '#718596', cursor: 'pointer' }}>

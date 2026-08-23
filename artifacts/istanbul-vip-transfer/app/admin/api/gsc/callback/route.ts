@@ -116,17 +116,13 @@ export async function GET(req: NextRequest) {
 
     // Upsert — single-row pattern
     const { db } = await import('@/db');
-    await db.execute(`DELETE FROM gsc_connections` as never);
-    await db.execute(
-      `INSERT INTO gsc_connections
-         (site_url, access_token, refresh_token, connected, enabled, last_error, token_expiry, scope, connected_email, connected_at, updated_at)
-       VALUES
-         ('${siteUrl}', '${tokens.access_token}', '${tokens.refresh_token}',
-          TRUE, TRUE, NULL,
-          '${expiry.toISOString()}', '${tokens.scope}',
-          ${email ? `'${email.replace(/'/g, "''")}'` : 'NULL'},
-          NOW(), NOW())` as never,
-    );
+    const { gscConnections } = await import('@/db/schema');
+    await db.delete(gscConnections);
+    await db.insert(gscConnections).values({
+      siteUrl, accessToken: tokens.access_token, refreshToken: tokens.refresh_token,
+      connected: true, enabled: true, lastError: null, tokenExpiry: expiry,
+      scope: tokens.scope, connectedEmail: email,
+    });
 
     // Clear CSRF cookies and redirect to success
     const successUrl = new URL(`${settingsBase}?success=gsc_connected`, req.url);

@@ -10,7 +10,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdminSession } from '@/lib/auth/session';
-import { generateArticleDraft, analyzeQuality } from '@/lib/ai/content-hub';
+import {
+  generateArticleDraft, analyzeQuality, normalizeInternalLinkCatalog,
+  normalizeModelResearchSources,
+} from '@/lib/ai/content-hub';
+import { classifyGscResearchRows } from '@/lib/search-research';
 import 'server-only';
 
 export const dynamic = 'force-dynamic';
@@ -34,8 +38,8 @@ export async function POST(req: NextRequest) {
   }
 
   const { db }  = await import('@/db');
-  const { aiContentSuggestions, researchSources, content, auditLogs } = await import('@/db/schema');
-  const { eq, like, or, ilike } = await import('drizzle-orm');
+  const { aiContentSuggestions, researchSources, content, contentTranslations, auditLogs } = await import('@/db/schema');
+  const { eq, and, like, or, ilike, sql } = await import('drizzle-orm');
   const now = new Date();
 
   // Fetch the suggestion
@@ -44,11 +48,66 @@ export async function POST(req: NextRequest) {
 
   // Extract keyword data
   const keywords = sug.suggestedKeywordsJson?.keywords ?? [];
+  // Only persisted, conservatively classified GSC questions may be promoted
+  // to mandatory answer headings. Ads ideas and ordinary keywords never are.
+  const selectedQuestionQueries = classifyGscResearchRows(
+    (sug.suggestedKeywordsJson?.searchResearch?.gscRows ?? []) as Array<{
+      query: string; clicks: number; impressions: number; ctr: number; position: number;
+    }>,
+    20,
+  )
+    .filter(row => row.isQuestion)
+    .map(row => row.query)
+    .slice(0, 6) ?? [];
   const primaryKeyword  = sug.primaryKeyword ?? '';
   const supportingKws   = keywords.filter(k => !k.isPrimary).map(k => k.term);
   const h2s             = (sug.suggestedOutline ?? '').split('\n').filter(Boolean);
 
   const brief = sug.contentBrief as { tone?: string; wordCountTarget?: number; competitorContext?: string } | null;
+
+  // Build the link catalog server-side from public records. Do not fall back to
+  // guessed URLs: a failed catalog query must prevent generation.
+  let internalLinkCatalog: Array<{ title: string; href: string }>;
+  try {
+    if ((sug.targetLanguage ?? 'tr') === 'tr') {
+      const catalogRows = await db.select({ slug: content.slug, title: content.title, contentType: content.contentType })
+        .from(content)
+        .where(and(
+          or(eq(content.contentType, 'SERVICE'), eq(content.contentType, 'BLOG_POST')),
+          eq(content.status, 'PUBLISHED'),
+          eq(content.isActive, true),
+        ))
+        .limit(40);
+      internalLinkCatalog = normalizeInternalLinkCatalog(catalogRows.map((row) => ({
+        title: row.title,
+        href: row.contentType === 'SERVICE' ? `/hizmetler/${row.slug}` : `/blog/${row.slug}`,
+      })));
+    } else {
+      // Only localized blog detail URLs currently exist. Service translations
+      // have no localized detail route, so never hand the model a dead URL.
+      const catalogRows = await db.select({ slug: contentTranslations.slug, title: contentTranslations.title })
+        .from(contentTranslations)
+        .innerJoin(content, sql`${contentTranslations.entityId}::uuid = ${content.id}`)
+        .where(and(
+          eq(contentTranslations.targetLanguageCode, sug.targetLanguage ?? 'tr'),
+          eq(contentTranslations.entityType, 'content'),
+          eq(contentTranslations.status, 'PUBLISHED'),
+          eq(content.contentType, 'BLOG_POST'),
+          eq(content.status, 'PUBLISHED'),
+          eq(content.isActive, true),
+        ))
+        .limit(40);
+      internalLinkCatalog = normalizeInternalLinkCatalog(catalogRows.map((row) => ({
+        title: row.title ?? '',
+        href: row.slug ? `/${sug.targetLanguage}/blog/${row.slug}` : '',
+      })));
+    }
+  } catch {
+    await db.update(aiContentSuggestions)
+      .set({ draftError: 'Yayınlanmış dahili bağlantı kataloğu okunamadı; güvenli taslak üretimi durduruldu.', updatedAt: now } as never)
+      .where(eq(aiContentSuggestions.id, sug.id));
+    return NextResponse.json({ error: 'Dahili bağlantı kataloğu okunamadı. Taslak üretilmedi.' }, { status: 503 });
+  }
 
   // Generate article
   const result = await generateArticleDraft({
@@ -65,6 +124,9 @@ export async function POST(req: NextRequest) {
     tone:               brief?.tone,
     competitorContext:  brief?.competitorContext,
     targetLanguage:     sug.targetLanguage ?? 'tr',
+    internalLinkCatalog,
+    selectedQuestionQueries,
+    searchResearch: sug.suggestedKeywordsJson?.searchResearch,
   });
 
   if (!result.ok) {
@@ -109,7 +171,7 @@ export async function POST(req: NextRequest) {
     metaTitle:      draft.metaTitle,
     metaDescription: draft.metaDescription,
     primaryKeyword,
-    sourceCount:    draft.researchSources.length,
+     sourceCount:    draft.researchSources.length,
   });
 
   // Time-sensitive detection
@@ -134,7 +196,7 @@ export async function POST(req: NextRequest) {
     ogDescription:  draft.ogDescription || null,
     seoTitle:       draft.metaTitle || null,
     seoDescription: draft.metaDescription || null,
-    author:         'AI Taslak',
+     author:         draft.truncated ? 'AI Taslak (Kesildi)' : 'AI Taslak',
     status:         'DRAFT',
     indexable:      false,     // not indexed until published
     isActive:       false,
@@ -144,30 +206,37 @@ export async function POST(req: NextRequest) {
   } as never).returning();
 
   // Save research sources
-  if (draft.researchSources.length > 0) {
+  // Normalize again at the persistence/API boundary so a future generator
+  // change cannot turn model output into trusted or clickable source data.
+  const safeResearchSources = normalizeModelResearchSources(draft.researchSources);
+  draft.researchSources = safeResearchSources;
+  if (safeResearchSources.length > 0) {
     await db.insert(researchSources).values(
-      draft.researchSources.map(src => ({
+      safeResearchSources.map(src => ({
         suggestionId:   sug.id,
         contentId:      blogPost.id,
         title:          src.title,
         url:            src.url,
         claimSupported: src.claimSupported,
-        sourceType:     src.sourceType ?? 'ai_context',
+         // No external validation runs in this flow. Never present model
+         // suggestions as verified sources.
+         sourceType:     'model_suggested_unverified',
         accessedAt:     now,
         sourceName:     'AI generated',
+         provenanceStatus: 'MODEL_SUGGESTED_UNVERIFIED',
       } as never))
     ).catch(() => {});
   }
 
   // Update suggestion
   await db.update(aiContentSuggestions).set({
-    contentDraft:          draft.body,
-    draftError:            null,
+     contentDraft:          draft.body,
+     draftError:            draft.generationWarning ?? null,
     draftBlogPostId:       blogPost.id,
     qualityScore:          qualityScore as never,
     cannibalWarning:  cannibalWarning as never,
     timeSensitive,
-    status:                'COMPLETE',
+       status:                'COMPLETE',
     updatedAt:             now,
   } as never).where(eq(aiContentSuggestions.id, sug.id));
 
@@ -179,7 +248,9 @@ export async function POST(req: NextRequest) {
     metadata: {
       model: result.model, wordCount: draft.wordCount,
       blogPostId: blogPost.id, timeSensitive,
-      cannibalConflict: cannibalWarning.hasConflict,
+       cannibalConflict: cannibalWarning.hasConflict,
+       truncated: draft.truncated,
+       linkSanitizationDiagnostics: draft.linkSanitizationDiagnostics,
     },
   }).catch(() => {});
 
@@ -191,5 +262,8 @@ export async function POST(req: NextRequest) {
     cannibalWarning,
     timeSensitive,
     forbiddenClaimsFound: draft.forbiddenClaimsFound,
+     truncated: draft.truncated,
+     warning: draft.generationWarning,
+     linkSanitizationDiagnostics: draft.linkSanitizationDiagnostics,
   }, { status: 201 });
 }

@@ -7,6 +7,7 @@ import type { ContentStatus } from '@/lib/workflow';
 import { STATUS_LABELS } from '@/lib/workflow';
 import StatusBadge from '../../_components/StatusBadge';
 import { ImageUploadField } from '../../_components/ImageUploadField';
+import { normalizeVehicleType, VEHICLE_TYPE_OPTIONS } from '@/lib/vehicle-options';
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 const GOLD = '#C9A84C';
@@ -55,7 +56,7 @@ function vehicleToForm(v: Vehicle): FormState {
     slug: v.slug,
     shortDescription: v.shortDescription ?? '',
     fullDescription: v.fullDescription ?? '',
-    vehicleType: v.vehicleType ?? '',
+    vehicleType: normalizeVehicleType(v.vehicleType) ?? '',
     passengerCapacity: v.passengerCapacity != null ? String(v.passengerCapacity) : '',
     luggageCapacity: v.luggageCapacity != null ? String(v.luggageCapacity) : '',
     coverImage: v.coverImage ?? '',
@@ -151,6 +152,31 @@ function Input({
         opacity: disabled ? 0.5 : 1,
       }}
     />
+  );
+}
+
+function VehicleTypeSelect({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      style={{
+        width: '100%', background: BG2, border: `1px solid ${BORDER}`, borderRadius: '6px',
+        color: '#172B3A', fontSize: '13px', fontFamily: 'Inter, sans-serif',
+        padding: '8px 12px', outline: 'none', boxSizing: 'border-box',
+      }}
+    >
+      <option value="">Seçiniz</option>
+      {VEHICLE_TYPE_OPTIONS.map((option) => (
+        <option key={option.value} value={option.value}>{option.label}</option>
+      ))}
+    </select>
   );
 }
 
@@ -584,7 +610,7 @@ export default function VehicleForm({ vehicle, userRole }: Props) {
 
       <div style={{ marginBottom: '16px' }}>
         <Label>Araç Tipi</Label>
-        <Input value={form.vehicleType} onChange={(v) => setForm((f) => ({ ...f, vehicleType: v }))} placeholder="ör. Sedan, SUV, Minivan" />
+        <VehicleTypeSelect value={form.vehicleType} onChange={(v) => setForm((f) => ({ ...f, vehicleType: v }))} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>

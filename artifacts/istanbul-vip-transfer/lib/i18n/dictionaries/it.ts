@@ -272,8 +272,8 @@ const it: Dictionary = {
     },
     vehicles: {
       sectionLabel: 'La nostra flotta',
-      heading: 'La nostra flotta di veicoli VIP',
-      subheading: 'Due veicoli di categoria superiore per ogni esigenza, entrambi completamente equipaggiati per il tuo comfort.',
+      heading: 'La nostra flotta transfer VIP',
+      subheading: 'Minivan, minibus, midibus e autobus confortevoli per gruppi di ogni dimensione.',
       passengers: 'Passeggeri',
       luggage: 'Bagagli',
       popular: 'Più richiesto',
@@ -317,8 +317,8 @@ const it: Dictionary = {
     pages: {
       servicesTitle: 'I nostri servizi',
       servicesSubtitle: 'Tutti i nostri servizi di transfer e tour a Istanbul e oltre, con Mercedes Vito e Mercedes Sprinter.',
-      vehiclesTitle: 'La nostra flotta di veicoli di lusso',
-      vehiclesSubtitle: 'Dai viaggiatori singoli ai gruppi numerosi: due opzioni di veicoli VIP premium per ogni esigenza.',
+      vehiclesTitle: 'La nostra flotta transfer VIP',
+      vehiclesSubtitle: 'Minivan, minibus, midibus e autobus confortevoli per gruppi di ogni dimensione.',
       aboutTitle: 'Chi siamo',
       aboutSubtitle: 'Scopri la nostra filosofia di servizio, la flotta di lusso e il nostro impegno per la soddisfazione dei clienti presso VIP Transfer Istanbul.',
       contactTitle: 'Contatti',

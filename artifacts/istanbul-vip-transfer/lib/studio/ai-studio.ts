@@ -24,6 +24,7 @@ import 'server-only';
 
 import type { AIResult, StudioConfig, StudioContent, SeoScore } from './types';
 import { getOpenAiContentModel, getOpenAiImageModel } from '@/lib/ai/model-config';
+import { optimizeGeneratedImage } from './image-media';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -563,79 +564,13 @@ export async function generateImageAsset(opts: {
     if (!isWebp) {
       return { ok: false, reason: 'api_error', message: 'Görsel beklenen WebP biçiminde alınamadı.' };
     }
-    return { ok: true, model, data: { bytes, contentType: 'image/webp', prompt, altText, model } };
+    const optimized = await optimizeGeneratedImage(bytes);
+    if (!optimized) {
+      return { ok: false, reason: 'api_error', message: 'Görsel güvenli biçimde işlenemedi. Lütfen tekrar deneyin.' };
+    }
+    return { ok: true, model, data: { bytes: optimized, contentType: 'image/webp', prompt, altText, model } };
   } catch (error) {
     return classifyError(error);
-  }
-}
-
-export interface ImageGenResult {
-  imageUrl: string;   // temporary OpenAI CDN URL (expires ~1 h) — upload to storage ASAP
-  prompt: string;
-  altText: string;
-  usageRights: string;
-  warning: string;
-}
-
-export async function generateStudioImage(opts: {
-  title: string;
-  excerpt: string;
-  cityOrRoute?: string;
-  serviceType?: string;
-}): Promise<AIResult<ImageGenResult>> {
-  const client = await getClient();
-  if (!client) {
-    return { ok: false, reason: 'not_configured', message: 'OpenAI API anahtarı yapılandırılmamış; görsel üretimi devre dışı.' };
-  }
-
-  const location = opts.cityOrRoute ?? 'İstanbul';
-  const serviceHint = opts.serviceType === 'airport_transfer'
-    ? 'airport terminal luxury lounge'
-    : opts.serviceType === 'vip_tour'
-    ? 'scenic Istanbul cityscape'
-    : 'city boulevard with premium cars';
-
-  const prompt = [
-    `Wide-angle horizontal cover photo (16:9 ratio) for a premium VIP transfer service article.`,
-    `Scene: ${serviceHint} in ${location}, golden-hour soft lighting, no people, no license plates, no brand logos, no text overlays.`,
-    `Style: clean, professional, luxury lifestyle photography, muted warm tones.`,
-    `Do NOT include: faces, real people, readable text, watermarks, brand names.`,
-  ].join(' ');
-
-  try {
-    // Use URL format — response_format: 'b64_json' was removed in OpenAI SDK 6.x for newer API versions
-    const resp = await client.images.generate({
-      // This legacy project-workflow helper persists a temporary provider URL
-      // and uses a DALL·E-only size. New AI Studio image generation uses
-      // generateImageAsset() with OPENAI_IMAGE_MODEL and permanent WebP storage.
-      model: 'dall-e-3',
-      prompt,
-      n: 1,
-      size: '1792x1024',
-      quality: 'standard',
-      // response_format omitted: defaults to URL (compatible with all SDK versions)
-    }, { signal: AbortSignal.timeout(60_000) });
-
-    const imageUrl = resp.data?.[0]?.url;
-    if (!imageUrl) {
-      return { ok: false, reason: 'api_error', message: 'Görsel üretim yanıtı boş döndü.' };
-    }
-
-    const altText = `${location} şehrinde VIP transfer hizmeti — AI üretimi kapak görseli`;
-
-    return {
-      ok: true,
-      model: 'dall-e-3',
-      data: {
-        imageUrl,   // temporary CDN URL (~1 h) — caller should upload to permanent storage
-        prompt,
-        altText,
-        usageRights: 'ai_generated — OpenAI DALL-E 3. Ticari kullanıma uygundur.',
-        warning: 'Gerçek kişi, plaka veya marka logosu içermez. URL ~1 saat geçerlidir — kalıcı depolama için yükleyin.',
-      },
-    };
-  } catch (err) {
-    return classifyError(err);
   }
 }
 
@@ -842,13 +777,14 @@ Note: Anahtar kelime verisi bağlı değil — AI tahmini. Do not invent data.`;
 
 export async function checkOpenAIConnectivity(): Promise<{
   chat: { ok: boolean; model: string | null; error?: string };
-  image: { ok: boolean; model: 'dall-e-3'; error?: string };
+  image: { ok: boolean; model: string; error?: string };
 }> {
   const key = process.env.OPENAI_API_KEY;
+  const imageModel = getImageModel();
   if (!key) {
     return {
       chat: { ok: false, model: null, error: 'OpenAI anahtarı yapılandırılmamış.' },
-      image: { ok: false, model: 'dall-e-3', error: 'OpenAI anahtarı yapılandırılmamış.' },
+      image: { ok: false, model: imageModel, error: 'OpenAI anahtarı yapılandırılmamış.' },
     };
   }
 
@@ -875,15 +811,15 @@ export async function checkOpenAIConnectivity(): Promise<{
         .catch((error) => ({ ok: false, model, error: safeHealthError(error) })),
       // This is a no-cost entitlement probe. It deliberately does not generate
       // an image: a successful chat request must never imply image capability.
-      client.models.retrieve('dall-e-3', { signal: AbortSignal.timeout(15_000) })
-        .then(() => ({ ok: true, model: 'dall-e-3' as const }))
-        .catch((error) => ({ ok: false, model: 'dall-e-3' as const, error: safeHealthError(error) })),
+      client.models.retrieve(imageModel, { signal: AbortSignal.timeout(15_000) })
+        .then(() => ({ ok: true, model: imageModel }))
+        .catch((error) => ({ ok: false, model: imageModel, error: safeHealthError(error) })),
     ]);
     return { chat, image };
   } catch {
     return {
       chat: { ok: false, model, error: 'OpenAI istemcisi başlatılamadı.' },
-      image: { ok: false, model: 'dall-e-3', error: 'OpenAI istemcisi başlatılamadı.' },
+      image: { ok: false, model: imageModel, error: 'OpenAI istemcisi başlatılamadı.' },
     };
   }
 }

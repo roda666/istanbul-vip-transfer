@@ -8,6 +8,8 @@
  * null/empty rather than throwing on DB errors.
  */
 import 'server-only';
+import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
+import { SUPPORTED_LANGS } from '@/lib/i18n';
 
 /** Entity type used in content_translations rows for blog posts. */
 export const BLOG_ENTITY_TYPE = 'content';
@@ -53,51 +55,149 @@ export interface PublishedBlogTranslation {
   sourceTags: string[];
 }
 
+/** Fields rendered in public listing and related-post cards. */
+export type PublishedBlogCard = Pick<
+  PublishedBlogPost,
+  'id' | 'slug' | 'title' | 'excerpt' | 'heroImage' | 'heroImageAlt' |
+  'category' | 'author' | 'readTimeMinutes' | 'publishedAt' | 'updatedAt' |
+  'seoDescription'
+>;
+
+const PUBLIC_BLOG_TAG = 'public-blog';
+const BLOG_LIST_LIMIT = 24;
+const RELATED_BLOG_LIMIT = 4;
+
+/**
+ * Next's data cache may deserialize Date columns as ISO strings between
+ * processes. Normalize at the public data boundary so page metadata and date
+ * rendering can consistently use Date methods during SSR.
+ */
+function normalizeOptionalDate(value: unknown): Date | null {
+  if (value == null) return null;
+  if (value instanceof Date) return value;
+  const date = new Date(String(value));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function normalizeRequiredDate(value: unknown): Date {
+  return normalizeOptionalDate(value) ?? new Date(0);
+}
+
+function normalizeBlogCard(post: PublishedBlogCard): PublishedBlogCard {
+  return {
+    ...post,
+    publishedAt: normalizeOptionalDate(post.publishedAt),
+    updatedAt: normalizeRequiredDate(post.updatedAt),
+  };
+}
+
+function normalizeBlogPost(post: PublishedBlogPost): PublishedBlogPost {
+  return {
+    ...post,
+    publishedAt: normalizeOptionalDate(post.publishedAt),
+    updatedAt: normalizeRequiredDate(post.updatedAt),
+  };
+}
+
+function normalizeBlogTranslation(
+  translation: PublishedBlogTranslation,
+): PublishedBlogTranslation {
+  return {
+    ...translation,
+    publishedAt: normalizeOptionalDate(translation.publishedAt),
+  };
+}
+
+const cachedPublishedBlogCards = unstable_cache(
+  async (): Promise<PublishedBlogCard[]> => {
+    try {
+      const { db } = await import('@/db');
+      const { content } = await import('@/db/schema');
+      const { eq, and, desc, asc } = await import('drizzle-orm');
+
+      return await db
+        .select({
+          id: content.id,
+          slug: content.slug,
+          title: content.title,
+          excerpt: content.excerpt,
+          heroImage: content.heroImage,
+          heroImageAlt: content.heroImageAlt,
+          category: content.category,
+          author: content.author,
+          readTimeMinutes: content.readTimeMinutes,
+          publishedAt: content.publishedAt,
+          updatedAt: content.updatedAt,
+          seoDescription: content.seoDescription,
+        })
+        .from(content)
+        .where(and(
+          eq(content.contentType, 'BLOG_POST'),
+          eq(content.status, 'PUBLISHED'),
+          eq(content.isActive, true),
+        ))
+        .orderBy(desc(content.publishedAt), desc(content.updatedAt), asc(content.slug))
+        .limit(BLOG_LIST_LIMIT);
+    } catch {
+      return [];
+    }
+  },
+  ['published-blog-cards'],
+  { revalidate: 300, tags: [PUBLIC_BLOG_TAG] },
+);
+
 // ── Published blog listing (TR) ────────────────────────────────────────────────
 
 /**
  * Returns all PUBLISHED blog posts for the TR listing page, ordered by
- * publishedAt desc. Falls back to [] on DB error.
+ * publishedAt desc. It is a card-only, 24-item query. Falls back to [] on DB error.
  */
-export async function getPublishedBlogPosts(): Promise<PublishedBlogPost[]> {
-  try {
-    const { db }      = await import('@/db');
-    const { content } = await import('@/db/schema');
-    const { eq, and, desc } = await import('drizzle-orm');
+export async function getPublishedBlogPosts(): Promise<PublishedBlogCard[]> {
+  return (await cachedPublishedBlogCards()).map(normalizeBlogCard);
+}
 
-    const rows = await db
-      .select()
-      .from(content)
-      .where(and(
-        eq(content.contentType, 'BLOG_POST'),
-        eq(content.status,      'PUBLISHED'),
-        eq(content.isActive,    true),
-      ))
-      .orderBy(desc(content.publishedAt));
+const cachedRelatedBlogCards = unstable_cache(
+  async (slug: string): Promise<PublishedBlogCard[]> => {
+    try {
+      const { db } = await import('@/db');
+      const { content } = await import('@/db/schema');
+      const { eq, and, ne, desc, asc } = await import('drizzle-orm');
 
-    return rows.map(r => ({
-      id:             r.id,
-      slug:           r.slug,
-      title:          r.title,
-      excerpt:        r.excerpt ?? null,
-      body:           r.body ?? null,
-      heroImage:      r.heroImage ?? null,
-      heroImageAlt:   r.heroImageAlt ?? null,
-      category:       r.category ?? null,
-      author:         r.author ?? null,
-      tags:           (r.tags as string[] | null) ?? [],
-      readTimeMinutes: r.readTimeMinutes ?? null,
-      publishedAt:    r.publishedAt ?? null,
-      updatedAt:      r.updatedAt,
-      seoTitle:       r.seoTitle ?? null,
-      seoDescription: r.seoDescription ?? null,
-      ogTitle:        r.ogTitle ?? null,
-      ogDescription:  r.ogDescription ?? null,
-      canonicalUrl:   r.canonicalUrl ?? null,
-    }));
-  } catch {
-    return [];
-  }
+      return await db
+        .select({
+          id: content.id,
+          slug: content.slug,
+          title: content.title,
+          excerpt: content.excerpt,
+          heroImage: content.heroImage,
+          heroImageAlt: content.heroImageAlt,
+          category: content.category,
+          author: content.author,
+          readTimeMinutes: content.readTimeMinutes,
+          publishedAt: content.publishedAt,
+          updatedAt: content.updatedAt,
+          seoDescription: content.seoDescription,
+        })
+        .from(content)
+        .where(and(
+          eq(content.contentType, 'BLOG_POST'),
+          eq(content.status, 'PUBLISHED'),
+          eq(content.isActive, true),
+          ne(content.slug, slug),
+        ))
+        .orderBy(desc(content.publishedAt), desc(content.updatedAt), asc(content.slug))
+        .limit(RELATED_BLOG_LIMIT);
+    } catch {
+      return [];
+    }
+  },
+  ['related-published-blog-cards'],
+  { revalidate: 300, tags: [PUBLIC_BLOG_TAG] },
+);
+
+/** Returns at most four card-only related posts, newest first. */
+export async function getRelatedPublishedBlogPosts(slug: string): Promise<PublishedBlogCard[]> {
+  return (await cachedRelatedBlogCards(slug)).map(normalizeBlogCard);
 }
 
 // ── Single blog post (TR) ──────────────────────────────────────────────────────
@@ -106,7 +206,7 @@ export async function getPublishedBlogPosts(): Promise<PublishedBlogPost[]> {
  * Returns a single PUBLISHED blog post by slug. Returns null if not found,
  * not published, or DB is unavailable.
  */
-export async function getPublishedBlogPost(slug: string): Promise<PublishedBlogPost | null> {
+async function readPublishedBlogPost(slug: string): Promise<PublishedBlogPost | null> {
   try {
     const { db }      = await import('@/db');
     const { content } = await import('@/db/schema');
@@ -150,13 +250,24 @@ export async function getPublishedBlogPost(slug: string): Promise<PublishedBlogP
   }
 }
 
+const cachedPublishedBlogPost = unstable_cache(
+  readPublishedBlogPost,
+  ['published-blog-post'],
+  { revalidate: 300, tags: [PUBLIC_BLOG_TAG] },
+);
+
+export async function getPublishedBlogPost(slug: string): Promise<PublishedBlogPost | null> {
+  const post = await cachedPublishedBlogPost(slug);
+  return post ? normalizeBlogPost(post) : null;
+}
+
 // ── Non-TR translation ─────────────────────────────────────────────────────────
 
 /**
  * Returns a published translation for a given slug (translated or source) and lang.
  * Tries translated slug first, then falls back to source content slug.
  */
-export async function getPublishedBlogTranslation(
+async function readPublishedBlogTranslation(
   slug: string,
   lang: string,
 ): Promise<PublishedBlogTranslation | null> {
@@ -224,6 +335,20 @@ export async function getPublishedBlogTranslation(
   }
 }
 
+const cachedPublishedBlogTranslation = unstable_cache(
+  readPublishedBlogTranslation,
+  ['published-blog-translation'],
+  { revalidate: 300, tags: [PUBLIC_BLOG_TAG] },
+);
+
+export async function getPublishedBlogTranslation(
+  slug: string,
+  lang: string,
+): Promise<PublishedBlogTranslation | null> {
+  const translation = await cachedPublishedBlogTranslation(slug, lang);
+  return translation ? normalizeBlogTranslation(translation) : null;
+}
+
 // ── Published translations listing (non-TR) ────────────────────────────────────
 
 export interface TranslatedBlogListItem {
@@ -238,13 +363,13 @@ export interface TranslatedBlogListItem {
   sourceCategory: string | null;
 }
 
-export async function getPublishedBlogTranslations(
+async function readPublishedBlogTranslations(
   lang: string,
 ): Promise<TranslatedBlogListItem[]> {
   try {
     const { db }                          = await import('@/db');
     const { contentTranslations, content } = await import('@/db/schema');
-    const { eq, and, desc, sql }          = await import('drizzle-orm');
+    const { eq, and, desc, asc, sql }     = await import('drizzle-orm');
 
     const rows = await db
       .select({
@@ -267,12 +392,88 @@ export async function getPublishedBlogTranslations(
         eq(contentTranslations.entityType,         BLOG_ENTITY_TYPE),
         eq(content.contentType,                    'BLOG_POST'),
         eq(content.status,                         'PUBLISHED'),
+        eq(content.isActive,                       true),
       ))
-      .orderBy(desc(contentTranslations.publishedAt));
+      .orderBy(desc(contentTranslations.publishedAt), desc(content.updatedAt), asc(content.slug))
+      .limit(BLOG_LIST_LIMIT);
 
     return rows;
   } catch {
     return [];
+  }
+}
+
+const cachedPublishedBlogTranslations = unstable_cache(
+  readPublishedBlogTranslations,
+  ['published-blog-translation-cards'],
+  { revalidate: 300, tags: [PUBLIC_BLOG_TAG] },
+);
+
+export async function getPublishedBlogTranslations(
+  lang: string,
+): Promise<TranslatedBlogListItem[]> {
+  return (await cachedPublishedBlogTranslations(lang)).map(post => ({
+    ...post,
+    publishedAt: normalizeOptionalDate(post.publishedAt),
+  }));
+}
+
+/**
+ * Clears every public blog representation after an admin mutation.  Paths are
+ * deliberately invalidated alongside the shared data tag so old detail URLs,
+ * listings, localized cards and sitemap entries never outlive a publish change.
+ */
+export function revalidatePublicBlogPaths(input: {
+  id: string;
+  slug: string;
+  previousSlug?: string;
+  previousLocalizedSlugs?: Array<{ locale: string; slug: string | null }>;
+}): void {
+  revalidateTag(PUBLIC_BLOG_TAG);
+  revalidatePath('/blog');
+  revalidatePath(`/blog/${input.slug}`);
+  if (input.previousSlug && input.previousSlug !== input.slug) {
+    revalidatePath(`/blog/${input.previousSlug}`);
+  }
+
+  for (const lang of SUPPORTED_LANGS) {
+    revalidatePath(`/${lang}/blog`);
+  }
+  for (const translation of input.previousLocalizedSlugs ?? []) {
+    if (translation.locale !== 'tr' && translation.slug) {
+      revalidatePath(`/${translation.locale}/blog/${translation.slug}`);
+    }
+  }
+  revalidatePath('/sitemap.xml');
+}
+
+export async function invalidatePublicBlogCache(input: {
+  id: string;
+  slug: string;
+  previousSlug?: string;
+  previousLocalizedSlugs?: Array<{ locale: string; slug: string | null }>;
+}): Promise<void> {
+  revalidatePublicBlogPaths(input);
+
+  try {
+    const { db } = await import('@/db');
+    const { contentTranslations } = await import('@/db/schema');
+    const { eq, and } = await import('drizzle-orm');
+    const translations = await db.select({
+      locale: contentTranslations.targetLanguageCode,
+      slug: contentTranslations.slug,
+    }).from(contentTranslations).where(and(
+      eq(contentTranslations.entityType, BLOG_ENTITY_TYPE),
+      eq(contentTranslations.entityId, input.id),
+    ));
+
+    for (const translation of translations) {
+      if (translation.locale !== 'tr' && translation.slug) {
+        revalidatePath(`/${translation.locale}/blog/${translation.slug}`);
+      }
+    }
+  } catch {
+    // The committed source and listing paths above still become fresh.
   }
 }
 

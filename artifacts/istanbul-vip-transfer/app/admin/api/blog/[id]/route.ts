@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdminSession } from '@/lib/auth/session';
-import { getBlogAdminRecord, BLOG_ENTITY_TYPE } from '@/lib/blog-cms';
+import { getBlogAdminRecord, BLOG_ENTITY_TYPE, invalidatePublicBlogCache } from '@/lib/blog-cms';
 import { SITE } from '@/lib/site-config';
 import 'server-only';
 
@@ -315,6 +315,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     details:     { title: data.title, newStatus: requestedStatus },
   });
 
+  await invalidatePublicBlogCache({ id, slug: data.slug, previousSlug: row.slug });
   const record = await getBlogAdminRecord(id);
   return NextResponse.json({ record });
 }
@@ -422,6 +423,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (db.update(content).set(updateFields as any).where(eq(content.id, id)));
     await writeAuditLog({ contentId: id, action, adminUserId, details: { newStatus } });
+    await invalidatePublicBlogCache({ id, slug: row.slug });
     const record = await getBlogAdminRecord(id);
     return NextResponse.json({ record });
   }
@@ -450,6 +452,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     } as never).where(eq(content.id, id)));
 
     await writeAuditLog({ contentId: id, action: 'revert_revision', adminUserId, details: { revisionId } });
+    await invalidatePublicBlogCache({ id, slug: row.slug });
     const record = await getBlogAdminRecord(id);
     return NextResponse.json({ record });
   }
@@ -512,6 +515,11 @@ export async function POST(req: NextRequest, { params }: Params) {
       } as never);
     }
     await writeAuditLog({ contentId: id, action: 'save_translation', locale, adminUserId });
+    await invalidatePublicBlogCache({
+      id,
+      slug: row.slug,
+      previousLocalizedSlugs: existing ? [{ locale, slug: existing.slug }] : undefined,
+    });
     const record = await getBlogAdminRecord(id);
     return NextResponse.json({ record });
   }
@@ -543,6 +551,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       } as never);
     }
     await writeAuditLog({ contentId: id, action: 'retranslate', locale, adminUserId });
+    await invalidatePublicBlogCache({ id, slug: row.slug });
     const record = await getBlogAdminRecord(id);
     return NextResponse.json({ record });
   }
@@ -612,5 +621,6 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   const record = await getBlogAdminRecord(id);
+  await invalidatePublicBlogCache({ id, slug: row.slug });
   return NextResponse.json({ record });
 }

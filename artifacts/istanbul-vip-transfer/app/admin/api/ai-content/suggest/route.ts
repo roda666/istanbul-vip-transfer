@@ -7,6 +7,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdminSession } from '@/lib/auth/session';
 import { suggestTopicAndKeywords } from '@/lib/ai/content-hub';
+import {
+  excludeAdsIdeasRepresentedInGsc, isQuestionShapedQuery, sanitizeResearchSeeds,
+  type SearchResearchPayload,
+} from '@/lib/search-research';
 import 'server-only';
 
 export const dynamic = 'force-dynamic';
@@ -38,6 +42,53 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.errors[0]?.message ?? 'Doğrulama hatası.' }, { status: 422 });
   }
   const data = parsed.data;
+  const fetchedAt = new Date().toISOString();
+  let research: SearchResearchPayload = {
+    source: 'none', fetchedAt, sourceState: { gsc: 'not_checked', googleAds: 'not_checked' },
+    sourceGroups: {
+      gsc: { label: 'nearby_gains', provenance: 'actual_site_queries' },
+      googleAds: { label: 'new_market_opportunities', provenance: 'keyword_planner_market_data' },
+    },
+  };
+
+  // Topic discovery intentionally consults both providers concurrently. GSC
+  // identifies nearby gains from real site queries; Ads identifies demand that
+  // is not already represented by those queries. One source never suppresses
+  // the other, including when a provider is unavailable.
+  const seeds = sanitizeResearchSeeds([data.targetService, data.targetLocation, `${data.targetLocation} ${data.targetService}`]);
+  const [gscAttempt, adsAttempt] = await Promise.allSettled([
+    import('@/lib/gsc').then(({ findKeywordOpportunities }) => findKeywordOpportunities(20)),
+    import('@/lib/google-ads').then(({ generateKeywordIdeas }) => generateKeywordIdeas(seeds, 20)),
+  ]);
+
+  let gscRows: NonNullable<SearchResearchPayload['gscRows']> = [];
+  if (gscAttempt.status === 'fulfilled') {
+    const gsc = gscAttempt.value;
+    if (gsc.ok) {
+      gscRows = gsc.opportunities.map(row => ({
+        query: row.query, clicks: row.clicks, impressions: row.impressions, ctr: row.ctr, position: row.position,
+        opportunity: row.reason === 'high_impression_gap' ? undefined : 'weak_ranking' as const,
+        isQuestion: isQuestionShapedQuery(row.query),
+      }));
+      research.sourceState.gsc = gscRows.length ? 'usable' : 'no_usable_rows';
+    } else research.sourceState.gsc = 'unavailable:api_or_connection_error';
+  } else research.sourceState.gsc = 'unavailable:unexpected_error';
+
+  let adsRows: NonNullable<SearchResearchPayload['adsRows']> = [];
+  if (adsAttempt.status === 'fulfilled') {
+    adsRows = excludeAdsIdeasRepresentedInGsc(
+      adsAttempt.value.map(i => ({ keyword: i.text, monthlySearches: i.avgMonthlySearches, competition: i.competition })),
+      gscRows,
+    );
+    research.sourceState.googleAds = adsRows.length ? 'usable' : 'no_usable_rows';
+  } else research.sourceState.googleAds = 'unavailable:api_or_connection_error';
+
+  research = {
+    ...research,
+    source: gscRows.length && adsRows.length ? 'combined' : gscRows.length ? 'gsc' : adsRows.length ? 'google_ads' : 'none',
+    ...(gscRows.length ? { gscRows } : {}),
+    ...(adsRows.length ? { adsRows } : {}),
+  };
 
   const result = await suggestTopicAndKeywords({
     articleType:      data.articleType,
@@ -49,6 +100,7 @@ export async function POST(req: NextRequest) {
     tone:             data.tone,
     wordCountTarget:  data.wordCountTarget,
     targetLanguage:   data.targetLanguage,
+    searchResearch:   research,
   });
 
   if (!result.ok) {
@@ -73,6 +125,7 @@ export async function POST(req: NextRequest) {
         ...result.data.supportingKeywords.map(k => ({ term: k, intent: result.data.searchIntent, isPrimary: false })),
       ],
       dataSourceNote: result.data.dataSourceNote,
+      searchResearch: research,
     },
     searchIntent:     result.data.searchIntent,
     suggestedOutline: result.data.suggestedH2s.join('\n'),

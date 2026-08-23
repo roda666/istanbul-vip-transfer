@@ -6,6 +6,7 @@
  * Security: access_token and refresh_token are NEVER logged or returned to clients.
  */
 import 'server-only';
+import { sql } from 'drizzle-orm';
 
 export interface GscConnection {
   siteUrl: string;
@@ -23,6 +24,47 @@ export interface SearchRow {
   impressions: number;
   ctr: number;      // 0–1
   position: number; // avg position (1 = top)
+}
+
+export interface PageSearchRow {
+  page: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+export interface PageAnalyticsOptions {
+  startDate: string;
+  endDate: string;
+  limit?: number;
+}
+
+const PAGE_ANALYTICS_MIN_LIMIT = 1;
+const PAGE_ANALYTICS_MAX_LIMIT = 1_000;
+const PAGE_ANALYTICS_MAX_RANGE_DAYS = 366;
+
+function parseIsoDate(value: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value ? null : date;
+}
+
+/** Validates untrusted page-analytics request inputs before they reach Google. */
+export function validatePageAnalyticsOptions(opts: PageAnalyticsOptions):
+  | { ok: true; startDate: string; endDate: string; limit: number }
+  | { ok: false; reason: 'invalid_date_range' | 'invalid_limit' } {
+  const start = parseIsoDate(opts.startDate);
+  const end = parseIsoDate(opts.endDate);
+  const limit = opts.limit ?? 100;
+  if (!start || !end || start > end ||
+    end.getTime() - start.getTime() > PAGE_ANALYTICS_MAX_RANGE_DAYS * 86_400_000) {
+    return { ok: false, reason: 'invalid_date_range' };
+  }
+  if (!Number.isInteger(limit) || limit < PAGE_ANALYTICS_MIN_LIMIT || limit > PAGE_ANALYTICS_MAX_LIMIT) {
+    return { ok: false, reason: 'invalid_limit' };
+  }
+  return { ok: true, startDate: opts.startDate, endDate: opts.endDate, limit };
 }
 
 export interface KeywordOpportunity {
@@ -124,14 +166,64 @@ async function getAccessToken(): Promise<string | null> {
 
     // Update DB
     const { db } = await import('@/db');
-    await db.execute(
-      `UPDATE gsc_connections SET access_token = '${data.access_token}', token_expiry = '${newExpiry.toISOString()}', updated_at = NOW() WHERE id = (SELECT id FROM gsc_connections ORDER BY id DESC LIMIT 1)` as never
-    );
+    const { gscConnections } = await import('@/db/schema');
+    await db.update(gscConnections)
+      .set({ accessToken: data.access_token, tokenExpiry: newExpiry, updatedAt: new Date() })
+      .where(sql`${gscConnections.id} = (SELECT id FROM gsc_connections ORDER BY id DESC LIMIT 1)`);
 
     return data.access_token;
-  } catch (err) {
-    console.error('[GSC] Token refresh error:', err instanceof Error ? err.message : 'unknown');
+  } catch {
+    console.error('[GSC] Token refresh error');
     return null;
+  }
+}
+
+/**
+ * Fetches Search Console performance grouped by page. Inputs are deliberately
+ * explicit (rather than relative days) so admin reporting is reproducible.
+ */
+export async function fetchPageSearchAnalytics(opts: PageAnalyticsOptions): Promise<
+  { ok: true; rows: PageSearchRow[] } |
+  { ok: false; reason: 'invalid_date_range' | 'invalid_limit' | 'not_connected' | 'token_refresh_failed' | 'api_error' | 'fetch_error' }
+> {
+  const validated = validatePageAnalyticsOptions(opts);
+  if (!validated.ok) return validated;
+  const conn = await getRawConnection();
+  if (!conn) return { ok: false, reason: 'not_connected' };
+  const token = await getAccessToken();
+  if (!token) return { ok: false, reason: 'token_refresh_failed' };
+
+  try {
+    const siteUrl = encodeURIComponent(conn.site_url);
+    const res = await fetch(`https://www.googleapis.com/webmasters/v3/sites/${siteUrl}/searchAnalytics/query`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        startDate: validated.startDate,
+        endDate: validated.endDate,
+        dimensions: ['page'],
+        rowLimit: validated.limit,
+        startRow: 0,
+        searchType: 'web',
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return { ok: false, reason: 'api_error' };
+    const data = await res.json() as {
+      rows?: Array<{ keys: string[]; clicks: number; impressions: number; ctr: number; position: number }>;
+    };
+    return {
+      ok: true,
+      rows: (data.rows ?? []).map(row => ({
+        page: row.keys[0] ?? '',
+        clicks: row.clicks,
+        impressions: row.impressions,
+        ctr: row.ctr,
+        position: row.position,
+      })),
+    };
+  } catch {
+    return { ok: false, reason: 'fetch_error' };
   }
 }
 
@@ -179,10 +271,7 @@ export async function fetchSearchAnalytics(opts?: {
       signal: AbortSignal.timeout(15_000),
     });
 
-    if (!res.ok) {
-      const txt = await res.text().catch(() => '');
-      return { ok: false, reason: `API ${res.status}: ${txt.slice(0, 200)}` };
-    }
+    if (!res.ok) return { ok: false, reason: 'api_error' };
 
     const data = await res.json() as {
       rows?: Array<{ keys: string[]; clicks: number; impressions: number; ctr: number; position: number }>;
@@ -196,8 +285,8 @@ export async function fetchSearchAnalytics(opts?: {
     }));
 
     return { ok: true, rows };
-  } catch (err) {
-    return { ok: false, reason: err instanceof Error ? err.message.slice(0, 200) : 'fetch_error' };
+  } catch {
+    return { ok: false, reason: 'fetch_error' };
   }
 }
 

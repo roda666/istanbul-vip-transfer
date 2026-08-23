@@ -32,7 +32,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!translation) return { robots: { index: false } };
 
   const title = translation.metaTitle ?? translation.title ?? 'VIP Transfer Istanbul';
-  const description = translation.metaDescription ?? translation.excerpt ?? undefined;
+  const description = [
+    translation.metaDescription,
+    translation.excerpt,
+  ].find(value => value?.trim()) ?? 'VIP Transfer Istanbul airport transfer and private transportation guide.';
   const canonicalUrl = `${SITE.siteUrl}/${lang}/blog/${translation.slug ?? slug}`;
   const { languages } = await buildBlogAlternates(translation.sourceSlug);
 
@@ -89,7 +92,7 @@ export default async function TranslatedBlogPost({ params }: Props) {
         {/* Cover image from source */}
         {translation.sourceHeroImage && (
           <div className="relative rounded-2xl overflow-hidden mb-8 aspect-video">
-            <SafeArticleImage src={translation.sourceHeroImage} fallbackAlt={localizedTitle} priority className="object-cover" sizes="(max-width: 768px) 100vw, 768px" fill />
+            <SafeArticleImage src={translation.sourceHeroImage} fallbackAlt={localizedTitle} priority quality={60} className="object-cover" sizes="(max-width: 768px) 100vw, 768px" fill />
           </div>
         )}
 

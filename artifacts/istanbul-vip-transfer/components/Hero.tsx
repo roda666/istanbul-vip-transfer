@@ -43,6 +43,9 @@ export default function Hero({ homepageMode = false }: { homepageMode?: boolean 
       { number: '7/24', label: dict.hero.trustSupportLabel },
       { number: 'Vito & Sprinter', label: dict.hero.trustVehiclesLabel },
     ];
+  const heroImageAlt = h.imageAlt?.trim()
+    || `${h.headline1} ${h.headlineAccent} ${h.headline2}`.trim()
+    || 'Istanbul VIP transfer vehicle';
 
   const scrollToBooking = () => {
     document.dispatchEvent(new Event('ivt:booking-open'));
@@ -89,7 +92,7 @@ export default function Hero({ homepageMode = false }: { homepageMode?: boolean 
               <Star size={12} fill="#C79A35" stroke="none" aria-hidden="true" />
               <span
                 className="text-[11px] tracking-[0.22em] uppercase"
-                style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
+                style={{ color: '#8A651C', fontFamily: 'Inter, sans-serif' }}
               >
                 {h.badge}
               </span>
@@ -103,7 +106,7 @@ export default function Hero({ homepageMode = false }: { homepageMode?: boolean 
               data-testid="hero-headline"
             >
               {h.headline1}{' '}
-              <span style={{ color: '#C79A35' }}>{h.headlineAccent}</span>
+              <span style={{ color: '#8A651C' }}>{h.headlineAccent}</span>
               <br />
               {h.headline2}
             </h1>
@@ -172,7 +175,7 @@ export default function Hero({ homepageMode = false }: { homepageMode?: boolean 
                 <div key={i} className="flex flex-col" data-testid={`hero-trust-item-${i}`}>
                   <span
                     className="text-lg sm:text-xl font-bold"
-                    style={{ color: '#C79A35', fontFamily: 'Playfair Display, Georgia, serif' }}
+                    style={{ color: '#8A651C', fontFamily: 'Playfair Display, Georgia, serif' }}
                     dir="ltr"
                   >
                     {item.number}
@@ -211,7 +214,7 @@ export default function Hero({ homepageMode = false }: { homepageMode?: boolean 
             >
               <Image
                 src={h.imageSrc ?? '/images/istanbul-vip-transfer-hero.webp'}
-                alt={h.imageAlt}
+                alt={heroImageAlt}
                 fill
                 className="object-cover object-center"
                 priority

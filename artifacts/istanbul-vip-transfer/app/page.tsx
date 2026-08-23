@@ -33,8 +33,8 @@ export const revalidate = 300;
 
 const BASE = SITE.siteUrl;
 
-const TITLE = 'İstanbul VIP Transfer | Vito ve Sprinter Hizmeti';
-const DESCRIPTION = 'İstanbul VIP transfer hizmeti; İstanbul Havalimanı, Sabiha Gökçen, şehir içi ve şehirler arası Mercedes Vito ve Sprinter ulaşımı.';
+const TITLE = 'İstanbul VIP Transfer | Minivan, Minibüs ve Otobüs';
+const DESCRIPTION = 'İstanbul VIP transfer hizmeti; İstanbul Havalimanı, Sabiha Gökçen, şehir içi ve şehirler arası minivan, minibüs, midibüs ve otobüs seçenekleri.';
 
 export const metadata: Metadata = {
   title: TITLE,

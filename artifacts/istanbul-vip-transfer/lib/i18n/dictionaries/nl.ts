@@ -272,8 +272,8 @@ const nl: Dictionary = {
     },
     vehicles: {
       sectionLabel: 'Ons wagenpark',
-      heading: 'Ons VIP-wagenpark',
-      subheading: 'Twee eersteklas voertuigopties voor elke behoefte — beide volledig uitgerust voor uw comfort.',
+      heading: 'Onze VIP-transfervloot',
+      subheading: 'Comfortabele minivans, minibussen, midibussen en touringcars voor elke groepsgrootte.',
       passengers: 'Passagiers',
       luggage: 'Bagage',
       popular: 'Meest populair',
@@ -317,8 +317,8 @@ const nl: Dictionary = {
     pages: {
       servicesTitle: 'Onze diensten',
       servicesSubtitle: 'Al onze transfer- en tourdiensten in Istanbul en daarbuiten, met Mercedes Vito en Sprinter.',
-      vehiclesTitle: 'Ons luxe wagenpark',
-      vehiclesSubtitle: 'Van individuele reizigers tot grote groepen — twee premium VIP-voertuigopties voor elke behoefte.',
+      vehiclesTitle: 'Onze VIP-transfervloot',
+      vehiclesSubtitle: 'Comfortabele minivans, minibussen, midibussen en touringcars voor elke groepsgrootte.',
       aboutTitle: 'Over ons',
       aboutSubtitle: 'Lees meer over onze servicefilosofie, ons luxe wagenpark en onze toewijding aan klanttevredenheid bij VIP Transfer Istanbul.',
       contactTitle: 'Contact',

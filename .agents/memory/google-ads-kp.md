@@ -1,24 +1,34 @@
 ---
 name: Google Ads Keyword Planner integration
-description: Architecture, API version, OAuth callback URI, data source priority in weekly draft
+description: Architecture, API version, OAuth callback URI, and measurement versus discovery source rules
 ---
 
 ## Key facts
 
-- **API version**: v18 (`https://googleads.googleapis.com/v18/customers/{id}:generateKeywordIdeas`)
+- **API version**: v24 by default (`https://googleads.googleapis.com/v24/customers/{id}:generateKeywordIdeas`); allow a validated `vNNN` override so API sunsets do not silently break Keyword Planner.
 - **Secrets**: `GOOGLE_ADS_DEVELOPER_TOKEN` and `GOOGLE_ADS_LOGIN_CUSTOMER_ID` (stripe dashes before storing customerId)
 - **OAuth callback URI**: Public isteğin HTTPS host’undan türetilir; Google Cloud Console’da hem production hem de aktif preview host’unun aynı `/admin/api/google-ads/callback` yolu exact-match olarak kayıtlı olmalıdır.
 - **DB table**: `google_ads_connections` — single-row pattern (DELETE + INSERT on upsert, same as gsc_connections); migration 0027 applied directly via `psql -f` because drizzle migrate only ran seed scripts, not the DDL.
 - **Geo/lang**: Turkey = `geoTargetConstants/2792`, Turkish = `languageConstants/1011`
 - **Scope**: `https://www.googleapis.com/auth/adwords` (plus `userinfo.email` for display)
 
-## Data source priority in weekly-draft cron
+## Data source rules
 
-1. GSC connected + has traffic data → use GSC (real CTR/impressions)
-2. GSC not connected, Google Ads connected → `findKeywordOpportunitiesFromAds()` (real search volumes)
-3. Neither → AI fallback pool (FALLBACK_TOPICS, isoWeekOfYear rotation)
+### Known-keyword measurement and weekly drafts
+
+1. GSC with usable traffic data → use GSC (real CTR/impressions)
+2. GSC absent, unavailable, or without usable opportunities → use Google Ads (real search volumes)
+3. Neither provider yields usable data → AI fallback pool
 
 `dataSourceNote` field on the draft records which source was used.
+
+### New topic discovery
+
+Run GSC and Google Ads in parallel; never treat either as a fallback in discovery. GSC weak-ranking/high-impression queries are **nearby gains**. Ads volume keywords not already represented by GSC are **new market opportunities**. Persist both groups and their provider state separately.
+
+**Why:** Search Console only reports the site's existing search footprint, so it cannot surface demand in newly served cities. Keyword Planner supplies that external-demand view; its API versions are sunset over time.
+
+**How to apply:** Keep metric endpoints sequential and discovery endpoints parallel. Provider failures must preserve usable results from the other provider and surface only safe, fixed status messages.
 
 ## lib/google-ads.ts exports
 

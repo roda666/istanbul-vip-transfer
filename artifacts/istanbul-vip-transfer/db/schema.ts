@@ -250,6 +250,17 @@ export const aiContentSuggestions = pgTable('ai_content_suggestions', {
   suggestedKeywordsJson: jsonb('suggested_keywords_json').$type<{
     keywords: Array<{ term: string; intent: string; isPrimary: boolean }>;
     dataSourceNote: string;
+     searchResearch?: {
+        source: 'gsc' | 'google_ads' | 'combined' | 'none';
+       fetchedAt: string;
+       sourceState: { gsc: string; googleAds: string };
+        sourceGroups?: {
+          gsc: { label: 'nearby_gains'; provenance: 'actual_site_queries' };
+          googleAds: { label: 'new_market_opportunities'; provenance: 'keyword_planner_market_data' };
+        };
+       gscRows?: Array<{ query: string; clicks: number; impressions: number; ctr: number; position: number; opportunity?: 'weak_ranking'; isQuestion?: boolean }>;
+       adsRows?: Array<{ keyword: string; monthlySearches: number; competition: string }>;
+     };
   }>(),
   searchIntent:         text('search_intent'),
   suggestedOutline:     text('suggested_outline'),
@@ -319,6 +330,12 @@ export const researchSources = pgTable('research_sources', {
   claimSupported: text('claim_supported'),
   /** 'web' | 'manual' | 'ai_context' */
   sourceType:   text('source_type').default('manual').notNull(),
+  /**
+   * Provenance is explicit because this application does not validate model
+   * supplied URLs against the web. Existing rows remain deliberately unknown,
+   * rather than being upgraded to verified by a schema default.
+   */
+  provenanceStatus: text('provenance_status').default('UNVERIFIED_LEGACY').notNull(),
   notes:        text('notes'),
 });
 

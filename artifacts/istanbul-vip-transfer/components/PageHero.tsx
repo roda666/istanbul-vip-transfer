@@ -154,7 +154,7 @@ export default function PageHero(props: PageHeroProps) {
               letterSpacing: '0.04em',
               textTransform: 'uppercase',
               background: 'rgba(199,154,53,0.12)',
-              color: '#A07820',
+               color: '#805F18',
               border: '1px solid rgba(199,154,53,0.3)',
             }}>
               {display(badge)}
@@ -173,7 +173,7 @@ export default function PageHero(props: PageHeroProps) {
               {crumb.href ? (
                 <Link
                   href={localizedPublicPath(crumb.href, lang)}
-                  className="transition-colors duration-200 focus:outline-none focus-visible:underline"
+                  className="rounded-sm transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#102A43] focus-visible:ring-offset-2"
                   style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#C79A35'; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#50677A'; }}
@@ -181,7 +181,7 @@ export default function PageHero(props: PageHeroProps) {
                   {display(crumb.label)}
                 </Link>
               ) : (
-                <span style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}>
+                 <span style={{ color: '#8A651C', fontFamily: 'Inter, sans-serif' }}>
                   {display(crumb.label)}
                 </span>
               )}

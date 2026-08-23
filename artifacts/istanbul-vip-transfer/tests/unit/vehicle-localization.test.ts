@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolvePublicVehicle } from '../../lib/vehicle-localization';
+import { resolvePublicVehicle, resolvePublishedVehicles } from '../../lib/vehicle-localization';
 
 const baseVehicle = {
   id: 'vehicle-1',
@@ -16,6 +16,7 @@ const baseVehicle = {
     { icon: 'UNKNOWN', label: 'Türkçe özellik' },
   ],
   coverImage: '/images/mercedes-vito.jpg',
+  coverImageAlt: 'Beyaz Mercedes Vito VIP transfer aracı',
   isFeatured: true,
   displayOrder: 1,
   nameTranslations: { tr: 'Mercedes Vito', de: 'Mercedes Vito' },
@@ -44,10 +45,28 @@ describe('resolvePublicVehicle', () => {
     expect(vehicle).toBeNull();
   });
 
+  it('withholds a card rather than substituting a default cover image', () => {
+    const vehicle = resolvePublicVehicle({ ...baseVehicle, coverImage: null }, 'tr');
+
+    expect(vehicle).toBeNull();
+  });
+
   it('keeps Turkish source fields available only for Turkish', () => {
     const vehicle = resolvePublicVehicle(baseVehicle, 'tr');
 
     expect(vehicle?.displayShortDesc).toBe('Türkçe kaynak açıklama');
     expect(vehicle?.features).toHaveLength(3);
+  });
+
+  it('excludes archived rows and incomplete non-Turkish cards from public endpoint output', () => {
+    const resolved = resolvePublishedVehicles([
+      { ...baseVehicle, status: 'PUBLISHED' },
+      { ...baseVehicle, id: 'archived', slug: 'archived', status: 'ARCHIVED' },
+      {
+        ...baseVehicle, id: 'incomplete', slug: 'incomplete', status: 'PUBLISHED',
+        taglineTranslations: { tr: 'Kompakt lüks' },
+      },
+    ], 'de');
+    expect(resolved.map((vehicle) => vehicle.id)).toEqual(['vehicle-1']);
   });
 });

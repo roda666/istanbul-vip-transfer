@@ -18,7 +18,10 @@
 - [Translation job queue](translation-job-queue.md) — DB-backed per-language AI translation queue; 5 API routes; concurrency 2 frontend; 45s AbortController; safe-fetch-json utility; replaces old synchronous /admin/api/translations/ai.
 - [Service page translation seed](service-page-translation-seed.md) — seed script for all 14 services × EN/DE/RU/AR; OUTDATED status flow; TR pages at /{slug} (no /tr/ prefix).
 - [Performance & image optimisation](perf-image-optimisation.md) — images.unoptimized removed; remotePatterns GCS+Replit; web-vitals→/api/vitals; perf-check.ts HTTP gate; AR dir set by inline script not SSR html attr.
+- [Public chrome cache](public-chrome-cache.md) — cache only compact shared header/footer data; invalidate it whenever public navigation, footer, or contact content changes.
 - [AI Studio hardening](ai-studio-hardening.md) — AbortSignal.timeout on all OpenAI calls; AR RTL LTR markers (U+202A/U+202C) applied post-translation; classifyError strips API key from all surfaces; safe req.json() guards in all routes; translations route is idempotent upsert; approve route checks trApprovedAt before inserting audit row; config route does real DB ping + OpenAI chat ping; Sistem Kontrolü page at /admin/ai-studio/sistem-kontrolu.
+- [Content Hub safety and SEO](content-hub-safety-seo.md) — operational facts are allowed; only live catalog links persist; model-suggested sources are visibly unverified and safe-rendered.
+- [Content Hub search research](content-hub-search-research.md) — use real Search Console signals before Ads ideas; prioritize weak-ranking and question queries without inventing metrics.
 - [AI image generation policy](ai-image-generation.md) — generated imagery uses a separate model setting, permanent safe storage and required alt text; provider and signed URLs never reach clients.
 - [Service page v2 content seed](service-page-content-seed.md) — All 14 SERVICE rows updated with rich v2 bodies (badge, introBody, features×6, 3-4 contentSections, faqs, serviceArea, schemaExtras, category); existing translations marked OUTDATED; FeaturesBlock + FAQ lang-aware heading added to renderer; PageHero gets badge pill above breadcrumbs; admin SchemaExtras SectionCard added (collapsible); script at scripts/seed-service-content.ts.
 - [Phase 2 CMS consistency fixes](phase2-cms-fixes.md) — Sitemap now includes OUTDATED translations (they are live); bulk-publish filter restricted to APPROVED only; 56 EN/DE/RU/AR service translations retranslated and PUBLISHED.
@@ -42,6 +45,7 @@
 - [Password reset flow](password-reset-flow.md) — password_reset_tokens table (raw SQL created); API at /admin/api/auth/reset-password (request) + /confirm (verify+set); page at /admin/login/reset-password; LoginForm has inline forgot-password toggle mode.
 - [Logout endpoint mismatch](logout-endpoint-mismatch.md) — AdminSidebar must call POST /admin/api/logout (not /admin/api/auth/logout); route file is at app/admin/api/logout/route.ts.
 - [GSC OAuth routing fix](gsc-oauth-routing.md) — api-server artifact owns paths=["/api"], so Next.js app/api/* routes are unreachable; GSC connect+callback moved to /admin/api/gsc/connect and /admin/api/gsc/callback; Google Cloud Console redirect URI must be https://www.istanbulviptransfer.com/admin/api/gsc/callback.
+- [Google credential persistence](google-credential-persistence.md) — OAuth tokens must always use bound ORM/SQL values; GSC is the canonical source for existing search opportunities and page analytics.
 - [Google Ads Keyword Planner integration](google-ads-kp.md) — lib/google-ads.ts uses Ads REST API v18; DB table google_ads_connections (migration 0027 applied manually); data priority: GSC > Google Ads > AI fallback; callback URI must be registered in Google Cloud Console.
 - [Social OAuth public origin](social-oauth-public-origin.md) — build callbacks and error redirects from forwarded public host with forced HTTPS.
 - [OAuth public origin allowlist](oauth-public-origin-allowlist.md) — OAuth callbacks must accept only configured public origins, never arbitrary forwarded hosts.
@@ -54,4 +58,4 @@
 - [Service social preview images](service-social-preview-images.md) — every service share uses its own public hero asset across Turkish and localized routes.
 - [Post-merge database setup](post-merge-database-setup.md) — post-merge uses app migration journal, never the separate workspace DB push command.
 - [Initial head metadata](initial-head-metadata.md) — static core metadata prevents streamed DB lookups from hiding SEO tags from audits and crawlers.
-- [Reliable local Lighthouse audits](local-lighthouse-audits.md) — keep the production server alive in the same shell command as Lighthouse for valid local reports.
+- [Deterministic performance work](local-lighthouse-audits.md) — apply known web-vital fixes directly; do not run Lighthouse, PageSpeed Insights, or other performance measurement tools.

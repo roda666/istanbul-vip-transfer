@@ -12,7 +12,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdminSession } from '@/lib/auth/session';
 import { HOMEPAGE_SLUG } from '@/lib/homepage-cms';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
+import { PUBLIC_CHROME_TAG } from '@/lib/public-chrome-cache';
 import 'server-only';
 
 const schema = z.object({
@@ -85,6 +86,7 @@ export async function POST(req: NextRequest) {
       });
 
       revalidatePath(`/${tx.targetLanguageCode}`);
+      revalidateTag(PUBLIC_CHROME_TAG);
 
       results[tx.targetLanguageCode] = 'published';
     } catch {

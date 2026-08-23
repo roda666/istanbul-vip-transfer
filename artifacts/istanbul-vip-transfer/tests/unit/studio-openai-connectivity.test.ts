@@ -23,20 +23,20 @@ describe('AI Studio OpenAI capability check', () => {
     vi.unstubAllEnvs();
   });
 
-  it('does not infer DALL-E health from a successful chat request', async () => {
+  it('does not infer GPT Image health from a successful chat request', async () => {
     mocks.modelRetrieve.mockRejectedValue(new Error('model_not_found'));
     const { checkOpenAIConnectivity } = await import('@/lib/studio/ai-studio');
 
     const result = await checkOpenAIConnectivity();
 
     expect(result.chat).toMatchObject({ ok: true });
-    expect(result.image).toMatchObject({ ok: false, model: 'dall-e-3', error: 'Model erişilemiyor.' });
-    expect(mocks.modelRetrieve).toHaveBeenCalledWith('dall-e-3', expect.any(Object));
+    expect(result.image).toMatchObject({ ok: false, model: 'gpt-image-2', error: 'Model erişilemiyor.' });
+    expect(mocks.modelRetrieve).toHaveBeenCalledWith('gpt-image-2', expect.any(Object));
   });
 
   it('turns provider rate limits into a safe retryable chat-health failure', async () => {
     mocks.chatCreate.mockRejectedValue(new Error('429 rate limit exceeded for sk-should-never-appear'));
-    mocks.modelRetrieve.mockResolvedValue({ id: 'dall-e-3' });
+    mocks.modelRetrieve.mockResolvedValue({ id: 'gpt-image-2' });
     const { checkOpenAIConnectivity } = await import('@/lib/studio/ai-studio');
 
     const result = await checkOpenAIConnectivity();

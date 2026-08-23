@@ -3,6 +3,7 @@ import { formatServiceDate } from '../../lib/booking-date';
 import {
   isFiveMinuteIncrement,
   isValidPassengerCount,
+  findSmallestFittingVehicle,
   meetsAllocationMinimum,
 } from '../../lib/booking-rules';
 
@@ -18,11 +19,23 @@ describe('booking date formatting', () => {
 });
 
 describe('booking constraints', () => {
-  it('accepts only 1–30 passengers', () => {
+  it('accepts only 1–45 passengers', () => {
     expect(isValidPassengerCount(1)).toBe(true);
-    expect(isValidPassengerCount(30)).toBe(true);
-    expect(isValidPassengerCount(31)).toBe(false);
+    expect(isValidPassengerCount(45)).toBe(true);
+    expect(isValidPassengerCount(46)).toBe(false);
     expect(isValidPassengerCount(0)).toBe(false);
+  });
+
+  it('recommends the smallest fitting published vehicle at fleet boundaries', () => {
+    const fleet = [6, 7, 10, 13, 15, 19, 25, 45].map((passengerCapacity) => ({ passengerCapacity }));
+    expect(findSmallestFittingVehicle(fleet, 1)?.passengerCapacity).toBe(6);
+    expect(findSmallestFittingVehicle(fleet, 7)?.passengerCapacity).toBe(7);
+    expect(findSmallestFittingVehicle(fleet, 8)?.passengerCapacity).toBe(10);
+    expect(findSmallestFittingVehicle(fleet, 14)?.passengerCapacity).toBe(15);
+    expect(findSmallestFittingVehicle(fleet, 20)?.passengerCapacity).toBe(25);
+    expect(findSmallestFittingVehicle(fleet, 26)?.passengerCapacity).toBe(45);
+    expect(findSmallestFittingVehicle(fleet, 45)?.passengerCapacity).toBe(45);
+    expect(findSmallestFittingVehicle(fleet, 46)).toBeNull();
   });
 
   it('accepts only five-minute time increments', () => {

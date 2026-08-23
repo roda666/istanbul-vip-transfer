@@ -281,6 +281,20 @@
       "when": 1788700000000,
       "tag": "0039_social_profile_links",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1788800000000,
+      "tag": "0040_research_source_provenance",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1788900000000,
+      "tag": "0041_fleet_restructure",
+      "breakpoints": true
     }
   ]
 }

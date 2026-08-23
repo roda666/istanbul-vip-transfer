@@ -5,6 +5,7 @@ import Link from 'next/link';
 import PageHero from '@/components/PageHero';
 import { getPublishedBlogPosts } from '@/lib/blog-cms';
 import { getBlogPost } from '@/lib/blog-data';
+import SafeArticleImage from '@/components/SafeArticleImage';
 import { SITE } from '@/lib/site-config';
 import { getContactSettings } from '@/lib/site-settings-server';
 
@@ -86,15 +87,11 @@ export default async function BlogPage() {
               >
                 {post.thumbnailSrc && (
                   <div className="aspect-video overflow-hidden flex-shrink-0">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <SafeArticleImage
                       src={post.thumbnailSrc}
                       alt={post.thumbnailAlt}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      loading="lazy"
-                      decoding="async"
-                      width={640}
-                      height={360}
+                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     />
                   </div>
                 )}

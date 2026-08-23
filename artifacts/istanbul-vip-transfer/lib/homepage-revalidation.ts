@@ -1,6 +1,7 @@
 import 'server-only';
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
+import { PUBLIC_CHROME_TAG } from '@/lib/public-chrome-cache';
 import { SUPPORTED_LANGS } from '@/lib/i18n';
 import {
   localizedServiceCategoryPath,
@@ -9,6 +10,7 @@ import {
 
 export function revalidateHomepageLocale(locale: string): void {
   revalidatePath(locale === 'tr' ? '/' : `/${locale}`);
+  revalidateTag(PUBLIC_CHROME_TAG);
 }
 
 /**
@@ -44,6 +46,7 @@ export function revalidatePublicServiceCatalog(options: {
   )];
 
   // Header/Footer receive their catalog through the root public layout.
+  revalidateTag(PUBLIC_CHROME_TAG);
   revalidatePath('/', 'layout');
   revalidatePath('/sitemap.xml');
 

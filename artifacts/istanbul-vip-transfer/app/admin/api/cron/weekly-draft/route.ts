@@ -74,74 +74,77 @@ function fallbackTopic(topicOffset: number) {
  * Creates exactly one draft and never publishes it. The cadence runner owns
  * when this can be called and how many unique items a calendar slot produces.
  */
+type AutomaticTopicSelection = {
+  source: 'gsc' | 'google_ads' | 'ai_estimation';
+  topicTitle: string;
+  primaryKeyword: string;
+  searchIntent: string;
+  targetService: string;
+  dataSourceNote: string;
+};
+
+export async function selectAutomaticTopic(topicOffset: number): Promise<AutomaticTopicSelection> {
+  const { isGscConnected, findKeywordOpportunities } = await import('@/lib/gsc');
+  const { isGoogleAdsConnected, findKeywordOpportunitiesFromAds } = await import('@/lib/google-ads');
+
+  // Known-keyword measurement is deliberately sequential: GSC first, Ads
+  // fallback only when GSC cannot supply a usable opportunity.
+  try {
+    if (await isGscConnected()) {
+      const opportunities = await findKeywordOpportunities(5);
+      const top = opportunities.ok ? opportunities.opportunities[0] : undefined;
+      if (top) {
+        return {
+          source: 'gsc',
+          primaryKeyword: top.query,
+          topicTitle: `${top.query.charAt(0).toUpperCase() + top.query.slice(1)} — Kapsamlı Rehber`,
+          searchIntent: top.reason === 'low_ctr' ? 'informational' : 'commercial',
+          targetService: 'vip transfer',
+          dataSourceNote: `Google Search Console verisi: ${top.impressions.toLocaleString('tr-TR')} gösterim, %${(top.ctr * 100).toFixed(1)} CTR`,
+        };
+      }
+    }
+  } catch {
+    // Continue to the allowed Ads fallback without provider diagnostics.
+  }
+
+  try {
+    if (await isGoogleAdsConnected()) {
+      const top = (await findKeywordOpportunitiesFromAds(5))[0];
+      if (top) {
+        return {
+          source: 'google_ads',
+          primaryKeyword: top.keyword,
+          topicTitle: `${top.keyword.charAt(0).toUpperCase() + top.keyword.slice(1)} — Kapsamlı Rehber`,
+          searchIntent: 'informational',
+          targetService: 'vip transfer',
+          dataSourceNote: `Google Ads Keyword Planner: ~${top.monthlySearches.toLocaleString('tr-TR')} aylık arama, rekabet: ${top.competition}`,
+        };
+      }
+    }
+  } catch {
+    // Both providers are considered unavailable/no-data below.
+  }
+
+  const fallback = fallbackTopic(topicOffset);
+  return {
+    source: 'ai_estimation',
+    topicTitle: fallback.title,
+    primaryKeyword: fallback.keyword,
+    searchIntent: fallback.intent,
+    targetService: fallback.service,
+    dataSourceNote: 'AI tahmini — GSC ve Google Ads kullanılabilir değil veya fırsat döndürmedi',
+  };
+}
+
 async function createAutomaticDraft(topicOffset = 0) {
   try {
     const { db } = await import('@/db');
     const { studioProjects } = await import('@/db/schema');
 
     // ── Pick topic ─────────────────────────────────────────────────────────
-    let topicTitle: string;
-    let primaryKeyword: string;
-    let searchIntent: string;
-    let targetService: string;
-    let dataSourceNote: string;
-
-    // ── Data source priority: GSC → Google Ads Keyword Planner → AI fallback ──
-
-    const { isGscConnected, findKeywordOpportunities } = await import('@/lib/gsc');
-    const { isGoogleAdsConnected, findKeywordOpportunitiesFromAds } = await import('@/lib/google-ads');
-
-    const gscOk  = await isGscConnected();
-    const gadsOk = gscOk ? false : await isGoogleAdsConnected(); // skip Ads check if GSC works
-
-    if (gscOk) {
-      // ── Priority 1: Google Search Console (real traffic data) ─────────────
-      const opResult = await findKeywordOpportunities(5);
-      if (opResult.ok && opResult.opportunities.length > 0) {
-        const top = opResult.opportunities[0];
-        primaryKeyword = top.query;
-        topicTitle     = `${top.query.charAt(0).toUpperCase() + top.query.slice(1)} — Kapsamlı Rehber`;
-        searchIntent   = top.reason === 'low_ctr' ? 'informational' : 'commercial';
-        targetService  = 'vip transfer';
-        dataSourceNote = `Google Search Console verisi: ${top.impressions.toLocaleString('tr-TR')} gösterim, %${(top.ctr * 100).toFixed(1)} CTR`;
-      } else {
-        console.warn('[cron/weekly-draft] GSC connected but no opportunity data:', opResult);
-        // GSC connected but insufficient data — fall to AI
-        const fallback = fallbackTopic(topicOffset);
-        topicTitle     = fallback.title;
-        primaryKeyword = fallback.keyword;
-        searchIntent   = fallback.intent;
-        targetService  = fallback.service;
-        dataSourceNote = 'AI tahmini — GSC veri yetersiz';
-      }
-    } else if (gadsOk) {
-      // ── Priority 2: Google Ads Keyword Planner (search volume data) ───────
-      const adsResult = await findKeywordOpportunitiesFromAds(5);
-      if (adsResult.ok && adsResult.opportunities.length > 0) {
-        const top = adsResult.opportunities[0];
-        primaryKeyword = top.keyword;
-        topicTitle     = `${top.keyword.charAt(0).toUpperCase() + top.keyword.slice(1)} — Kapsamlı Rehber`;
-        searchIntent   = 'informational';
-        targetService  = 'vip transfer';
-        dataSourceNote = `Google Ads Keyword Planner: ~${top.monthlySearches.toLocaleString('tr-TR')} aylık arama, rekabet: ${top.competition}`;
-      } else {
-        console.warn('[cron/weekly-draft] Google Ads connected but no data:', adsResult);
-        const fallback = fallbackTopic(topicOffset);
-        topicTitle     = fallback.title;
-        primaryKeyword = fallback.keyword;
-        searchIntent   = fallback.intent;
-        targetService  = fallback.service;
-        dataSourceNote = 'AI tahmini — Google Ads veri yetersiz';
-      }
-    } else {
-      // ── Priority 3: AI estimation (curated fallback pool) ─────────────────
-      const fallback = fallbackTopic(topicOffset);
-      topicTitle     = fallback.title;
-      primaryKeyword = fallback.keyword;
-      searchIntent   = fallback.intent;
-      targetService  = fallback.service;
-      dataSourceNote = 'AI tahmini — GSC ve Google Ads bağlı değil';
-    }
+    const { source, topicTitle, primaryKeyword, searchIntent, targetService, dataSourceNote } =
+      await selectAutomaticTopic(topicOffset);
 
     // ── Create studio project ──────────────────────────────────────────────
     const config = {
@@ -243,7 +246,7 @@ async function createAutomaticDraft(topicOffset = 0) {
       projectId: project.id,
       title: topicTitle,
       keyword: primaryKeyword,
-      dataSource: gscOk ? 'gsc' : 'ai_estimation',
+      dataSource: source,
       dataSourceNote,
     });
   } catch (err) {

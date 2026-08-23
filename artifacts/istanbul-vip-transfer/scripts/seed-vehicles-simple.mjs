@@ -3,13 +3,14 @@
  * Run: node scripts/seed-vehicles-simple.mjs
  */
 import postgres from '../node_modules/postgres/src/index.js';
+import { ARCHIVED_SLUGS, VEHICLES } from './fleet-data.mjs';
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) { console.error('DATABASE_URL not set'); process.exit(1); }
 
 const sql = postgres(DATABASE_URL, { ssl: 'require', max: 2, idle_timeout: 0 });
 
-const VEHICLES = [
+const LEGACY_VEHICLES = [
   {
     name: 'Mercedes Vito',
     slug: 'mercedes-vito',
@@ -273,6 +274,9 @@ async function main() {
         luggage_capacity           = EXCLUDED.luggage_capacity,
         features                   = EXCLUDED.features,
         display_order              = EXCLUDED.display_order,
+        vehicle_type               = EXCLUDED.vehicle_type,
+        cover_image                = EXCLUDED.cover_image,
+        cover_image_alt            = EXCLUDED.cover_image_alt,
         is_featured                = EXCLUDED.is_featured,
         status                     = EXCLUDED.status,
         name_translations          = EXCLUDED.name_translations,
@@ -282,6 +286,8 @@ async function main() {
     `;
     console.log(`  ✅ ${v.name}`);
   }
+  await sql`UPDATE vehicles SET status = 'ARCHIVED', archived_at = now(), updated_at = now()
+    WHERE slug IN ${sql(ARCHIVED_SLUGS)} AND status <> 'ARCHIVED'`;
 
   console.log('\n✅ Vehicle seeding complete!');
   await sql.end();

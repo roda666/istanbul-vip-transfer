@@ -13,7 +13,8 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/auth/session';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
+import { PUBLIC_CHROME_TAG } from '@/lib/public-chrome-cache';
 
 const HOMEPAGE_SLUG = 'ana-sayfa';
 
@@ -111,6 +112,7 @@ export async function POST(
       });
 
       revalidatePath(localePathOf(locale));
+      revalidateTag(PUBLIC_CHROME_TAG);
       return NextResponse.json({ ok: true, action, locale });
     }
 
@@ -189,6 +191,7 @@ export async function POST(
     });
 
     revalidatePath(localePathOf(locale));
+    revalidateTag(PUBLIC_CHROME_TAG);
 
     return NextResponse.json({ ok: true, action, locale, newStatus: update.status });
   } catch (err) {

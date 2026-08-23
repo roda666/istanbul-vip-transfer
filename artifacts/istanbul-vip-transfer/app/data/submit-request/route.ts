@@ -133,7 +133,7 @@ function validateBookingConstraints(
   serviceType: string,
 ): string | null {
   if (!isValidPassengerCount(getFormString(formData, 'yolcuSayisi'))) {
-    return 'Passenger count must be between 1 and 30.';
+    return 'Passenger count must be between 1 and 45.';
   }
 
   const minute = getFormString(formData, 'saatDakika');

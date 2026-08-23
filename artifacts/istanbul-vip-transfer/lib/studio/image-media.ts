@@ -1,4 +1,6 @@
-/** Pure media checks shared by server-side image storage flows and unit tests. */
+import sharp from 'sharp';
+
+/** Server-side media checks shared by image storage flows and unit tests. */
 export type VerifiedImageFormat = {
   extension: 'png' | 'webp';
   contentType: 'image/png' | 'image/webp';
@@ -20,4 +22,70 @@ export function verifyLegacyImageFormat(
     && String.fromCharCode(...bytes.slice(8, 12)) === 'WEBP';
   if (mime === 'image/webp' && isWebp) return { extension: 'webp', contentType: 'image/webp' };
   return null;
+}
+
+/**
+ * Bounds for permanent AI-generated cover images. The input is the 3:2 image
+ * returned by GPT Image; keeping it within this desktop landscape box prevents
+ * an unnecessarily large original from becoming the storage source.
+ */
+export const GENERATED_IMAGE_MAX_WIDTH = 1_600;
+export const GENERATED_IMAGE_MAX_HEIGHT = 900;
+const MAX_GENERATED_IMAGE_BYTES = 10 * 1024 * 1024;
+const MAX_GENERATED_IMAGE_PIXELS = 40_000_000;
+
+/**
+ * Decode and normalize an AI image for permanent storage.
+ *
+ * Sharp's output pipeline deliberately does not call `withMetadata()`, so
+ * EXIF/XMP/IPTC and other unnecessary source metadata are not copied to the
+ * stored WebP. `null` is intentionally returned for malformed or unsafe input
+ * so callers can surface their existing generic image error without exposing
+ * decoder/provider details.
+ */
+export async function optimizeGeneratedImage(bytes: Uint8Array): Promise<Uint8Array | null> {
+  if (bytes.byteLength === 0 || bytes.byteLength > MAX_GENERATED_IMAGE_BYTES) return null;
+
+  try {
+    const source = sharp(Buffer.from(bytes), {
+      failOn: 'error',
+      limitInputPixels: MAX_GENERATED_IMAGE_PIXELS,
+      sequentialRead: true,
+    });
+    const metadata = await source.metadata();
+    if (!metadata.width || !metadata.height) return null;
+
+    const output = await source
+      .rotate()
+      .resize({
+        width: GENERATED_IMAGE_MAX_WIDTH,
+        height: GENERATED_IMAGE_MAX_HEIGHT,
+        fit: 'inside',
+        withoutEnlargement: true,
+      })
+      .webp({ quality: 82, effort: 5, smartSubsample: true })
+      .toBuffer();
+
+    // Verify the encoded result as well as the source: storage must only ever
+    // receive a bounded WebP, even if a decoder behavior changes.
+    const result = await sharp(output, {
+      failOn: 'error',
+      limitInputPixels: MAX_GENERATED_IMAGE_PIXELS,
+    }).metadata();
+    if (
+      result.format !== 'webp'
+      || !result.width
+      || !result.height
+      || result.width > GENERATED_IMAGE_MAX_WIDTH
+      || result.height > GENERATED_IMAGE_MAX_HEIGHT
+      || output.byteLength === 0
+      || output.byteLength > MAX_GENERATED_IMAGE_BYTES
+    ) {
+      return null;
+    }
+
+    return new Uint8Array(output);
+  } catch {
+    return null;
+  }
 }

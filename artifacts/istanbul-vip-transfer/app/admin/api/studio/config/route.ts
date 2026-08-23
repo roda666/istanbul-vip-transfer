@@ -74,7 +74,7 @@ export async function GET() {
     ? import('@/lib/studio/ai-studio').then(({ checkOpenAIConnectivity }) => checkOpenAIConnectivity())
     : Promise.resolve({
         chat: { ok: false, model: null, error: 'OpenAI anahtarı yapılandırılmamış.' },
-        image: { ok: false, model: 'dall-e-3' as const, error: 'OpenAI anahtarı yapılandırılmamış.' },
+        image: { ok: false, model: process.env.OPENAI_IMAGE_MODEL?.trim() || 'gpt-image-2', error: 'OpenAI anahtarı yapılandırılmamış.' },
       });
 
   const [database, cms, migrations, storage, openai] = await Promise.all([

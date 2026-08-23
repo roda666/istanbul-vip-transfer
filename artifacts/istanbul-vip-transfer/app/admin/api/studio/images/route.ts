@@ -87,6 +87,19 @@ function parsePrivateObjectDir(dir: string) {
   return slash < 0 ? { bucket: cleaned, prefix: '' } : { bucket: cleaned.slice(0, slash), prefix: cleaned.slice(slash + 1) };
 }
 
+/** Return an exact, fetch-compatible view without exposing a larger Buffer pool. */
+function exactArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const { buffer, byteOffset, byteLength } = bytes;
+  if (buffer instanceof ArrayBuffer) {
+    return byteOffset === 0 && byteLength === buffer.byteLength
+      ? buffer
+      : buffer.slice(byteOffset, byteOffset + byteLength);
+  }
+  // SharedArrayBuffer is not a valid BodyInit. This fallback copies only the
+  // intended view, never an entire shared backing store.
+  return Uint8Array.from(bytes).buffer;
+}
+
 async function putPrivateWebp(entityId: string, bytes: Uint8Array): Promise<{ ok: true } | { ok: false; message: string }> {
   const privateDir = process.env.PRIVATE_OBJECT_DIR?.trim();
   if (!privateDir) return { ok: false, message: 'Görsel depolama hizmeti yapılandırılmamış.' };
@@ -110,7 +123,7 @@ async function putPrivateWebp(entityId: string, bytes: Uint8Array): Promise<{ ok
     const upload = await fetch(signed.signed_url, {
       method: 'PUT',
       headers: { 'Content-Type': 'image/webp', 'Content-Length': String(bytes.byteLength) },
-      body: bytes,
+      body: exactArrayBuffer(bytes),
       signal: AbortSignal.timeout(60_000),
     });
     return upload.ok ? { ok: true } : { ok: false, message: 'Görsel depolamaya kaydedilemedi.' };

@@ -272,8 +272,8 @@ const ar: Dictionary = {
   },
   vehicles: {
     sectionLabel: 'أسطولنا',
-    heading: 'أسطول سيارات VIP لدينا',
-    subheading: 'خياران من أرقى السيارات لكل احتياج — كلاهما مجهز بالكامل لراحتك.',
+    heading: 'أسطول نقل VIP لدينا',
+    subheading: 'خيارات مريحة من الميني فان والميني باص والحافلة المتوسطة والحافلة لكل حجم مجموعة.',
     passengers: 'ركاب',
     luggage: 'أمتعة',
     popular: 'الأكثر شعبية',
@@ -317,8 +317,8 @@ const ar: Dictionary = {
   pages: {
     servicesTitle: 'خدماتنا',
     servicesSubtitle: 'جميع خدمات النقل والجولات في إسطنبول وخارجها بسيارات مرسيدس فيتو وسبرينتر.',
-    vehiclesTitle: 'أسطول مركباتنا الفاخرة',
-    vehiclesSubtitle: 'من المسافرين الأفراد إلى المجموعات الكبيرة — خياران من سيارات VIP الفاخرة لكل احتياج.',
+    vehiclesTitle: 'أسطول نقل VIP لدينا',
+    vehiclesSubtitle: 'خيارات مريحة من الميني فان والميني باص والحافلة المتوسطة والحافلة لكل حجم مجموعة.',
     aboutTitle: 'من نحن',
     aboutSubtitle: 'تعرّف على فلسفتنا في الخدمة وأسطول سياراتنا والتزامنا برضا العملاء في VIP Transfer Istanbul.',
     contactTitle: 'اتصل بنا',

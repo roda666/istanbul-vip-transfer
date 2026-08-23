@@ -2,6 +2,10 @@ import 'server-only';
 
 import { revalidatePath } from 'next/cache';
 import { SUPPORTED_LANGS } from '@/lib/i18n';
+import {
+  localizedServiceCategoryPath,
+  localizedStaticPath,
+} from '@/lib/localized-service-path';
 
 export function revalidateHomepageLocale(locale: string): void {
   revalidatePath(locale === 'tr' ? '/' : `/${locale}`);
@@ -21,4 +25,33 @@ export function revalidateAllHomepagesForServiceChange(): void {
 /** A localized service card can change independently of the Turkish source. */
 export function revalidateHomepageForServiceTranslation(locale: string): void {
   revalidateHomepageLocale(locale);
+}
+
+/**
+ * Invalidate every public surface derived from service/category placement.
+ * Passing a locale limits localized translation updates; source/category
+ * mutations use the default full public language set.
+ */
+export function revalidatePublicServiceCatalog(options: {
+  categorySlugs?: Array<string | null | undefined>;
+  locales?: string[];
+} = {}): void {
+  const locales = options.locales?.length
+    ? [...new Set(options.locales)]
+    : [...new Set(['tr', ...SUPPORTED_LANGS])];
+  const categorySlugs = [...new Set(
+    (options.categorySlugs ?? []).filter((slug): slug is string => Boolean(slug)),
+  )];
+
+  // Header/Footer receive their catalog through the root public layout.
+  revalidatePath('/', 'layout');
+  revalidatePath('/sitemap.xml');
+
+  for (const locale of locales) {
+    revalidateHomepageLocale(locale);
+    revalidatePath(localizedStaticPath('hizmetler', locale));
+    for (const categorySlug of categorySlugs) {
+      revalidatePath(localizedServiceCategoryPath(categorySlug, locale));
+    }
+  }
 }

@@ -8,6 +8,7 @@ import type { ServiceCategoryItem } from '@/lib/service-category-server';
 import { RTL_LOCALES } from '@/lib/i18n/locale-registry';
 import { localizedServiceCategoryPath, localizedStaticPath } from '@/lib/localized-service-path';
 import { SITE } from '@/lib/site-config';
+import { getPublicServiceCatalog } from '@/lib/public-service-catalog';
 
 type CategoryPageCopy = {
   allServices: string;
@@ -51,6 +52,7 @@ export default async function ServiceCategoryPageContent({ locale, category }: P
   const servicesPath = localizedStaticPath('hizmetler', locale);
   const categoryPath = localizedServiceCategoryPath(category.slug, locale);
   const pageUrl = `${SITE.siteUrl}${categoryPath}`;
+  const catalog = await getPublicServiceCatalog(locale);
   const breadcrumb = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -94,7 +96,12 @@ export default async function ServiceCategoryPageContent({ locale, category }: P
       </section>
 
       <section className="py-16 md:py-20 max-w-7xl mx-auto px-5 md:px-8">
-        <HizmetlerServiceGridCms locale={locale} categories={[category]} categorySlug={category.slug} />
+        <HizmetlerServiceGridCms
+          locale={locale}
+          categories={[category]}
+          services={catalog.services}
+          categorySlug={category.slug}
+        />
       </section>
 
       <BookingForm />

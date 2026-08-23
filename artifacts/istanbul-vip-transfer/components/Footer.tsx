@@ -6,12 +6,13 @@ import { useLang } from '@/lib/i18n/context';
 import type { HomepageSections } from '@/lib/homepage-types';
 import { useSiteSettings } from '@/components/SiteSettingsContext';
 import { localizedPublicPath, localizedServicePath } from '@/lib/localized-service-path';
+import type { PublicServiceNavigationItem } from '@/lib/public-service-catalog-types';
 import LanguageSelector from './LanguageSelector';
 import { trackEvent } from '@/lib/analytics';
 
 interface FooterProps {
-  /** Slugs where admin set showInNav=false — passed from the root server layout. */
-  hiddenNavSlugs?: string[];
+  /** Active, published services selected for public navigation by the CMS. */
+  serviceLinks?: PublicServiceNavigationItem[];
   /** CMS footer copy is intentionally scoped to the shared public footer. */
   homepageFooter?: HomepageSections['footerSection'] | null;
 }
@@ -131,13 +132,12 @@ function TursabBadge({ tursabNo, label }: { tursabNo: string; label: string }) {
   );
 }
 
-export default function Footer({ hiddenNavSlugs, homepageFooter }: FooterProps = {}) {
+export default function Footer({ serviceLinks = [], homepageFooter }: FooterProps = {}) {
   const { lang, dict } = useLang();
   const cs = useSiteSettings();
   const footer = homepageFooter;
   const p = (path: string) => localizedPublicPath(path, lang);
   const servicePath = (slug: string) => localizedServicePath(slug, lang);
-  const hidden = new Set(hiddenNavSlugs ?? []);
 
   const quickLinks = [
     { label: dict.footer.homeLink,        href: p('/') },
@@ -149,15 +149,10 @@ export default function Footer({ hiddenNavSlugs, homepageFooter }: FooterProps =
     { label: dict.footer.contactLink,     href: p('/iletisim') },
   ];
 
-  const services = [
-    { slug: 'istanbul-havalimani-transfer',       label: dict.nav.istTransfer,       href: servicePath('istanbul-havalimani-transfer') },
-    { slug: 'sabiha-gokcen-havalimani-transfer',  label: dict.nav.sawTransfer,       href: servicePath('sabiha-gokcen-havalimani-transfer') },
-    { slug: 'vip-transfer',                       label: dict.nav.vipTransfer,       href: servicePath('vip-transfer') },
-    { slug: 'otel-transfer',                      label: dict.nav.hotelTransfer,     href: servicePath('otel-transfer') },
-    { slug: 'sehirler-arasi-transfer',            label: dict.nav.intercityTransfer, href: servicePath('sehirler-arasi-transfer') },
-    { slug: 'soforlu-arac-kiralama',              label: dict.nav.chauffeur,         href: servicePath('soforlu-arac-kiralama') },
-    { slug: 'kurumsal-vip-transfer',              label: dict.nav.corporateTransfer, href: servicePath('kurumsal-vip-transfer') },
-  ].filter(s => !hidden.has(s.slug));
+  const services = serviceLinks.map((service) => ({
+    ...service,
+    href: servicePath(service.slug),
+  }));
 
   const linkHoverStyle = {
     color: 'rgba(255,255,255,0.65)',

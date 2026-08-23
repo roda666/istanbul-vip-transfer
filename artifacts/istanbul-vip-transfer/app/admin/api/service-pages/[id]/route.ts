@@ -13,7 +13,9 @@ import { requireAdminSession } from '@/lib/auth/session';
 import {
   revalidateAllHomepagesForServiceChange,
   revalidateHomepageForServiceTranslation,
+  revalidatePublicServiceCatalog,
 } from '@/lib/homepage-revalidation';
+import { invalidateServiceCategories } from '@/lib/service-category-server';
 import { getServicePageAdminRecord, ENTITY_TYPE } from '@/lib/service-page-cms';
 import {
   parseServicePageBody,
@@ -271,10 +273,34 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const bodyObj = data.body as ServicePageBody;
   const bodyStr = JSON.stringify(bodyObj);
   const srcHash = computeTranslatableHash(bodyObj);
+  const savingDraftOfPublished = data.saveAsDraft && row.status === 'PUBLISHED';
 
   const { db }      = await import('@/db');
-  const { content } = await import('@/db/schema');
-  const { eq }      = await import('drizzle-orm');
+  const { content, serviceCategories } = await import('@/db/schema');
+  const { eq, and }      = await import('drizzle-orm');
+
+  // Categories define the public navigation/listing contract. A service may
+  // never be published into an unknown or inactive category, otherwise it can
+  // appear in cards/footer links without a valid navigation group or category
+  // page. Pending drafts of an already-published page leave live data intact.
+  if (!savingDraftOfPublished) {
+    if (!data.saveAsDraft && !data.category) {
+      return NextResponse.json({ error: 'Yayınlamak için aktif bir hizmet kategorisi seçin.' }, { status: 422 });
+    }
+    if (data.category) {
+      const [activeCategory] = await db
+        .select({ slug: serviceCategories.slug })
+        .from(serviceCategories)
+        .where(and(
+          eq(serviceCategories.slug, data.category),
+          eq(serviceCategories.isActive, true),
+        ))
+        .limit(1);
+      if (!activeCategory) {
+        return NextResponse.json({ error: 'Seçilen hizmet kategorisi bulunamadı veya pasif.' }, { status: 422 });
+      }
+    }
+  }
 
   // Auto-generate canonical URL (Turkish pages use /tr/ prefix — that's where
   // ServicePageRenderer runs via the [lang]/[...slug] catch-all route).
@@ -285,8 +311,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   // Instead the incoming body is stored in `draftBody`; the live `body` is
   // left untouched so public visitors see no change.  On "Kaydet ve Yayımla"
   // the submitted body is promoted to `body` and `draftBody` is cleared.
-  const savingDraftOfPublished = data.saveAsDraft && row.status === 'PUBLISHED';
-
   const updateFields = savingDraftOfPublished
     ? {
         // ONLY store the pending body draft. No live field is changed — title,
@@ -322,7 +346,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (db.update(content).set(updateFields as any).where(eq(content.id, id)));
-  if (!savingDraftOfPublished) revalidateAllHomepagesForServiceChange();
+  if (!savingDraftOfPublished) {
+    invalidateServiceCategories();
+    revalidateAllHomepagesForServiceChange();
+    revalidatePublicServiceCatalog({
+      categorySlugs: [row.category, data.category],
+    });
+  }
 
   // Write audit log
   await writeAuditLog({
@@ -392,7 +422,9 @@ export async function POST(req: NextRequest, { params }: Params) {
       .set({ status: 'ARCHIVED', updatedAt: new Date() } as never)
       .where(eq(content.id, id));
     await writeAuditLog({ contentId: id, action: 'archive_source', adminUserId });
+    invalidateServiceCategories();
     revalidateAllHomepagesForServiceChange();
+    revalidatePublicServiceCatalog({ categorySlugs: [row.category] });
     const record = await getServicePageAdminRecord(id);
     return NextResponse.json({ record });
   }
@@ -406,7 +438,9 @@ export async function POST(req: NextRequest, { params }: Params) {
       } as never)
       .where(eq(content.id, id));
     await writeAuditLog({ contentId: id, action: 'publish_source', adminUserId });
+    invalidateServiceCategories();
     revalidateAllHomepagesForServiceChange();
+    revalidatePublicServiceCatalog({ categorySlugs: [row.category] });
     const record = await getServicePageAdminRecord(id);
     return NextResponse.json({ record });
   }
@@ -416,7 +450,9 @@ export async function POST(req: NextRequest, { params }: Params) {
       .set({ status: 'DRAFT', updatedAt: new Date() } as never)
       .where(eq(content.id, id));
     await writeAuditLog({ contentId: id, action: 'unpublish_source', adminUserId });
+    invalidateServiceCategories();
     revalidateAllHomepagesForServiceChange();
+    revalidatePublicServiceCatalog({ categorySlugs: [row.category] });
     const record = await getServicePageAdminRecord(id);
     return NextResponse.json({ record });
   }
@@ -531,6 +567,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       .where(eq(contentTranslations.id, existing.id));
     await writeAuditLog({ contentId: id, action: 'publish_translation', locale, adminUserId });
     revalidateHomepageForServiceTranslation(locale);
+    revalidatePublicServiceCatalog({ categorySlugs: [row.category], locales: [locale] });
   } else if (action === 'unpublish') {
     await db
       .update(contentTranslations)
@@ -538,6 +575,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       .where(eq(contentTranslations.id, existing.id));
     await writeAuditLog({ contentId: id, action: 'unpublish_translation', locale, adminUserId });
     revalidateHomepageForServiceTranslation(locale);
+    revalidatePublicServiceCatalog({ categorySlugs: [row.category], locales: [locale] });
   }
 
   const record = await getServicePageAdminRecord(id);

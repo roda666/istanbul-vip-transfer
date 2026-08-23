@@ -15,7 +15,8 @@ import lazyLoad from 'next/dynamic';
 import { getHomepageTransferRoutes } from '@/lib/transfer-route-pages';
 import { HomepageCmsProvider } from '@/lib/homepage-cms-context';
 import { getPublishedHomepageData } from '@/lib/homepage-cms';
-import { getServiceVisibilityMap } from '@/lib/service-page-cms';
+import { getPublicServiceCatalog } from '@/lib/public-service-catalog';
+import { localizedServicePath } from '@/lib/localized-service-path';
 import {
   getPublishedHomepageFaqs,
   getPublishedHomepageReviews,
@@ -44,7 +45,35 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { lang } = await params;
-  if (!isValidLang(lang)) return {};
+  if (!isValidLang(lang)) {
+    // See the matching render branch: this root dynamic segment also serves
+    // published CMS services whose slug has no hand-authored route folder.
+    const catalog = await getPublicServiceCatalog('tr');
+    const service = catalog.services.find((item) => item.slug === lang);
+    if (!service) return {};
+
+    const { getPublishedServicePage } = await import('@/lib/service-page-cms');
+    const page = await getPublishedServicePage(service.slug, 'tr');
+    const title = page?.seoTitle ?? page?.title ?? service.title;
+    const description = page?.seoDescription ?? service.excerpt ?? undefined;
+    const url = `${SITE.siteUrl}${localizedServicePath(service.slug, 'tr')}`;
+
+    return {
+      title,
+      description,
+      alternates: { canonical: url },
+      openGraph: {
+        title,
+        description,
+        url,
+        siteName: 'VIP Transfer Istanbul',
+        locale: 'tr_TR',
+        type: 'website',
+        images: [SITE.ogImage],
+      },
+      robots: { index: true, follow: true },
+    };
+  }
 
   const alternates = await buildAlternates('/', [...SUPPORTED_LANGS]);
 
@@ -103,24 +132,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function TranslatedHomePage({ params }: Props) {
   const { lang } = await params;
-  if (!isValidLang(lang)) notFound();
+  if (!isValidLang(lang)) {
+    // The [lang] segment is also Next's root dynamic fallback. A published CMS
+    // service with a non-registry slug is served here at /{service-slug}.
+    const catalog = await getPublicServiceCatalog('tr');
+    const service = catalog.services.find((item) => item.slug === lang);
+    if (!service) notFound();
+    const { default: ServicePageRenderer } = await import('@/components/ServicePageRenderer');
+    return <ServicePageRenderer slug={service.slug} lang="tr" canonicalPath={localizedServicePath(service.slug, 'tr')} />;
+  }
 
   // Read published CMS data and service visibility server-side
-  const [cmsData, visibilityMap, cs, transferRoutes, reviews, homepageFaqs, serviceCopy] = await Promise.all([
+  const [cmsData, serviceCatalog, cs, transferRoutes, reviews, homepageFaqs, serviceCopy] = await Promise.all([
     getPublishedHomepageData(lang),
-    getServiceVisibilityMap(),
+    getPublicServiceCatalog(lang),
     getContactSettings(),
     getHomepageTransferRoutes().catch(() => []),
     getPublishedHomepageReviews(lang),
     getPublishedHomepageFaqs(lang),
     getPublishedHomepageServiceCopy(lang),
   ]);
-
-  const hiddenServiceSlugs = new Set(
-    [...visibilityMap.entries()]
-      .filter(([, flags]) => !flags.showOnHomepage)
-      .map(([slug]) => slug)
-  );
 
   const pageUrl = `${SITE.siteUrl}/${lang}`;
   const inLanguage: Record<string, string> = {
@@ -150,7 +181,7 @@ export default async function TranslatedHomePage({ params }: Props) {
       <Hero homepageMode />
       <BookingForm homepageMode />
       <VehicleFleet homepageMode />
-      <Services hiddenSlugs={hiddenServiceSlugs} serviceCopy={serviceCopy} homepageMode />
+      <Services catalogServices={serviceCatalog.services} serviceCopy={serviceCopy} homepageMode />
       <PopularRoutesSection routes={transferRoutes} />
       <TrustSignals homepageMode />
       <Reviews items={reviews} homepageMode />

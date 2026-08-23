@@ -117,8 +117,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!isValidLang(lang)) return {};
 
   const requestedPath = slug.join('/');
-  const serviceSlug = resolveLocalizedServiceSlug(requestedPath, lang);
   const staticSlug = resolveLocalizedStaticSlug(requestedPath, lang);
+  const dynamicService = !staticSlug && slug.length === 1
+    ? await (await import('@/lib/service-page-cms')).getPublishedServicePage(requestedPath, lang)
+    : null;
+  const serviceSlug = resolveLocalizedServiceSlug(requestedPath, lang)
+    ?? (dynamicService ? requestedPath : null)
+    ?? null;
   const categorySlug = resolveLocalizedServiceCategoryPath(requestedPath, lang);
   const category = categorySlug
     ? (await getServiceCategories(lang)).find((item) => item.slug === categorySlug) ?? null
@@ -215,8 +220,13 @@ export default async function LocalizedPassthrough({ params }: Props) {
   if (!isValidLang(lang)) notFound();
 
   const requestedPath = slug.join('/');
-  const serviceSlug = resolveLocalizedServiceSlug(requestedPath, lang);
   const staticSlug = resolveLocalizedStaticSlug(requestedPath, lang);
+  const dynamicService = !staticSlug && slug.length === 1
+    ? await (await import('@/lib/service-page-cms')).getPublishedServicePage(requestedPath, lang)
+    : null;
+  const serviceSlug = resolveLocalizedServiceSlug(requestedPath, lang)
+    ?? (dynamicService ? requestedPath : null)
+    ?? null;
   const categorySlug = resolveLocalizedServiceCategoryPath(requestedPath, lang);
   const category = categorySlug
     ? (await getServiceCategories(lang)).find((item) => item.slug === categorySlug) ?? null

@@ -4,6 +4,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { invalidateServiceCategories } from '@/lib/service-category-server';
+import { revalidatePublicServiceCatalog } from '@/lib/homepage-revalidation';
 
 // ── Slug helper ───────────────────────────────────────────────────────────────
 
@@ -145,6 +146,7 @@ export async function POST(request: NextRequest) {
     }).catch(() => {});
 
     invalidateServiceCategories();
+    revalidatePublicServiceCatalog({ categorySlugs: [slug] });
     return NextResponse.json({ category: { ...created, serviceCount: 0 } }, { status: 201 });
   } catch (err: unknown) {
     const msg = String(err);

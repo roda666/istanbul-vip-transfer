@@ -12,8 +12,11 @@ import 'server-only';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, ArrowLeft } from 'lucide-react';
-import { getPublishedServiceList } from '@/lib/service-page-cms-list';
-import { getServiceCategories, type ServiceCategoryItem } from '@/lib/service-category-server';
+import { getPublicServiceCatalog } from '@/lib/public-service-catalog';
+import type {
+  PublicServiceCatalogItem,
+  PublicServiceCategory,
+} from '@/lib/public-service-catalog-types';
 import { RTL_LOCALES } from '@/lib/i18n/locale-registry';
 import { isolateLtrValues } from '@/lib/i18n/bidi';
 import { localizedServicePath } from '@/lib/localized-service-path';
@@ -55,23 +58,24 @@ function serviceHref(slug: string, locale: string): string {
 
 interface Props {
   locale:       string;
-  categories?:  ServiceCategoryItem[];
+  categories?:  PublicServiceCategory[];
+  services?:    PublicServiceCatalogItem[];
   categorySlug?: string;
 }
 
 export default async function HizmetlerServiceGridCms({
   locale,
   categories: catsProp,
+  services: servicesProp,
   categorySlug,
 }: Props) {
   const isRtl = RTL_LOCALES.includes(locale);
   const Arrow = isRtl ? ArrowLeft : ArrowRight;
   const moreLabel = MORE_LABEL[locale] ?? MORE_LABEL.en;
 
-  const [services, categories] = await Promise.all([
-    getPublishedServiceList(locale),
-    catsProp ? Promise.resolve(catsProp) : getServiceCategories(locale),
-  ]);
+  const catalog = await getPublicServiceCatalog(locale);
+  const services = servicesProp ?? catalog.services;
+  const categories = catsProp ?? catalog.categories;
 
   const visibleServices = categorySlug
     ? services.filter((service) => service.category === categorySlug)

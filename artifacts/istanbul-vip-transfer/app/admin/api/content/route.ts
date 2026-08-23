@@ -116,6 +116,14 @@ export async function POST(request: NextRequest) {
       { status: 422 },
     );
   }
+  if (data.contentType === 'SERVICE') {
+    return NextResponse.json(
+      {
+        error: 'Hizmetleri yayımlamak için Hizmet Sayfaları editörünü kullanın. Bu genel form hizmet sayfası içeriği ve kategori sözleşmesini oluşturmaz.',
+      },
+      { status: 422 },
+    );
+  }
 
   const { sanitizeHtml, sanitizeText } = await import('@/lib/sanitize');
 

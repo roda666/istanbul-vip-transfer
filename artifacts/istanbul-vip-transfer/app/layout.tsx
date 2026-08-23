@@ -5,7 +5,7 @@ import PublicLayoutWrapper from '@/components/PublicLayoutWrapper';
 import WebVitalsReporter from '@/components/WebVitalsReporter';
 import GoogleAnalyticsConsent from '@/components/GoogleAnalyticsConsent';
 import { SITE } from '@/lib/site-config';
-import { getServiceVisibilityMap } from '@/lib/service-page-cms';
+import { getPublicServiceCatalog } from '@/lib/public-service-catalog';
 import { getPublishedHomepageData } from '@/lib/homepage-cms';
 import { getContactSettings } from '@/lib/site-settings-server';
 import { SiteSettingsProvider } from '@/components/SiteSettingsContext';
@@ -59,8 +59,8 @@ export const metadata: Metadata = {
   },
 };
 
-// Force-dynamic ensures the root layout re-runs on every request so that
-// showInNav visibility changes take effect in Header/Footer immediately.
+// Force-dynamic ensures the root layout re-runs on every request so service
+// category moves and visibility changes take effect in Header/Footer immediately.
 export const dynamic = 'force-dynamic';
 
 export default async function RootLayout({
@@ -74,16 +74,18 @@ export default async function RootLayout({
   const initialLang = activeLanguage?.code ?? 'tr';
   const initialDirection = activeLanguage?.direction ?? 'ltr';
 
-  // Fetch nav visibility server-side so Header can filter showInNav=false items.
-  // Gracefully falls back to an empty array (all nav items shown) if DB is unavailable.
-  const [visibilityMap, contactSettings, homepageCmsData] = await Promise.all([
-    getServiceVisibilityMap().catch(() => new Map<string, { showOnHomepage: boolean; showInNav: boolean }>()),
+  const [serviceCatalog, contactSettings, homepageCmsData] = await Promise.all([
+    getPublicServiceCatalog(initialLang).catch(() => ({
+      categories: [],
+      services: [],
+      navigationGroups: [],
+    })),
     getContactSettings(),
     getPublishedHomepageData(initialLang),
   ]);
-  const hiddenNavSlugs = [...visibilityMap.entries()]
-    .filter(([, flags]) => !flags.showInNav)
-    .map(([slug]) => slug);
+  const footerServiceLinks = serviceCatalog.services
+    .filter((service) => service.showInNav)
+    .map((service) => ({ slug: service.slug, label: service.title }));
 
   return (
     <html lang={initialLang} dir={initialDirection} className={`${playfairDisplay.variable} ${inter.variable}`}>
@@ -96,7 +98,8 @@ export default async function RootLayout({
         <SiteSettingsProvider settings={contactSettings}>
           <PublicLayoutWrapper
             initialLang={initialLang}
-            hiddenNavSlugs={hiddenNavSlugs}
+            serviceNavigationGroups={serviceCatalog.navigationGroups}
+            serviceLinks={footerServiceLinks}
             hasCookieConsentDecision={hasCookieConsentDecision}
             homepageFooter={homepageCmsData?.footerSection ?? null}
           >

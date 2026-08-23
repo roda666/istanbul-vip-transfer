@@ -8,15 +8,9 @@
  */
 import 'server-only';
 import { parseServicePageBody } from './service-page-types';
+import type { PublicServiceCatalogItem } from './public-service-catalog-types';
 
-export interface PublishedServiceListItem {
-  slug:         string;
-  title:        string;
-  excerpt:      string | null;
-  category:     string | null;
-  displayOrder: number;
-  heroImage:    string | null;
-}
+export type PublishedServiceListItem = PublicServiceCatalogItem;
 
 /**
  * Returns all PUBLISHED, active service pages for the given locale.
@@ -45,6 +39,9 @@ export async function getPublishedServiceList(
           category:     content.category,
           displayOrder: content.displayOrder,
           heroImage:    content.heroImage,
+          body:         content.body,
+          showOnHomepage: content.showOnHomepage,
+          showInNav: content.showInNav,
         })
         .from(content)
         .where(and(
@@ -54,13 +51,17 @@ export async function getPublishedServiceList(
         ))
         .orderBy(asc(content.displayOrder));
 
-      return rows.map((r) => ({
+      return rows
+        .filter((r) => Boolean(parseServicePageBody(r.body)))
+        .map((r) => ({
         slug:         r.slug,
         title:        r.title,
         excerpt:      r.excerpt ?? null,
         category:     r.category ?? null,
         displayOrder: r.displayOrder ?? 99,
         heroImage:    r.heroImage ?? null,
+        showOnHomepage: r.showOnHomepage,
+        showInNav: r.showInNav,
       }));
     }
 
@@ -74,6 +75,9 @@ export async function getPublishedServiceList(
         category:     content.category,
         displayOrder: content.displayOrder,
         heroImage:    content.heroImage,
+          sourceBody:  content.body,
+          showOnHomepage: content.showOnHomepage,
+          showInNav: content.showInNav,
       })
       .from(content)
       .innerJoin(
@@ -94,7 +98,11 @@ export async function getPublishedServiceList(
       .orderBy(asc(content.displayOrder));
 
     return rows
-      .filter((r): r is typeof r & { txTitle: string } => Boolean(r.txTitle))
+      .filter((r): r is typeof r & { txTitle: string } =>
+        Boolean(r.txTitle)
+          && Boolean(parseServicePageBody(r.sourceBody))
+          && Boolean(parseServicePageBody(r.txBody)),
+      )
       .map((r) => {
         const translatedBody = parseServicePageBody(r.txBody);
         // Older translation seeds did not populate `excerpt`. Use copy from
@@ -112,6 +120,8 @@ export async function getPublishedServiceList(
           category:     r.category ?? null,
           displayOrder: r.displayOrder ?? 99,
           heroImage:    r.heroImage ?? null,
+          showOnHomepage: r.showOnHomepage,
+          showInNav: r.showInNav,
         };
       });
   } catch {

@@ -1,8 +1,16 @@
 import type { MetadataRoute } from 'next';
 import { SITE } from '@/lib/site-config';
-import { localizedServicePath, localizedStaticPath, localizedTransferRoutePath } from '@/lib/localized-service-path';
+import {
+  localizedServiceCategoryPath,
+  localizedServicePath,
+  localizedStaticPath,
+  localizedTransferRoutePath,
+} from '@/lib/localized-service-path';
 
 const BASE = SITE.siteUrl;
+
+// Service/category publication changes must be reflected immediately.
+export const dynamic = 'force-dynamic';
 
 /**
  * Non-service static slugs always included in the sitemap.
@@ -174,6 +182,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: Math.max(priority - 0.05, 0.5),
       });
     }
+  }
+
+  // ── 4b. Active service category pages ──────────────────────────────────────
+  // Categories are public browse pages with locale-aware labels. They are
+  // therefore indexed alongside the services they group.
+  try {
+    const { getServiceCategories } = await import('@/lib/service-category-server');
+    const categories = await getServiceCategories('tr');
+    for (const category of categories) {
+      push({
+        url: `${BASE}${localizedServiceCategoryPath(category.slug, 'tr')}`,
+        changeFrequency: 'weekly',
+        priority: 0.7,
+      });
+      for (const lang of nonTrLangs) {
+        push({
+          url: `${BASE}${localizedServiceCategoryPath(category.slug, lang.code)}`,
+          changeFrequency: 'weekly',
+          priority: 0.65,
+        });
+      }
+    }
+  } catch {
+    // Category URLs are omitted if the catalog cannot be verified.
   }
 
   // ── 5. Transfer-route detail pages ───────────────────────────────────────

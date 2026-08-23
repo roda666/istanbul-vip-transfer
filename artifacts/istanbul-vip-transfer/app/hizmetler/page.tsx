@@ -7,7 +7,7 @@ import Contact from '@/components/Contact';
 import HizmetlerServiceGridCms from '@/components/HizmetlerServiceGridCms';
 import HizmetlerCategoryNav from '@/components/HizmetlerCategoryNav';
 import { SITE } from '@/lib/site-config';
-import { getServiceCategories } from '@/lib/service-category-server';
+import { getPublicServiceCatalog } from '@/lib/public-service-catalog';
 
 const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/hizmetler`;
@@ -49,15 +49,15 @@ const breadcrumbSchema = {
  * app/[lang]/hizmetler/page.tsx (specific route, overrides catch-all).
  */
 export default async function HizmetlerPage() {
-  const categories = await getServiceCategories('tr');
+  const catalog = await getPublicServiceCatalog('tr');
 
   return (
     <>
       <PageHero pageKey="services" />
 
       <section className="py-16 md:py-20 max-w-7xl mx-auto px-5 md:px-8">
-        <HizmetlerCategoryNav locale="tr" categories={categories} />
-        <HizmetlerServiceGridCms locale="tr" categories={categories} />
+        <HizmetlerCategoryNav locale="tr" categories={catalog.categories} />
+        <HizmetlerServiceGridCms locale="tr" categories={catalog.categories} services={catalog.services} />
       </section>
 
       <BookingForm />

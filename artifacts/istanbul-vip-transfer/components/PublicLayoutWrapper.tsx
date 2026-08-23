@@ -12,6 +12,10 @@ import { usePathname } from 'next/navigation';
 import Header from './Header';
 import Footer from './Footer';
 import type { HomepageSections } from '@/lib/homepage-types';
+import type {
+  PublicServiceNavigationGroup,
+  PublicServiceNavigationItem,
+} from '@/lib/public-service-catalog-types';
 
 import LangProvider from './LangProvider';
 import CookieConsentBanner from './CookieConsentBanner';
@@ -23,14 +27,17 @@ const ChatWidget = dynamic(() => import('./ChatWidget'), { ssr: false });
 
 export default function PublicLayoutWrapper({
   children,
-  hiddenNavSlugs,
+  serviceNavigationGroups,
+  serviceLinks,
   initialLang,
   hasCookieConsentDecision,
   homepageFooter,
 }: {
   children: React.ReactNode;
-  /** Slugs where admin set showInNav=false — fetched by root server layout. */
-  hiddenNavSlugs?: string[];
+  /** CMS-backed public navigation groups, fetched by the root server layout. */
+  serviceNavigationGroups?: PublicServiceNavigationGroup[];
+  /** CMS-backed service links for the footer. */
+  serviceLinks?: PublicServiceNavigationItem[];
   /** Resolved by middleware so the shared public chrome hydrates consistently. */
   initialLang: string;
   /** Read server-side so the banner never appears as a late LCP candidate. */
@@ -67,9 +74,9 @@ export default function PublicLayoutWrapper({
 
   return (
     <LangProvider forceLang={initialLang}>
-      <Header hiddenNavSlugs={hiddenNavSlugs} />
+      <Header serviceNavigationGroups={serviceNavigationGroups} />
       <main>{children}</main>
-      <Footer hiddenNavSlugs={hiddenNavSlugs} homepageFooter={homepageFooter} />
+      <Footer serviceLinks={serviceLinks} homepageFooter={homepageFooter} />
       {supportWidgetsReady && (
         <>
           <WhatsAppFloat />

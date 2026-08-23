@@ -2,24 +2,42 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Plane, Hotel, Map, Briefcase, PartyPopper, Route, ArrowRight, Heart, Building2, Home } from 'lucide-react';
+import { Plane, Hotel, Map, Briefcase, PartyPopper, Route, ArrowRight, Heart, Building2, Home, type LucideIcon } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
-import { localizedPublicPath } from '@/lib/localized-service-path';
+import { localizedPublicPath, localizedServicePath } from '@/lib/localized-service-path';
 import { useHomepageCms } from '@/lib/homepage-cms-context';
 import type { HomepageServiceCopy } from '@/lib/homepage-public-content';
+import type { PublicServiceCatalogItem } from '@/lib/public-service-catalog-types';
 
 interface Props {
-  /**
-   * Slugs of service pages that the admin has set showOnHomepage=false.
-   * Cards whose slug appears here are hidden from the grid.
-   * Passed from the parent server component after a DB visibility fetch.
-   */
-  hiddenSlugs?: Set<string>;
+  /** Published CMS service rows, including category and homepage visibility. */
+  catalogServices?: PublicServiceCatalogItem[];
   serviceCopy?: HomepageServiceCopy;
   homepageMode?: boolean;
 }
 
-export default function Services({ hiddenSlugs, serviceCopy, homepageMode = false }: Props = {}) {
+interface HomepageServiceCard {
+  slug: string;
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  href?: string;
+}
+
+function getServiceIcon(category: string | null, slug: string): LucideIcon {
+  const value = `${category ?? ''} ${slug}`.toLocaleLowerCase('tr-TR');
+  if (value.includes('havaliman') || value.includes('airport')) return Plane;
+  if (value.includes('otel') || value.includes('hotel')) return Hotel;
+  if (value.includes('tur') || value.includes('tour')) return Map;
+  if (value.includes('sehirler') || value.includes('intercity')) return Route;
+  if (value.includes('kurumsal') || value.includes('corporate')) return Briefcase;
+  if (value.includes('gelin') || value.includes('wedding')) return Heart;
+  if (value.includes('villa')) return Home;
+  if (value.includes('etkinlik') || value.includes('event')) return PartyPopper;
+  return Building2;
+}
+
+export default function Services({ catalogServices, serviceCopy, homepageMode = false }: Props = {}) {
   const { lang, dict } = useLang();
   const s = dict.services;
   const cms = useHomepageCms();
@@ -35,7 +53,7 @@ export default function Services({ hiddenSlugs, serviceCopy, homepageMode = fals
    */
   const t = (map: Record<string, string>): string => map[lang] ?? map.en ?? '';
 
-  const services = [
+  const fallbackServices: HomepageServiceCard[] = [
     {
       slug: 'istanbul-havalimani-transfer',
       icon: Plane,
@@ -333,8 +351,20 @@ export default function Services({ hiddenSlugs, serviceCopy, homepageMode = fals
       }),
       href: p('/gunluk-villa-kiralama'),
     },
-  // Filter out services hidden by admin (showOnHomepage=false in CMS)
-  ].filter(svc => !svc.slug || !hiddenSlugs?.has(svc.slug));
+  ];
+  // Public homepage calls always provide catalogServices. The fallback only
+  // preserves isolated legacy renders that do not have a server catalog.
+  const services: HomepageServiceCard[] = catalogServices
+    ? catalogServices
+      .filter((service) => service.showOnHomepage)
+      .map((service) => ({
+        slug: service.slug,
+        icon: getServiceIcon(service.category, service.slug),
+        title: service.title,
+        description: service.excerpt ?? '',
+        href: localizedServicePath(service.slug, lang),
+      }))
+    : fallbackServices;
   const allServicesHref = section?.allServicesRoute?.startsWith('/')
     ? (section.allServicesRoute.startsWith(`/${lang}/`) || section.allServicesRoute === `/${lang}`
       ? section.allServicesRoute

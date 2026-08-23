@@ -8,18 +8,18 @@ import { getNav } from '@/lib/nav-config';
 import { useLang } from '@/lib/i18n/context';
 import { useSiteSettings } from '@/components/SiteSettingsContext';
 import { localizedPublicPath } from '@/lib/localized-service-path';
+import type { PublicServiceNavigationGroup } from '@/lib/public-service-catalog-types';
 import LanguageSelector from './LanguageSelector';
 
 interface HeaderProps {
-  /** Slugs where admin set showInNav=false — passed from the root server layout. */
-  hiddenNavSlugs?: string[];
+  /** Active, published services grouped by their CMS category. */
+  serviceNavigationGroups?: PublicServiceNavigationGroup[];
 }
 
-export default function Header({ hiddenNavSlugs }: HeaderProps = {}) {
+export default function Header({ serviceNavigationGroups }: HeaderProps = {}) {
   const { lang, dict } = useLang();
   const cs = useSiteSettings();
-  const hiddenSet = hiddenNavSlugs && hiddenNavSlugs.length > 0 ? new Set(hiddenNavSlugs) : undefined;
-  const nav = getNav(lang, dict, hiddenSet);
+  const nav = getNav(lang, dict, serviceNavigationGroups);
 
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);

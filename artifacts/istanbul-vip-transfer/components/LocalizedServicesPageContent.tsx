@@ -4,7 +4,7 @@ import Contact from '@/components/Contact';
 import HizmetlerServiceGridCms from '@/components/HizmetlerServiceGridCms';
 import HizmetlerCategoryNav from '@/components/HizmetlerCategoryNav';
 import { SITE } from '@/lib/site-config';
-import { getServiceCategories } from '@/lib/service-category-server';
+import { getPublicServiceCatalog } from '@/lib/public-service-catalog';
 import { localizedStaticPath } from '@/lib/localized-service-path';
 import { getDictionary } from '@/lib/i18n';
 
@@ -20,15 +20,15 @@ export default async function LocalizedServicesPageContent({ lang }: { lang: str
     ],
   };
 
-  const categories = await getServiceCategories(lang);
+  const catalog = await getPublicServiceCatalog(lang);
 
   return (
     <>
       <PageHero pageKey="services" />
 
       <section className="py-16 md:py-20 max-w-7xl mx-auto px-5 md:px-8">
-        <HizmetlerCategoryNav locale={lang} categories={categories} />
-        <HizmetlerServiceGridCms locale={lang} categories={categories} />
+        <HizmetlerCategoryNav locale={lang} categories={catalog.categories} />
+        <HizmetlerServiceGridCms locale={lang} categories={catalog.categories} services={catalog.services} />
       </section>
 
       <BookingForm />

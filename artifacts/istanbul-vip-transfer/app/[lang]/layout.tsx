@@ -11,6 +11,7 @@ import type { Metadata } from 'next';
 import LangProvider from '@/components/LangProvider';
 import { isLocaleCodeSyntax } from '@/lib/i18n/locale-registry';
 import { getPublicLanguage } from '@/lib/i18n/active-locales';
+import { getPublicServiceCatalog } from '@/lib/public-service-catalog';
 
 interface Props {
   children: React.ReactNode;
@@ -46,6 +47,15 @@ export default async function LangLayout({ children, params }: Props) {
       // Reset the preference cookie too, so the edge middleware doesn't keep
       // bouncing "/" back to this inactive locale (redirect loop).
       redirect('/data/locale/reset');
+    }
+    // This dynamic segment is also the only root fallback for a service whose
+    // CMS slug has no hand-authored route folder. Admit only a verified,
+    // public Turkish service; arbitrary root segments still return a 404.
+    if (!language) {
+      const catalog = await getPublicServiceCatalog('tr');
+      if (catalog.services.some((service) => service.slug === lang)) {
+        return <LangProvider forceLang="tr">{children}</LangProvider>;
+      }
     }
     notFound();
   }

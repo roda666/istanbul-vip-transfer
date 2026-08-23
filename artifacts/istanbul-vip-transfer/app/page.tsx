@@ -17,7 +17,7 @@ import { SITE } from '@/lib/site-config';
 import { getContactSettings } from '@/lib/site-settings-server';
 import { HomepageCmsProvider } from '@/lib/homepage-cms-context';
 import { getPublishedHomepageData } from '@/lib/homepage-cms';
-import { getServiceVisibilityMap } from '@/lib/service-page-cms';
+import { getPublicServiceCatalog } from '@/lib/public-service-catalog';
 import {
   getPublishedHomepageFaqs,
   getPublishedHomepageReviews,
@@ -70,9 +70,9 @@ export const metadata: Metadata = {
 
 export default async function HomePage() {
   // Read published CMS data server-side; falls back to static i18n if DB unavailable
-  const [cmsData, visibilityMap, cs, transferRoutes, reviews, homepageFaqs, serviceCopy] = await Promise.all([
+  const [cmsData, serviceCatalog, cs, transferRoutes, reviews, homepageFaqs, serviceCopy] = await Promise.all([
     getPublishedHomepageData('tr'),
-    getServiceVisibilityMap(),
+    getPublicServiceCatalog('tr'),
     getContactSettings(),
     getHomepageTransferRoutes().catch(() => []),
     getPublishedHomepageReviews('tr'),
@@ -130,19 +130,12 @@ export default async function HomePage() {
     image: SITE.ogImage,
   };
 
-  // Build the set of service slugs the admin has hidden from the homepage
-  const hiddenServiceSlugs = new Set(
-    [...visibilityMap.entries()]
-      .filter(([, flags]) => !flags.showOnHomepage)
-      .map(([slug]) => slug)
-  );
-
   return (
     <HomepageCmsProvider data={cmsData}>
       <Hero homepageMode />
       <DeferredBookingForm />
       <DeferredVehicleFleet homepageMode />
-      <Services hiddenSlugs={hiddenServiceSlugs} serviceCopy={serviceCopy} homepageMode />
+      <Services catalogServices={serviceCatalog.services} serviceCopy={serviceCopy} homepageMode />
       <PopularRoutesSection routes={transferRoutes} />
       <TrustSignals homepageMode />
       <Reviews items={reviews} homepageMode />

@@ -4,6 +4,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { invalidateServiceCategories } from '@/lib/service-category-server';
+import { revalidatePublicServiceCatalog } from '@/lib/homepage-revalidation';
 
 // ── PATCH ─────────────────────────────────────────────────────────────────────
 
@@ -81,6 +82,7 @@ export async function PATCH(
     }).catch(() => {});
 
     invalidateServiceCategories();
+    revalidatePublicServiceCatalog({ categorySlugs: [cat.slug] });
 
     // Return updated list
     const updated = await db.select().from(serviceCategories).orderBy(serviceCategories.sortOrder);
@@ -137,6 +139,7 @@ export async function DELETE(
     }).catch(() => {});
 
     invalidateServiceCategories();
+    revalidatePublicServiceCatalog({ categorySlugs: [cat.slug] });
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('DELETE /admin/api/categories/[id] error:', err);

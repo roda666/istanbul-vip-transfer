@@ -4,45 +4,9 @@ import { z } from 'zod';
 import { requireAdminSession } from '@/lib/auth/session';
 import { db } from '@/db';
 import { auditLogs, routePriceRules, transferRoutes, vehicles } from '@/db/schema';
-import {
-  isValidPriceWindow,
-  priceRuleWindowsOverlap,
-  SUPPORTED_PRICE_CURRENCIES,
-} from '@/lib/price-rules';
+import { priceRuleInputSchema } from '@/lib/price-rule-input';
 
 export const dynamic = 'force-dynamic';
-
-const optionalIsoDate = z.string().datetime({ offset: true }).nullable().optional();
-export const priceRuleSchema = z.object({
-  routeId: z.string().uuid(),
-  vehicleId: z.string().uuid(),
-  amountCents: z.number().int().min(1).max(100_000_000),
-  currency: z.enum(SUPPORTED_PRICE_CURRENCIES),
-  active: z.boolean().default(true),
-  validFrom: optionalIsoDate,
-  validUntil: optionalIsoDate,
-  notes: z.string().trim().max(1_000).nullable().optional(),
-});
-
-type PriceRuleInput = z.infer<typeof priceRuleSchema>;
-
-function isOverlapConstraintError(error: unknown): boolean {
-  const candidate = error as {
-    constraint?: string;
-    cause?: { constraint?: string; code?: string; message?: string };
-  };
-  return candidate?.constraint === 'route_price_rules_no_active_window_overlap'
-    || candidate?.cause?.constraint === 'route_price_rules_no_active_window_overlap'
-    || (candidate?.cause?.code === '23P01'
-      && candidate.cause.message?.includes('route_price_rules_no_active_window_overlap') === true);
-}
-
-function toDates(data: PriceRuleInput) {
-  return {
-    validFrom: data.validFrom ? new Date(data.validFrom) : null,
-    validUntil: data.validUntil ? new Date(data.validUntil) : null,
-  };
-}
 
 async function validateRuleReferences(routeId: string, vehicleId: string): Promise<string | null> {
   const [routes, vehicleRows] = await Promise.all([
@@ -52,30 +16,6 @@ async function validateRuleReferences(routeId: string, vehicleId: string): Promi
   if (!routes[0]) return 'Güzergah bulunamadı.';
   if (!vehicleRows[0]) return 'Araç bulunamadı.';
   return null;
-}
-
-async function hasConflictingActiveWindow(
-  data: PriceRuleInput,
-  excludeId?: string,
-): Promise<boolean> {
-  if (!data.active) return false;
-  const existing = await db
-    .select({
-      id: routePriceRules.id,
-      validFrom: routePriceRules.validFrom,
-      validUntil: routePriceRules.validUntil,
-      active: routePriceRules.active,
-    })
-    .from(routePriceRules)
-    .where(and(
-      eq(routePriceRules.routeId, data.routeId),
-      eq(routePriceRules.vehicleId, data.vehicleId),
-      eq(routePriceRules.active, true),
-    ));
-  const nextWindow = toDates(data);
-  return existing.some((rule) =>
-    rule.id !== excludeId && priceRuleWindowsOverlap(nextWindow, rule),
-  );
 }
 
 /** GET /admin/api/price-rules — all rules plus dropdown data for the rule editor. */
@@ -136,29 +76,38 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: 'Geçersiz JSON.' }, { status: 400 });
   }
-  const parsed = priceRuleSchema.safeParse(body);
+  const parsed = priceRuleInputSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Doğrulama hatası.' }, { status: 422 });
   }
   const data = parsed.data;
-  const dates = toDates(data);
-  if (!isValidPriceWindow(dates.validFrom, dates.validUntil)) {
-    return NextResponse.json({ error: 'Bitiş tarihi başlangıç tarihinden önce olamaz.' }, { status: 422 });
-  }
-
   try {
     const referenceError = await validateRuleReferences(data.routeId, data.vehicleId);
     if (referenceError) return NextResponse.json({ error: referenceError }, { status: 404 });
-    if (await hasConflictingActiveWindow(data)) {
-      return NextResponse.json({ error: 'Bu rota ve araç için çakışan etkin bir fiyat dönemi zaten var.' }, { status: 409 });
-    }
-    const [rule] = await db.insert(routePriceRules).values({
-      ...data,
-      ...dates,
-      notes: data.notes || null,
-      createdBy: session.adminId,
-      updatedBy: session.adminId,
-    }).returning();
+    const [rule] = await db.transaction(async (tx) => {
+      // Legacy rules are now immediate and active/passive only. Keep previous
+      // records for audit history, but ensure a route/vehicle has one active
+      // legacy override so the historic exclusion constraint remains satisfied.
+      if (data.active) {
+        await tx.update(routePriceRules).set({
+          active: false,
+          updatedAt: new Date(),
+          updatedBy: session.adminId,
+        }).where(and(
+          eq(routePriceRules.routeId, data.routeId),
+          eq(routePriceRules.vehicleId, data.vehicleId),
+          eq(routePriceRules.active, true),
+        ));
+      }
+      return tx.insert(routePriceRules).values({
+        ...data,
+        validFrom: null,
+        validUntil: null,
+        notes: data.notes || null,
+        createdBy: session.adminId,
+        updatedBy: session.adminId,
+      }).returning();
+    });
     await db.insert(auditLogs).values({
       adminUserId: session.adminId,
       action: 'CREATE',
@@ -168,9 +117,6 @@ export async function POST(request: NextRequest) {
     }).catch(() => {});
     return NextResponse.json({ rule }, { status: 201 });
   } catch (error) {
-    if (isOverlapConstraintError(error)) {
-      return NextResponse.json({ error: 'Bu rota ve araç için çakışan etkin bir fiyat dönemi zaten var.' }, { status: 409 });
-    }
     console.error('Price rule POST error:', error);
     return NextResponse.json({ error: 'Fiyat kuralı kaydedilemedi.' }, { status: 503 });
   }

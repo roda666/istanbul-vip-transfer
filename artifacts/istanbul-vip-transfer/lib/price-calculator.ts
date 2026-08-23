@@ -36,8 +36,8 @@ export async function isPriceCalculatorEnabled(): Promise<boolean> {
 }
 
 /**
- * Looks up one active, time-valid estimate. It never uses legacy homepage price
- * ranges, and it requires both a public route and a published vehicle.
+ * Looks up one active fixed estimate. Historic validity dates are deliberately
+ * ignored: legacy price administration now uses active/passive only.
  */
 export async function getPriceEstimate(input: {
   routeSlug: string;
@@ -80,7 +80,7 @@ export async function getPriceEstimate(input: {
       routeSlug: selected.routeSlug,
       vehicleSlug: selected.vehicleSlug,
       generatedAt: at.toISOString(),
-      validUntil: selected.validUntil?.toISOString() ?? null,
+      validUntil: null,
     },
   };
 }

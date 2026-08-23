@@ -66,10 +66,8 @@ export async function createAdminQuote(input: {
     eq(vehiclePricingProfiles.mode, input.mode),
     eq(vehiclePricingProfiles.active, true),
     isNull(vehiclePricingProfiles.archivedAt),
-    or(isNull(vehiclePricingProfiles.validFrom), lte(vehiclePricingProfiles.validFrom, now)),
-    or(isNull(vehiclePricingProfiles.validUntil), gte(vehiclePricingProfiles.validUntil, now)),
-  )).orderBy(desc(vehiclePricingProfiles.validFrom));
-  const profileRow = currentlyApplicable(profileRows, now);
+  )).orderBy(desc(vehiclePricingProfiles.updatedAt));
+  const profileRow = profileRows[0];
 
   let route = null;
   let override = undefined;

@@ -30,6 +30,18 @@ describe('admin pricing engine', () => {
     expect(result).toMatchObject({ state: 'AVAILABLE', effectiveHours: 5, includedKmAllowance: 50, netTryKurus: 10_000 });
   });
 
+  it('can quote distance and hourly pricing independently for one eligible vehicle', () => {
+    const distanceQuote = calculateAdminQuote({ ...common, profile: distanceProfile, distanceKm: 20 });
+    const hourlyQuote = calculateAdminQuote({
+      ...common,
+      profile: { mode: 'HOURLY', hourlyRateKurus: 2_000, minimumHours: 4, includedKmMode: 'PACKAGE', includedKm: 100, excessKmKurus: 100, excessHourKurus: 1_500 },
+      distanceKm: 20,
+      requestedHours: 4,
+    });
+    expect(distanceQuote).toMatchObject({ state: 'AVAILABLE', formulaKind: 'DISTANCE' });
+    expect(hourlyQuote).toMatchObject({ state: 'AVAILABLE', formulaKind: 'HOURLY' });
+  });
+
   it.each([
     [1, 8_000],
     [4, 8_000],

@@ -4,8 +4,6 @@ import { z } from 'zod';
 const common = {
   vehicleId: z.string().uuid(),
   active: z.boolean().default(true),
-  validFrom: z.string().datetime().nullable().optional(),
-  validUntil: z.string().datetime().nullable().optional(),
   notes: z.string().max(1_000).nullable().optional(),
 };
 const distanceSchema = z.object({
@@ -26,9 +24,7 @@ const hourlySchema = z.object({
   excessKmKurus: z.number().int().min(0),
   excessHourKurus: z.number().int().min(0),
 });
-const profileSchema = z.discriminatedUnion('mode', [distanceSchema, hourlySchema]).superRefine((value, ctx) => {
-  if (value.validFrom && value.validUntil && value.validFrom >= value.validUntil) ctx.addIssue({ code: 'custom', path: ['validUntil'], message: 'Bitiş başlangıçtan sonra olmalıdır.' });
-});
+const profileSchema = z.discriminatedUnion('mode', [distanceSchema, hourlySchema]);
 
 export async function GET() {
   try {
@@ -54,16 +50,35 @@ export async function POST(request: NextRequest) {
   }
   const data = profileSchema.safeParse(await request.json().catch(() => null));
   if (!data.success) return NextResponse.json({ error: data.error.errors[0]?.message ?? 'Doğrulama hatası.' }, { status: 422 });
-  const [{ db }, { auditLogs, vehiclePricingProfiles, vehicles }, { eq }] = await Promise.all([import('@/db'), import('@/db/schema'), import('drizzle-orm')]);
-  const [vehicle] = await db.select({ id: vehicles.id }).from(vehicles).where(eq(vehicles.id, data.data.vehicleId)).limit(1);
+  const [{ db }, { auditLogs, vehiclePricingProfiles, vehicles }, { and, eq }] = await Promise.all([import('@/db'), import('@/db/schema'), import('drizzle-orm')]);
+  const [vehicle] = await db.select({
+    id: vehicles.id,
+    priceCalculationEligible: vehicles.priceCalculationEligible,
+  }).from(vehicles).where(eq(vehicles.id, data.data.vehicleId)).limit(1);
   if (!vehicle) return NextResponse.json({ error: 'Araç bulunamadı.' }, { status: 404 });
-  const [profile] = await db.insert(vehiclePricingProfiles).values({
-    ...data.data,
-    validFrom: data.data.validFrom ? new Date(data.data.validFrom) : null,
-    validUntil: data.data.validUntil ? new Date(data.data.validUntil) : null,
-    createdBy: session.adminId,
-    updatedBy: session.adminId,
-  }).returning();
+  if (!vehicle.priceCalculationEligible) {
+    return NextResponse.json({ error: 'Bu araç fiyat hesaplamasına dahil değil.' }, { status: 422 });
+  }
+  const [profile] = await db.transaction(async (tx) => {
+    // A new formula takes effect immediately. Prior versions remain auditable
+    // but become inactive, so no date window is needed to select one.
+    await tx.update(vehiclePricingProfiles).set({
+      active: false,
+      updatedAt: new Date(),
+      updatedBy: session.adminId,
+    }).where(and(
+      eq(vehiclePricingProfiles.vehicleId, data.data.vehicleId),
+      eq(vehiclePricingProfiles.mode, data.data.mode),
+      eq(vehiclePricingProfiles.active, true),
+    ));
+    return tx.insert(vehiclePricingProfiles).values({
+      ...data.data,
+      validFrom: null,
+      validUntil: null,
+      createdBy: session.adminId,
+      updatedBy: session.adminId,
+    }).returning();
+  });
   await db.insert(auditLogs).values({ adminUserId: session.adminId, action: 'CREATE', entityType: 'VehiclePricingProfile', entityId: profile.id, metadata: { vehicleId: profile.vehicleId, mode: profile.mode } }).catch(() => {});
   return NextResponse.json({ item: profile }, { status: 201 });
 }
@@ -78,8 +93,32 @@ export async function PATCH(request: NextRequest) {
   }
   const payload = z.object({ id: z.string().uuid(), active: z.boolean() }).safeParse(await request.json().catch(() => null));
   if (!payload.success) return NextResponse.json({ error: 'Geçersiz profil işlemi.' }, { status: 422 });
-  const [{ db }, { vehiclePricingProfiles }, { eq }] = await Promise.all([import('@/db'), import('@/db/schema'), import('drizzle-orm')]);
-  const [item] = await db.update(vehiclePricingProfiles).set({ active: payload.data.active, updatedAt: new Date(), updatedBy: session.adminId }).where(eq(vehiclePricingProfiles.id, payload.data.id)).returning();
+  const [{ db }, { vehiclePricingProfiles }, { and, eq }] = await Promise.all([import('@/db'), import('@/db/schema'), import('drizzle-orm')]);
+  const item = await db.transaction(async (tx) => {
+    const [profile] = await tx.select({
+      id: vehiclePricingProfiles.id,
+      vehicleId: vehiclePricingProfiles.vehicleId,
+      mode: vehiclePricingProfiles.mode,
+    }).from(vehiclePricingProfiles).where(eq(vehiclePricingProfiles.id, payload.data.id)).limit(1);
+    if (!profile) return null;
+    if (payload.data.active) {
+      await tx.update(vehiclePricingProfiles).set({
+        active: false,
+        updatedAt: new Date(),
+        updatedBy: session.adminId,
+      }).where(and(
+        eq(vehiclePricingProfiles.vehicleId, profile.vehicleId),
+        eq(vehiclePricingProfiles.mode, profile.mode),
+        eq(vehiclePricingProfiles.active, true),
+      ));
+    }
+    const [updated] = await tx.update(vehiclePricingProfiles).set({
+      active: payload.data.active,
+      updatedAt: new Date(),
+      updatedBy: session.adminId,
+    }).where(eq(vehiclePricingProfiles.id, profile.id)).returning();
+    return updated;
+  });
   if (!item) return NextResponse.json({ error: 'Profil bulunamadı.' }, { status: 404 });
   return NextResponse.json({ item });
 }

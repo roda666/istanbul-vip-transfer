@@ -19,8 +19,6 @@ type Rule = {
   amountCents: number;
   currency: string;
   active: boolean;
-  validFrom: string | null;
-  validUntil: string | null;
   notes: string | null;
   updatedAt: string;
   routeName: string;
@@ -35,14 +33,12 @@ type RuleForm = {
   amount: string;
   currency: string;
   active: boolean;
-  validFrom: string;
-  validUntil: string;
   notes: string;
 };
 
 const EMPTY_FORM: RuleForm = {
   routeId: '', vehicleId: '', amount: '', currency: 'EUR', active: true,
-  validFrom: '', validUntil: '', notes: '',
+  notes: '',
 };
 
 const inputStyle: React.CSSProperties = {
@@ -53,15 +49,6 @@ const inputStyle: React.CSSProperties = {
 
 function Label({ children }: { children: React.ReactNode }) {
   return <label style={{ display: 'block', color: MUTED, fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '5px', fontFamily: 'Inter, sans-serif' }}>{children}</label>;
-}
-
-function dateValue(value: string | null): string {
-  return value ? value.slice(0, 10) : '';
-}
-
-function toIso(value: string, endOfDay = false): string | null {
-  if (!value) return null;
-  return `${value}T${endOfDay ? '23:59:59.999' : '00:00:00.000'}Z`;
 }
 
 function amountToMinor(value: string): number | null {
@@ -110,8 +97,6 @@ function RuleModal({
     amount: (rule.amountCents / 100).toFixed(2),
     currency: rule.currency,
     active: rule.active,
-    validFrom: dateValue(rule.validFrom),
-    validUntil: dateValue(rule.validUntil),
     notes: rule.notes ?? '',
   } : EMPTY_FORM);
   const [error, setError] = useState('');
@@ -126,10 +111,6 @@ function RuleModal({
       setError('Güzergah, araç ve geçerli bir pozitif tutar zorunludur.');
       return;
     }
-    if (form.validFrom && form.validUntil && form.validFrom > form.validUntil) {
-      setError('Bitiş tarihi başlangıç tarihinden önce olamaz.');
-      return;
-    }
     setSaving(true);
     try {
       const response = await fetch(rule ? `/admin/api/price-rules/${rule.id}` : '/admin/api/price-rules', {
@@ -141,8 +122,6 @@ function RuleModal({
           amountCents,
           currency: form.currency,
           active: form.active,
-          validFrom: toIso(form.validFrom),
-          validUntil: toIso(form.validUntil, true),
           notes: form.notes.trim() || null,
         }),
       });
@@ -195,14 +174,6 @@ function RuleModal({
               <option value="USD">USD ($)</option>
             </select>
           </div>
-          <div>
-            <Label>Geçerlilik Başlangıcı</Label>
-            <input type="date" value={form.validFrom} onChange={(event) => set('validFrom', event.target.value)} style={inputStyle} />
-          </div>
-          <div>
-            <Label>Geçerlilik Bitişi</Label>
-            <input type="date" value={form.validUntil} onChange={(event) => set('validUntil', event.target.value)} style={inputStyle} />
-          </div>
           <div style={{ gridColumn: '1 / -1' }}>
             <Label>Yönetim Notu (ziyaretçilere gösterilmez)</Label>
             <textarea rows={3} value={form.notes} onChange={(event) => set('notes', event.target.value)} style={{ ...inputStyle, resize: 'vertical' }} />
@@ -211,7 +182,7 @@ function RuleModal({
             <Toggle checked={form.active} onChange={(value) => set('active', value)} label="Kural etkin" />
           </div>
         </div>
-        <p style={{ margin: '16px 0 0', fontSize: '12px', color: MUTED, fontFamily: 'Inter, sans-serif', lineHeight: 1.55 }}>Etkin kurallarda aynı rota ve araç için geçerlilik dönemleri çakışamaz. Tutar, para biriminin en küçük birimi olarak güvenle saklanır.</p>
+        <p style={{ margin: '16px 0 0', fontSize: '12px', color: MUTED, fontFamily: 'Inter, sans-serif', lineHeight: 1.55 }}>Kural kaydedildiği anda geçerli olur. Geçici olarak devre dışı bırakmak için etkinlik anahtarını kullanın.</p>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '22px' }}>
           <button type="button" onClick={onClose} style={{ border: `1px solid ${BORDER}`, background: CARD, borderRadius: '8px', color: MUTED, padding: '9px 16px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>İptal</button>
           <button type="button" disabled={saving} onClick={save} style={{ border: 'none', background: BLUE, borderRadius: '8px', color: '#FFFFFF', padding: '9px 16px', cursor: saving ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 700, opacity: saving ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: '6px' }}><Check size={15} />{saving ? 'Kaydediliyor…' : 'Kaydet'}</button>
@@ -276,22 +247,27 @@ export default function PriceRulesClient() {
       </section>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', gap: '12px', flexWrap: 'wrap' }}>
+        <div>
+          <h2 style={{ margin: 0, color: NAVY, fontFamily: 'Inter, sans-serif', fontSize: '17px' }}>Elle Sabitlenmiş Fiyatlar</h2>
+          <p style={{ margin: '5px 0 0', color: MUTED, fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>Yalnızca özel rota ve araç istisnaları için sabit fiyat kaydı yönetin.</p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <p style={{ margin: 0, color: MUTED, fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>{activeRuleCount} etkin / {rules.length} toplam kural</p>
         <button type="button" onClick={() => setModalRule(null)} style={{ border: 'none', borderRadius: '8px', background: BLUE, color: '#FFFFFF', padding: '9px 14px', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: '13px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}><Plus size={16} />Yeni fiyat kuralı</button>
+        </div>
       </div>
       {error && <div role="alert" style={{ marginBottom: '14px', border: '1px solid #FECACA', background: '#FEF2F2', borderRadius: '8px', padding: '11px 13px', color: RED, fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>{error}</div>}
       {loading ? <p style={{ color: MUTED, fontFamily: 'Inter, sans-serif', fontSize: '13px', padding: '36px 0', textAlign: 'center' }}>Yükleniyor…</p> : rules.length === 0 ? (
-        <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px', padding: '48px 24px', textAlign: 'center', color: MUTED, fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>Henüz fiyat kuralı yok. Hesaplayıcı kapalı kalırken kuralları güvenle hazırlayabilirsiniz.</div>
+        <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px', padding: '48px 24px', textAlign: 'center', color: MUTED, fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>Henüz elle sabitlenmiş fiyat yok. Normal fiyatlandırma için formül ve kur motorunu kullanın.</div>
       ) : (
         <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px', overflowX: 'auto' }}>
-          <table style={{ width: '100%', minWidth: '820px', borderCollapse: 'collapse', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>
-            <thead><tr style={{ background: '#F8FAFC', borderBottom: `1px solid ${BORDER}` }}>{['Güzergah', 'Araç', 'Tahmini Tutar', 'Geçerlilik', 'Durum', 'İşlem'].map((heading) => <th key={heading} style={{ padding: '11px 13px', textAlign: 'left', color: MUTED, fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{heading}</th>)}</tr></thead>
+          <table style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>
+            <thead><tr style={{ background: '#F8FAFC', borderBottom: `1px solid ${BORDER}` }}>{['Güzergah', 'Araç', 'Tahmini Tutar', 'Durum', 'İşlem'].map((heading) => <th key={heading} style={{ padding: '11px 13px', textAlign: 'left', color: MUTED, fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{heading}</th>)}</tr></thead>
             <tbody>{rules.map((rule) => (
               <tr key={rule.id} style={{ borderBottom: `1px solid #EDF2F7` }}>
                 <td style={{ padding: '12px 13px', color: NAVY, fontWeight: 600 }}>{rule.routeName}</td>
                 <td style={{ padding: '12px 13px', color: NAVY }}>{rule.vehicleName}</td>
                 <td style={{ padding: '12px 13px', color: NAVY, fontWeight: 700 }}>{formatMoney(rule.amountCents, rule.currency)}</td>
-                <td style={{ padding: '12px 13px', color: MUTED }}>{rule.validFrom ? dateValue(rule.validFrom) : 'Hemen'} — {rule.validUntil ? dateValue(rule.validUntil) : 'Süresiz'}</td>
                 <td style={{ padding: '12px 13px' }}><span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 700, background: rule.active ? '#ECFDF5' : '#FEF2F2', color: rule.active ? '#166534' : RED }}>{rule.active ? 'Etkin' : 'Pasif'}</span></td>
                 <td style={{ padding: '12px 13px' }}><div style={{ display: 'flex', gap: '6px' }}><button type="button" onClick={() => setModalRule(rule)} aria-label="Düzenle" style={{ border: 'none', borderRadius: '6px', color: BLUE, background: '#EFF6FF', padding: '6px 8px', cursor: 'pointer' }}><Pencil size={14} /></button><button type="button" onClick={() => void removeRule(rule)} aria-label="Sil" style={{ border: '1px solid #FECACA', borderRadius: '6px', color: RED, background: '#FEF2F2', padding: '6px 8px', cursor: 'pointer' }}><Trash2 size={14} /></button></div></td>
               </tr>

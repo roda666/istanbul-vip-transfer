@@ -358,6 +358,13 @@
       "when": 1787566701810,
       "tag": "0050_vehicle_active_and_fleet_corrections",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1787566701811,
+      "tag": "0052_request_origin_reporting",
+      "breakpoints": true
     }
   ]
 }

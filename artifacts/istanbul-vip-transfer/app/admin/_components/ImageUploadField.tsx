@@ -167,6 +167,29 @@ export function ImageUploadField({
             >
               {uploading ? '⏳ Yükleniyor…' : '⬆ Dosya Yükle'}
             </button>
+            {value && (
+              <button
+                type="button"
+                onClick={() => onChange('')}
+                disabled={uploading}
+                title="Görsel bağlantısını bu sayfadan kaldırır. Depolamadaki dosya silinmez."
+                style={{
+                  border: '1px solid #FECACA',
+                  background: '#FEF2F2',
+                  color: '#B91C1C',
+                  borderRadius: '6px',
+                  padding: '0 12px',
+                  cursor: uploading ? 'default' : 'pointer',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  fontFamily: 'Inter, sans-serif',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}
+              >
+                Görseli Kaldır
+              </button>
+            )}
             <input
               ref={fileRef}
               type="file"
@@ -217,6 +240,11 @@ export function ImageUploadField({
             unoptimized
           />
         </div>
+      )}
+      {value && !readOnly && (
+        <p style={{ fontSize: '11px', color: '#64748B', marginTop: '5px', fontFamily: 'Inter, sans-serif' }}>
+          Kaldırma işlemi yalnızca bu sayfanın görsel referansını siler; yüklenen dosya depolamada korunur.
+        </p>
       )}
 
       {/* Optional inline ALT text sub-field */}

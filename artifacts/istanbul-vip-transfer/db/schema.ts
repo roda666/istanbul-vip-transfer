@@ -643,6 +643,8 @@ export const reservationRequests = pgTable('reservation_requests', {
   status:          requestStatusEnum('status').default('NEW').notNull(),
   adminNotes:      text('admin_notes'),
   source:          text('source').default('booking-form').notNull(),
+  /** Same-origin pathname captured at submission time; no query string or PII. */
+  pageSlug:        text('page_slug').default('/bilinmiyor').notNull(),
   createdAt:       timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt:       timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   archivedAt:      timestamp('archived_at', { withTimezone: true }),

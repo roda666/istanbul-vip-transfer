@@ -21,6 +21,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const BACKUP_TIMEOUT_MS = 2 * 60 * 1000;
+const BACKUP_FORMAT = 'postgresql-custom';
 let backupInProgress = false;
 
 export async function GET(request: NextRequest) {
@@ -41,6 +42,21 @@ export async function GET(request: NextRequest) {
       reason: 'permission_denied',
     });
     return NextResponse.json({ error: 'Yalnızca Süper Yöneticiler veritabanı yedeği alabilir.' }, { status: 403 });
+  }
+
+  // This deliberately contains no database version, connection information, or
+  // customer data. The protected UI reads it before downloading so it can
+  // produce a checksum manifest for the exact file the administrator saves.
+  if (request.nextUrl.searchParams.get('metadata') === '1') {
+    return NextResponse.json({
+      format: BACKUP_FORMAT,
+      extension: '.dump',
+      checksumAlgorithm: 'SHA-256',
+      verification: 'pg_restore --list',
+      restoreGuide: '/docs/DATABASE_BACKUP_RESTORE.md',
+    }, {
+      headers: { 'Cache-Control': 'no-store, private' },
+    });
   }
 
   if (!process.env.DATABASE_URL) {
@@ -113,6 +129,12 @@ export async function GET(request: NextRequest) {
         'Content-Disposition': `attachment; filename="istanbul-vip-transfer-${stamp}.dump"`,
         'Cache-Control': 'no-store, private',
         'X-Content-Type-Options': 'nosniff',
+        // The checksum is calculated over the downloaded bytes by the
+        // authenticated admin UI, then saved beside the archive as a manifest.
+        // It is not placed in logs or the application database.
+        'X-Backup-Format': BACKUP_FORMAT,
+        'X-Backup-Checksum-Algorithm': 'SHA-256',
+        'X-Backup-Generated-At': new Date().toISOString(),
       },
     });
   } catch {

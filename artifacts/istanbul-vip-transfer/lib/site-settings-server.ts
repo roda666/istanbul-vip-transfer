@@ -21,6 +21,8 @@ import { SITE } from './site-config';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type ContactSettings = {
+  /** Public-facing business name; managed in Site Settings. */
+  businessName: string;
   /** '+90 532 660 08 47' */
   phoneDisplay: string;
   /** 'tel:+905326600847' */
@@ -61,6 +63,7 @@ export type ContactSettings = {
 // ── Fallback (static SITE values) ─────────────────────────────────────────────
 
 const STATIC_DEFAULTS: ContactSettings = {
+  businessName:      SITE.businessName,
   phoneDisplay:     SITE.phoneDisplay,
   phoneTel:         SITE.phoneTel,
   phoneE164:        SITE.phoneE164,
@@ -106,6 +109,7 @@ function buildFromRow(row: typeof siteSettings.$inferSelect): ContactSettings {
   const waNum = whatsapp.replace(/^\+/, '');
 
   return {
+    businessName:      (row.businessName ?? '').trim() || SITE.businessName,
     phoneDisplay:     display,
     phoneTel:         `tel:${phone}`,
     phoneE164:        phone,

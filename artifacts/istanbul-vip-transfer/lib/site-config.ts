@@ -4,6 +4,8 @@
  * Import from this file everywhere — never hard-code contact info elsewhere.
  */
 export const SITE = {
+  /** Fallback public display name when the singleton site_settings row is absent. */
+  businessName: 'Istanbul VIP Transfer',
   /** Human-readable display number shown on-screen */
   phoneDisplay: '+90 532 660 08 47',
   /** tel: URI for <a href> */

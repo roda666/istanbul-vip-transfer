@@ -1097,7 +1097,7 @@ export default function ServicePageEditor({ initialRecord }: Props) {
               value={heroImage}
               onChange={setHeroImage}
               namespace={`service-pages/${record.slug}`}
-              hint="Paylaşılan alan — tüm dillerde aynı görsel kullanılır. JPEG, PNG, WebP — max 10 MB."
+              hint="Her hizmet için konuya özel görsel kullanın; varsayılan/ortak görsel kullanılamaz. Görselde yazı, logo, marka amblemi, okunabilir tabela veya plaka olmamalı; kişiler yalnızca arkadan, profilden ya da uzaktan görünmelidir."
               altValue={heroImageAlt}
               onAltChange={setHeroImageAlt}
               altLabel="Hero Görseli ALT Metni (Türkçe — çeviride ayrıca lokalize edilir)"
@@ -1107,7 +1107,7 @@ export default function ServicePageEditor({ initialRecord }: Props) {
               value={ogImage}
               onChange={setOgImage}
               namespace={`service-pages/${record.slug}`}
-              hint="Paylaşılan alan — tüm dillerde aynı OG görseli. 1200×630 piksel önerilir."
+              hint="Hizmete özel sosyal görsel. 1200×630 önerilir. Yazı, logo, marka amblemi, okunabilir tabela/plaka ve önden yakın insan yüzü içermeyen bir görsel seçin."
             />
           </SectionCard>
 

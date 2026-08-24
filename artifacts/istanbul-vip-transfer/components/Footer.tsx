@@ -180,13 +180,13 @@ export default function Footer({ serviceLinks = [], homepageFooter }: FooterProp
                   className="text-2xl font-bold tracking-widest uppercase mb-1"
                   style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#C79A35', letterSpacing: '0.15em' }}
                 >
-                  VIP Transfer
+                  {cs.businessName}
                 </div>
                 <div
                   className="text-[10px] tracking-[0.35em] uppercase"
                   style={{ color: 'rgba(255,255,255,0.65)', fontFamily: 'Inter, sans-serif' }}
                 >
-                  {footer?.premiumTagline ?? 'Istanbul'}
+                  {footer?.premiumTagline ?? ''}
                 </div>
               </Link>
             </div>

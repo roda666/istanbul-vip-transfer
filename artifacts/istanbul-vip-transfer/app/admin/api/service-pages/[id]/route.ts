@@ -14,6 +14,7 @@ import {
   revalidateAllHomepagesForServiceChange,
   revalidateHomepageForServiceTranslation,
   revalidatePublicServiceCatalog,
+  revalidatePublicServiceDetail,
 } from '@/lib/homepage-revalidation';
 import { invalidateServiceCategories } from '@/lib/service-category-server';
 import { getServicePageAdminRecord, ENTITY_TYPE } from '@/lib/service-page-cms';
@@ -27,6 +28,7 @@ import {
 } from '@/lib/service-page-types';
 import { translateServicePageFields } from '@/lib/ai/translate-service-page';
 import { SITE } from '@/lib/site-config';
+import { validateServiceImageAsset } from '@/lib/service-image-assets';
 import 'server-only';
 
 type Params = { params: Promise<{ id: string }> };
@@ -275,6 +277,20 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const srcHash = computeTranslatableHash(bodyObj);
   const savingDraftOfPublished = data.saveAsDraft && row.status === 'PUBLISHED';
 
+  let heroImage: string | null;
+  let ogImage: string | null;
+  try {
+    heroImage = await validateServiceImageAsset(data.heroImage);
+    ogImage = await validateServiceImageAsset(data.ogImage);
+  } catch (error) {
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : 'Görsel doğrulanamadı.',
+    }, { status: 422 });
+  }
+  if (!savingDraftOfPublished && !data.saveAsDraft && !heroImage) {
+    return NextResponse.json({ error: 'Yayımlamak için hizmete özel bir hero görseli zorunludur.' }, { status: 422 });
+  }
+
   const { db }      = await import('@/db');
   const { content, serviceCategories } = await import('@/db/schema');
   const { eq, and }      = await import('drizzle-orm');
@@ -330,9 +346,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         seoTitle:       data.seoTitle ?? null,
         seoDescription: data.seoDescription ?? null,
         canonicalUrl,
-        heroImage:      data.heroImage ?? null,
-        heroImageAlt:   data.heroImageAlt ?? null,
-        ogImage:        data.ogImage ?? null,
+        // Empty values are an explicit removal request from ImageUploadField.
+        // Persist null rather than a blank URL so public renderers and metadata
+        // never attempt to load an empty image source.
+        heroImage,
+        heroImageAlt:   data.heroImageAlt?.trim() || null,
+        ogImage,
         indexable:      data.indexable ?? true,
         isActive:       data.isActive ?? true,
         displayOrder:   data.displayOrder ?? 0,
@@ -352,6 +371,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     revalidatePublicServiceCatalog({
       categorySlugs: [row.category, data.category],
     });
+    revalidatePublicServiceDetail(row.slug);
   }
 
   // Write audit log
@@ -430,11 +450,20 @@ export async function POST(req: NextRequest, { params }: Params) {
     invalidateServiceCategories();
     revalidateAllHomepagesForServiceChange();
     revalidatePublicServiceCatalog({ categorySlugs: [row.category] });
+    revalidatePublicServiceDetail(row.slug);
     const record = await getServicePageAdminRecord(id);
     return NextResponse.json({ record });
   }
 
   if (action === 'publishSource') {
+    try {
+      if (!await validateServiceImageAsset(row.heroImage)) {
+        return NextResponse.json({ error: 'Yayımlamak için hizmete özel, erişilebilir bir hero görseli zorunludur.' }, { status: 422 });
+      }
+      await validateServiceImageAsset(row.ogImage);
+    } catch (error) {
+      return NextResponse.json({ error: error instanceof Error ? error.message : 'Görsel doğrulanamadı.' }, { status: 422 });
+    }
     await db.update(content)
       .set({
         status:      'PUBLISHED',
@@ -446,6 +475,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     invalidateServiceCategories();
     revalidateAllHomepagesForServiceChange();
     revalidatePublicServiceCatalog({ categorySlugs: [row.category] });
+    revalidatePublicServiceDetail(row.slug);
     const record = await getServicePageAdminRecord(id);
     return NextResponse.json({ record });
   }
@@ -458,6 +488,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     invalidateServiceCategories();
     revalidateAllHomepagesForServiceChange();
     revalidatePublicServiceCatalog({ categorySlugs: [row.category] });
+    revalidatePublicServiceDetail(row.slug);
     const record = await getServicePageAdminRecord(id);
     return NextResponse.json({ record });
   }
@@ -534,6 +565,9 @@ export async function POST(req: NextRequest, { params }: Params) {
     if (!result.ok) return NextResponse.json({ error: result.error ?? 'Çeviri hatası.' }, { status: 500 });
 
     await writeAuditLog({ contentId: id, action: 'translate', locale, adminUserId });
+    revalidateHomepageForServiceTranslation(locale);
+    revalidatePublicServiceCatalog({ categorySlugs: [row.category], locales: [locale] });
+    revalidatePublicServiceDetail(row.slug, [locale]);
     const record = await getServicePageAdminRecord(id);
     return NextResponse.json({ record });
   }
@@ -583,6 +617,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     await writeAuditLog({ contentId: id, action: 'edit_translation', locale, adminUserId });
     revalidateHomepageForServiceTranslation(locale);
     revalidatePublicServiceCatalog({ categorySlugs: [row.category], locales: [locale] });
+    revalidatePublicServiceDetail(row.slug, [locale]);
   } else if (action === 'approve') {
     if (existing.status === 'OUTDATED') {
       return NextResponse.json({
@@ -613,6 +648,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     await writeAuditLog({ contentId: id, action: 'publish_translation', locale, adminUserId });
     revalidateHomepageForServiceTranslation(locale);
     revalidatePublicServiceCatalog({ categorySlugs: [row.category], locales: [locale] });
+    revalidatePublicServiceDetail(row.slug, [locale]);
   } else if (action === 'unpublish') {
     await db
       .update(contentTranslations)
@@ -621,6 +657,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     await writeAuditLog({ contentId: id, action: 'unpublish_translation', locale, adminUserId });
     revalidateHomepageForServiceTranslation(locale);
     revalidatePublicServiceCatalog({ categorySlugs: [row.category], locales: [locale] });
+    revalidatePublicServiceDetail(row.slug, [locale]);
   }
 
   const record = await getServicePageAdminRecord(id);

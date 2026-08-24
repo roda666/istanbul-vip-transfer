@@ -51,7 +51,7 @@ function buildServiceJsonLd({ name, canonicalUrl, body, cs }: SchemaContext) {
     description: body?.hero.subtitle ?? '',
     provider: {
       '@type':     'LocalBusiness',
-      name:        'Istanbul VIP Transfer',
+       name:        cs.businessName,
       url:         SITE.siteUrl,
       telephone:   cs.phoneE164,
     },

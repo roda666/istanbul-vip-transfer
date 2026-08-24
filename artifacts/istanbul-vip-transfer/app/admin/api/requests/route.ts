@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
   const intent    = searchParams.get('intent') ?? '';
   const lang      = searchParams.get('lang') ?? '';
   const source    = searchParams.get('source') ?? '';
+  const pageSlug  = searchParams.get('page_slug') ?? '';
   const dateFrom  = searchParams.get('date_from') ?? '';
   const dateTo    = searchParams.get('date_to') ?? '';
 
@@ -35,6 +36,7 @@ export async function GET(req: NextRequest) {
     if (intent)  conditions.push(eq(reservationRequests.intent,      intent as never));
     if (lang)    conditions.push(eq(reservationRequests.locale,      lang));
     if (source)  conditions.push(eq(reservationRequests.source,      source));
+    if (pageSlug) conditions.push(eq(reservationRequests.pageSlug, pageSlug));
     if (dateFrom) conditions.push(gte(reservationRequests.createdAt, new Date(dateFrom)));
     if (dateTo) {
       // Include the entire end day
@@ -51,7 +53,7 @@ export async function GET(req: NextRequest) {
 
     const where = and(...conditions);
 
-    const [rows, totals] = await Promise.all([
+    const [rows, totals, summaryRows] = await Promise.all([
       db.select({
         id:              reservationRequests.id,
         referenceNumber: reservationRequests.referenceNumber,
@@ -62,17 +64,47 @@ export async function GET(req: NextRequest) {
         normalizedEmail: reservationRequests.normalizedEmail,
         locale:          reservationRequests.locale,
         source:          reservationRequests.source,
+        pageSlug:        reservationRequests.pageSlug,
         status:          reservationRequests.status,
         createdAt:       reservationRequests.createdAt,
         archivedAt:      reservationRequests.archivedAt,
       }).from(reservationRequests).where(where).orderBy(desc(reservationRequests.createdAt)).limit(limit).offset(offset),
       db.select({ count: count() }).from(reservationRequests).where(where),
+      db.select({
+        source: reservationRequests.source,
+        locale: reservationRequests.locale,
+        pageSlug: reservationRequests.pageSlug,
+        count: count(),
+      }).from(reservationRequests).where(where).groupBy(
+        reservationRequests.source,
+        reservationRequests.locale,
+        reservationRequests.pageSlug,
+      ).orderBy(desc(count())).limit(100),
     ]);
 
     const total      = totals[0]?.count ?? 0;
     const totalPages = Math.ceil(total / limit);
 
-    return NextResponse.json({ rows, total, page, totalPages });
+    const countBy = (key: 'source' | 'locale' | 'pageSlug') => {
+      const counts = new Map<string, number>();
+      for (const entry of summaryRows) {
+        const value = entry[key] || '/';
+        counts.set(value, (counts.get(value) ?? 0) + entry.count);
+      }
+      return Array.from(counts, ([value, count]) => ({ value, count }))
+        .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value, 'tr'));
+    };
+    return NextResponse.json({
+      rows,
+      total,
+      page,
+      totalPages,
+      summary: {
+        bySource: countBy('source'),
+        byLocale: countBy('locale'),
+        byPage: countBy('pageSlug'),
+      },
+    });
   } catch (err) {
     console.error('[admin/requests] list error:', (err as Error)?.message);
     return NextResponse.json({ error: 'DB error' }, { status: 500 });

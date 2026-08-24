@@ -19,7 +19,7 @@ import type {
 } from '@/lib/public-service-catalog-types';
 import { RTL_LOCALES } from '@/lib/i18n/locale-registry';
 import { isolateLtrValues } from '@/lib/i18n/bidi';
-import { localizedServicePath } from '@/lib/localized-service-path';
+import { localizedServiceCategoryPath, localizedServicePath } from '@/lib/localized-service-path';
 
 /** Empty-state strings in each locale. */
 const EMPTY_MSG: Record<string, string> = {
@@ -120,8 +120,11 @@ export default async function HizmetlerServiceGridCms({
         return (
           <div key={cat} id={`hiz-cat-${cat}`} style={{ scrollMarginTop: '90px' }}>
             {/* Category label; service titles are the page's H2 headings. */}
-            <p
+            <Link
+              href={localizedServiceCategoryPath(cat, locale)}
+              aria-label={`${groupLabel} category page`}
               style={{
+                display: 'inline-block',
                 fontFamily: 'Inter, sans-serif',
                 fontSize: '11px',
                 fontWeight: 700,
@@ -131,10 +134,11 @@ export default async function HizmetlerServiceGridCms({
                 marginBottom: '20px',
                 paddingBottom: '10px',
                 borderBottom: '1px solid rgba(201,168,76,0.18)',
+                textDecoration: 'none',
               }}
             >
                {isolateLtrValues(groupLabel, locale)}
-            </p>
+            </Link>
 
             {/* Service cards grid */}
             <div
@@ -184,29 +188,7 @@ export default async function HizmetlerServiceGridCms({
                           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 340px"
                           priority={catIdx === 0 && svcIdx === 0}
                         />
-                      ) : (
-                        /* Branded gradient fallback when no hero image */
-                        <div
-                          style={{
-                            position: 'absolute', inset: 0,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: 'linear-gradient(135deg, #1A2E3D 0%, #263E52 100%)',
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontFamily: 'Inter, sans-serif',
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              letterSpacing: '0.2em',
-                              textTransform: 'uppercase',
-                              color: 'rgba(201,168,76,0.7)',
-                            }}
-                          >
-                            VIP TRANSFER
-                          </span>
-                        </div>
-                      )}
+                      ) : null}
                       {/* Gold overlay on hover */}
                       <div
                         className="ivt-svc-card-overlay"

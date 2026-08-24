@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useTransition, useEffect } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -15,6 +16,7 @@ export interface ServiceListItem {
   category: string | null;
   showOnHomepage: boolean;
   showInNav: boolean;
+  heroImage: string | null;
   updatedAt: string;
   translations: Record<string, string>; // locale → status
 }
@@ -86,6 +88,31 @@ function LangDots({ translations }: { translations: Record<string, string> }) {
         );
       })}
     </div>
+  );
+}
+
+function CoverThumbnail({ src, title }: { src: string | null; title: string }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [src]);
+  if (!src || failed) {
+    return (
+      <span title={src ? 'Kapak görseli yüklenemedi' : 'Kapak görseli yok'} style={{
+        width: '42px', height: '32px', borderRadius: '5px', flexShrink: 0,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        background: '#F1F5F9', border: '1px dashed #CBD5E1', color: '#94A3B8',
+        fontSize: '9px', fontWeight: 600,
+      }}>Yok</span>
+    );
+  }
+  return (
+    <Image
+      src={src}
+      alt={`${title} kapak görseli`}
+      width={42}
+      height={32}
+      onError={() => setFailed(true)}
+      style={{ width: '42px', height: '32px', borderRadius: '5px', objectFit: 'cover', flexShrink: 0, border: '1px solid #E2E8F0' }}
+    />
   );
 }
 
@@ -369,13 +396,13 @@ export default function HizmetlerList({ items }: Props) {
       }}>
         {/* Table header — desktop only */}
         <div className="hl-table-header" style={{
-          gridTemplateColumns: '36px 1fr 110px 1fr 90px 60px 50px 140px',
+          gridTemplateColumns: '36px 52px 1fr 110px 1fr 90px 60px 50px 140px',
           gap: '8px', padding: '10px 18px',
           background: '#F8FAFC', borderBottom: '1px solid #E2E8F0',
           fontFamily: 'Inter, sans-serif',
           minWidth: '760px',
         }}>
-          {['#', 'Başlık / Slug', 'Kategori', 'Dil Durumu (9 dil)', 'Durum', 'Ana', 'Nav', 'İşlem'].map(h => (
+          {['#', 'Kapak', 'Başlık / Slug', 'Kategori', 'Dil Durumu (9 dil)', 'Durum', 'Ana Sayfa', 'Menü', 'İşlem'].map(h => (
             <span key={h} style={{ fontSize: '11px', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase' }}>{h}</span>
           ))}
         </div>
@@ -392,7 +419,7 @@ export default function HizmetlerList({ items }: Props) {
 
           return (
             <div key={item.id} className="hl-table-row" style={{
-              gridTemplateColumns: '36px 1fr 110px 1fr 90px 60px 50px 140px',
+              gridTemplateColumns: '36px 52px 1fr 110px 1fr 90px 60px 50px 140px',
               gap: '8px', padding: '12px 18px',
               borderBottom: '1px solid #F1F5F9', alignItems: 'center',
               fontFamily: 'Inter, sans-serif',
@@ -401,6 +428,7 @@ export default function HizmetlerList({ items }: Props) {
               minWidth: '760px',
             }}>
               <span style={{ fontSize: '11px', color: '#94A3B8' }}>{idx + 1}</span>
+              <CoverThumbnail src={item.heroImage} title={item.title} />
 
               <div>
                 <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: '#1E293B' }}>
@@ -454,6 +482,7 @@ export default function HizmetlerList({ items }: Props) {
             >
               {/* Title row */}
               <div className="hl-card-top">
+                <CoverThumbnail src={item.heroImage} title={item.title} />
                 <p className="hl-card-title">
                   <span style={{ color: '#94A3B8', fontWeight: 400, marginRight: '6px' }}>{idx + 1}.</span>
                   {item.title}
@@ -472,8 +501,16 @@ export default function HizmetlerList({ items }: Props) {
               {/* Meta row */}
               <div className="hl-card-meta">
                 {catLabel && <span style={{ background: '#F1F5F9', borderRadius: '4px', padding: '1px 6px' }}>{catLabel}</span>}
-                {item.showOnHomepage && <span style={{ background: '#ECFDF5', color: '#059669', borderRadius: '4px', padding: '1px 6px' }}>Ana Sayfa</span>}
-                {item.showInNav      && <span style={{ background: '#EFF6FF', color: '#2563EB', borderRadius: '4px', padding: '1px 6px' }}>Menü</span>}
+                <span style={{
+                  background: item.showOnHomepage ? '#ECFDF5' : '#F1F5F9',
+                  color: item.showOnHomepage ? '#059669' : '#64748B',
+                  borderRadius: '4px', padding: '1px 6px',
+                }}>Ana Sayfa: {item.showOnHomepage ? 'Açık' : 'Kapalı'}</span>
+                <span style={{
+                  background: item.showInNav ? '#EFF6FF' : '#F1F5F9',
+                  color: item.showInNav ? '#2563EB' : '#64748B',
+                  borderRadius: '4px', padding: '1px 6px',
+                }}>Menü: {item.showInNav ? 'Açık' : 'Kapalı'}</span>
               </div>
 
               {/* Language status dots */}

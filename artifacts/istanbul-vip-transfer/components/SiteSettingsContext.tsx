@@ -27,6 +27,7 @@ import { SITE } from '@/lib/site-config';
 // ── Default value (static fallback for type safety) ──────────────────────────
 
 const DEFAULT_SETTINGS: ContactSettings = {
+  businessName:      SITE.businessName,
   phoneDisplay:     SITE.phoneDisplay,
   phoneTel:         SITE.phoneTel,
   phoneE164:        SITE.phoneE164,

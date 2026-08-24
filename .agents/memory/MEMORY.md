@@ -62,3 +62,4 @@
 - [Deterministic performance work](local-lighthouse-audits.md) — apply known web-vital fixes directly; do not run Lighthouse, PageSpeed Insights, or other performance measurement tools.
 - [Security hardening baseline](security-hardening-baseline.md) — OAuth state uses a CSPRNG nonce; reset-token schema is migration-tracked; CSP permits GA only after consent.
 - [Visitor-ready translation policy](visitor-ready-translations.md) — completed localized content is public before administrative approval; only translating or failed rows stay hidden.
+- [CMS publication and request provenance](cms-publication-request-provenance.md) — publish must invalidate localized SEO paths; social images are verified; request origin and backups are auditable.

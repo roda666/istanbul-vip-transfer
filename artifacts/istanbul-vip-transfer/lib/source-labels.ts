@@ -26,3 +26,10 @@ export function formatSource(source: string | null | undefined): string {
   if (!source) return '—';
   return SOURCE_LABELS[source] ?? source;
 }
+
+/** A presentation-safe label for the server-captured, query-free page path. */
+export function formatRequestPage(pageSlug: string | null | undefined): string {
+  if (!pageSlug || pageSlug === '/bilinmiyor') return 'Bilinmeyen sayfa';
+  if (pageSlug === '/') return 'Ana sayfa';
+  return pageSlug;
+}

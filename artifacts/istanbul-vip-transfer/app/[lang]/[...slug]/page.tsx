@@ -21,7 +21,7 @@ import {
   getOgLocale,
 } from '@/lib/i18n/seo';
 import { SITE } from '@/lib/site-config';
-import { getServiceOgImageUrl } from '@/lib/service-og-images';
+import { getReachableServiceImageUrl } from '@/lib/service-image-assets';
 import { getContactSettings } from '@/lib/site-settings-server';
 import rawPageMeta from '@/lib/page-meta.json';
 import { PAGE_REGISTRY } from '@/lib/page-registry';
@@ -97,7 +97,11 @@ interface Props {
 }
 
 // ── Helper: fetch DB metadata for a service page ───────────────────────────
-async function getDbMeta(slug: string, lang: string): Promise<{ title?: string; description?: string } | null> {
+async function getDbMeta(slug: string, lang: string): Promise<{
+  title?: string;
+  description?: string;
+  socialImage?: string | null;
+} | null> {
   try {
     const { getPublishedServicePage } = await import('@/lib/service-page-cms');
     const page = await getPublishedServicePage(slug, lang);
@@ -105,6 +109,9 @@ async function getDbMeta(slug: string, lang: string): Promise<{ title?: string; 
     return {
       title:       page.seoTitle ?? page.title ?? undefined,
       description: page.seoDescription ?? undefined,
+      // A social crawler must never be given an unavailable asset. Prefer the
+      // explicit OG image, then the same service's verified cover image.
+      socialImage: await getReachableServiceImageUrl(page.ogImage ?? page.heroImage),
     };
   } catch {
     return null;
@@ -148,7 +155,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // Try DB metadata for service pages first
   let title: string | undefined;
   let description: string | undefined;
-  let ogImages: ({ url: string; width: number; height: number } | typeof SITE.ogImage)[] = [SITE.ogImage];
+  let ogImages: ({ url: string; width: number; height: number } | typeof SITE.ogImage)[] | undefined = [SITE.ogImage];
 
   if (isCategory) {
     const copy = getServiceCategoryPageCopy(lang);
@@ -163,7 +170,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
     title       = dbMeta.title;
     description = dbMeta.description;
-    ogImages = [{ url: getServiceOgImageUrl(pathKey, SITE.siteUrl), width: 1200, height: 630 }];
+    ogImages = dbMeta.socialImage
+      ? [{ url: dbMeta.socialImage, width: 1200, height: 630 }]
+      : undefined;
   }
 
   // Fall back to page-meta.json
@@ -208,7 +217,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       siteName: 'VIP Transfer Istanbul',
       locale: getOgLocale(lang),
       type: 'website',
-      images: ogImages,
+      ...(ogImages ? { images: ogImages } : {}),
     },
     robots: { index: true, follow: true },
   };

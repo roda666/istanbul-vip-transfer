@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Search, ChevronLeft, ChevronRight, Archive, RefreshCw, Phone } from 'lucide-react';
-import { SOURCE_FILTER_OPTIONS, formatSource } from '@/lib/source-labels';
+import { SOURCE_FILTER_OPTIONS, formatRequestPage, formatSource } from '@/lib/source-labels';
 
 interface RequestRow {
   id: string;
@@ -15,6 +15,7 @@ interface RequestRow {
   normalizedEmail: string | null;
   locale: string;
   source: string;
+  pageSlug: string;
   status: string;
   createdAt: string;
   archivedAt: string | null;
@@ -25,6 +26,11 @@ interface PageResult {
   total: number;
   page: number;
   totalPages: number;
+  summary: {
+    bySource: Array<{ value: string; count: number }>;
+    byLocale: Array<{ value: string; count: number }>;
+    byPage: Array<{ value: string; count: number }>;
+  };
 }
 
 const WORKFLOW_STATUSES: Record<string, string> = {
@@ -188,6 +194,9 @@ function RequestCard({
         <span style={{ padding: '2px 8px', borderRadius: '999px', fontSize: '11px', color: '#64748B', background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
           {formatSource(row.source)}
         </span>
+        <span title={row.pageSlug} style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '2px 8px', borderRadius: '999px', fontSize: '11px', color: '#64748B', background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+          {formatRequestPage(row.pageSlug)}
+        </span>
       </div>
 
       {/* Date + actions */}
@@ -229,6 +238,7 @@ export default function TaleplerClient() {
   const [intent, setIntent]     = useState('');
   const [lang, setLang]         = useState('');
   const [source, setSource]     = useState('');
+  const [pageSlug, setPageSlug] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo]     = useState('');
   const [updating, setUpdating] = useState<string | null>(null);
@@ -244,6 +254,7 @@ export default function TaleplerClient() {
       if (intent)   params.set('intent',    intent);
       if (lang)     params.set('lang',      lang);
       if (source)   params.set('source',    source);
+      if (pageSlug) params.set('page_slug', pageSlug);
       if (dateFrom) params.set('date_from', dateFrom);
       if (dateTo)   params.set('date_to',   dateTo);
       const res = await fetch(`/admin/api/requests?${params}`);
@@ -254,7 +265,7 @@ export default function TaleplerClient() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, status, service, intent, lang, source, dateFrom, dateTo]);
+  }, [page, search, status, service, intent, lang, source, pageSlug, dateFrom, dateTo]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -299,7 +310,7 @@ export default function TaleplerClient() {
 
   function resetFilters() {
     setSearch(''); setStatus(''); setService(''); setIntent('');
-    setLang(''); setSource(''); setDateFrom(''); setDateTo('');
+    setLang(''); setSource(''); setPageSlug(''); setDateFrom(''); setDateTo('');
     setPage(1);
   }
 
@@ -314,7 +325,7 @@ export default function TaleplerClient() {
     outline: 'none',
   };
 
-  const hasActiveFilters = search || status || service || intent || lang || source || dateFrom || dateTo;
+  const hasActiveFilters = search || status || service || intent || lang || source || pageSlug || dateFrom || dateTo;
 
   const pagination = data && data.totalPages > 1 && (
     <div style={{
@@ -389,6 +400,12 @@ export default function TaleplerClient() {
             <option key={value} value={value}>{label}</option>
           ))}
         </select>
+        <select value={pageSlug} onChange={(e) => { setPageSlug(e.target.value); setPage(1); }} style={{ ...inputStyle, flex: '1 1 160px' }}>
+          <option value="">Tüm Sayfalar</option>
+          {(data?.summary.byPage ?? []).map(({ value, count }) => (
+            <option key={value} value={value}>{formatRequestPage(value)} ({count})</option>
+          ))}
+        </select>
       </div>
 
       {/* Date range */}
@@ -425,6 +442,18 @@ export default function TaleplerClient() {
 
       {/* ── MOBILE: Card view ── */}
        {!loading && !error && data && (
+         <section style={{ marginBottom: '18px', padding: '14px 16px', border: '1px solid #D8E1E9', borderRadius: '10px', background: '#F8FAFC' }}>
+           <p style={{ margin: '0 0 10px', color: '#52697A', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'Inter, sans-serif' }}>Canlı Kaynak Özeti</p>
+           <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap', fontSize: '12px', color: '#334E68', fontFamily: 'Inter, sans-serif' }}>
+             <span><strong>{data.total}</strong> kayıt</span>
+             <span>Kaynak: {data.summary.bySource.map((item) => `${formatSource(item.value)} (${item.count})`).join(' · ') || '—'}</span>
+             <span>Dil: {data.summary.byLocale.map((item) => `${LOCALE_LABELS[item.value] ?? item.value.toUpperCase()} (${item.count})`).join(' · ') || '—'}</span>
+             <span>Sayfa: {data.summary.byPage.map((item) => `${formatRequestPage(item.value)} (${item.count})`).join(' · ') || '—'}</span>
+           </div>
+         </section>
+       )}
+
+       {!loading && !error && data && (
          <div className="admin-request-mobile-list">
           {data.rows.length === 0 ? (
             <div style={{ padding: '40px', textAlign: 'center', color: '#94A3B8', fontFamily: 'Inter, sans-serif', background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
@@ -460,6 +489,7 @@ export default function TaleplerClient() {
                   <th style={th}>Telefon</th>
                   <th style={th}>Dil</th>
                   <th style={th}>Kaynak</th>
+                   <th style={th}>Sayfa</th>
                   <th style={th}>Hizmet</th>
                   <th style={th}>Talep</th>
                   <th style={th}>Durum</th>
@@ -470,7 +500,7 @@ export default function TaleplerClient() {
               <tbody>
                 {data.rows.length === 0 && (
                   <tr>
-                    <td colSpan={10} style={{ ...td, textAlign: 'center', color: '#94A3B8', padding: '40px' }}>
+                    <td colSpan={11} style={{ ...td, textAlign: 'center', color: '#94A3B8', padding: '40px' }}>
                       Kayıt bulunamadı.
                     </td>
                   </tr>
@@ -493,6 +523,7 @@ export default function TaleplerClient() {
                         </span>
                       </td>
                       <td style={{ ...td, fontSize: '12px', color: '#64748B' }}>{formatSource(row.source)}</td>
+                       <td style={{ ...td, fontSize: '12px', color: '#64748B', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={formatRequestPage(row.pageSlug)}>{formatRequestPage(row.pageSlug)}</td>
                       <td style={{ ...td, fontSize: '12px' }}>{SERVICE_LABELS[row.serviceType] ?? row.serviceType}</td>
                       <td style={{ ...td, fontSize: '12px' }}>
                         <span style={{ padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, background: row.intent === 'QUOTE' ? '#EFF6FF' : '#F0FDF4', color: row.intent === 'QUOTE' ? '#1D4ED8' : '#15803D', border: `1px solid ${row.intent === 'QUOTE' ? '#BFDBFE' : '#BBF7D0'}` }}>

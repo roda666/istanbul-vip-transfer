@@ -60,7 +60,7 @@ export const metadata: Metadata = {
 
 const EMPTY_PUBLIC_CHROME: PublicChromePayload = {
   contactSettings: {
-    phoneDisplay: '', phoneTel: '', phoneE164: '', whatsappNumber: '',
+    businessName: '', phoneDisplay: '', phoneTel: '', phoneE164: '', whatsappNumber: '',
     whatsappUrl: '', whatsappFloatUrl: '', email: '', emailMailto: '',
     googleBusinessUrl: '', companyLegalName: '', companyTradeName: '',
     tursabNo: '', fullAddress: '', googlePlayUrl: '', googleReviewUrl: '',

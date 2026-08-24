@@ -18,6 +18,7 @@ import { isFiveMinuteIncrement, isValidPassengerCount, meetsAllocationMinimum } 
 import { rateLimit } from '@/lib/auth/rate-limit';
 import { getAdminNotifyEmails, sendEmailDetailed } from '@/lib/email';
 import { startNewsletterOptIn } from '@/lib/newsletter';
+import { getRequestPageSlug } from '@/lib/request-origin';
 
 export const dynamic = 'force-dynamic';
 
@@ -388,7 +389,8 @@ export async function POST(req: NextRequest) {
       phone:           sanitizeText(data.telefon).slice(0, 30),
       normalizedEmail,
       locale:          data.locale ?? 'tr',
-      source:          'booking-form',
+      source:          `booking-form:${data.serviceType}`,
+      pageSlug:        getRequestPageSlug(req, '/bilinmiyor'),
       requestData:     safeFormData,
       status:          'NEW',
     });

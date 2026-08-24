@@ -44,6 +44,7 @@ export default async function HizmetlerPage() {
         category:       content.category,
         showOnHomepage: content.showOnHomepage,
         showInNav:      content.showInNav,
+        heroImage:      content.heroImage,
         updatedAt:      content.updatedAt,
         body:           content.body,
       })
@@ -86,6 +87,7 @@ export default async function HizmetlerPage() {
       category:       r.category,
       showOnHomepage: r.showOnHomepage,
       showInNav:      r.showInNav,
+      heroImage:      r.heroImage,
       updatedAt:      r.updatedAt.toISOString(),
       translations:   txByService.get(r.id) ?? {},
     }));

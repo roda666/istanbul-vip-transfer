@@ -16,6 +16,7 @@ import { sanitizeText } from '@/lib/sanitize';
 import { getAdminNotifyEmails, sendEmailDetailed } from '@/lib/email';
 import { rateLimit } from '@/lib/auth/rate-limit';
 import { startNewsletterOptIn } from '@/lib/newsletter';
+import { getRequestPageSlug } from '@/lib/request-origin';
 
 export const dynamic = 'force-dynamic';
 
@@ -151,6 +152,7 @@ export async function POST(req: NextRequest) {
       normalizedEmail: contact.email,
       locale:      contact.locale,
       source:      'contact-form',
+      pageSlug:    getRequestPageSlug(req, '/iletisim'),
       requestData,
       status: 'NEW',
     });

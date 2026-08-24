@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   const cs = await getContactSettings();
 
-  const body = `# Istanbul VIP Transfer
+  const body = `# ${cs.businessName}
 
 > Premium VIP airport transfer and private chauffeur service in Istanbul, Turkey. Luxury Mercedes vehicles (Vito, Sprinter, S-Class), professional drivers, fixed prices, 24/7 availability.
 

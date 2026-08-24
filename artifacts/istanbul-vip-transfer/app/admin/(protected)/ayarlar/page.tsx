@@ -86,7 +86,8 @@ export default function AyarlarPage() {
           <div style={{ display: 'grid', gap: '12px' }}>
             <div>
               <label style={labelStyle}>İşletme Adı (Görünüm)</label>
-              <input type="text" {...field('businessName')} style={inputStyle} placeholder="Istanbul VIP Transfer" />
+              <input type="text" {...field('businessName')} style={inputStyle} placeholder="İşletme görünen adı" />
+              <p style={hintStyle}>Header, footer ve ayarlara bağlı genel site bileşenlerinde tek kaynak olarak kullanılır.</p>
             </div>
             <div>
               <label style={labelStyle}>Logo Yolu</label>

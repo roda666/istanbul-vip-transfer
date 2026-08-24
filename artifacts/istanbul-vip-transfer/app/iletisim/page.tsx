@@ -46,13 +46,13 @@ function buildContactPageSchema(cs: ContactSettings) {
   return {
   '@context': 'https://schema.org',
   '@type': 'ContactPage',
-  name: 'İletişim | İstanbul VIP Transfer',
+  name: `İletişim | ${cs.businessName}`,
   url: PAGE,
   description:
     'İstanbul VIP Transfer rezervasyonu ve bilgi için telefon, WhatsApp veya e-posta üzerinden bize 7/24 ulaşın.',
   mainEntity: {
     '@type': 'LocalBusiness',
-    name: 'VIP Transfer Istanbul',
+    name: cs.businessName,
     url: BASE,
     telephone: cs.phoneE164,
     email: cs.email,

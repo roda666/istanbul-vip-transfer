@@ -106,13 +106,13 @@ export default function Header({ serviceNavigationGroups }: HeaderProps = {}) {
                   className="text-xl md:text-2xl font-bold tracking-widest uppercase whitespace-nowrap"
                    style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#9A6A12', letterSpacing: '0.15em' }}
                 >
-                  VIP Transfer
+                  {cs.businessName}
                 </span>
                 <span
                   className="text-[10px] tracking-[0.35em] uppercase"
                   style={{ color: '#50677A', fontFamily: 'Inter, sans-serif', marginTop: '1px' }}
                 >
-                  Istanbul
+                  {cs.businessName ? '' : 'Istanbul'}
                 </span>
               </Link>
             </div>

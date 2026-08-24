@@ -5,6 +5,7 @@ import { PUBLIC_CHROME_TAG } from '@/lib/public-chrome-cache';
 import { SUPPORTED_LANGS } from '@/lib/i18n';
 import {
   localizedServiceCategoryPath,
+  localizedServicePath,
   localizedStaticPath,
 } from '@/lib/localized-service-path';
 
@@ -57,4 +58,17 @@ export function revalidatePublicServiceCatalog(options: {
       revalidatePath(localizedServiceCategoryPath(categorySlug, locale));
     }
   }
+}
+
+/** Flush the page and metadata cache for every localized detail route. */
+export function revalidatePublicServiceDetail(slug: string, locales?: string[]): void {
+  const targetLocales = locales?.length
+    ? [...new Set(locales)]
+    : [...new Set(['tr', ...SUPPORTED_LANGS])];
+  for (const locale of targetLocales) {
+    revalidatePath(localizedServicePath(slug, locale));
+  }
+  // Detail pages can contribute to sitemap URLs and header/footer navigation.
+  revalidatePath('/sitemap.xml');
+  revalidateTag(PUBLIC_CHROME_TAG);
 }

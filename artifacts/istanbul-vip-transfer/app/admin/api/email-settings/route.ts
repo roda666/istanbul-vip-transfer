@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdminSession } from '@/lib/auth/session';
 import { rateLimit } from '@/lib/auth/rate-limit';
+import { DEFAULT_ADMIN_NOTIFY_EMAIL } from '@/lib/email';
 import {
   encryptSmtpPassword,
   ensureSmtpPasswordEncryption,
@@ -67,7 +68,7 @@ function getConfigurationIssues(settings: SettingsShape): string[] {
 }
 
 function parseAdminNotifyEmails(value: string | null | undefined): { value: string | null; error?: string } {
-  if (!value?.trim()) return { value: null };
+  if (!value?.trim()) return { value: DEFAULT_ADMIN_NOTIFY_EMAIL };
   const emails = value
     .split(',')
     .map((email) => email.trim())
@@ -103,10 +104,10 @@ export async function GET() {
         enabled: false, providerType: 'custom',
         smtpHost: null, smtpPort: 587, smtpSecure: 'starttls',
         smtpUser: null, passwordSet: false,
-        fromName: null, fromEmail: null, replyToEmail: null, adminNotifyEmails: null,
+        fromName: null, fromEmail: null, replyToEmail: null, adminNotifyEmails: DEFAULT_ADMIN_NOTIFY_EMAIL,
         configurationIssues: getConfigurationIssues({
           enabled: false, smtpHost: null, smtpPort: 587, smtpSecure: 'starttls',
-          smtpUser: null, passwordSet: false, fromEmail: null, adminNotifyEmails: null,
+          smtpUser: null, passwordSet: false, fromEmail: null, adminNotifyEmails: DEFAULT_ADMIN_NOTIFY_EMAIL,
         }),
       });
     }
@@ -123,7 +124,7 @@ export async function GET() {
       fromName:          row.fromName,
       fromEmail:         row.fromEmail,
       replyToEmail:      row.replyToEmail,
-      adminNotifyEmails: row.adminNotifyEmails,
+      adminNotifyEmails: row.adminNotifyEmails?.trim() || DEFAULT_ADMIN_NOTIFY_EMAIL,
       configurationIssues: getConfigurationIssues({
         enabled: row.enabled,
         smtpHost: row.smtpHost,
@@ -132,7 +133,7 @@ export async function GET() {
         smtpUser: row.smtpUser,
         passwordSet: !!row.smtpPassEncrypted,
         fromEmail: row.fromEmail,
-        adminNotifyEmails: row.adminNotifyEmails,
+        adminNotifyEmails: row.adminNotifyEmails?.trim() || DEFAULT_ADMIN_NOTIFY_EMAIL,
       }),
     });
   } catch {

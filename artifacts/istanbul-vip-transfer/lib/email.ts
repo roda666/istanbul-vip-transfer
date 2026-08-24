@@ -10,7 +10,7 @@
  * sendEmail() remains as a boolean compatibility wrapper for existing callers.
  *
  * Convenience exports:
- *   getAdminNotifyEmails() — DB adminNotifyEmails list or ADMIN_EMAIL env var
+ *   getAdminNotifyEmails() — DB adminNotifyEmails list or the product default
  */
 import 'server-only';
 
@@ -20,6 +20,9 @@ export interface SendEmailOptions {
   html: string;
   text?: string;
 }
+
+/** Default recipient for booking, contact, and system notifications. */
+export const DEFAULT_ADMIN_NOTIFY_EMAIL = 'roda66@gmail.com';
 
 export type EmailDeliveryCode =
   | 'SMTP_NOT_CONFIGURED'
@@ -239,7 +242,8 @@ async function createSmtpTransport(cfg: ResolvedSmtpConfig) {
 
 /**
  * Returns the list of admin notification email addresses.
- * Prefers DB adminNotifyEmails; falls back to ADMIN_EMAIL env var.
+ * Prefers the panel's DB value. An empty existing setting uses the product
+ * default; ADMIN_EMAIL is only a fallback when the database is unavailable.
  */
 export async function getAdminNotifyEmails(): Promise<string[]> {
   try {
@@ -251,10 +255,11 @@ export async function getAdminNotifyEmails(): Promise<string[]> {
       const list = raw.split(',').map(e => e.trim()).filter(Boolean);
       if (list.length > 0) return list;
     }
+    return [DEFAULT_ADMIN_NOTIFY_EMAIL];
   } catch { /* ignore */ }
 
   const envEmail = process.env.ADMIN_EMAIL;
-  return envEmail ? [envEmail] : [];
+  return envEmail ? [envEmail] : [DEFAULT_ADMIN_NOTIFY_EMAIL];
 }
 
 /**

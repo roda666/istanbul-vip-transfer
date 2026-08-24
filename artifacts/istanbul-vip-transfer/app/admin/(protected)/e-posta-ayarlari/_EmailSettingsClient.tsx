@@ -17,6 +17,7 @@ const MUTED_C   = '#8899AA';
 const GOLD      = '#C99A32';
 const DANGER    = '#C0392B';
 const SUCCESS   = '#1A7A4A';
+const DEFAULT_ADMIN_NOTIFY_EMAIL = 'roda66@gmail.com';
 
 const s: Record<string, React.CSSProperties> = {
   page:    { background: PAGE_BG, minHeight: '100vh', padding: '0 0 48px' },
@@ -77,7 +78,7 @@ const DEFAULTS: Settings = {
   fromName: '',
   fromEmail: '',
   replyToEmail: '',
-  adminNotifyEmails: '',
+  adminNotifyEmails: DEFAULT_ADMIN_NOTIFY_EMAIL,
   configurationIssues: [],
 };
 
@@ -124,7 +125,7 @@ export default function EmailSettingsClient() {
           fromName:          d.fromName          ?? '',
           fromEmail:         d.fromEmail         ?? '',
           replyToEmail:      d.replyToEmail      ?? '',
-          adminNotifyEmails: d.adminNotifyEmails ?? '',
+          adminNotifyEmails: d.adminNotifyEmails ?? DEFAULT_ADMIN_NOTIFY_EMAIL,
           configurationIssues: d.configurationIssues ?? [],
         });
         setLoading(false);

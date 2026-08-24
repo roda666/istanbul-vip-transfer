@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({
     success: true,
-    message: delivery.message,
+    message: 'Test postası gönderildi.',
     delivery: {
       code: delivery.code,
       acceptedCount: delivery.acceptedCount,

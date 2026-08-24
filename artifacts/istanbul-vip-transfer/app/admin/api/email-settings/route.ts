@@ -11,14 +11,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdminSession } from '@/lib/auth/session';
 import { rateLimit } from '@/lib/auth/rate-limit';
-import { isEncryptionReady, encrypt } from '@/lib/email-crypto';
+import {
+  encryptSmtpPassword,
+  ensureSmtpPasswordEncryption,
+} from '@/lib/email-settings-crypto';
 
 const putSchema = z.object({
   enabled:           z.boolean(),
   providerType:      z.enum(['gmail', 'sendgrid', 'mailgun', 'custom']),
   smtpHost:          z.string().max(253).optional().nullable(),
   smtpPort:          z.number().int().min(1).max(65535).optional().nullable(),
-  smtpSecure:        z.enum(['tls', 'ssl', 'none']),
+  smtpSecure:        z.enum(['starttls', 'ssl']),
   smtpUser:          z.string().max(320).optional().nullable(),
   /**
    * Empty / omitted → keep existing password untouched.
@@ -32,6 +35,48 @@ const putSchema = z.object({
   adminNotifyEmails: z.string().max(1000).optional().nullable(),
 });
 
+type SettingsShape = {
+  enabled: boolean;
+  smtpHost: string | null;
+  smtpPort: number | null;
+  smtpSecure: string;
+  smtpUser: string | null;
+  passwordSet: boolean;
+  fromEmail: string | null;
+  adminNotifyEmails: string | null;
+};
+
+function getConfigurationIssues(settings: SettingsShape): string[] {
+  const issues: string[] = [];
+  if (!settings.enabled) {
+    return ['E-posta bildirimleri kapalı. Rezervasyon ve sistem bildirimleri e-posta ile gönderilmez.'];
+  }
+  if (!settings.smtpHost?.trim()) issues.push('SMTP sunucu adresi eksik.');
+  if (!settings.smtpUser?.trim()) issues.push('SMTP kullanıcı adı eksik. Genellikle tam e-posta adresiniz olmalıdır.');
+  if (!settings.passwordSet) issues.push('SMTP parolası kayıtlı değil.');
+  if (!settings.fromEmail?.trim()) issues.push('Gönderen e-posta adresi eksik.');
+  if (!settings.adminNotifyEmails?.trim()) issues.push('Yönetici bildirim adresi eksik.');
+  if (!Number.isInteger(settings.smtpPort) || !settings.smtpPort || settings.smtpPort < 1 || settings.smtpPort > 65535) {
+    issues.push('SMTP portu geçerli değil.');
+  } else if (settings.smtpSecure === 'ssl' && settings.smtpPort !== 465) {
+    issues.push('SSL seçiliyken sağlayıcınız farklı belirtmediyse port 465 kullanılır.');
+  } else if (settings.smtpSecure === 'starttls' && settings.smtpPort !== 587) {
+    issues.push('STARTTLS seçiliyken sağlayıcınız farklı belirtmediyse port 587 kullanılır.');
+  }
+  return issues;
+}
+
+function parseAdminNotifyEmails(value: string | null | undefined): { value: string | null; error?: string } {
+  if (!value?.trim()) return { value: null };
+  const emails = value
+    .split(',')
+    .map((email) => email.trim())
+    .filter(Boolean);
+  const invalid = emails.find((email) => !z.string().email().safeParse(email).success);
+  if (invalid) return { value: null, error: `"${invalid}" geçerli bir e-posta adresi değil.` };
+  return { value: [...new Set(emails.map((email) => email.toLowerCase()))].join(', ') };
+}
+
 // ── GET ──────────────────────────────────────────────────────────────────────
 
 export async function GET() {
@@ -44,7 +89,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Oturum açmanız gerekiyor.' }, { status: 401 });
   }
 
-  const encryptionReady = isEncryptionReady();
+  const encryptionReady = await ensureSmtpPasswordEncryption();
 
   try {
     const { db }           = await import('@/db');
@@ -56,9 +101,13 @@ export async function GET() {
       return NextResponse.json({
         encryptionReady,
         enabled: false, providerType: 'custom',
-        smtpHost: null, smtpPort: 587, smtpSecure: 'tls',
+        smtpHost: null, smtpPort: 587, smtpSecure: 'starttls',
         smtpUser: null, passwordSet: false,
         fromName: null, fromEmail: null, replyToEmail: null, adminNotifyEmails: null,
+        configurationIssues: getConfigurationIssues({
+          enabled: false, smtpHost: null, smtpPort: 587, smtpSecure: 'starttls',
+          smtpUser: null, passwordSet: false, fromEmail: null, adminNotifyEmails: null,
+        }),
       });
     }
 
@@ -68,13 +117,23 @@ export async function GET() {
       providerType:      row.providerType,
       smtpHost:          row.smtpHost,
       smtpPort:          row.smtpPort,
-      smtpSecure:        row.smtpSecure,
+      smtpSecure:        row.smtpSecure === 'ssl' ? 'ssl' : 'starttls',
       smtpUser:          row.smtpUser,
       passwordSet:       !!row.smtpPassEncrypted, // true → "kayıtlı"; actual value never sent
       fromName:          row.fromName,
       fromEmail:         row.fromEmail,
       replyToEmail:      row.replyToEmail,
       adminNotifyEmails: row.adminNotifyEmails,
+      configurationIssues: getConfigurationIssues({
+        enabled: row.enabled,
+        smtpHost: row.smtpHost,
+        smtpPort: row.smtpPort,
+        smtpSecure: row.smtpSecure === 'ssl' ? 'ssl' : 'starttls',
+        smtpUser: row.smtpUser,
+        passwordSet: !!row.smtpPassEncrypted,
+        fromEmail: row.fromEmail,
+        adminNotifyEmails: row.adminNotifyEmails,
+      }),
     });
   } catch {
     return NextResponse.json({ error: 'Ayarlar yüklenemedi.' }, { status: 500 });
@@ -120,6 +179,10 @@ export async function PUT(request: NextRequest) {
   }
 
   const data = parsed.data;
+  const adminNotify = parseAdminNotifyEmails(data.adminNotifyEmails);
+  if (adminNotify.error) {
+    return NextResponse.json({ error: adminNotify.error }, { status: 422 });
+  }
 
   // Determine what to store for the password
   const { db } = await import('@/db');
@@ -136,14 +199,11 @@ export async function PUT(request: NextRequest) {
   let newPassEncrypted: string | null = existing?.passEnc ?? null;
 
   if (data.smtpPass && data.smtpPass.trim().length > 0) {
-    if (!isEncryptionReady()) {
-      return NextResponse.json({
-        error: 'Şifreleme anahtarı (EMAIL_ENCRYPTION_KEY) eksik. Parola kaydedilemez.',
-      }, { status: 503 });
-    }
-    const enc = encrypt(data.smtpPass.trim());
+    const enc = await encryptSmtpPassword(data.smtpPass.trim());
     if (!enc) {
-      return NextResponse.json({ error: 'Parola şifrelenemedi.' }, { status: 500 });
+      return NextResponse.json({
+        error: 'Parola güvenli olarak kaydedilemedi. Lütfen tekrar deneyin.',
+      }, { status: 503 });
     }
     newPassEncrypted = enc;
   }
@@ -160,7 +220,7 @@ export async function PUT(request: NextRequest) {
     fromName:          data.fromName          ?? null,
     fromEmail:         data.fromEmail         ?? null,
     replyToEmail:      data.replyToEmail      ?? null,
-    adminNotifyEmails: data.adminNotifyEmails ?? null,
+    adminNotifyEmails: adminNotify.value,
     updatedAt:         new Date(),
     updatedBy:         session.adminId,
   };
@@ -184,5 +244,18 @@ export async function PUT(request: NextRequest) {
     },
   }).catch(() => {});
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({
+    success: true,
+    encryptionReady: await ensureSmtpPasswordEncryption(),
+    configurationIssues: getConfigurationIssues({
+      enabled: data.enabled,
+      smtpHost: data.smtpHost ?? null,
+      smtpPort: data.smtpPort ?? 587,
+      smtpSecure: data.smtpSecure,
+      smtpUser: data.smtpUser ?? null,
+      passwordSet: !!newPassEncrypted,
+      fromEmail: data.fromEmail ?? null,
+      adminNotifyEmails: adminNotify.value,
+    }),
+  });
 }

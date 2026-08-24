@@ -53,6 +53,7 @@ interface ResolvedSmtpConfig {
   host: string;
   port: number;
   secure: boolean;
+  requireTLS: boolean;
   user: string;
   pass: string;
   from: string;
@@ -95,10 +96,10 @@ async function getSmtpConfig(): Promise<SmtpConfigResolution> {
         return configFailure('SMTP_PASSWORD_MISSING', 'Etkin SMTP ayarlarında parola kayıtlı değil.');
       }
 
-      const { decrypt } = await import('@/lib/email-crypto');
-      const pass = decrypt(row.smtpPassEncrypted);
+      const { decryptSmtpPassword } = await import('@/lib/email-settings-crypto');
+      const pass = await decryptSmtpPassword(row.smtpPassEncrypted);
       if (!pass) {
-        return configFailure('SMTP_PASSWORD_UNREADABLE', 'SMTP parolası çözülemedi. Parolayı yeniden kaydedin ve şifreleme anahtarını kontrol edin.');
+        return configFailure('SMTP_PASSWORD_UNREADABLE', 'Kayıtlı SMTP parolası okunamadı. Parolayı panelden yeniden kaydedin.');
       }
 
       const port   = row.smtpPort ?? 587;
@@ -115,6 +116,7 @@ async function getSmtpConfig(): Promise<SmtpConfigResolution> {
           host: row.smtpHost,
           port,
           secure,
+          requireTLS: !secure,
           user: row.smtpUser,
           pass,
           from,
@@ -150,6 +152,7 @@ async function getSmtpConfig(): Promise<SmtpConfigResolution> {
       host,
       port,
       secure: process.env.SMTP_SECURE === 'true',
+      requireTLS: process.env.SMTP_SECURE !== 'true',
       user,
       pass,
       from: process.env.SMTP_FROM ?? `VIP Transfer Admin <${user}>`,
@@ -173,18 +176,50 @@ function classifyTransportFailure(error: unknown): {
     && 'code' in error
     && typeof error.code === 'string'
   ) ? error.code : '';
-  if (code === 'EAUTH') {
+  const responseCode = (
+    typeof error === 'object'
+    && error !== null
+    && 'responseCode' in error
+    && typeof error.responseCode === 'number'
+  ) ? error.responseCode : undefined;
+
+  if (code === 'EAUTH' || responseCode === 530 || responseCode === 534 || responseCode === 535) {
     return {
       code: 'SMTP_AUTH_FAILED',
       message: 'SMTP kimlik doğrulaması başarısız oldu. Kullanıcı adı ve parolayı kontrol edin.',
     };
   }
 
-  // Nodemailer error details are not returned because some transports can embed
-  // connection information. Only a safe, actionable category is exposed.
+  if (code === 'ENOTFOUND') {
+    return {
+      code: 'SMTP_CONNECTION_FAILED',
+      message: 'SMTP sunucu adresi bulunamadı. Sunucu adresini kontrol edin.',
+    };
+  }
+  if (code === 'ECONNREFUSED') {
+    return {
+      code: 'SMTP_CONNECTION_FAILED',
+      message: 'SMTP sunucusu bağlantıyı reddetti. Sunucu adresi, port ve güvenlik tipini kontrol edin.',
+    };
+  }
+  if (code === 'ETIMEDOUT' || code === 'ESOCKETTIMEDOUT') {
+    return {
+      code: 'SMTP_CONNECTION_FAILED',
+      message: 'SMTP sunucusuna zamanında bağlanılamadı. Port kapalı olabilir veya sunucu erişilemiyor olabilir.',
+    };
+  }
+  if (code === 'ECONNRESET' || code === 'EPROTO' || code === 'ERR_TLS_CERT_ALTNAME_INVALID') {
+    return {
+      code: 'SMTP_CONNECTION_FAILED',
+      message: 'SMTP güvenli bağlantısı kurulamadı. SSL/STARTTLS seçimini ve portu kontrol edin.',
+    };
+  }
+
+  // Raw transport details are deliberately never returned because they can
+  // contain hostnames or provider-specific connection metadata.
   return {
     code: 'SMTP_CONNECTION_FAILED',
-    message: 'SMTP sunucusuna bağlanılamadı veya kimlik doğrulaması başarısız oldu.',
+    message: 'SMTP sunucusuna bağlanılamadı. Sunucu adresi, port, güvenlik tipi ve ağ erişimini kontrol edin.',
   };
 }
 
@@ -194,6 +229,7 @@ async function createSmtpTransport(cfg: ResolvedSmtpConfig) {
     host: cfg.host,
     port: cfg.port,
     secure: cfg.secure,
+    requireTLS: cfg.requireTLS,
     auth: { user: cfg.user, pass: cfg.pass },
     connectionTimeout: 8_000,
     greetingTimeout: 8_000,

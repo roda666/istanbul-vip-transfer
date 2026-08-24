@@ -5,11 +5,13 @@ description: AES-256-GCM SMTP password encryption, DB-driven email config, admin
 
 ## Key decisions
 
-**Encryption**: `lib/email-crypto.ts` — AES-256-GCM, 12-byte random IV, stored as `base64(iv):base64(tag):base64(ciphertext)` in single text column `email_settings.smtp_pass_encrypted`. Key source: `EMAIL_ENCRYPTION_KEY` env secret (64-char hex / 32 bytes). Key is now set as a Replit Secret.
+**Encryption**: SMTP passwords use a dedicated AES-256-GCM envelope-encryption path. On first use, the app generates a random data key and persists only its wrapped form in the `email_encryption_keys` singleton table. The wrapping key is derived from an existing Replit-managed app secret (`AUTH_SECRET`, with `SESSION_SECRET` fallback). An existing valid `EMAIL_ENCRYPTION_KEY` remains supported to read legacy SMTP passwords.
 
-**Why:** Passwords must never appear in logs, source, or API responses. `isEncryptionReady()` gates the password-save path; if key is missing the UI shows a yellow warning and other fields still save.
+**Why:** Passwords and their data key must never appear in logs, source, or API responses. A random data key avoids asking the site owner to create a new secret, while envelope encryption means a database backup alone cannot recover the SMTP password.
 
-**DB table**: `email_settings` singleton (id=1), migration `0010_email_settings.sql`. Schema in `db/schema.ts` at bottom.
+**How to apply:** Keep the wrapped data key separate from `email_settings`; never return either ciphertext or wrapped-key material through an API. The first email-settings access may provision the key. If a legacy ciphertext cannot be read after its legacy secret is removed, ask the admin to enter a new SMTP password rather than attempting recovery.
+
+**DB tables**: `email_settings` is the SMTP singleton (id=1). `email_encryption_keys` is the wrapped SMTP data-key singleton (id=1).
 
 **Email priority**: `lib/email.ts` — DB row first (if `enabled=true` and host/user present), env var (`SMTP_HOST/USER/PASS/FROM`) fallback. Backward-compatible: health scheduler and existing callers work without DB config.
 

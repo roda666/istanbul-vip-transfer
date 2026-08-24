@@ -43,10 +43,10 @@ const s: Record<string, React.CSSProperties> = {
 };
 
 const PROVIDER_PRESETS: Record<string, { host: string; port: number; secure: string }> = {
-  gmail:    { host: 'smtp.gmail.com',     port: 587, secure: 'tls' },
-  sendgrid: { host: 'smtp.sendgrid.net',  port: 587, secure: 'tls' },
-  mailgun:  { host: 'smtp.mailgun.org',   port: 587, secure: 'tls' },
-  custom:   { host: '',                   port: 587, secure: 'tls' },
+  gmail:    { host: 'smtp.gmail.com',     port: 587, secure: 'starttls' },
+  sendgrid: { host: 'smtp.sendgrid.net',  port: 587, secure: 'starttls' },
+  mailgun:  { host: 'smtp.mailgun.org',   port: 587, secure: 'starttls' },
+  custom:   { host: '',                   port: 587, secure: 'starttls' },
 };
 
 interface Settings {
@@ -62,6 +62,7 @@ interface Settings {
   fromEmail: string;
   replyToEmail: string;
   adminNotifyEmails: string;
+  configurationIssues: string[];
 }
 
 const DEFAULTS: Settings = {
@@ -70,18 +71,20 @@ const DEFAULTS: Settings = {
   providerType: 'custom',
   smtpHost: '',
   smtpPort: 587,
-  smtpSecure: 'tls',
+  smtpSecure: 'starttls',
   smtpUser: '',
   passwordSet: false,
   fromName: '',
   fromEmail: '',
   replyToEmail: '',
   adminNotifyEmails: '',
+  configurationIssues: [],
 };
 
 export default function EmailSettingsClient() {
   const [cfg, setCfg]           = useState<Settings>(DEFAULTS);
   const [loading, setLoading]   = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving]     = useState(false);
   const [saveMsg, setSaveMsg]   = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -104,23 +107,32 @@ export default function EmailSettingsClient() {
     fetch('/admin/api/email-settings')
       .then(r => r.json())
       .then((d: Settings) => {
+        if ('error' in d && d.error) {
+          setLoadError('E-posta ayarları yüklenemedi. Sayfayı yenileyin veya daha sonra tekrar deneyin.');
+          setLoading(false);
+          return;
+        }
         setCfg({
           encryptionReady:   d.encryptionReady   ?? false,
           enabled:           d.enabled           ?? false,
           providerType:      d.providerType      ?? 'custom',
           smtpHost:          d.smtpHost          ?? '',
           smtpPort:          d.smtpPort          ?? 587,
-          smtpSecure:        d.smtpSecure        ?? 'tls',
+          smtpSecure:        d.smtpSecure        ?? 'starttls',
           smtpUser:          d.smtpUser          ?? '',
           passwordSet:       d.passwordSet       ?? false,
           fromName:          d.fromName          ?? '',
           fromEmail:         d.fromEmail         ?? '',
           replyToEmail:      d.replyToEmail      ?? '',
           adminNotifyEmails: d.adminNotifyEmails ?? '',
+          configurationIssues: d.configurationIssues ?? [],
         });
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        setLoadError('E-posta ayarları yüklenemedi. İnternet bağlantınızı kontrol edip sayfayı yenileyin.');
+        setLoading(false);
+      });
   }, []);
 
   // ── Helpers ──────────────────────────────────────────────────────────────
@@ -166,12 +178,16 @@ export default function EmailSettingsClient() {
       const res  = await fetch('/admin/api/email-settings', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });
-      const data = await res.json().catch(() => ({})) as { error?: string };
+      const data = await res.json().catch(() => ({})) as { error?: string; configurationIssues?: string[] };
       if (!res.ok) {
         setSaveMsg({ ok: false, text: data.error ?? 'Kaydedilemedi.' });
       } else {
         setSaveMsg({ ok: true, text: 'Ayarlar kaydedildi.' });
-        setCfg(prev => ({ ...prev, passwordSet: passMode === 'change' ? !!newPass.trim() : prev.passwordSet }));
+        setCfg(prev => ({
+          ...prev,
+          passwordSet: passMode === 'change' ? !!newPass.trim() : prev.passwordSet,
+          configurationIssues: data.configurationIssues ?? prev.configurationIssues,
+        }));
         if (passMode === 'change') { setPassMode('keep'); setNewPass(''); }
         setTimeout(() => setSaveMsg(null), 4000);
       }
@@ -210,16 +226,10 @@ export default function EmailSettingsClient() {
       const data = await res.json().catch(() => ({})) as {
         message?: string;
         error?: string;
-        delivery?: { messageId?: string; smtpResponseCode?: number; acceptedCount?: number; rejectedCount?: number };
+        delivery?: { acceptedCount?: number; rejectedCount?: number };
       };
       const base = (res.ok ? data.message : data.error) ?? (res.ok ? 'Gönderildi.' : 'Gönderilemedi.');
-      const details = res.ok
-        ? [
-            `Kabul edilen alıcı: ${data.delivery?.acceptedCount ?? 0}.`,
-            data.delivery?.messageId ? `Mesaj no: ${data.delivery.messageId}` : '',
-            data.delivery?.smtpResponseCode ? `SMTP yanıt kodu: ${data.delivery.smtpResponseCode}` : '',
-          ].filter(Boolean).join(' ')
-        : data.delivery?.smtpResponseCode ? `SMTP yanıt kodu: ${data.delivery.smtpResponseCode}` : '';
+      const details = res.ok ? 'Alıcı adresi SMTP sunucusu tarafından kabul edildi.' : '';
       setSendResult({ ok: res.ok, text: [base, details].filter(Boolean).join(' ') });
     } catch {
       setSendResult({ ok: false, text: 'Sunucu hatası.' });
@@ -244,27 +254,46 @@ export default function EmailSettingsClient() {
     <div style={s.page}>
       <AdminPageHeader title="E-posta Ayarları" description="SMTP yapılandırması ve bildirim adresleri" />
 
-      {/* ── Encryption key warning ───────────────────────────────────────── */}
-      {!cfg.encryptionReady && (
-        <div style={{ ...s.content, paddingBottom: 0 }}>
-          <div style={{ ...s.msg, background: '#FEF9EC', border: '1px solid #F5D97A', color: '#7A5800' }}>
-            <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '1px' }} />
-            <div>
-              <strong>Şifreleme anahtarı eksik</strong> — SMTP parolası şifreli olarak saklanamaz.
-              <br />
-              Replit Secrets bölümüne <code style={{ background: '#FFF3C4', padding: '1px 5px', borderRadius: '3px', fontSize: '12px' }}>EMAIL_ENCRYPTION_KEY</code> adlı bir secret ekleyin:
-              <br />
-              <code style={{ display: 'block', marginTop: '6px', background: '#FFF3C4', padding: '6px 8px', borderRadius: '4px', fontSize: '12px', wordBreak: 'break-all' }}>
-                openssl rand -hex 32
-              </code>
-              Diğer ayarlar parola olmadan kaydedilebilir.
-            </div>
-          </div>
-        </div>
-      )}
-
       <form onSubmit={handleSave}>
         <div style={s.content}>
+          {loadError && (
+            <div style={{ ...s.msg, background: '#FEF0EE', border: '1px solid #F5C6C0', color: DANGER }}>
+              <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+              {loadError}
+            </div>
+          )}
+
+          {!cfg.encryptionReady && (
+            <div style={{ ...s.msg, background: '#FEF0EE', border: '1px solid #F5C6C0', color: DANGER }}>
+              <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+              Güvenli parola saklama hizmeti şu anda kullanılamıyor. Lütfen biraz sonra tekrar deneyin.
+            </div>
+          )}
+
+          {cfg.configurationIssues.length > 0 && (
+            <div style={{ ...s.msg, background: '#FEF9EC', border: '1px solid #F5D97A', color: '#7A5800' }}>
+              <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '1px' }} />
+              <div>
+                <strong>E-posta ayarları tamamlanmadı</strong>
+                <ul style={{ margin: '6px 0 0', paddingLeft: '18px' }}>
+                  {cfg.configurationIssues.map((issue) => <li key={issue}>{issue}</li>)}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          <div style={{ ...s.card, background: '#F8FBFF', borderColor: '#CFE0F4' }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+              <Info size={17} style={{ color: '#27689E', flexShrink: 0, marginTop: '1px' }} />
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', lineHeight: 1.55, color: '#31536E' }}>
+                <strong>Bağlantı bilgilerini nereden alırım?</strong><br />
+                Alan adı e-postası kullanıyorsanız sunucu, port ve güvenlik bilgilerini hosting panelinizdeki
+                e-posta hesabının <em>bağlantı ayarları</em> bölümünden alın. Port genellikle
+                <strong> 465 (SSL)</strong> veya <strong>587 (STARTTLS)</strong> olur. Kullanıcı adı çoğu
+                sağlayıcıda tam e-posta adresidir.
+              </div>
+            </div>
+          </div>
 
           {/* ── Enable toggle ────────────────────────────────────────────── */}
           <div style={s.card}>
@@ -354,11 +383,10 @@ export default function EmailSettingsClient() {
 
             {/* Security */}
             <div style={s.row1}>
-              <label style={s.label}>Güvenlik</label>
+                <label style={s.label}>Güvenlik Tipi</label>
               <select style={s.select} value={cfg.smtpSecure} onChange={e => setCfg(p => ({ ...p, smtpSecure: e.target.value }))}>
-                <option value="tls">TLS / STARTTLS (port 587 — önerilen)</option>
+                <option value="starttls">STARTTLS (port 587 — önerilen)</option>
                 <option value="ssl">SSL (port 465)</option>
-                <option value="none">Şifresiz (yalnızca yerel test)</option>
               </select>
             </div>
           </div>
@@ -428,11 +456,6 @@ export default function EmailSettingsClient() {
                       style={{ ...s.btn, ...s.btnGhost, fontSize: '12px', padding: '6px 12px' }}>
                       İptal
                     </button>
-                    {!cfg.encryptionReady && (
-                      <span style={{ fontSize: '12px', color: DANGER, fontFamily: 'Inter, sans-serif', alignSelf: 'center' }}>
-                        Şifreleme anahtarı eksik — parola kaydedilemez.
-                      </span>
-                    )}
                   </div>
                 </div>
               )}
@@ -534,7 +557,7 @@ export default function EmailSettingsClient() {
             {/* Test Send */}
             <div>
               <div style={{ fontSize: '14px', fontWeight: 600, color: TEXT_C, fontFamily: 'Inter, sans-serif', marginBottom: '6px' }}>
-                Test E-postası Gönder
+                Test Postası Gönder
               </div>
               <div style={{ fontSize: '13px', color: MUTED_C, fontFamily: 'Inter, sans-serif', marginBottom: '12px' }}>
                 Yalnızca aşağıdaki adrese tek bir test mesajı gönderilir.
@@ -554,7 +577,7 @@ export default function EmailSettingsClient() {
                   style={{ ...s.btn, ...s.btnGhost, opacity: (sending || !sendTo.trim()) ? 0.6 : 1, whiteSpace: 'nowrap' }}
                 >
                   {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                  {sending ? 'Gönderiliyor…' : 'Test Gönder'}
+                  {sending ? 'Gönderiliyor…' : 'Test Postası Gönder'}
                 </button>
               </form>
               {sendResult && (

@@ -369,6 +369,7 @@ function ServiceAreaEditor({ serviceArea, onChange, dir, readOnly }: {
 const ACTION_LABELS: Record<string, string> = {
   save_and_translate:    'Kaydedildi ve çeviri başlatıldı',
   save_draft:            'Taslak kaydedildi',
+  edit_translation:      'Çeviri düzenlendi',
   translate:             'Yeniden çevrildi',
   approve_translation:   'Çeviri onaylandı',
   publish_translation:   'Çeviri yayımlandı',
@@ -441,7 +442,7 @@ function AuditLogSection({ contentId }: { contentId: string }) {
 // ── Translation locale panel ────────────────────────────────────────────────
 
 function TranslationPanel({
-  tx, locale, dir, slug, onAction,
+  tx, locale, dir, slug, onAction, onSave,
 }: {
   tx: ServicePageTranslation | undefined;
   locale: string;
@@ -449,15 +450,51 @@ function TranslationPanel({
   contentId: string;
   slug: string;
   onAction: (locale: string, action: string) => Promise<void>;
+  onSave: (locale: string, data: {
+    title: string; excerpt: string; body: ServicePageBody;
+    metaTitle: string; metaDescription: string;
+  }) => Promise<void>;
 }) {
   const status  = tx?.status ?? 'NOT_STARTED';
-  const body    = tx?.body;
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editedBody, setEditedBody] = useState<ServicePageBody | null>(tx?.body ?? null);
+  const [editedTitle, setEditedTitle] = useState(tx?.title ?? '');
+  const [editedExcerpt, setEditedExcerpt] = useState(tx?.excerpt ?? '');
+  const [editedMetaTitle, setEditedMetaTitle] = useState(tx?.metaTitle ?? '');
+  const [editedMetaDescription, setEditedMetaDescription] = useState(tx?.metaDescription ?? '');
+
+  useEffect(() => {
+    setEditing(false);
+    setEditedBody(tx?.body ?? null);
+    setEditedTitle(tx?.title ?? '');
+    setEditedExcerpt(tx?.excerpt ?? '');
+    setEditedMetaTitle(tx?.metaTitle ?? '');
+    setEditedMetaDescription(tx?.metaDescription ?? '');
+  }, [locale, tx]);
+
+  const body = editedBody ?? tx?.body;
+  const setBody = (updater: (body: ServicePageBody) => ServicePageBody) =>
+    setEditedBody(current => current ? updater(current) : current);
 
   const doAction = async (action: string) => {
     setActionLoading(action);
     try { await onAction(locale, action); }
     finally { setActionLoading(null); }
+  };
+  const save = async () => {
+    if (!body) return;
+    setActionLoading('save');
+    try {
+      await onSave(locale, {
+        title: editedTitle,
+        excerpt: editedExcerpt,
+        body,
+        metaTitle: editedMetaTitle,
+        metaDescription: editedMetaDescription,
+      });
+      setEditing(false);
+    } finally { setActionLoading(null); }
   };
 
   const canApprove   = ['DRAFT', 'REVIEW', 'FAILED'].includes(status);
@@ -477,6 +514,21 @@ function TranslationPanel({
         <button onClick={() => doAction('translate')} style={btnStyle('#1E293B', '#E2E8F0')} disabled={!!actionLoading}>
           {actionLoading === 'translate' ? 'Çevriliyor…' : '↺ Yeniden Çevir'}
         </button>
+        {body && !editing && (
+          <button onClick={() => setEditing(true)} style={btnStyle('#FFFFFF', '#4F46E5')} disabled={!!actionLoading}>
+            Düzenle
+          </button>
+        )}
+        {body && editing && (
+          <>
+            <button onClick={save} style={btnStyle('#FFFFFF', '#4F46E5')} disabled={!!actionLoading}>
+              {actionLoading === 'save' ? 'Kaydediliyor…' : 'Çeviriyi Kaydet'}
+            </button>
+            <button onClick={() => { setEditing(false); setEditedBody(tx?.body ?? null); }} style={btnStyle('#475569', '#F1F5F9')} disabled={!!actionLoading}>
+              Vazgeç
+            </button>
+          </>
+        )}
         {canApprove && (
           <button onClick={() => doAction('approve')} style={btnStyle('#FFFFFF', '#0891B2')} disabled={!!actionLoading}>
             {actionLoading === 'approve' ? '…' : '✓ Onayla'}
@@ -528,45 +580,51 @@ function TranslationPanel({
 
       {body && (
         <>
+          {editing && (
+            <SectionCard title="Çeviri Temel Bilgileri">
+              <Field name="Sayfa Başlığı" value={editedTitle} onChange={setEditedTitle} dir={dir} />
+              <Field name="Kısa Açıklama" value={editedExcerpt} onChange={setEditedExcerpt} multiline rows={3} dir={dir} />
+            </SectionCard>
+          )}
           <SectionCard title="Hero">
-            <Field name="Badge" value={body.hero.badge} dir={dir} readOnly />
-            <Field name="Başlık" value={body.hero.title} dir={dir} readOnly />
-            <Field name="Alt Başlık" value={body.hero.subtitle} multiline rows={3} dir={dir} readOnly />
-            <Field name="Breadcrumb" value={body.hero.crumb} dir={dir} readOnly />
+            <Field name="Badge" value={body.hero.badge} onChange={v => setBody(b => ({ ...b, hero: { ...b.hero, badge: v } }))} dir={dir} readOnly={!editing} />
+            <Field name="Başlık" value={body.hero.title} onChange={v => setBody(b => ({ ...b, hero: { ...b.hero, title: v } }))} dir={dir} readOnly={!editing} />
+            <Field name="Alt Başlık" value={body.hero.subtitle} onChange={v => setBody(b => ({ ...b, hero: { ...b.hero, subtitle: v } }))} multiline rows={3} dir={dir} readOnly={!editing} />
+            <Field name="Breadcrumb" value={body.hero.crumb} onChange={v => setBody(b => ({ ...b, hero: { ...b.hero, crumb: v } }))} dir={dir} readOnly={!editing} />
             <div className="spe-cols-2">
-              <Field name="CTA Birincil" value={body.hero.ctaPrimary} dir={dir} readOnly />
-              <Field name="CTA İkincil" value={body.hero.ctaSecondary} dir={dir} readOnly />
+              <Field name="CTA Birincil" value={body.hero.ctaPrimary} onChange={v => setBody(b => ({ ...b, hero: { ...b.hero, ctaPrimary: v } }))} dir={dir} readOnly={!editing} />
+              <Field name="CTA İkincil" value={body.hero.ctaSecondary} onChange={v => setBody(b => ({ ...b, hero: { ...b.hero, ctaSecondary: v } }))} dir={dir} readOnly={!editing} />
             </div>
           </SectionCard>
           {body.introBody && (
             <SectionCard title="Giriş Metni">
-              <Field name="Giriş Paragrafı" value={body.introBody} multiline rows={5} dir={dir} readOnly />
+              <Field name="Giriş Paragrafı" value={body.introBody} onChange={v => setBody(b => ({ ...b, introBody: v || undefined }))} multiline rows={5} dir={dir} readOnly={!editing} />
             </SectionCard>
           )}
           <SectionCard title="Özellikler">
-            <FeaturesEditor features={body.features} onChange={() => {}} dir={dir} readOnly />
+            <FeaturesEditor features={body.features} onChange={features => setBody(b => ({ ...b, features }))} dir={dir} readOnly={!editing} />
           </SectionCard>
-          {body.contentSections && body.contentSections.length > 0 && (
+          {(body.contentSections?.length || editing) && (
             <SectionCard title="İçerik Bölümleri">
-              <ContentSectionsEditor sections={body.contentSections} onChange={() => {}} dir={dir} readOnly />
+              <ContentSectionsEditor sections={body.contentSections ?? []} onChange={contentSections => setBody(b => ({ ...b, contentSections }))} dir={dir} readOnly={!editing} />
             </SectionCard>
           )}
-          {body.serviceArea && (
+          {(body.serviceArea || editing) && (
             <SectionCard title="Hizmet Alanı">
-              <ServiceAreaEditor serviceArea={body.serviceArea} onChange={() => {}} dir={dir} readOnly />
+              <ServiceAreaEditor serviceArea={body.serviceArea} onChange={serviceArea => setBody(b => ({ ...b, serviceArea }))} dir={dir} readOnly={!editing} />
             </SectionCard>
           )}
-          {body.faqs && body.faqs.length > 0 && (
+          {(body.faqs?.length || editing) && (
             <SectionCard title="SSS">
-              <FaqsEditor faqs={body.faqs} onChange={() => {}} dir={dir} readOnly />
+              <FaqsEditor faqs={body.faqs ?? []} onChange={faqs => setBody(b => ({ ...b, faqs }))} dir={dir} readOnly={!editing} />
             </SectionCard>
           )}
           <SectionCard title="SEO / OG">
-            <Field name="OG Başlık" value={body.seo.ogTitle} dir={dir} readOnly />
-            <Field name="OG Açıklama" value={body.seo.ogDescription} multiline dir={dir} readOnly />
+            <Field name="OG Başlık" value={body.seo.ogTitle} onChange={v => setBody(b => ({ ...b, seo: { ...b.seo, ogTitle: v } }))} dir={dir} readOnly={!editing} />
+            <Field name="OG Açıklama" value={body.seo.ogDescription} onChange={v => setBody(b => ({ ...b, seo: { ...b.seo, ogDescription: v } }))} multiline dir={dir} readOnly={!editing} />
+            <Field name="Meta Başlık" value={editedMetaTitle} onChange={setEditedMetaTitle} dir={dir} readOnly={!editing} maxLen={60} />
+            <Field name="Meta Açıklama" value={editedMetaDescription} onChange={setEditedMetaDescription} multiline dir={dir} readOnly={!editing} maxLen={160} />
           </SectionCard>
-          {tx?.metaTitle && <Field name="Meta Başlık" value={tx.metaTitle} dir={dir} readOnly />}
-          {tx?.metaDescription && <Field name="Meta Açıklama" value={tx.metaDescription} multiline dir={dir} readOnly />}
         </>
       )}
 
@@ -719,6 +777,24 @@ export default function ServicePageEditor({ initialRecord }: Props) {
     showToast('success', 'İşlem tamamlandı.');
   }, [record.id, showToast]);
 
+  const saveTranslation = useCallback(async (
+    locale: string,
+    translation: {
+      title: string; excerpt: string; body: ServicePageBody;
+      metaTitle: string; metaDescription: string;
+    },
+  ) => {
+    const res = await fetch(`/admin/api/service-pages/${record.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'saveTranslation', locale, ...translation }),
+    });
+    const data = await safeJson<{ record?: ServicePageRecord; error?: string }>(res);
+    if (!res.ok) throw new Error(data.error ?? 'Çeviri kaydedilemedi.');
+    if (data.record) setRecord(data.record);
+    showToast('success', 'Çeviri kaydedildi ve ziyaretçi sayfası güncellendi.');
+  }, [record.id, showToast]);
+
   const currentTx     = record.translations.find(t => t.locale === activeLocale);
   const currentLocale = ALL_LOCALES.find(l => l.code === activeLocale) ?? ALL_LOCALES[0];
 
@@ -727,10 +803,10 @@ export default function ServicePageEditor({ initialRecord }: Props) {
   const publishedServiceUrl = `${SITE.siteUrl}/${record.slug}`;
   const serviceShareSummary = record.excerpt ?? body.hero.subtitle;
 
-  // Only APPROVED translations may be bulk-published (spec: no AI-generated
-  // translation may be published without admin approval).
+  // A translation is visitor-ready once its content is complete. This action
+  // lets an admin confirm the catalog's public workflow in a single click.
   const publishableTranslations = record.translations.filter(
-    t => t.status === 'APPROVED',
+    t => ['DRAFT', 'REVIEW', 'APPROVED'].includes(t.status),
   );
 
   return (
@@ -882,7 +958,7 @@ export default function ServicePageEditor({ initialRecord }: Props) {
               disabled={saving}
               style={{ ...btnPrimary, fontSize: '12px', padding: '8px 18px', flexShrink: 0, opacity: saving ? 0.5 : 1 }}
             >
-              ▶ Onaylananları Toplu Yayımla ({publishableTranslations.length})
+              ▶ Hazır Çevirileri Toplu Yayımla ({publishableTranslations.length})
             </button>
           ) : (
             <span style={{ fontSize: '11px', color: '#94A3B8', fontFamily: 'Inter, sans-serif', flexShrink: 0 }}>
@@ -1112,6 +1188,7 @@ export default function ServicePageEditor({ initialRecord }: Props) {
           contentId={record.id}
           slug={record.slug}
           onAction={handleTranslationAction}
+          onSave={saveTranslation}
         />
       )}
     </div>

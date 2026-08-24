@@ -4,7 +4,7 @@
  * GET  /admin/api/service-pages/[id]                — full record with translations
  * PATCH /admin/api/service-pages/[id]               — save TR content + auto-translate targets
  * POST /admin/api/service-pages/[id]  { action, locale? }
- *   actions on translations:  approve | publish | unpublish | translate
+ *   actions on translations:  saveTranslation | approve | publish | unpublish | translate
  *   actions on source record: archiveSource | publishSource | unpublishSource | duplicate
  */
 import { NextRequest, NextResponse } from 'next/server';
@@ -395,10 +395,15 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const actionSchema = z.object({
     action: z.enum([
-      'approve', 'publish', 'unpublish', 'translate',
+      'saveTranslation', 'approve', 'publish', 'unpublish', 'translate',
       'archiveSource', 'publishSource', 'unpublishSource', 'duplicate',
     ]),
     locale: z.string().min(2).max(10).optional(),
+    title: z.string().trim().min(1).max(500).optional(),
+    excerpt: z.string().max(5_000).nullable().optional(),
+    body: z.unknown().optional(),
+    metaTitle: z.string().max(500).nullable().optional(),
+    metaDescription: z.string().max(5_000).nullable().optional(),
   });
 
   const parsed = actionSchema.safeParse(rawBody);
@@ -538,7 +543,47 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Çeviri bulunamadı.' }, { status: 404 });
   }
 
-  if (action === 'approve') {
+  if (action === 'approve' || action === 'publish') {
+    const translatedBody = parseServicePageBody(existing.body);
+    const blankFaq = translatedBody?.faqs?.find(
+      faq => !faq.question.trim() || !faq.answer.trim(),
+    );
+    if (blankFaq) {
+      return NextResponse.json({
+        error: 'Boş soru veya cevap içeren SSS onaylanamaz ya da yayımlanamaz.',
+      }, { status: 422 });
+    }
+  }
+
+  if (action === 'saveTranslation') {
+    if (!parsed.data.title || !isServicePageBody(parsed.data.body)) {
+      return NextResponse.json({ error: 'Çeviri başlığı ve geçerli hizmet içeriği zorunludur.' }, { status: 422 });
+    }
+
+    const blankFaq = (parsed.data.body.faqs ?? []).find(
+      faq => !faq.question.trim() || !faq.answer.trim(),
+    );
+    if (blankFaq) {
+      return NextResponse.json({ error: 'Boş soru veya cevap içeren SSS kaydedilemez.' }, { status: 422 });
+    }
+
+    await db
+      .update(contentTranslations)
+      .set({
+        title: parsed.data.title,
+        excerpt: parsed.data.excerpt ?? null,
+        body: parsed.data.body as never,
+        metaTitle: parsed.data.metaTitle ?? null,
+        metaDescription: parsed.data.metaDescription ?? null,
+        isManuallyLocked: true,
+        updatedBy: adminUserId,
+        updatedAt: new Date(),
+      })
+      .where(eq(contentTranslations.id, existing.id));
+    await writeAuditLog({ contentId: id, action: 'edit_translation', locale, adminUserId });
+    revalidateHomepageForServiceTranslation(locale);
+    revalidatePublicServiceCatalog({ categorySlugs: [row.category], locales: [locale] });
+  } else if (action === 'approve') {
     if (existing.status === 'OUTDATED') {
       return NextResponse.json({
         error: 'Güncelliğini yitirmiş çeviri onaylanamaz — önce "Yeniden Çevir" ile yenileyin.',

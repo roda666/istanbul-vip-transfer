@@ -11,6 +11,7 @@
  *  - Personal data never written to application logs
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { sanitizeText } from '@/lib/sanitize';
 import { isFiveMinuteIncrement, isValidPassengerCount, meetsAllocationMinimum } from '@/lib/booking-rules';
@@ -54,6 +55,7 @@ const RequestSchema = z.object({
   email:             z.string().max(254).nullable().optional(),
   newsletterConsent: z.boolean().optional().default(false),
   locale:            z.string().min(2).max(12).optional().default('tr'),
+  submissionId:      z.string().uuid().optional(),
   _hp:               z.string().optional(),
   formData:          z.record(z.unknown()),
 });
@@ -138,6 +140,44 @@ function validateBookingConstraints(
 // ── Consent text version ──────────────────────────────────────────────────────
 const CONSENT_VERSION = '2026-07-28-v1';
 
+/**
+ * Keep failed requests visible without ever writing their personal data to
+ * application logs. A database outage can prevent this secondary write too;
+ * in that exceptional case the submission ID remains in server logs for
+ * incident correlation.
+ */
+async function recordSubmissionFailure(input: {
+  submissionId: string;
+  referenceNumber: string;
+  requestPayload: Record<string, unknown>;
+}) {
+  try {
+    const { db } = await import('@/db');
+    const { reservationSubmissionFailures } = await import('@/db/schema');
+    const { sql } = await import('drizzle-orm');
+
+    await db.insert(reservationSubmissionFailures).values({
+      submissionId: input.submissionId,
+      referenceNumber: input.referenceNumber,
+      requestPayload: input.requestPayload,
+      lastError: 'reservation_write_failed',
+    }).onConflictDoUpdate({
+      target: reservationSubmissionFailures.submissionId,
+      set: {
+        requestPayload: input.requestPayload,
+        lastError: 'reservation_write_failed',
+        attempts: sql`${reservationSubmissionFailures.attempts} + 1`,
+        updatedAt: new Date(),
+      },
+    });
+  } catch {
+    console.error('[submit-request] failed to persist recovery record', {
+      submissionId: input.submissionId,
+      referenceNumber: input.referenceNumber,
+    });
+  }
+}
+
 // ── Route handler ─────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   // Enforce JSON
@@ -217,6 +257,9 @@ export async function POST(req: NextRequest) {
   }
   const submittedCustomFields = getSubmittedCustomFields(data.formData.customFields);
 
+  // This key is created by the browser and reused by its retry loop. Legacy
+  // callers without one still receive a server-generated UUID.
+  const submissionId = data.submissionId ?? randomUUID();
   const referenceNumber = generateRefNumber();
 
   try {
@@ -230,6 +273,17 @@ export async function POST(req: NextRequest) {
       vehicles,
     } = await import('@/db/schema');
     const { eq, and, inArray, isNull } = await import('drizzle-orm');
+
+    // A response can be lost after the database commit. Return the original
+    // reference for a retry instead of creating a second request.
+    const [existingRequest] = await db
+      .select({ referenceNumber: reservationRequests.referenceNumber })
+      .from(reservationRequests)
+      .where(eq(reservationRequests.submissionId, submissionId))
+      .limit(1);
+    if (existingRequest) {
+      return NextResponse.json({ referenceNumber: existingRequest.referenceNumber, replayed: true });
+    }
 
     // A browser may only submit values for existing active admin-defined
     // fields. Labels always come from the server record, never the request.
@@ -323,6 +377,7 @@ export async function POST(req: NextRequest) {
     // Save reservation request
     await db.insert(reservationRequests).values({
       referenceNumber,
+      submissionId,
       intent:          data.intent,
       serviceType:     data.serviceType,
       name:            sanitizeText(data.adSoyad).slice(0, 120),
@@ -375,7 +430,20 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ referenceNumber });
   } catch (err) {
-    // Log error type only — never log personal data
+    await recordSubmissionFailure({
+      submissionId,
+      referenceNumber,
+      requestPayload: {
+        intent: data.intent,
+        serviceType: data.serviceType,
+        locale: data.locale,
+        name: sanitizeText(data.adSoyad).slice(0, 120),
+        phone: sanitizeText(data.telefon).slice(0, 30),
+        email: normalizedEmail,
+        formData: safeFormData,
+      },
+    });
+    // Log error type only — never log personal data.
     console.error('[submit-request] DB error:', (err as Error)?.message ?? 'unknown');
     return NextResponse.json({ error: 'Database error' }, { status: 500 });
   }

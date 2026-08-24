@@ -11,6 +11,7 @@ import {
   type ServiceHealthItem,
 } from '@/lib/service-page-health';
 import RunHealthCheckButton from './_RunHealthCheckButton';
+import BulkRetranslateButton from './_BulkRetranslateButton';
 import HizmetlerList, { type ServiceListItem } from './_HizmetlerList';
 
 export const metadata: Metadata = { title: 'Hizmetler | Admin', robots: { index: false } };
@@ -165,6 +166,7 @@ export default async function HizmetlerPage() {
           )}
         </div>
         <RunHealthCheckButton />
+        <BulkRetranslateButton />
         <Link href="/admin/hizmetler/yeni" style={{
           background: '#C9A84C', color: '#0A0A0A', textDecoration: 'none',
           borderRadius: '8px', padding: '8px 16px', fontSize: '12px',

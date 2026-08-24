@@ -34,6 +34,8 @@ import { openWhatsAppChat } from '@/lib/whatsapp';
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const WA_NUMBER = '905326600847';
+const RESERVATION_SUBMISSION_ATTEMPTS = 3;
+const RESERVATION_RETRY_DELAYS_MS = [0, 500, 1_500] as const;
 
 interface CustomField {
   id: number;
@@ -507,6 +509,7 @@ export default function BookingForm({
         : [];
     });
     const submittedFormData = { ...data, customFields: customFieldAnswers };
+    const submissionId = crypto.randomUUID();
     const msg = buildWhatsAppMessage(
       data,
       serviceLabel,
@@ -521,29 +524,49 @@ export default function BookingForm({
     // reservation request first could be blocked by mobile popup policies.
     openWhatsAppChat(WA_NUMBER, msg);
 
-    // Persist the request before navigating away. The timeout keeps WhatsApp as
-    // the primary journey even if a slow network/database cannot respond.
+    // Persist in the background. Transient failures are retried using the same
+    // idempotency key, so a late first response can never duplicate the request.
     try {
-      await fetch('/data/submit-request', {
-        method:    'POST',
-        keepalive: true,
-        signal:    AbortSignal.timeout(2500),
-        headers:   { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          intent:           'QUOTE',
-          serviceType:      activeService,
-          adSoyad:          data.adSoyad,
-          telefon:          data.telefon,
-          email:            data.email?.trim() ?? null,
-          newsletterConsent,
-          locale:           lang,
-          _hp:              honeypotRef.current?.value ?? '',
-          formData:         submittedFormData,
-        }),
+      const payload = JSON.stringify({
+        intent:           'QUOTE',
+        serviceType:      activeService,
+        adSoyad:          data.adSoyad,
+        telefon:          data.telefon,
+        email:            data.email?.trim() ?? null,
+        newsletterConsent,
+        locale:           lang,
+        submissionId,
+        _hp:              honeypotRef.current?.value ?? '',
+        formData:         submittedFormData,
       });
+
+      for (let attempt = 0; attempt < RESERVATION_SUBMISSION_ATTEMPTS; attempt += 1) {
+        if (attempt > 0) {
+          await new Promise<void>((resolve) => {
+            window.setTimeout(resolve, RESERVATION_RETRY_DELAYS_MS[attempt]);
+          });
+        }
+
+        try {
+          const response = await fetch('/data/submit-request', {
+            method:    'POST',
+            keepalive: true,
+            signal:    AbortSignal.timeout(2500),
+            headers:   { 'Content-Type': 'application/json' },
+            body: payload,
+          });
+
+          // Validation/auth errors are permanent for this payload. Retry only
+          // network errors and server failures, which can recover on their own.
+          if (response.ok || (response.status >= 400 && response.status < 500)) break;
+        } catch {
+          // Continue to the next bounded retry. Any write failure the server
+          // sees is persisted there with this same submission ID.
+        }
+      }
     } catch {
-      // Do not block a visitor from opening WhatsApp. The server keeps its
-      // keepalive request when possible and the next submission can be retried.
+      // Do not block the WhatsApp journey if browser-side payload construction
+      // itself fails. No personal data is emitted to client-side logs.
     } finally {
       // WhatsApp now opens in its own window, so this form remains mounted.
       // Always restore the CTA after persistence succeeds, fails, or times out.

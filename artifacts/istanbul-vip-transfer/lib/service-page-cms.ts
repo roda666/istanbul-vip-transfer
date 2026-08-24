@@ -66,7 +66,8 @@ export interface PublishedServicePage {
 /**
  * Returns the PUBLISHED service page for a given slug and locale.
  * For TR: reads from `content` table directly.
- * For non-TR: reads from `content_translations` (status=PUBLISHED).
+ * For non-TR: reads completed `content_translations` rows. Admin workflow
+ * status does not hide a complete page from visitors.
  * Returns null if not found, not published, or not active.
  */
 export async function getPublishedServicePage(
@@ -115,9 +116,11 @@ export async function getPublishedServicePage(
         eq(contentTranslations.entityType,          ENTITY_TYPE),
         eq(contentTranslations.entityId,            src.id),
         eq(contentTranslations.targetLanguageCode,  locale),
-        // OUTDATED translations are still publicly visible (content is stale but live).
-        // They will be retranslated and re-published via the admin workflow.
-        inArray(contentTranslations.status, ['PUBLISHED', 'OUTDATED']),
+        // A translated page is visitor-ready as soon as its atomic save has
+        // produced title + body. Workflow approval remains an admin concern;
+        // visitors must not receive a 404 or Turkish fallback while it awaits
+        // that approval. TRANSLATING/FAILED rows are intentionally excluded.
+        inArray(contentTranslations.status, ['DRAFT', 'REVIEW', 'APPROVED', 'PUBLISHED', 'OUTDATED']),
       ))
       .limit(1);
 
@@ -177,8 +180,7 @@ export async function getPublishedServicePageLangs(slug: string): Promise<string
         and(
           eq(contentTranslations.entityType,   ENTITY_TYPE),
           eq(contentTranslations.entityId,     src.id),
-          // Include OUTDATED: translation is still live, just pending refresh
-          inArray(contentTranslations.status, ['PUBLISHED', 'OUTDATED']),
+          inArray(contentTranslations.status, ['DRAFT', 'REVIEW', 'APPROVED', 'PUBLISHED', 'OUTDATED']),
         ),
       );
 

@@ -627,6 +627,8 @@ export const requestStatusEnum = pgEnum('request_status', [
 export const reservationRequests = pgTable('reservation_requests', {
   id:              uuid('id').primaryKey().defaultRandom(),
   referenceNumber: text('reference_number').notNull().unique(),
+  /** Browser-generated idempotency key: retries must never duplicate a request. */
+  submissionId:    uuid('submission_id').defaultRandom().notNull().unique(),
   intent:          requestIntentEnum('intent').notNull(),
   serviceType:     text('service_type').notNull(),
   name:            text('name').notNull(),
@@ -642,6 +644,23 @@ export const reservationRequests = pgTable('reservation_requests', {
   createdAt:       timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt:       timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   archivedAt:      timestamp('archived_at', { withTimezone: true }),
+});
+
+/**
+ * A durable recovery queue for a booking request whose normal write path fails.
+ * Payloads are already sanitized by the request route and exist only so the
+ * team can recover a customer request instead of silently losing it.
+ */
+export const reservationSubmissionFailures = pgTable('reservation_submission_failures', {
+  id:              uuid('id').primaryKey().defaultRandom(),
+  submissionId:    uuid('submission_id').notNull().unique(),
+  referenceNumber: text('reference_number').notNull(),
+  requestPayload:  jsonb('request_payload').notNull().default({}),
+  lastError:       text('last_error').notNull(),
+  attempts:        integer('attempts').notNull().default(1),
+  createdAt:       timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:       timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  resolvedAt:      timestamp('resolved_at', { withTimezone: true }),
 });
 
 // ── Newsletter ────────────────────────────────────────────────────────────────
@@ -674,6 +693,8 @@ export const newsletterConsentEvents = pgTable('newsletter_consent_events', {
 
 export type ReservationRequest    = typeof reservationRequests.$inferSelect;
 export type NewReservationRequest = typeof reservationRequests.$inferInsert;
+export type ReservationSubmissionFailure = typeof reservationSubmissionFailures.$inferSelect;
+export type NewReservationSubmissionFailure = typeof reservationSubmissionFailures.$inferInsert;
 export type NewsletterSubscriber    = typeof newsletterSubscribers.$inferSelect;
 export type NewNewsletterSubscriber = typeof newsletterSubscribers.$inferInsert;
 export type NewsletterConsentEvent    = typeof newsletterConsentEvents.$inferSelect;

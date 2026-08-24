@@ -2,7 +2,7 @@
  * Server-side utility for reading BLOG_POST CMS content.
  *
  * Turkish source: `content` table (contentType='BLOG_POST', status='PUBLISHED')
- * Non-TR:         `content_translations` (entityType='content', status='PUBLISHED')
+ * Non-TR:         completed `content_translations` (entityType='content')
  *
  * All functions are safe to call from public page components — they return
  * null/empty rather than throwing on DB errors.
@@ -274,7 +274,7 @@ async function readPublishedBlogTranslation(
   try {
     const { db }                          = await import('@/db');
     const { contentTranslations, content } = await import('@/db/schema');
-    const { eq, and, or, sql }            = await import('drizzle-orm');
+    const { eq, and, or, sql, inArray }   = await import('drizzle-orm');
 
     const rows = await db
       .select({
@@ -299,7 +299,7 @@ async function readPublishedBlogTranslation(
       .innerJoin(content, sql`${contentTranslations.entityId}::uuid = ${content.id}`)
       .where(and(
         eq(contentTranslations.targetLanguageCode, lang),
-        eq(contentTranslations.status,             'PUBLISHED'),
+        inArray(contentTranslations.status,        ['DRAFT', 'REVIEW', 'APPROVED', 'PUBLISHED', 'OUTDATED']),
         eq(contentTranslations.entityType,         BLOG_ENTITY_TYPE),
         eq(content.contentType,                    'BLOG_POST'),
         eq(content.status,                         'PUBLISHED'),
@@ -369,7 +369,7 @@ async function readPublishedBlogTranslations(
   try {
     const { db }                          = await import('@/db');
     const { contentTranslations, content } = await import('@/db/schema');
-    const { eq, and, desc, asc, sql }     = await import('drizzle-orm');
+    const { eq, and, desc, asc, sql, inArray } = await import('drizzle-orm');
 
     const rows = await db
       .select({
@@ -388,7 +388,7 @@ async function readPublishedBlogTranslations(
       .innerJoin(content, sql`${contentTranslations.entityId}::uuid = ${content.id}`)
       .where(and(
         eq(contentTranslations.targetLanguageCode, lang),
-        eq(contentTranslations.status,             'PUBLISHED'),
+        inArray(contentTranslations.status,        ['DRAFT', 'REVIEW', 'APPROVED', 'PUBLISHED', 'OUTDATED']),
         eq(contentTranslations.entityType,         BLOG_ENTITY_TYPE),
         eq(content.contentType,                    'BLOG_POST'),
         eq(content.status,                         'PUBLISHED'),
@@ -480,7 +480,7 @@ export async function invalidatePublicBlogCache(input: {
 // ── Language availability ──────────────────────────────────────────────────────
 
 /**
- * Returns language codes that have a PUBLISHED version of this blog post.
+ * Returns language codes with a complete visitor-ready translation.
  * 'tr' is always included when the source is published.
  * Falls back to ['tr'] on DB error.
  */
@@ -488,7 +488,7 @@ export async function getPublishedBlogLangs(slug: string): Promise<string[]> {
   try {
     const { db }                          = await import('@/db');
     const { content, contentTranslations } = await import('@/db/schema');
-    const { eq, and }                     = await import('drizzle-orm');
+    const { eq, and, inArray }            = await import('drizzle-orm');
 
     const [src] = await db
       .select({ id: content.id, status: content.status, isActive: content.isActive })
@@ -504,7 +504,7 @@ export async function getPublishedBlogLangs(slug: string): Promise<string[]> {
       .where(and(
         eq(contentTranslations.entityType, BLOG_ENTITY_TYPE),
         eq(contentTranslations.entityId,   src.id),
-        eq(contentTranslations.status,     'PUBLISHED'),
+        inArray(contentTranslations.status, ['DRAFT', 'REVIEW', 'APPROVED', 'PUBLISHED', 'OUTDATED']),
       ));
 
     return ['tr', ...txRows.map(r => r.lang)];

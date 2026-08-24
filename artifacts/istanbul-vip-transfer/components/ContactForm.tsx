@@ -5,7 +5,7 @@
  * Submits to POST /data/contact (distinct from the booking form).
  * Labels/text come from the dictionary so all 9 locales work.
  */
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useLang } from '@/lib/i18n/context';
 import { trackEvent } from '@/lib/analytics';
 import { localePath } from '@/lib/locale-path';
@@ -29,7 +29,20 @@ export default function ContactForm() {
   const [status, setStatus]   = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [serverError, setServerError] = useState('');
   const [newsletterConsent, setNewsletterConsent] = useState(false);
-  const honeypotRef = useRef<HTMLInputElement>(null);
+  const websiteHoneypotRef = useRef<HTMLInputElement>(null);
+  const companyHoneypotRef = useRef<HTMLInputElement>(null);
+  const [formGuardToken, setFormGuardToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/data/form-guard?form=contact', { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data: { token?: string } | null) => {
+        if (active && data?.token) setFormGuardToken(data.token);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
 
   function validate(): boolean {
     const e: Partial<FormState> = {};
@@ -62,7 +75,9 @@ export default function ContactForm() {
           message: form.message.trim(),
           locale:  lang,
           newsletterConsent,
-          _hp:     honeypotRef.current?.value ?? '',
+           formGuardToken,
+           website: websiteHoneypotRef.current?.value ?? '',
+           company: companyHoneypotRef.current?.value ?? '',
         }),
       });
 
@@ -156,13 +171,22 @@ export default function ContactForm() {
         </p>
 
         <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {/* Honeypot — hidden from humans, filled only by bots */}
+          {/* Honeypots — hidden from humans, filled only by bots */}
           <input
-            ref={honeypotRef}
-            name="_hp"
+            ref={websiteHoneypotRef}
+            name="website"
             type="text"
             tabIndex={-1}
-            autoComplete="off"
+            autoComplete="url"
+            style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0 }}
+            aria-hidden="true"
+          />
+          <input
+            ref={companyHoneypotRef}
+            name="company"
+            type="text"
+            tabIndex={-1}
+            autoComplete="organization"
             style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0 }}
             aria-hidden="true"
           />

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
   FileText, Clock, CheckCircle, Calendar, Globe, AlertTriangle, CalendarDays,
-  MessageCircle, Languages, Inbox, TriangleAlert, ArrowRight,
+  MessageCircle, Languages, Inbox, TriangleAlert, ArrowRight, ShieldCheck,
 } from 'lucide-react';
 import AdminPageHeader from '../../_components/AdminPageHeader';
 
@@ -30,6 +30,12 @@ interface RecentError {
   detail: string;
   createdAt: Date;
   href: string;
+}
+
+interface BotProtectionSummary {
+  rateLimit: number;
+  honeypot: number;
+  formTiming: number;
 }
 
 function getIstanbulDayRange(offsetDays: number) {
@@ -177,6 +183,32 @@ async function getStatusCounts() {
   }
 }
 
+async function getBotProtectionSummary(): Promise<BotProtectionSummary | null> {
+  try {
+    const { db } = await import('@/db');
+    const { botProtectionMetrics } = await import('@/db/schema');
+    const { gte, sql } = await import('drizzle-orm');
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const rows = await db
+      .select({
+        reason: botProtectionMetrics.reason,
+        count: sql<number>`coalesce(sum(${botProtectionMetrics.blockedCount}), 0)::int`,
+      })
+      .from(botProtectionMetrics)
+      .where(gte(botProtectionMetrics.bucketStart, since))
+      .groupBy(botProtectionMetrics.reason);
+
+    const byReason = new Map(rows.map((row) => [row.reason, row.count]));
+    return {
+      rateLimit: byReason.get('RATE_LIMIT') ?? 0,
+      honeypot: byReason.get('HONEYPOT') ?? 0,
+      formTiming: byReason.get('FORM_TIMING') ?? 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function getRecentAuditLogs() {
   try {
     const { db } = await import('@/db');
@@ -224,10 +256,11 @@ const ACTION_COLORS: Record<string, { bg: string; text: string }> = {
 };
 
 export default async function DashboardPage() {
-  const [operations, counts, logs] = await Promise.all([
+  const [operations, counts, logs, botProtection] = await Promise.all([
     getOperationsCenter(),
     getStatusCounts(),
     getRecentAuditLogs(),
+    getBotProtectionSummary(),
   ]);
 
   const dbError = operations === null || counts === null;
@@ -413,6 +446,48 @@ export default async function DashboardPage() {
               </Link>
             ))}
           </div>
+        </section>
+      )}
+
+      {!dbError && (
+        <section style={{ marginBottom: '32px' }}>
+          <h2
+            style={{
+              color: '#52697A', fontSize: '11px', fontFamily: 'Inter, sans-serif',
+              letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '12px', fontWeight: 600,
+            }}
+          >
+            Bot Koruması · Son 24 Saat
+          </h2>
+          {botProtection ? (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                gap: '16px',
+              }}
+            >
+              {[
+                { label: 'Hız limiti engeli', count: botProtection.rateLimit, color: '#D97706', bg: '#FFFBEB' },
+                { label: 'Tuzak alan engeli', count: botProtection.honeypot, color: '#DC2626', bg: '#FEF2F2' },
+                { label: 'Süre doğrulama engeli', count: botProtection.formTiming, color: '#7C3AED', bg: '#F5F3FF' },
+              ].map((item) => (
+                <div key={item.label} className="dashboard-card">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '12px' }}>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: item.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <ShieldCheck size={20} style={{ color: item.color }} />
+                    </div>
+                    <span style={{ fontSize: '28px', fontWeight: 700, color: '#172B3A', fontFamily: 'Inter, sans-serif' }}>{item.count}</span>
+                  </div>
+                  <p style={{ color: '#334E68', fontSize: '13px', fontFamily: 'Inter, sans-serif', margin: 0, fontWeight: 650 }}>{item.label}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '10px', padding: '14px 16px', color: '#92400E', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>
+              Koruma sayaçları şu anda alınamıyor.
+            </div>
+          )}
         </section>
       )}
 

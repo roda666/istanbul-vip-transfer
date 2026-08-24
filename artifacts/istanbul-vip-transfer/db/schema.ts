@@ -393,6 +393,29 @@ export const auditLogs = pgTable('audit_logs', {
   metadata: jsonb('metadata'),
 });
 
+/**
+ * Hourly, privacy-preserving aggregates for public form requests that were
+ * rejected as likely automation. No IP address or submitted field is stored.
+ */
+export const botProtectionMetrics = pgTable(
+  'bot_protection_metrics',
+  {
+    id: serial('id').primaryKey(),
+    formType: text('form_type').notNull(),
+    reason: text('reason').notNull(),
+    bucketStart: timestamp('bucket_start', { withTimezone: true }).notNull(),
+    blockedCount: integer('blocked_count').notNull().default(0),
+  },
+  (table) => [
+    uniqueIndex('bot_protection_metrics_bucket_unique').on(
+      table.formType,
+      table.reason,
+      table.bucketStart,
+    ),
+    index('bot_protection_metrics_bucket_start_idx').on(table.bucketStart),
+  ],
+);
+
 export const vehicles = pgTable('vehicles', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),

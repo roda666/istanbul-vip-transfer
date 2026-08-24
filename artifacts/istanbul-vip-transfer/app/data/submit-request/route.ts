@@ -19,8 +19,47 @@ import { rateLimit } from '@/lib/auth/rate-limit';
 import { getAdminNotifyEmails, sendEmailDetailed } from '@/lib/email';
 import { startNewsletterOptIn } from '@/lib/newsletter';
 import { getRequestPageSlug } from '@/lib/request-origin';
+import { getTrustedClientIp } from '@/lib/request-client-ip';
+import { verifyFormGuardToken } from '@/lib/form-guard';
+import { recordBotProtectionBlock } from '@/lib/bot-protection-metrics';
 
 export const dynamic = 'force-dynamic';
+
+const MAX_RESERVATION_BODY_BYTES = 64 * 1024;
+
+async function readBodyWithinLimit(req: NextRequest, maxBytes: number): Promise<string | null> {
+  const declaredLength = Number(req.headers.get('content-length'));
+  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) return null;
+
+  if (!req.body) return '';
+
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let receivedBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      receivedBytes += value.byteLength;
+      if (receivedBytes > maxBytes) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const body = new Uint8Array(receivedBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(body);
+}
 
 // ── Reference number generator ────────────────────────────────────────────────
 
@@ -65,7 +104,9 @@ const RequestSchema = z.object({
   newsletterConsent: z.boolean().optional().default(false),
   locale:            z.string().min(2).max(12).optional().default('tr'),
   submissionId:      z.string().uuid().optional(),
-  _hp:               z.string().optional(),
+  formGuardToken:    z.string().optional(),
+  website:           z.string().optional(),
+  company:           z.string().optional(),
   formData:          z.record(z.unknown()),
 });
 
@@ -193,13 +234,16 @@ export async function POST(req: NextRequest) {
   }
 
   // Rate limit by IP
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+  const ip = getTrustedClientIp(req);
+  const rateLimitIdentity = ip ?? 'unknown';
+  const maxAttempts = ip ? 10 : 100;
   try {
-    const limit = await rateLimit(`reservation:${ip}`, {
-      maxAttempts: 10,
+    const limit = await rateLimit(`reservation:${rateLimitIdentity}`, {
+      maxAttempts,
       windowMs: 60 * 60 * 1000,
     });
     if (!limit.success) {
+      await recordBotProtectionBlock({ formType: 'RESERVATION', reason: 'RATE_LIMIT' });
       return NextResponse.json(
         { error: 'Too many requests' },
         { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } },
@@ -214,7 +258,11 @@ export async function POST(req: NextRequest) {
   // Parse body
   let body: unknown;
   try {
-    body = await req.json();
+    const rawBody = await readBodyWithinLimit(req, MAX_RESERVATION_BODY_BYTES);
+    if (rawBody === null) {
+      return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+    }
+    body = JSON.parse(rawBody);
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
@@ -236,7 +284,14 @@ export async function POST(req: NextRequest) {
   }
 
   // Honeypot check — return 200 to not reveal detection, but don't save
-  if (data._hp && data._hp.trim().length > 0) {
+  if (data.website?.trim() || data.company?.trim()) {
+    await recordBotProtectionBlock({ formType: 'RESERVATION', reason: 'HONEYPOT' });
+    return NextResponse.json({ referenceNumber: generateRefNumber() });
+  }
+
+  const formGuardCheck = verifyFormGuardToken(data.formGuardToken, 'reservation');
+  if (formGuardCheck !== 'valid') {
+    await recordBotProtectionBlock({ formType: 'RESERVATION', reason: 'FORM_TIMING' });
     return NextResponse.json({ referenceNumber: generateRefNumber() });
   }
 

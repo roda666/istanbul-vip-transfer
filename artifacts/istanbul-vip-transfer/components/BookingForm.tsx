@@ -319,13 +319,26 @@ export default function BookingForm({
   const [submitting, setSubmitting]       = useState(false);
   const [newsletterConsent, setNewsletterConsent] = useState(false);
   const [newsletterError, setNewsletterError]     = useState('');
-  const honeypotRef = useRef<HTMLInputElement>(null);
+  const websiteHoneypotRef = useRef<HTMLInputElement>(null);
+  const companyHoneypotRef = useRef<HTMLInputElement>(null);
+  const [formGuardToken, setFormGuardToken] = useState<string | null>(null);
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
   // State values for custom checkbox fields (keyed by field id)
   const [customFieldValues, setCustomFieldValues] = useState<Record<number, boolean | string>>({});
   const [publishedVehicles, setPublishedVehicles] = useState<PublishedVehicleOption[]>([]);
   const [locationLabels, setLocationLabels] = useState<Record<string, string>>({});
   const [formSettings, setFormSettings] = useState<FormSettings>({ showVehiclePreference: false });
+
+  useEffect(() => {
+    let active = true;
+    fetch('/data/form-guard?form=reservation', { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data: { token?: string } | null) => {
+        if (active && data?.token) setFormGuardToken(data.token);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
 
   function rememberLocationLabel(field: keyof FormData, option: import('./LocationCombobox').LocationOption | null) {
     setLocationLabels((current) => {
@@ -536,7 +549,9 @@ export default function BookingForm({
         newsletterConsent,
         locale:           lang,
         submissionId,
-        _hp:              honeypotRef.current?.value ?? '',
+        formGuardToken,
+        website:          websiteHoneypotRef.current?.value ?? '',
+        company:          companyHoneypotRef.current?.value ?? '',
         formData:         submittedFormData,
       });
 
@@ -659,15 +674,24 @@ export default function BookingForm({
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} data-testid="booking-form" noValidate>
-              {/* Honeypot — offscreen + tabIndex=-1 hides from keyboard and AT;
+              {/* Honeypots — offscreen + tabIndex=-1 hides from keyboard and AT;
                   aria-hidden removed because WCAG forbids aria-hidden on focusable elements */}
               <input
-                ref={honeypotRef}
+                ref={websiteHoneypotRef}
                 type="text"
-                name="_hp"
+                name="website"
                 tabIndex={-1}
-                aria-label="Leave this field empty"
-                autoComplete="off"
+                aria-label="Website"
+                autoComplete="url"
+                style={{ position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0 }}
+              />
+              <input
+                ref={companyHoneypotRef}
+                type="text"
+                name="company"
+                tabIndex={-1}
+                aria-label="Company"
+                autoComplete="organization"
                 style={{ position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0 }}
               />
 

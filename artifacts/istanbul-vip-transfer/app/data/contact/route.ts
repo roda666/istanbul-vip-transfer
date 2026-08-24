@@ -17,6 +17,9 @@ import { getAdminNotifyEmails, sendEmailDetailed } from '@/lib/email';
 import { rateLimit } from '@/lib/auth/rate-limit';
 import { startNewsletterOptIn } from '@/lib/newsletter';
 import { getRequestPageSlug } from '@/lib/request-origin';
+import { getTrustedClientIp } from '@/lib/request-client-ip';
+import { verifyFormGuardToken } from '@/lib/form-guard';
+import { recordBotProtectionBlock } from '@/lib/bot-protection-metrics';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,7 +47,9 @@ const ContactSchema = z.object({
   message: z.string().min(10).max(3000),
   locale:  z.string().min(2).max(5).optional().default('tr'),
   newsletterConsent: z.boolean().optional().default(false),
-  _hp:     z.string().optional(),   // honeypot — must be empty
+  formGuardToken: z.string().optional(),
+  website: z.string().optional(),   // honeypot — must be empty
+  company: z.string().optional(),   // honeypot — must be empty
 });
 
 function escapeHtml(value: string): string {
@@ -65,13 +70,16 @@ export async function POST(req: NextRequest) {
   }
 
   // Rate limit by IP
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+  const ip = getTrustedClientIp(req);
+  const rateLimitIdentity = ip ?? 'unknown';
+  const maxAttempts = ip ? 5 : 50;
   try {
-    const limit = await rateLimit(`contact:${ip}`, {
-      maxAttempts: 5,
+    const limit = await rateLimit(`contact:${rateLimitIdentity}`, {
+      maxAttempts,
       windowMs: 60 * 60 * 1000,
     });
     if (!limit.success) {
+      await recordBotProtectionBlock({ formType: 'CONTACT', reason: 'RATE_LIMIT' });
       return NextResponse.json(
         { error: 'Too many requests' },
         { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } },
@@ -103,7 +111,14 @@ export async function POST(req: NextRequest) {
   const data = parsed.data;
 
   // Honeypot — silently succeed without saving
-  if (data._hp && data._hp.trim().length > 0) {
+  if (data.website?.trim() || data.company?.trim()) {
+    await recordBotProtectionBlock({ formType: 'CONTACT', reason: 'HONEYPOT' });
+    return NextResponse.json({ referenceNumber: generateRefNumber() });
+  }
+
+  const formGuardCheck = verifyFormGuardToken(data.formGuardToken, 'contact');
+  if (formGuardCheck !== 'valid') {
+    await recordBotProtectionBlock({ formType: 'CONTACT', reason: 'FORM_TIMING' });
     return NextResponse.json({ referenceNumber: generateRefNumber() });
   }
 

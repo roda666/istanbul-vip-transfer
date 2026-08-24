@@ -4,8 +4,9 @@
  * Run once:
  *   cd artifacts/istanbul-vip-transfer && npx tsx scripts/seed-homepage.ts
  *
- * Idempotent: uses INSERT ... ON CONFLICT DO NOTHING / upsert patterns.
- * Does NOT overwrite already-modified content.
+ * Idempotent: updates only the reserved homepage CMS source record.
+ * It never creates a generic PAGE that can reintroduce /ana-sayfa as a
+ * browsable duplicate page.
  */
 import { db } from '../db';
 import { content, contentTranslations, googleReviews } from '../db/schema';
@@ -19,7 +20,7 @@ async function seedHomepage() {
 
   // ── 1. TR source content ─────────────────────────────────────────────────
   const [existing] = await db
-    .select({ id: content.id, status: content.status })
+    .select({ id: content.id, status: content.status, isHomepageSource: content.isHomepageSource })
     .from(content)
     .where(eq(content.slug, HOMEPAGE_SLUG))
     .limit(1);
@@ -39,9 +40,13 @@ async function seedHomepage() {
         seoTitle:      HOMEPAGE_FALLBACK.tr.seo.metaTitle,
         seoDescription: HOMEPAGE_FALLBACK.tr.seo.metaDescription,
         title:         'Ana Sayfa',
+        isHomepageSource: true,
       }).where(eq(content.id, contentId));
       console.log('  ✓ Updated existing TR record with sections body');
     } else {
+      if (!existing.isHomepageSource) {
+        await db.update(content).set({ isHomepageSource: true }).where(eq(content.id, contentId));
+      }
       console.log('  · TR record already has body — skipping overwrite');
     }
   } else {
@@ -56,6 +61,7 @@ async function seedHomepage() {
       heroImageAlt:    HOMEPAGE_FALLBACK.tr.hero.imageAlt,
       seoTitle:        HOMEPAGE_FALLBACK.tr.seo.metaTitle,
       seoDescription:  HOMEPAGE_FALLBACK.tr.seo.metaDescription,
+      isHomepageSource: true,
     }).returning({ id: content.id });
     contentId = inserted.id;
     console.log(`  ✓ Created TR record: ${contentId}`);

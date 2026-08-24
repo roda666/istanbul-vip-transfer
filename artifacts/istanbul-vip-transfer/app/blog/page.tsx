@@ -8,6 +8,7 @@ import { getBlogPost } from '@/lib/blog-data';
 import SafeArticleImage from '@/components/SafeArticleImage';
 import { SITE } from '@/lib/site-config';
 import { getContactSettings } from '@/lib/site-settings-server';
+import { serializeJsonLd } from '@/lib/json-ld';
 
 const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/blog`;
@@ -147,8 +148,8 @@ export default async function BlogPage() {
         )}
       </section>
 
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(blogListingSchema) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(blogListingSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbSchema) }} />
     </>
   );
 }

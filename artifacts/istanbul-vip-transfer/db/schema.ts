@@ -154,6 +154,12 @@ export const content = pgTable('content', {
   /** Whether to show this service in the site navigation (header/footer/mobile menu). */
   showInNav: boolean('show_in_nav').default(true).notNull(),
   /**
+   * Marks the reserved source record used exclusively by the homepage CMS.
+   * It remains in the shared table so translations can reference its UUID, but
+   * must never be treated as an editable generic PAGE.
+   */
+  isHomepageSource: boolean('is_homepage_source').default(false).notNull(),
+  /**
    * Pending draft body for a PUBLISHED service page.
    * When an admin saves changes without publishing, the live `body` is preserved
    * and edits are stored here. On "Kaydet ve Yayımla", this is promoted to `body`

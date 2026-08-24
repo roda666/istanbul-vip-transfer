@@ -14,6 +14,7 @@ import { ArrowRight } from 'lucide-react';
 import { localizedPublicPath } from '@/lib/localized-service-path';
 import { getContentDirection } from '@/lib/i18n/bidi';
 import SafeArticleImage from '@/components/SafeArticleImage';
+import { serializeJsonLd } from '@/lib/json-ld';
 
 interface Props {
   params: Promise<{ lang: string }>;
@@ -50,7 +51,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: pageTitle,
     description: pageDesc,
-    alternates: { canonical: alternates.canonical, languages: alternates.languages },
+    alternates: { canonical: pageUrl, languages: alternates.languages },
     openGraph: {
       title: pageTitle,
       description: pageDesc,
@@ -153,7 +154,7 @@ export default async function TranslatedBlogPage({ params }: Props) {
       </section>
 
       <script type="application/ld+json" dangerouslySetInnerHTML={{
-        __html: JSON.stringify({
+        __html: serializeJsonLd({
           '@context': 'https://schema.org', '@type': 'WebPage',
           name: lang === 'ru' ? 'Блог | Стамбул VIP Трансфер' : lang === 'ar' ? 'المدونة | إسطنبول VIP ترانسفير' : 'Blog | Istanbul VIP Transfer',
           url: `${SITE.siteUrl}/${lang}/blog`, inLanguage: lang,
@@ -161,7 +162,7 @@ export default async function TranslatedBlogPage({ params }: Props) {
         }),
       }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{
-        __html: JSON.stringify({
+        __html: serializeJsonLd({
           '@context': 'https://schema.org', '@type': 'BreadcrumbList',
           itemListElement: [
             { '@type': 'ListItem', position: 1, name: dict.nav.home, item: SITE.siteUrl },

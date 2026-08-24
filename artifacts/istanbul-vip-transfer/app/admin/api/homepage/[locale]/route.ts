@@ -193,14 +193,14 @@ export async function PATCH(
     let contentId: string;
     if (existing) {
       await db.update(content).set({
-        body: sectionsJson, updatedAt: trNow, title: 'Ana Sayfa', status: trStatus,
+        body: sectionsJson, updatedAt: trNow, title: 'Ana Sayfa', status: trStatus, isHomepageSource: true,
         ...(autoPublish ? { publishedAt: trNow } : {}),
       }).where(eq(content.id, existing.id));
       contentId = existing.id;
     } else {
       const [inserted] = await db.insert(content).values({
         contentType: 'PAGE', title: 'Ana Sayfa', slug: HOMEPAGE_SLUG,
-        body: sectionsJson, status: trStatus,
+        body: sectionsJson, status: trStatus, isHomepageSource: true,
         ...(autoPublish ? { publishedAt: trNow } : {}),
       }).returning({ id: content.id });
       contentId = inserted.id;

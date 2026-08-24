@@ -6,6 +6,8 @@ import Contact from '@/components/Contact';
 import ContactForm from '@/components/ContactForm';
 import BookingForm from '@/components/BookingForm';
 import { SITE } from '@/lib/site-config';
+import { getContactSettings, type ContactSettings } from '@/lib/site-settings-server';
+import { serializeJsonLd } from '@/lib/json-ld';
 
 const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/iletisim`;
@@ -40,7 +42,8 @@ const breadcrumbSchema = {
   ],
 };
 
-const contactPageSchema = {
+function buildContactPageSchema(cs: ContactSettings) {
+  return {
   '@context': 'https://schema.org',
   '@type': 'ContactPage',
   name: 'İletişim | İstanbul VIP Transfer',
@@ -51,9 +54,11 @@ const contactPageSchema = {
     '@type': 'LocalBusiness',
     name: 'VIP Transfer Istanbul',
     url: BASE,
-    telephone: '+90 532 000 00 00',
+    telephone: cs.phoneE164,
+    email: cs.email,
     address: {
       '@type': 'PostalAddress',
+      ...(cs.fullAddress ? { streetAddress: cs.fullAddress } : {}),
       addressLocality: 'İstanbul',
       addressCountry: 'TR',
     },
@@ -66,9 +71,13 @@ const contactPageSchema = {
       },
     ],
   },
-};
+  };
+}
 
-export default function IletisimPage() {
+export default async function IletisimPage() {
+  const contactSettings = await getContactSettings();
+  const contactPageSchema = buildContactPageSchema(contactSettings);
+
   return (
     <>
       <PageHero pageKey="contact" />
@@ -77,11 +86,11 @@ export default function IletisimPage() {
       <BookingForm />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbSchema) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(contactPageSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(contactPageSchema) }}
       />
     </>
   );

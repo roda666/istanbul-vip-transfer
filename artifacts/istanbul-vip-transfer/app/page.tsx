@@ -102,6 +102,7 @@ export default async function HomePage() {
     email: cs.email,
     address: {
       '@type': 'PostalAddress',
+      ...(cs.fullAddress ? { streetAddress: cs.fullAddress } : {}),
       addressLocality: 'İstanbul',
       addressRegion: 'İstanbul',
       addressCountry: 'TR',

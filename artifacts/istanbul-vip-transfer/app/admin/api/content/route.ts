@@ -65,9 +65,13 @@ export async function GET(request: NextRequest) {
   try {
     const { db } = await import('@/db');
     const { content } = await import('@/db/schema');
-    const { eq, desc, count } = await import('drizzle-orm');
+    const { and, eq, desc, count } = await import('drizzle-orm');
 
-    const where = type ? eq(content.contentType, type as 'PAGE' | 'SERVICE' | 'BLOG_POST') : undefined;
+    const where = type === 'PAGE'
+      ? and(eq(content.contentType, 'PAGE'), eq(content.isHomepageSource, false))
+      : type
+        ? eq(content.contentType, type as 'SERVICE' | 'BLOG_POST')
+        : undefined;
 
     const [items, totalRows] = await Promise.all([
       db.select().from(content).where(where).orderBy(desc(content.updatedAt)).limit(limit).offset(offset),

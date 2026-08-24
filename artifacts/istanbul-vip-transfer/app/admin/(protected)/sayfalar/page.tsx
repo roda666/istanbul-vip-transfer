@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { db } from '@/db';
 import { content } from '@/db/schema';
-import { eq, desc, count } from 'drizzle-orm';
+import { and, eq, desc, count } from 'drizzle-orm';
 import AdminPageHeader from '../../_components/AdminPageHeader';
 import ContentList from '../../_components/ContentList';
 
@@ -28,8 +28,14 @@ export default async function SayfalarPage({
 
   try {
     const [rows, totalRows] = await Promise.all([
-      db.select().from(content).where(eq(content.contentType, 'PAGE')).orderBy(desc(content.updatedAt)).limit(limit).offset(offset),
-      db.select({ count: count() }).from(content).where(eq(content.contentType, 'PAGE')),
+      db.select().from(content).where(and(
+        eq(content.contentType, 'PAGE'),
+        eq(content.isHomepageSource, false),
+      )).orderBy(desc(content.updatedAt)).limit(limit).offset(offset),
+      db.select({ count: count() }).from(content).where(and(
+        eq(content.contentType, 'PAGE'),
+        eq(content.isHomepageSource, false),
+      )),
     ]);
     items = rows;
     total = totalRows[0]?.count ?? 0;

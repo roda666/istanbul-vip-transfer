@@ -8,6 +8,8 @@ import Reviews from '@/components/Reviews';
 import BookingForm from '@/components/BookingForm';
 import Contact from '@/components/Contact';
 import { SITE } from '@/lib/site-config';
+import { getContactSettings, type ContactSettings } from '@/lib/site-settings-server';
+import { serializeJsonLd } from '@/lib/json-ld';
 
 const BASE = SITE.siteUrl;
 const PAGE = `${BASE}/hakkimizda`;
@@ -42,7 +44,8 @@ const breadcrumbSchema = {
   ],
 };
 
-const organizationSchema = {
+function buildOrganizationSchema(cs: ContactSettings) {
+  return {
   '@context': 'https://schema.org',
   '@type': 'Organization',
   '@id': `${BASE}/#organization`,
@@ -62,6 +65,7 @@ const organizationSchema = {
   email: SITE.email,
   address: {
     '@type': 'PostalAddress',
+    ...(cs.fullAddress ? { streetAddress: cs.fullAddress } : {}),
     addressLocality: 'İstanbul',
     addressCountry: 'TR',
   },
@@ -90,10 +94,11 @@ const organizationSchema = {
     },
   },
   sameAs: [
-    SITE.googleBusinessUrl,
+    cs.googleBusinessUrl,
     'https://www.instagram.com/istanbulviptransfer',
   ].filter(Boolean),
-};
+  };
+}
 
 const aboutPageSchema = {
   '@context': 'https://schema.org',
@@ -108,7 +113,29 @@ const aboutPageSchema = {
   inLanguage: 'tr-TR',
 };
 
-export default function HakkimizdaPage() {
+const aboutArticleSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  '@id': `${PAGE}#article`,
+  mainEntityOfPage: { '@id': `${PAGE}#webpage` },
+  headline: 'Hakkımızda — İstanbul VIP Transfer',
+  description: "İstanbul VIP Transfer'in hizmet anlayışı, araç filosu ve özel ulaşım çözümleri hakkında bilgi edinin.",
+  image: SITE.ogImage.url,
+  author: { '@id': `${BASE}/#organization` },
+  publisher: {
+    '@type': 'Organization',
+    '@id': `${BASE}/#organization`,
+    name: 'İstanbul VIP Transfer',
+    logo: { '@type': 'ImageObject', url: `${BASE}/logo.png` },
+  },
+  inLanguage: 'tr-TR',
+  about: { '@id': `${BASE}/#organization` },
+};
+
+export default async function HakkimizdaPage() {
+  const contactSettings = await getContactSettings();
+  const organizationSchema = buildOrganizationSchema(contactSettings);
+
   return (
     <>
       <PageHero pageKey="about" />
@@ -119,15 +146,19 @@ export default function HakkimizdaPage() {
       <Contact />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbSchema) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(organizationSchema) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(aboutPageSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(aboutPageSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(aboutArticleSchema) }}
       />
     </>
   );

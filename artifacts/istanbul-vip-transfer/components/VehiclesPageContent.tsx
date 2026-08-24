@@ -6,17 +6,13 @@ import { getDictionary } from '@/lib/i18n';
 import { SITE } from '@/lib/site-config';
 import { resolvePublicVehicle } from '@/lib/vehicle-localization';
 import { resolveVehicleBrand } from '@/lib/vehicle-brand';
+import { localizedStaticPath } from '@/lib/localized-service-path';
+import { serializeJsonLd } from '@/lib/json-ld';
 
 const BASE = SITE.siteUrl;
-const ROOT_PAGE = `${BASE}/araclar`;
 
-function safeJsonLd(value: unknown): string {
-  return JSON.stringify(value)
-    .replace(/</g, '\\u003c')
-    .replace(/>/g, '\\u003e')
-    .replace(/&/g, '\\u0026')
-    .replace(/\u2028/g, '\\u2028')
-    .replace(/\u2029/g, '\\u2029');
+function getPageUrl(locale: string): string {
+  return `${BASE}${localizedStaticPath('araclar', locale)}`;
 }
 
 interface DbVehicle {
@@ -85,7 +81,7 @@ function buildImageUrl(path: string | null): string {
 function buildVehicleSchema(vehicles: DbVehicle[], locale: string) {
   if (vehicles.length === 0) return null;
   const dict = getDictionary(locale);
-  const pageUrl = locale === 'tr' ? ROOT_PAGE : `${BASE}/${locale}/araclar`;
+  const pageUrl = getPageUrl(locale);
   const vehicleTypeMap: Record<string, string> = {
     SEDAN: 'Car',
     MPV: 'Car',
@@ -134,7 +130,7 @@ function buildVehicleSchema(vehicles: DbVehicle[], locale: string) {
 
 function buildBreadcrumbSchema(locale: string) {
   const dict = getDictionary(locale);
-  const pageUrl = locale === 'tr' ? ROOT_PAGE : `${BASE}/${locale}/araclar`;
+  const pageUrl = getPageUrl(locale);
   return {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -158,12 +154,12 @@ export default async function VehiclesPageContent({ locale }: { locale: string }
       <Contact />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbSchema) }}
       />
       {vehicleSchema && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: safeJsonLd(vehicleSchema) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(vehicleSchema) }}
         />
       )}
     </>

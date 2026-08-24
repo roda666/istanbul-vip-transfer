@@ -6,6 +6,7 @@ import { requireSocialPlatformAdmin, socialAuthErrorResponse } from '@/lib/socia
 import { publishFacebookPost, publishInstagramPost, publishXTweet } from '@/lib/social-publish';
 import { publishGoogleBusinessPost } from '@/lib/google-business';
 import { getPublicOrigin } from '@/lib/social-public-url';
+import { validateInstagramCoverImage } from '@/lib/instagram-image';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,6 +44,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ key: s
     excerpt: content.excerpt,
     slug: content.slug,
     heroImage: content.heroImage,
+    heroImageAlt: content.heroImageAlt,
   }).from(content).where(and(
     eq(content.contentType, 'BLOG_POST'),
     eq(content.status, 'PUBLISHED'),
@@ -58,10 +60,18 @@ export async function POST(_req: Request, { params }: { params: Promise<{ key: s
       ? await publishFacebookPost({ message: summary.slice(0, 5_000), link: blogUrl })
       : key === 'instagram'
         ? blog.heroImage
-          ? await publishInstagramPost({
-            caption: summary.slice(0, 2_200),
-            imageUrl: publicImageUrl(blog.heroImage, _req),
-          })
+          ? await (async () => {
+            const imageUrl = publicImageUrl(blog.heroImage!, _req);
+            const asset = await validateInstagramCoverImage({
+              imageUrl,
+              altText: blog.heroImageAlt,
+              topic: blog.title,
+            });
+            return publishInstagramPost({
+              caption: summary.slice(0, 2_200),
+              imageUrl,
+            }).then((publication) => ({ ...publication, asset }));
+          })()
           : (() => { throw new Error('Instagram test paylaşımı için blog kapak görseli gerekli.'); })()
         : key === 'x'
           ? await publishXTweet(`Yeni blog yazımız: ${blog.title.slice(0, 220)}\n${blogUrl}`)
@@ -72,11 +82,29 @@ export async function POST(_req: Request, { params }: { params: Promise<{ key: s
       action: 'SOCIAL_TEST_PUBLISH',
       entityType: 'social_platform',
       entityId: key,
-      metadata: { blogId: blog.id, blogUrl },
+      metadata: {
+        blogId: blog.id,
+        blogUrl,
+        outcome: 'accepted',
+        publicationId: result.id,
+      },
     });
 
     return NextResponse.json({ result, blog: { title: blog.title, url: blogUrl } });
   } catch (error) {
+    // Record the failed operation without persisting provider response bodies,
+    // which may contain account identifiers or token-adjacent diagnostics.
+    await db.insert(auditLogs).values({
+      adminUserId: session.adminId,
+      action: 'SOCIAL_TEST_PUBLISH',
+      entityType: 'social_platform',
+      entityId: key,
+      metadata: {
+        blogId: blog.id,
+        outcome: 'failed',
+        failureKind: error instanceof Error ? error.name.slice(0, 80) : 'unknown',
+      },
+    }).catch(() => {});
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Test paylaşımı başarısız.' },
       { status: 502 },

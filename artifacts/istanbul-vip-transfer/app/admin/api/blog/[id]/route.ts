@@ -205,11 +205,16 @@ export async function PUT(req: NextRequest, { params }: Params) {
   }
 
   const { db }              = await import('@/db');
-  const { content, contentTranslations } = await import('@/db/schema');
+  const { content, contentTranslations, siteSettings } = await import('@/db/schema');
   const { eq, inArray }     = await import('drizzle-orm');
 
   const now = new Date();
   const canonicalUrl = data.canonicalUrl ?? `${SITE.siteUrl}/blog/${data.slug ?? row.slug}`;
+  const [{ approvalGateEnabled = true } = {}] = await db
+    .select({ approvalGateEnabled: siteSettings.approvalGateEnabled })
+    .from(siteSettings)
+    .where(eq(siteSettings.id, 1))
+    .limit(1);
 
   // Draft-of-published semantics
   const savingDraftOfPublished = data.saveAsDraft && row.status === 'PUBLISHED';
@@ -229,6 +234,26 @@ export async function PUT(req: NextRequest, { params }: Params) {
         return NextResponse.json(
           { error: 'Yayımlanacak içeriğin başlık ve gövde alanları dolu olmalıdır.' },
           { status: 422 }
+        );
+      }
+      const existingRow = row as Record<string, unknown>;
+      if (approvalGateEnabled && (!existingRow.approvedAt || !existingRow.approvedBy)) {
+        return NextResponse.json(
+          { error: 'Yayınlamadan önce içerik onaylanmalıdır. Onay kapısı ayarlarda etkin.' },
+          { status: 409 },
+        );
+      }
+      // A saved edit and a publish request must never share an old approval.
+      // Editors must save the edit, send it back through review, then publish
+      // the unchanged approved revision in a separate operation.
+      if (approvalGateEnabled && (
+        (data.title ?? row.title) !== row.title ||
+        (data.body ?? row.body) !== row.body ||
+        (data.excerpt === undefined ? row.excerpt : data.excerpt) !== row.excerpt
+      )) {
+        return NextResponse.json(
+          { error: 'Düzenlenen içerik önce yeniden incelemeye ve onaya gönderilmelidir.' },
+          { status: 409 },
         );
       }
     }
@@ -258,12 +283,33 @@ export async function PUT(req: NextRequest, { params }: Params) {
       scheduledAt:    data.scheduledAt ? new Date(data.scheduledAt) : (row.scheduledAt ?? null),
       updatedAt:      now,
     };
+    // Preserve the approval invariant even when an editor uses the generic
+    // save endpoint rather than a workflow button.
+    if (
+      approvalGateEnabled &&
+      (currentStatus === 'APPROVED' || currentStatus === 'SCHEDULED') &&
+      finalStatus !== 'PUBLISHED' &&
+      (
+        (data.title ?? row.title) !== row.title ||
+        (data.body ?? row.body) !== row.body ||
+        (data.excerpt === undefined ? row.excerpt : data.excerpt) !== row.excerpt
+      )
+    ) {
+      updateFields.status = 'REVIEW';
+      updateFields.approvedAt = null;
+      updateFields.approvedBy = null;
+      updateFields.scheduledAt = null;
+    }
 
     // Approval attribution on publish (APPROVED → PUBLISHED)
     if (finalStatus === 'PUBLISHED') {
       const existingRow = row as Record<string, unknown>;
-      updateFields.approvedAt  = existingRow.approvedAt ?? now;
-      updateFields.approvedBy  = existingRow.approvedBy ?? adminUserId;
+      // Never manufacture an approval while the gate is enabled.  That would
+      // turn a direct PUT into an unreviewed publish path.
+      if (!approvalGateEnabled) {
+        updateFields.approvedAt = existingRow.approvedAt ?? now;
+        updateFields.approvedBy = existingRow.approvedBy ?? adminUserId;
+      }
     }
   }
 
@@ -362,9 +408,12 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { action, locale, revisionId, scheduledAt } = parsed.data;
   const adminUserId = session?.adminId ?? null;
   const { db }   = await import('@/db');
-  const { content, contentTranslations, blogRevisions } = await import('@/db/schema');
+  const { content, contentTranslations, blogRevisions, siteSettings } = await import('@/db/schema');
   const { eq }   = await import('drizzle-orm');
   const now      = new Date();
+  const [settings] = await db.select({ approvalGateEnabled: siteSettings.approvalGateEnabled })
+    .from(siteSettings).where(eq(siteSettings.id, 1)).limit(1);
+  const approvalGateEnabled = settings?.approvalGateEnabled ?? true;
 
   // ── Source status actions ─────────────────────────────────────────────────
 
@@ -400,6 +449,13 @@ export async function POST(req: NextRequest, { params }: Params) {
           { status: 422 }
         );
       }
+      const existingRow = row as Record<string, unknown>;
+      if (approvalGateEnabled && (!existingRow.approvedAt || !existingRow.approvedBy)) {
+        return NextResponse.json(
+          { error: 'Yayınlamadan önce içerik onaylanmalıdır. Onay kapısı ayarlarda etkin.' },
+          { status: 409 },
+        );
+      }
     }
 
     const updateFields: Record<string, unknown> = {
@@ -413,9 +469,10 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
     if (newStatus === 'PUBLISHED') {
       updateFields.publishedAt  = row.publishedAt ?? now;
-      // Ensure approval attribution is set on direct publish (APPROVED → PUBLISHED)
-      updateFields.approvedAt   = (row as Record<string, unknown>).approvedAt ?? now;
-      updateFields.approvedBy   = (row as Record<string, unknown>).approvedBy ?? adminUserId;
+      if (!approvalGateEnabled) {
+        updateFields.approvedAt = (row as Record<string, unknown>).approvedAt ?? now;
+        updateFields.approvedBy = (row as Record<string, unknown>).approvedBy ?? adminUserId;
+      }
     }
     if (newStatus === 'SCHEDULED' && scheduledAt) {
       updateFields.scheduledAt = new Date(scheduledAt);

@@ -31,15 +31,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const sources = await db.select().from(studioResearch).where(eq(studioResearch.projectId, id));
     const cfg = project.config as Record<string, unknown>;
 
+    const savedResearch = (cfg?.researchResult ?? {}) as Record<string, unknown>;
+    const savedBrief = (savedResearch.contentBrief ?? {}) as Record<string, unknown>;
     const researchData = {
-      summary:     '',
-      keyAngles:   [],
+      summary:     String(savedResearch.summary ?? ''),
+      keyAngles:   Array.isArray(savedResearch.keyAngles) ? savedResearch.keyAngles.map(String) : [],
       contentBrief: {
-        tone:            String(cfg?.tone ?? 'Profesyonel'),
-        wordCountTarget: Number(cfg?.wordCountTarget ?? 1200),
-        h2Suggestions:   [],
-        faqTopics:       [],
-        internalLinkSuggestions: [],
+        tone:            String(savedBrief.tone ?? cfg?.tone ?? 'Profesyonel'),
+        wordCountTarget: Number(savedBrief.wordCountTarget ?? cfg?.wordCountTarget ?? 1200),
+        h2Suggestions:   Array.isArray(savedBrief.h2Suggestions) ? savedBrief.h2Suggestions.map(String) : [],
+        faqTopics:       Array.isArray(savedBrief.faqTopics) ? savedBrief.faqTopics.map(String) : [],
+        internalLinkSuggestions: Array.isArray(savedBrief.internalLinkSuggestions) ? savedBrief.internalLinkSuggestions as [] : [],
       },
       sources: sources.map(s => ({
         title:          s.title ?? '',
@@ -48,7 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         sourceType:     (s.sourceType === 'manual' ? 'manual' : 'ai_context') as 'ai_context' | 'manual',
         accessedAt:     (s.accessedAt ?? new Date()).toISOString(),
       })),
-      keywordNote: 'Anahtar kelime verisi bağlı değil — AI tahmini',
+      keywordNote: 'Anahtar kelimeler manuel girdidir; bu projede sağlayıcı metrikleri kaydedilmemiştir.',
     } as Parameters<typeof import('@/lib/studio/ai-studio').generateTrDraft>[1];
 
     const { generateTrDraft } = await import('@/lib/studio/ai-studio');

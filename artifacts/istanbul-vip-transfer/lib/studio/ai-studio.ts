@@ -5,7 +5,7 @@
  *  • No invented prices, distances, durations, reviews, or statistics
  *  • No keyword search volume / rank claims (no data source connected)
  *  • No guarantee language
- *  • Keywords labeled "manuel anahtar kelime" or "AI tahmini"
+ *  • Keywords are labeled as manual context unless real provider provenance is persisted
  *  • All temporal claims require cited source
  *  • Competitor text never copied
  *
@@ -45,11 +45,14 @@ const AIRPORT_CODES = /\b(IST|SAW|LHR|CDG|JFK|AMS|FCO|SVO|DXB)\b/g;
 // ── OpenAI client (safe — key never logged) ───────────────────────────────────
 
 async function getClient() {
-  const key = process.env.OPENAI_API_KEY;
+  // Replit AI Integrations is the preferred runtime when it is attached. Keep
+  // the direct OpenAI secret as a supported existing deployment option.
+  const key = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
   if (!key) return null;
   try {
     const { OpenAI } = await import('openai');
-    return new OpenAI({ apiKey: key });
+    const baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL?.trim();
+    return new OpenAI({ apiKey: key, ...(baseURL ? { baseURL } : {}) });
   } catch {
     return null;
   }
@@ -214,13 +217,14 @@ export interface ResearchResult {
     sourceType: 'ai_context' | 'manual';
     accessedAt: string;
   }>;
-  keywordNote: string; // always "Anahtar kelime verisi bağlı değil — AI tahmini"
+  /** This research call does not query a keyword provider. */
+  keywordNote: string;
 }
 
 export async function runResearch(config: StudioConfig): Promise<AIResult<ResearchResult>> {
   const client = await getClient();
   if (!client) {
-    return { ok: false, reason: 'not_configured', message: 'OpenAI API anahtarı yapılandırılmamış. Lütfen OPENAI_API_KEY değişkenini ayarlayın.' };
+    return { ok: false, reason: 'not_configured', message: 'AI metin servisi yapılandırılmamış. Replit AI entegrasyonunu veya OpenAI yapılandırmasını yönetici ayarlarından tamamlayın.' };
   }
 
   const model = getModel();
@@ -238,7 +242,7 @@ KESİN YASAK:
 
 Her kaynak için erişim tarihi ve desteklenen iddiayı belirt.
 Yalnızca genel bilgi (destinasyon bilgisi, turizm bilgisi) ve marka bağlamını kullan.
-Anahtar kelime notu her zaman: "Anahtar kelime verisi bağlı değil — AI tahmini"
+Anahtar kelime notu her zaman: "Bu AI araştırması anahtar kelime sağlayıcı metriği içermez; kelimeler manuel bağlamdır."
 
 JSON formatı:
 {
@@ -254,7 +258,7 @@ JSON formatı:
   "sources": [
     {"title": "...", "url": null, "claimSupported": "...", "sourceType": "ai_context", "accessedAt": "${new Date().toISOString()}"}
   ],
-  "keywordNote": "Anahtar kelime verisi bağlı değil — AI tahmini"
+  "keywordNote": "Bu AI araştırması anahtar kelime sağlayıcı metriği içermez; kelimeler manuel bağlamdır."
 }`;
 
   const userPrompt = `İçerik türü: ${config.contentType ?? 'blog'}
@@ -310,7 +314,7 @@ Bu bilgilere dayanarak araştırma yap ve içerik özeti hazırla.`;
             accessedAt:     String(s.accessedAt ?? new Date().toISOString()),
           }))
         : [],
-      keywordNote: 'Anahtar kelime verisi bağlı değil — AI tahmini',
+      keywordNote: 'Bu AI araştırması anahtar kelime sağlayıcı metriği içermez; kelimeler manuel bağlamdır.',
     };
 
     return { ok: true, data: result, model, tokens: resp.usage?.total_tokens };
@@ -327,7 +331,7 @@ export async function generateTrDraft(
 ): Promise<AIResult<StudioContent>> {
   const client = await getClient();
   if (!client) {
-    return { ok: false, reason: 'not_configured', message: 'OpenAI API anahtarı yapılandırılmamış.' };
+    return { ok: false, reason: 'not_configured', message: 'AI metin servisi yapılandırılmamış. Replit AI entegrasyonunu veya OpenAI yapılandırmasını tamamlayın.' };
   }
 
   const model = getModel();
@@ -524,9 +528,16 @@ export async function generateImageAsset(opts: {
   if (!prompt || !altText) {
     return { ok: false, reason: 'api_error', message: 'Görsel açıklaması ve üretim istemi zorunludur.' };
   }
+  if (/\b(?:text|logo|brand|watermark|sign|license.?plate|portrait|selfie|face|people|person|yüz|yuz|portre|logo|marka|tabela|plaka|yazı|yazi|filigran)\b/i.test(`${prompt} ${altText}`)) {
+    return {
+      ok: false,
+      reason: 'api_error',
+      message: 'Güvenli kapak görseli için metin, logo/marka, tabela, plaka ve yüz odaklı istemler kullanılamaz.',
+    };
+  }
   const client = await getClient();
   if (!client) {
-    return { ok: false, reason: 'not_configured', message: 'OpenAI görsel servisi yapılandırılmamış.' };
+    return { ok: false, reason: 'not_configured', message: 'AI görsel servisi yapılandırılmamış. Replit AI entegrasyonunu veya OpenAI yapılandırmasını tamamlayın.' };
   }
 
   const model = getImageModel();
@@ -535,7 +546,7 @@ export async function generateImageAsset(opts: {
     // installed SDK declarations that predate output_format.
     const response = await client.images.generate({
       model,
-      prompt,
+       prompt: `${prompt}. Editorial travel illustration with no people, faces, text, logos, brand marks, signs, watermarks, or license plates.`,
       n: 1,
       size: '1536x1024',
       output_format: 'webp',
@@ -588,7 +599,7 @@ export async function translateStudioContent(
 ): Promise<AIResult<StudioContent>> {
   const client = await getClient();
   if (!client) {
-    return { ok: false, reason: 'not_configured', message: 'OpenAI API anahtarı yapılandırılmamış.' };
+    return { ok: false, reason: 'not_configured', message: 'AI çeviri servisi yapılandırılmamış. Replit AI entegrasyonunu veya OpenAI yapılandırmasını tamamlayın.' };
   }
 
   const model = getModel();
@@ -715,7 +726,7 @@ export async function generateDistributionDrafts(
 ): Promise<AIResult<DistributionResult>> {
   const client = await getClient();
   if (!client) {
-    return { ok: false, reason: 'not_configured', message: 'OpenAI API anahtarı yapılandırılmamış.' };
+    return { ok: false, reason: 'not_configured', message: 'AI metin servisi yapılandırılmamış. Replit AI entegrasyonunu veya OpenAI yapılandırmasını tamamlayın.' };
   }
 
   const model = getModel();
@@ -736,7 +747,7 @@ JSON:
   const userPrompt = `Title: ${content.title}
 Excerpt: ${content.excerpt}
 Body (first 600 chars): ${content.bodyMd.slice(0, 600).replace(/^#{1,6}\s/gm, '').replace(/\*\*/g, '')}
-Note: Anahtar kelime verisi bağlı değil — AI tahmini. Do not invent data.`;
+Note: This content may include manually entered keywords, not provider metrics. Do not invent data.`;
 
   try {
     const resp = await client.chat.completions.create({
@@ -779,19 +790,20 @@ export async function checkOpenAIConnectivity(): Promise<{
   chat: { ok: boolean; model: string | null; error?: string };
   image: { ok: boolean; model: string; error?: string };
 }> {
-  const key = process.env.OPENAI_API_KEY;
+  const key = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
   const imageModel = getImageModel();
   if (!key) {
     return {
-      chat: { ok: false, model: null, error: 'OpenAI anahtarı yapılandırılmamış.' },
-      image: { ok: false, model: imageModel, error: 'OpenAI anahtarı yapılandırılmamış.' },
+      chat: { ok: false, model: null, error: 'AI metin servisi yapılandırılmamış.' },
+      image: { ok: false, model: imageModel, error: 'AI görsel servisi yapılandırılmamış.' },
     };
   }
 
   const model = getModel();
   try {
     const { OpenAI } = await import('openai');
-    const client = new OpenAI({ apiKey: key });
+    const baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL?.trim();
+    const client = new OpenAI({ apiKey: key, ...(baseURL ? { baseURL } : {}) });
 
     const safeHealthError = (err: unknown) => {
       const raw = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();

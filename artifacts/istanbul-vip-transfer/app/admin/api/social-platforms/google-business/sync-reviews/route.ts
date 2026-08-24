@@ -14,7 +14,7 @@ export async function POST() {
     return NextResponse.json({ error: response.error }, { status: response.status });
   }
   try {
-    const result = await syncGoogleBusinessReviews();
+    const result = await syncGoogleBusinessReviews({ source: 'manual' });
     await db.insert(auditLogs).values({
       adminUserId: session.adminId,
       action: 'GOOGLE_BUSINESS_REVIEWS_SYNCED',

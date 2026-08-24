@@ -394,22 +394,15 @@ export default async function IcerikEntegrasyonlariPage({
         </div>
         <DatabaseStatusDetails status={gadsStatus} />
 
-        {/* Secrets / credentials missing */}
+        {/* Server-side configuration missing; never request or expose credentials in the UI. */}
         {(!gadsStatus.hasDevToken || !gadsStatus.hasLoginCustomerId) && (
           <div style={{ padding: '16px 20px', background: '#FFFBEB', borderBottom: '1px solid #E8EDF2' }}>
             <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: '#92400E', fontWeight: 600, margin: '0 0 8px' }}>
-              ⚠️ Eksik Replit Secrets:
+              ⚠️ Google Ads sunucu yapılandırması eksik
             </p>
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-              {!gadsStatus.hasDevToken        && codePill('GOOGLE_ADS_DEVELOPER_TOKEN')}
-              {!gadsStatus.hasLoginCustomerId && codePill('GOOGLE_ADS_LOGIN_CUSTOMER_ID')}
-            </div>
             <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: '#78350F', margin: '8px 0 0' }}>
-              Google Cloud Console&apos;da aynı projeye <strong>Google Ads API</strong>&apos;yi etkinleştirin ve bu secrets&apos;ları Replit&apos;e ekleyin.
-              Callback URI&apos;yi de kayıt ettirin:{' '}
-              <code style={{ fontSize: '11px', background: '#F1F5F9', padding: '2px 5px', borderRadius: '4px' }}>
-                https://www.istanbulviptransfer.com/admin/api/google-ads/callback
-              </code>
+              Yetkili platform yöneticisi Google Ads API erişimini ve OAuth geri dönüş ayarını tamamlamalıdır.
+              Kimlik bilgilerini bu panele veya içerik alanlarına girmeyin.
             </p>
           </div>
         )}
@@ -428,7 +421,7 @@ export default async function IcerikEntegrasyonlariPage({
               <p style={labelStyle}>Veri Önceliği</p>
               <p style={hint}>
                 GSC bağlıysa GSC verisi önceliklidir. GSC bağlı değilse Keyword Planner devreye girer;
-                ikisi de yoksa AI tahmini kullanılır. Haftalık taslak loglarında hangi kaynağın seçildiği gösterilir.
+                ikisi de yoksa metrik gösterilmez. Haftalık taslak loglarında hangi gerçek kaynağın kullanıldığı gösterilir.
               </p>
             </div>
             <div style={{ padding: '16px 20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>

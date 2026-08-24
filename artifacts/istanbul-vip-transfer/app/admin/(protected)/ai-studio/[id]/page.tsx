@@ -242,7 +242,7 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
 
         <Alert type="info">
           <strong>Başlamak için:</strong> &quot;Araştırma Yap&quot; butonuna tıklayın. AI, konu araştırması yapacak ve içerik özeti oluşturacak.
-          Anahtar kelime verisi yok — AI tahmini kullanılacak.
+          Bu projedeki anahtar kelimeler manuel girdidir; burada aylık hacim veya rekabet metriği gösterilmez.
         </Alert>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -258,8 +258,16 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
 
   function ResearchPanel() {
     const research = p.research;
+    const savedResearch = (config.researchResult ?? {}) as { summary?: string; keyAngles?: string[]; contentBrief?: { h2Suggestions?: string[]; faqTopics?: string[] } };
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {savedResearch.summary && (
+          <div style={card}>
+            <h3 style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px', fontWeight: 700, color: C.text, margin: '0 0 10px' }}>AI Araştırma Özeti</h3>
+            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', lineHeight: 1.6, color: C.muted, margin: 0, whiteSpace: 'pre-wrap' }}>{savedResearch.summary}</p>
+            {!!savedResearch.keyAngles?.length && <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: C.text, margin: '12px 0 0' }}><strong>İçerik açıları:</strong> {savedResearch.keyAngles.join(' · ')}</p>}
+          </div>
+        )}
         {research.length === 0 ? (
           <Alert type="warn">Araştırma kaynağı yok. Kurulum aşamasından araştırmayı başlatın.</Alert>
         ) : (

@@ -84,7 +84,10 @@ export async function publishFacebookPost(input: { message: string; link?: strin
     });
     const payload = await response.json() as { id?: string; error?: { message?: string } };
     if (!response.ok || !payload.id) throw new Error(payload.error?.message ?? `Facebook API ${response.status}`);
-    const result = { id: payload.id, url: null };
+    // Meta accepts the post asynchronously; the page permalink can take a
+    // moment to resolve, but the returned post id is a durable acceptance
+    // receipt and must not be confused with a browser share-dialog result.
+    const result = { id: payload.id, url: `https://www.facebook.com/${payload.id}` };
     await storePublicationResult('facebook', result, null);
     return result;
   } catch (error) {

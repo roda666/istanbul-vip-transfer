@@ -235,6 +235,11 @@ export const siteSettings = pgTable('site_settings', {
   googleReviewUrl:  text('google_review_url'),    // Direct Google review link
   tiktokUrl:        text('tiktok_url'),           // Public TikTok profile or video link
   youtubeUrl:       text('youtube_url'),          // Public YouTube channel or video link
+  /**
+   * Editorial safety switch. It is deliberately on by default; only the
+   * account owner may turn it off through the protected settings endpoint.
+   */
+  approvalGateEnabled: boolean('approval_gate_enabled').default(true).notNull(),
 });
 
 export const navigationItems = pgTable('navigation_items', {

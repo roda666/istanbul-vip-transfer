@@ -21,6 +21,8 @@ type GoogleBusinessMeta = {
   scopes?: string[];
   lastReviewSyncAt?: string;
   lastReviewSyncCount?: number;
+  reviewSyncStatus?: 'scheduled' | 'manual' | 'error';
+  nextReviewSyncAt?: string;
 };
 
 type GoogleBusinessPlatform = typeof socialPlatforms.$inferSelect;
@@ -246,8 +248,11 @@ const RATING_MAP: Record<string, number> = {
   ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5,
 };
 
-export async function syncGoogleBusinessReviews(): Promise<GoogleBusinessReviewSyncResult> {
-  const platform = await getGoogleBusinessPlatform({ requireSelection: true });
+export async function syncGoogleBusinessReviews(options: { requireEnabled?: boolean; source?: 'scheduled' | 'manual' } = {}): Promise<GoogleBusinessReviewSyncResult> {
+  const platform = await getGoogleBusinessPlatform({
+    requireEnabled: options.requireEnabled,
+    requireSelection: true,
+  });
   const meta = metaOf(platform);
   const reviews: Array<{
     name?: string;
@@ -322,6 +327,10 @@ export async function syncGoogleBusinessReviews(): Promise<GoogleBusinessReviewS
       ...meta,
       lastReviewSyncAt: syncedAt.toISOString(),
       lastReviewSyncCount: upserted,
+      reviewSyncStatus: options.source ?? 'manual',
+      // External schedulers call once per hour. This is status information for
+      // admins, not a second in-process scheduler that could duplicate work.
+      nextReviewSyncAt: new Date(syncedAt.getTime() + 60 * 60 * 1_000).toISOString(),
     },
     lastError: null,
     updatedAt: syncedAt,

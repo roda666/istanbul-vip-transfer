@@ -35,6 +35,7 @@ import {
   Banknote,
   Plane,
   PackagePlus,
+  Globe2,
 } from 'lucide-react';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -116,6 +117,7 @@ function getNavGroups(role: string, isSuperOrAdmin: boolean): NavGroup[] {
         { href: '/admin/dil-ve-ceviri',  label: 'Dil ve Çeviri',  icon: <Languages size={18} /> },
         { href: '/admin/ai-studio',      label: 'İçerik Stüdyosu', icon: <PenSquare size={18} />, badge: 'AI' },
         { href: '/admin/ai-oneriler',    label: 'AI İçerik Merkezi', icon: <Sparkles size={18} /> },
+         { href: '/admin/rakipler',        label: 'Rakip Siteler',    icon: <Globe2 size={18} /> },
       ],
     },
     {

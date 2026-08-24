@@ -60,6 +60,13 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
     await db.update(studioProjects).set({
       stage:     'research',
+      // studio_research stores source rows; retain the generated brief in the
+      // existing per-project JSON config so draft generation and the review UI
+      // use the actual first-use research result rather than an empty fallback.
+      config: {
+        ...((project.config ?? {}) as Record<string, unknown>),
+        researchResult: result.data,
+      } as never,
       updatedAt: now,
     }).where(eq(studioProjects.id, id));
 

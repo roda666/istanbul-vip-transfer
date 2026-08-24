@@ -79,7 +79,7 @@ async function getRawConnection(): Promise<{
 
 export async function isGoogleAdsConnected(): Promise<boolean> {
   const conn = await getRawConnection();
-  return !!conn?.connected && !!conn.refresh_token;
+  return !!conn?.connected && !!conn.enabled && !!conn.refresh_token;
 }
 
 export async function getGoogleAdsConnection(): Promise<{
@@ -112,10 +112,26 @@ export async function getGoogleAdsConnection(): Promise<{
   } catch { return null; }
 }
 
+/** Safe operational state for admin UI. No token, account identifier, or raw provider error leaves the server. */
+export async function getGoogleAdsStatus(): Promise<{ connected: boolean; ready: boolean; label: string }> {
+  const connection = await getGoogleAdsConnection();
+  const configured = Boolean(
+    process.env.GOOGLE_ADS_DEVELOPER_TOKEN &&
+    process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID &&
+    process.env.GOOGLE_CLIENT_ID &&
+    process.env.GOOGLE_CLIENT_SECRET,
+  );
+  const connected = Boolean(connection?.connected && connection.enabled);
+  if (!configured) return { connected, ready: false, label: 'Google Ads Keyword Planner sunucu yapılandırması tamamlanmamış.' };
+  if (!connected) return { connected: false, ready: false, label: 'Google Ads Keyword Planner hesabı bağlı değil veya bağlantı devre dışı.' };
+  if (connection?.lastError) return { connected: true, ready: false, label: 'Google Ads bağlantısı hata bildiriyor; yeniden bağlayıp tekrar deneyin.' };
+  return { connected: true, ready: true, label: 'Google Ads Keyword Planner bağlı — Türkiye / Türkçe gerçek hacim verisi sorgulanabilir.' };
+}
+
 /** Returns a valid access token, auto-refreshing if expired */
 async function getAccessToken(): Promise<string | null> {
   const conn = await getRawConnection();
-  if (!conn) return null;
+  if (!conn || !conn.connected || !conn.enabled) return null;
 
   const clientId     = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -171,6 +187,7 @@ async function getAccessToken(): Promise<string | null> {
 export async function generateKeywordIdeas(
   seedKeywords: string[],
   limit = 20,
+  includeZeroVolumes = false,
 ): Promise<KeywordIdea[]> {
   const devToken      = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
   const loginCustId   = process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID;
@@ -179,7 +196,7 @@ export async function generateKeywordIdeas(
   }
 
   const conn = await getRawConnection();
-  if (!conn) throw new GoogleAdsUnavailableError();
+  if (!conn || !conn.connected || !conn.enabled) throw new GoogleAdsUnavailableError();
 
   const accessToken = await getAccessToken();
   if (!accessToken) throw new GoogleAdsUnavailableError();
@@ -241,7 +258,10 @@ export async function generateKeywordIdeas(
           ? parseInt(r.keywordIdeaMetrics.highTopOfPageBidMicros, 10)
           : null,
       }))
-      .filter(i => i.text && i.avgMonthlySearches > 0)
+      // Topic discovery excludes zero-volume ideas, but an exact admin lookup
+      // must be able to report a provider-returned zero rather than pretend no
+      // metric exists.
+      .filter(i => i.text && (includeZeroVolumes || i.avgMonthlySearches > 0))
       .sort((a, b) => b.avgMonthlySearches - a.avgMonthlySearches);
 
     return ideas;

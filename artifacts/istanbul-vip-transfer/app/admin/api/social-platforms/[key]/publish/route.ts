@@ -6,6 +6,7 @@ import { publishFacebookPost, publishInstagramPost, publishXTweet } from '@/lib/
 import { publishGoogleBusinessPost } from '@/lib/google-business';
 import { db } from '@/db';
 import { auditLogs } from '@/db/schema';
+import { validateInstagramCoverImage } from '@/lib/instagram-image';
 
 const publishSchema = z.object({
   text: z.string().min(1).max(5000),
@@ -35,7 +36,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ key
     const result = key === 'facebook'
       ? await publishFacebookPost({ message: parsed.data.text, link: parsed.data.url })
       : key === 'instagram'
-        ? await publishInstagramPost({ caption: parsed.data.text, imageUrl: parsed.data.imageUrl ?? '' })
+        ? await (async () => {
+          const imageUrl = parsed.data.imageUrl ?? '';
+          await validateInstagramCoverImage({ imageUrl, altText: parsed.data.text, topic: parsed.data.text });
+          return publishInstagramPost({ caption: parsed.data.text, imageUrl });
+        })()
         : key === 'x'
           ? await publishXTweet(parsed.data.text)
           : await publishGoogleBusinessPost({ text: parsed.data.text, url: parsed.data.url });

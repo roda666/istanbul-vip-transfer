@@ -34,6 +34,7 @@ const settingsSchema = z.object({
   googleReviewUrl: optionalHttpsUrl,
   tiktokUrl:       optionalHttpsUrl,
   youtubeUrl:      optionalHttpsUrl,
+  approvalGateEnabled: z.boolean().optional(),
 });
 
 export async function GET() {
@@ -66,6 +67,9 @@ export async function POST(request: NextRequest) {
 
   const parsed = settingsSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0]?.message ?? 'Doğrulama hatası.' }, { status: 422 });
+  if (parsed.data.approvalGateEnabled !== undefined && session.role !== 'SUPER_ADMIN') {
+    return NextResponse.json({ error: 'Onay kapısını yalnızca hesap sahibi değiştirebilir.' }, { status: 403 });
+  }
 
   try {
     const { db } = await import('@/db');

@@ -281,8 +281,9 @@ export default function SistemKontrolPage() {
                 {data?.keywordData.label ?? 'Kontrol ediliyor…'}
               </p>
               <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: C.muted, margin: 0 }}>
-                Tüm anahtar kelime verileri <strong>AI tahmini</strong> veya <strong>manuel giriş</strong> olarak etiketlenir.
-                Arama hacmi, sıralama pozisyonu, CPC veya rekabet puanı hiçbir zaman uydurulmaz.
+                {data?.keywordData.connected
+                  ? <>Google Ads Keyword Planner sorguları gerçek sağlayıcı verisini <strong>Türkiye / Türkçe</strong> kapsamı ve sağlayıcı etiketiyle gösterir. Tam eşleşme dönmezse metrik gösterilmez.</>
+                  : <>Sağlayıcı kullanılamadığı için hacim veya rekabet metriği gösterilmez. Manuel anahtar kelimeler metrik değildir; AI tahmini olarak sunulmaz.</>}
               </p>
             </div>
           </div>
@@ -291,6 +292,9 @@ export default function SistemKontrolPage() {
               <span key={p} style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', background: '#F3F4F6', color: '#6B7280', padding: '3px 9px', borderRadius: '5px' }}>{p}</span>
             ))}
           </div>
+          <Link href="/admin/ai-studio/yeni" style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: '#2563EB' }}>
+            Anahtar kelime araştırmasını yeni proje ekranından başlat →
+          </Link>
         </div>
 
         {/* Social & newsletter */}

@@ -9,9 +9,9 @@
  *  3. Ton + kelime hedefi + notlar + yayın tarihi
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Wrench, ChevronRight, ChevronLeft, Plus, X } from 'lucide-react';
+import { BookOpen, Wrench, ChevronRight, ChevronLeft, Plus, X, Search, Loader2 } from 'lucide-react';
 import AdminPageHeader from '../../../_components/AdminPageHeader';
 import Link from 'next/link';
 
@@ -57,6 +57,9 @@ export default function YeniStudioPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState('');
   const [kwInput, setKwInput] = useState('');
+  const [keywordLookup, setKeywordLookup] = useState<{ ready: boolean; label: string } | null>(null);
+  const [keywordRows, setKeywordRows] = useState<Array<{ keyword: string; state: 'available' | 'no_exact_metric'; avgMonthlySearches?: number; competition?: string; message?: string }>>([]);
+  const [keywordLoading, setKeywordLoading] = useState(false);
 
   const [form, setForm] = useState<FormData>({
     contentType: 'blog',
@@ -72,6 +75,14 @@ export default function YeniStudioPage() {
     publishDate: '',
     notes: '',
   });
+  useEffect(() => {
+    void fetch('/admin/api/google-ads/keywords')
+      .then(async response => {
+        const data = await response.json() as { ready?: boolean; label?: string };
+        if (response.ok) setKeywordLookup({ ready: Boolean(data.ready), label: data.label ?? 'Google Ads bağlantı durumu alınamadı.' });
+      })
+      .catch(() => setKeywordLookup({ ready: false, label: 'Google Ads bağlantı durumu alınamadı — tekrar deneyin.' }));
+  }, []);
 
   function set<K extends keyof FormData>(k: K, v: FormData[K]) {
     setForm(prev => ({ ...prev, [k]: v }));
@@ -81,6 +92,24 @@ export default function YeniStudioPage() {
     const kw = kwInput.trim();
     if (kw && !form.keywords.includes(kw)) set('keywords', [...form.keywords, kw]);
     setKwInput('');
+  }
+  async function lookupKeywords() {
+    if (form.keywords.length === 0) return;
+    setKeywordLoading(true); setError('');
+    try {
+      const response = await fetch('/admin/api/google-ads/keywords', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keywords: form.keywords.slice(0, 10) }),
+      });
+      const data = await response.json() as { error?: string; status?: { ready: boolean; label: string }; rows?: typeof keywordRows };
+      if (!response.ok) {
+        setKeywordLookup(data.status ?? { ready: false, label: data.error ?? 'Google Ads Keyword Planner kullanılamıyor.' });
+        throw new Error(data.error ?? 'Anahtar kelime verisi alınamadı.');
+      }
+      setKeywordLookup({ ready: true, label: 'Google Ads Keyword Planner • Türkiye / Türkçe' });
+      setKeywordRows(data.rows ?? []);
+    } catch (e) { setError(e instanceof Error ? e.message : 'Anahtar kelime verisi alınamadı.'); }
+    finally { setKeywordLoading(false); }
   }
 
   async function handleSubmit() {
@@ -251,7 +280,7 @@ export default function YeniStudioPage() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
                 <span style={{ ...label, margin: 0 }}>Anahtar Kelimeler</span>
-                <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: '#7C3AED', background: '#F5F3FF', padding: '2px 8px', borderRadius: '5px' }}>Manuel — AI tahmini</span>
+                <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: '#7C3AED', background: '#F5F3FF', padding: '2px 8px', borderRadius: '5px' }}>Manuel giriş</span>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input
@@ -266,7 +295,7 @@ export default function YeniStudioPage() {
                 </button>
               </div>
               <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: C.light, margin: '4px 0 8px' }}>
-                Google Search Console bağlı değil — bu anahtar kelimeler &quot;manuel&quot; olarak etiketlenecek.
+                Eklenen kelimeler proje için manuel girdidir. Gerçek aylık hacmi yalnızca aşağıdaki Google Ads Keyword Planner sorgusu döndürür.
               </p>
               {form.keywords.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -280,6 +309,24 @@ export default function YeniStudioPage() {
                   ))}
                 </div>
               )}
+              <div style={{ marginTop: '12px', padding: '10px', border: `1px solid ${C.border}`, borderRadius: '8px', background: '#F8FAFC' }}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <button type="button" onClick={lookupKeywords} disabled={keywordLoading || form.keywords.length === 0} style={{ ...btn(true), padding: '7px 11px', opacity: keywordLoading || form.keywords.length === 0 ? .65 : 1 }}>
+                    {keywordLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Search size={14} />}
+                    Türkiye/Türkçe hacmini sorgula
+                  </button>
+                  <Link href="/admin/ayarlar/icerik-entegrasyonlari" style={{ fontSize: '11px', color: '#2563EB' }}>Google Ads bağlantısını yönet</Link>
+                </div>
+                {keywordLookup && <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: keywordLookup.ready ? '#166534' : '#B42318', margin: '8px 0 0' }}>{keywordLookup.label}</p>}
+                {keywordRows.length > 0 && <div style={{ display: 'grid', gap: '5px', marginTop: '8px' }}>{keywordRows.map(row => (
+                  <div key={row.keyword} style={{ fontSize: '11px', color: C.muted }}>
+                    <strong style={{ color: C.text }}>{row.keyword}</strong>{' — '}
+                    {row.state === 'available'
+                      ? <span><b>{row.avgMonthlySearches?.toLocaleString('tr-TR')}</b> aylık arama · {row.competition} <em style={{ color: '#52697A' }}>(Google Ads Keyword Planner, Türkiye/Türkçe)</em></span>
+                      : <span style={{ color: '#B45309' }}>{row.message}</span>}
+                  </div>
+                ))}</div>}
+              </div>
             </div>
           </div>
         )}

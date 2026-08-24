@@ -39,7 +39,7 @@ export async function GET() {
   catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
 
   const model = getOpenAiModel();
-  const openaiConfigured = Boolean(process.env.OPENAI_API_KEY);
+  const openaiConfigured = Boolean(process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY);
 
   let runtime: { db: typeof import('@/db').db; sql: typeof import('drizzle-orm').sql } | null = null;
   try {
@@ -73,16 +73,19 @@ export async function GET() {
   const openAiCheck = openaiConfigured
     ? import('@/lib/studio/ai-studio').then(({ checkOpenAIConnectivity }) => checkOpenAIConnectivity())
     : Promise.resolve({
-        chat: { ok: false, model: null, error: 'OpenAI anahtarı yapılandırılmamış.' },
-        image: { ok: false, model: process.env.OPENAI_IMAGE_MODEL?.trim() || 'gpt-image-2', error: 'OpenAI anahtarı yapılandırılmamış.' },
+        chat: { ok: false, model: null, error: 'AI metin servisi yapılandırılmamış.' },
+        image: { ok: false, model: process.env.OPENAI_IMAGE_MODEL?.trim() || 'gpt-image-2', error: 'AI görsel servisi yapılandırılmamış.' },
       });
 
-  const [database, cms, migrations, storage, openai] = await Promise.all([
+  const googleAdsCheck = import('@/lib/google-ads').then(({ getGoogleAdsStatus }) => getGoogleAdsStatus())
+    .catch(() => ({ connected: false, ready: false, label: 'Google Ads bağlantı durumu okunamadı — tekrar deneyin' }));
+  const [database, cms, migrations, storage, openai, googleAds] = await Promise.all([
     dbCheck,
     cmsCheck,
     migrationCheck,
     probeObjectStorage(process.env.PRIVATE_OBJECT_DIR),
     openAiCheck,
+    googleAdsCheck,
   ]);
 
   const scheduler = probeStudioScheduler({
@@ -97,7 +100,7 @@ export async function GET() {
     model: openai.chat.model ?? model,
     status: !openaiConfigured ? 'warn' as const : openai.chat.ok ? 'ok' as const : 'error' as const,
     label: !openaiConfigured
-      ? 'OpenAI metin modeli yapılandırılmamış'
+      ? 'AI metin modeli yapılandırılmamış (Replit AI veya OpenAI bağlantısı gerekli)'
       : openai.chat.ok
         ? `Metin modeli yanıt veriyor (${openai.chat.model ?? model})`
         : openai.chat.error ?? 'Metin modeli kontrolü başarısız — tekrar deneyin',
@@ -108,7 +111,7 @@ export async function GET() {
     model: openai.image.ok ? openai.image.model : null,
     status: !openaiConfigured ? 'warn' as const : openai.image.ok ? 'ok' as const : 'error' as const,
     label: !openaiConfigured
-      ? 'Görsel üretimi yapılandırılmamış'
+      ? 'Görsel üretimi yapılandırılmamış (Replit AI veya OpenAI bağlantısı gerekli)'
       : openai.image.ok
         ? 'DALL-E 3 model erişimi doğrulandı'
         : openai.image.error ?? 'DALL-E 3 erişimi doğrulanamadı — tekrar deneyin',
@@ -119,7 +122,7 @@ export async function GET() {
     label: chat.ok
       ? 'Çeviri için metin modeli ve dokuz dil kataloğu hazır'
       : !openaiConfigured
-        ? 'Çeviri için OpenAI metin modeli yapılandırılmamış'
+        ? 'Çeviri için AI metin modeli yapılandırılmamış'
         : 'Çeviri için metin modeli erişilemiyor',
   };
 
@@ -152,9 +155,12 @@ export async function GET() {
       configured: language.role === 'source' || translation.ok,
     })),
     keywordData: {
-      connected: false,
-      label: 'Google Search Console bağlı değil — tüm kelime verileri "AI tahmini" olarak etiketlenir',
-      providers: ['Google Search Console (bağlı değil)', 'Ahrefs (bağlı değil)', 'SEMrush (bağlı değil)'],
+      connected: googleAds.ready,
+      label: googleAds.label,
+      providers: [
+        googleAds.ready ? 'Google Ads Keyword Planner (Türkiye / Türkçe, hazır)' : 'Google Ads Keyword Planner (kullanılamıyor)',
+        'Google Search Console (bu kontrol ekranında doğrulanmadı)',
+      ],
     },
     social: {
       newsletter: { connected: false, label: 'Bülten entegrasyonu yok — yalnızca taslak oluşturulur' },

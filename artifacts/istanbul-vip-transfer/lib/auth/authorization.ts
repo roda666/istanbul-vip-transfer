@@ -186,7 +186,9 @@ export function isPublicAdminApi(pathname: string): boolean {
 }
 
 export function isCronAdminApi(pathname: string): boolean {
-  return pathname === '/admin/api/cron/weekly-draft' || pathname === '/admin/api/cron/draft-cadence';
+  return pathname === '/admin/api/cron/weekly-draft' ||
+    pathname === '/admin/api/cron/draft-cadence' ||
+    pathname === '/admin/api/cron/google-business-reviews';
 }
 
 /**

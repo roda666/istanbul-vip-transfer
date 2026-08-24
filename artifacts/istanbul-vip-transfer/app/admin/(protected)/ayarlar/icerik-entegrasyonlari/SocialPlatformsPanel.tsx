@@ -52,6 +52,7 @@ export default function SocialPlatformsPanel() {
   const [error, setError] = useState<string | null>(null);
   const [latestBlog, setLatestBlog] = useState<LatestPublishedBlog | null>(null);
   const [profileLinks, setProfileLinks] = useState({ tiktokUrl: '', youtubeUrl: '' });
+  const [approvalGateEnabled, setApprovalGateEnabled] = useState(true);
   const [googleLocations, setGoogleLocations] = useState<GoogleBusinessLocation[]>([]);
   const popupPollRef = useRef<number | null>(null);
 
@@ -84,12 +85,13 @@ export default function SocialPlatformsPanel() {
       }
       if (settingsResponse.ok) {
         const settingsPayload = await settingsResponse.json() as {
-          settings?: { tiktokUrl?: string | null; youtubeUrl?: string | null };
+          settings?: { tiktokUrl?: string | null; youtubeUrl?: string | null; approvalGateEnabled?: boolean };
         };
         setProfileLinks({
           tiktokUrl: settingsPayload.settings?.tiktokUrl ?? '',
           youtubeUrl: settingsPayload.settings?.youtubeUrl ?? '',
         });
+        setApprovalGateEnabled(settingsPayload.settings?.approvalGateEnabled ?? true);
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Platformlar yüklenemedi.');
@@ -203,7 +205,9 @@ export default function SocialPlatformsPanel() {
       const response = await fetch(`/admin/api/social-platforms/${platform.key}/test`, { method: 'POST' });
       const payload = await response.json() as { result?: { url?: string | null }; error?: string };
       if (!response.ok || !payload.result) throw new Error(payload.error ?? 'Test paylaşımı gönderilemedi.');
-      setMessage(payload.result.url ? `Test paylaşımı gönderildi: ${payload.result.url}` : 'Test paylaşımı gönderildi.');
+      setMessage(payload.result.url
+        ? `Meta tarafından kabul edildi: ${payload.result.url}`
+        : 'Platform tarafından kabul edildi; yayın bağlantısı henüz sağlanmadı.');
       await load();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Test paylaşımı gönderilemedi.');
@@ -231,6 +235,29 @@ export default function SocialPlatformsPanel() {
       setMessage(key === 'tiktokUrl' ? 'TikTok bağlantısı kaydedildi.' : 'YouTube bağlantısı kaydedildi.');
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Bağlantı kaydedilemedi.');
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
+  async function saveApprovalGate(enabled: boolean) {
+    setBusyKey('approval-gate');
+    setError(null);
+    setMessage(null);
+    try {
+      const response = await fetch('/admin/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approvalGateEnabled: enabled }),
+      });
+      const payload = await response.json() as { error?: string; settings?: { approvalGateEnabled?: boolean } };
+      if (!response.ok) throw new Error(payload.error ?? 'Onay ayarı güncellenemedi.');
+      setApprovalGateEnabled(payload.settings?.approvalGateEnabled ?? enabled);
+      setMessage(enabled
+        ? 'Onay kapısı etkin: onaylanmamış içerik yayımlanamaz.'
+        : 'Onay kapısı hesap sahibi tarafından kapatıldı.');
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Onay ayarı güncellenemedi.');
     } finally {
       setBusyKey(null);
     }
@@ -304,6 +331,22 @@ export default function SocialPlatformsPanel() {
           <span>{error ?? message}</span>
         </div>
       )}
+      <div style={{ margin: '14px 20px 0', padding: '10px 12px', border: '1px solid #E2E8F0', borderRadius: 8, background: '#F8FAFC', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ flex: 1, fontFamily: 'Inter, sans-serif' }}>
+          <strong style={{ color: '#172B3A', fontSize: 12 }}>İçerik onay kapısı</strong>
+          <p style={{ color: '#52697A', fontSize: 10, margin: '3px 0 0' }}>
+            {approvalGateEnabled ? 'Etkin — onaylanmamış içerik hiçbir yayın yolundan yayımlanamaz.' : 'Kapalı — yalnızca hesap sahibi tarafından açıkça kapatıldı.'}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void saveApprovalGate(!approvalGateEnabled)}
+          disabled={busyKey === 'approval-gate'}
+          style={{ border: '1px solid #CBD5E1', borderRadius: 7, padding: '7px 9px', background: approvalGateEnabled ? '#F0FDF4' : '#FFF7ED', color: approvalGateEnabled ? '#168C5B' : '#B45309', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, cursor: busyKey === 'approval-gate' ? 'wait' : 'pointer' }}
+        >
+          {busyKey === 'approval-gate' ? 'Kaydediliyor…' : approvalGateEnabled ? 'Etkin' : 'Kapalı'}
+        </button>
+      </div>
 
       <div style={{ padding: '16px 20px 20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(245px, 1fr))', gap: 12 }}>
         {loading ? (
@@ -498,6 +541,11 @@ export default function SocialPlatformsPanel() {
                   {typeof platform.connectionMeta.lastReviewSyncAt === 'string' && (
                     <p style={{ color: '#64748B', fontFamily: 'Inter, sans-serif', fontSize: 10, margin: '7px 0 0' }}>
                       Son senkronizasyon: {new Date(platform.connectionMeta.lastReviewSyncAt).toLocaleString('tr-TR')}
+                    </p>
+                  )}
+                  {platform.enabled && (
+                    <p style={{ color: '#168C5B', fontFamily: 'Inter, sans-serif', fontSize: 10, margin: '5px 0 0' }}>
+                      Otomatik senkronizasyon açık — zamanlayıcı saatte bir mevcut OAuth bağlantısıyla kontrol eder.
                     </p>
                   )}
                 </div>

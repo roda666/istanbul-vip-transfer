@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { 
   Calculator, RefreshCw, Plus, Check, X, Edit2, AlertCircle, TrendingUp, Loader2
 } from 'lucide-react';
@@ -8,6 +9,24 @@ import {
 // --- Types ---
 
 type Vehicle = { id: string; name: string; pricingClass: string; priceCalculationEligible: boolean; status: string };
+type PricingRoute = {
+  id: string;
+  name: string;
+  originLocationId: string | null;
+  destinationLocationId: string | null;
+  defaultVehicleId: string | null;
+  distanceKm: number;
+  distanceSource: 'LEGACY_UNVERIFIED' | 'COORDINATE_ESTIMATE' | 'ADMIN_VERIFIED';
+  active: boolean;
+};
+type PricingLocation = { id: string; name: string; city: string };
+type DistanceResult = {
+  state: 'DEFINED_ROUTE' | 'ESTIMATED' | 'UNAVAILABLE';
+  distanceKm?: number;
+  source?: 'defined_route' | 'coordinate_estimate';
+  roadDistanceMultiplier?: number;
+  reason?: string;
+};
 
 type DistanceProfile = {
   id: string;
@@ -144,6 +163,7 @@ const getReasonText = (reason?: string) => {
     case 'MISSING_PROFILE': return 'Aktif fiyat formülü bulunamadı.';
     case 'INVALID_INPUT': return 'Geçersiz veya eksik parametreler.';
     case 'MISSING_RATE': return 'Döviz kuru eksik veya hatalı.';
+    case 'MISSING_DISTANCE': return 'Kayıtlı konumlardan güvenilir mesafe çözümlenemedi.';
     case 'VEHICLE_NOT_ELIGIBLE': return 'Seçili araç fiyat hesaplamaya uygun değil.';
     default: return reason || 'Bilinmeyen Hata';
   }
@@ -189,7 +209,7 @@ function DistanceExamples({ opening, first, threshold, second }: { opening: numb
   const calc = (km: number) => {
     const f = Math.min(km, threshold);
     const s = Math.max(0, km - threshold);
-    return opening + f * first + s * second;
+    return opening + f * first + s * (second > 0 ? second : first);
   };
   
   return (
@@ -211,24 +231,96 @@ function DistanceExamples({ opening, first, threshold, second }: { opening: numb
 
 // --- Main Sub-Panels ---
 
-function FastQuotePanel({ vehicles }: { vehicles: Vehicle[] }) {
+function FastQuotePanel({
+  vehicles,
+  profiles,
+  routes,
+  locations,
+}: {
+  vehicles: Vehicle[];
+  profiles: Profile[];
+  routes: PricingRoute[];
+  locations: PricingLocation[];
+}) {
   const [quoteVehicleId, setQuoteVehicleId] = useState('');
   const [quoteMode, setQuoteMode] = useState<'DISTANCE' | 'HOURLY'>('DISTANCE');
-  const [quoteDistance, setQuoteDistance] = useState(50);
+  const [quoteRouteId, setQuoteRouteId] = useState('');
+  const [originLocationId, setOriginLocationId] = useState('');
+  const [destinationLocationId, setDestinationLocationId] = useState('');
   const [quoteHours, setQuoteHours] = useState(4);
   const [quoteTripType, setQuoteTripType] = useState<'ONE_WAY' | 'ROUND_TRIP'>('ONE_WAY');
-  
   const [quoting, setQuoting] = useState(false);
   const [quoteResult, setQuoteResult] = useState<QuoteResult | null>(null);
+  const [distance, setDistance] = useState<DistanceResult | null>(null);
+  const [distanceLoading, setDistanceLoading] = useState(false);
+  const [distanceError, setDistanceError] = useState('');
+
+  const selectedVehicle = vehicles.find((vehicle) => vehicle.id === quoteVehicleId);
+  const selectedRoute = routes.find((route) => route.id === quoteRouteId);
+  const hasFormula = selectedVehicle
+    ? profiles.some((profile) => profile.vehicleId === selectedVehicle.id && profile.mode === quoteMode && profile.active)
+    : false;
+
+  useEffect(() => {
+    if (!originLocationId || !destinationLocationId) {
+      setDistance(null);
+      setDistanceError('');
+      return;
+    }
+    let cancelled = false;
+    const controller = new AbortController();
+    setDistanceLoading(true);
+    setDistanceError('');
+    fetch('/admin/api/location-distance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ originLocationId, destinationLocationId }),
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.result) {
+          throw new Error(payload?.error ?? 'Mesafe çözümlenemedi.');
+        }
+        if (!cancelled) setDistance(payload.result as DistanceResult);
+      })
+      .catch((error: unknown) => {
+        if (cancelled || (error instanceof DOMException && error.name === 'AbortError')) return;
+        setDistance(null);
+        setDistanceError(error instanceof Error ? error.message : 'Mesafe çözümlenemedi.');
+      })
+      .finally(() => {
+        if (!cancelled) setDistanceLoading(false);
+      });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [originLocationId, destinationLocationId]);
+
+  const chooseRoute = (routeId: string) => {
+    setQuoteRouteId(routeId);
+    const route = routes.find((item) => item.id === routeId);
+    if (!route) return;
+    setOriginLocationId(route.originLocationId ?? '');
+    setDestinationLocationId(route.destinationLocationId ?? '');
+    if (!quoteVehicleId && route.defaultVehicleId) setQuoteVehicleId(route.defaultVehicleId);
+  };
 
   const handleQuote = async () => {
+    if (!originLocationId || !destinationLocationId) {
+      setQuoteResult({ state: 'UNAVAILABLE', reason: 'MISSING_DISTANCE' });
+      return;
+    }
     setQuoting(true);
     setQuoteResult(null);
     try {
       const payload = {
-        vehicleId: quoteVehicleId,
+        ...(quoteVehicleId ? { vehicleId: quoteVehicleId } : {}),
+        ...(selectedRoute ? { routeId: selectedRoute.id } : {}),
+        originLocationId,
+        destinationLocationId,
         mode: quoteMode,
-        distanceKm: quoteDistance,
         tripType: quoteTripType,
         ...(quoteMode === 'HOURLY' ? { requestedHours: quoteHours } : {})
       };
@@ -240,6 +332,7 @@ function FastQuotePanel({ vehicles }: { vehicles: Vehicle[] }) {
       const data = await res.json();
       if (res.ok || data.result) {
         setQuoteResult(data.result);
+        if (data.distance) setDistance(data.distance);
       } else {
         setQuoteResult({ state: 'UNAVAILABLE', reason: data.error || 'Bilinmeyen Hata' });
       }
@@ -249,6 +342,16 @@ function FastQuotePanel({ vehicles }: { vehicles: Vehicle[] }) {
       setQuoting(false);
     }
   };
+
+  if (vehicles.length === 0) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+        <h2 className="text-base font-bold text-slate-900">Hızlı Teklif Simülatörü</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600">Henüz araç yok. Fiyat hesaplamak için önce araç ekleyin.</p>
+        <Link href="/admin/araclar/yeni" className="mt-4 inline-flex rounded-lg bg-blue-600 px-3 py-2 text-sm font-bold text-white hover:bg-blue-700">Araç Ekle</Link>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-5 space-y-4">
@@ -262,12 +365,54 @@ function FastQuotePanel({ vehicles }: { vehicles: Vehicle[] }) {
           <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Araç</label>
           <select className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={quoteVehicleId} onChange={e => setQuoteVehicleId(e.target.value)}>
             <option value="">Araç Seçin...</option>
-            {vehicles.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+            {vehicles.map((vehicle) => {
+              const distanceProfile = profiles.some((profile) => profile.vehicleId === vehicle.id && profile.mode === quoteMode && profile.active);
+              const suffix = !vehicle.priceCalculationEligible
+                ? ' — talep üzerine'
+                : distanceProfile ? '' : ' — formül yok';
+              return <option key={vehicle.id} value={vehicle.id}>{vehicle.name}{suffix}</option>;
+            })}
+          </select>
+          {selectedVehicle && !selectedVehicle.priceCalculationEligible && (
+            <p className="mt-2 text-xs font-medium text-amber-700">Bu araç talep üzerine fiyatlandırılıyor; otomatik fiyat üretilmez.</p>
+          )}
+          {selectedVehicle?.priceCalculationEligible && !hasFormula && (
+            <p className="mt-2 text-xs font-medium text-amber-700">Bu mod için henüz fiyat formülü tanımlanmamış. <a href="#pricing-profiles" className="font-bold underline">Formül oluşturun</a>.</p>
+          )}
+        </div>
+        <div>
+          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kayıtlı Rota (isteğe bağlı)</label>
+          <select className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={quoteRouteId} onChange={(event) => chooseRoute(event.target.value)}>
+            <option value="">Konumları aşağıdan seçin</option>
+            {routes.filter((route) => route.originLocationId && route.destinationLocationId).map((route) => <option key={route.id} value={route.id}>{route.name}</option>)}
           </select>
         </div>
         <div className="grid grid-cols-2 gap-3">
-           <div>
-             <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Hesaplama</label>
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kalkış</label>
+            <select value={originLocationId} onChange={(event) => { setOriginLocationId(event.target.value); setQuoteRouteId(''); }} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm">
+              <option value="">Seçin...</option>
+              {locations.map((location) => <option key={location.id} value={location.id}>{location.name} ({location.city})</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Varış</label>
+            <select value={destinationLocationId} onChange={(event) => { setDestinationLocationId(event.target.value); setQuoteRouteId(''); }} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm">
+              <option value="">Seçin...</option>
+              {locations.map((location) => <option key={location.id} value={location.id}>{location.name} ({location.city})</option>)}
+            </select>
+          </div>
+        </div>
+        <div className={`rounded-lg border px-3 py-2 text-xs font-medium ${distance?.state === 'DEFINED_ROUTE' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-blue-200 bg-blue-50 text-blue-800'}`}>
+          {distanceLoading ? 'Mesafe koordinatlardan çözülüyor…' : distance?.state === 'DEFINED_ROUTE'
+            ? `Doğrulanmış rota: ${distance.distanceKm} km`
+            : distance?.state === 'ESTIMATED'
+              ? `Koordinat tahmini: ${distance.distanceKm} km${distance.roadDistanceMultiplier ? ` (yol katsayısı ×${distance.roadDistanceMultiplier})` : ''}`
+              : distanceError || 'İki kayıtlı konum seçildiğinde mesafe otomatik gelir.'}
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Hesaplama</label>
              <select className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={quoteMode} onChange={e => setQuoteMode(e.target.value as 'DISTANCE' | 'HOURLY')}>
                <option value="DISTANCE">Mesafe</option>
                <option value="HOURLY">Saatlik Tahsis</option>
@@ -281,13 +426,17 @@ function FastQuotePanel({ vehicles }: { vehicles: Vehicle[] }) {
              </select>
            </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-           <AmountInput label="Mesafe (KM)" value={quoteDistance} onChange={setQuoteDistance} symbol="km" decimals={0} min={1} />
-           {quoteMode === 'HOURLY' && (
-             <AmountInput label="Süre (Saat)" value={quoteHours} onChange={setQuoteHours} symbol="sa" decimals={0} min={1} />
-           )}
-        </div>
-        <button onClick={handleQuote} disabled={!quoteVehicleId || quoting} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center justify-center gap-2 mt-2">
+        {quoteMode === 'HOURLY' && (
+          <div className="grid grid-cols-2 gap-3">
+            <AmountInput label="Süre (Saat)" value={quoteHours} onChange={setQuoteHours} symbol="sa" decimals={0} min={1} />
+          </div>
+        )}
+        {profiles.length === 0 && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800">
+            Henüz hiçbir fiyat formülü yok. Araç seçimi korunur; otomatik fiyat için <a href="#pricing-profiles" className="font-bold underline">ilk formülü oluşturun</a>.
+          </div>
+        )}
+        <button onClick={handleQuote} disabled={!quoteVehicleId || !originLocationId || !destinationLocationId || distanceLoading || quoting} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center justify-center gap-2 mt-2">
           {quoting ? <Loader2 className="animate-spin" size={18} /> : 'Hesapla'}
         </button>
       </div>
@@ -335,6 +484,11 @@ function FastQuotePanel({ vehicles }: { vehicles: Vehicle[] }) {
                     <span className="font-medium text-slate-900">{formatMoneyCents(quoteResult.quotedEurCents || 0, 'EUR')}</span>
                   </div>
               </div>
+            </div>
+          ) : quoteResult.state === 'ON_REQUEST' ? (
+            <div className="p-4 bg-amber-50 text-amber-800 rounded-xl border border-amber-200 flex items-start gap-3">
+              <AlertCircle size={20} className="shrink-0 mt-0.5" />
+              <div><div className="font-bold text-sm">Talep Üzerine Fiyatlandırma</div><div className="text-xs mt-1 font-medium">Seçili araç otomatik hesaplamaya dahil değil. Yönetici manuel teklif oluşturmalıdır.</div></div>
             </div>
           ) : (
             <div className="p-4 bg-red-50 text-red-700 rounded-xl border border-red-100 flex items-start gap-3">
@@ -603,7 +757,7 @@ function ProfilesPanel({ profiles, vehicles, onReload }: { profiles: Profile[], 
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div id="pricing-profiles" className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
       <div className="p-5 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
         <div>
           <h2 className="text-lg font-bold text-slate-900">Hesaplama Formülleri</h2>
@@ -645,7 +799,7 @@ function ProfilesPanel({ profiles, vehicles, onReload }: { profiles: Profile[], 
                         <div className="flex gap-4">
                           <div><span className="text-[10px] font-bold text-slate-400 uppercase">Açılış</span><br/><span className="font-bold text-slate-900">{formatMoneyCents(p.distanceOpeningKurus, 'TRY')}</span></div>
                           <div><span className="text-[10px] font-bold text-slate-400 uppercase">İlk {p.distanceThresholdKm}km</span><br/><span className="font-bold text-slate-900">{formatMoneyCents(p.distanceFirstKmKurus, 'TRY')}<span className="text-xs text-slate-400">/km</span></span></div>
-                          <div><span className="text-[10px] font-bold text-slate-400 uppercase">Sonrası</span><br/><span className="font-bold text-slate-900">{formatMoneyCents(p.distanceSecondKmKurus, 'TRY')}<span className="text-xs text-slate-400">/km</span></span></div>
+                          <div><span className="text-[10px] font-bold text-slate-400 uppercase">Sonrası</span><br/><span className="font-bold text-slate-900">{formatMoneyCents(p.distanceSecondKmKurus > 0 ? p.distanceSecondKmKurus : p.distanceFirstKmKurus, 'TRY')}<span className="text-xs text-slate-400">/km</span></span>{p.distanceSecondKmKurus === 0 && <div className="text-[9px] font-bold text-blue-600">ilk tarife devam eder</div>}</div>
                         </div>
                       ) : (
                         <div className="flex gap-4">
@@ -864,30 +1018,60 @@ function ProfileModal({ isOpen, cloneData, vehicles, onClose, onSaved }: {
 export default function FormulaPricingClient() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [routes, setRoutes] = useState<PricingRoute[]>([]);
+  const [locations, setLocations] = useState<PricingLocation[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profilesError, setProfilesError] = useState('');
+  const [settingsError, setSettingsError] = useState('');
 
   const loadData = useCallback(async () => {
-    try {
-      const [pRes, sRes] = await Promise.all([
-        fetch('/admin/api/pricing/profiles'),
-        fetch('/admin/api/pricing/settings')
-      ]);
-      const pData = await pRes.json();
-      const sData = await sRes.json();
-      
-      setProfiles(pData.profiles || []);
-      setVehicles(pData.vehicles || []);
-      setSettings({
-        policy: sData.policy,
-        exchangeRates: sData.exchangeRates,
-        latestTcmb: sData.latestTcmb
-      });
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
+    setLoading(true);
+    setProfilesError('');
+    setSettingsError('');
+    const requestJson = async (url: string) => {
+      const response = await fetch(url);
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error ?? 'Sunucu veriyi döndüremedi.');
+      return payload;
+    };
+    const [profilesResponse, settingsResponse] = await Promise.allSettled([
+      requestJson('/admin/api/pricing/profiles'),
+      requestJson('/admin/api/pricing/settings'),
+    ]);
+    if (profilesResponse.status === 'fulfilled') {
+      const payload = profilesResponse.value;
+      if (!Array.isArray(payload?.profiles) || !Array.isArray(payload?.vehicles)) {
+        setProfiles([]);
+        setVehicles([]);
+        setRoutes([]);
+        setLocations([]);
+        setProfilesError('Araç ve fiyat profili verisi beklenen biçimde alınamadı.');
+      } else {
+        setProfiles(payload.profiles);
+        setVehicles(payload.vehicles);
+        setRoutes(Array.isArray(payload.routes) ? payload.routes : []);
+        setLocations(Array.isArray(payload.locations) ? payload.locations : []);
+      }
+    } else {
+      setProfiles([]);
+      setVehicles([]);
+      setRoutes([]);
+      setLocations([]);
+      setProfilesError(profilesResponse.reason instanceof Error ? profilesResponse.reason.message : 'Araç ve fiyat profili verisi alınamadı.');
     }
+    if (settingsResponse.status === 'fulfilled') {
+      const payload = settingsResponse.value;
+      setSettings({
+        policy: payload.policy ?? null,
+        exchangeRates: payload.exchangeRates ?? null,
+        latestTcmb: payload.latestTcmb ?? null,
+      });
+    } else {
+      setSettings(null);
+      setSettingsError(settingsResponse.reason instanceof Error ? settingsResponse.reason.message : 'Kur ve ayar verisi alınamadı.');
+    }
+    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -914,10 +1098,18 @@ export default function FormulaPricingClient() {
           <p className="text-slate-500 text-sm mt-1 font-medium">Araç sınıfları için formül ve kur parametrelerini yönetin.</p>
         </div>
       </div>
+      {(profilesError || settingsError) && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <div className="font-bold">Bazı fiyatlandırma verileri yüklenemedi</div>
+          {profilesError && <p className="mt-1">Araçlar ve formüller: {profilesError}</p>}
+          {settingsError && <p className="mt-1">Kur ve ayarlar: {settingsError}</p>}
+          <button type="button" onClick={loadData} className="mt-3 inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-bold text-amber-900 hover:bg-amber-100"><RefreshCw size={14} /> Yeniden Dene</button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <div className="lg:col-span-4 xl:col-span-3 space-y-6">
-          <FastQuotePanel vehicles={vehicles} />
+          <FastQuotePanel vehicles={vehicles} profiles={profiles} routes={routes} locations={locations} />
           <TcmbWidget settings={settings} onApply={loadData} />
         </div>
         

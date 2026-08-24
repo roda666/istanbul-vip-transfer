@@ -26,18 +26,33 @@ const hourlySchema = z.object({
 });
 const profileSchema = z.discriminatedUnion('mode', [distanceSchema, hourlySchema]);
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     await (await import('@/lib/auth/session')).requireAdminSession();
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const [{ db }, { vehiclePricingProfiles, vehicles }, { asc, desc }] = await Promise.all([import('@/db'), import('@/db/schema'), import('drizzle-orm')]);
-  const [profiles, vehicleRows] = await Promise.all([
+  const [{ db }, { locations, transferRoutes, vehiclePricingProfiles, vehicles }, { and, asc, desc, eq, isNull }] = await Promise.all([import('@/db'), import('@/db/schema'), import('drizzle-orm')]);
+  const vehicleId = new URL(request.url).searchParams.get('vehicleId');
+  const [profiles, vehicleRows, routeRows, locationRows] = await Promise.all([
     db.select().from(vehiclePricingProfiles).orderBy(desc(vehiclePricingProfiles.updatedAt)),
     db.select({ id: vehicles.id, name: vehicles.name, pricingClass: vehicles.pricingClass, priceCalculationEligible: vehicles.priceCalculationEligible, status: vehicles.status }).from(vehicles).orderBy(asc(vehicles.name)),
+    db.select({
+      id: transferRoutes.id, name: transferRoutes.name, originLocationId: transferRoutes.originLocationId,
+      destinationLocationId: transferRoutes.destinationLocationId, defaultVehicleId: transferRoutes.defaultVehicleId,
+      distanceKm: transferRoutes.distanceKm, distanceSource: transferRoutes.distanceSource, active: transferRoutes.active,
+    }).from(transferRoutes).where(eq(transferRoutes.active, true)).orderBy(asc(transferRoutes.name)),
+    db.select({ id: locations.id, name: locations.name, city: locations.city })
+      .from(locations)
+      .where(and(eq(locations.isActive, true), isNull(locations.archivedAt)))
+      .orderBy(asc(locations.name)),
   ]);
-  return NextResponse.json({ profiles, vehicles: vehicleRows });
+  return NextResponse.json({
+    profiles: vehicleId ? profiles.filter((profile) => profile.vehicleId === vehicleId) : profiles,
+    vehicles: vehicleRows,
+    routes: routeRows,
+    locations: locationRows,
+  });
 }
 
 /** Formula profiles accept TRY kuruş only. Update is append-only from the UI: disable old, add new. */

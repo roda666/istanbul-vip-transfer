@@ -44,5 +44,6 @@ describe('price calculator access policy', () => {
     expect(getAdminApiPermission('/admin/api/pricing/settings', 'PUT')).toBe('SITE_SETTINGS_MANAGE');
     expect(getAdminApiPermission('/admin/api/pricing/exchange-rates', 'POST')).toBe('SITE_SETTINGS_MANAGE');
     expect(getAdminApiPermission('/admin/api/pricing/quote', 'POST')).toBe('RESERVATIONS_MANAGE');
+    expect(getAdminApiPermission('/admin/api/location-distance', 'POST')).toBe('FLEET_MANAGE');
   });
 });

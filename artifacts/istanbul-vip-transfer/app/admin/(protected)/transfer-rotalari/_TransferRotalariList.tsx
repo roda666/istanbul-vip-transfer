@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Pencil, Trash2, X, Check } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Check, Loader2, MapPinned } from 'lucide-react';
 import type { TransferRoute, TransferRouteTranslation } from '@/db/schema';
 
 // ── Design tokens ────────────────────────────────────────────────────────────
@@ -41,6 +41,7 @@ type ManagedLocation = {
   name: string;
   city: string;
 };
+type ManagedVehicle = { id: string; name: string; priceCalculationEligible: boolean };
 
 const LOCALES = [
   ['en', 'English'], ['de', 'Deutsch'], ['ru', 'Русский'], ['ar', 'العربية'],
@@ -66,15 +67,18 @@ function ConfirmDialog({ title, message, onConfirm, onCancel }: {
 }
 
 // ── Route form modal ──────────────────────────────────────────────────────────
-function RouteModal({ route, locationOptions, onSave, onClose, saving }: {
+function RouteModal({ route, locationOptions, vehicleOptions, onSave, onClose, saving }: {
   route: RouteDraft;
   locationOptions: ManagedLocation[];
+  vehicleOptions: ManagedVehicle[];
   onSave: (data: RouteDraft) => void;
   onClose: () => void;
   saving: boolean;
 }) {
   const [form, setForm] = useState<RouteDraft>({ ...route, translations: route.translations ?? [] });
   const [activeLocale, setActiveLocale] = useState<string>('tr');
+  const [resolvingDistance, setResolvingDistance] = useState(false);
+  const [distanceMessage, setDistanceMessage] = useState('');
   const set = (key: keyof TransferRoute, val: unknown) => setForm(f => ({ ...f, [key]: val }));
   const translation = form.translations?.find((item) => item.languageCode === activeLocale);
   const setTranslation = (key: keyof RouteTranslationDraft, value: unknown) => {
@@ -101,12 +105,54 @@ function RouteModal({ route, locationOptions, onSave, onClose, saving }: {
   const numField = (key: keyof TransferRoute, label: string, placeholder?: string) => (
     <div>
       <label style={labelStyle}>{label}</label>
-      <input type="number" min="0" style={inputStyle} placeholder={placeholder}
+      <input type="number" min={key === 'distanceKm' || key === 'durationMinutes' ? '1' : '0'} style={inputStyle} placeholder={placeholder}
         value={String(form[key] ?? 0)}
-        onChange={e => set(key, Number(e.target.value))}
+        onChange={e => {
+          set(key, Number(e.target.value));
+          if (key === 'distanceKm' && form.distanceSource !== 'ADMIN_VERIFIED') set('distanceSource', 'LEGACY_UNVERIFIED');
+        }}
       />
     </div>
   );
+
+  const resolveDistance = async () => {
+    if (!form.originLocationId || !form.destinationLocationId) {
+      setDistanceMessage('Önce iki kayıtlı lokasyonu seçin.');
+      return;
+    }
+    setResolvingDistance(true);
+    setDistanceMessage('');
+    try {
+      const response = await fetch('/admin/api/location-distance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          originLocationId: form.originLocationId,
+          destinationLocationId: form.destinationLocationId,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.result || payload.result.state === 'UNAVAILABLE') {
+        setDistanceMessage(payload?.error ?? 'Mesafe koordinatlardan hesaplanamadı.');
+        return;
+      }
+      const result = payload.result as { distanceKm: number; source: string; roadDistanceMultiplier?: number };
+      setForm((current) => ({
+        ...current,
+        distanceKm: result.distanceKm,
+        distanceSource: result.source === 'defined_route' ? 'ADMIN_VERIFIED' : 'COORDINATE_ESTIMATE',
+      }));
+      setDistanceMessage(
+        result.source === 'defined_route'
+          ? `Bu konum çifti için doğrulanmış ${result.distanceKm} km rota bulundu.`
+          : `${result.distanceKm} km koordinat tahmini uygulandı${result.roadDistanceMultiplier ? ` (yol katsayısı ×${result.roadDistanceMultiplier})` : ''}.`,
+      );
+    } catch {
+      setDistanceMessage('Mesafe servisine ulaşılamadı. Tekrar deneyin.');
+    } finally {
+      setResolvingDistance(false);
+    }
+  };
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(23,43,58,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
@@ -154,19 +200,19 @@ function RouteModal({ route, locationOptions, onSave, onClose, saving }: {
             <div>
               <label style={labelStyle}>Doğrulanmış Kalkış Lokasyonu</label>
               <select style={inputStyle} value={form.originLocationId ?? ''} onChange={e => set('originLocationId', e.target.value || null)}>
-                <option value="">Yalnızca mevcut metin rotası</option>
+                <option value="">Seçiniz</option>
                 {locationOptions.map((location) => <option key={location.id} value={location.id}>{location.name} ({location.city})</option>)}
               </select>
             </div>
             <div>
               <label style={labelStyle}>Doğrulanmış Varış Lokasyonu</label>
               <select style={inputStyle} value={form.destinationLocationId ?? ''} onChange={e => set('destinationLocationId', e.target.value || null)}>
-                <option value="">Yalnızca mevcut metin rotası</option>
+                <option value="">Seçiniz</option>
                 {locationOptions.map((location) => <option key={location.id} value={location.id}>{location.name} ({location.city})</option>)}
               </select>
             </div>
             <p style={{ gridColumn: '1 / -1', color: MUTED, fontSize: '11px', fontFamily: 'Inter, sans-serif', lineHeight: 1.5, margin: 0 }}>
-              İki doğrulanmış lokasyonu birlikte seçin. Tanımlı rota mesafesi bu kimlik çifti için öncelikli olur; boş bırakırsanız mevcut metin tabanlı rota korunur.
+              İki kayıtlı lokasyonu birlikte seçin. Koordinatlardan hesaplanan mesafeyi aşağıdaki düğmeyle getirin; yöneticinin onayladığı mesafe gelecekte bu çift için öncelik alır.
             </p>
           </div>
 
@@ -174,6 +220,27 @@ function RouteModal({ route, locationOptions, onSave, onClose, saving }: {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             {numField('distanceKm', 'Mesafe (km)')}
             {numField('durationMinutes', 'Süre (dakika)')}
+          </div>
+          <div style={{ background: '#F8FAFC', border: `1px solid ${BORDER}`, borderRadius: '8px', padding: '12px', display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
+            <button type="button" onClick={resolveDistance} disabled={resolvingDistance || !form.originLocationId || !form.destinationLocationId} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '7px', color: '#1D4ED8', padding: '7px 10px', fontSize: '12px', fontWeight: 600, cursor: resolvingDistance ? 'wait' : 'pointer', opacity: !form.originLocationId || !form.destinationLocationId ? 0.55 : 1 }}>
+              {resolvingDistance ? <Loader2 size={14} className="animate-spin" /> : <MapPinned size={14} />}
+              Koordinatlardan Mesafeyi Getir
+            </button>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', color: TEXT, fontSize: '12px', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+              <input type="checkbox" checked={form.distanceSource === 'ADMIN_VERIFIED'} onChange={(event) => set('distanceSource', event.target.checked ? 'ADMIN_VERIFIED' : 'COORDINATE_ESTIMATE')} />
+              Girilen mesafeyi doğruluyorum
+            </label>
+            <span style={{ color: form.distanceSource === 'ADMIN_VERIFIED' ? '#047857' : MUTED, fontSize: '11px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>
+              {form.distanceSource === 'ADMIN_VERIFIED' ? 'DOĞRULANMIŞ ROTA' : form.distanceSource === 'COORDINATE_ESTIMATE' ? 'KOORDİNAT TAHMİNİ' : 'DOĞRULAMA BEKLİYOR'}
+            </span>
+            {distanceMessage && <span style={{ width: '100%', color: MUTED, fontSize: '11px', fontFamily: 'Inter, sans-serif' }}>{distanceMessage}</span>}
+          </div>
+          <div>
+            <label style={labelStyle}>Varsayılan Araç (isteğe bağlı)</label>
+            <select style={inputStyle} value={form.defaultVehicleId ?? ''} onChange={(event) => set('defaultVehicleId', event.target.value || null)}>
+              <option value="">Yönetici fiyat sorgusunda seçsin</option>
+              {vehicleOptions.map((vehicle) => <option key={vehicle.id} value={vehicle.id}>{vehicle.name}{vehicle.priceCalculationEligible ? '' : ' — talep üzerine'}</option>)}
+            </select>
           </div>
 
           {/* Vito prices */}
@@ -272,6 +339,7 @@ export default function TransferRotalariList() {
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<TransferRoute | null>(null);
   const [locationOptions, setLocationOptions] = useState<ManagedLocation[]>([]);
+  const [vehicleOptions, setVehicleOptions] = useState<ManagedVehicle[]>([]);
 
   const fetchRoutes = useCallback(async () => {
     setLoading(true);
@@ -294,6 +362,12 @@ export default function TransferRotalariList() {
       .then((response) => response.ok ? response.json() : { locations: [] })
       .then((payload) => setLocationOptions(payload.items ?? []))
       .catch(() => setLocationOptions([]));
+  }, []);
+  useEffect(() => {
+    fetch('/admin/api/vehicles?limit=100')
+      .then((response) => response.ok ? response.json() : { items: [] })
+      .then((payload) => setVehicleOptions(payload.items ?? []))
+      .catch(() => setVehicleOptions([]));
   }, []);
 
   async function handleSave(data: RouteDraft) {
@@ -408,6 +482,9 @@ export default function TransferRotalariList() {
                     <td style={{ padding: '10px 12px', color: MUTED, whiteSpace: 'nowrap' }}>
                       <div>{r.distanceKm} km</div>
                       <div style={{ fontSize: '11px' }}>{formatDuration(r.durationMinutes)}</div>
+                      <div style={{ marginTop: '3px', fontSize: '10px', fontWeight: 700, color: r.distanceSource === 'ADMIN_VERIFIED' ? '#047857' : r.distanceSource === 'COORDINATE_ESTIMATE' ? '#1D4ED8' : '#A16207' }}>
+                        {r.distanceSource === 'ADMIN_VERIFIED' ? 'Doğrulanmış' : r.distanceSource === 'COORDINATE_ESTIMATE' ? 'Koordinat tahmini' : 'Doğrulanmamış'}
+                      </div>
                     </td>
 
                     {/* Vito price */}
@@ -460,6 +537,7 @@ export default function TransferRotalariList() {
         <RouteModal
           route={modal}
           locationOptions={locationOptions}
+          vehicleOptions={vehicleOptions}
           onSave={handleSave}
           onClose={() => setModal(null)}
           saving={saving}

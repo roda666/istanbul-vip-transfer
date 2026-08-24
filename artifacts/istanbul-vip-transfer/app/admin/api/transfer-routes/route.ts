@@ -1,10 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/auth/session';
 import { db } from '@/db';
-import { locations, transferRoutes, transferRouteTranslations } from '@/db/schema';
+import { locations, transferRoutes, transferRouteTranslations, vehicles } from '@/db/schema';
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
+const DISTANCE_SOURCES = new Set(['LEGACY_UNVERIFIED', 'COORDINATE_ESTIMATE', 'ADMIN_VERIFIED']);
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function positiveInteger(value: unknown): number | null {
+  const number = typeof value === 'number' ? value : Number(value);
+  return Number.isSafeInteger(number) && number > 0 ? number : null;
+}
+
+function optionalUuid(value: unknown): string | null | undefined {
+  if (value == null || value === '') return null;
+  return typeof value === 'string' && UUID_PATTERN.test(value) ? value : undefined;
+}
 
 /** Normalize text to a URL-safe slug */
 function slugify(text: string): string {
@@ -61,7 +73,8 @@ export async function GET() {
 
 /** POST /admin/api/transfer-routes — create a new route */
 export async function POST(req: NextRequest) {
-  try { await requireAdminSession(); } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
+  let session;
+  try { session = await requireAdminSession(); } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
 
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Geçersiz JSON' }, { status: 400 }); }
@@ -70,7 +83,7 @@ export async function POST(req: NextRequest) {
     priceVitoMinEur, priceVitoMaxEur, priceSprinterMinEur, priceSprinterMaxEur,
     imagePath, displayOrder, active, description, seoTitle, seoDescription,
     ogTitle, ogDescription, relatedServiceSlug, indexable,
-    originLocationId, destinationLocationId } = body;
+    originLocationId, destinationLocationId, defaultVehicleId, distanceSource } = body;
 
   if (!name || !origin || !destination) {
     return NextResponse.json({ error: 'Güzergah adı, kalkış ve varış zorunludur.' }, { status: 400 });
@@ -79,8 +92,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Kalkış ve varış lokasyon kimlikleri birlikte seçilmelidir.' }, { status: 422 });
   }
 
-  const locationIds = originLocationId && destinationLocationId
-    ? [String(originLocationId), String(destinationLocationId)]
+  const normalizedOriginLocationId = optionalUuid(originLocationId);
+  const normalizedDestinationLocationId = optionalUuid(destinationLocationId);
+  const normalizedDefaultVehicleId = optionalUuid(defaultVehicleId);
+  if (normalizedOriginLocationId === undefined || normalizedDestinationLocationId === undefined || normalizedDefaultVehicleId === undefined) {
+    return NextResponse.json({ error: 'Lokasyon ve varsayılan araç kimlikleri geçerli UUID olmalıdır.' }, { status: 422 });
+  }
+  const locationIds = normalizedOriginLocationId && normalizedDestinationLocationId
+    ? [normalizedOriginLocationId, normalizedDestinationLocationId]
     : [];
   if (locationIds.length) {
     const selected = await db.select({ id: locations.id }).from(locations).where(and(
@@ -91,6 +110,21 @@ export async function POST(req: NextRequest) {
     if (selected.length !== 2 || selected[0]?.id === selected[1]?.id) {
       return NextResponse.json({ error: 'Geçerli ve farklı iki aktif lokasyon seçilmelidir.' }, { status: 422 });
     }
+  }
+  const distanceKmValue = positiveInteger(distanceKm);
+  const durationMinutesValue = positiveInteger(durationMinutes);
+  if (locationIds.length && (!distanceKmValue || !durationMinutesValue)) {
+    return NextResponse.json({ error: 'Yönetilen rota için pozitif mesafe ve süre gereklidir.' }, { status: 422 });
+  }
+  const normalizedDistanceSource = typeof distanceSource === 'string' && DISTANCE_SOURCES.has(distanceSource)
+    ? distanceSource
+    : 'LEGACY_UNVERIFIED';
+  if (normalizedDistanceSource !== 'LEGACY_UNVERIFIED' && (!locationIds.length || !distanceKmValue)) {
+    return NextResponse.json({ error: 'Tahmini veya doğrulanmış mesafe için iki kayıtlı lokasyon ve pozitif mesafe gereklidir.' }, { status: 422 });
+  }
+  if (normalizedDefaultVehicleId) {
+    const [vehicle] = await db.select({ id: vehicles.id }).from(vehicles).where(eq(vehicles.id, normalizedDefaultVehicleId)).limit(1);
+    if (!vehicle) return NextResponse.json({ error: 'Varsayılan araç bulunamadı.' }, { status: 422 });
   }
 
   const baseSlug = (body.slug as string | undefined)?.trim()
@@ -107,8 +141,12 @@ export async function POST(req: NextRequest) {
       destination: String(destination),
       originLocationId: locationIds[0] ?? null,
       destinationLocationId: locationIds[1] ?? null,
-      distanceKm: Number(distanceKm ?? 0),
-      durationMinutes: Number(durationMinutes ?? 0),
+      distanceKm: distanceKmValue ?? 0,
+      distanceSource: normalizedDistanceSource,
+      distanceVerifiedAt: normalizedDistanceSource === 'ADMIN_VERIFIED' ? new Date() : null,
+      distanceVerifiedBy: normalizedDistanceSource === 'ADMIN_VERIFIED' ? session.adminId : null,
+      defaultVehicleId: normalizedDefaultVehicleId,
+      durationMinutes: durationMinutesValue ?? 0,
       priceVitoMinEur: Number(priceVitoMinEur ?? 0),
       priceVitoMaxEur: Number(priceVitoMaxEur ?? 0),
       priceSprinterMinEur: Number(priceSprinterMinEur ?? 0),

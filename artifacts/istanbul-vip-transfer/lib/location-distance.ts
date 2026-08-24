@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '@/db';
 import { locations, siteSettings, transferRoutes } from '@/db/schema';
 
@@ -10,6 +10,7 @@ export type LocationDistanceResult =
     distanceKm: number;
     source: 'defined_route';
     routeId: string;
+    verifiedAt: string | null;
     calculatedAt: string;
   }
   | {
@@ -33,6 +34,35 @@ type ResolvableLocation = {
   longitude: number | null;
 };
 
+export type RouteDistanceCandidate = {
+  id: string;
+  origin: string;
+  destination: string;
+  originLocationId: string | null;
+  destinationLocationId: string | null;
+  distanceKm: number;
+  distanceSource: string;
+  distanceVerifiedAt: Date | null;
+};
+
+/** Chooses a verified route deterministically: ID pairs outrank name-only legacy records. */
+export function selectVerifiedRoute(
+  activeRoutes: RouteDistanceCandidate[],
+  origin: Pick<ResolvableLocation, 'id' | 'name'>,
+  destination: Pick<ResolvableLocation, 'id' | 'name'>,
+): RouteDistanceCandidate | undefined {
+  const isVerifiedPositive = (candidate: RouteDistanceCandidate) =>
+    candidate.distanceSource === 'ADMIN_VERIFIED' && candidate.distanceKm > 0;
+  const directIdMatches = activeRoutes.filter((candidate) =>
+    candidate.originLocationId === origin.id && candidate.destinationLocationId === destination.id);
+  const reverseIdMatches = activeRoutes.filter((candidate) =>
+    candidate.originLocationId === destination.id && candidate.destinationLocationId === origin.id);
+  const legacyNameMatches = activeRoutes.filter((candidate) =>
+    (candidate.origin === origin.name && candidate.destination === destination.name)
+    || (candidate.origin === destination.name && candidate.destination === origin.name));
+  return [...directIdMatches, ...reverseIdMatches, ...legacyNameMatches].find(isVerifiedPositive);
+}
+
 function isCoordinatePair(location: ResolvableLocation): location is ResolvableLocation & {
   latitude: number;
   longitude: number;
@@ -55,8 +85,9 @@ function haversineKm(origin: ResolvableLocation & { latitude: number; longitude:
 }
 
 /**
- * Resolves a distance strictly for authenticated operations. A maintained route
- * always wins; coordinates are only a transparent fallback and never yield 0.
+ * Resolves a distance strictly for authenticated operations. An admin-verified
+ * route always wins (even if a newer unverified duplicate exists); coordinates
+ * are only a transparent fallback and never yield 0.
  */
 export async function resolveLocationDistance(input: {
   originLocationId: string;
@@ -97,29 +128,22 @@ export async function resolveLocationDistance(input: {
       originLocationId: transferRoutes.originLocationId,
       destinationLocationId: transferRoutes.destinationLocationId,
       distanceKm: transferRoutes.distanceKm,
+      distanceSource: transferRoutes.distanceSource,
+      distanceVerifiedAt: transferRoutes.distanceVerifiedAt,
     })
     .from(transferRoutes)
-    .where(eq(transferRoutes.active, true));
+    .where(eq(transferRoutes.active, true))
+    .orderBy(desc(transferRoutes.updatedAt));
 
-  const route = activeRoutes.find((candidate) => {
-    const directIds = candidate.originLocationId === origin.id
-      && candidate.destinationLocationId === destination.id;
-    const reverseIds = candidate.originLocationId === destination.id
-      && candidate.destinationLocationId === origin.id;
-    if (directIds || reverseIds) return true;
+  const route = selectVerifiedRoute(activeRoutes, origin, destination);
 
-    // Existing managed routes predate stable IDs. Preserve their manually
-    // verified distance until an admin links the route to locations.
-    return (candidate.origin === origin.name && candidate.destination === destination.name)
-      || (candidate.origin === destination.name && candidate.destination === origin.name);
-  });
-
-  if (route && route.distanceKm > 0) {
+  if (route) {
     return {
       state: 'DEFINED_ROUTE',
       distanceKm: route.distanceKm,
       source: 'defined_route',
       routeId: route.id,
+      verifiedAt: route.distanceVerifiedAt?.toISOString() ?? null,
       calculatedAt,
     };
   }

@@ -17,6 +17,7 @@ import {
   vehiclePricingProfiles,
   vehicles,
 } from '@/db/schema';
+import { resolveLocationDistance, type LocationDistanceResult } from '@/lib/location-distance';
 import {
   calculateAdminQuote,
   type PricingProfileInput,
@@ -24,7 +25,7 @@ import {
   type PricingServiceInput,
 } from '@/lib/admin-pricing-engine';
 
-function currentlyApplicable<T extends { validFrom: Date | null; validUntil: Date | null }>(rows: T[], at: Date): T | undefined {
+export function currentlyApplicable<T extends { validFrom: Date | null; validUntil: Date | null }>(rows: T[], at: Date): T | undefined {
   return rows
     .filter((row) => (!row.validFrom || row.validFrom <= at) && (!row.validUntil || row.validUntil >= at))
     .sort((a, b) => (b.validFrom?.getTime() ?? 0) - (a.validFrom?.getTime() ?? 0))[0];
@@ -47,40 +48,64 @@ export async function getCurrentExchangeRates() {
 
 export async function createAdminQuote(input: {
   routeId?: string;
-  vehicleId: string;
+  originLocationId?: string;
+  destinationLocationId?: string;
+  vehicleId?: string;
   mode: 'DISTANCE' | 'HOURLY';
-  distanceKm: number;
   requestedHours?: number;
   tripType: 'ONE_WAY' | 'ROUND_TRIP';
   tollAlternativeId?: string;
   serviceQuantities?: Array<{ serviceId: string; quantity: number }>;
   reservationRequestId?: string;
   adminId: string;
-}): Promise<{ result: PricingQuoteResult; snapshot?: Record<string, unknown>; quoteSnapshotId?: string }> {
+}): Promise<{ result: PricingQuoteResult; distance: LocationDistanceResult; snapshot?: Record<string, unknown>; quoteSnapshotId?: string }> {
   const now = new Date();
-  const [vehicle] = await db.select().from(vehicles).where(eq(vehicles.id, input.vehicleId)).limit(1);
+  let route = null;
+  let override = undefined;
+  if (input.routeId) {
+    [route] = await db.select().from(transferRoutes).where(and(
+      eq(transferRoutes.id, input.routeId),
+      eq(transferRoutes.active, true),
+    )).limit(1);
+    if (!route) throw new Error('Güzergâh bulunamadı.');
+  }
+
+  const originLocationId = route?.originLocationId ?? input.originLocationId;
+  const destinationLocationId = route?.destinationLocationId ?? input.destinationLocationId;
+  if (!originLocationId || !destinationLocationId) {
+    return {
+      result: { state: 'UNAVAILABLE', reason: 'MISSING_DISTANCE' },
+      distance: { state: 'UNAVAILABLE', reason: 'LOCATION_NOT_FOUND', calculatedAt: now.toISOString() },
+    };
+  }
+  const distance = await resolveLocationDistance({ originLocationId, destinationLocationId, at: now });
+  if (distance.state === 'UNAVAILABLE') {
+    return { result: { state: 'UNAVAILABLE', reason: 'MISSING_DISTANCE' }, distance };
+  }
+
+  const vehicleId = input.vehicleId ?? route?.defaultVehicleId;
+  if (!vehicleId) throw new Error('Bu güzergâh için araç seçin veya varsayılan araç atayın.');
+  const [vehicle] = await db.select().from(vehicles).where(eq(vehicles.id, vehicleId)).limit(1);
   if (!vehicle) throw new Error('Araç bulunamadı.');
 
   const profileRows = await db.select().from(vehiclePricingProfiles).where(and(
-    eq(vehiclePricingProfiles.vehicleId, input.vehicleId),
+    eq(vehiclePricingProfiles.vehicleId, vehicleId),
     eq(vehiclePricingProfiles.mode, input.mode),
     eq(vehiclePricingProfiles.active, true),
     isNull(vehiclePricingProfiles.archivedAt),
   )).orderBy(desc(vehiclePricingProfiles.updatedAt));
   const profileRow = profileRows[0];
 
-  let route = null;
-  let override = undefined;
-  if (input.routeId) {
-    [route] = await db.select().from(transferRoutes).where(eq(transferRoutes.id, input.routeId)).limit(1);
-    if (!route) throw new Error('Güzergâh bulunamadı.');
+  if (route) {
     const overrides = await db.select().from(fixedPriceOverrides).where(and(
-      eq(fixedPriceOverrides.routeId, input.routeId),
-      eq(fixedPriceOverrides.vehicleId, input.vehicleId),
+      eq(fixedPriceOverrides.routeId, route.id),
+      eq(fixedPriceOverrides.vehicleId, vehicleId),
       eq(fixedPriceOverrides.active, true),
       or(isNull(fixedPriceOverrides.validFrom), lte(fixedPriceOverrides.validFrom, now)),
       or(isNull(fixedPriceOverrides.validUntil), gte(fixedPriceOverrides.validUntil, now)),
     )).orderBy(desc(fixedPriceOverrides.validFrom));
+    // Fixed prices remain a secondary legacy override, but only while their
+    // explicit validity window applies.
     override = currentlyApplicable(overrides, now);
   }
 
@@ -93,10 +118,10 @@ export async function createAdminQuote(input: {
 
   const profile = profileRow ? ({
     mode: profileRow.mode,
-    openingKurus: profileRow.distanceOpeningKurus ?? -1,
+    openingKurus: profileRow.distanceOpeningKurus ?? 0,
     firstKmKurus: profileRow.distanceFirstKmKurus ?? -1,
     thresholdKm: profileRow.distanceThresholdKm ?? -1,
-    secondKmKurus: profileRow.distanceSecondKmKurus ?? -1,
+    secondKmKurus: profileRow.distanceSecondKmKurus ?? 0,
     hourlyRateKurus: profileRow.hourlyRateKurus ?? -1,
     minimumHours: profileRow.minimumHours ?? -1,
     includedKmMode: profileRow.includedKmMode ?? 'PACKAGE',
@@ -105,12 +130,11 @@ export async function createAdminQuote(input: {
     excessHourKurus: profileRow.excessHourKurus ?? -1,
   } as PricingProfileInput) : undefined;
 
-  const resolvedDistanceKm = route?.distanceKm ?? input.distanceKm;
   const result = calculateAdminQuote({
     vehicleEligible: vehicle.priceCalculationEligible,
     profile,
     overrideKurus: override?.amountKurus,
-    distanceKm: resolvedDistanceKm,
+    distanceKm: distance.distanceKm,
     requestedHours: input.requestedHours,
     tripType: input.tripType,
     tolls,
@@ -128,9 +152,10 @@ export async function createAdminQuote(input: {
   const snapshot = {
     version: 1,
     calculatedAt: now.toISOString(),
-    inputs: { ...input, distanceKm: resolvedDistanceKm, requestedDistanceKm: input.distanceKm },
+    inputs: { ...input, vehicleId, originLocationId, destinationLocationId, distanceKm: distance.distanceKm },
     vehicle: { id: vehicle.id, name: vehicle.name, pricingClass: vehicle.pricingClass, priceCalculationEligible: vehicle.priceCalculationEligible },
-    route: route ? { id: route.id, name: route.name, distanceKm: route.distanceKm } : null,
+    route: route ? { id: route.id, name: route.name, distanceKm: distance.distanceKm } : null,
+    distance,
     profile: profileRow ?? null,
     override: override ?? null,
     tolls,
@@ -147,22 +172,22 @@ export async function createAdminQuote(input: {
     result,
   } satisfies Record<string, unknown>;
 
-  if (!input.reservationRequestId) return { result, snapshot };
-  if (result.state !== 'AVAILABLE') return { result, snapshot };
+  if (!input.reservationRequestId) return { result, distance, snapshot };
+  if (result.state !== 'AVAILABLE') return { result, distance, snapshot };
   const [request] = await db.select({ id: reservationRequests.id }).from(reservationRequests).where(eq(reservationRequests.id, input.reservationRequestId)).limit(1);
   if (!request) throw new Error('Talep bulunamadı.');
   const { priceQuoteSnapshots } = await import('@/db/schema');
   const [quote] = await db.transaction(async (tx) => {
     const [created] = await tx.insert(priceQuoteSnapshots).values({
       routeId: input.routeId ?? null,
-      vehicleId: input.vehicleId,
+      vehicleId,
       snapshot,
       createdBy: input.adminId,
     }).returning();
     await tx.update(reservationRequests).set({ priceQuoteSnapshotId: created.id, updatedAt: now }).where(eq(reservationRequests.id, request.id));
     return [created];
   });
-  return { result, snapshot, quoteSnapshotId: quote.id };
+  return { result, distance, snapshot, quoteSnapshotId: quote.id };
 }
 
 async function resolveServices(

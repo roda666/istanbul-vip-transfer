@@ -38,7 +38,7 @@ export type PricingLine = {
 
 export type PricingQuoteResult =
   | { state: 'ON_REQUEST'; reason: 'VEHICLE_NOT_ELIGIBLE' }
-  | { state: 'UNAVAILABLE'; reason: 'MISSING_PROFILE' | 'INVALID_INPUT' | 'MISSING_RATE' }
+  | { state: 'UNAVAILABLE'; reason: 'MISSING_PROFILE' | 'INVALID_INPUT' | 'MISSING_RATE' | 'MISSING_DISTANCE' }
   | {
     state: 'AVAILABLE';
     formulaKind: 'DISTANCE' | 'HOURLY' | 'OVERRIDE';
@@ -121,10 +121,14 @@ export function calculateAdminQuote(input: {
     }
     const firstKm = Math.min(input.distanceKm, profile.thresholdKm);
     const secondKm = Math.max(0, input.distanceKm - profile.thresholdKm);
-    baseKurus = (profile.openingKurus + firstKm * profile.firstKmKurus + secondKm * profile.secondKmKurus) * tripMultiplier;
+    // A zero second-tier amount represents an intentionally blank optional
+    // tier: continue the first kilometre tariff rather than making all later
+    // kilometres free.
+    const secondKmRate = profile.secondKmKurus > 0 ? profile.secondKmKurus : profile.firstKmKurus;
+    baseKurus = (profile.openingKurus + firstKm * profile.firstKmKurus + secondKm * secondKmRate) * tripMultiplier;
     lines.push({ key: 'distance-opening', label: 'Açılış', amountKurus: profile.openingKurus * tripMultiplier, visibleToCustomer: false });
     lines.push({ key: 'distance-first-tier', label: `İlk kademe (${firstKm} km)`, amountKurus: firstKm * profile.firstKmKurus * tripMultiplier, visibleToCustomer: false });
-    if (secondKm > 0) lines.push({ key: 'distance-second-tier', label: `İkinci kademe (${secondKm} km)`, amountKurus: secondKm * profile.secondKmKurus * tripMultiplier, visibleToCustomer: false });
+    if (secondKm > 0) lines.push({ key: 'distance-second-tier', label: profile.secondKmKurus > 0 ? `İkinci kademe (${secondKm} km)` : `Tek tarife devamı (${secondKm} km)`, amountKurus: secondKm * secondKmRate * tripMultiplier, visibleToCustomer: false });
   } else {
     formulaKind = 'HOURLY';
     const profile = input.profile;

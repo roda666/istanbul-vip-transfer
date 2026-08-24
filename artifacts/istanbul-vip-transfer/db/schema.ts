@@ -1071,6 +1071,12 @@ export const transferRoutes = pgTable('transfer_routes', {
   originLocationId:       uuid('origin_location_id').references(() => locations.id, { onDelete: 'set null' }),
   destinationLocationId:  uuid('destination_location_id').references(() => locations.id, { onDelete: 'set null' }),
   distanceKm:             integer('distance_km').notNull(),
+  /** ADMIN_VERIFIED values override coordinate estimates for future price queries. */
+  distanceSource:         text('distance_source').default('LEGACY_UNVERIFIED').notNull(),
+  distanceVerifiedAt:     timestamp('distance_verified_at', { withTimezone: true }),
+  distanceVerifiedBy:     uuid('distance_verified_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+  /** Optional recommended vehicle for this maintained route. */
+  defaultVehicleId:       uuid('default_vehicle_id').references(() => vehicles.id, { onDelete: 'set null' }),
   durationMinutes:        integer('duration_minutes').notNull(),
   priceVitoMinEur:        integer('price_vito_min_eur').notNull(),
   priceVitoMaxEur:        integer('price_vito_max_eur').notNull(),

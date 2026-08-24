@@ -20,6 +20,22 @@ describe('admin pricing engine', () => {
     expect(afterThreshold).toMatchObject({ state: 'AVAILABLE', netTryKurus: 2_050 });
   });
 
+  it('continues the first kilometre tariff when the optional second tier is empty', () => {
+    const result = calculateAdminQuote({
+      ...common,
+      profile: { ...distanceProfile, openingKurus: 0, thresholdKm: 100, secondKmKurus: 0 },
+      distanceKm: 200,
+    });
+    expect(result).toMatchObject({ state: 'AVAILABLE', netTryKurus: 20_000 });
+    if (result.state === 'AVAILABLE') {
+      expect(result.lines).toContainEqual(expect.objectContaining({
+        key: 'distance-second-tier',
+        amountKurus: 10_000,
+        label: 'Tek tarife devamı (100 km)',
+      }));
+    }
+  });
+
   it('applies minimum-hour and kilometre excesses independently', () => {
     const result = calculateAdminQuote({
       ...common,

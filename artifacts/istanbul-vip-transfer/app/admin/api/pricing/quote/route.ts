@@ -3,9 +3,10 @@ import { z } from 'zod';
 
 const quoteSchema = z.object({
   routeId: z.string().uuid().optional(),
-  vehicleId: z.string().uuid(),
+  originLocationId: z.string().uuid().optional(),
+  destinationLocationId: z.string().uuid().optional(),
+  vehicleId: z.string().uuid().optional(),
   mode: z.enum(['DISTANCE', 'HOURLY']),
-  distanceKm: z.number().int().min(1).max(10_000),
   requestedHours: z.number().int().min(1).max(720).optional(),
   tripType: z.enum(['ONE_WAY', 'ROUND_TRIP']),
   tollAlternativeId: z.string().uuid().optional(),
@@ -14,6 +15,12 @@ const quoteSchema = z.object({
 }).superRefine((value, ctx) => {
   if (value.mode === 'HOURLY' && !value.requestedHours) ctx.addIssue({ code: 'custom', path: ['requestedHours'], message: 'Tahsis için süre gereklidir.' });
   if (value.tollAlternativeId && !value.routeId) ctx.addIssue({ code: 'custom', path: ['tollAlternativeId'], message: 'Geçiş seçimi için güzergâh gereklidir.' });
+  if (!value.routeId && (!value.originLocationId || !value.destinationLocationId)) {
+    ctx.addIssue({ code: 'custom', path: ['originLocationId'], message: 'Fiyat için iki kayıtlı lokasyon seçilmelidir.' });
+  }
+  if ((value.originLocationId == null) !== (value.destinationLocationId == null)) {
+    ctx.addIssue({ code: 'custom', path: ['destinationLocationId'], message: 'Kalkış ve varış birlikte seçilmelidir.' });
+  }
 });
 
 /** POST /admin/api/pricing/quote — admin-only calculation; no public price route uses it. */

@@ -316,6 +316,13 @@
       "when": 1788900000003,
       "tag": "0044_normal_cerebro",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1789000000000,
+      "tag": "0045_goofy_sabra",
+      "breakpoints": true
     }
   ]
 }

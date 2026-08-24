@@ -13,6 +13,13 @@ import { normalizeVehicleType, VEHICLE_TYPE_OPTIONS } from '@/lib/vehicle-option
 const GOLD = '#C9A84C';
 const BG2 = '#FFFFFF';
 const BORDER = '#D8E1E9';
+const TEXT = '#172033';
+const MUTED = '#64748B';
+const inputStyle: React.CSSProperties = {
+  width: '100%', padding: '9px 10px', borderRadius: '7px',
+  border: `1px solid ${BORDER}`, background: '#FFFFFF', color: TEXT,
+  fontSize: '13px', fontFamily: 'Inter, sans-serif', outline: 'none',
+};
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface GalleryItem { url: string; alt: string }
@@ -272,6 +279,191 @@ function ErrorBanner({ msg }: { msg: string }) {
       }}
     >
       {msg}
+    </div>
+  );
+}
+
+type VehiclePricingProfile = {
+  id: string;
+  vehicleId: string;
+  mode: 'DISTANCE' | 'HOURLY';
+  active: boolean;
+  distanceOpeningKurus: number | null;
+  distanceFirstKmKurus: number | null;
+  distanceThresholdKm: number | null;
+  distanceSecondKmKurus: number | null;
+  hourlyRateKurus: number | null;
+  minimumHours: number | null;
+  includedKmMode: 'PER_HOUR' | 'PACKAGE' | null;
+  includedKm: number | null;
+  excessKmKurus: number | null;
+  excessHourKurus: number | null;
+  notes: string | null;
+};
+
+function VehiclePricingProfileEditor({ vehicleId, eligible }: { vehicleId: string; eligible: boolean }) {
+  const [profile, setProfile] = useState<VehiclePricingProfile | null>(null);
+  const [mode, setMode] = useState<'DISTANCE' | 'HOURLY'>('DISTANCE');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+  const [distance, setDistance] = useState({ opening: 0, first: 0, threshold: 100, second: 0 });
+  const [hourly, setHourly] = useState({ rate: 0, minimum: 4, includedMode: 'PER_HOUR' as 'PER_HOUR' | 'PACKAGE', includedKm: 10, excessKm: 0, excessHour: 0 });
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setMessage('');
+    try {
+      const response = await fetch(`/admin/api/pricing/profiles?vehicleId=${encodeURIComponent(vehicleId)}`);
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !Array.isArray(payload?.profiles)) throw new Error(payload?.error ?? 'Fiyat profili alınamadı.');
+      const active = payload.profiles.find((item: VehiclePricingProfile) => item.active) ?? null;
+      setProfile(active);
+      if (active) {
+        setMode(active.mode);
+        if (active.mode === 'DISTANCE') {
+          setDistance({
+            opening: active.distanceOpeningKurus ?? 0,
+            first: active.distanceFirstKmKurus ?? 0,
+            threshold: active.distanceThresholdKm ?? 100,
+            second: active.distanceSecondKmKurus ?? 0,
+          });
+        } else {
+          setHourly({
+            rate: active.hourlyRateKurus ?? 0,
+            minimum: active.minimumHours ?? 4,
+            includedMode: active.includedKmMode ?? 'PER_HOUR',
+            includedKm: active.includedKm ?? 10,
+            excessKm: active.excessKmKurus ?? 0,
+            excessHour: active.excessHourKurus ?? 0,
+          });
+        }
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Fiyat profili alınamadı.');
+    } finally {
+      setLoading(false);
+    }
+  }, [vehicleId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const moneyInput = (label: string, value: number, setValue: (value: number) => void, optional = false) => (
+    <div>
+      <Label>{label}</Label>
+      <Input
+        type="number"
+        value={optional && value === 0 ? '' : (value / 100).toFixed(2)}
+        onChange={(next) => setValue(next === '' ? 0 : Math.max(0, Math.round(Number(next.replace(',', '.')) * 100)))}
+        placeholder={optional ? 'İsteğe bağlı' : '0,00'}
+      />
+      <span style={{ color: MUTED, fontSize: '10px', fontFamily: 'Inter, sans-serif' }}>TRY</span>
+    </div>
+  );
+
+  const save = async () => {
+    if (!eligible) {
+      setMessage('Önce bu aracı otomatik fiyat hesaplamasına uygun olarak kaydedin.');
+      return;
+    }
+    setSaving(true);
+    setMessage('');
+    const payload = mode === 'DISTANCE'
+      ? {
+        vehicleId, active: true, mode, notes: null,
+        distanceOpeningKurus: distance.opening,
+        distanceFirstKmKurus: distance.first,
+        distanceThresholdKm: distance.threshold,
+        distanceSecondKmKurus: distance.second,
+      }
+      : {
+        vehicleId, active: true, mode, notes: null,
+        hourlyRateKurus: hourly.rate,
+        minimumHours: hourly.minimum,
+        includedKmMode: hourly.includedMode,
+        includedKm: hourly.includedKm,
+        excessKmKurus: hourly.excessKm,
+        excessHourKurus: hourly.excessHour,
+      };
+    try {
+      const response = await fetch('/admin/api/pricing/profiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const responseBody = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(responseBody?.error ?? 'Fiyat profili kaydedilemedi.');
+      setMessage('Fiyat profili kaydedildi.');
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Fiyat profili kaydedilemedi.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const preview = (km: number) => {
+    const firstKm = Math.min(km, distance.threshold);
+    const nextKm = Math.max(0, km - distance.threshold);
+    const secondRate = distance.second > 0 ? distance.second : distance.first;
+    return distance.opening + firstKm * distance.first + nextKm * secondRate;
+  };
+
+  return (
+    <div style={{ background: '#F8FAFC', border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '16px', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '14px' }}>
+        <div>
+          <div style={{ color: TEXT, fontSize: '14px', fontWeight: 700, fontFamily: 'Inter, sans-serif' }}>Araç Fiyat Profili</div>
+          <div style={{ color: MUTED, fontSize: '11px', fontFamily: 'Inter, sans-serif', marginTop: '3px' }}>Bu araç için TRY bazlı mesafe veya saatlik formül.</div>
+        </div>
+        {profile && <span style={{ color: '#047857', fontSize: '10px', fontWeight: 700, fontFamily: 'Inter, sans-serif' }}>AKTİF FORMÜL</span>}
+      </div>
+      {!eligible && <div style={{ color: '#A16207', fontSize: '12px', lineHeight: 1.5, marginBottom: '12px' }}>Bu araç talep üzerine fiyatlandırılıyor. Profil kaydetmek için üstteki “otomatik fiyat hesaplamasına uygundur” seçeneğini etkinleştirip aracı kaydedin.</div>}
+      {loading ? <div style={{ color: MUTED, fontSize: '12px' }}>Fiyat profili yükleniyor…</div> : (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+            <div>
+              <Label>Hesaplama Modu</Label>
+              <select value={mode} onChange={(event) => setMode(event.target.value as 'DISTANCE' | 'HOURLY')} style={inputStyle}>
+                <option value="DISTANCE">Mesafe bazlı</option>
+                <option value="HOURLY">Saatlik tahsis</option>
+              </select>
+            </div>
+            <div style={{ alignSelf: 'end', color: MUTED, fontSize: '11px', lineHeight: 1.5 }}>
+              Yeni kayıt aynı moddaki eski aktif formülü arşivler; geçerlilik tarihi kullanılmaz.
+            </div>
+          </div>
+          {mode === 'DISTANCE' ? (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                {moneyInput('Açılış Ücreti', distance.opening, (opening) => setDistance((current) => ({ ...current, opening })), true)}
+                <div><Label>Kademe Sınırı (km)</Label><Input type="number" value={String(distance.threshold)} onChange={(threshold) => setDistance((current) => ({ ...current, threshold: Math.max(1, Number(threshold) || 1) }))} /></div>
+                {moneyInput('Kilometre Fiyatı', distance.first, (first) => setDistance((current) => ({ ...current, first })))}
+                {moneyInput('İkinci Kademe (isteğe bağlı)', distance.second, (second) => setDistance((current) => ({ ...current, second })), true)}
+              </div>
+              <div style={{ marginTop: '14px', borderTop: `1px solid ${BORDER}`, paddingTop: '12px' }}>
+                <div style={{ color: MUTED, fontWeight: 700, fontSize: '10px', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '8px' }}>Canlı Mesafe Örnekleri</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '6px' }}>
+                  {[20, 50, 100, 200, 500].map((km) => <div key={km} style={{ background: BG2, border: `1px solid ${BORDER}`, borderRadius: '6px', padding: '7px', textAlign: 'center' }}><div style={{ color: MUTED, fontSize: '10px' }}>{km} km</div><div style={{ color: TEXT, fontSize: '11px', fontWeight: 700 }}>{(preview(km) / 100).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</div></div>)}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              {moneyInput('Saatlik Tarife', hourly.rate, (rate) => setHourly((current) => ({ ...current, rate })))}
+              <div><Label>Minimum Saat</Label><Input type="number" value={String(hourly.minimum)} onChange={(minimum) => setHourly((current) => ({ ...current, minimum: Math.max(1, Number(minimum) || 1) }))} /></div>
+              <div><Label>Dahil km tipi</Label><select value={hourly.includedMode} onChange={(event) => setHourly((current) => ({ ...current, includedMode: event.target.value as 'PER_HOUR' | 'PACKAGE' }))} style={inputStyle}><option value="PER_HOUR">Saat başına</option><option value="PACKAGE">Paket toplamı</option></select></div>
+              <div><Label>Dahil km</Label><Input type="number" value={String(hourly.includedKm)} onChange={(includedKm) => setHourly((current) => ({ ...current, includedKm: Math.max(0, Number(includedKm) || 0) }))} /></div>
+              {moneyInput('Km Aşım Tarifesi', hourly.excessKm, (excessKm) => setHourly((current) => ({ ...current, excessKm })), true)}
+              {moneyInput('Saat Aşım Tarifesi', hourly.excessHour, (excessHour) => setHourly((current) => ({ ...current, excessHour })), true)}
+            </div>
+          )}
+          {message && <div style={{ marginTop: '12px', color: message.includes('kaydedildi') ? '#047857' : '#B91C1C', fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>{message}</div>}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '14px' }}>
+            <ActionButton variant="secondary" onClick={save} loading={saving} disabled={!eligible}>{saving ? 'Kaydediliyor…' : 'Fiyat Profilini Kaydet'}</ActionButton>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -684,6 +876,13 @@ export default function VehicleForm({ vehicle, userRole }: Props) {
           <option value="bus">Otobüs</option>
         </select>
       </div>
+      {isEdit ? (
+        <VehiclePricingProfileEditor vehicleId={vehicle!.id} eligible={form.priceCalculationEligible} />
+      ) : (
+        <div style={{ background: '#F8FAFC', border: `1px solid ${BORDER}`, borderRadius: '8px', padding: '12px', marginBottom: '16px', color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif', lineHeight: 1.5 }}>
+          Araç kaydedildikten sonra bu ekranda kilometre ve saatlik fiyat profilini tanımlayabilirsiniz.
+        </div>
+      )}
 
       {/* ── Görsel ─────────────────────────────────────── */}
       <SectionTitle>Kapak Görseli</SectionTitle>

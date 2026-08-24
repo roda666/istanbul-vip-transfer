@@ -279,7 +279,7 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
     return () => { active = false; clearInterval(id); };
   }, []);
 
-  // Unread chat badge — polls every 30 s; returns 0 on auth failure (safe)
+  // Unread chat badge — polls every 30 s; unauthorized roles simply render no count.
   useEffect(() => {
     let active = true;
     async function fetchChatCount() {

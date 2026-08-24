@@ -693,6 +693,20 @@ export const newsletterConsentEvents = pgTable('newsletter_consent_events', {
   createdAt:          timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+/** Hashed, single-use links for double opt-in and recipient self-service opt-out. */
+export const newsletterTokens = pgTable('newsletter_tokens', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  subscriberId: uuid('subscriber_id').notNull().references(() => newsletterSubscribers.id, { onDelete: 'cascade' }),
+  tokenHash: text('token_hash').notNull().unique(),
+  purpose: text('purpose').notNull(), // 'CONFIRM' | 'UNSUBSCRIBE'
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  usedAt: timestamp('used_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('newsletter_tokens_subscriber_purpose_idx').on(table.subscriberId, table.purpose),
+  index('newsletter_tokens_expires_at_idx').on(table.expiresAt),
+]);
+
 export type ReservationRequest    = typeof reservationRequests.$inferSelect;
 export type NewReservationRequest = typeof reservationRequests.$inferInsert;
 export type ReservationSubmissionFailure = typeof reservationSubmissionFailures.$inferSelect;
@@ -701,6 +715,7 @@ export type NewsletterSubscriber    = typeof newsletterSubscribers.$inferSelect;
 export type NewNewsletterSubscriber = typeof newsletterSubscribers.$inferInsert;
 export type NewsletterConsentEvent    = typeof newsletterConsentEvents.$inferSelect;
 export type NewNewsletterConsentEvent = typeof newsletterConsentEvents.$inferInsert;
+export type NewsletterToken = typeof newsletterTokens.$inferSelect;
 
 // ── Google Reviews ────────────────────────────────────────────────────────────
 

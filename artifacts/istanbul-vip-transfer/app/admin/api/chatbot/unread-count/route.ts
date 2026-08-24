@@ -6,21 +6,19 @@
  * where the LAST message was from the visitor (role = 'user') — i.e., the
  * visitor is waiting for a response and no admin/AI reply has been sent yet.
  *
- * Returns { count: 0 } on any auth failure so the sidebar badge never errors.
+ * Protected by the same CHAT_MANAGE permission as the session list.
  */
 import { db } from '@/db';
 import { chatbotSessions } from '@/db/schema';
 import { sql } from 'drizzle-orm';
-import { getSession } from '@/lib/auth/session';
+import { requireChatbotManagement } from '@/lib/chatbot-admin-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const session = await getSession();
-    if (!session.isLoggedIn) {
-      return Response.json({ count: 0 });
-    }
+    const access = await requireChatbotManagement();
+    if (access.error) return access.error;
 
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 

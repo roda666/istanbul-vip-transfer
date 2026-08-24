@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 
 /**
  * Client component that enforces role-based routing for CHAT_STAFF.
- * CHAT_STAFF users can only access /admin/sohbet.
+ * CHAT_STAFF users can access live chat and their own account page.
  * Rendered inside the protected admin layout.
  */
 export function ChatStaffGuard({ role }: { role: string }) {
@@ -13,7 +13,8 @@ export function ChatStaffGuard({ role }: { role: string }) {
   const router = useRouter();
 
   useEffect(() => {
-    if (role === 'CHAT_STAFF' && !pathname.startsWith('/admin/sohbet')) {
+    const canAccess = pathname.startsWith('/admin/sohbet') || pathname.startsWith('/admin/hesabim');
+    if (role === 'CHAT_STAFF' && !canAccess) {
       router.replace('/admin/sohbet');
     }
   }, [role, pathname, router]);

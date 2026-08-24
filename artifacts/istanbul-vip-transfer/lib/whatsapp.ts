@@ -5,13 +5,18 @@
  */
 export function openWhatsAppChat(phone: string, message: string): void {
   const digits = phone.replace(/\D/g, '');
-  const webUrl = `https://wa.me/${digits}?text=${message}`;
+  // The message contains visitor-provided fields and can include spaces, line
+  // breaks, ampersands, or non-Latin text. Encode it once for both the web
+  // deep link and Android's WhatsApp Business intent so no field is truncated
+  // or interpreted as another query parameter.
+  const encodedMessage = encodeURIComponent(message);
+  const webUrl = `https://wa.me/${digits}?text=${encodedMessage}`;
 
   if (typeof window === 'undefined') return;
 
   if (/Android/i.test(navigator.userAgent)) {
     const businessIntent =
-      `intent://send?phone=${digits}&text=${message}` +
+      `intent://send?phone=${digits}&text=${encodedMessage}` +
       '#Intent;scheme=whatsapp;package=com.whatsapp.w4b;end';
     const fallbackTimer = window.setTimeout(() => {
       document.removeEventListener('visibilitychange', clearFallback);

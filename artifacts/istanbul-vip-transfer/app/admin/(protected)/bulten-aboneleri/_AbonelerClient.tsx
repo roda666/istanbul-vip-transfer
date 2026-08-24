@@ -69,6 +69,10 @@ export default function AbonelerClient() {
   const [source, setSource]   = useState('');
   const [updating, setUpdating]   = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [subject, setSubject] = useState('');
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sendMessage, setSendMessage] = useState('');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -122,6 +126,17 @@ export default function AbonelerClient() {
       setExporting(false);
     }
   }
+  async function sendNewsletter(e: React.FormEvent) {
+    e.preventDefault();
+    setSending(true); setSendMessage('');
+    try {
+      const res = await fetch('/admin/api/newsletter/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subject, html: message, text: message.replace(/<[^>]*>/g, '') }) });
+      const body = await res.json();
+      const r = body.result;
+      setSendMessage(body.error ?? `Gönderim sonucu: ${r.acceptedCount}/${r.recipientCount} alıcı kabul edildi.${r.failureCodes?.length ? ` Hatalar: ${r.failureCodes.join(', ')}` : ''}`);
+      if (res.ok) { setSubject(''); setMessage(''); }
+    } catch { setSendMessage('Sunucu hatası.'); } finally { setSending(false); }
+  }
 
   function formatDate(iso: string) {
     return new Intl.DateTimeFormat('tr-TR', {
@@ -143,6 +158,16 @@ export default function AbonelerClient() {
 
   return (
     <div>
+      <form onSubmit={sendNewsletter} style={{ padding: '16px', marginBottom: '20px', border: '1px solid #E2E8F0', borderRadius: '12px', background: '#fff' }}>
+        <strong style={{ fontFamily: 'Inter, sans-serif', color: '#1E293B' }}>Aktif abonelere bülten gönder</strong>
+        <div style={{ display: 'grid', gap: '8px', marginTop: '10px' }}>
+          <input required value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Konu" maxLength={200} style={inputStyle} />
+          <textarea required value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Mesaj (HTML kullanılabilir)" maxLength={100000} rows={6} style={inputStyle} />
+          <div style={{ fontSize: '12px', color: '#64748B' }}>Her e-postaya tek kullanımlık abonelikten ayrılma bağlantısı eklenir. Yalnızca Aktif aboneler alır.</div>
+          <div><button disabled={sending} style={{ ...inputStyle, background: '#2563EB', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }}>{sending ? 'Gönderiliyor…' : 'Bülteni Gönder'}</button></div>
+          {sendMessage && <div style={{ fontSize: '13px', color: sendMessage.includes('sonucu') ? '#15803D' : '#BE123C' }}>{sendMessage}</div>}
+        </div>
+      </form>
       {/* Toolbar */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
 

@@ -7,7 +7,7 @@ import { NextRequest } from 'next/server';
 import { db } from '@/db';
 import { chatbotMessages, chatbotSessions } from '@/db/schema';
 import { eq, asc } from 'drizzle-orm';
-import { getSession } from '@/lib/auth/session';
+import { requireChatbotManagement } from '@/lib/chatbot-admin-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,10 +15,8 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ sessionId: string }> },
 ) {
-  const session = await getSession();
-  if (!session.isLoggedIn) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const access = await requireChatbotManagement();
+  if (access.error) return access.error;
 
   const { sessionId } = await params;
 

@@ -2,7 +2,7 @@ import { and, desc, eq, gte, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { chatbotMessages } from '@/db/schema';
-import { getSession } from '@/lib/auth/session';
+import { requireChatbotManagement } from '@/lib/chatbot-admin-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,10 +15,8 @@ const REPORT_LIMIT = 10;
  * Turkish translation already stored for admin use.
  */
 export async function GET() {
-  const session = await getSession();
-  if (!session.isLoggedIn) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const access = await requireChatbotManagement();
+  if (access.error) return access.error;
 
   const questionText = sql<string>`lower(trim(regexp_replace(
     coalesce(nullif(${chatbotMessages.contentTr}, ''), ${chatbotMessages.content}),

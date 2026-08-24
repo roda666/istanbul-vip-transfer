@@ -16,6 +16,8 @@ import { z } from 'zod';
 import { sanitizeText } from '@/lib/sanitize';
 import { isFiveMinuteIncrement, isValidPassengerCount, meetsAllocationMinimum } from '@/lib/booking-rules';
 import { rateLimit } from '@/lib/auth/rate-limit';
+import { getAdminNotifyEmails, sendEmailDetailed } from '@/lib/email';
+import { startNewsletterOptIn } from '@/lib/newsletter';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,6 +46,12 @@ function generateRefNumber(): string {
 function normalizeEmail(email: string | null | undefined): string | null {
   if (!email || !email.trim()) return null;
   return email.trim().toLowerCase();
+}
+function escapeHtml(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+function deliverySummary(result: Awaited<ReturnType<typeof sendEmailDetailed>>) {
+  return { status: result.ok ? 'sent' : result.code === 'SMTP_NOT_CONFIGURED' ? 'not-configured' : 'failed', code: result.code, acceptedCount: result.acceptedCount, rejectedCount: result.rejectedCount };
 }
 
 // ── Zod input schema ──────────────────────────────────────────────────────────
@@ -136,9 +144,6 @@ function validateBookingConstraints(
 
   return null;
 }
-
-// ── Consent text version ──────────────────────────────────────────────────────
-const CONSENT_VERSION = '2026-07-28-v1';
 
 /**
  * Keep failed requests visible without ever writing their personal data to
@@ -266,8 +271,6 @@ export async function POST(req: NextRequest) {
     const { db } = await import('@/db');
     const {
       reservationRequests,
-      newsletterSubscribers,
-      newsletterConsentEvents,
       customReservationFields,
       locations,
       vehicles,
@@ -390,45 +393,44 @@ export async function POST(req: NextRequest) {
       status:          'NEW',
     });
 
-    // A reservation is always retained, but marketing data is created only
-    // after explicit opt-in. No PENDING subscriber is created for non-consent.
+    // Explicit consent starts double opt-in only; no marketing is sent to a
+    // PENDING address and an old opt-out is never reactivated automatically.
     if (normalizedEmail && data.newsletterConsent) {
-      const existing = await db
-        .select({ id: newsletterSubscribers.id, status: newsletterSubscribers.status })
-        .from(newsletterSubscribers)
-        .where(eq(newsletterSubscribers.normalizedEmail, normalizedEmail))
-        .limit(1);
-
-      let subscriberId: string;
-
-      if (existing.length > 0) {
-        subscriberId = existing[0].id;
-        await db
-          .update(newsletterSubscribers)
-          .set({ status: 'ACTIVE', updatedAt: new Date() })
-          .where(eq(newsletterSubscribers.normalizedEmail, normalizedEmail));
-      } else {
-        const [inserted] = await db.insert(newsletterSubscribers).values({
-          normalizedEmail,
-          name:              sanitizeText(data.adSoyad).slice(0, 120),
-          preferredLanguage: data.locale ?? 'tr',
-          status:            'ACTIVE',
-          source:            `booking-form:${data.serviceType}`,
-        }).returning({ id: newsletterSubscribers.id });
-        subscriberId = inserted.id;
-      }
-
-      // Record consent event — use the visitor's actual locale, not a hardcoded 'tr'
-      await db.insert(newsletterConsentEvents).values({
-        subscriberId,
-        normalizedEmail,
-        action:             'GRANTED',
-        consentTextVersion: CONSENT_VERSION,
-        language:           data.locale ?? 'tr',
-        source:             `booking-form:${data.serviceType}`,
+      await startNewsletterOptIn({
+        email: normalizedEmail, name: sanitizeText(data.adSoyad).slice(0, 120),
+        language: data.locale, source: `booking-form:${data.serviceType}`, origin: req.nextUrl.origin,
       });
     }
-
+    // Booking is durable before mail is attempted. Store only sanitized,
+    // non-PII delivery categories for the panel.
+    const communications: Record<string, unknown> = {};
+    try {
+      const customer = normalizedEmail ? await sendEmailDetailed({
+        to: normalizedEmail, subject: `Talebiniz alındı — ${referenceNumber}`,
+        text: `Talebiniz alındı. Referans numaranız: ${referenceNumber}`,
+        html: `<p>Talebiniz alındı.</p><p><strong>Referans numaranız:</strong> ${escapeHtml(referenceNumber)}</p>`,
+      }) : null;
+      communications.customerConfirmation = customer
+        ? deliverySummary(customer)
+        : { status: 'not-requested', code: 'NO_VALID_EMAIL', acceptedCount: 0, rejectedCount: 0 };
+      const admins = await getAdminNotifyEmails();
+      const results = await Promise.all(admins.map((to) => sendEmailDetailed({
+        to, subject: `Yeni transfer talebi — ${referenceNumber}`,
+        text: `Referans: ${referenceNumber}\nAd Soyad: ${sanitizeText(data.adSoyad).slice(0, 120)}\nTelefon: ${sanitizeText(data.telefon).slice(0, 30)}\nE-posta: ${normalizedEmail ?? '—'}`,
+        html: `<h2>Yeni Transfer Talebi</h2><p><strong>Referans:</strong> ${escapeHtml(referenceNumber)}</p><p><strong>Ad Soyad:</strong> ${escapeHtml(sanitizeText(data.adSoyad).slice(0, 120))}</p>`,
+      })));
+      communications.adminNotification = {
+        status: admins.length === 0 ? 'not-configured' : results.every((r) => r.ok) ? 'sent' : results.some((r) => r.ok) ? 'partial' : 'failed',
+        recipientCount: admins.length, acceptedCount: results.filter((r) => r.ok).length,
+        failureCodes: [...new Set(results.filter((r) => !r.ok).map((r) => r.code))],
+      };
+    } catch {
+      communications.adminNotification = { status: 'failed', recipientCount: 0, acceptedCount: 0, failureCodes: ['NOTIFICATION_PROCESSING_FAILED'] };
+    }
+    await db.update(reservationRequests).set({
+      requestData: { ...safeFormData, communication: communications },
+      updatedAt: new Date(),
+    }).where(eq(reservationRequests.referenceNumber, referenceNumber)).catch(() => {});
     return NextResponse.json({ referenceNumber });
   } catch (err) {
     await recordSubmissionFailure({

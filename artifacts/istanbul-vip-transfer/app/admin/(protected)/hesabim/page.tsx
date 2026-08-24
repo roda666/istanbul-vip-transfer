@@ -47,6 +47,7 @@ export default async function HesabimPage() {
     SUPER_ADMIN: 'Süper Yönetici',
     ADMIN: 'Yönetici',
     EDITOR: 'Editör',
+    CHAT_STAFF: 'Sohbet Personeli',
   };
 
   return (

@@ -15,6 +15,7 @@ import { z } from 'zod';
 import { sanitizeText } from '@/lib/sanitize';
 import { getAdminNotifyEmails, sendEmailDetailed } from '@/lib/email';
 import { rateLimit } from '@/lib/auth/rate-limit';
+import { startNewsletterOptIn } from '@/lib/newsletter';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,8 +45,6 @@ const ContactSchema = z.object({
   newsletterConsent: z.boolean().optional().default(false),
   _hp:     z.string().optional(),   // honeypot — must be empty
 });
-
-const CONSENT_VERSION = '2026-07-28-v1';
 
 function escapeHtml(value: string): string {
   return value
@@ -139,8 +138,6 @@ export async function POST(req: NextRequest) {
     const { db } = await import('@/db');
     const {
       reservationRequests,
-      newsletterSubscribers,
-      newsletterConsentEvents,
       auditLogs,
     } = await import('@/db/schema');
     const { eq } = await import('drizzle-orm');
@@ -158,41 +155,12 @@ export async function POST(req: NextRequest) {
       status: 'NEW',
     });
 
-    // Contact enquiries never imply marketing consent. Only an explicit
-    // checkbox choice creates/reactivates a subscriber and records an audit
-    // event, using the same lifecycle as the reservation form.
+    // Explicit consent initiates double opt-in. It never activates an address
+    // until the recipient uses the single-use confirmation link.
     if (data.newsletterConsent) {
-      const existing = await db
-        .select({ id: newsletterSubscribers.id })
-        .from(newsletterSubscribers)
-        .where(eq(newsletterSubscribers.normalizedEmail, contact.email))
-        .limit(1);
-
-      let subscriberId: string;
-      if (existing.length > 0) {
-        subscriberId = existing[0].id;
-        await db
-          .update(newsletterSubscribers)
-          .set({ status: 'ACTIVE', updatedAt: new Date() })
-          .where(eq(newsletterSubscribers.normalizedEmail, contact.email));
-      } else {
-        const [subscriber] = await db.insert(newsletterSubscribers).values({
-          normalizedEmail: contact.email,
-          name: contact.name,
-          preferredLanguage: contact.locale,
-          status: 'ACTIVE',
-          source: 'contact-form',
-        }).returning({ id: newsletterSubscribers.id });
-        subscriberId = subscriber.id;
-      }
-
-      await db.insert(newsletterConsentEvents).values({
-        subscriberId,
-        normalizedEmail: contact.email,
-        action: 'GRANTED',
-        consentTextVersion: CONSENT_VERSION,
-        language: contact.locale,
-        source: 'contact-form',
+      await startNewsletterOptIn({
+        email: contact.email, name: contact.name, language: contact.locale,
+        source: 'contact-form', origin: req.nextUrl.origin,
       });
     }
 

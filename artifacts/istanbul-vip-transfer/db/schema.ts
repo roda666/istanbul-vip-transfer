@@ -401,6 +401,8 @@ export const vehicles = pgTable('vehicles', {
   priceCalculationEligible: boolean('price_calculation_eligible').default(false).notNull(),
   /** Toll tariff class: minivan | minibus | midibus | bus. */
   pricingClass: text('pricing_class').default('minivan').notNull(),
+  /** Lets admins temporarily remove a published vehicle from public use without archiving it. */
+  isActive: boolean('is_active').default(true).notNull(),
   features: jsonb('features').$type<string[]>().default([]).notNull(),
   coverImage: text('cover_image'),
   coverImageAlt: text('cover_image_alt'),
@@ -1088,6 +1090,17 @@ export const socialPlatforms = pgTable('social_platforms', {
 
 // ── Transfer Routes ───────────────────────────────────────────────────────────
 // Shown on homepage "Popüler Transfer Bölgeleri" section; managed via admin.
+export type RouteTransportOption = {
+  name: string;
+  summary: string;
+  downside: string;
+};
+
+export type RouteFaqItem = {
+  question: string;
+  answer: string;
+};
+
 export const transferRoutes = pgTable('transfer_routes', {
   id:                     uuid('id').primaryKey().defaultRandom(),
   slug:                   text('slug').notNull().unique(),
@@ -1105,6 +1118,14 @@ export const transferRoutes = pgTable('transfer_routes', {
   /** Optional recommended vehicle for this maintained route. */
   defaultVehicleId:       uuid('default_vehicle_id').references(() => vehicles.id, { onDelete: 'set null' }),
   durationMinutes:        integer('duration_minutes').notNull(),
+  /** Typical non-peak journey window, kept as numbers for consistent summary tables. */
+  normalDurationMinMinutes: integer('normal_duration_min_minutes'),
+  normalDurationMaxMinutes: integer('normal_duration_max_minutes'),
+  /** Typical peak-hour journey window, kept as numbers for consistent summary tables. */
+  peakDurationMinMinutes: integer('peak_duration_min_minutes'),
+  peakDurationMaxMinutes: integer('peak_duration_max_minutes'),
+  /** Whether the suggested route normally crosses from one side of Istanbul to the other. */
+  hasCrossContinentPassage: boolean('has_cross_continent_passage').default(false).notNull(),
   priceVitoMinEur:        integer('price_vito_min_eur').notNull(),
   priceVitoMaxEur:        integer('price_vito_max_eur').notNull(),
   priceSprinterMinEur:    integer('price_sprinter_min_eur').notNull(),
@@ -1114,6 +1135,10 @@ export const transferRoutes = pgTable('transfer_routes', {
   active:                 boolean('active').default(true).notNull(),
   /** Turkish source copy for the public route-detail page. */
   description:            text('description'),
+  introParagraph:         text('intro_paragraph'),
+  transportOptions:       jsonb('transport_options').$type<RouteTransportOption[]>().default([]).notNull(),
+  routeNotes:             jsonb('route_notes').$type<string[]>().default([]).notNull(),
+  faqItems:               jsonb('faq_items').$type<RouteFaqItem[]>().default([]).notNull(),
   seoTitle:               text('seo_title'),
   seoDescription:         text('seo_description'),
   ogTitle:                text('og_title'),
@@ -1145,6 +1170,10 @@ export const transferRouteTranslations = pgTable('transfer_route_translations', 
   seoDescription:  text('seo_description'),
   ogTitle:         text('og_title'),
   ogDescription:   text('og_description'),
+  introParagraph:  text('intro_paragraph'),
+  transportOptions: jsonb('transport_options').$type<RouteTransportOption[]>().default([]).notNull(),
+  routeNotes:      jsonb('route_notes').$type<string[]>().default([]).notNull(),
+  faqItems:        jsonb('faq_items').$type<RouteFaqItem[]>().default([]).notNull(),
   status:          translationStatusEnum('status').default('NOT_STARTED').notNull(),
   isManuallyLocked: boolean('is_manually_locked').default(false).notNull(),
   publishedAt:     timestamp('published_at', { withTimezone: true }),
@@ -1322,6 +1351,8 @@ export const optionalServices = pgTable('optional_services', {
   automaticServiceTypes: jsonb('automatic_service_types').$type<string[]>().default([]).notNull(),
   active: boolean('active').default(true).notNull(),
   displayOrder: integer('display_order').default(0).notNull(),
+  /** Archived services remain in quote snapshots but cannot be selected for new quotes. */
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   createdBy: uuid('created_by').references(() => adminUsers.id, { onDelete: 'set null' }),

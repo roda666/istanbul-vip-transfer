@@ -1,7 +1,7 @@
 /** Authoritative, public Istanbul VIP Transfer fleet. */
 const LANGS = ['tr', 'en', 'de', 'ru', 'ar', 'fr', 'es', 'it', 'nl'];
 
-function translations(name, description, tagline, passengers, luggage, category) {
+function translations(name, description, tagline, passengers, luggage, category, requestOnly = false) {
   const names = name === 'Yarım otobüs'
     ? { tr: name, en: 'Midibus', de: 'Midibus', ru: 'Мидибус', ar: 'حافلة متوسطة', fr: 'Midibus', es: 'Midibús', it: 'Midibus', nl: 'Midibus' }
     : name === 'Otobüs'
@@ -13,7 +13,17 @@ function translations(name, description, tagline, passengers, luggage, category)
     midibus: ['midibus', 'Midibus', 'мидибус', 'حافلة متوسطة', 'midibus', 'midibús', 'midibus', 'midibus'],
     bus: ['coach', 'Reisebus', 'автобус', 'حافلة', 'autocar', 'autobús', 'autobus', 'touringcar'],
   }[category];
-  const descriptions = {
+  const descriptions = requestOnly ? {
+    tr: description,
+    en: `${name}, offered on request for private transfers.`,
+    de: `${name}, auf Anfrage für private Transfers verfügbar.`,
+    ru: `${name}, доступен по запросу для частных трансферов.`,
+    ar: `${name} متاح عند الطلب لخدمات النقل الخاصة.`,
+    fr: `${name}, proposé sur demande pour les transferts privés.`,
+    es: `${name}, disponible bajo petición para traslados privados.`,
+    it: `${name}, disponibile su richiesta per trasferimenti privati.`,
+    nl: `${name}, op aanvraag beschikbaar voor privétransfers.`,
+  } : {
     tr: description,
     en: `Comfort-focused ${kind[0]} for up to ${passengers} passengers, with space for ${luggage} large suitcases.`,
     de: `Komfortorientierter ${kind[1]} für bis zu ${passengers} Fahrgäste, mit Platz für ${luggage} große Koffer.`,
@@ -26,14 +36,14 @@ function translations(name, description, tagline, passengers, luggage, category)
   };
   const taglines = {
     tr: tagline,
-    en: category === 'minivan' ? 'Refined Minivan Comfort' : 'Premium Group Travel',
-    de: category === 'minivan' ? 'Komfort im eleganten Minivan' : 'Premiumreisen für Gruppen',
-    ru: category === 'minivan' ? 'Изысканный комфорт минивэна' : 'Премиальные поездки для групп',
-    ar: category === 'minivan' ? 'راحة ميني فان راقية' : 'رحلات جماعية فاخرة',
-    fr: category === 'minivan' ? 'Confort raffiné en minivan' : 'Voyage premium en groupe',
-    es: category === 'minivan' ? 'Confort refinado en minivan' : 'Viajes premium en grupo',
-    it: category === 'minivan' ? 'Comfort raffinato in minivan' : 'Viaggi premium per gruppi',
-    nl: category === 'minivan' ? 'Verfijnd minivancomfort' : 'Premium groepsvervoer',
+    en: requestOnly ? 'Available on Request' : category === 'minivan' ? 'Refined Minivan Comfort' : 'Premium Group Travel',
+    de: requestOnly ? 'Auf Anfrage verfügbar' : category === 'minivan' ? 'Komfort im eleganten Minivan' : 'Premiumreisen für Gruppen',
+    ru: requestOnly ? 'Доступно по запросу' : category === 'minivan' ? 'Изысканный комфорт минивэна' : 'Премиальные поездки для групп',
+    ar: requestOnly ? 'متاح عند الطلب' : category === 'minivan' ? 'راحة ميني فان راقية' : 'رحلات جماعية فاخرة',
+    fr: requestOnly ? 'Disponible sur demande' : category === 'minivan' ? 'Confort raffiné en minivan' : 'Voyage premium en groupe',
+    es: requestOnly ? 'Disponible bajo petición' : category === 'minivan' ? 'Confort refinado en minivan' : 'Viajes premium en grupo',
+    it: requestOnly ? 'Disponibile su richiesta' : category === 'minivan' ? 'Comfort raffinato in minivan' : 'Viaggi premium per gruppi',
+    nl: requestOnly ? 'Beschikbaar op aanvraag' : category === 'minivan' ? 'Verfijnd minivancomfort' : 'Premium groepsvervoer',
   };
   return {
     nameTranslations: names,
@@ -44,13 +54,17 @@ function translations(name, description, tagline, passengers, luggage, category)
 
 const standardFeatures = ['WIFI', 'CLIMATE', 'MEET_GREET'];
 
-function vehicle({ name, slug, description, tagline, passengers, luggage = passengers, type, image, alt, order, featured = false }) {
+function vehicle({
+  name, slug, description, tagline, passengers, luggage = passengers, type, image, alt, order,
+  featured = false, priceCalculationEligible = true, pricingClass = type, features = standardFeatures,
+  requestOnly = false,
+}) {
   return {
     name, slug, shortDescription: description, passengerCapacity: passengers,
     luggageCapacity: luggage, vehicleType: type, coverImage: image,
-    coverImageAlt: alt, features: standardFeatures, displayOrder: order,
-    isFeatured: featured, status: 'PUBLISHED',
-    ...translations(name, description, tagline, passengers, luggage, type),
+    coverImageAlt: alt, features, displayOrder: order, isFeatured: featured,
+    priceCalculationEligible, pricingClass, isActive: true, status: 'PUBLISHED',
+    ...translations(name, description, tagline, passengers, luggage, type, requestOnly),
   };
 }
 
@@ -63,6 +77,11 @@ export const VEHICLES = [
   vehicle({ name: 'Mercedes Sprinter 19', slug: 'mercedes-sprinter-19', description: '19 kişilik Mercedes Sprinter minibüs; her yolcu için bir büyük bavul kapasitesi.', tagline: 'Büyük Grup Minibüsü', passengers: 19, type: 'minibus', image: '/images/vehicles/sprinter-19.jpg', alt: 'Mercedes Sprinter 19 kişilik minibüs', order: 60 }),
   vehicle({ name: 'Yarım otobüs', slug: 'midibus-25', description: '25 kişiye kadar yarım otobüs; her yolcu için bir büyük bavul kapasitesi.', tagline: 'Orta Ölçekli Grup', passengers: 25, type: 'midibus', image: '/images/vehicles/midibus-25.jpg', alt: '25 kişilik yarım otobüs', order: 70 }),
   vehicle({ name: 'Otobüs', slug: 'coach-45', description: '45 kişiye kadar otobüs; her yolcu için bir büyük bavul kapasitesi.', tagline: 'Büyük Grup Otobüsü', passengers: 45, type: 'bus', image: '/images/vehicles/coach-45.jpg', alt: '45 kişilik otobüs', order: 80 }),
+  // These are request-only public options. Keep the existing images, but do not
+  // claim trim-specific equipment or specifications that cannot be verified.
+  vehicle({ name: 'Mercedes E-Class', slug: 'mercedes-e-class', description: 'Mercedes E-Class, özel transferler için talep üzerine sunulan sedan seçeneği.', tagline: 'Talep Üzerine Sedan', passengers: 4, luggage: 4, type: 'minivan', image: '/images/mercedes-e-class.jpg', alt: 'Mercedes E-Class sedan', order: 90, priceCalculationEligible: false, pricingClass: 'minivan', features: [], requestOnly: true }),
+  vehicle({ name: 'Mercedes S-Class', slug: 'mercedes-s-class', description: 'Mercedes S-Class, özel transferler için talep üzerine sunulan sedan seçeneği.', tagline: 'Talep Üzerine Sedan', passengers: 4, luggage: 3, type: 'minivan', image: '/images/mercedes-s-class.jpg', alt: 'Mercedes S-Class sedan', order: 100, priceCalculationEligible: false, pricingClass: 'minivan', features: [], requestOnly: true }),
+  vehicle({ name: 'Mercedes V-Class', slug: 'mercedes-v-class', description: 'Mercedes V-Class, özel transferler için talep üzerine sunulan araç seçeneği.', tagline: 'Talep Üzerine Araç', passengers: 7, luggage: 8, type: 'minivan', image: '/images/mercedes-v-class.jpg', alt: 'Mercedes V-Class', order: 110, priceCalculationEligible: false, pricingClass: 'minivan', features: [], requestOnly: true }),
 ];
 
-export const ARCHIVED_SLUGS = ['mercedes-e-class', 'mercedes-s-class', 'mercedes-v-class'];
+export const ARCHIVED_SLUGS = [];

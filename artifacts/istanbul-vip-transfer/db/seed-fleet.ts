@@ -15,14 +15,16 @@ try {
         name, slug, short_description, passenger_capacity, luggage_capacity,
         vehicle_type, cover_image, cover_image_alt, features, display_order,
         is_featured, status, name_translations, short_desc_translations,
-        tagline_translations, published_at
+        tagline_translations, price_calculation_eligible, pricing_class, is_active,
+        published_at
       ) VALUES (
         ${vehicle.name}, ${vehicle.slug}, ${vehicle.shortDescription},
         ${vehicle.passengerCapacity}, ${vehicle.luggageCapacity}, ${vehicle.vehicleType},
         ${vehicle.coverImage}, ${vehicle.coverImageAlt}, ${sql.json(vehicle.features)},
         ${vehicle.displayOrder}, ${vehicle.isFeatured}, 'PUBLISHED',
         ${sql.json(vehicle.nameTranslations)}, ${sql.json(vehicle.shortDescTranslations)},
-        ${sql.json(vehicle.taglineTranslations)}, now()
+        ${sql.json(vehicle.taglineTranslations)}, ${vehicle.priceCalculationEligible},
+        ${vehicle.pricingClass}, ${vehicle.isActive}, now()
       )
       ON CONFLICT (slug) DO UPDATE SET
         name = EXCLUDED.name,
@@ -35,16 +37,16 @@ try {
         features = EXCLUDED.features,
         display_order = EXCLUDED.display_order,
         is_featured = EXCLUDED.is_featured,
-        status = 'PUBLISHED',
         name_translations = EXCLUDED.name_translations,
         short_desc_translations = EXCLUDED.short_desc_translations,
         tagline_translations = EXCLUDED.tagline_translations,
-        archived_at = NULL,
         updated_at = now()
     `;
   }
-  await sql`UPDATE vehicles SET status = 'ARCHIVED', archived_at = now(), updated_at = now()
-    WHERE slug IN ${sql(ARCHIVED_SLUGS)} AND status <> 'ARCHIVED'`;
+  if (ARCHIVED_SLUGS.length > 0) {
+    await sql`UPDATE vehicles SET status = 'ARCHIVED', archived_at = now(), updated_at = now()
+      WHERE slug IN ${sql(ARCHIVED_SLUGS)} AND status <> 'ARCHIVED'`;
+  }
 } finally {
   await sql.end();
 }

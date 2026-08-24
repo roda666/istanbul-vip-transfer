@@ -320,6 +320,7 @@ export async function POST(req: NextRequest) {
         .where(and(
           eq(vehicles.id, selectedVehicleId),
           eq(vehicles.status, 'PUBLISHED'),
+          eq(vehicles.isActive, true),
         ))
         .limit(1);
       if (!selectedVehicle) {

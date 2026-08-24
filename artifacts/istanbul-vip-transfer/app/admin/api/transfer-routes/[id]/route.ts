@@ -29,12 +29,44 @@ type TranslationPayload = {
   seoDescription?: unknown;
   ogTitle?: unknown;
   ogDescription?: unknown;
+  introParagraph?: unknown;
+  transportOptions?: unknown;
+  routeNotes?: unknown;
+  faqItems?: unknown;
   status?: unknown;
   isManuallyLocked?: unknown;
 };
 
 function text(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function transportOptions(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
+    .map((item) => ({
+      name: text(item.name) ?? '',
+      summary: text(item.summary) ?? '',
+      downside: text(item.downside) ?? '',
+    }))
+    .filter((item) => item.name && item.summary && item.downside)
+    .slice(0, 8);
+}
+
+function routeNotes(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string' && !!item.trim()).map((item) => item.trim()).slice(0, 12)
+    : [];
+}
+
+function faqItems(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
+    .map((item) => ({ question: text(item.question) ?? '', answer: text(item.answer) ?? '' }))
+    .filter((item) => item.question && item.answer)
+    .slice(0, 12);
 }
 
 /** Normalize text to a URL-safe slug */
@@ -60,7 +92,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { name, origin, destination, distanceKm, durationMinutes,
     priceVitoMinEur, priceVitoMaxEur, priceSprinterMinEur, priceSprinterMaxEur,
     imagePath, displayOrder, active, description, seoTitle, seoDescription,
-    ogTitle, ogDescription, relatedServiceSlug, indexable,
+     ogTitle, ogDescription, relatedServiceSlug, indexable, introParagraph, transportOptions: rawTransportOptions,
+     routeNotes: rawRouteNotes, faqItems: rawFaqItems, normalDurationMinMinutes, normalDurationMaxMinutes,
+     peakDurationMinMinutes, peakDurationMaxMinutes, hasCrossContinentPassage,
     originLocationId, destinationLocationId, defaultVehicleId, distanceSource } = body;
 
   if (!name || !origin || !destination) {
@@ -122,6 +156,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       distanceVerifiedBy: normalizedDistanceSource === 'ADMIN_VERIFIED' ? session.adminId : null,
       defaultVehicleId: normalizedDefaultVehicleId,
       durationMinutes: durationMinutesValue ?? 0,
+      normalDurationMinMinutes: positiveInteger(normalDurationMinMinutes),
+      normalDurationMaxMinutes: positiveInteger(normalDurationMaxMinutes),
+      peakDurationMinMinutes: positiveInteger(peakDurationMinMinutes),
+      peakDurationMaxMinutes: positiveInteger(peakDurationMaxMinutes),
+      hasCrossContinentPassage: hasCrossContinentPassage === true,
       priceVitoMinEur: Number(priceVitoMinEur ?? 0),
       priceVitoMaxEur: Number(priceVitoMaxEur ?? 0),
       priceSprinterMinEur: Number(priceSprinterMinEur ?? 0),
@@ -130,6 +169,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       displayOrder: Number(displayOrder ?? 0),
       active: active !== false,
       description: text(description),
+      introParagraph: text(introParagraph),
+      transportOptions: transportOptions(rawTransportOptions),
+      routeNotes: routeNotes(rawRouteNotes),
+      faqItems: faqItems(rawFaqItems),
       seoTitle: text(seoTitle),
       seoDescription: text(seoDescription),
       ogTitle: text(ogTitle),
@@ -165,6 +208,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         seoDescription: text(candidate.seoDescription),
         ogTitle: text(candidate.ogTitle),
         ogDescription: text(candidate.ogDescription),
+        introParagraph: text(candidate.introParagraph),
+        transportOptions: transportOptions(candidate.transportOptions),
+        routeNotes: routeNotes(candidate.routeNotes),
+        faqItems: faqItems(candidate.faqItems),
         status,
         isManuallyLocked: candidate.isManuallyLocked === true,
         publishedAt: status === 'PUBLISHED' ? new Date() : null,
@@ -178,6 +225,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           seoDescription: text(candidate.seoDescription),
           ogTitle: text(candidate.ogTitle),
           ogDescription: text(candidate.ogDescription),
+          introParagraph: text(candidate.introParagraph),
+          transportOptions: transportOptions(candidate.transportOptions),
+          routeNotes: routeNotes(candidate.routeNotes),
+          faqItems: faqItems(candidate.faqItems),
           status,
           isManuallyLocked: candidate.isManuallyLocked === true,
           publishedAt: status === 'PUBLISHED' ? new Date() : null,

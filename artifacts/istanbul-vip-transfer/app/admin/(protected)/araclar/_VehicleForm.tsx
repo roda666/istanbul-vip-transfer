@@ -32,6 +32,7 @@ interface FormState {
   vehicleType: string;
   priceCalculationEligible: boolean;
   pricingClass: string;
+  isActive: boolean;
   passengerCapacity: string;
   luggageCapacity: string;
   coverImage: string;
@@ -68,6 +69,7 @@ function vehicleToForm(v: Vehicle): FormState {
     vehicleType: normalizeVehicleType(v.vehicleType) ?? '',
     priceCalculationEligible: v.priceCalculationEligible,
     pricingClass: v.pricingClass,
+    isActive: v.isActive,
     passengerCapacity: v.passengerCapacity != null ? String(v.passengerCapacity) : '',
     luggageCapacity: v.luggageCapacity != null ? String(v.luggageCapacity) : '',
     coverImage: v.coverImage ?? '',
@@ -96,6 +98,7 @@ const emptyForm: FormState = {
   vehicleType: '',
   priceCalculationEligible: false,
   pricingClass: 'minivan',
+  isActive: true,
   passengerCapacity: '',
   luggageCapacity: '',
   coverImage: '',
@@ -697,6 +700,7 @@ export default function VehicleForm({ vehicle, userRole }: Props) {
       vehicleType: form.vehicleType || null,
       priceCalculationEligible: form.priceCalculationEligible,
       pricingClass: form.pricingClass,
+      isActive: form.isActive,
       features: form.features.filter(Boolean),
       coverImage: form.coverImage || null,
       coverImageAlt: form.coverImageAlt || null,
@@ -831,6 +835,27 @@ export default function VehicleForm({ vehicle, userRole }: Props) {
             onChange={(v) => setForm((f) => ({ ...f, luggageCapacity: v }))}
             placeholder="ör. 2"
           />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '2px' }}>
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              color: '#172B3A',
+              fontSize: '13px',
+              fontFamily: 'Inter, sans-serif',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={form.isActive}
+              onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))}
+              style={{ accentColor: GOLD, width: '14px', height: '14px' }}
+            />
+            Aktif araç
+          </label>
         </div>
       </div>
 

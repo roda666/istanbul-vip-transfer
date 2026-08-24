@@ -196,7 +196,11 @@ async function resolveServices(
 ): Promise<PricingServiceInput[]> {
   if (!selections.length) return [];
   const ids = [...new Set(selections.map((item) => item.serviceId))];
-  const rows = await db.select().from(optionalServices).where(and(inArray(optionalServices.id, ids), eq(optionalServices.active, true)));
+   const rows = await db.select().from(optionalServices).where(and(
+     inArray(optionalServices.id, ids),
+     eq(optionalServices.active, true),
+     isNull(optionalServices.archivedAt),
+   ));
   if (rows.length !== ids.length) throw new Error('Seçilen ek hizmetlerden biri geçerli değil.');
   return selections.map((selection) => {
     const service = rows.find((row) => row.id === selection.serviceId)!;

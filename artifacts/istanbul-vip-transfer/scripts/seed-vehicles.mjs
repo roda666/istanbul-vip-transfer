@@ -186,7 +186,8 @@ async function main() {
         name, slug, short_description, passenger_capacity, luggage_capacity,
         vehicle_type, cover_image, cover_image_alt, features, display_order,
         is_featured, status,
-        name_translations, short_desc_translations, tagline_translations
+        name_translations, short_desc_translations, tagline_translations,
+        price_calculation_eligible, pricing_class, is_active
       )
       VALUES (
         ${v.name}, ${v.slug}, ${v.shortDescription},
@@ -195,7 +196,8 @@ async function main() {
         ${sql.json(v.features)}, ${v.displayOrder}, ${v.isFeatured}, 'PUBLISHED',
         ${sql.json(translations.nameTranslations)},
         ${sql.json(translations.shortDescTranslations)},
-        ${sql.json(translations.taglineTranslations)}
+        ${sql.json(translations.taglineTranslations)},
+        ${v.priceCalculationEligible}, ${v.pricingClass}, ${v.isActive}
       )
       ON CONFLICT (slug) DO UPDATE SET
         short_description = EXCLUDED.short_description,
@@ -207,7 +209,6 @@ async function main() {
         cover_image = EXCLUDED.cover_image,
         cover_image_alt = EXCLUDED.cover_image_alt,
         is_featured = EXCLUDED.is_featured,
-        status = EXCLUDED.status,
         name_translations = EXCLUDED.name_translations,
         short_desc_translations = EXCLUDED.short_desc_translations,
         tagline_translations = EXCLUDED.tagline_translations,
@@ -216,8 +217,10 @@ async function main() {
     console.log(`  ✅ Saved ${v.name}`);
   }
 
-  await sql`UPDATE vehicles SET status = 'ARCHIVED', archived_at = now(), updated_at = now()
-    WHERE slug IN ${sql(ARCHIVED_SLUGS)} AND status <> 'ARCHIVED'`;
+  if (ARCHIVED_SLUGS.length > 0) {
+    await sql`UPDATE vehicles SET status = 'ARCHIVED', archived_at = now(), updated_at = now()
+      WHERE slug IN ${sql(ARCHIVED_SLUGS)} AND status <> 'ARCHIVED'`;
+  }
 
   console.log('\n✅ Vehicle seeding complete!');
   await sql.end();

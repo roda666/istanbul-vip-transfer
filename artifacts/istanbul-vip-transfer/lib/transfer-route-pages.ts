@@ -1,8 +1,10 @@
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import {
   transferRoutes,
   transferRouteTranslations,
+  type RouteFaqItem,
+  type RouteTransportOption,
   type TransferRoute,
 } from '@/db/schema';
 import { getPublicLanguages } from '@/lib/i18n/active-locales';
@@ -21,8 +23,13 @@ export type PublicTransferRoute = TransferRoute & {
     seoDescription: string | null;
     ogTitle: string | null;
     ogDescription: string | null;
+    introParagraph: string | null;
+    transportOptions: RouteTransportOption[];
+    routeNotes: string[];
+    faqItems: RouteFaqItem[];
   };
   publishedLocales: string[];
+  relatedRoutes: Array<Pick<TransferRoute, 'slug' | 'name' | 'origin' | 'destination'>>;
 };
 
 async function publicLocaleCodes(): Promise<Set<string>> {
@@ -101,11 +108,25 @@ export async function getPublicTransferRoute(
 
   if (!route) return null;
 
-  const publishedLocales = await publishedLocalesForRoute(route.id);
+  const [publishedLocales, relatedRoutes] = await Promise.all([
+    publishedLocalesForRoute(route.id),
+    db
+      .select({
+        slug: transferRoutes.slug,
+        name: transferRoutes.name,
+        origin: transferRoutes.origin,
+        destination: transferRoutes.destination,
+      })
+      .from(transferRoutes)
+      .where(and(eq(transferRoutes.active, true), sql`${transferRoutes.id} <> ${route.id}`))
+      .orderBy(asc(transferRoutes.displayOrder))
+      .limit(3),
+  ]);
   if (locale === 'tr') {
     return {
       ...route,
       publishedLocales,
+      relatedRoutes,
       content: {
         title: route.name,
         description: route.description ?? `${route.origin} ile ${route.destination} arasındaki VIP transfer hizmeti.`,
@@ -113,6 +134,10 @@ export async function getPublicTransferRoute(
         seoDescription: route.seoDescription,
         ogTitle: route.ogTitle,
         ogDescription: route.ogDescription,
+        introParagraph: route.introParagraph,
+        transportOptions: route.transportOptions ?? [],
+        routeNotes: route.routeNotes ?? [],
+        faqItems: route.faqItems ?? [],
       },
     };
   }
@@ -134,6 +159,7 @@ export async function getPublicTransferRoute(
   return {
     ...route,
     publishedLocales,
+    relatedRoutes,
     content: {
       title: translation.title,
       description: translation.description,
@@ -141,6 +167,10 @@ export async function getPublicTransferRoute(
       seoDescription: translation.seoDescription,
       ogTitle: translation.ogTitle,
       ogDescription: translation.ogDescription,
+      introParagraph: translation.introParagraph,
+      transportOptions: translation.transportOptions ?? [],
+      routeNotes: translation.routeNotes ?? [],
+      faqItems: translation.faqItems ?? [],
     },
   };
 }

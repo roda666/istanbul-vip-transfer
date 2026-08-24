@@ -17,6 +17,7 @@ const updateSchema = z.object({
   vehicleType: z.enum(VEHICLE_TYPE_VALUES).optional().nullable(),
   priceCalculationEligible: z.boolean().optional(),
   pricingClass: z.enum(['minivan', 'minibus', 'midibus', 'bus']).optional(),
+  isActive: z.boolean().optional(),
   features: z.array(z.string().max(200)).optional(),
   coverImage: z.string().max(500).optional().nullable(),
   coverImageAlt: z.string().max(300).optional().nullable(),
@@ -36,8 +37,10 @@ const updateSchema = z.object({
 });
 
 const actionSchema = z.object({
-  action: z.enum(['approve', 'publish', 'archive']),
+  action: z.enum(['approve', 'publish', 'archive', 'activate', 'deactivate']),
 });
+
+const REQUEST_ONLY_SLUGS = new Set(['mercedes-e-class', 'mercedes-s-class', 'mercedes-v-class']);
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -102,12 +105,19 @@ export async function PUT(request: NextRequest, { params }: Params) {
   const { eq } = await import('drizzle-orm');
 
   const [current] = await db
-    .select({ id: vehicles.id, status: vehicles.status })
+    .select({ id: vehicles.id, slug: vehicles.slug, status: vehicles.status })
     .from(vehicles)
     .where(eq(vehicles.id, id))
     .limit(1)
     .catch(() => []);
   if (!current) return NextResponse.json({ error: 'Bulunamadı.' }, { status: 404 });
+  const resultingSlug = data.slug ?? current.slug;
+  if (REQUEST_ONLY_SLUGS.has(resultingSlug) && data.priceCalculationEligible === true) {
+    return NextResponse.json(
+      { error: 'Bu araç yalnızca talep üzerine sunulur ve otomatik fiyat hesaplamasına eklenemez.' },
+      { status: 422 },
+    );
+  }
 
   const { getApprovalReset } = await import('@/lib/workflow');
   const { sanitizeText, sanitizeHtml } = await import('@/lib/sanitize');
@@ -139,6 +149,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
       updateValues.vehicleType = data.vehicleType ? sanitizeText(data.vehicleType) : null;
     if (data.priceCalculationEligible !== undefined) updateValues.priceCalculationEligible = data.priceCalculationEligible;
     if (data.pricingClass !== undefined) updateValues.pricingClass = data.pricingClass;
+    if (data.isActive !== undefined) updateValues.isActive = data.isActive;
     if (data.features !== undefined)
       updateValues.features = data.features.map((f) => sanitizeText(f));
     if (data.coverImage !== undefined)
@@ -368,6 +379,12 @@ export async function POST(request: NextRequest, { params }: Params) {
     updates = {
       status: 'ARCHIVED',
       archivedAt: new Date(),
+      updatedAt: new Date(),
+      updatedBy: session.adminId,
+    };
+  } else {
+    updates = {
+      isActive: action === 'activate',
       updatedAt: new Date(),
       updatedBy: session.adminId,
     };

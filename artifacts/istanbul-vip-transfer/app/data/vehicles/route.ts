@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   try {
     const { db } = await import('@/db');
     const { vehicles } = await import('@/db/schema');
-    const { eq, asc } = await import('drizzle-orm');
+     const { and, eq, asc } = await import('drizzle-orm');
 
     const rows = await db
       .select({
@@ -37,7 +37,7 @@ export async function GET(request: Request) {
         taglineTranslations: vehicles.taglineTranslations,
       })
       .from(vehicles)
-      .where(eq(vehicles.status, 'PUBLISHED'))
+       .where(and(eq(vehicles.status, 'PUBLISHED'), eq(vehicles.isActive, true)))
       .orderBy(asc(vehicles.displayOrder));
 
     const resolved = resolvePublishedVehicles(rows, lang);

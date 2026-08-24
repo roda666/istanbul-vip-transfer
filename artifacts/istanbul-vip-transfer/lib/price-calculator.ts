@@ -66,6 +66,8 @@ export async function getPriceEstimate(input: {
       eq(transferRoutes.active, true),
       eq(vehicles.slug, input.vehicleSlug),
       eq(vehicles.status, 'PUBLISHED'),
+      eq(vehicles.isActive, true),
+      eq(vehicles.priceCalculationEligible, true),
     ));
 
   const at = input.at ?? new Date();

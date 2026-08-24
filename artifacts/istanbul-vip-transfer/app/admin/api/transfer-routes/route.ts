@@ -8,6 +8,38 @@ export const dynamic = 'force-dynamic';
 const DISTANCE_SOURCES = new Set(['LEGACY_UNVERIFIED', 'COORDINATE_ESTIMATE', 'ADMIN_VERIFIED']);
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+function optionalText(value: unknown) {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function transportOptions(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
+    .map((item) => ({
+      name: optionalText(item.name) ?? '',
+      summary: optionalText(item.summary) ?? '',
+      downside: optionalText(item.downside) ?? '',
+    }))
+    .filter((item) => item.name && item.summary && item.downside)
+    .slice(0, 8);
+}
+
+function routeNotes(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string' && !!item.trim()).map((item) => item.trim()).slice(0, 12)
+    : [];
+}
+
+function faqItems(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
+    .map((item) => ({ question: optionalText(item.question) ?? '', answer: optionalText(item.answer) ?? '' }))
+    .filter((item) => item.question && item.answer)
+    .slice(0, 12);
+}
+
 function positiveInteger(value: unknown): number | null {
   const number = typeof value === 'number' ? value : Number(value);
   return Number.isSafeInteger(number) && number > 0 ? number : null;
@@ -82,7 +114,9 @@ export async function POST(req: NextRequest) {
   const { name, origin, destination, distanceKm, durationMinutes,
     priceVitoMinEur, priceVitoMaxEur, priceSprinterMinEur, priceSprinterMaxEur,
     imagePath, displayOrder, active, description, seoTitle, seoDescription,
-    ogTitle, ogDescription, relatedServiceSlug, indexable,
+     ogTitle, ogDescription, relatedServiceSlug, indexable, introParagraph, transportOptions: rawTransportOptions,
+     routeNotes: rawRouteNotes, faqItems: rawFaqItems, normalDurationMinMinutes, normalDurationMaxMinutes,
+     peakDurationMinMinutes, peakDurationMaxMinutes, hasCrossContinentPassage,
     originLocationId, destinationLocationId, defaultVehicleId, distanceSource } = body;
 
   if (!name || !origin || !destination) {
@@ -147,6 +181,11 @@ export async function POST(req: NextRequest) {
       distanceVerifiedBy: normalizedDistanceSource === 'ADMIN_VERIFIED' ? session.adminId : null,
       defaultVehicleId: normalizedDefaultVehicleId,
       durationMinutes: durationMinutesValue ?? 0,
+      normalDurationMinMinutes: positiveInteger(normalDurationMinMinutes),
+      normalDurationMaxMinutes: positiveInteger(normalDurationMaxMinutes),
+      peakDurationMinMinutes: positiveInteger(peakDurationMinMinutes),
+      peakDurationMaxMinutes: positiveInteger(peakDurationMaxMinutes),
+      hasCrossContinentPassage: hasCrossContinentPassage === true,
       priceVitoMinEur: Number(priceVitoMinEur ?? 0),
       priceVitoMaxEur: Number(priceVitoMaxEur ?? 0),
       priceSprinterMinEur: Number(priceSprinterMinEur ?? 0),
@@ -155,6 +194,10 @@ export async function POST(req: NextRequest) {
       displayOrder: Number(displayOrder ?? 0),
       active: active !== false,
       description: description ? String(description) : null,
+      introParagraph: optionalText(introParagraph),
+      transportOptions: transportOptions(rawTransportOptions),
+      routeNotes: routeNotes(rawRouteNotes),
+      faqItems: faqItems(rawFaqItems),
       seoTitle: seoTitle ? String(seoTitle) : null,
       seoDescription: seoDescription ? String(seoDescription) : null,
       ogTitle: ogTitle ? String(ogTitle) : null,

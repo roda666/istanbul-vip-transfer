@@ -5,7 +5,7 @@ import { groupFleetVehicles } from '../../lib/vehicle-options';
 const LANGUAGES = ['tr', 'en', 'de', 'ru', 'ar', 'fr', 'es', 'it', 'nl'];
 
 describe('authoritative fleet catalog', () => {
-  it('contains exactly the eight published, capacity-safe fleet records', () => {
+  it('contains the eight capacity-safe pricing vehicles and request-only options', () => {
     expect(VEHICLES.map((vehicle: typeof VEHICLES[number]) => ({
       slug: vehicle.slug, type: vehicle.vehicleType,
       passengers: vehicle.passengerCapacity, luggage: vehicle.luggageCapacity,
@@ -18,8 +18,15 @@ describe('authoritative fleet catalog', () => {
       { slug: 'mercedes-sprinter-19', type: 'minibus', passengers: 19, luggage: 19 },
       { slug: 'midibus-25', type: 'midibus', passengers: 25, luggage: 25 },
       { slug: 'coach-45', type: 'bus', passengers: 45, luggage: 45 },
+      { slug: 'mercedes-e-class', type: 'minivan', passengers: 4, luggage: 4 },
+      { slug: 'mercedes-s-class', type: 'minivan', passengers: 4, luggage: 3 },
+      { slug: 'mercedes-v-class', type: 'minivan', passengers: 7, luggage: 8 },
     ]);
     expect(VEHICLES.every((vehicle: typeof VEHICLES[number]) => vehicle.status === 'PUBLISHED')).toBe(true);
+    expect(VEHICLES.filter((vehicle: typeof VEHICLES[number]) => vehicle.priceCalculationEligible).map((vehicle: typeof VEHICLES[number]) => vehicle.slug)).toEqual([
+      'mercedes-vito', 'vw-transporter', 'mercedes-sprinter-10', 'mercedes-sprinter-vip',
+      'mercedes-sprinter-15', 'mercedes-sprinter-19', 'midibus-25', 'coach-45',
+    ]);
   });
 
   it('gives every public record its own image and meaningful alt text', () => {
@@ -42,8 +49,10 @@ describe('authoritative fleet catalog', () => {
     }
   });
 
-  it('archives, rather than deletes, catalog-only sedan/MPV rows', () => {
-    expect(ARCHIVED_SLUGS).toEqual(['mercedes-e-class', 'mercedes-s-class', 'mercedes-v-class']);
+  it('keeps request-only sedan/MPV rows visible and out of automatic pricing', () => {
+    expect(ARCHIVED_SLUGS).toEqual([]);
+    expect(VEHICLES.filter((vehicle: typeof VEHICLES[number]) => ['mercedes-e-class', 'mercedes-s-class', 'mercedes-v-class'].includes(vehicle.slug))
+      .every((vehicle: typeof VEHICLES[number]) => !vehicle.priceCalculationEligible && vehicle.features.length === 0)).toBe(true);
   });
 
   it('groups catalog capacity order for the dedicated public fleet page', () => {
@@ -51,7 +60,7 @@ describe('authoritative fleet catalog', () => {
       type: group.type,
       capacities: group.vehicles.map((vehicle) => vehicle.passengerCapacity),
     }))).toEqual([
-      { type: 'minivan', capacities: [6, 7] },
+      { type: 'minivan', capacities: [4, 4, 6, 7, 7] },
       { type: 'minibus', capacities: [10, 13, 15, 19] },
       { type: 'midibus', capacities: [25] },
       { type: 'bus', capacities: [45] },

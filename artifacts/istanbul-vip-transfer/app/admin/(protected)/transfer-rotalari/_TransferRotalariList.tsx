@@ -2,7 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Pencil, Trash2, X, Check, Loader2, MapPinned } from 'lucide-react';
-import type { TransferRoute, TransferRouteTranslation } from '@/db/schema';
+import type {
+  RouteFaqItem,
+  RouteTransportOption,
+  TransferRoute,
+  TransferRouteTranslation,
+} from '@/db/schema';
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 const BORDER = '#D8E1E9';
@@ -26,14 +31,19 @@ const labelStyle: React.CSSProperties = {
 const EMPTY: Partial<TransferRoute> = {
   name: '', origin: '', destination: '',
   distanceKm: 0, durationMinutes: 0,
+  normalDurationMinMinutes: null, normalDurationMaxMinutes: null,
+  peakDurationMinMinutes: null, peakDurationMaxMinutes: null,
+  hasCrossContinentPassage: false,
   priceVitoMinEur: 0, priceVitoMaxEur: 0,
   priceSprinterMinEur: 0, priceSprinterMaxEur: 0,
   imagePath: '', displayOrder: 0, active: true, description: '', seoTitle: '', seoDescription: '',
   ogTitle: '', ogDescription: '', relatedServiceSlug: 'vip-transfer', indexable: true,
+  introParagraph: '', transportOptions: [], routeNotes: [], faqItems: [],
 };
 
 type RouteTranslationDraft = Pick<TransferRouteTranslation,
-  'languageCode' | 'title' | 'description' | 'seoTitle' | 'seoDescription' | 'ogTitle' | 'ogDescription' | 'status' | 'isManuallyLocked'>;
+  'languageCode' | 'title' | 'description' | 'seoTitle' | 'seoDescription' | 'ogTitle' | 'ogDescription' |
+  'introParagraph' | 'transportOptions' | 'routeNotes' | 'faqItems' | 'status' | 'isManuallyLocked'>;
 type AdminRoute = TransferRoute & { translations: RouteTranslationDraft[] };
 type RouteDraft = Partial<TransferRoute> & { translations?: RouteTranslationDraft[] };
 type ManagedLocation = {
@@ -47,6 +57,90 @@ const LOCALES = [
   ['en', 'English'], ['de', 'Deutsch'], ['ru', 'Русский'], ['ar', 'العربية'],
   ['fr', 'Français'], ['es', 'Español'], ['it', 'Italiano'], ['nl', 'Nederlands'],
 ] as const;
+
+type RouteContentDraft = {
+  introParagraph?: string | null;
+  transportOptions?: RouteTransportOption[];
+  routeNotes?: string[];
+  faqItems?: RouteFaqItem[];
+};
+
+function RouteContentFields({
+  value,
+  onChange,
+  locale,
+}: {
+  value: RouteContentDraft;
+  onChange: (patch: Partial<RouteContentDraft>) => void;
+  locale: string;
+}) {
+  const transportOptions = value.transportOptions ?? [];
+  const routeNotes = value.routeNotes ?? [];
+  const faqItems = value.faqItems ?? [];
+  const direction = locale === 'ar' ? 'rtl' : 'ltr';
+
+  const updateTransport = (index: number, key: keyof RouteTransportOption, next: string) => {
+    const items = transportOptions.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: next } : item);
+    onChange({ transportOptions: items });
+  };
+  const updateFaq = (index: number, key: keyof RouteFaqItem, next: string) => {
+    const items = faqItems.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: next } : item);
+    onChange({ faqItems: items });
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '16px', border: `1px solid ${BORDER}`, borderRadius: '10px', background: '#F8FAFC' }}>
+      <div>
+        <label style={labelStyle}>Doğrudan Cevap Paragrafı</label>
+        <textarea
+          dir={direction}
+          style={{ ...inputStyle, minHeight: '92px', resize: 'vertical' }}
+          value={value.introParagraph ?? ''}
+          placeholder="İlk cümlede yaklaşık mesafe ve süreyi doğrudan söyleyin."
+          onChange={(event) => onChange({ introParagraph: event.target.value })}
+        />
+      </div>
+
+      <div>
+        <label style={labelStyle}>Ulaşım Seçenekleri (ucuzdan pahalıya)</label>
+        <p style={{ margin: '0 0 8px', color: MUTED, fontSize: '11px', lineHeight: 1.45 }}>Her seçenekte avantajın yanında dürüst bir dezavantaj yazın. Özel transferi son sıraya ekleyin.</p>
+        {transportOptions.map((option, index) => (
+          <div key={index} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '8px', marginBottom: '8px' }}>
+            <input dir={direction} style={inputStyle} value={option.name} placeholder="Seçenek" onChange={(event) => updateTransport(index, 'name', event.target.value)} />
+            <input dir={direction} style={inputStyle} value={option.summary} placeholder="Kısa açıklama" onChange={(event) => updateTransport(index, 'summary', event.target.value)} />
+            <button type="button" onClick={() => onChange({ transportOptions: transportOptions.filter((_, itemIndex) => itemIndex !== index) })} style={{ border: '1px solid #FECACA', borderRadius: '6px', color: '#D64545', background: '#FFF', padding: '0 9px', cursor: 'pointer' }}>Sil</button>
+            <textarea dir={direction} style={{ ...inputStyle, gridColumn: '1 / -1', minHeight: '48px', resize: 'vertical' }} value={option.downside} placeholder="Dürüst dezavantaj" onChange={(event) => updateTransport(index, 'downside', event.target.value)} />
+          </div>
+        ))}
+        {transportOptions.length < 8 && <button type="button" onClick={() => onChange({ transportOptions: [...transportOptions, { name: '', summary: '', downside: '' }] })} style={{ border: `1px solid ${BORDER}`, borderRadius: '6px', color: '#2563EB', background: '#FFF', padding: '7px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: 700 }}>+ Ulaşım seçeneği ekle</button>}
+      </div>
+
+      <div>
+        <label style={labelStyle}>Güzergâh ve Trafik Notları</label>
+        {routeNotes.map((note, index) => (
+          <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '7px' }}>
+            <input dir={direction} style={inputStyle} value={note} placeholder="Örn: Akşam saatlerinde TEM bağlantılarında yoğunluk görülebilir." onChange={(event) => onChange({ routeNotes: routeNotes.map((item, itemIndex) => itemIndex === index ? event.target.value : item) })} />
+            <button type="button" onClick={() => onChange({ routeNotes: routeNotes.filter((_, itemIndex) => itemIndex !== index) })} style={{ border: '1px solid #FECACA', borderRadius: '6px', color: '#D64545', background: '#FFF', padding: '0 9px', cursor: 'pointer' }}>Sil</button>
+          </div>
+        ))}
+        {routeNotes.length < 12 && <button type="button" onClick={() => onChange({ routeNotes: [...routeNotes, ''] })} style={{ border: `1px solid ${BORDER}`, borderRadius: '6px', color: '#2563EB', background: '#FFF', padding: '7px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: 700 }}>+ Not ekle</button>}
+      </div>
+
+      <div>
+        <label style={labelStyle}>Sık Sorulan Sorular</label>
+        <p style={{ margin: '0 0 8px', color: MUTED, fontSize: '11px', lineHeight: 1.45 }}>Yayımlanan rota sayfaları için en az beş soru ve cevap girin; her cevap ilk cümlede doğrudan cevap vermelidir.</p>
+        {faqItems.map((faq, index) => (
+          <div key={index} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '8px', marginBottom: '8px' }}>
+            <input dir={direction} style={inputStyle} value={faq.question} placeholder="Soru" onChange={(event) => updateFaq(index, 'question', event.target.value)} />
+            <button type="button" onClick={() => onChange({ faqItems: faqItems.filter((_, itemIndex) => itemIndex !== index) })} style={{ border: '1px solid #FECACA', borderRadius: '6px', color: '#D64545', background: '#FFF', padding: '0 9px', cursor: 'pointer' }}>Sil</button>
+            <textarea dir={direction} style={{ ...inputStyle, gridColumn: '1 / -1', minHeight: '70px', resize: 'vertical' }} value={faq.answer} placeholder="Cevap (40–70 kelime)" onChange={(event) => updateFaq(index, 'answer', event.target.value)} />
+          </div>
+        ))}
+        {faqItems.length < 12 && <button type="button" onClick={() => onChange({ faqItems: [...faqItems, { question: '', answer: '' }] })} style={{ border: `1px solid ${BORDER}`, borderRadius: '6px', color: '#2563EB', background: '#FFF', padding: '7px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: 700 }}>+ SSS ekle</button>}
+      </div>
+    </div>
+  );
+}
 
 // ── Confirm dialog ────────────────────────────────────────────────────────────
 function ConfirmDialog({ title, message, onConfirm, onCancel }: {
@@ -94,6 +188,10 @@ function RouteModal({ route, locationOptions, vehicleOptions, onSave, onClose, s
         seoDescription: existing?.seoDescription ?? null,
         ogTitle: existing?.ogTitle ?? null,
         ogDescription: existing?.ogDescription ?? null,
+        introParagraph: existing?.introParagraph ?? null,
+        transportOptions: existing?.transportOptions ?? [],
+        routeNotes: existing?.routeNotes ?? [],
+        faqItems: existing?.faqItems ?? [],
         status: existing?.status ?? 'DRAFT',
         isManuallyLocked: existing?.isManuallyLocked ?? false,
         [key]: value,
@@ -184,6 +282,11 @@ function RouteModal({ route, locationOptions, vehicleOptions, onSave, onClose, s
             <label style={labelStyle}>Sayfa Açıklaması *</label>
             <textarea style={{ ...inputStyle, minHeight: '94px', resize: 'vertical' }} placeholder="Güzergah için ziyaretçiye gösterilecek özgün açıklama" value={form.description ?? ''} onChange={e => set('description', e.target.value)} />
           </div>
+          <RouteContentFields
+            value={form}
+            locale="tr"
+            onChange={(patch) => setForm((current) => ({ ...current, ...patch }))}
+          />
 
           {/* Origin / Destination */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -218,9 +321,17 @@ function RouteModal({ route, locationOptions, vehicleOptions, onSave, onClose, s
 
           {/* Distance / Duration */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            {numField('distanceKm', 'Mesafe (km)')}
-            {numField('durationMinutes', 'Süre (dakika)')}
+            {numField('distanceKm', 'Yaklaşık Mesafe (km)')}
+            {numField('durationMinutes', 'Referans Süre (dakika)')}
+            {numField('normalDurationMinMinutes', 'Normal Trafik Min. (dk)')}
+            {numField('normalDurationMaxMinutes', 'Normal Trafik Maks. (dk)')}
+            {numField('peakDurationMinMinutes', 'Yoğun Saat Min. (dk)')}
+            {numField('peakDurationMaxMinutes', 'Yoğun Saat Maks. (dk)')}
           </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px', color: TEXT }}>
+            <input type="checkbox" checked={form.hasCrossContinentPassage ?? false} onChange={(event) => set('hasCrossContinentPassage', event.target.checked)} />
+            Rota yaka geçişi içeriyor
+          </label>
           <div style={{ background: '#F8FAFC', border: `1px solid ${BORDER}`, borderRadius: '8px', padding: '12px', display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
             <button type="button" onClick={resolveDistance} disabled={resolvingDistance || !form.originLocationId || !form.destinationLocationId} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '7px', color: '#1D4ED8', padding: '7px 10px', fontSize: '12px', fontWeight: 600, cursor: resolvingDistance ? 'wait' : 'pointer', opacity: !form.originLocationId || !form.destinationLocationId ? 0.55 : 1 }}>
               {resolvingDistance ? <Loader2 size={14} className="animate-spin" /> : <MapPinned size={14} />}
@@ -300,6 +411,15 @@ function RouteModal({ route, locationOptions, vehicleOptions, onSave, onClose, s
             <div style={{ background: '#F8FAFC', border: `1px solid ${BORDER}`, padding: '12px', borderRadius: '8px', color: MUTED, fontSize: '12px', lineHeight: 1.55 }}>Bu sayfa yalnızca <strong>PUBLISHED</strong> durumuna getirildiğinde ziyaretçilere, sitemap&apos;e ve hreflang etiketlerine eklenir. Eksik çeviri Türkçe metne düşmez.</div>
             <div><label style={labelStyle}>Başlık *</label><input style={inputStyle} value={translation?.title ?? ''} onChange={e => setTranslation('title', e.target.value)} /></div>
             <div><label style={labelStyle}>Sayfa Açıklaması *</label><textarea dir={activeLocale === 'ar' ? 'rtl' : 'ltr'} style={{ ...inputStyle, minHeight: '112px', resize: 'vertical' }} value={translation?.description ?? ''} onChange={e => setTranslation('description', e.target.value)} /></div>
+            <RouteContentFields
+              value={translation ?? {}}
+              locale={activeLocale}
+              onChange={(patch) => {
+                for (const [key, value] of Object.entries(patch)) {
+                  setTranslation(key as keyof RouteTranslationDraft, value);
+                }
+              }}
+            />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div><label style={labelStyle}>SEO Başlığı</label><input style={inputStyle} value={translation?.seoTitle ?? ''} onChange={e => setTranslation('seoTitle', e.target.value)} /></div>
               <div><label style={labelStyle}>Yayın Durumu</label><select style={inputStyle} value={translation?.status ?? 'DRAFT'} onChange={e => setTranslation('status', e.target.value)}><option value="DRAFT">Taslak</option><option value="REVIEW">İncelemede</option><option value="APPROVED">Onaylandı</option><option value="PUBLISHED">Yayında</option><option value="OUTDATED">Güncellenecek</option></select></div>

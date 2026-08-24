@@ -16,6 +16,7 @@ const createSchema = z.object({
   vehicleType: z.enum(VEHICLE_TYPE_VALUES).optional().nullable(),
   priceCalculationEligible: z.boolean().default(false),
   pricingClass: z.enum(['minivan', 'minibus', 'midibus', 'bus']).default('minivan'),
+  isActive: z.boolean().default(true),
   features: z.array(z.string().max(200)).default([]),
   coverImage: z.string().max(500).optional().nullable(),
   coverImageAlt: z.string().max(300).optional().nullable(),
@@ -33,6 +34,8 @@ const createSchema = z.object({
   robotsIndex: z.boolean().optional().default(true),
   robotsFollow: z.boolean().optional().default(true),
 });
+
+const REQUEST_ONLY_SLUGS = new Set(['mercedes-e-class', 'mercedes-s-class', 'mercedes-v-class']);
 
 /** GET /admin/api/vehicles */
 export async function GET(request: NextRequest) {
@@ -121,6 +124,12 @@ export async function POST(request: NextRequest) {
   }
 
   const data = parsed.data;
+  if (REQUEST_ONLY_SLUGS.has(data.slug) && data.priceCalculationEligible) {
+    return NextResponse.json(
+      { error: 'Bu araç yalnızca talep üzerine sunulur ve otomatik fiyat hesaplamasına eklenemez.' },
+      { status: 422 },
+    );
+  }
   const { sanitizeText, sanitizeHtml } = await import('@/lib/sanitize');
 
   try {
@@ -139,6 +148,7 @@ export async function POST(request: NextRequest) {
         vehicleType: data.vehicleType ? sanitizeText(data.vehicleType) : null,
         priceCalculationEligible: data.priceCalculationEligible,
         pricingClass: data.pricingClass,
+        isActive: data.isActive,
         features: data.features.map((f) => sanitizeText(f)),
         coverImage: data.coverImage ? sanitizeText(data.coverImage) : null,
         coverImageAlt: data.coverImageAlt ? sanitizeText(data.coverImageAlt) : null,

@@ -224,6 +224,21 @@ export default function AraclarList() {
     }
   }
 
+  async function setActive(id: string, active: boolean) {
+    const res = await fetch(`/admin/api/vehicles/${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: active ? 'activate' : 'deactivate' }),
+    });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      setActionError(json.error ?? 'Araç durumu güncellenemedi.');
+    } else {
+      fetchVehicles();
+      router.refresh();
+    }
+  }
+
   function formatDate(d: Date | string | null) {
     if (!d) return '—';
     return new Date(d).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -297,7 +312,7 @@ export default function AraclarList() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #D8E1E9', background: '#F8FAFC' }}>
-                    {['Görsel', 'Araç', 'Kap.', 'Durum', 'Öne Çıkan', 'Sıra', 'Güncellendi', 'İşlem'].map((h) => (
+                    {['Görsel', 'Araç', 'Kap.', 'Durum', 'Aktif', 'Öne Çıkan', 'Sıra', 'Güncellendi', 'İşlem'].map((h) => (
                       <th key={h} style={{ padding: '10px 12px', color: '#718596', fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap', fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                         {h}
                       </th>
@@ -347,6 +362,13 @@ export default function AraclarList() {
                           <StatusBadge status={v.status as ContentStatus} size="sm" />
                         </td>
 
+                        {/* Active */}
+                        <td style={{ padding: '10px 12px' }}>
+                          <span style={{ color: v.isActive ? '#047857' : '#718596', fontSize: '12px', fontWeight: 600 }}>
+                            {v.isActive ? 'Aktif' : 'Pasif'}
+                          </span>
+                        </td>
+
                         {/* Featured */}
                         <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                           {v.isFeatured ? (
@@ -385,6 +407,27 @@ export default function AraclarList() {
                             >
                               Düzenle
                             </Link>
+
+                            {v.status !== 'ARCHIVED' && (
+                              <button
+                                onClick={() => setActive(v.id, !v.isActive)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  padding: '5px 12px',
+                                  borderRadius: '6px',
+                                  background: v.isActive ? '#F8FAFC' : '#ECFDF5',
+                                  border: '1px solid #D8E1E9',
+                                  color: v.isActive ? '#52697A' : '#047857',
+                                  fontSize: '12px',
+                                  fontFamily: 'Inter, sans-serif',
+                                  cursor: 'pointer',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {v.isActive ? 'Pasifleştir' : 'Aktifleştir'}
+                              </button>
+                            )}
 
                             {v.status !== 'ARCHIVED' && (
                               <button

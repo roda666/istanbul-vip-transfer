@@ -89,6 +89,8 @@ export default function TransferRouteDetail({ route, locale }: { route: PublicTr
         <div className="route-scroll route-card" style={{ padding: 0 }}>
           <table className="route-table">
             <tbody>
+              {/* Operational tolls stay in protected pricing tools. Public route pages
+                  show only whether this journey changes continents. */}
               <tr><th>{t.distance}</th><td><strong>{route.distanceKm} km</strong></td><th>{t.crossing}</th><td>{route.hasCrossContinentPassage ? t.yes : t.no}</td></tr>
               <tr><th>{t.normal}</th><td>{durationRange(route.normalDurationMinMinutes, route.normalDurationMaxMinutes, t)}</td><th>{t.peak}</th><td>{durationRange(route.peakDurationMinMinutes, route.peakDurationMaxMinutes, t)}</td></tr>
             </tbody>

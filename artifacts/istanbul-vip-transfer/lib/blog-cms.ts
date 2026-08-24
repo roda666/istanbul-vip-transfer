@@ -10,6 +10,7 @@
 import 'server-only';
 import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
 import { SUPPORTED_LANGS } from '@/lib/i18n';
+import { removeCustomerVisibleTollCopy } from '@/lib/customer-visible-copy';
 
 /** Entity type used in content_translations rows for blog posts. */
 export const BLOG_ENTITY_TYPE = 'content';
@@ -86,6 +87,12 @@ function normalizeRequiredDate(value: unknown): Date {
 function normalizeBlogCard(post: PublishedBlogCard): PublishedBlogCard {
   return {
     ...post,
+    title: removeCustomerVisibleTollCopy(post.title),
+    excerpt: post.excerpt ? removeCustomerVisibleTollCopy(post.excerpt) : null,
+    heroImageAlt: post.heroImageAlt ? removeCustomerVisibleTollCopy(post.heroImageAlt) : null,
+    category: post.category ? removeCustomerVisibleTollCopy(post.category) : null,
+    author: post.author ? removeCustomerVisibleTollCopy(post.author) : null,
+    seoDescription: post.seoDescription ? removeCustomerVisibleTollCopy(post.seoDescription) : null,
     publishedAt: normalizeOptionalDate(post.publishedAt),
     updatedAt: normalizeRequiredDate(post.updatedAt),
   };
@@ -94,6 +101,17 @@ function normalizeBlogCard(post: PublishedBlogCard): PublishedBlogCard {
 function normalizeBlogPost(post: PublishedBlogPost): PublishedBlogPost {
   return {
     ...post,
+    title: removeCustomerVisibleTollCopy(post.title),
+    excerpt: post.excerpt ? removeCustomerVisibleTollCopy(post.excerpt) : null,
+    body: post.body ? removeCustomerVisibleTollCopy(post.body) : null,
+    heroImageAlt: post.heroImageAlt ? removeCustomerVisibleTollCopy(post.heroImageAlt) : null,
+    category: post.category ? removeCustomerVisibleTollCopy(post.category) : null,
+    author: post.author ? removeCustomerVisibleTollCopy(post.author) : null,
+    tags: post.tags.map(removeCustomerVisibleTollCopy).filter(Boolean),
+    seoTitle: post.seoTitle ? removeCustomerVisibleTollCopy(post.seoTitle) : null,
+    seoDescription: post.seoDescription ? removeCustomerVisibleTollCopy(post.seoDescription) : null,
+    ogTitle: post.ogTitle ? removeCustomerVisibleTollCopy(post.ogTitle) : null,
+    ogDescription: post.ogDescription ? removeCustomerVisibleTollCopy(post.ogDescription) : null,
     publishedAt: normalizeOptionalDate(post.publishedAt),
     updatedAt: normalizeRequiredDate(post.updatedAt),
   };
@@ -104,6 +122,24 @@ function normalizeBlogTranslation(
 ): PublishedBlogTranslation {
   return {
     ...translation,
+    title: translation.title ? removeCustomerVisibleTollCopy(translation.title) : null,
+    excerpt: translation.excerpt ? removeCustomerVisibleTollCopy(translation.excerpt) : null,
+    body: translation.body ? removeCustomerVisibleTollCopy(translation.body) : null,
+    metaTitle: translation.metaTitle ? removeCustomerVisibleTollCopy(translation.metaTitle) : null,
+    metaDescription: translation.metaDescription
+      ? removeCustomerVisibleTollCopy(translation.metaDescription)
+      : null,
+    sourceTitle: removeCustomerVisibleTollCopy(translation.sourceTitle),
+    sourceHeroImageAlt: translation.sourceHeroImageAlt
+      ? removeCustomerVisibleTollCopy(translation.sourceHeroImageAlt)
+      : null,
+    sourceCategory: translation.sourceCategory
+      ? removeCustomerVisibleTollCopy(translation.sourceCategory)
+      : null,
+    sourceAuthor: translation.sourceAuthor
+      ? removeCustomerVisibleTollCopy(translation.sourceAuthor)
+      : null,
+    sourceTags: translation.sourceTags.map(removeCustomerVisibleTollCopy).filter(Boolean),
     publishedAt: normalizeOptionalDate(translation.publishedAt),
   };
 }
@@ -414,6 +450,12 @@ export async function getPublishedBlogTranslations(
 ): Promise<TranslatedBlogListItem[]> {
   return (await cachedPublishedBlogTranslations(lang)).map(post => ({
     ...post,
+    title: post.title ? removeCustomerVisibleTollCopy(post.title) : null,
+    excerpt: post.excerpt ? removeCustomerVisibleTollCopy(post.excerpt) : null,
+    sourceCategory: post.sourceCategory ? removeCustomerVisibleTollCopy(post.sourceCategory) : null,
+    sourceHeroImageAlt: post.sourceHeroImageAlt
+      ? removeCustomerVisibleTollCopy(post.sourceHeroImageAlt)
+      : null,
     publishedAt: normalizeOptionalDate(post.publishedAt),
   }));
 }

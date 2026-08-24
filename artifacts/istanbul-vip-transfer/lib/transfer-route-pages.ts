@@ -8,6 +8,7 @@ import {
   type TransferRoute,
 } from '@/db/schema';
 import { getPublicLanguages } from '@/lib/i18n/active-locales';
+import { removeCustomerVisibleTollCopy } from '@/lib/customer-visible-copy';
 
 export const ROUTE_PAGE_LOCALES = ['en', 'de', 'ru', 'ar', 'fr', 'es', 'it', 'nl'] as const;
 
@@ -31,6 +32,46 @@ export type PublicTransferRoute = TransferRoute & {
   publishedLocales: string[];
   relatedRoutes: Array<Pick<TransferRoute, 'slug' | 'name' | 'origin' | 'destination'>>;
 };
+
+function sanitizeRouteText(value: string | null): string | null {
+  return value === null ? null : removeCustomerVisibleTollCopy(value);
+}
+
+function sanitizeRouteRecord(route: TransferRoute): TransferRoute {
+  return {
+    ...route,
+    name: removeCustomerVisibleTollCopy(route.name),
+    origin: removeCustomerVisibleTollCopy(route.origin),
+    destination: removeCustomerVisibleTollCopy(route.destination),
+    description: sanitizeRouteText(route.description),
+    introParagraph: sanitizeRouteText(route.introParagraph),
+    transportOptions: (route.transportOptions ?? []).map((option) => ({
+      ...option,
+      name: removeCustomerVisibleTollCopy(option.name),
+      summary: removeCustomerVisibleTollCopy(option.summary),
+      downside: removeCustomerVisibleTollCopy(option.downside),
+    })).filter((option) => option.name || option.summary || option.downside),
+    routeNotes: (route.routeNotes ?? []).map(removeCustomerVisibleTollCopy).filter(Boolean),
+    faqItems: (route.faqItems ?? []).map((faq) => ({
+      ...faq,
+      question: removeCustomerVisibleTollCopy(faq.question),
+      answer: removeCustomerVisibleTollCopy(faq.answer),
+    })).filter((faq) => faq.question && faq.answer),
+    seoTitle: sanitizeRouteText(route.seoTitle),
+    seoDescription: sanitizeRouteText(route.seoDescription),
+    ogTitle: sanitizeRouteText(route.ogTitle),
+    ogDescription: sanitizeRouteText(route.ogDescription),
+  };
+}
+
+function sanitizeRelatedRoute(route: Pick<TransferRoute, 'slug' | 'name' | 'origin' | 'destination'>) {
+  return {
+    ...route,
+    name: removeCustomerVisibleTollCopy(route.name),
+    origin: removeCustomerVisibleTollCopy(route.origin),
+    destination: removeCustomerVisibleTollCopy(route.destination),
+  };
+}
 
 async function publicLocaleCodes(): Promise<Set<string>> {
   const languages = await getPublicLanguages();
@@ -86,10 +127,13 @@ export async function getHomepageTransferRoutes(): Promise<TransferRouteCard[]> 
     localesByRoute.set(translation.routeId, locales);
   }
 
-  return routes.map((route) => ({
+  return routes.map((rawRoute) => {
+    const route = sanitizeRouteRecord(rawRoute);
+    return {
     ...route,
     publishedPageLocales: localesByRoute.get(route.id) ?? [],
-  }));
+    };
+  });
 }
 
 /**
@@ -100,13 +144,14 @@ export async function getPublicTransferRoute(
   slug: string,
   locale: string,
 ): Promise<PublicTransferRoute | null> {
-  const [route] = await db
+  const [rawRoute] = await db
     .select()
     .from(transferRoutes)
     .where(and(eq(transferRoutes.slug, slug), eq(transferRoutes.active, true)))
     .limit(1);
 
-  if (!route) return null;
+  if (!rawRoute) return null;
+  const route = sanitizeRouteRecord(rawRoute);
 
   const [publishedLocales, relatedRoutes] = await Promise.all([
     publishedLocalesForRoute(route.id),
@@ -126,7 +171,7 @@ export async function getPublicTransferRoute(
     return {
       ...route,
       publishedLocales,
-      relatedRoutes,
+      relatedRoutes: relatedRoutes.map(sanitizeRelatedRoute),
       content: {
         title: route.name,
         description: route.description ?? `${route.origin} ile ${route.destination} arasındaki VIP transfer hizmeti.`,
@@ -159,18 +204,27 @@ export async function getPublicTransferRoute(
   return {
     ...route,
     publishedLocales,
-    relatedRoutes,
+      relatedRoutes: relatedRoutes.map(sanitizeRelatedRoute),
     content: {
-      title: translation.title,
-      description: translation.description,
-      seoTitle: translation.seoTitle,
-      seoDescription: translation.seoDescription,
-      ogTitle: translation.ogTitle,
-      ogDescription: translation.ogDescription,
-      introParagraph: translation.introParagraph,
-      transportOptions: translation.transportOptions ?? [],
-      routeNotes: translation.routeNotes ?? [],
-      faqItems: translation.faqItems ?? [],
+        title: removeCustomerVisibleTollCopy(translation.title),
+        description: removeCustomerVisibleTollCopy(translation.description),
+        seoTitle: sanitizeRouteText(translation.seoTitle),
+        seoDescription: sanitizeRouteText(translation.seoDescription),
+        ogTitle: sanitizeRouteText(translation.ogTitle),
+        ogDescription: sanitizeRouteText(translation.ogDescription),
+        introParagraph: sanitizeRouteText(translation.introParagraph),
+        transportOptions: (translation.transportOptions ?? []).map((option) => ({
+          ...option,
+          name: removeCustomerVisibleTollCopy(option.name),
+          summary: removeCustomerVisibleTollCopy(option.summary),
+          downside: removeCustomerVisibleTollCopy(option.downside),
+        })).filter((option) => option.name || option.summary || option.downside),
+        routeNotes: (translation.routeNotes ?? []).map(removeCustomerVisibleTollCopy).filter(Boolean),
+        faqItems: (translation.faqItems ?? []).map((faq) => ({
+          ...faq,
+          question: removeCustomerVisibleTollCopy(faq.question),
+          answer: removeCustomerVisibleTollCopy(faq.answer),
+        })).filter((faq) => faq.question && faq.answer),
     },
   };
 }

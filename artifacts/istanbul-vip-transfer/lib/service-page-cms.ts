@@ -13,6 +13,10 @@ import {
   type ServicePageRecord,
   type ServicePageTranslation,
 } from './service-page-types';
+import {
+  removeCustomerVisibleTollCopy,
+  sanitizeCustomerVisibleServiceBody,
+} from './customer-visible-copy';
 
 export const ENTITY_TYPE = 'service_page';
 
@@ -90,20 +94,21 @@ export async function getPublishedServicePage(
     if (!src.isActive || src.status !== 'PUBLISHED') return null;
 
     if (locale === 'tr') {
+      const body = sanitizeCustomerVisibleServiceBody(parseServicePageBody(src.body));
       return {
         id:             src.id,
         slug:           src.slug,
-        title:          src.title,
-        excerpt:        src.excerpt ?? null,
+        title:          removeCustomerVisibleTollCopy(src.title),
+        excerpt:        src.excerpt ? removeCustomerVisibleTollCopy(src.excerpt) : null,
         heroImage:      src.heroImage ?? null,
-        heroImageAlt:   src.heroImageAlt ?? null,
+        heroImageAlt:   src.heroImageAlt ? removeCustomerVisibleTollCopy(src.heroImageAlt) : null,
         ogImage:        src.ogImage ?? null,
-        seoTitle:       src.seoTitle ?? null,
-        seoDescription: src.seoDescription ?? null,
+        seoTitle:       src.seoTitle ? removeCustomerVisibleTollCopy(src.seoTitle) : null,
+        seoDescription: src.seoDescription ? removeCustomerVisibleTollCopy(src.seoDescription) : null,
         indexable:      src.indexable,
         isActive:       src.isActive,
         category:       src.category ?? null,
-        body:           parseServicePageBody(src.body),
+        body,
         translationStatus: null,
       };
     }
@@ -132,20 +137,23 @@ export async function getPublishedServicePage(
     const translatedBody = parseServicePageBody(tx.body);
     if (!tx.title || !translatedBody) return null;
 
+    const body = sanitizeCustomerVisibleServiceBody(
+      mergeFaqFallback(translatedBody, parseServicePageBody(src.body)),
+    );
     return {
       id:             src.id,
       slug:           src.slug,
-      title:          tx.title,
-      excerpt:        tx.excerpt ?? null,
+      title:          removeCustomerVisibleTollCopy(tx.title),
+      excerpt:        tx.excerpt ? removeCustomerVisibleTollCopy(tx.excerpt) : null,
       heroImage:      src.heroImage ?? null,
-      heroImageAlt:   tx.imageAlt ?? null,
+      heroImageAlt:   tx.imageAlt ? removeCustomerVisibleTollCopy(tx.imageAlt) : null,
       ogImage:        src.ogImage ?? null,
-      seoTitle:       tx.metaTitle ?? null,
-      seoDescription: tx.metaDescription ?? null,
+      seoTitle:       tx.metaTitle ? removeCustomerVisibleTollCopy(tx.metaTitle) : null,
+      seoDescription: tx.metaDescription ? removeCustomerVisibleTollCopy(tx.metaDescription) : null,
       indexable:      src.indexable,
       isActive:       src.isActive,
       category:       src.category ?? null,
-      body:           mergeFaqFallback(translatedBody, parseServicePageBody(src.body)),
+      body,
       translationStatus: tx.status === 'OUTDATED' ? 'OUTDATED' : null,
     };
   } catch {

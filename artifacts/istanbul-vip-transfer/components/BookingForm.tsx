@@ -29,6 +29,7 @@ import { isolateLtrValues } from '@/lib/i18n/bidi';
 import { getPublicUiCopy } from '@/lib/i18n/public-ui';
 import { localizedPublicPath } from '@/lib/localized-service-path';
 import { useHomepageCms } from '@/lib/homepage-cms-context';
+import { openWhatsAppChat } from '@/lib/whatsapp';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -66,6 +67,10 @@ interface PublishedVehicleOption {
   displayName: string;
   passengerCapacity: number | null;
   vehicleType: string | null;
+}
+
+interface FormSettings {
+  showVehiclePreference: boolean;
 }
 
 const SERVICE_ICONS: Record<string, React.ReactNode> = {
@@ -131,6 +136,7 @@ function buildSchema(b: import('@/lib/i18n/types').Dictionary['booking']) {
     talepsYerler:      z.string().optional(),
     planlananSure:     z.string().optional(),
     planlananSureUnit: z.enum(['SAAT', 'GUN']).default('SAAT'),
+    vehiclePreference: z.string().optional(),
   });
 }
 
@@ -187,6 +193,7 @@ function buildWhatsAppMessage(
   locale: string,
   customFieldAnswers: CustomFieldAnswer[],
   locationLabels: Record<string, string>,
+  vehicleOptions: PublishedVehicleOption[],
 ): string {
   const displayValue = (value: string | undefined) => isolateLtrValues(value ?? '', locale);
   const locationLabel = (field: keyof FormData) => locationLabels[field] ?? (data[field] as string | undefined);
@@ -239,6 +246,8 @@ function buildWhatsAppMessage(
     `${b.waPhone}: ${displayValue(data.telefon)}`,
   );
   if (data.email?.trim()) lines.push(`${b.waEmail}: ${displayValue(data.email.trim())}`);
+  const selectedVehicle = vehicleOptions.find((vehicle) => vehicle.id === data.vehiclePreference);
+  if (selectedVehicle) lines.push(`${b.waVehiclePreference}: ${displayValue(selectedVehicle.displayName)}`);
   for (const field of customFieldAnswers) {
     if (field.value === true) {
       lines.push(`✓ ${displayValue(field.label)}`);
@@ -314,6 +323,7 @@ export default function BookingForm({
   const [customFieldValues, setCustomFieldValues] = useState<Record<number, boolean | string>>({});
   const [publishedVehicles, setPublishedVehicles] = useState<PublishedVehicleOption[]>([]);
   const [locationLabels, setLocationLabels] = useState<Record<string, string>>({});
+  const [formSettings, setFormSettings] = useState<FormSettings>({ showVehiclePreference: false });
 
   function rememberLocationLabel(field: keyof FormData, option: import('./LocationCombobox').LocationOption | null) {
     setLocationLabels((current) => {
@@ -335,12 +345,13 @@ export default function BookingForm({
       .catch(() => {});
   }, [pageSlug]);
 
-  // Avoid calculating a time-sensitive value during SSR: a date boundary
-  // between server render and browser hydration would otherwise change the
-  // input's min attribute and cause a hydration warning.
-  const [today, setToday] = useState('');
   useEffect(() => {
-    setToday(getIstanbulToday());
+    fetch('/data/form-settings')
+      .then((response) => response.ok ? response.json() : null)
+      .then((settings: FormSettings | null) => {
+        if (settings) setFormSettings({ showVehiclePreference: settings.showVehiclePreference === true });
+      })
+      .catch(() => {});
   }, []);
 
   // Recommendations must always use the public endpoint: it already excludes
@@ -383,6 +394,8 @@ export default function BookingForm({
     control,
     handleSubmit,
     watch,
+    getValues,
+    setValue,
     setError,
     clearErrors,
     formState: { errors },
@@ -397,6 +410,18 @@ export default function BookingForm({
       planlananSureUnit: 'SAAT',
     },
   });
+
+  // Avoid calculating a time-sensitive value during SSR: a date boundary
+  // between server render and browser hydration would otherwise change the
+  // input's min attribute and cause a hydration warning.
+  const [today, setToday] = useState('');
+  useEffect(() => {
+    const currentDate = getIstanbulToday();
+    setToday(currentDate);
+    if (!getValues('tarih')) {
+      setValue('tarih', currentDate, { shouldDirty: false, shouldValidate: false });
+    }
+  }, [getValues, setValue]);
 
   const alisLokasyonuValue  = watch('alisLokasyonu');
   const varisLokasyonuValue = watch('varisLokasyonu');
@@ -482,8 +507,19 @@ export default function BookingForm({
         : [];
     });
     const submittedFormData = { ...data, customFields: customFieldAnswers };
-    const msg = buildWhatsAppMessage(data, serviceLabel, activeService, b, lang, customFieldAnswers, locationLabels);
-    const waUrl = `https://wa.me/${WA_NUMBER}?text=${msg}`;
+    const msg = buildWhatsAppMessage(
+      data,
+      serviceLabel,
+      activeService,
+      b,
+      lang,
+      customFieldAnswers,
+      locationLabels,
+      publishedVehicles,
+    );
+    // Open synchronously from the click/submit event. Waiting for the
+    // reservation request first could be blocked by mobile popup policies.
+    openWhatsAppChat(WA_NUMBER, msg);
 
     // Persist the request before navigating away. The timeout keeps WhatsApp as
     // the primary journey even if a slow network/database cannot respond.
@@ -508,6 +544,10 @@ export default function BookingForm({
     } catch {
       // Do not block a visitor from opening WhatsApp. The server keeps its
       // keepalive request when possible and the next submission can be retried.
+    } finally {
+      // WhatsApp now opens in its own window, so this form remains mounted.
+      // Always restore the CTA after persistence succeeds, fails, or times out.
+      setSubmitting(false);
     }
 
     // GA4: track every booking form submission with service type and originating page
@@ -516,7 +556,6 @@ export default function BookingForm({
       page_path:    pathname,
     });
 
-    window.location.href = waUrl;
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -566,7 +605,7 @@ export default function BookingForm({
               {loadingST ? (
                 <div className="h-16 rounded-xl" style={{ background: '#EBF4FF' }} />
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2" role="group" aria-label={b.serviceTypeLabel}>
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2" role="group" aria-label={b.serviceTypeLabel}>
                   {serviceTypes.map((st) => {
                     const isActive  = activeService === st.key;
                     const iconColor = isActive ? SERVICE_ICON_COLORS[st.key] ?? '#C79A35' : '#718596';
@@ -576,7 +615,7 @@ export default function BookingForm({
                         type="button"
                         onClick={() => { setActiveService(st.key); clearErrors(); }}
                         aria-pressed={isActive}
-                        className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl text-xs font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C79A35] focus-visible:ring-offset-2"
+                         className="flex flex-row sm:flex-col items-center justify-start sm:justify-center gap-3 sm:gap-1.5 w-full py-3 px-4 sm:px-2 rounded-xl text-xs font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C79A35] focus-visible:ring-offset-2"
                         style={{
                           border:     isActive ? `2px solid ${SERVICE_ICON_COLORS[st.key] ?? '#C79A35'}` : '2px solid rgba(196,181,253,0.5)',
                           background: isActive ? `${SERVICE_ICON_COLORS[st.key]}15`                      : '#FFFFFF',
@@ -851,6 +890,27 @@ export default function BookingForm({
                         : b.vehicleHint}
                     </p>
                   </div>
+                  {formSettings.showVehiclePreference && publishedVehicles.length > 0 && (
+                    <div data-testid="field-vehicle-preference">
+                      <label htmlFor="bf-vehicle-preference" style={labelStyle}>
+                        <Car size={12} aria-hidden="true" /> {b.vehiclePreference}
+                      </label>
+                      <select
+                        id="bf-vehicle-preference"
+                        {...register('vehiclePreference')}
+                        className="vip-input vip-select"
+                        data-testid="input-vehicle-preference"
+                      >
+                        <option value="">{b.vehiclePreferenceDefault}</option>
+                        {publishedVehicles.map((vehicle) => (
+                          <option key={vehicle.id} value={vehicle.id}>
+                            {vehicle.displayName}
+                            {vehicle.passengerCapacity ? ` (${vehicle.passengerCapacity} ${b.passengerSuffix})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                 </div>
               </div>

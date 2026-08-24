@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Archive, MessageCircle, Save, Star } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { openWhatsAppChat } from '@/lib/whatsapp';
 
 // Statuses available for new selections (workflow)
 const WORKFLOW_STATUSES: Record<string, string> = {
@@ -107,7 +108,7 @@ export default function TalepDetayClient({
     const message = encodeURIComponent(
       `Merhaba ${customerName}, IVT referans numaranız: ${referenceNumber} hakkında size ulaşmak istedik.`
     );
-    window.open(`https://wa.me/${intlPhone}?text=${message}`, '_blank', 'noopener,noreferrer');
+    openWhatsAppChat(intlPhone, message);
   }
 
   /** Builds the WhatsApp review-request message and opens it */
@@ -118,7 +119,7 @@ export default function TalepDetayClient({
     const message = encodeURIComponent(
       `Merhaba ${customerName} 😊\n\nTransfer hizmetimizden memnun kaldıysanız, Google'da kısa bir yorum bırakmanız bize çok yardımcı olur 🙏\n\n⭐ Yorum bağlantısı: ${reviewLink}\n\nTeşekkürler!\nİstanbul VIP Transfer`
     );
-    window.open(`https://wa.me/${intlPhone}?text=${message}`, '_blank', 'noopener,noreferrer');
+    openWhatsAppChat(intlPhone, message);
   }
 
   /** Copies the review message text to clipboard */

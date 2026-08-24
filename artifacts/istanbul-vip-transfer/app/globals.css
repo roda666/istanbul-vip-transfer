@@ -511,3 +511,16 @@ html {
   outline-offset: 2px;
   box-shadow: 0 0 0 5px #102A43;
 }
+
+/* Admin request list: the desktop table never mounts visibly on a phone.
+   This avoids a hydration-time flash of a wide table and keeps every action
+   reachable in the compact card layout. */
+.admin-request-mobile-list { display: none; }
+.admin-request-desktop-table { display: block; }
+.admin-request-search { max-width: 320px; }
+
+@media (max-width: 768px) {
+  .admin-request-mobile-list { display: block; }
+  .admin-request-desktop-table { display: none; }
+  .admin-request-search { max-width: 100%; }
+}

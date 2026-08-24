@@ -30,7 +30,16 @@ export default async function ProtectedAdminLayout({
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#F3F6FA' }}>
+    <div
+      style={{
+        display: 'flex',
+        minHeight: '100vh',
+        minWidth: 0,
+        maxWidth: '100%',
+        overflowX: 'clip',
+        background: '#F3F6FA',
+      }}
+    >
       <ChatStaffGuard role={sessionData.role} />
       <AdminSidebar
         userName={sessionData.name}
@@ -41,16 +50,21 @@ export default async function ProtectedAdminLayout({
       <div
         style={{
           flex: 1,
+          flexBasis: 0,
           display: 'flex',
           flexDirection: 'column',
           minWidth: 0,
+          maxWidth: '100%',
           overflow: 'hidden',
         }}
       >
         <main
           style={{
             flex: 1,
+            minWidth: 0,
+            maxWidth: '100%',
             overflowY: 'auto',
+            overflowX: 'hidden',
             padding: '0',
           }}
         >

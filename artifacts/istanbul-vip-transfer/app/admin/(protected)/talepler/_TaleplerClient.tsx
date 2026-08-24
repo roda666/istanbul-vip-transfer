@@ -59,7 +59,7 @@ const SERVICE_LABELS: Record<string, string> = {
   INTERCITY:         'Şehirler Arası',
   ALLOCATION:        'Araç Tahsisi',
   TOUR:              'Özel Tur',
-  CONTACT_INQUIRY:   '📩 İletişim',
+  CONTACT_INQUIRY:   '📩 İletişim Talebi',
 };
 
 const INTENT_LABELS: Record<string, string> = {
@@ -232,15 +232,6 @@ export default function TaleplerClient() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo]     = useState('');
   const [updating, setUpdating] = useState<string | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
-
-  // Detect mobile — only on client
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth <= 768);
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
-  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -360,7 +351,7 @@ export default function TaleplerClient() {
     <div>
       {/* Filters */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '16px', alignItems: 'center' }}>
-        <div style={{ position: 'relative', flex: '1 1 200px', maxWidth: isMobile ? '100%' : '320px' }}>
+        <div className="admin-request-search" style={{ position: 'relative', flex: '1 1 200px' }}>
           <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
           <input
             type="text"
@@ -433,8 +424,8 @@ export default function TaleplerClient() {
       )}
 
       {/* ── MOBILE: Card view ── */}
-      {!loading && !error && data && isMobile && (
-        <>
+       {!loading && !error && data && (
+         <div className="admin-request-mobile-list">
           {data.rows.length === 0 ? (
             <div style={{ padding: '40px', textAlign: 'center', color: '#94A3B8', fontFamily: 'Inter, sans-serif', background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
               Kayıt bulunamadı.
@@ -454,12 +445,12 @@ export default function TaleplerClient() {
               {pagination}
             </>
           )}
-        </>
+         </div>
       )}
 
       {/* ── DESKTOP: Table view ── */}
-      {!loading && !error && data && !isMobile && (
-        <div style={{ background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+       {!loading && !error && data && (
+         <div className="admin-request-desktop-table" style={{ background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>

@@ -227,6 +227,7 @@ export async function POST(req: NextRequest) {
       newsletterConsentEvents,
       customReservationFields,
       locations,
+      vehicles,
     } = await import('@/db/schema');
     const { eq, and, inArray, isNull } = await import('drizzle-orm');
 
@@ -253,6 +254,27 @@ export async function POST(req: NextRequest) {
       else delete safeFormData.customFields;
     } else {
       delete safeFormData.customFields;
+    }
+
+    // Resolve an optional vehicle choice from the published public catalog.
+    // The browser provides only an ID; the saved label always comes from DB.
+    const selectedVehicleId = getFormString(data.formData, 'vehiclePreference');
+    if (selectedVehicleId) {
+      const [selectedVehicle] = await db
+        .select({ id: vehicles.id, name: vehicles.name })
+        .from(vehicles)
+        .where(and(
+          eq(vehicles.id, selectedVehicleId),
+          eq(vehicles.status, 'PUBLISHED'),
+        ))
+        .limit(1);
+      if (!selectedVehicle) {
+        return NextResponse.json({ error: 'Seçilen araç artık kullanılamıyor.' }, { status: 422 });
+      }
+      safeFormData.vehiclePreference = selectedVehicle.name;
+      safeFormData.vehiclePreferenceId = selectedVehicle.id;
+    } else {
+      delete safeFormData.vehiclePreference;
     }
 
     // Location controls submit stable IDs. Resolve every selected ID on the

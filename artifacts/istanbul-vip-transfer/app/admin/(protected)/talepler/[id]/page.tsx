@@ -79,6 +79,7 @@ const FIELD_LABELS: Record<string, string> = {
   talepsYerler:      'Ziyaret Yerleri',
   planlananSure:     'Planlanan Süre',
   planlananSureUnit: 'Süre Birimi',
+  vehiclePreference: 'Araç Tercihi',
 };
 
 const AUDIT_ACTION_LABELS: Record<string, string> = {
@@ -142,7 +143,8 @@ export default async function TalepDetayPage({ params }: { params: Promise<{ id:
   const formData = (req.requestData as Record<string, unknown>) ?? {};
   // Filter out empty values and internal fields
   const displayFields = Object.entries(formData).filter(([k, v]) =>
-    v !== null && v !== '' && v !== undefined && k !== '_hp' && k !== 'emailNotification',
+    v !== null && v !== '' && v !== undefined
+      && k !== '_hp' && k !== 'emailNotification' && k !== 'vehiclePreferenceId',
   );
   const emailNotification = (
     typeof formData.emailNotification === 'object'

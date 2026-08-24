@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { useLang } from '@/lib/i18n/context';
 import type { TransferRouteCard } from '@/lib/transfer-route-pages';
 import { useEffect, useState } from 'react';
-import { localizedTransferRoutePath } from '@/lib/localized-service-path';
+import { localizedPublicPath, localizedTransferRoutePath } from '@/lib/localized-service-path';
 
 // ── Design tokens (matches site dark/gold aesthetic) ──────────────────────────
 const DARK_BG    = '#0C1B2A';
@@ -31,18 +31,17 @@ function localize(base: string, translations: Record<string, string> | null | un
 function RouteCard({ route, lang, t }: {
   route: TransferRouteCard;
   lang: string;
-  t: { vito: string; sprinter: string; min: string; h: string; km: string };
+  t: { vito: string; sprinter: string; min: string; h: string; km: string; bookBtn: string };
 }) {
   const name = localize(route.name, route.nameTranslations, lang);
   if (!name) return null;
   const vitoRange     = `${route.priceVitoMinEur}–${route.priceVitoMaxEur} €`;
   const sprinterRange = `${route.priceSprinterMinEur}–${route.priceSprinterMaxEur} €`;
   const href = localizedTransferRoutePath(route.slug, lang);
+  const bookingHref = localizedPublicPath('/?hizmet=havaalani#rezervasyon', lang);
 
   return (
-    <a
-      href={href}
-      title={`${name} — İstanbul VIP Transfer`}
+    <article
       style={{
         background: CARD_BG,
         border: `1px solid ${BORDER}`,
@@ -51,8 +50,6 @@ function RouteCard({ route, lang, t }: {
         display: 'flex',
         flexDirection: 'column',
         transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-        textDecoration: 'none',
-        color: 'inherit',
       }}
       onMouseEnter={(e) => {
         (e.currentTarget as HTMLElement).style.transform = 'translateY(-4px)';
@@ -63,61 +60,83 @@ function RouteCard({ route, lang, t }: {
         (e.currentTarget as HTMLElement).style.boxShadow = 'none';
       }}
     >
-      {/* Image */}
-      <div style={{ position: 'relative', height: '180px', background: '#0C1B2A', flexShrink: 0 }}>
-        {route.imagePath ? (
-          <Image
-            src={route.imagePath}
-            alt={name}
-            fill
-            sizes="(max-width:600px) 100vw, (max-width:900px) 50vw, 340px"
-            style={{ objectFit: 'cover' }}
-          />
-        ) : (
-          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px' }}>🚘</div>
-        )}
-        {/* Gradient overlay */}
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(12,27,42,0.7) 0%, transparent 60%)' }} />
-      </div>
-
-      {/* Content */}
-      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
-        {/* Route name */}
-        <h3 style={{ margin: 0, color: TEXT_MAIN, fontSize: '14px', fontWeight: 600, fontFamily: 'Inter, sans-serif', lineHeight: 1.4 }}>
-          {name}
-        </h3>
-
-        {/* Distance + Duration */}
-        <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
-          <span style={{ color: TEXT_MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>
-            📍 {route.distanceKm} {t.km}
-          </span>
-          <span style={{ color: TEXT_MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>
-            ⏱ {formatDuration(route.durationMinutes, t.min, t.h)}
-          </span>
+      <a href={href} title={`${name} — İstanbul VIP Transfer`} style={{ display: 'flex', flexDirection: 'column', flex: 1, color: 'inherit', textDecoration: 'none' }}>
+        {/* Image */}
+        <div style={{ position: 'relative', height: '180px', background: '#0C1B2A', flexShrink: 0 }}>
+          {route.imagePath ? (
+            <Image
+              src={route.imagePath}
+              alt={name}
+              fill
+              sizes="(max-width:600px) 100vw, (max-width:900px) 50vw, 340px"
+              style={{ objectFit: 'cover' }}
+            />
+          ) : (
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px' }}>🚘</div>
+          )}
+          {/* Gradient overlay */}
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(12,27,42,0.7) 0%, transparent 60%)' }} />
         </div>
 
-        {/* Price rows */}
-        <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {/* Content */}
+        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
+          {/* Route name */}
+          <h3 style={{ margin: 0, color: TEXT_MAIN, fontSize: '14px', fontWeight: 600, fontFamily: 'Inter, sans-serif', lineHeight: 1.4 }}>
+            {name}
+          </h3>
+
+          {/* Distance + Duration */}
+          <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
             <span style={{ color: TEXT_MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>
-              Mercedes {t.vito}
+              📍 {route.distanceKm} {t.km}
             </span>
-            <span style={{ color: GOLD_LIGHT, fontSize: '13px', fontWeight: 700, fontFamily: 'Inter, sans-serif' }}>
-              {vitoRange}
+            <span style={{ color: TEXT_MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>
+              ⏱ {formatDuration(route.durationMinutes, t.min, t.h)}
             </span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ color: TEXT_MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>
-              Mercedes {t.sprinter}
-            </span>
-            <span style={{ color: GOLD_LIGHT, fontSize: '13px', fontWeight: 700, fontFamily: 'Inter, sans-serif' }}>
-              {sprinterRange}
-            </span>
+
+          {/* Price rows */}
+          <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: TEXT_MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>
+                Mercedes {t.vito}
+              </span>
+              <span style={{ color: GOLD_LIGHT, fontSize: '13px', fontWeight: 700, fontFamily: 'Inter, sans-serif' }}>
+                {vitoRange}
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: TEXT_MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>
+                Mercedes {t.sprinter}
+              </span>
+              <span style={{ color: GOLD_LIGHT, fontSize: '13px', fontWeight: 700, fontFamily: 'Inter, sans-serif' }}>
+                {sprinterRange}
+              </span>
+            </div>
           </div>
         </div>
+      </a>
+      <div style={{ padding: '0 16px 16px' }}>
+        <a
+          href={bookingHref}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '42px',
+            borderRadius: '9px',
+            background: GOLD,
+            color: DARK_BG,
+            textDecoration: 'none',
+            fontSize: '13px',
+            fontWeight: 700,
+            fontFamily: 'Inter, sans-serif',
+          }}
+        >
+          {t.bookBtn}
+        </a>
       </div>
-    </a>
+    </article>
   );
 }
 

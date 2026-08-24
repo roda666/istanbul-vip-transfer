@@ -12,10 +12,32 @@ const ALGORITHM = 'aes-256-gcm';
 const IV_BYTES = 12;
 const TAG_BYTES = 16;
 
-let managedDataKeyPromise: Promise<Buffer | null> | null = null;
+type EncryptionIssue =
+  | 'root_key_unavailable'
+  | 'secure_key_storage_unavailable'
+  | 'stored_key_invalid';
+
+type ManagedDataKeyResult = {
+  key: Buffer | null;
+  issue: EncryptionIssue | null;
+};
+
+export type TurnstileEncryptionStatus = {
+  ready: boolean;
+  issue: EncryptionIssue | null;
+};
+
+let managedDataKeyPromise: Promise<ManagedDataKeyResult> | null = null;
 
 function getWrappingKey(): Buffer | null {
-  const rootSecret = process.env.AUTH_SECRET ?? process.env.SESSION_SECRET;
+  // A deployment normally has AUTH_SECRET. SESSION_SECRET preserves the
+  // existing fallback, while EMAIL_ENCRYPTION_KEY is an independent managed
+  // secret for environments where the auth secret has not yet been supplied.
+  // The purpose-specific HMAC label ensures this does not share an encryption
+  // key with SMTP credentials.
+  const rootSecret = process.env.AUTH_SECRET
+    ?? process.env.SESSION_SECRET
+    ?? process.env.EMAIL_ENCRYPTION_KEY;
   if (!rootSecret) return null;
   return crypto
     .createHmac('sha256', rootSecret)
@@ -46,9 +68,9 @@ function open(value: string, key: Buffer): Buffer | null {
   }
 }
 
-async function loadOrCreateManagedDataKey(): Promise<Buffer | null> {
+async function loadOrCreateManagedDataKey(): Promise<ManagedDataKeyResult> {
   const wrappingKey = getWrappingKey();
-  if (!wrappingKey) return null;
+  if (!wrappingKey) return { key: null, issue: 'root_key_unavailable' };
 
   try {
     const { db } = await import('@/db');
@@ -62,7 +84,9 @@ async function loadOrCreateManagedDataKey(): Promise<Buffer | null> {
 
     if (existing) {
       const key = open(existing.wrappedKey, wrappingKey);
-      return key?.length === 32 ? key : null;
+      return key?.length === 32
+        ? { key, issue: null }
+        : { key: null, issue: 'stored_key_invalid' };
     }
 
     const generatedKey = crypto.randomBytes(32);
@@ -76,30 +100,39 @@ async function loadOrCreateManagedDataKey(): Promise<Buffer | null> {
       .where(eq(turnstileEncryptionKeys.id, 1))
       .limit(1);
     const key = stored ? open(stored.wrappedKey, wrappingKey) : null;
-    return key?.length === 32 ? key : null;
+    return key?.length === 32
+      ? { key, issue: null }
+      : { key: null, issue: stored ? 'stored_key_invalid' : 'secure_key_storage_unavailable' };
   } catch {
-    return null;
+    return { key: null, issue: 'secure_key_storage_unavailable' };
   }
 }
 
-async function getDataKey(): Promise<Buffer | null> {
+async function getDataKey(): Promise<ManagedDataKeyResult> {
   if (!managedDataKeyPromise) managedDataKeyPromise = loadOrCreateManagedDataKey();
-  const key = await managedDataKeyPromise;
-  if (!key) managedDataKeyPromise = null;
-  return key;
+  const result = await managedDataKeyPromise;
+  if (!result.key) managedDataKeyPromise = null;
+  return result;
+}
+
+export async function getTurnstileEncryptionStatus(): Promise<TurnstileEncryptionStatus> {
+  const { key, issue } = await getDataKey();
+  return { ready: key !== null, issue };
 }
 
 export async function ensureTurnstileSecretEncryption(): Promise<boolean> {
-  return (await getDataKey()) !== null;
+  return (await getTurnstileEncryptionStatus()).ready;
 }
 
 export async function encryptTurnstileSecret(plaintext: string): Promise<string | null> {
-  const key = await getDataKey();
-  return key ? seal(Buffer.from(plaintext, 'utf8'), key) : null;
+  const { key } = await getDataKey();
+  if (!key) return null;
+  const ciphertext = seal(Buffer.from(plaintext, 'utf8'), key);
+  return open(ciphertext, key)?.toString('utf8') === plaintext ? ciphertext : null;
 }
 
 export async function decryptTurnstileSecret(ciphertext: string): Promise<string | null> {
-  const key = await getDataKey();
+  const { key } = await getDataKey();
   if (!key) return null;
   const plaintext = open(ciphertext, key);
   return plaintext ? plaintext.toString('utf8') : null;

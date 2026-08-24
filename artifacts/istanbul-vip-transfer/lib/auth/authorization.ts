@@ -126,6 +126,7 @@ export function getAdminApiPermission(pathname: string, method: string): AdminPe
   if (pathname.startsWith('/admin/api/database-backup')) return 'DATABASE_BACKUP';
   if (pathname.startsWith('/admin/api/staff')) return 'STAFF_MANAGE';
   if (pathname.startsWith('/admin/api/email-settings')) return 'SECURITY_SETTINGS_MANAGE';
+  if (pathname.startsWith('/admin/api/turnstile-settings')) return 'SECURITY_SETTINGS_MANAGE';
   if (pathname.startsWith('/admin/api/social-platforms') ||
       pathname.startsWith('/admin/api/google-ads') ||
       pathname.startsWith('/admin/api/gsc')) return 'INTEGRATIONS_MANAGE';
@@ -145,6 +146,7 @@ export function getAdminApiPermission(pathname: string, method: string): AdminPe
   if (pathname.startsWith('/admin/api/chatbot/settings')) return 'SITE_SETTINGS_MANAGE';
   if (pathname.startsWith('/admin/api/chatbot')) return 'CHAT_MANAGE';
   if (pathname.startsWith('/admin/api/analytics')) return 'ANALYTICS_READ';
+  if (pathname.startsWith('/admin/api/competitors')) return 'AI_USE';
 
   if (pathname.startsWith('/admin/api/vehicles') ||
       pathname.startsWith('/admin/api/locations') ||
@@ -206,6 +208,7 @@ export function getAdminPagePermission(pathname: string): AdminPermission | unde
   if (pathname.startsWith('/admin/e-posta-ayarlari') || pathname.startsWith('/admin/diller')) {
     return 'SECURITY_SETTINGS_MANAGE';
   }
+  if (pathname.startsWith('/admin/ayarlar/guvenlik')) return 'SECURITY_SETTINGS_MANAGE';
   if (pathname.startsWith('/admin/veritabani-yedegi')) return 'DATABASE_BACKUP';
   if (pathname.startsWith('/admin/ayarlar') || pathname.startsWith('/admin/rezervasyon-ayarlari')) {
     return 'SITE_SETTINGS_MANAGE';
@@ -216,6 +219,7 @@ export function getAdminPagePermission(pathname: string): AdminPermission | unde
   if (pathname.startsWith('/admin/bulten-aboneleri')) return 'NEWSLETTER_READ';
   if (pathname.startsWith('/admin/araclar') || pathname.startsWith('/admin/transfer-rotalari') || pathname.startsWith('/admin/fiyat-kurallari')) return 'FLEET_MANAGE';
   if (pathname.startsWith('/admin/ai-studio') || pathname.startsWith('/admin/ai-oneriler')) return 'AI_USE';
+  if (pathname.startsWith('/admin/rakipler')) return 'AI_USE';
   if (pathname.startsWith('/admin/ceviriler') || pathname.startsWith('/admin/dil-ve-ceviri')) return 'TRANSLATIONS_MANAGE';
   if (pathname.startsWith('/admin/gecmis')) return 'AUDIT_READ';
   if (pathname.startsWith('/admin/istatistikler')) return 'ANALYTICS_READ';

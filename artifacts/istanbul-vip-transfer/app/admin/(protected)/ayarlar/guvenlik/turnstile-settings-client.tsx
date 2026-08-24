@@ -6,6 +6,7 @@ import AdminPageHeader from '../../../_components/AdminPageHeader';
 
 type Config = {
   encryptionReady: boolean;
+  encryptionIssue: string | null;
   contactEnabled: boolean;
   reservationEnabled: boolean;
   siteKey: string | null;
@@ -15,6 +16,7 @@ type Config = {
 
 const initialConfig: Config = {
   encryptionReady: false,
+  encryptionIssue: null,
   contactEnabled: true,
   reservationEnabled: false,
   siteKey: null,
@@ -27,6 +29,18 @@ const input: React.CSSProperties = {
   border: '1px solid #D8E1E9', fontSize: '15px', color: '#172B3A', background: '#FFFFFF',
 };
 
+function responseMessage(response: Response, data: { error?: unknown }, fallback: string): string {
+  if (response.status === 401) return 'Oturumunuz sona erdi. Lütfen yeniden giriş yapın.';
+  if (response.status === 403) return 'Bu ayarı değiştirmek için yeterli yetkiniz yok.';
+  if (response.status === 429) return 'Çok fazla deneme yapıldı. Lütfen birkaç dakika sonra tekrar deneyin.';
+  if (response.status === 503) return typeof data.error === 'string'
+    ? data.error
+    : 'Güvenli kaydetme hizmeti şu anda kullanılamıyor. Hiçbir gizli anahtar kaydedilmedi.';
+  return typeof data.error === 'string' && data.error !== 'Forbidden'
+    ? data.error
+    : fallback;
+}
+
 export default function TurnstileSettingsClient() {
   const [config, setConfig] = useState<Config>(initialConfig);
   const [secretKey, setSecretKey] = useState('');
@@ -36,10 +50,15 @@ export default function TurnstileSettingsClient() {
 
   useEffect(() => {
     fetch('/admin/api/turnstile-settings')
-      .then((response) => response.json())
-      .then((data) => {
-        if (!data.error) setConfig({
+      .then(async (response) => ({ response, data: await response.json().catch(() => ({})) }))
+      .then(({ response, data }) => {
+        if (!response.ok || data.error) {
+          setMessage({ ok: false, text: responseMessage(response, data, 'Turnstile ayarları yüklenemedi.') });
+          return;
+        }
+        setConfig({
           encryptionReady: data.encryptionReady ?? false,
+          encryptionIssue: data.encryptionIssue ?? null,
           contactEnabled: data.contactEnabled ?? true,
           reservationEnabled: data.reservationEnabled ?? false,
           siteKey: data.siteKey ?? null,
@@ -68,12 +87,13 @@ export default function TurnstileSettingsClient() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setMessage({ ok: false, text: data.error ?? 'Ayarlar kaydedilemedi.' });
+        setMessage({ ok: false, text: responseMessage(response, data, 'Ayarlar kaydedilemedi.') });
         return;
       }
       setConfig((current) => ({
         ...current,
         encryptionReady: data.encryptionReady ?? current.encryptionReady,
+          encryptionIssue: data.encryptionIssue ?? current.encryptionIssue,
         contactEnabled: data.contactEnabled ?? current.contactEnabled,
         reservationEnabled: data.reservationEnabled ?? current.reservationEnabled,
         siteKey: data.siteKey ?? null,
@@ -81,7 +101,16 @@ export default function TurnstileSettingsClient() {
         configured: data.configured ?? false,
       }));
       setSecretKey('');
-      setMessage({ ok: true, text: 'Turnstile ayarları kaydedildi.' });
+      const details = [
+        data.siteKeySaved ? 'site anahtarı' : null,
+        data.secretKeySaved ? 'gizli anahtar' : null,
+      ].filter(Boolean);
+      setMessage({
+        ok: true,
+        text: details.length
+          ? `Turnstile ayarları kaydedildi ve doğrulandı: ${details.join(' ve ')}.`
+          : 'Turnstile ayarları kaydedildi.',
+      });
     } catch {
       setMessage({ ok: false, text: 'Sunucuya ulaşılamadı. Lütfen tekrar deneyin.' });
     } finally {
@@ -107,7 +136,11 @@ export default function TurnstileSettingsClient() {
         {!config.encryptionReady && (
           <div style={{ display: 'flex', gap: '10px', padding: '14px', marginBottom: '16px', borderRadius: '10px', border: '1px solid #F5C6C0', background: '#FEF0EE', color: '#C0392B', fontSize: '13px' }}>
             <AlertTriangle size={18} style={{ flexShrink: 0 }} />
-            Gizli anahtarın güvenli saklama hizmeti şu anda kullanılamıyor.
+            {config.encryptionIssue === 'root_key_unavailable'
+              ? 'Sunucunun ana şifreleme anahtarı hazır değil. Güvenlik nedeniyle gizli anahtar kaydedilemez.'
+              : config.encryptionIssue === 'stored_key_invalid'
+                ? 'Kayıtlı şifreleme anahtarı doğrulanamadı. Güvenlik nedeniyle gizli anahtar kaydedilemez.'
+                : 'Gizli anahtarın güvenli saklama hizmeti şu anda kullanılamıyor. Güvenlik nedeniyle kaydetme reddedilir.'}
           </div>
         )}
         <section style={{ background: '#FFFFFF', border: '1px solid #D8E1E9', borderRadius: '12px', padding: '24px' }}>

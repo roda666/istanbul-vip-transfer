@@ -53,6 +53,7 @@
 - [Social publishing public assets](social-publishing-public-assets.md) — resolve test images against the active public origin, not a fixed site hostname.
 - [Manual X & Facebook sharing](manual-x-sharing.md) — token gerektirmeyen web paylaşımı, otomatik OAuth/API yayıncılığından bağımsız kalır.
 - [Admin audit resilience](admin-audit-resilience.md) — audit failures stay observable but never alter authorization; persist only normalized, allowlisted route categories.
+- [Admin route permission inventory](admin-route-permission-inventory.md) — every protected admin page/API method is explicitly classified; build fails for any deny-by-default gap.
 - [Playwright Nix dependencies](playwright-nix-dependencies.md) — headless Chromium needs explicit Nix shared libraries; verify with ldd before treating browser failures as app regressions.
 - [Nine-language product baseline](nine-language-baseline.md) — Turkish source plus EN/DE/RU/AR/FR/ES/IT/NL is the required public-language scope for future work.
 - [Localized public URLs](localized-service-urls.md) — service and registered static page paths derive from translated navigation labels; legacy locale links permanently redirect.
@@ -68,3 +69,4 @@
 - [Dashboard database block isolation](dashboard-database-block-isolation.md) — dashboard queries fail independently; missing schema objects show a migration-specific warning only in their block.
 - [Production build memory recovery](production-build-memory-recovery.md) — if Next build dies silently under memory pressure, pause only its artifact web workflow, build, then restart it.
 - [Turnstile form scope](turnstile-form-scope.md) — protect the contact form by default; keep the WhatsApp-linked reservation flow opt-in only.
+- [Turnstile secret storage](turnstile-secret-storage.md) — encrypted keys require persistent wrapped-key verification; failures refuse writes without ever storing plaintext.

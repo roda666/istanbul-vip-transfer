@@ -4,8 +4,9 @@ import { requireAdminSession } from '@/lib/auth/session';
 import { rateLimit } from '@/lib/auth/rate-limit';
 import { getTrustedClientIp } from '@/lib/request-client-ip';
 import {
+  decryptTurnstileSecret,
   encryptTurnstileSecret,
-  ensureTurnstileSecretEncryption,
+  getTurnstileEncryptionStatus,
 } from '@/lib/turnstile-settings-crypto';
 
 const settingsSchema = z.object({
@@ -21,6 +22,16 @@ async function requireSuperAdmin() {
   return session;
 }
 
+function encryptionUnavailableMessage(issue: string | null): string {
+  if (issue === 'root_key_unavailable') {
+    return 'Sunucunun ana şifreleme anahtarı hazır değil. Güvenlik nedeniyle gizli anahtar kaydedilmedi.';
+  }
+  if (issue === 'stored_key_invalid') {
+    return 'Kayıtlı şifreleme anahtarı doğrulanamadı. Güvenlik nedeniyle gizli anahtar kaydedilmedi.';
+  }
+  return 'Güvenli anahtar saklama hizmeti şu anda kullanılamıyor. Gizli anahtar kaydedilmedi.';
+}
+
 export async function GET() {
   try {
     await requireSuperAdmin();
@@ -31,7 +42,7 @@ export async function GET() {
     );
   }
 
-  const encryptionReady = await ensureTurnstileSecretEncryption();
+  const encryption = await getTurnstileEncryptionStatus();
   try {
     const { db } = await import('@/db');
     const { turnstileSettings } = await import('@/db/schema');
@@ -42,7 +53,8 @@ export async function GET() {
     const siteKey = row?.siteKey ?? null;
     const secretSet = Boolean(row?.secretKeyEncrypted);
     return NextResponse.json({
-      encryptionReady,
+      encryptionReady: encryption.ready,
+      encryptionIssue: encryption.issue,
       contactEnabled: row?.contactEnabled ?? true,
       reservationEnabled: row?.reservationEnabled ?? false,
       siteKey,
@@ -89,6 +101,16 @@ export async function PUT(request: NextRequest) {
 
   const { contactEnabled, reservationEnabled, siteKey, secretKey } = parsed.data;
   const normalizedSiteKey = siteKey?.trim() || null;
+  const normalizedSecretKey = secretKey?.trim() || null;
+  const encryption = normalizedSecretKey
+    ? await getTurnstileEncryptionStatus()
+    : null;
+  if (encryption && !encryption.ready) {
+    return NextResponse.json(
+      { error: encryptionUnavailableMessage(encryption.issue) },
+      { status: 503 },
+    );
+  }
   try {
     const { db } = await import('@/db');
     const { turnstileSettings, auditLogs } = await import('@/db/schema');
@@ -99,10 +121,10 @@ export async function PUT(request: NextRequest) {
       .limit(1);
 
     let secretKeyEncrypted = existing?.secret ?? null;
-    if (secretKey?.trim()) {
-      secretKeyEncrypted = await encryptTurnstileSecret(secretKey.trim());
+    if (normalizedSecretKey) {
+      secretKeyEncrypted = await encryptTurnstileSecret(normalizedSecretKey);
       if (!secretKeyEncrypted) {
-        return NextResponse.json({ error: 'Gizli anahtar güvenli olarak kaydedilemedi. Lütfen tekrar deneyin.' }, { status: 503 });
+        return NextResponse.json({ error: 'Gizli anahtar şifrelenerek doğrulanamadı. Güvenlik nedeniyle kaydedilmedi.' }, { status: 503 });
       }
     }
 
@@ -118,6 +140,27 @@ export async function PUT(request: NextRequest) {
     await db.insert(turnstileSettings).values(row)
       .onConflictDoUpdate({ target: turnstileSettings.id, set: row });
 
+    const [persisted] = await db.select({
+      siteKey: turnstileSettings.siteKey,
+      secretKeyEncrypted: turnstileSettings.secretKeyEncrypted,
+    }).from(turnstileSettings)
+      .where(eq(turnstileSettings.id, 1))
+      .limit(1);
+
+    const siteKeySaved = persisted?.siteKey === normalizedSiteKey;
+    const secretKeySaved = normalizedSecretKey
+      ? Boolean(
+        persisted?.secretKeyEncrypted
+        && await decryptTurnstileSecret(persisted.secretKeyEncrypted) === normalizedSecretKey,
+      )
+      : Boolean(persisted?.secretKeyEncrypted);
+
+    if (!siteKeySaved || (normalizedSecretKey && !secretKeySaved)) {
+      return NextResponse.json({
+        error: 'Ayarlar kalıcı saklamada doğrulanamadı. Güvenlik nedeniyle gizli anahtar kaydedilmedi.',
+      }, { status: 503 });
+    }
+
     await db.insert(auditLogs).values({
       adminUserId: session.adminId,
       action: 'TURNSTILE_SETTINGS_UPDATED',
@@ -131,15 +174,19 @@ export async function PUT(request: NextRequest) {
       },
     }).catch(() => {});
 
-    const secretSet = Boolean(secretKeyEncrypted);
+    const secretSet = Boolean(persisted?.secretKeyEncrypted);
+    const currentEncryption = await getTurnstileEncryptionStatus();
     return NextResponse.json({
       success: true,
-      encryptionReady: await ensureTurnstileSecretEncryption(),
+      encryptionReady: currentEncryption.ready,
+      encryptionIssue: currentEncryption.issue,
       contactEnabled,
       reservationEnabled,
-      siteKey: normalizedSiteKey,
+      siteKey: persisted?.siteKey ?? null,
       secretSet,
-      configured: Boolean(normalizedSiteKey && secretSet),
+      configured: Boolean(persisted?.siteKey?.trim() && secretSet),
+      siteKeySaved,
+      secretKeySaved,
     });
   } catch {
     return NextResponse.json({ error: 'Turnstile ayarları kaydedilemedi.' }, { status: 500 });

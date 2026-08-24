@@ -118,11 +118,15 @@ assert.equal(getAdminApiPermission('/admin/api/studio/projects/id/schedule', 'GE
 assert.equal(getAdminApiPermission('/admin/api/studio/projects/id', 'DELETE'), 'CONTENT_DELETE');
 assert.equal(getAdminApiPermission('/admin/api/ek-hizmetler', 'GET'), 'SITE_SETTINGS_MANAGE');
 assert.equal(getAdminApiPermission('/admin/api/location-distance', 'POST'), 'FLEET_MANAGE');
+assert.equal(getAdminApiPermission('/admin/api/turnstile-settings', 'PUT'), 'SECURITY_SETTINGS_MANAGE');
+assert.equal(getAdminApiPermission('/admin/api/competitors/analyze', 'POST'), 'AI_USE');
 assert.equal(getAdminApiPermission('/admin/api/unknown', 'GET'), undefined);
 
 assert.equal(getAdminPagePermission('/admin/sohbet'), 'CHAT_MANAGE');
 assert.equal(getAdminPagePermission('/admin/personel'), 'STAFF_MANAGE');
 assert.equal(getAdminPagePermission('/admin/ek-hizmetler'), 'SITE_SETTINGS_MANAGE');
+assert.equal(getAdminPagePermission('/admin/ayarlar/guvenlik'), 'SECURITY_SETTINGS_MANAGE');
+assert.equal(getAdminPagePermission('/admin/rakipler'), 'AI_USE');
 assert.equal(getAdminPagePermission('/admin/not-a-real-page'), undefined);
 
 // Inventory guard: every actual admin route method is deliberately public,

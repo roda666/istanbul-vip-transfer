@@ -32,7 +32,7 @@ export default function DeferredVehicleFleet({ homepageMode = false }: { homepag
   }, []);
 
   return (
-    <div ref={sectionRef} aria-busy={!shouldLoad}>
+    <div ref={sectionRef} className="ivt-deferred-section" aria-busy={!shouldLoad}>
       {shouldLoad && <VehicleFleet homepageMode={homepageMode} />}
     </div>
   );

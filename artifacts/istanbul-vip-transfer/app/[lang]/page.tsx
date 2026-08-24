@@ -10,19 +10,13 @@ import { isValidLang, SUPPORTED_LANGS } from '@/lib/i18n';
 import { buildAlternates, getOgLocale } from '@/lib/i18n/seo';
 import { SITE } from '@/lib/site-config';
 import { getServiceOgImageUrl } from '@/lib/service-og-images';
-import { getContactSettings } from '@/lib/site-settings-server';
 // Renamed to avoid conflict with Next.js's `export const dynamic` route segment config
 import lazyLoad from 'next/dynamic';
-import { getHomepageTransferRoutes } from '@/lib/transfer-route-pages';
 import { HomepageCmsProvider } from '@/lib/homepage-cms-context';
 import { getPublishedHomepageData } from '@/lib/homepage-cms';
 import { getPublicServiceCatalog } from '@/lib/public-service-catalog';
 import { localizedServicePath } from '@/lib/localized-service-path';
-import {
-  getPublishedHomepageFaqs,
-  getPublishedHomepageReviews,
-  getPublishedHomepageServiceCopy,
-} from '@/lib/homepage-public-content';
+import { getPublicHomepageData } from '@/lib/homepage-public-data';
 import { serializeJsonLd } from '@/lib/json-ld';
 // Above-fold: static imports
 import BookingForm from '@/components/BookingForm';
@@ -148,15 +142,15 @@ export default async function TranslatedHomePage({ params }: Props) {
   }
 
   // Read published CMS data and service visibility server-side
-  const [cmsData, serviceCatalog, cs, transferRoutes, reviews, homepageFaqs, serviceCopy] = await Promise.all([
-    getPublishedHomepageData(lang),
-    getPublicServiceCatalog(lang),
-    getContactSettings(),
-    getHomepageTransferRoutes().catch(() => []),
-    getPublishedHomepageReviews(lang),
-    getPublishedHomepageFaqs(lang),
-    getPublishedHomepageServiceCopy(lang),
-  ]);
+  const {
+    cmsData,
+    serviceCatalog,
+    contactSettings: cs,
+    transferRoutes,
+    reviews,
+    homepageFaqs,
+    serviceCopy,
+  } = await getPublicHomepageData(lang);
 
   const pageUrl = `${SITE.siteUrl}/${lang}`;
   const inLanguage: Record<string, string> = {
@@ -186,12 +180,24 @@ export default async function TranslatedHomePage({ params }: Props) {
       <Hero homepageMode />
       <BookingForm homepageMode />
       <VehicleFleet homepageMode />
-      <Services catalogServices={serviceCatalog.services} serviceCopy={serviceCopy} homepageMode />
-      <PopularRoutesSection routes={transferRoutes} />
-      <TrustSignals homepageMode />
-      <Reviews items={reviews} homepageMode />
-      <FAQ items={homepageFaqs} />
-      <Contact homepageMode />
+      <div className="ivt-deferred-section">
+        <Services catalogServices={serviceCatalog.services} serviceCopy={serviceCopy} homepageMode />
+      </div>
+      <div className="ivt-deferred-section">
+        <PopularRoutesSection routes={transferRoutes} />
+      </div>
+      <div className="ivt-deferred-section">
+        <TrustSignals homepageMode />
+      </div>
+      <div className="ivt-deferred-section">
+        <Reviews items={reviews} homepageMode />
+      </div>
+      <div className="ivt-deferred-section">
+        <FAQ items={homepageFaqs} />
+      </div>
+      <div className="ivt-deferred-section">
+        <Contact homepageMode />
+      </div>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(webPageSchema) }}

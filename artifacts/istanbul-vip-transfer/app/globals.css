@@ -294,6 +294,15 @@ html {
   text-align: right;
 }
 
+/* ── Below-the-fold render containment ───────────────────────────────────────
+   The HTML remains server-rendered for SEO, while the browser skips style,
+   layout and paint work for sections outside the viewport. An intrinsic size
+   reserves a stable scroll range until each section becomes visible. */
+.ivt-deferred-section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 720px;
+}
+
 /* ── BookingForm scroll-reveal animations ─────────────────────────────────────
    Pure CSS equivalents of the former Framer Motion whileInView motion.div
    wrappers. Declared here so the server renders the class name (no inline

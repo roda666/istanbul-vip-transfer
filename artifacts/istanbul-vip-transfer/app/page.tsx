@@ -14,17 +14,9 @@ const FAQ                  = lazyLoad(() => import('@/components/FAQ'));
 const Contact              = lazyLoad(() => import('@/components/Contact'));
 import { getFaqs } from '@/lib/faq-data';
 import { SITE } from '@/lib/site-config';
-import { getContactSettings } from '@/lib/site-settings-server';
 import { HomepageCmsProvider } from '@/lib/homepage-cms-context';
-import { getPublishedHomepageData } from '@/lib/homepage-cms';
-import { getPublicServiceCatalog } from '@/lib/public-service-catalog';
-import {
-  getPublishedHomepageFaqs,
-  getPublishedHomepageReviews,
-  getPublishedHomepageServiceCopy,
-} from '@/lib/homepage-public-content';
+import { getPublicHomepageData } from '@/lib/homepage-public-data';
 import { serializeJsonLd } from '@/lib/json-ld';
-import { getHomepageTransferRoutes } from '@/lib/transfer-route-pages';
 
 // ISR: serve pre-rendered HTML instantly; revalidate in background every 5 min.
 // Admin publish routes call revalidatePath() for on-demand invalidation,
@@ -70,15 +62,15 @@ export const metadata: Metadata = {
 
 export default async function HomePage() {
   // Read published CMS data server-side; falls back to static i18n if DB unavailable
-  const [cmsData, serviceCatalog, cs, transferRoutes, reviews, homepageFaqs, serviceCopy] = await Promise.all([
-    getPublishedHomepageData('tr'),
-    getPublicServiceCatalog('tr'),
-    getContactSettings(),
-    getHomepageTransferRoutes().catch(() => []),
-    getPublishedHomepageReviews('tr'),
-    getPublishedHomepageFaqs('tr'),
-    getPublishedHomepageServiceCopy('tr'),
-  ]);
+  const {
+    cmsData,
+    serviceCatalog,
+    contactSettings: cs,
+    transferRoutes,
+    reviews,
+    homepageFaqs,
+    serviceCopy,
+  } = await getPublicHomepageData('tr');
   const faqItems = homepageFaqs.length > 0 ? homepageFaqs : getFaqs('tr');
   const faqSchema = {
     '@context': 'https://schema.org',
@@ -136,12 +128,24 @@ export default async function HomePage() {
       <Hero homepageMode />
       <DeferredBookingForm />
       <DeferredVehicleFleet homepageMode />
-      <Services catalogServices={serviceCatalog.services} serviceCopy={serviceCopy} homepageMode />
-      <PopularRoutesSection routes={transferRoutes} />
-      <TrustSignals homepageMode />
-      <Reviews items={reviews} homepageMode />
-      <FAQ items={homepageFaqs} />
-      <Contact homepageMode />
+      <div className="ivt-deferred-section">
+        <Services catalogServices={serviceCatalog.services} serviceCopy={serviceCopy} homepageMode />
+      </div>
+      <div className="ivt-deferred-section">
+        <PopularRoutesSection routes={transferRoutes} />
+      </div>
+      <div className="ivt-deferred-section">
+        <TrustSignals homepageMode />
+      </div>
+      <div className="ivt-deferred-section">
+        <Reviews items={reviews} homepageMode />
+      </div>
+      <div className="ivt-deferred-section">
+        <FAQ items={homepageFaqs} />
+      </div>
+      <div className="ivt-deferred-section">
+        <Contact homepageMode />
+      </div>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(localBusinessSchema) }}

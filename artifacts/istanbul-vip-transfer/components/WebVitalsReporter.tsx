@@ -3,7 +3,7 @@
 /**
  * Privacy-friendly Core Web Vitals reporter.
  *
- * - Runs entirely in the browser; no external service or API key required.
+ * - Starts only after analytics cookies are accepted.
  * - Uses the `web-vitals` package (already a dependency) to observe
  *   CLS, INP, LCP, FCP and TTFB after the page has become interactive.
  * - Sends each metric to the internal /data/vitals endpoint via sendBeacon
@@ -13,6 +13,9 @@
 
 import { useEffect } from 'react';
 
+const CONSENT_COOKIE = 'ivt_cookie_consent';
+const ACCEPTED_CONSENT = 'accepted';
+
 interface VitalsPayload {
   name:   string;
   value:  number;
@@ -20,9 +23,17 @@ interface VitalsPayload {
   url:    string;
 }
 
+function hasAnalyticsConsent(): boolean {
+  return document.cookie
+    .split('; ')
+    .some((value) => value === `${CONSENT_COOKIE}=${ACCEPTED_CONSENT}`);
+}
+
 export default function WebVitalsReporter() {
   useEffect(() => {
     let cancelled = false;
+    let idleId: number | undefined;
+    let timer: number | undefined;
     const browserWindow = window as Window & {
       requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
       cancelIdleCallback?: (handle: number) => void;
@@ -53,18 +64,27 @@ export default function WebVitalsReporter() {
         // web-vitals not available in this browser — silent no-op
       });
 
-    if (typeof browserWindow.requestIdleCallback === 'function') {
-      const idleId = browserWindow.requestIdleCallback(startReporter, { timeout: 3500 });
-      return () => {
-        cancelled = true;
-        browserWindow.cancelIdleCallback?.(idleId);
-      };
+    const scheduleReporter = () => {
+      if (cancelled) return;
+      if (typeof browserWindow.requestIdleCallback === 'function') {
+        idleId = browserWindow.requestIdleCallback(startReporter, { timeout: 3500 });
+        return;
+      }
+      timer = window.setTimeout(startReporter, 2500);
+    };
+
+    const onConsentAccepted = () => scheduleReporter();
+    if (hasAnalyticsConsent()) {
+      scheduleReporter();
+    } else {
+      window.addEventListener('ivt:consent:accepted', onConsentAccepted, { once: true });
     }
 
-    const timer = window.setTimeout(startReporter, 2500);
     return () => {
       cancelled = true;
-      window.clearTimeout(timer);
+      if (idleId !== undefined) browserWindow.cancelIdleCallback?.(idleId);
+      if (timer !== undefined) window.clearTimeout(timer);
+      window.removeEventListener('ivt:consent:accepted', onConsentAccepted);
     };
   }, []);
 

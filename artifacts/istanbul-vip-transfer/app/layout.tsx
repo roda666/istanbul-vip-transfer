@@ -109,8 +109,8 @@ export default async function RootLayout({
           </PublicLayoutWrapper>
         </SiteSettingsProvider>
         {/*
-         * Privacy-friendly Core Web Vitals reporter — no external service or key.
-         * Fires web-vitals observers after hydration; beacons metrics to /api/vitals.
+         * Core Web Vitals telemetry uses no external service or key, but still
+         * begins only after the visitor accepts analytics cookies.
          */}
         <WebVitalsReporter />
         {/*

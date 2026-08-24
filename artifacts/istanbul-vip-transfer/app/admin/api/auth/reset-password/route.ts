@@ -6,6 +6,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { buildEmailLink, resolveEmailLinkOrigin } from '@/lib/email-link-url';
 
 // In-memory rate limit: 3 requests per 15 min per IP
 const resetAttempts = new Map<string, { count: number; resetAt: number }>();
@@ -78,11 +79,9 @@ export async function POST(req: NextRequest) {
        VALUES ('${user.id}', '${token}', '${expiresAt.toISOString()}')` as never,
     );
 
-    // Build reset URL — works both in dev and production
-    const origin = req.headers.get('x-forwarded-host')
-      ? `https://${req.headers.get('x-forwarded-host')}`
-      : new URL(req.url).origin;
-    const resetUrl = `${origin}/admin/login/reset-password?token=${token}`;
+    const linkOrigin = await resolveEmailLinkOrigin(req);
+    const resetUrl = buildEmailLink(linkOrigin.baseUrl, '/admin/login/reset-password', { token });
+    const linkUnavailable = 'Güvenli şifre sıfırlama bağlantısı şu anda oluşturulamadı. Lütfen daha sonra tekrar deneyin.';
 
     // Send email
     const { sendEmail } = await import('@/lib/email');
@@ -94,17 +93,15 @@ export async function POST(req: NextRequest) {
           <h2 style="color:#1B2B4B;margin:0 0 16px;">Şifre Sıfırlama</h2>
           <p style="color:#334155;line-height:1.6;">Merhaba ${user.name},</p>
           <p style="color:#334155;line-height:1.6;">Admin paneli şifrenizi sıfırlamak için aşağıdaki butona tıklayın. Bu link <strong>1 saat</strong> geçerlidir ve yalnızca bir kez kullanılabilir.</p>
-          <div style="text-align:center;margin:28px 0;">
-            <a href="${resetUrl}" style="display:inline-block;padding:14px 28px;background:#1B2B4B;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">
-              Şifremi Sıfırla
-            </a>
-          </div>
+          ${resetUrl ? `<div style="text-align:center;margin:28px 0;"><a href="${resetUrl}" style="display:inline-block;padding:14px 28px;background:#1B2B4B;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Şifremi Sıfırla</a></div>` : `<p style="color:#B91C1C;line-height:1.6;">${linkUnavailable}</p>`}
           <p style="color:#64748B;font-size:13px;line-height:1.6;">Bu isteği siz yapmadıysanız bu e-postayı dikkate almayın. Şifreniz değişmeyecektir.</p>
           <hr style="border:none;border-top:1px solid #E2E8F0;margin:24px 0;">
           <p style="color:#94A3B8;font-size:12px;">İstanbul VIP Transfer Admin Paneli</p>
         </div>
       `,
-      text: `Şifre Sıfırlama\n\nMerhaba ${user.name},\n\nŞifrenizi sıfırlamak için şu linke gidin (1 saat geçerli):\n${resetUrl}\n\nBu isteği siz yapmadıysanız dikkate almayın.`,
+      text: resetUrl
+        ? `Şifre Sıfırlama\n\nMerhaba ${user.name},\n\nŞifrenizi sıfırlamak için şu linke gidin (1 saat geçerli):\n${resetUrl}\n\nBu isteği siz yapmadıysanız dikkate almayın.`
+        : `Şifre Sıfırlama\n\nMerhaba ${user.name},\n\n${linkUnavailable}`,
     });
   } catch (err) {
     // Log but don't expose to client

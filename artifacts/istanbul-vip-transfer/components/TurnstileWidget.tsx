@@ -59,9 +59,11 @@ function loadTurnstileApi(): Promise<TurnstileApi> {
 export default function TurnstileWidget({
   form,
   onTokenChange,
+  onEnabledChange,
 }: {
   form: TurnstileForm;
   onTokenChange: (token: string | null) => void;
+  onEnabledChange?: (enabled: boolean) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
@@ -75,15 +77,21 @@ export default function TurnstileWidget({
       .then((data: TurnstileConfig | null) => {
         if (!active) return;
         setConfig(data);
+        // Fail closed while configuration is loading or unavailable. The parent
+        // must not submit a protected form with a null token in that window.
+        onEnabledChange?.(data?.enabled !== false);
         if (!data?.enabled) setState('disabled');
         else if (!data.configured || !data.siteKey) setState('unconfigured');
       })
       .catch(() => {
-        if (active) setState('error');
+        if (active) {
+          onEnabledChange?.(true);
+          setState('error');
+        }
       });
 
     return () => { active = false; };
-  }, [form]);
+  }, [form, onEnabledChange]);
 
   useEffect(() => {
     if (!config?.enabled || !config.configured || !config.siteKey || !containerRef.current) return;

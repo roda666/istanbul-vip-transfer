@@ -200,7 +200,7 @@ export async function POST(req: NextRequest) {
     if (data.newsletterConsent) {
       await startNewsletterOptIn({
         email: contact.email, name: contact.name, language: contact.locale,
-        source: 'contact-form', origin: req.nextUrl.origin,
+        source: 'contact-form', request: req,
       });
     }
 

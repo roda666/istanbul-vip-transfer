@@ -29,6 +29,7 @@
     "test:unit:watch": "vitest",
     "test:admin-auth": "tsx scripts/test-admin-authorization.ts",
     "test:admin-auth:e2e": "tsx scripts/test-admin-authorization-e2e.ts",
+    "test:email-links": "NODE_OPTIONS='--conditions=react-server' tsx scripts/test-email-link-safety.ts",
     "test:perf": "tsx scripts/perf-check.ts",
     "test:perf:browser": "playwright test tests/perf.spec.ts"
   },

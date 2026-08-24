@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { sanitizeText } from '@/lib/sanitize';
 import { createUnsubscribeUrl } from '@/lib/newsletter';
 import { sendEmailDetailed } from '@/lib/email';
+import { resolveEmailLinkOrigin } from '@/lib/email-link-url';
 
 export const dynamic = 'force-dynamic';
 const Body = z.object({ subject: z.string().min(2).max(200), html: z.string().min(1).max(100_000), text: z.string().max(100_000).optional() });
@@ -21,15 +22,20 @@ export async function POST(req: NextRequest) {
     .from(newsletterSubscribers).where(eq(newsletterSubscribers.status, 'ACTIVE'));
   if (!recipients.length) return NextResponse.json({ error: 'Gönderilecek aktif abone bulunamadı.' }, { status: 422 });
   const subject = sanitizeText(parsed.data.subject).slice(0, 200);
+  const linkOrigin = await resolveEmailLinkOrigin(req);
   const outcomes = await Promise.all(recipients.map(async (recipient) => {
-    const unsubscribeUrl = await createUnsubscribeUrl(recipient.id, req.nextUrl.origin);
-    const footer = `<hr><p style="font-size:12px;color:#666">Bu e-postayı almak istemiyorsanız <a href="${unsubscribeUrl}">abonelikten ayrılın</a>.</p>`;
-    const plainFooter = `\n\nAbonelikten ayrıl: ${unsubscribeUrl}`;
+    const unsubscribeUrl = await createUnsubscribeUrl(recipient.id, linkOrigin);
+    const footer = unsubscribeUrl
+      ? `<hr><p style="font-size:12px;color:#666">Bu e-postayı almak istemiyorsanız <a href="${unsubscribeUrl}">abonelikten ayrılın</a>.</p>`
+      : `<hr><p style="font-size:12px;color:#666">Abonelikten çıkış bağlantısı şu anda oluşturulamadı.</p>`;
+    const plainFooter = unsubscribeUrl
+      ? `\n\nAbonelikten ayrıl: ${unsubscribeUrl}`
+      : '\n\nAbonelikten çıkış bağlantısı şu anda oluşturulamadı.';
     return sendEmailDetailed({ to: recipient.email, subject, html: `${parsed.data.html}${footer}`, text: `${parsed.data.text ?? ''}${plainFooter}` });
   }));
   const accepted = outcomes.filter((result) => result.ok).length;
   const failureCodes = [...new Set(outcomes.filter((result) => !result.ok).map((result) => result.code))];
-  const result = { recipientCount: recipients.length, acceptedCount: accepted, rejectedCount: recipients.length - accepted, failureCodes };
+  const result = { recipientCount: recipients.length, acceptedCount: accepted, rejectedCount: recipients.length - accepted, failureCodes, emailLinkOrigin: linkOrigin.mode };
   await db.insert(auditLogs).values({
     adminUserId: session.adminId ?? null, action: 'NEWSLETTER_SEND', entityType: 'newsletter',
     metadata: { ...result, subjectLength: subject.length },

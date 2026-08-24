@@ -34,6 +34,7 @@ export default function ContactForm() {
   const companyHoneypotRef = useRef<HTMLInputElement>(null);
   const [formGuardToken, setFormGuardToken] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileEnabled, setTurnstileEnabled] = useState(true);
 
   useEffect(() => {
     let active = true;
@@ -61,6 +62,11 @@ export default function ContactForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!validate()) return;
+    if (turnstileEnabled && !turnstileToken) {
+      setServerError('Güvenlik doğrulaması tamamlanmadan form gönderilemez.');
+      setStatus('error');
+      return;
+    }
 
     setStatus('submitting');
     setServerError('');
@@ -309,7 +315,11 @@ export default function ContactForm() {
             </p>
           )}
 
-          <TurnstileWidget form="contact" onTokenChange={setTurnstileToken} />
+          <TurnstileWidget
+            form="contact"
+            onTokenChange={setTurnstileToken}
+            onEnabledChange={setTurnstileEnabled}
+          />
 
           {/* Optional newsletter consent */}
           <label style={{
@@ -353,16 +363,16 @@ export default function ContactForm() {
           {/* Submit */}
           <button
             type="submit"
-            disabled={status === 'submitting'}
+            disabled={status === 'submitting' || (turnstileEnabled && !turnstileToken)}
             style={{
-              background: status === 'submitting' ? '#9ca3af' : '#1a1a2e',
+              background: status === 'submitting' || (turnstileEnabled && !turnstileToken) ? '#9ca3af' : '#1a1a2e',
               color: '#fff',
               border: 'none',
               borderRadius: '8px',
               padding: '0.85rem 2rem',
               fontSize: '1rem',
               fontWeight: 700,
-              cursor: status === 'submitting' ? 'not-allowed' : 'pointer',
+              cursor: status === 'submitting' || (turnstileEnabled && !turnstileToken) ? 'not-allowed' : 'pointer',
               transition: 'background 0.2s',
               alignSelf: 'flex-start',
             }}

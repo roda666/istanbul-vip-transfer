@@ -15,6 +15,7 @@ interface Settings {
   address?: string | null;
   defaultSeoTitle?: string | null;
   defaultSeoDescription?: string | null;
+  publicSiteUrl?: string | null;
   // Legal / trust fields
   companyLegalName?: string | null;
   companyTradeName?: string | null;
@@ -45,9 +46,10 @@ export default function AyarlarPage() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [emailLinkOrigin, setEmailLinkOrigin] = useState<{ mode: 'setting' | 'proxy-fallback' | 'unavailable'; baseUrl: string | null } | null>(null);
 
   useEffect(() => {
-    fetch('/admin/api/settings').then(r => r.json()).then(d => { setSettings(d.settings ?? {}); setLoading(false); }).catch(() => setLoading(false));
+    fetch('/admin/api/settings').then(r => r.json()).then(d => { setSettings(d.settings ?? {}); setEmailLinkOrigin(d.emailLinkOrigin ?? null); setLoading(false); }).catch(() => setLoading(false));
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -169,6 +171,20 @@ export default function AyarlarPage() {
               <p style={hintStyle}>Kısa biçim — tam adres için yukarıdaki &quot;Tam Açık Adres&quot; alanını kullanın.</p>
             </div>
           </div>
+        </div>
+
+        {/* SEO */}
+        <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
+          <p style={{ color: '#1D4ED8', fontSize: '11px', fontFamily: 'Inter, sans-serif', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 12px' }}>E-posta Bağlantıları</p>
+          <label style={labelStyle}>Genel Site Adresi</label>
+          <input type="url" {...field('publicSiteUrl')} style={inputStyle} placeholder="https://preview-adresiniz.replit.dev" />
+          <p style={hintStyle}>Bülten doğrulama, abonelikten çıkma ve şifre sıfırlama bağlantıları yalnızca bu HTTPS adresiyle üretilir. Port numarası kabul edilmez.</p>
+          {emailLinkOrigin?.mode === 'proxy-fallback' && (
+            <p style={{ margin: '10px 0 0', color: '#92400E', fontSize: '12px' }}>Uyarı: Ayar boş. E-posta bağlantıları şu an vekil sunucunun bildirdiği genel adresi kullanıyor: {emailLinkOrigin.baseUrl}</p>
+          )}
+          {emailLinkOrigin?.mode === 'unavailable' && (
+            <p style={{ margin: '10px 0 0', color: '#B91C1C', fontSize: '12px', fontWeight: 600 }}>Uyarı: Güvenli bir genel adres bulunamadı. E-postalar gönderilir ancak bozuk bağlantı eklenmez. Lütfen Genel Site Adresi alanını doldurun.</p>
+          )}
         </div>
 
         {/* SEO */}

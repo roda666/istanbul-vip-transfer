@@ -3,6 +3,7 @@ import 'server-only';
 import { createHash, randomBytes } from 'node:crypto';
 import { and, eq, gt, isNull } from 'drizzle-orm';
 import { sendEmailDetailed } from '@/lib/email';
+import { buildEmailLink, resolveEmailLinkOrigin, type EmailLinkOriginStatus } from '@/lib/email-link-url';
 
 const TOKEN_BYTES = 32;
 const CONFIRM_TTL_MS = 48 * 60 * 60 * 1000;
@@ -10,10 +11,6 @@ const UNSUBSCRIBE_TTL_MS = 365 * 24 * 60 * 60 * 1000;
 
 function hash(token: string) {
   return createHash('sha256').update(token).digest('hex');
-}
-
-function siteUrl(origin?: string) {
-  return (process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || origin || 'http://localhost:3000').replace(/\/$/, '');
 }
 
 async function issueToken(subscriberId: string, purpose: 'CONFIRM' | 'UNSUBSCRIBE') {
@@ -29,7 +26,7 @@ async function issueToken(subscriberId: string, purpose: 'CONFIRM' | 'UNSUBSCRIB
 
 /** Creates (or refreshes) a PENDING subscription and sends its opt-in message. */
 export async function startNewsletterOptIn(input: {
-  email: string; name: string; language: string; source: string; origin?: string;
+  email: string; name: string; language: string; source: string; request?: Request;
 }) {
   const { db } = await import('@/db');
   const { newsletterSubscribers, newsletterConsentEvents } = await import('@/db/schema');
@@ -57,13 +54,19 @@ export async function startNewsletterOptIn(input: {
     consentTextVersion: '2026-07-28-v1', language: input.language, source: input.source,
   });
   const token = await issueToken(subscriberId, 'CONFIRM');
-  const link = `${siteUrl(input.origin)}/newsletter/confirm?token=${encodeURIComponent(token)}`;
+  const linkOrigin = await resolveEmailLinkOrigin(input.request);
+  const link = buildEmailLink(linkOrigin.baseUrl, '/newsletter/confirm', { token });
+  const noLinkText = 'Güvenli doğrulama bağlantısı şu anda oluşturulamadı. Lütfen daha sonra tekrar deneyin.';
   const delivery = await sendEmailDetailed({
     to: input.email, subject: 'Bülten aboneliğinizi doğrulayın',
-    text: `Bülten aboneliğinizi etkinleştirmek için bu bağlantıyı açın: ${link}`,
-    html: `<p>Bülten aboneliğinizi etkinleştirmek için <a href="${link}">buraya tıklayın</a>.</p><p>Bu bağlantı 48 saat geçerlidir.</p>`,
+    text: link
+      ? `Bülten aboneliğinizi etkinleştirmek için bu bağlantıyı açın: ${link}`
+      : noLinkText,
+    html: link
+      ? `<p>Bülten aboneliğinizi etkinleştirmek için <a href="${link}">buraya tıklayın</a>.</p><p>Bu bağlantı 48 saat geçerlidir.</p>`
+      : `<p>${noLinkText}</p>`,
   });
-  return { status: 'PENDING', delivery };
+  return { status: 'PENDING', delivery, linkOrigin, link };
 }
 
 export async function consumeNewsletterToken(token: string, purpose: 'CONFIRM' | 'UNSUBSCRIBE') {
@@ -89,7 +92,10 @@ export async function consumeNewsletterToken(token: string, purpose: 'CONFIRM' |
   return status;
 }
 
-export async function createUnsubscribeUrl(subscriberId: string, origin?: string) {
+export async function createUnsubscribeUrl(
+  subscriberId: string,
+  linkOrigin: EmailLinkOriginStatus,
+) {
   const token = await issueToken(subscriberId, 'UNSUBSCRIBE');
-  return `${siteUrl(origin)}/newsletter/unsubscribe?token=${encodeURIComponent(token)}`;
+  return buildEmailLink(linkOrigin.baseUrl, '/newsletter/unsubscribe', { token });
 }

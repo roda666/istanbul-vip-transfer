@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { invalidateContactSettings } from '@/lib/site-settings-server';
 import { revalidateTag } from 'next/cache';
 import { PUBLIC_CHROME_TAG } from '@/lib/public-chrome-cache';
+import { normalizeEmailLinkBaseUrl, resolveEmailLinkOrigin } from '@/lib/email-link-url';
 
 const optionalHttpsUrl = z.preprocess(
   (value) => value === '' ? null : value,
@@ -25,6 +26,15 @@ const settingsSchema = z.object({
   address: z.string().max(500).optional().nullable(),
   defaultSeoTitle: z.string().max(200).optional().nullable(),
   defaultSeoDescription: z.string().max(400).optional().nullable(),
+  publicSiteUrl: z.preprocess(
+    (value) => value === '' ? null : value,
+    z.string().url().max(500).refine((value) => {
+      const normalized = normalizeEmailLinkBaseUrl(value);
+      return Boolean(normalized) && normalized === value.replace(/\/$/, '');
+    }, 'Genel site adresi HTTPS olmalı; localhost, 0.0.0.0 ve port numarası içeremez.')
+      .optional()
+      .nullable(),
+  ),
   // Legal / trust fields
   companyLegalName: z.string().max(200).optional().nullable(),
   companyTradeName: z.string().max(200).optional().nullable(),
@@ -37,7 +47,7 @@ const settingsSchema = z.object({
   approvalGateEnabled: z.boolean().optional(),
 });
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try { await (await import('@/lib/auth/session')).requireAdminSession(); }
   catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
 
@@ -47,7 +57,10 @@ export async function GET() {
     const { eq } = await import('drizzle-orm');
 
     const rows = await db.select().from(siteSettings).where(eq(siteSettings.id, 1)).limit(1);
-    return NextResponse.json({ settings: rows[0] ?? null });
+    return NextResponse.json({
+      settings: rows[0] ?? null,
+      emailLinkOrigin: await resolveEmailLinkOrigin(request),
+    });
   } catch (err) {
     console.error('Settings GET error:', err);
     return NextResponse.json({ error: 'Veritabanı hatası.' }, { status: 503 });

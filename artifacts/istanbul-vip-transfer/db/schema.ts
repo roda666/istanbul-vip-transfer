@@ -214,6 +214,8 @@ export const siteSettings = pgTable('site_settings', {
   address: text('address'),
   defaultSeoTitle: text('default_seo_title'),
   defaultSeoDescription: text('default_seo_description'),
+  /** Public HTTPS origin for transactional email links; never a container host. */
+  publicSiteUrl: text('public_site_url'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   // Reservation form settings
   timeStepMinutes: integer('time_step_minutes').default(5).notNull(),

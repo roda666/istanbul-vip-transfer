@@ -455,7 +455,7 @@ export async function POST(req: NextRequest) {
     if (normalizedEmail && data.newsletterConsent) {
       await startNewsletterOptIn({
         email: normalizedEmail, name: sanitizeText(data.adSoyad).slice(0, 120),
-        language: data.locale, source: `booking-form:${data.serviceType}`, origin: req.nextUrl.origin,
+        language: data.locale, source: `booking-form:${data.serviceType}`, request: req,
       });
     }
     // Booking is durable before mail is attempted. Store only sanitized,

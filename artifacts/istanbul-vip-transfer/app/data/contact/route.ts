@@ -20,6 +20,7 @@ import { getRequestPageSlug } from '@/lib/request-origin';
 import { getTrustedClientIp } from '@/lib/request-client-ip';
 import { verifyFormGuardToken } from '@/lib/form-guard';
 import { recordBotProtectionBlock } from '@/lib/bot-protection-metrics';
+import { verifyTurnstileToken } from '@/lib/turnstile';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,6 +49,7 @@ const ContactSchema = z.object({
   locale:  z.string().min(2).max(5).optional().default('tr'),
   newsletterConsent: z.boolean().optional().default(false),
   formGuardToken: z.string().optional(),
+  turnstileToken: z.string().optional(),
   website: z.string().optional(),   // honeypot — must be empty
   company: z.string().optional(),   // honeypot — must be empty
 });
@@ -120,6 +122,27 @@ export async function POST(req: NextRequest) {
   if (formGuardCheck !== 'valid') {
     await recordBotProtectionBlock({ formType: 'CONTACT', reason: 'FORM_TIMING' });
     return NextResponse.json({ referenceNumber: generateRefNumber() });
+  }
+
+  const turnstileCheck = await verifyTurnstileToken(data.turnstileToken, 'contact');
+  if (turnstileCheck.status === 'unconfigured') {
+    await recordBotProtectionBlock({ formType: 'CONTACT', reason: 'TURNSTILE_UNCONFIGURED' });
+    return NextResponse.json({
+      code: 'TURNSTILE_UNCONFIGURED',
+      message: 'Güvenlik doğrulaması henüz yapılandırılmamış. Lütfen daha sonra tekrar deneyin.',
+    }, { status: 503 });
+  }
+  if (turnstileCheck.status === 'rejected') {
+    await recordBotProtectionBlock({ formType: 'CONTACT', reason: 'TURNSTILE_REJECTED' });
+    return NextResponse.json({
+      code: 'TURNSTILE_REJECTED',
+      message: 'Güvenlik doğrulaması tamamlanamadı. Lütfen doğrulamayı yenileyip tekrar deneyin.',
+    }, { status: 422 });
+  }
+  if (turnstileCheck.status === 'unavailable') {
+    await recordBotProtectionBlock({ formType: 'CONTACT', reason: 'TURNSTILE_UNAVAILABLE' });
+    // Cloudflare is temporarily unreachable. Continue with the independent
+    // rate-limit, honeypot, and signed-form-time protections.
   }
 
   // Consent evidence must reflect a real public locale, never an arbitrary

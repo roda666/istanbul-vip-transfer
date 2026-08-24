@@ -1,0 +1,2 @@
+ALTER TABLE "turnstile_settings" ADD COLUMN "contact_enabled" boolean DEFAULT true NOT NULL;--> statement-breakpoint
+ALTER TABLE "turnstile_settings" ADD COLUMN "reservation_enabled" boolean DEFAULT false NOT NULL;

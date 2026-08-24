@@ -938,6 +938,39 @@ export const emailEncryptionKeys = pgTable('email_encryption_keys', {
 
 export type EmailEncryptionKey = typeof emailEncryptionKeys.$inferSelect;
 
+// ── Cloudflare Turnstile Settings ────────────────────────────────────────────
+
+/**
+ * Singleton Turnstile configuration. The site key may be public, but the
+ * encrypted secret is deliberately never selected into an admin API response.
+ */
+export const turnstileSettings = pgTable('turnstile_settings', {
+  id:                 integer('id').primaryKey().default(1),
+  /** Legacy global toggle retained only for migration compatibility. Never read by application code. */
+  legacyEnabled:      boolean('enabled').default(false).notNull(),
+  contactEnabled:     boolean('contact_enabled').default(true).notNull(),
+  reservationEnabled: boolean('reservation_enabled').default(false).notNull(),
+  siteKey:            text('site_key'),
+  secretKeyEncrypted: text('secret_key_encrypted'),
+  updatedAt:          timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedBy:          uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+});
+
+export type TurnstileSettings = typeof turnstileSettings.$inferSelect;
+
+/**
+ * Dedicated envelope-encrypted data key for Turnstile secrets. Keeping this
+ * separate from SMTP credentials prevents unrelated secrets sharing a key.
+ */
+export const turnstileEncryptionKeys = pgTable('turnstile_encryption_keys', {
+  id:         integer('id').primaryKey().default(1),
+  wrappedKey: text('wrapped_key').notNull(),
+  createdAt:  timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:  timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type TurnstileEncryptionKey = typeof turnstileEncryptionKeys.$inferSelect;
+
 // ── Translation Jobs ──────────────────────────────────────────────────────────
 
 /**

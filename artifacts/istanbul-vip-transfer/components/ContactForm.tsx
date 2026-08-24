@@ -9,6 +9,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useLang } from '@/lib/i18n/context';
 import { trackEvent } from '@/lib/analytics';
 import { localePath } from '@/lib/locale-path';
+import TurnstileWidget from './TurnstileWidget';
 
 interface FormState {
   name: string;
@@ -32,6 +33,7 @@ export default function ContactForm() {
   const websiteHoneypotRef = useRef<HTMLInputElement>(null);
   const companyHoneypotRef = useRef<HTMLInputElement>(null);
   const [formGuardToken, setFormGuardToken] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -76,6 +78,7 @@ export default function ContactForm() {
           locale:  lang,
           newsletterConsent,
            formGuardToken,
+            turnstileToken,
            website: websiteHoneypotRef.current?.value ?? '',
            company: companyHoneypotRef.current?.value ?? '',
         }),
@@ -276,6 +279,8 @@ export default function ContactForm() {
               {serverError}
             </p>
           )}
+
+          <TurnstileWidget form="contact" onTokenChange={setTurnstileToken} />
 
           {/* Optional newsletter consent */}
           <label style={{

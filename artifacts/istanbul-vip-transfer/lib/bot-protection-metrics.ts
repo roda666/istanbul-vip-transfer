@@ -1,7 +1,13 @@
 import 'server-only';
 
 export type BotProtectionForm = 'RESERVATION' | 'CONTACT';
-export type BotProtectionReason = 'RATE_LIMIT' | 'HONEYPOT' | 'FORM_TIMING';
+export type BotProtectionReason =
+  | 'RATE_LIMIT'
+  | 'HONEYPOT'
+  | 'FORM_TIMING'
+  | 'TURNSTILE_REJECTED'
+  | 'TURNSTILE_UNAVAILABLE'
+  | 'TURNSTILE_UNCONFIGURED';
 
 function currentHourBucket(): Date {
   const bucket = new Date();

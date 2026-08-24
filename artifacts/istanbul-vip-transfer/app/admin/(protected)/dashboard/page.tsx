@@ -38,6 +38,60 @@ interface BotProtectionSummary {
   formTiming: number;
 }
 
+interface OperationsCenter {
+  today: string;
+  tomorrow: string;
+  todayTransfers: number;
+  tomorrowTransfers: number;
+  newRequests: number;
+  unansweredChats: number;
+  pendingTranslations: number;
+}
+
+interface ContentStatusCounts {
+  DRAFT: number;
+  RESEARCH: number;
+  REVIEW: number;
+  APPROVED: number;
+  SCHEDULED: number;
+  PUBLISHED: number;
+  ARCHIVED: number;
+  total: number;
+}
+
+interface DashboardBlock<T> {
+  data: T;
+  error: string | null;
+}
+
+function describeDashboardError(error: unknown): string {
+  const databaseError = error as { code?: unknown; message?: unknown; relation?: unknown };
+  const message = typeof databaseError?.message === 'string' ? databaseError.message : '';
+
+  if (databaseError?.code === '42P01') {
+    const relation = typeof databaseError.relation === 'string'
+      ? databaseError.relation
+      : message.match(/relation "([^"]+)" does not exist/)?.[1];
+    return relation
+      ? `Gerekli veritabanı tablosu bulunamadı: ${relation}. İlgili migration uygulanmalı.`
+      : 'Gerekli bir veritabanı tablosu bulunamadı. İlgili migration uygulanmalı.';
+  }
+
+  if (databaseError?.code === '42703') {
+    return 'Gerekli veritabanı sütunu bulunamadı. İlgili migration uygulanmalı.';
+  }
+
+  return 'Bu veri bloğu şu anda yüklenemedi. Diğer panel verileri kullanılmaya devam edebilir.';
+}
+
+async function loadDashboardBlock<T>(loader: () => Promise<T>, fallback: T): Promise<DashboardBlock<T>> {
+  try {
+    return { data: await loader(), error: null };
+  } catch (error) {
+    return { data: fallback, error: describeDashboardError(error) };
+  }
+}
+
 function getIstanbulDayRange(offsetDays: number) {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Istanbul',
@@ -52,19 +106,18 @@ function getIstanbulDayRange(offsetDays: number) {
   return istanbulMidnight.toISOString().slice(0, 10);
 }
 
-async function getOperationsCenter() {
-  try {
+async function getOperationsCenter(): Promise<DashboardBlock<OperationsCenter>> {
+  const today = getIstanbulDayRange(0);
+  const tomorrow = getIstanbulDayRange(1);
+  return loadDashboardBlock(async () => {
     const { db } = await import('@/db');
     const {
       reservationRequests,
-      reservationSubmissionFailures,
       chatbotSessions,
       chatbotMessages,
       contentTranslations,
     } = await import('@/db/schema');
-    const { and, count, desc, eq, inArray, isNull, sql } = await import('drizzle-orm');
-    const today = getIstanbulDayRange(0);
-    const tomorrow = getIstanbulDayRange(1);
+    const { and, count, eq, inArray, isNull, sql } = await import('drizzle-orm');
     const pendingTranslationStatuses = ['QUEUED', 'TRANSLATING', 'DRAFT', 'REVIEW'] as const;
 
     const [
@@ -73,8 +126,6 @@ async function getOperationsCenter() {
       newRequests,
       unansweredChats,
       pendingTranslations,
-      translationErrors,
-      submissionErrors,
     ] = await Promise.all([
       db.select({ count: count() }).from(reservationRequests).where(and(
         isNull(reservationRequests.archivedAt),
@@ -101,43 +152,7 @@ async function getOperationsCenter() {
       db.select({ count: count() }).from(contentTranslations).where(
         inArray(contentTranslations.status, pendingTranslationStatuses),
       ),
-      db.select({
-        id: contentTranslations.id,
-        entityType: contentTranslations.entityType,
-        targetLanguageCode: contentTranslations.targetLanguageCode,
-        failureReason: contentTranslations.failureReason,
-        createdAt: contentTranslations.updatedAt,
-      }).from(contentTranslations)
-        .where(eq(contentTranslations.status, 'FAILED'))
-        .orderBy(desc(contentTranslations.updatedAt))
-        .limit(5),
-      db.select({
-        id: reservationSubmissionFailures.id,
-        referenceNumber: reservationSubmissionFailures.referenceNumber,
-        lastError: reservationSubmissionFailures.lastError,
-        createdAt: reservationSubmissionFailures.updatedAt,
-      }).from(reservationSubmissionFailures)
-        .where(isNull(reservationSubmissionFailures.resolvedAt))
-        .orderBy(desc(reservationSubmissionFailures.updatedAt))
-        .limit(5),
     ]);
-
-    const errors: RecentError[] = [
-      ...translationErrors.map((error) => ({
-        id: `translation-${error.id}`,
-        title: `${error.entityType} çevirisi (${error.targetLanguageCode.toUpperCase()})`,
-        detail: error.failureReason ?? 'Çeviri işlemi başarısız oldu.',
-        createdAt: error.createdAt,
-        href: '/admin/ceviriler',
-      })),
-      ...submissionErrors.map((error) => ({
-        id: `reservation-${error.id}`,
-        title: `Talep kaydedilemedi: ${error.referenceNumber}`,
-        detail: error.lastError,
-        createdAt: error.createdAt,
-        href: '/admin/talepler',
-      })),
-    ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, 5);
 
     return {
       today,
@@ -147,15 +162,20 @@ async function getOperationsCenter() {
       newRequests: newRequests[0]?.count ?? 0,
       unansweredChats: unansweredChats[0]?.count ?? 0,
       pendingTranslations: pendingTranslations[0]?.count ?? 0,
-      errors,
     };
-  } catch {
-    return null;
-  }
+  }, {
+    today,
+    tomorrow,
+    todayTransfers: 0,
+    tomorrowTransfers: 0,
+    newRequests: 0,
+    unansweredChats: 0,
+    pendingTranslations: 0,
+  });
 }
 
-async function getStatusCounts() {
-  try {
+async function getStatusCounts(): Promise<DashboardBlock<ContentStatusCounts>> {
+  return loadDashboardBlock(async () => {
     const { db } = await import('@/db');
     const { content } = await import('@/db/schema');
     const { count } = await import('drizzle-orm');
@@ -178,13 +198,20 @@ async function getStatusCounts() {
       ARCHIVED: map['ARCHIVED'] ?? 0,
       total: rows.reduce((s, r) => s + r.count, 0),
     };
-  } catch {
-    return null;
-  }
+  }, {
+    DRAFT: 0,
+    RESEARCH: 0,
+    REVIEW: 0,
+    APPROVED: 0,
+    SCHEDULED: 0,
+    PUBLISHED: 0,
+    ARCHIVED: 0,
+    total: 0,
+  });
 }
 
-async function getBotProtectionSummary(): Promise<BotProtectionSummary | null> {
-  try {
+async function getBotProtectionSummary(): Promise<DashboardBlock<BotProtectionSummary | null>> {
+  return loadDashboardBlock(async () => {
     const { db } = await import('@/db');
     const { botProtectionMetrics } = await import('@/db/schema');
     const { gte, sql } = await import('drizzle-orm');
@@ -204,13 +231,18 @@ async function getBotProtectionSummary(): Promise<BotProtectionSummary | null> {
       honeypot: byReason.get('HONEYPOT') ?? 0,
       formTiming: byReason.get('FORM_TIMING') ?? 0,
     };
-  } catch {
-    return null;
-  }
+  }, null);
 }
 
-async function getRecentAuditLogs() {
-  try {
+async function getRecentAuditLogs(): Promise<DashboardBlock<Array<{
+  id: string;
+  action: string;
+  entityType: string | null;
+  entityId: string | null;
+  createdAt: Date;
+  adminName: string | null;
+}>>> {
+  return loadDashboardBlock(async () => {
     const { db } = await import('@/db');
     const { auditLogs, adminUsers } = await import('@/db/schema');
     const { desc, eq } = await import('drizzle-orm');
@@ -228,8 +260,58 @@ async function getRecentAuditLogs() {
       .leftJoin(adminUsers, eq(auditLogs.adminUserId, adminUsers.id))
       .orderBy(desc(auditLogs.createdAt))
       .limit(8);
-  } catch {
-    return [];
+  }, []);
+}
+
+async function getRecentErrors(): Promise<DashboardBlock<RecentError[]>> {
+  try {
+    const { db } = await import('@/db');
+    const { contentTranslations, reservationSubmissionFailures } = await import('@/db/schema');
+    const { desc, eq, isNull } = await import('drizzle-orm');
+
+    const [translations, submissions] = await Promise.all([
+      loadDashboardBlock(async () => db.select({
+        id: contentTranslations.id,
+        entityType: contentTranslations.entityType,
+        targetLanguageCode: contentTranslations.targetLanguageCode,
+        failureReason: contentTranslations.failureReason,
+        createdAt: contentTranslations.updatedAt,
+      }).from(contentTranslations)
+        .where(eq(contentTranslations.status, 'FAILED'))
+        .orderBy(desc(contentTranslations.updatedAt))
+        .limit(5), []),
+      loadDashboardBlock(async () => db.select({
+        id: reservationSubmissionFailures.id,
+        referenceNumber: reservationSubmissionFailures.referenceNumber,
+        lastError: reservationSubmissionFailures.lastError,
+        createdAt: reservationSubmissionFailures.updatedAt,
+      }).from(reservationSubmissionFailures)
+        .where(isNull(reservationSubmissionFailures.resolvedAt))
+        .orderBy(desc(reservationSubmissionFailures.updatedAt))
+        .limit(5), []),
+    ]);
+
+    const errors: RecentError[] = [
+      ...translations.data.map((error) => ({
+        id: `translation-${error.id}`,
+        title: `${error.entityType} çevirisi (${error.targetLanguageCode.toUpperCase()})`,
+        detail: error.failureReason ?? 'Çeviri işlemi başarısız oldu.',
+        createdAt: error.createdAt,
+        href: '/admin/ceviriler',
+      })),
+      ...submissions.data.map((error) => ({
+        id: `reservation-${error.id}`,
+        title: `Talep kaydedilemedi: ${error.referenceNumber}`,
+        detail: error.lastError,
+        createdAt: error.createdAt,
+        href: '/admin/talepler',
+      })),
+    ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, 5);
+
+    const loadErrors = [translations.error, submissions.error].filter(Boolean);
+    return { data: errors, error: loadErrors.length > 0 ? loadErrors.join(' ') : null };
+  } catch (error) {
+    return { data: [], error: describeDashboardError(error) };
   }
 }
 
@@ -244,6 +326,23 @@ function formatDate(date: Date) {
   }).format(date);
 }
 
+function DashboardBlockWarning({ message }: { message: string }) {
+  return (
+    <div
+      role="alert"
+      style={{
+        display: 'flex', alignItems: 'flex-start', gap: '9px',
+        background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '10px',
+        padding: '12px 14px', marginBottom: '12px', color: '#92400E',
+        fontSize: '13px', fontFamily: 'Inter, sans-serif', lineHeight: 1.45,
+      }}
+    >
+      <AlertTriangle size={17} style={{ flexShrink: 0, marginTop: '1px' }} />
+      <span>{message}</span>
+    </div>
+  );
+}
+
 const ACTION_COLORS: Record<string, { bg: string; text: string }> = {
   LOGIN:   { bg: '#F0FDF4', text: '#168C5B' },
   LOGOUT:  { bg: '#FEF2F2', text: '#D64545' },
@@ -256,20 +355,19 @@ const ACTION_COLORS: Record<string, { bg: string; text: string }> = {
 };
 
 export default async function DashboardPage() {
-  const [operations, counts, logs, botProtection] = await Promise.all([
+  const [operations, counts, logs, botProtection, recentErrors] = await Promise.all([
     getOperationsCenter(),
     getStatusCounts(),
     getRecentAuditLogs(),
     getBotProtectionSummary(),
+    getRecentErrors(),
   ]);
 
-  const dbError = operations === null || counts === null;
-  const operationCards: OperationCard[] = operations
-    ? [
+  const operationCards: OperationCard[] = [
         {
           label: 'Bugünkü Transferler',
-          description: `${operations.today} tarihli planlanan talepler`,
-          count: operations.todayTransfers,
+          description: `${operations.data.today} tarihli planlanan talepler`,
+          count: operations.data.todayTransfers,
           icon: <CalendarDays size={20} />,
           color: '#2563EB',
           bgColor: '#EFF6FF',
@@ -277,8 +375,8 @@ export default async function DashboardPage() {
         },
         {
           label: 'Yarınki Transferler',
-          description: `${operations.tomorrow} tarihli planlanan talepler`,
-          count: operations.tomorrowTransfers,
+          description: `${operations.data.tomorrow} tarihli planlanan talepler`,
+          count: operations.data.tomorrowTransfers,
           icon: <Calendar size={20} />,
           color: '#7C3AED',
           bgColor: '#F5F3FF',
@@ -287,7 +385,7 @@ export default async function DashboardPage() {
         {
           label: 'Yeni Rezervasyon Talepleri',
           description: 'Henüz işlem bekleyen yeni talepler',
-          count: operations.newRequests,
+          count: operations.data.newRequests,
           icon: <Inbox size={20} />,
           color: '#D97706',
           bgColor: '#FFFBEB',
@@ -296,7 +394,7 @@ export default async function DashboardPage() {
         {
           label: 'Yanıt Bekleyen Sohbetler',
           description: 'Son mesajı ziyaretçiden gelen aktif oturumlar',
-          count: operations.unansweredChats,
+          count: operations.data.unansweredChats,
           icon: <MessageCircle size={20} />,
           color: '#0F766E',
           bgColor: '#F0FDFA',
@@ -305,20 +403,18 @@ export default async function DashboardPage() {
         {
           label: 'Bekleyen Çeviriler',
           description: 'Sırada, çeviride, taslakta veya incelemede',
-          count: operations.pendingTranslations,
+          count: operations.data.pendingTranslations,
           icon: <Languages size={20} />,
           color: '#7C3AED',
           bgColor: '#F5F3FF',
           href: '/admin/ceviriler',
         },
-      ]
-    : [];
+      ];
 
-  const cards: StatusCard[] = counts
-    ? [
+  const cards: StatusCard[] = [
         {
           label: 'Taslak',
-          count: counts.DRAFT + counts.RESEARCH,
+          count: counts.data.DRAFT + counts.data.RESEARCH,
           icon: <FileText size={20} />,
           color: '#64748B',
           bgColor: '#F1F5F9',
@@ -326,7 +422,7 @@ export default async function DashboardPage() {
         },
         {
           label: 'İncelemede',
-          count: counts.REVIEW,
+          count: counts.data.REVIEW,
           icon: <Clock size={20} />,
           color: '#D97706',
           bgColor: '#FFFBEB',
@@ -334,7 +430,7 @@ export default async function DashboardPage() {
         },
         {
           label: 'Onaylandı',
-          count: counts.APPROVED,
+          count: counts.data.APPROVED,
           icon: <CheckCircle size={20} />,
           color: '#168C5B',
           bgColor: '#F0FDF4',
@@ -342,7 +438,7 @@ export default async function DashboardPage() {
         },
         {
           label: 'Zamanlandı',
-          count: counts.SCHEDULED,
+          count: counts.data.SCHEDULED,
           icon: <Calendar size={20} />,
           color: '#7C3AED',
           bgColor: '#F5F3FF',
@@ -350,14 +446,13 @@ export default async function DashboardPage() {
         },
         {
           label: 'Yayında',
-          count: counts.PUBLISHED,
+          count: counts.data.PUBLISHED,
           icon: <Globe size={20} />,
           color: '#059669',
           bgColor: '#ECFDF5',
           href: '/admin/sayfalar',
         },
-      ]
-    : [];
+      ];
 
   return (
     <div className="dashboard-page" style={{ padding: '28px 24px' }}>
@@ -388,28 +483,7 @@ export default async function DashboardPage() {
         description="Günlük operasyonlar, talepler ve içerik iş akışı"
       />
 
-      {dbError && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            background: '#FEF2F2',
-            border: '1px solid #FECACA',
-            borderRadius: '10px',
-            padding: '14px 16px',
-            marginBottom: '24px',
-          }}
-        >
-          <AlertTriangle size={18} style={{ color: '#D64545', flexShrink: 0 }} />
-          <p style={{ color: '#D64545', fontSize: '13px', fontFamily: 'Inter, sans-serif', margin: 0 }}>
-            Veritabanına bağlanılamadı. DATABASE_URL ve migrationların çalıştırıldığını kontrol edin.
-          </p>
-        </div>
-      )}
-
-      {!dbError && (
-        <section style={{ marginBottom: '32px' }}>
+      <section style={{ marginBottom: '32px' }}>
           <h2
             style={{
               color: '#52697A', fontSize: '11px', fontFamily: 'Inter, sans-serif',
@@ -418,6 +492,7 @@ export default async function DashboardPage() {
           >
             Operasyon Merkezi
           </h2>
+          {operations.error && <DashboardBlockWarning message={operations.error} />}
           <div
             style={{
               display: 'grid',
@@ -446,11 +521,9 @@ export default async function DashboardPage() {
               </Link>
             ))}
           </div>
-        </section>
-      )}
+      </section>
 
-      {!dbError && (
-        <section style={{ marginBottom: '32px' }}>
+      <section style={{ marginBottom: '32px' }}>
           <h2
             style={{
               color: '#52697A', fontSize: '11px', fontFamily: 'Inter, sans-serif',
@@ -459,7 +532,8 @@ export default async function DashboardPage() {
           >
             Bot Koruması · Son 24 Saat
           </h2>
-          {botProtection ? (
+          {botProtection.error && <DashboardBlockWarning message={botProtection.error} />}
+          {botProtection.data ? (
             <div
               style={{
                 display: 'grid',
@@ -468,9 +542,9 @@ export default async function DashboardPage() {
               }}
             >
               {[
-                { label: 'Hız limiti engeli', count: botProtection.rateLimit, color: '#D97706', bg: '#FFFBEB' },
-                { label: 'Tuzak alan engeli', count: botProtection.honeypot, color: '#DC2626', bg: '#FEF2F2' },
-                { label: 'Süre doğrulama engeli', count: botProtection.formTiming, color: '#7C3AED', bg: '#F5F3FF' },
+                { label: 'Hız limiti engeli', count: botProtection.data.rateLimit, color: '#D97706', bg: '#FFFBEB' },
+                { label: 'Tuzak alan engeli', count: botProtection.data.honeypot, color: '#DC2626', bg: '#FEF2F2' },
+                { label: 'Süre doğrulama engeli', count: botProtection.data.formTiming, color: '#7C3AED', bg: '#F5F3FF' },
               ].map((item) => (
                 <div key={item.label} className="dashboard-card">
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '12px' }}>
@@ -485,14 +559,12 @@ export default async function DashboardPage() {
             </div>
           ) : (
             <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '10px', padding: '14px 16px', color: '#92400E', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>
-              Koruma sayaçları şu anda alınamıyor.
+              {botProtection.error ?? 'Koruma sayaçları şu anda alınamıyor.'}
             </div>
           )}
-        </section>
-      )}
+      </section>
 
-      {!dbError && operations && (
-        <section style={{ marginBottom: '32px' }}>
+      <section style={{ marginBottom: '32px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
             <h2 style={{ color: '#52697A', fontSize: '11px', fontFamily: 'Inter, sans-serif', letterSpacing: '0.15em', textTransform: 'uppercase', margin: 0, fontWeight: 600 }}>
               Son Hatalar
@@ -501,13 +573,14 @@ export default async function DashboardPage() {
               Çevirileri aç <ArrowRight size={13} style={{ verticalAlign: '-2px' }} />
             </Link>
           </div>
+          {recentErrors.error && <DashboardBlockWarning message={recentErrors.error} />}
           <div style={{ background: '#FFFFFF', border: '1px solid #D8E1E9', borderRadius: '12px', overflow: 'hidden' }}>
-            {operations.errors.length === 0 ? (
+            {recentErrors.data.length === 0 ? (
               <div style={{ padding: '20px 16px', display: 'flex', alignItems: 'center', gap: '10px', color: '#168C5B', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>
                 <CheckCircle size={18} /> Yakın zamanda kaydedilmiş hata yok.
               </div>
-            ) : operations.errors.map((error, index) => (
-              <Link key={error.id} href={error.href} className="dashboard-error-row" style={{ display: 'block', padding: '13px 16px', textDecoration: 'none', borderBottom: index < operations.errors.length - 1 ? '1px solid #EDF2F7' : 'none' }}>
+            ) : recentErrors.data.map((error, index) => (
+              <Link key={error.id} href={error.href} className="dashboard-error-row" style={{ display: 'block', padding: '13px 16px', textDecoration: 'none', borderBottom: index < recentErrors.data.length - 1 ? '1px solid #EDF2F7' : 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
                   <TriangleAlert size={17} style={{ color: '#D64545', flexShrink: 0, marginTop: '1px' }} />
                   <div style={{ minWidth: 0, flex: 1 }}>
@@ -522,11 +595,9 @@ export default async function DashboardPage() {
             ))}
           </div>
         </section>
-      )}
 
       {/* Content status cards */}
-      {!dbError && (
-        <section style={{ marginBottom: '32px' }}>
+      <section style={{ marginBottom: '32px' }}>
           <h2
             style={{
               color: '#52697A', fontSize: '11px', fontFamily: 'Inter, sans-serif',
@@ -535,6 +606,7 @@ export default async function DashboardPage() {
           >
             İçerik Durumu
           </h2>
+          {counts.error && <DashboardBlockWarning message={counts.error} />}
           <div
           style={{
             display: 'grid',
@@ -586,11 +658,10 @@ export default async function DashboardPage() {
             </Link>
           ))}
           </div>
-        </section>
-      )}
+      </section>
 
       {/* Recent activity */}
-      {logs.length > 0 && (
+      {(logs.data.length > 0 || logs.error) && (
         <div>
           <h2
             style={{
@@ -605,6 +676,7 @@ export default async function DashboardPage() {
           >
             Son İşlemler
           </h2>
+          {logs.error && <DashboardBlockWarning message={logs.error} />}
           <div
             style={{
               background: '#FFFFFF',
@@ -613,7 +685,7 @@ export default async function DashboardPage() {
               overflow: 'hidden',
             }}
           >
-            {logs.map((log, i) => {
+            {logs.data.map((log, i) => {
               const actionStyle = ACTION_COLORS[log.action] ?? { bg: '#F8FAFC', text: '#64748B' };
               return (
                 <div
@@ -623,7 +695,7 @@ export default async function DashboardPage() {
                     alignItems: 'center',
                     gap: '12px',
                     padding: '12px 16px',
-                    borderBottom: i < logs.length - 1 ? '1px solid #EDF2F7' : 'none',
+                     borderBottom: i < logs.data.length - 1 ? '1px solid #EDF2F7' : 'none',
                   }}
                 >
                   <span

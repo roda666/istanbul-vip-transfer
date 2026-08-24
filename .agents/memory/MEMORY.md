@@ -65,4 +65,6 @@
 - [CMS publication and request provenance](cms-publication-request-provenance.md) — publish must invalidate localized SEO paths; social images are verified; request origin and backups are auditable.
 - [Social publishing approval](social-publishing-approval.md) — automated content and social publication require explicit approval by default; real provider data is never fabricated.
 - [Staged Next production builds](staged-next-production-builds.md) — split compile and generate modes when a full Next build exceeds the command time limit.
+- [Dashboard database block isolation](dashboard-database-block-isolation.md) — dashboard queries fail independently; missing schema objects show a migration-specific warning only in their block.
+- [Production build memory recovery](production-build-memory-recovery.md) — if Next build dies silently under memory pressure, pause only its artifact web workflow, build, then restart it.
 - [Turnstile form scope](turnstile-form-scope.md) — protect the contact form by default; keep the WhatsApp-linked reservation flow opt-in only.

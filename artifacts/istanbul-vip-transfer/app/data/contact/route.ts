@@ -207,11 +207,14 @@ export async function POST(req: NextRequest) {
     // A saved request is never discarded because mail delivery is unavailable.
     // The notification outcome is persisted for admins without exposing it to
     // public callers or writing form content to server logs.
+    let publicNotification: { status: string } = { status: 'failed' };
     try {
       const recipients = await getAdminNotifyEmails();
       const deliveries = await Promise.all(
         recipients.map(to => sendEmailDetailed({
           to,
+          source: 'CONTACT_ADMIN_NOTIFICATION',
+          requestReference: referenceNumber,
           subject: `Yeni iletişim talebi — ${referenceNumber}`,
           text: [
             `Referans: ${referenceNumber}`,
@@ -251,6 +254,7 @@ export async function POST(req: NextRequest) {
         acceptedCount,
         failureCodes: failedCodes,
       };
+      publicNotification = { status: notification.status };
 
       await db.update(reservationRequests)
         .set({ requestData: { ...requestData, emailNotification: notification } })
@@ -270,6 +274,7 @@ export async function POST(req: NextRequest) {
         acceptedCount: 0,
         failureCodes: ['NOTIFICATION_PROCESSING_FAILED'],
       };
+      publicNotification = { status: notification.status };
       await db.update(reservationRequests)
         .set({ requestData: { ...requestData, emailNotification: notification } })
         .where(eq(reservationRequests.referenceNumber, referenceNumber))
@@ -284,7 +289,11 @@ export async function POST(req: NextRequest) {
       console.error('[contact] Admin email notification processing failed.');
     }
 
-    return NextResponse.json({ referenceNumber });
+    return NextResponse.json({
+      referenceNumber,
+      requestSaved: true,
+      emailNotification: publicNotification,
+    }, { status: publicNotification.status === 'sent' ? 201 : 202 });
   } catch (err) {
     console.error('[contact] DB error:', (err as Error)?.message ?? 'unknown');
     return NextResponse.json({ error: 'Database error' }, { status: 500 });

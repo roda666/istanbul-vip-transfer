@@ -65,6 +65,8 @@ export async function POST(request: NextRequest) {
         <p style="font-size:12px;color:#8899AA;">Gönderen: ${session.name} (${session.email})</p>
       </div>`,
     text: 'Test E-postası — Istanbul VIP Transfer SMTP yapılandırmanız çalışıyor.',
+    source: 'ADMIN_TEST',
+    adminUserId: session.adminId,
   });
 
   if (!delivery.ok) {
@@ -77,6 +79,7 @@ export async function POST(request: NextRequest) {
         rejectedCount: delivery.rejectedCount,
         messageId: delivery.messageId,
         smtpResponseCode: delivery.smtpResponseCode,
+        serverResponse: delivery.serverResponse,
       },
     }, { status: 400 });
   }
@@ -106,6 +109,7 @@ export async function POST(request: NextRequest) {
       rejectedCount: delivery.rejectedCount,
       messageId: delivery.messageId,
       smtpResponseCode: delivery.smtpResponseCode,
+      serverResponse: delivery.serverResponse,
     },
   });
 }

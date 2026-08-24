@@ -14,6 +14,7 @@
 - [Language catalog system](language-catalog-system.md) — DB-driven public locale set via getPublicLanguages(); static middleware; passive-locale redirect in [lang] layout; idempotent 67-lang seed.
 - [Homepage CMS auto-publish](homepage-cms-autopublish.md) — TR save → AI translate EN/DE/RU/AR → all directly PUBLISHED; no approval flow for homepage; /publish/route.ts state machine still used only for manual unpublish/edge-case publish; mobile CSS breakpoint at 900px with display:block.
 - [Email settings system](email-settings-system.md) — SMTP password uses an auto-generated, envelope-encrypted data key; DB config still precedes environment fallback and passwords never reach clients.
+- [SMTP delivery evidence](smtp-delivery-evidence.md) — success means recipient acceptance, not request storage; persist sanitized provider responses and block sender-domain mismatch.
 - [Server-only CLI validation](server-only-cli-validation.md) — direct Node checks of Next server-only modules require the react-server resolution condition.
 - [Translation job queue](translation-job-queue.md) — DB-backed per-language AI translation queue; 5 API routes; concurrency 2 frontend; 45s AbortController; safe-fetch-json utility; replaces old synchronous /admin/api/translations/ai.
 - [Service page translation seed](service-page-translation-seed.md) — seed script for all 14 services × EN/DE/RU/AR; OUTDATED status flow; TR pages at /{slug} (no /tr/ prefix).

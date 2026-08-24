@@ -19,6 +19,12 @@ export interface SendEmailOptions {
   subject: string;
   html: string;
   text?: string;
+  /** Shown in the admin delivery history; never includes message content. */
+  source?: string;
+  /** Optional public request reference, not a personal-data payload. */
+  requestReference?: string;
+  /** Present only for an authenticated admin-triggered send. */
+  adminUserId?: string;
 }
 
 /** Default recipient for booking, contact, and system notifications. */
@@ -29,6 +35,7 @@ export type EmailDeliveryCode =
   | 'SMTP_CONFIG_INCOMPLETE'
   | 'SMTP_PASSWORD_MISSING'
   | 'SMTP_PASSWORD_UNREADABLE'
+  | 'SMTP_SENDER_DOMAIN_MISMATCH'
   | 'SMTP_CONNECTION_FAILED'
   | 'SMTP_AUTH_FAILED'
   | 'SMTP_RECIPIENT_REJECTED'
@@ -44,6 +51,8 @@ export interface EmailDeliveryResult {
   rejectedCount: number;
   messageId?: string;
   smtpResponseCode?: number;
+  /** Provider response, scrubbed of credentials and capped before persistence. */
+  serverResponse: string;
 }
 
 export interface SmtpConnectionResult {
@@ -60,6 +69,7 @@ interface ResolvedSmtpConfig {
   user: string;
   pass: string;
   from: string;
+  fromEmail: string;
   replyTo?: string;
 }
 
@@ -76,6 +86,59 @@ function configFailure(
   message: string,
 ): SmtpConfigResolution {
   return { config: null, code, message };
+}
+
+export type SenderDomainCompatibility = {
+  ok: boolean;
+  message?: string;
+  expectedDomain?: string;
+};
+
+function domainFromEmail(value: string | null | undefined): string | null {
+  const email = value?.trim().toLowerCase();
+  if (!email) return null;
+  const match = email.match(/^[^@\s]+@([^@\s]+)$/);
+  return match?.[1] ?? null;
+}
+
+function expectedDomainFromHost(host: string | null | undefined): string | null {
+  const parts = host?.trim().toLowerCase().split('.').filter(Boolean) ?? [];
+  if (parts.length < 2 || parts.some((part) => !/^[a-z0-9-]+$/i.test(part))) return null;
+  while (parts.length > 2 && ['smtp', 'mail', 'outbound', 'secure', 'relay'].includes(parts[0])) {
+    parts.shift();
+  }
+  return parts.join('.');
+}
+
+/**
+ * A sender must belong to the authenticated SMTP account's domain whenever it
+ * can be determined. This prevents a personal Gmail address being presented as
+ * the sender through an unrelated mail host.
+ */
+export function validateSenderDomainCompatibility(input: {
+  smtpHost?: string | null;
+  smtpUser?: string | null;
+  fromEmail?: string | null;
+}): SenderDomainCompatibility {
+  const senderDomain = domainFromEmail(input.fromEmail);
+  if (!senderDomain) return { ok: true };
+
+  const expectedDomain = domainFromEmail(input.smtpUser) ?? expectedDomainFromHost(input.smtpHost);
+  if (!expectedDomain) {
+    return {
+      ok: false,
+      message: 'Gönderen adresinin alan adı doğrulanamadı. SMTP kullanıcı adını tam e-posta adresi olarak girin.',
+    };
+  }
+
+  if (senderDomain === expectedDomain || senderDomain.endsWith(`.${expectedDomain}`)) {
+    return { ok: true, expectedDomain };
+  }
+  return {
+    ok: false,
+    expectedDomain,
+    message: 'Gönderen adresi SMTP sunucunuzun yetkili olduğu alan adıyla uyuşmuyor; postalar teslim edilmeyebilir.',
+  };
 }
 
 /**
@@ -123,6 +186,7 @@ async function getSmtpConfig(): Promise<SmtpConfigResolution> {
           user: row.smtpUser,
           pass,
           from,
+          fromEmail: row.fromEmail ?? row.smtpUser,
           replyTo: row.replyToEmail ?? undefined,
         },
       };
@@ -159,6 +223,11 @@ async function getSmtpConfig(): Promise<SmtpConfigResolution> {
       user,
       pass,
       from: process.env.SMTP_FROM ?? `VIP Transfer Admin <${user}>`,
+      fromEmail: (() => {
+        const configured = process.env.SMTP_FROM;
+        const match = configured?.match(/<([^>]+)>/);
+        return match?.[1] ?? configured ?? user;
+      })(),
     },
   };
 }
@@ -172,6 +241,8 @@ function getSmtpResponseCode(value: unknown): number | undefined {
 function classifyTransportFailure(error: unknown): {
   code: 'SMTP_CONNECTION_FAILED' | 'SMTP_AUTH_FAILED';
   message: string;
+  smtpResponseCode?: number;
+  serverResponse: string;
 } {
   const code = (
     typeof error === 'object'
@@ -185,11 +256,21 @@ function classifyTransportFailure(error: unknown): {
     && 'responseCode' in error
     && typeof error.responseCode === 'number'
   ) ? error.responseCode : undefined;
+  const rawResponse = (
+    typeof error === 'object'
+    && error !== null
+    && 'response' in error
+    && typeof error.response === 'string'
+  ) ? error.response : '';
+  const serverResponse = rawResponse.trim().replace(/\s+/g, ' ').slice(0, 1000)
+    || 'SMTP sunucusundan ayrıntılı yanıt alınamadı.';
 
   if (code === 'EAUTH' || responseCode === 530 || responseCode === 534 || responseCode === 535) {
     return {
       code: 'SMTP_AUTH_FAILED',
       message: 'SMTP kimlik doğrulaması başarısız oldu. Kullanıcı adı ve parolayı kontrol edin.',
+      smtpResponseCode: responseCode,
+      serverResponse,
     };
   }
 
@@ -197,24 +278,32 @@ function classifyTransportFailure(error: unknown): {
     return {
       code: 'SMTP_CONNECTION_FAILED',
       message: 'SMTP sunucu adresi bulunamadı. Sunucu adresini kontrol edin.',
+      smtpResponseCode: responseCode,
+      serverResponse,
     };
   }
   if (code === 'ECONNREFUSED') {
     return {
       code: 'SMTP_CONNECTION_FAILED',
       message: 'SMTP sunucusu bağlantıyı reddetti. Sunucu adresi, port ve güvenlik tipini kontrol edin.',
+      smtpResponseCode: responseCode,
+      serverResponse,
     };
   }
   if (code === 'ETIMEDOUT' || code === 'ESOCKETTIMEDOUT') {
     return {
       code: 'SMTP_CONNECTION_FAILED',
       message: 'SMTP sunucusuna zamanında bağlanılamadı. Port kapalı olabilir veya sunucu erişilemiyor olabilir.',
+      smtpResponseCode: responseCode,
+      serverResponse,
     };
   }
   if (code === 'ECONNRESET' || code === 'EPROTO' || code === 'ERR_TLS_CERT_ALTNAME_INVALID') {
     return {
       code: 'SMTP_CONNECTION_FAILED',
       message: 'SMTP güvenli bağlantısı kurulamadı. SSL/STARTTLS seçimini ve portu kontrol edin.',
+      smtpResponseCode: responseCode,
+      serverResponse,
     };
   }
 
@@ -223,6 +312,8 @@ function classifyTransportFailure(error: unknown): {
   return {
     code: 'SMTP_CONNECTION_FAILED',
     message: 'SMTP sunucusuna bağlanılamadı. Sunucu adresi, port, güvenlik tipi ve ağ erişimini kontrol edin.',
+    smtpResponseCode: responseCode,
+    serverResponse,
   };
 }
 
@@ -291,22 +382,56 @@ export async function verifySmtpConnection(): Promise<SmtpConnectionResult> {
 
 /**
  * Sends an email and returns an evidence-based result. `ok` is true only when
- * the SMTP server explicitly accepted at least one recipient and rejected none.
+ * the SMTP server explicitly accepted the intended recipient and rejected none.
  */
 export async function sendEmailDetailed(opts: SendEmailOptions): Promise<EmailDeliveryResult> {
+  const finish = async (result: EmailDeliveryResult): Promise<EmailDeliveryResult> => {
+    const { persistEmailDeliveryAttempt } = await import('@/lib/email-delivery-log');
+    await persistEmailDeliveryAttempt({
+      recipient: opts.to,
+      source: opts.source,
+      requestReference: opts.requestReference,
+      adminUserId: opts.adminUserId,
+      resultCode: result.code,
+      accepted: result.ok,
+      acceptedCount: result.acceptedCount,
+      rejectedCount: result.rejectedCount,
+      smtpResponseCode: result.smtpResponseCode,
+      serverResponse: result.serverResponse,
+      messageId: result.messageId,
+    });
+    return result;
+  };
+
   const resolution = await getSmtpConfig();
   if (!resolution.config) {
-    return {
+    return finish({
       ok: false,
       code: resolution.code,
       message: resolution.message,
       acceptedCount: 0,
       rejectedCount: 0,
-    };
+      serverResponse: 'SMTP sunucusuna bağlantı kurulmadı; yerel yapılandırma tamamlanmadı.',
+    });
   }
 
   try {
     const cfg = resolution.config;
+    const senderCompatibility = validateSenderDomainCompatibility({
+      smtpHost: cfg.host,
+      smtpUser: cfg.user,
+      fromEmail: cfg.fromEmail,
+    });
+    if (!senderCompatibility.ok) {
+      return finish({
+        ok: false,
+        code: 'SMTP_SENDER_DOMAIN_MISMATCH',
+        message: senderCompatibility.message ?? 'Gönderen adresi SMTP alan adıyla uyuşmuyor.',
+        acceptedCount: 0,
+        rejectedCount: 0,
+        serverResponse: 'SMTP gönderimi başlatılmadı: gönderen alan adı uyumsuz.',
+      });
+    }
     const transporter = await createSmtpTransport(cfg);
     const mailOpts: Record<string, unknown> = {
       from:    cfg.from,
@@ -334,7 +459,7 @@ export async function sendEmailDetailed(opts: SendEmailOptions): Promise<EmailDe
     );
 
     if (wasRejected || rejected.length > 0) {
-      return {
+      return finish({
         ok: false,
         code: 'SMTP_RECIPIENT_REJECTED',
         message: 'SMTP sunucusu alıcıyı kabul etmedi.',
@@ -342,11 +467,12 @@ export async function sendEmailDetailed(opts: SendEmailOptions): Promise<EmailDe
         rejectedCount: rejected.length,
         messageId: typeof info.messageId === 'string' ? info.messageId : undefined,
         smtpResponseCode: getSmtpResponseCode(info.response),
-      };
+        serverResponse: typeof info.response === 'string' ? info.response.trim().replace(/\s+/g, ' ').slice(0, 1000) : 'SMTP sunucusu alıcıyı kabul etmedi.',
+      });
     }
 
     if (!wasAccepted || accepted.length === 0) {
-      return {
+      return finish({
         ok: false,
         code: 'SMTP_ACCEPTANCE_UNCONFIRMED',
         message: 'SMTP sunucusu alıcının kabul edildiğini doğrulamadı.',
@@ -354,10 +480,11 @@ export async function sendEmailDetailed(opts: SendEmailOptions): Promise<EmailDe
         rejectedCount: rejected.length,
         messageId: typeof info.messageId === 'string' ? info.messageId : undefined,
         smtpResponseCode: getSmtpResponseCode(info.response),
-      };
+        serverResponse: typeof info.response === 'string' ? info.response.trim().replace(/\s+/g, ' ').slice(0, 1000) : 'SMTP sunucusu alıcı kabulünü doğrulamadı.',
+      });
     }
 
-    return {
+    return finish({
       ok: true,
       code: 'SMTP_ACCEPTED',
       message: 'SMTP sunucusu mesajı alıcı için kabul etti.',
@@ -365,15 +492,16 @@ export async function sendEmailDetailed(opts: SendEmailOptions): Promise<EmailDe
       rejectedCount: rejected.length,
       messageId: typeof info.messageId === 'string' ? info.messageId : undefined,
       smtpResponseCode: getSmtpResponseCode(info.response),
-    };
+      serverResponse: typeof info.response === 'string' ? info.response.trim().replace(/\s+/g, ' ').slice(0, 1000) : 'SMTP sunucusu mesajı kabul etti.',
+    });
   } catch (error) {
     const failure = classifyTransportFailure(error);
-    return {
+    return finish({
       ok: false,
       ...failure,
       acceptedCount: 0,
       rejectedCount: 0,
-    };
+    });
   }
 }
 

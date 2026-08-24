@@ -66,6 +66,21 @@ interface Settings {
   configurationIssues: string[];
 }
 
+interface DeliveryAttempt {
+  id: string;
+  occurredAt: string;
+  recipient: string;
+  source: string;
+  requestReference: string | null;
+  resultCode: string;
+  accepted: boolean;
+  acceptedCount: number;
+  rejectedCount: number;
+  smtpResponseCode: number | null;
+  serverResponse: string;
+  messageId: string | null;
+}
+
 const DEFAULTS: Settings = {
   encryptionReady: false,
   enabled: false,
@@ -102,6 +117,8 @@ export default function EmailSettingsClient() {
   const [sendTo, setSendTo]           = useState('');
   const [sending, setSending]         = useState(false);
   const [sendResult, setSendResult]   = useState<{ ok: boolean; text: string } | null>(null);
+  const [deliveryAttempts, setDeliveryAttempts] = useState<DeliveryAttempt[]>([]);
+  const [attemptsError, setAttemptsError] = useState<string | null>(null);
 
   // ── Load ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -134,6 +151,25 @@ export default function EmailSettingsClient() {
         setLoadError('E-posta ayarları yüklenemedi. İnternet bağlantınızı kontrol edip sayfayı yenileyin.');
         setLoading(false);
       });
+  }, []);
+
+  async function loadDeliveryAttempts() {
+    try {
+      const response = await fetch('/admin/api/email-settings/delivery-attempts', { cache: 'no-store' });
+      const data = await response.json().catch(() => ({})) as { attempts?: DeliveryAttempt[]; error?: string };
+      if (!response.ok) {
+        setAttemptsError(data.error ?? 'Teslimat geçmişi yüklenemedi.');
+        return;
+      }
+      setDeliveryAttempts(data.attempts ?? []);
+      setAttemptsError(null);
+    } catch {
+      setAttemptsError('Teslimat geçmişi yüklenemedi.');
+    }
+  }
+
+  useEffect(() => {
+    void loadDeliveryAttempts();
   }, []);
 
   // ── Helpers ──────────────────────────────────────────────────────────────
@@ -216,8 +252,7 @@ export default function EmailSettingsClient() {
   }
 
   // ── Test Send ─────────────────────────────────────────────────────────────
-  async function handleTestSend(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleTestSend() {
     if (!sendTo.trim()) return;
     setSending(true); setSendResult(null);
     try {
@@ -227,11 +262,15 @@ export default function EmailSettingsClient() {
       const data = await res.json().catch(() => ({})) as {
         message?: string;
         error?: string;
-        delivery?: { acceptedCount?: number; rejectedCount?: number };
+        delivery?: { acceptedCount?: number; rejectedCount?: number; serverResponse?: string; smtpResponseCode?: number };
       };
       const base = (res.ok ? data.message : data.error) ?? (res.ok ? 'Gönderildi.' : 'Gönderilemedi.');
-      const details = res.ok ? 'Alıcı adresi SMTP sunucusu tarafından kabul edildi.' : '';
-      setSendResult({ ok: res.ok, text: [base, details].filter(Boolean).join(' ') });
+      const acceptance = res.ok ? 'Alıcı adresi SMTP sunucusu tarafından kabul edildi.' : 'Alıcı kabulü doğrulanamadı.';
+      const responseDetail = data.delivery?.serverResponse
+        ? `Sunucu yanıtı: ${data.delivery.serverResponse}`
+        : '';
+      setSendResult({ ok: res.ok, text: [base, acceptance, responseDetail].filter(Boolean).join(' ') });
+      await loadDeliveryAttempts();
     } catch {
       setSendResult({ ok: false, text: 'Sunucu hatası.' });
     } finally {
@@ -475,6 +514,9 @@ export default function EmailSettingsClient() {
               <div>
                 <label style={s.label}>Gönderen E-posta</label>
                 <input style={{ ...s.input, fontSize: '16px' }} type="email" placeholder="noreply@example.com" {...field('fromEmail')} />
+                <div style={{ marginTop: '5px', fontSize: '12px', color: '#7A5800', fontFamily: 'Inter, sans-serif', lineHeight: 1.45 }}>
+                  Gönderen adresi kurumsal SMTP alan adınızdan olmalıdır. Gmail gibi dış adresler farklı bir SMTP sunucusu üzerinden gönderen olarak kullanılamaz.
+                </div>
               </div>
             </div>
 
@@ -563,7 +605,7 @@ export default function EmailSettingsClient() {
               <div style={{ fontSize: '13px', color: MUTED_C, fontFamily: 'Inter, sans-serif', marginBottom: '12px' }}>
                 Yalnızca aşağıdaki adrese tek bir test mesajı gönderilir.
               </div>
-              <form onSubmit={handleTestSend} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
                 <input
                   style={{ ...s.input, flex: '1 1 200px', minWidth: '200px', fontSize: '16px' }}
                   type="email"
@@ -573,14 +615,15 @@ export default function EmailSettingsClient() {
                   required
                 />
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={() => void handleTestSend()}
                   disabled={sending || !sendTo.trim()}
                   style={{ ...s.btn, ...s.btnGhost, opacity: (sending || !sendTo.trim()) ? 0.6 : 1, whiteSpace: 'nowrap' }}
                 >
                   {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
                   {sending ? 'Gönderiliyor…' : 'Test Postası Gönder'}
                 </button>
-              </form>
+              </div>
               {sendResult && (
                 <div style={{
                   ...s.msg,
@@ -593,6 +636,57 @@ export default function EmailSettingsClient() {
                 </div>
               )}
             </div>
+          </div>
+
+          <div style={s.card}>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap' }}>
+              <div>
+                <div style={s.sectionTitle}>Son E-posta Teslimat Denemeleri</div>
+                <div style={{ fontSize: '12px', color: MUTED_C, fontFamily: 'Inter, sans-serif', marginTop: '-8px', marginBottom: '12px' }}>
+                  Başarı yalnızca SMTP sunucusu alıcıyı kabul ettiğinde gösterilir. Mesaj gövdesi ve parola kaydedilmez.
+                </div>
+              </div>
+              <button type="button" onClick={() => void loadDeliveryAttempts()} style={{ ...s.btn, ...s.btnGhost, padding: '7px 12px', fontSize: '12px' }}>
+                Yenile
+              </button>
+            </div>
+            {attemptsError && (
+              <div style={{ ...s.msg, marginTop: 0, background: '#FEF0EE', border: '1px solid #F5C6C0', color: DANGER }}>
+                <AlertTriangle size={14} style={{ flexShrink: 0 }} />{attemptsError}
+              </div>
+            )}
+            {!attemptsError && deliveryAttempts.length === 0 && (
+              <p style={{ color: MUTED_C, fontSize: '13px', fontFamily: 'Inter, sans-serif', margin: 0 }}>
+                Henüz gönderim denemesi kaydı yok.
+              </p>
+            )}
+            {deliveryAttempts.length > 0 && (
+              <div style={{ display: 'grid', gap: '10px' }}>
+                {deliveryAttempts.map((attempt) => (
+                  <div key={attempt.id} style={{ border: `1px solid ${attempt.accepted ? '#A8DEC0' : '#F5C6C0'}`, background: attempt.accepted ? '#F7FCF8' : '#FFF8F7', borderRadius: '8px', padding: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
+                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: TEXT_C }}>
+                        <strong>{attempt.accepted ? 'SMTP kabul etti' : 'SMTP kabul etmedi'}</strong>
+                        <span style={{ color: MUTED_C }}> · {attempt.recipient}</span>
+                      </div>
+                      <span style={{ ...s.badge, background: attempt.accepted ? '#EDF9F3' : '#FEF0EE', color: attempt.accepted ? SUCCESS : DANGER }}>
+                        {attempt.resultCode}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', color: LABEL_C, fontFamily: 'Inter, sans-serif', fontSize: '12px', marginTop: '8px' }}>
+                      <span>{new Date(attempt.occurredAt).toLocaleString('tr-TR')}</span>
+                      <span>Kaynak: {attempt.source}</span>
+                      <span>Kabul/ret: {attempt.acceptedCount}/{attempt.rejectedCount}</span>
+                      {attempt.smtpResponseCode && <span>SMTP: {attempt.smtpResponseCode}</span>}
+                      {attempt.requestReference && <span>Referans: {attempt.requestReference}</span>}
+                    </div>
+                    <div style={{ marginTop: '8px', padding: '8px 10px', borderRadius: '6px', background: '#FFFFFF', border: `1px solid ${BORDER}`, color: '#31536E', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: '12px', overflowWrap: 'anywhere' }}>
+                      {attempt.serverResponse}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
         </div>

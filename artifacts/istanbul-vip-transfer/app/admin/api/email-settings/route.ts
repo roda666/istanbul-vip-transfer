@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdminSession } from '@/lib/auth/session';
 import { rateLimit } from '@/lib/auth/rate-limit';
-import { DEFAULT_ADMIN_NOTIFY_EMAIL } from '@/lib/email';
+import { DEFAULT_ADMIN_NOTIFY_EMAIL, validateSenderDomainCompatibility } from '@/lib/email';
 import {
   encryptSmtpPassword,
   ensureSmtpPasswordEncryption,
@@ -56,6 +56,14 @@ function getConfigurationIssues(settings: SettingsShape): string[] {
   if (!settings.smtpUser?.trim()) issues.push('SMTP kullanıcı adı eksik. Genellikle tam e-posta adresiniz olmalıdır.');
   if (!settings.passwordSet) issues.push('SMTP parolası kayıtlı değil.');
   if (!settings.fromEmail?.trim()) issues.push('Gönderen e-posta adresi eksik.');
+  const senderCompatibility = validateSenderDomainCompatibility({
+    smtpHost: settings.smtpHost,
+    smtpUser: settings.smtpUser,
+    fromEmail: settings.fromEmail,
+  });
+  if (!senderCompatibility.ok && settings.fromEmail?.trim()) {
+    issues.push(senderCompatibility.message ?? 'Gönderen e-posta adresi SMTP alan adıyla uyuşmuyor.');
+  }
   if (!settings.adminNotifyEmails?.trim()) issues.push('Yönetici bildirim adresi eksik.');
   if (!Number.isInteger(settings.smtpPort) || !settings.smtpPort || settings.smtpPort < 1 || settings.smtpPort > 65535) {
     issues.push('SMTP portu geçerli değil.');
@@ -183,6 +191,18 @@ export async function PUT(request: NextRequest) {
   const adminNotify = parseAdminNotifyEmails(data.adminNotifyEmails);
   if (adminNotify.error) {
     return NextResponse.json({ error: adminNotify.error }, { status: 422 });
+  }
+  if (data.enabled) {
+    const senderCompatibility = validateSenderDomainCompatibility({
+      smtpHost: data.smtpHost,
+      smtpUser: data.smtpUser,
+      fromEmail: data.fromEmail,
+    });
+    if (!senderCompatibility.ok) {
+      return NextResponse.json({
+        error: senderCompatibility.message ?? 'Gönderen e-posta adresi SMTP alan adıyla uyuşmuyor.',
+      }, { status: 422 });
+    }
   }
 
   // Determine what to store for the password

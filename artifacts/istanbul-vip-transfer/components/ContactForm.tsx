@@ -27,7 +27,7 @@ export default function ContactForm() {
 
   const [form, setForm]       = useState<FormState>(INIT);
   const [errors, setErrors]   = useState<Partial<FormState>>({});
-  const [status, setStatus]   = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [status, setStatus]   = useState<'idle' | 'submitting' | 'success' | 'saved-with-email-error' | 'error'>('idle');
   const [serverError, setServerError] = useState('');
   const [newsletterConsent, setNewsletterConsent] = useState(false);
   const websiteHoneypotRef = useRef<HTMLInputElement>(null);
@@ -89,9 +89,17 @@ export default function ContactForm() {
         setStatus('error');
         return;
       }
+      const payload = await res.json().catch(() => ({})) as {
+        emailNotification?: { status?: string };
+      };
       if (!res.ok) {
         setServerError(cf.errorMessage);
         setStatus('error');
+        return;
+      }
+      if (payload.emailNotification?.status !== 'sent') {
+        setForm(INIT);
+        setStatus('saved-with-email-error');
         return;
       }
       setStatus('success');
@@ -130,6 +138,27 @@ export default function ContactForm() {
           {cf.successTitle}
         </h3>
         <p style={{ color: '#166534', fontSize: '0.95rem' }}>{cf.successMessage}</p>
+      </div>
+    );
+  }
+  if (status === 'saved-with-email-error') {
+    return (
+      <div style={{
+        background: '#fffbeb',
+        border: '1px solid #fcd34d',
+        borderRadius: '12px',
+        padding: '2rem',
+        textAlign: 'center',
+        maxWidth: '560px',
+        margin: '0 auto',
+      }}>
+        <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>⚠️</div>
+        <h3 style={{ color: '#92400e', fontWeight: 700, fontSize: '1.2rem', marginBottom: '0.5rem' }}>
+          Talebiniz kaydedildi
+        </h3>
+        <p style={{ color: '#78350f', fontSize: '0.95rem', lineHeight: 1.6 }}>
+          E-posta bildiriminin SMTP sunucusu tarafından kabul edildiği doğrulanamadı. İşletme bu durumu panelden görebilir; acil bir konuda lütfen telefon veya WhatsApp ile de ulaşın.
+        </p>
       </div>
     );
   }

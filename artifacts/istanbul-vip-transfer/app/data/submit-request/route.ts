@@ -466,6 +466,8 @@ export async function POST(req: NextRequest) {
         to: normalizedEmail, subject: `Talebiniz alındı — ${referenceNumber}`,
         text: `Talebiniz alındı. Referans numaranız: ${referenceNumber}`,
         html: `<p>Talebiniz alındı.</p><p><strong>Referans numaranız:</strong> ${escapeHtml(referenceNumber)}</p>`,
+        source: 'BOOKING_CUSTOMER_CONFIRMATION',
+        requestReference: referenceNumber,
       }) : null;
       communications.customerConfirmation = customer
         ? deliverySummary(customer)
@@ -475,6 +477,8 @@ export async function POST(req: NextRequest) {
         to, subject: `Yeni transfer talebi — ${referenceNumber}`,
         text: `Referans: ${referenceNumber}\nAd Soyad: ${sanitizeText(data.adSoyad).slice(0, 120)}\nTelefon: ${sanitizeText(data.telefon).slice(0, 30)}\nE-posta: ${normalizedEmail ?? '—'}`,
         html: `<h2>Yeni Transfer Talebi</h2><p><strong>Referans:</strong> ${escapeHtml(referenceNumber)}</p><p><strong>Ad Soyad:</strong> ${escapeHtml(sanitizeText(data.adSoyad).slice(0, 120))}</p>`,
+        source: 'BOOKING_ADMIN_NOTIFICATION',
+        requestReference: referenceNumber,
       })));
       communications.adminNotification = {
         status: admins.length === 0 ? 'not-configured' : results.every((r) => r.ok) ? 'sent' : results.some((r) => r.ok) ? 'partial' : 'failed',
@@ -488,7 +492,12 @@ export async function POST(req: NextRequest) {
       requestData: { ...safeFormData, communication: communications },
       updatedAt: new Date(),
     }).where(eq(reservationRequests.referenceNumber, referenceNumber)).catch(() => {});
-    return NextResponse.json({ referenceNumber });
+    const adminNotification = communications.adminNotification as { status?: string } | undefined;
+    return NextResponse.json({
+      referenceNumber,
+      requestSaved: true,
+      emailNotification: { status: adminNotification?.status ?? 'failed' },
+    }, { status: adminNotification?.status === 'sent' ? 201 : 202 });
   } catch (err) {
     await recordSubmissionFailure({
       submissionId,

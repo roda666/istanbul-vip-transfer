@@ -119,5 +119,33 @@
     "insertAfterHeading": "Araç sınıfı",
     "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate, no plate-shaped dark panels. Photorealistic image of two black passenger vans of different sizes with plain, unmarked, completely blank body panels and no plate-shaped dark rectangles anywhere on either vehicle, parked side by side in a clean empty parking area under soft overcast daylight. One is a mid-size van, the other noticeably larger and longer. Both shot three-quarter front, evenly lit, plain neutral grey background that is completely blank, unmarked and has nothing written on it. Product comparison photography style, sharp detail, natural colours, no text, no logos, no brand marks, no readable signage, no visible number plate, no plate-shaped dark panels.",
     "altText": "Orta boy ve büyük transfer araçlarının kapasite karşılaştırması"
+  },
+  "istanbul-vip-transfer-fiyatlari-nasil-belirlenir-body-yolcu-bagaj": {
+    "placement": "body",
+    "targetSlug": "istanbul-vip-transfer-fiyatlari-nasil-belirlenir",
+    "insertAfterHeading": "Yolcu ve bagaj sayısı",
+    "prompt": "No text, no logos, no brand marks, no readable signage. Photorealistic overhead flat-lay of four large plain hard-shell suitcases and three cabin-size carry-on bags arranged neatly in a row on a clean light grey concrete floor, soft even daylight from above, subtle shadows. Muted neutral colours, grey, navy and black. All luggage surfaces completely blank with no logos, badges, labels or lettering of any kind. Minimal editorial product photography, no text, no logos, no brand marks, no readable signage.",
+    "altText": "Transfer aracı bagaj kapasitesi hesabı için valiz ve el bagajı düzeni"
+  },
+  "istanbul-vip-transfer-fiyatlari-nasil-belirlenir-body-saat": {
+    "placement": "body",
+    "targetSlug": "istanbul-vip-transfer-fiyatlari-nasil-belirlenir",
+    "insertAfterHeading": "Transferin saati",
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic night photograph of a black minivan with plain unmarked body panels and no plate-shaped dark rectangles anywhere on the vehicle, waiting on a quiet city street, warm interior cabin light visible through the windows, wet asphalt reflecting street lamps, deep blue night sky above. All building facades completely blank with no signs, banners or lettering. Calm premium cinematic atmosphere, shallow depth of field, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plate.",
+    "altText": "Gece saatlerinde bekleyen VIP transfer aracı ve gece tarifesi"
+  },
+  "vip-transfer-ile-taksi-arasindaki-farklar-body-fiyat": {
+    "placement": "body",
+    "targetSlug": "vip-transfer-ile-taksi-arasindaki-farklar",
+    "insertAfterHeading": "1. Fiyat: tahmin mi, taahhüt mü?",
+    "prompt": "No text, no logos, no brand marks, no readable signage. Photorealistic close-up of hands holding a smartphone resting on a wooden desk beside a passport, a pair of reading glasses and a cup of coffee. Warm morning window light from the side, shallow depth of field. The phone screen is completely blank and neutral grey with absolutely nothing displayed on it, no interface, no icons, no writing. The passport cover is plain with no emblem or lettering. Lifestyle editorial photography, natural colours, no text anywhere, no logos, no brand marks, no readable signage.",
+    "altText": "Havalimanı transferi için önceden rezervasyon ve fiyat planlaması"
+  },
+  "vip-transfer-ile-taksi-arasindaki-farklar-body-arac-bagaj": {
+    "placement": "body",
+    "targetSlug": "vip-transfer-ile-taksi-arasindaki-farklar",
+    "insertAfterHeading": "4. Araç ve bagaj kapasitesi",
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic image of a family group of four standing beside a large black passenger van with plain unmarked body panels and no plate-shaped dark rectangles anywhere on the vehicle, in an airport pick-up area, surrounded by five large plain suitcases and travel bags on the ground, soft overcast daylight. Figures seen from behind and in three-quarter view so faces are not the focus. All luggage and clothing surfaces blank with no logos or lettering. Documentary travel photography, natural colours, no text, no logos, no brand marks, no readable signage, no visible number plate.",
+    "altText": "Kalabalık aile ve fazla bagaj için geniş kapasiteli transfer aracı"
   }
 }

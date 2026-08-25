@@ -16,3 +16,11 @@ AI-generated images run only on the server with an image-specific model setting 
 **Why:** Treating a prefix as a bucket prevents otherwise successful generations from reaching permanent storage. Routing those object paths through Next Image makes the web server follow its own locale middleware instead of retrieving image bytes, while a fit-only resize can preserve the source 3:2 ratio.
 
 **How to apply:** Keep the path normalization shared across every storage boundary, use the stable first-party object URL in CMS records, and verify both the downloaded file dimensions and the public page render after an image attachment.
+
+## Visual compliance gate for vehicle imagery
+
+Treat a blurred, blank, or inpainted rectangular panel in a license-plate position as a visible plate even when it contains no readable characters.
+
+**Why:** Image models can follow “no visible number plate” only partially by removing the characters while leaving the plate-shaped object in place. That still violates an editorial rule that prohibits visible plates.
+
+**How to apply:** Inspect every generated vehicle cover before accepting it. If a plate-shaped panel, readable text, logo, brand mark, or readable sign remains, regenerate only that requested image with the unchanged approved prompt, then replace the CMS attachment only after the replacement passes visual review. Record compliance retries separately from API or storage failures.

@@ -2,5 +2,21 @@
   "istanbul-havalimani-transfer-rehberi": {
     "prompt": "Photorealistic wide shot inside a modern international airport arrivals hall, warm afternoon light through tall glass windows. A professional chauffeur in a dark charcoal suit and white shirt stands behind the arrivals barrier holding a plain blank white name-board at chest height, facing camera, calm and welcoming posture. Blurred travellers with luggage trolleys move past in the background. Clean minimal architecture, polished light-grey floor reflecting soft daylight. Shot on 35mm, shallow depth of field, natural colour grading, no text, no logos, no brand marks, no readable signage.",
     "altText": "İstanbul Havalimanı geliş salonunda isim tabelası ile yolcu karşılayan takım elbiseli özel transfer şoförü"
+  },
+  "sabiha-gokcen-transfer-rehberi": {
+    "prompt": "Photorealistic exterior shot of a modern airport terminal entrance at early evening blue hour, seen from the passenger pick-up lane. A black premium minivan waits at the kerb with its hazard lights softly glowing; a chauffeur in a dark suit stands beside the open passenger door, seen from behind, looking toward the terminal doors. Warm interior terminal light spills onto wet asphalt with gentle reflections. Editorial travel photography, 35mm, shallow depth of field, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plate.",
+    "altText": "Havalimanı yolcu alma noktasında bekleyen siyah özel transfer aracı ve şoför"
+  },
+  "istanbul-vip-transfer-fiyatlari-nasil-belirlenir": {
+    "prompt": "Photorealistic image of a black premium minivan parked on a clean city street at golden hour, photographed three-quarter front from a low angle. Warm low sun creating soft highlights along the body panels, blurred urban buildings and trees in the background. Professional automotive editorial photography, crisp detail, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plate.",
+    "altText": "Şehir içinde park hâlindeki siyah premium VIP transfer aracı"
+  },
+  "vip-transfer-ile-taksi-arasindaki-farklar": {
+    "prompt": "Photorealistic split-composition image: on the left half, a black premium minivan parked neatly at an airport kerb in calm evening light with a chauffeur in a dark suit standing beside the open door seen from behind; on the right half, a generic yellow city taxi in busy daytime street traffic. Both halves evenly balanced and clearly separated, clean composition, documentary editorial photography, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plates.",
+    "altText": "Özel transfer aracı ile şehir taksisinin yan yana karşılaştırması"
+  },
+  "vito-soforlu-arac-kiralama-rehberi": {
+    "prompt": "Photorealistic three-quarter front view of a black mid-size premium passenger van parked on a clean city street at golden hour, a chauffeur in a dark suit standing beside the driver's door in a calm professional posture, seen from a distance and slightly from behind so the face is not the focus. Warm low sunlight along the body panels, blurred urban background. Automotive editorial photography, crisp detail, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plate.",
+    "altText": "Şoförlü kiralama için hazır bekleyen siyah premium minivan ve profesyonel şoför"
   }
 }

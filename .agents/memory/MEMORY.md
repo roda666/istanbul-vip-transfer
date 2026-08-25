@@ -41,6 +41,7 @@
 - [CHAT_STAFF role and routing](chat-staff-role.md) — restricted to /admin/sohbet; ChatStaffGuard client component; login returns redirectTo; Personel page at /admin/personel.
 - [Booking form optional fields](booking-form-optional-fields.md) — 4 admin-toggleable fields; /data/form-settings public API; migration 0021; WA suffix pattern.
 - [Custom reservation fields](custom-reservation-fields.md) — DB table custom_reservation_fields (serial PK — serial must be imported from drizzle-orm/pg-core); admin CRUD at /admin/api/custom-fields; public GET at /data/custom-fields?slug=...; BookingForm fetches by pageSlug from usePathname(); admin UI is 4th tab in rezervasyon-ayarlari.
+- [Inline blog image batches](inline-blog-image-batches.md) — when several images target one article body, each update must read the latest body or merge all insertions before writing.
 - [Schema import quirks](schema-import-quirks.md) — serial must be explicitly imported from drizzle-orm/pg-core; admin API routes use @/lib/auth/session not @/lib/session.
 - [AdminSidebar grouped nav](admin-sidebar-groups.md) — NavGroup collapsible sections; CHAT_STAFF sees flat list; Dashboard is standalone above groups; groups auto-expand when active item is inside; getNavGroups() returns 5 groups.
 - [Homepage translation source-of-truth](homepage-translation-source-of-truth.md) — entity_type='homepage' is canonical; entity_type='content' orphans deleted; EN was broken (old format), fixed 2026-08-17.

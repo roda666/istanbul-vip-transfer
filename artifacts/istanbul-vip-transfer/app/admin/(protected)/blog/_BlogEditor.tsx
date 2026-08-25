@@ -60,7 +60,7 @@ const LOCALES: { code: string; label: string; dir: 'ltr' | 'rtl' }[] = [
 
 const CATEGORIES = [
   'Transfer Rehberi', 'VIP Ulaşım', 'Araç Rehberi', 'Şehir Rehberi',
-  'Kurumsal Seyahat', 'Sağlık Turizmi', 'Havalimanı Rehberi', 'İpuçları',
+  'Kurumsal Seyahat', 'Sağlık Turizmi', 'Havalimanı Transferi', 'Havalimanı Rehberi', 'İpuçları',
 ];
 
 // ── Style helpers ────────────────────────────────────────────────────────────
@@ -464,6 +464,11 @@ export default function BlogEditor({ blogId, initial }: Props) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <StatusBadge status={currentStatus} map={SRC_STATUS} />
+          {rec.hasPendingDraft && (
+            <span style={{ padding: '3px 9px', borderRadius: '99px', fontSize: '11px', fontWeight: 700, color: '#C2410C', background: '#FFF7ED' }}>
+              Bekleyen taslak
+            </span>
+          )}
           {lastSaved && <span style={{ fontSize: '11px', color: '#94A3B8' }}>Son kayıt: {lastSaved}</span>}
           {saving && <span style={{ fontSize: '11px', color: '#2563EB' }}>Kaydediliyor…</span>}
         </div>

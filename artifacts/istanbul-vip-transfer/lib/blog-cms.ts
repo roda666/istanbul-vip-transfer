@@ -630,6 +630,7 @@ export interface BlogAdminRecord {
   publishedAt: string | null;
   scheduledAt: string | null;
   updatedAt: string;
+  hasPendingDraft: boolean;
   translations: BlogAdminTranslation[];
   revisions: BlogAdminRevision[];
 }
@@ -701,30 +702,49 @@ export async function getBlogAdminRecord(id: string): Promise<BlogAdminRecord> {
     createdAt: r.createdAt.toISOString(),
   }));
 
+  const pendingDraft = row.draftBody !== null
+    ? [...revisions].find(revision => {
+        const snapshot = revision.snapshot;
+        return snapshot.saveAsDraft === true && snapshot.status === 'PUBLISHED';
+      })
+    : undefined;
+  const draftSnapshot = pendingDraft?.snapshot;
+  const draftText = (field: string, fallback: string | null) => {
+    if (!draftSnapshot || !Object.prototype.hasOwnProperty.call(draftSnapshot, field)) return fallback;
+    const value = draftSnapshot[field];
+    return value === null ? null : typeof value === 'string' ? value : fallback;
+  };
+  const draftTags = Array.isArray(draftSnapshot?.tags)
+    ? draftSnapshot.tags.filter((tag): tag is string => typeof tag === 'string')
+    : (row.tags as string[] | null) ?? [];
+
   return {
     id:             row.id,
-    slug:           row.slug,
-    title:          row.title,
-    excerpt:        row.excerpt ?? null,
-    body:           row.body ?? null,
-    heroImage:      row.heroImage ?? null,
-    heroImageAlt:   row.heroImageAlt ?? null,
-    ogImage:        row.ogImage ?? null,
-    seoTitle:       row.seoTitle ?? null,
-    seoDescription: row.seoDescription ?? null,
-    canonicalUrl:   row.canonicalUrl ?? null,
+    slug:           draftText('slug', row.slug) ?? row.slug,
+    title:          draftText('title', row.title) ?? row.title,
+    excerpt:        draftText('excerpt', row.excerpt ?? null),
+    body:           row.draftBody ?? row.body ?? null,
+    heroImage:      draftText('heroImage', row.heroImage ?? null),
+    heroImageAlt:   draftText('heroImageAlt', row.heroImageAlt ?? null),
+    ogImage:        draftText('ogImage', row.ogImage ?? null),
+    seoTitle:       draftText('seoTitle', row.seoTitle ?? null),
+    seoDescription: draftText('seoDescription', row.seoDescription ?? null),
+    canonicalUrl:   draftText('canonicalUrl', row.canonicalUrl ?? null),
     indexable:      row.indexable,
     isActive:       row.isActive,
-    category:       row.category ?? null,
-    author:         row.author ?? null,
-    tags:           (row.tags as string[] | null) ?? [],
-    readTimeMinutes: row.readTimeMinutes ?? null,
-    ogTitle:        row.ogTitle ?? null,
-    ogDescription:  row.ogDescription ?? null,
+    category:       draftText('category', row.category ?? null),
+    author:         draftText('author', row.author ?? null),
+    tags:           draftTags,
+    readTimeMinutes: typeof draftSnapshot?.readTimeMinutes === 'number'
+      ? draftSnapshot.readTimeMinutes
+      : row.readTimeMinutes ?? null,
+    ogTitle:        draftText('ogTitle', row.ogTitle ?? null),
+    ogDescription:  draftText('ogDescription', row.ogDescription ?? null),
     status:         row.status,
     publishedAt:    row.publishedAt?.toISOString() ?? null,
     scheduledAt:    row.scheduledAt?.toISOString() ?? null,
     updatedAt:      row.updatedAt.toISOString(),
+    hasPendingDraft: Boolean(pendingDraft),
     translations,
     revisions,
   };

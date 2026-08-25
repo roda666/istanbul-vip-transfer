@@ -11,5 +11,7 @@ its intentional client-side throwing stub even though the utility itself is
 valid for server execution.
 
 **How to apply:** Use the server condition only for local operational checks of
-server utilities. Keep the script's output sanitized: never print credentials,
-raw recipient addresses, or raw provider responses.
+server utilities. With `tsx -e` in this workspace, wrap asynchronous code in an
+async IIFE because the eval path uses CommonJS and does not support top-level
+`await`. Keep the script's output sanitized: never print credentials, raw
+recipient addresses, or raw provider responses.

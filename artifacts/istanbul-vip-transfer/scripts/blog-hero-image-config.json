@@ -175,5 +175,40 @@
     "insertAfterHeading": "Saatlik ve günlük tahsis",
     "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic image of a black premium van with plain unmarked body panels and no plate-shaped dark rectangles anywhere on the vehicle, waiting at the kerb outside a modern glass office building during daytime, a business traveller with a plain laptop bag walking toward it from behind, seen from a distance. Use a strict side-dominant view that keeps the rear hatch, rear bumper, grille and every plate-mounting area fully out of frame. All building facades and glass completely blank with no signs, banners, lettering or logos. Clean corporate atmosphere, soft overcast daylight, reflections on the glass facade. Editorial business photography, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plate.",
     "altText": "Toplantı ve kurumsal program için saatlik tahsis edilen şoförlü araç"
+  },
+  "istanbul-mesafe-sure-rehberi-body-avrupa-yakasi": {
+    "placement": "body",
+    "targetSlug": "istanbul-mesafe-sure-rehberi",
+    "insertAfterHeading": "İstanbul Havalimanı'ndan Avrupa yakasına",
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plates or plate-shaped panels. Photorealistic view from inside a moving vehicle on a multi-lane city motorway approaching a dense urban skyline of apartment blocks and office towers under soft daylight, seen through a clean windscreen with slight motion blur on the roadside. Passenger point of view. Keep nearby lanes empty and any distant traffic fully indistinct, with no visible fronts, rears or number plates on any other vehicle. No road signs, no gantries, no billboards anywhere; all building facades completely blank with no lettering. Editorial travel photography, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plates.",
+    "altText": "Havalimanından şehir merkezine giden otoyolda ilerleyen transfer aracı"
+  },
+  "istanbul-mesafe-sure-rehberi-body-yaka-gecisi": {
+    "placement": "body",
+    "targetSlug": "istanbul-mesafe-sure-rehberi",
+    "insertAfterHeading": "Yaka geçişi süreyi nasıl etkiler?",
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic wide shot of a long suspension bridge over a broad strait during late afternoon, moderate traffic flowing across both directions, water below with a few boats, hazy city outline on the far shore. Shot from an elevated side angle. No road signs, no gantries, no billboards anywhere. Cinematic urban photography, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plates.",
+    "altText": "Yaka geçişinde kullanılan boğaz köprüsü ve transfer trafiği"
+  },
+  "istanbul-mesafe-sure-rehberi-body-sehir-disi": {
+    "placement": "body",
+    "targetSlug": "istanbul-mesafe-sure-rehberi",
+    "insertAfterHeading": "İstanbul'dan şehir dışına mesafeler",
+    "prompt": "No text, no logos, no brand marks, no readable signage. Photorealistic image of a quiet road curving beside a calm lake surrounded by densely forested green hills, soft morning mist rising from the water, early daylight. No road signs, no billboards, no buildings with lettering anywhere. Peaceful nature-escape atmosphere, no vehicles in focus. Landscape travel photography, natural colour grading, no text, no logos, no brand marks, no readable signage.",
+    "altText": "İstanbul'dan göl bölgesine uzanan şehir dışı transfer güzergâhı"
+  },
+  "soforlu-arac-kiralama-rehberi-body-sehirlerarasi": {
+    "placement": "body",
+    "targetSlug": "soforlu-arac-kiralama-rehberi",
+    "insertAfterHeading": "Şehirlerarası kullanım",
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic side-dominant profile image of a black premium van with plain unmarked body panels, with the entire front grille, front bumper and every plate-mounting area fully out of frame, travelling along an open intercity motorway through rolling green hills in soft morning light, gentle mist over the fields, seen from a low roadside angle with slight motion blur on the wheels. No road signs, no gantries, no billboards anywhere. Sense of a long comfortable journey. Cinematic travel photography, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plate or plate-shaped panel.",
+    "altText": "Şehirlerarası yolculukta şoförlü kiralanan araç"
+  },
+  "vip-gelin-arabasi-kiralama-rehberi-body-minivan": {
+    "placement": "body",
+    "targetSlug": "vip-gelin-arabasi-kiralama-rehberi",
+    "insertAfterHeading": "Neden minivan? Sedan yerine Vito tercih ediliyor",
+    "prompt": "No text, no logos, no brand marks, no readable signage. Photorealistic interior of a premium passenger van seen from the open side door, showing cream leather seats with generous space, a small tasteful white floral arrangement on the seat, and soft warm afternoon light entering through the doorway. Empty cabin, no people. No badges, no emblems, no lettering on any interior surface. Spacious and calm atmosphere emphasising room for a long dress. Interior editorial photography, natural colours, no text, no logos, no brand marks, no readable signage.",
+    "altText": "Gelinliğin rahat sığdığı geniş iç mekana sahip VIP gelin arabası"
   }
 }

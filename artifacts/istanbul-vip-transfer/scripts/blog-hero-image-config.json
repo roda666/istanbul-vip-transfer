@@ -210,5 +210,12 @@
     "insertAfterHeading": "Neden minivan? Sedan yerine Vito tercih ediliyor",
     "prompt": "No text, no logos, no brand marks, no readable signage. Photorealistic interior of a premium passenger van seen from the open side door, showing cream leather seats with generous space, a small tasteful white floral arrangement on the seat, and soft warm afternoon light entering through the doorway. Empty cabin, no people. No badges, no emblems, no lettering on any interior surface. Spacious and calm atmosphere emphasising room for a long dress. Interior editorial photography, natural colours, no text, no logos, no brand marks, no readable signage.",
     "altText": "Gelinliğin rahat sığdığı geniş iç mekana sahip VIP gelin arabası"
+  },
+  "vip-gelin-arabasi-kiralama-rehberi-body-konvoy": {
+    "placement": "body",
+    "targetSlug": "vip-gelin-arabasi-kiralama-rehberi",
+    "insertAfterHeading": "Konvoy ve davetli ulaşımı",
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic image of a small convoy of three dark premium vehicles with plain unmarked side body panels, driving in line along a tree-lined road in warm late afternoon light, seen from a slightly elevated rear three-quarter side angle. Compose each vehicle so its rear face, trunk center, rear bumper and every license-plate mounting area are completely outside the frame; show only the side body, wheels, windows and a small edge of the tail lamps. No rear plates, no plate-shaped dark rectangles, no badges or emblems anywhere. Orderly, calm and elegant, not chaotic. Soft dappled sunlight through the trees. No road signs, no billboards anywhere. Cinematic editorial photography, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plates.",
+    "altText": "Düğün günü sıralı ilerleyen VIP araç konvoyu"
   }
 }

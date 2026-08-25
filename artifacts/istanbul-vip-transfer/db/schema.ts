@@ -15,6 +15,7 @@ import {
   index,
   doublePrecision,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 
 // ── Enums ───────────────────────────────────────────────────────────────────
@@ -1433,7 +1434,23 @@ export const tollTariffs = pgTable('toll_tariffs', {
   id: uuid('id').primaryKey().defaultRandom(),
   tollPointId: uuid('toll_point_id').notNull().references(() => tollPoints.id, { onDelete: 'cascade' }),
   vehicleClass: text('vehicle_class').notNull(),
+  /**
+   * Effective, server-resolved TRY amount. It is kept for fast quote lookups;
+   * when a manual override exists it must equal manualAmountKurus, otherwise it
+   * equals automaticAmountKurus.
+   */
   amountKurus: integer('amount_kurus').notNull(),
+  /** Latest amount received from a configured, verified official adapter. */
+  automaticAmountKurus: integer('automatic_amount_kurus'),
+  /** Admin-entered value that always takes precedence over automatic updates. */
+  manualAmountKurus: integer('manual_amount_kurus'),
+  /** Provenance is stored with the tariff, never only in an ephemeral quote. */
+  sourceName: text('source_name'),
+  sourceUrl: text('source_url'),
+  sourceVerified: boolean('source_verified').default(false).notNull(),
+  sourceFetchedAt: timestamp('source_fetched_at', { withTimezone: true }),
+  manualUpdatedAt: timestamp('manual_updated_at', { withTimezone: true }),
+  lastSyncError: text('last_sync_error'),
   validFrom: timestamp('valid_from', { withTimezone: true }),
   validUntil: timestamp('valid_until', { withTimezone: true }),
   active: boolean('active').default(true).notNull(),
@@ -1454,7 +1471,10 @@ export const routeTollAlternatives = pgTable('route_toll_alternatives', {
   displayOrder: integer('display_order').default(0).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
+}, (table) => [
+  /** A route may have at most one selected default, even under concurrent edits. */
+  uniqueIndex('route_toll_alternative_one_default_unique').on(table.routeId).where(sql`${table.isDefault} = true`),
+]);
 
 export const routeTollAlternativeItems = pgTable('route_toll_alternative_items', {
   id: uuid('id').primaryKey().defaultRandom(),

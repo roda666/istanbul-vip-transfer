@@ -20,6 +20,17 @@ type PricingRoute = {
   active: boolean;
 };
 type PricingLocation = { id: string; name: string; city: string };
+type TollAlternative = {
+  id: string;
+  name: string;
+  active: boolean;
+  isDefault: boolean;
+  displayOrder: number;
+  pointIds: string[];
+  pointNames: string[];
+  isPricedForSelectedVehicle: boolean;
+  missingTariffPointNames: string[];
+};
 type DistanceResult = {
   state: 'DEFINED_ROUTE' | 'ESTIMATED' | 'UNAVAILABLE';
   distanceKm?: number;
@@ -254,9 +265,14 @@ function FastQuotePanel({
   const [distance, setDistance] = useState<DistanceResult | null>(null);
   const [distanceLoading, setDistanceLoading] = useState(false);
   const [distanceError, setDistanceError] = useState('');
+  const [tollAlternatives, setTollAlternatives] = useState<TollAlternative[]>([]);
+  const [tollAlternativeId, setTollAlternativeId] = useState('');
+  const [tollsLoading, setTollsLoading] = useState(false);
+  const [tollsError, setTollsError] = useState('');
 
   const selectedVehicle = vehicles.find((vehicle) => vehicle.id === quoteVehicleId);
   const selectedRoute = routes.find((route) => route.id === quoteRouteId);
+  const selectedTollAlternative = tollAlternatives.find((alternative) => alternative.id === tollAlternativeId);
   const hasFormula = selectedVehicle
     ? profiles.some((profile) => profile.vehicleId === selectedVehicle.id && profile.mode === quoteMode && profile.active)
     : false;
@@ -298,12 +314,59 @@ function FastQuotePanel({
     };
   }, [originLocationId, destinationLocationId]);
 
+  useEffect(() => {
+    if (!quoteRouteId) {
+      setTollAlternatives([]);
+      setTollAlternativeId('');
+      setTollsLoading(false);
+      setTollsError('');
+      return;
+    }
+    let cancelled = false;
+    const controller = new AbortController();
+    setTollsLoading(true);
+    setTollsError('');
+    const params = quoteVehicleId ? `?vehicleId=${encodeURIComponent(quoteVehicleId)}` : '';
+    fetch(`/admin/api/pricing/tolls/route-alternatives/${quoteRouteId}${params}`, { signal: controller.signal })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !Array.isArray(payload?.alternatives)) {
+          throw new Error(payload?.error ?? 'Geçiş alternatifleri alınamadı.');
+        }
+        if (cancelled) return;
+        const alternatives = payload.alternatives as TollAlternative[];
+        setTollAlternatives(alternatives);
+        setTollAlternativeId((current) => {
+          if (alternatives.some((alternative) => alternative.id === current)) return current;
+          return typeof payload.defaultAlternativeId === 'string' ? payload.defaultAlternativeId : '';
+        });
+      })
+      .catch((error: unknown) => {
+        if (cancelled || (error instanceof DOMException && error.name === 'AbortError')) return;
+        setTollAlternatives([]);
+        setTollAlternativeId('');
+        setTollsError(error instanceof Error ? error.message : 'Geçiş alternatifleri alınamadı.');
+      })
+      .finally(() => {
+        if (!cancelled) setTollsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [quoteRouteId, quoteVehicleId]);
+
   const chooseRoute = (routeId: string) => {
     setQuoteRouteId(routeId);
+    setTollAlternativeId('');
     const route = routes.find((item) => item.id === routeId);
     if (!route) return;
-    setOriginLocationId(route.originLocationId ?? '');
-    setDestinationLocationId(route.destinationLocationId ?? '');
+    // Older registered routes can still provide a toll alternative even when
+    // their endpoints have not yet been mapped to the location catalogue.
+    // Keep any manually selected endpoints in that case instead of losing the
+    // route (and silently dropping its tolls).
+    if (route.originLocationId) setOriginLocationId(route.originLocationId);
+    if (route.destinationLocationId) setDestinationLocationId(route.destinationLocationId);
     if (!quoteVehicleId && route.defaultVehicleId) setQuoteVehicleId(route.defaultVehicleId);
   };
 
@@ -318,6 +381,7 @@ function FastQuotePanel({
       const payload = {
         ...(quoteVehicleId ? { vehicleId: quoteVehicleId } : {}),
         ...(selectedRoute ? { routeId: selectedRoute.id } : {}),
+        ...(selectedRoute && tollAlternativeId ? { tollAlternativeId } : {}),
         originLocationId,
         destinationLocationId,
         mode: quoteMode,
@@ -381,23 +445,73 @@ function FastQuotePanel({
           )}
         </div>
         <div>
-          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kayıtlı Rota (isteğe bağlı)</label>
+          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kayıtlı Rota ve Geçiş Senaryosu (isteğe bağlı)</label>
           <select className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={quoteRouteId} onChange={(event) => chooseRoute(event.target.value)}>
-            <option value="">Konumları aşağıdan seçin</option>
-            {routes.filter((route) => route.originLocationId && route.destinationLocationId).map((route) => <option key={route.id} value={route.id}>{route.name}</option>)}
+            <option value="">Rota seçmeyin — yalnız konumlarla hesaplayın</option>
+            {routes.filter((route) => route.active).map((route) => (
+              <option key={route.id} value={route.id}>
+                {route.name}{route.originLocationId && route.destinationLocationId ? '' : ' — konum eşleşmesi bekliyor'}
+              </option>
+            ))}
           </select>
+          {selectedRoute && (!selectedRoute.originLocationId || !selectedRoute.destinationLocationId) && (
+            <p className="mt-2 text-xs text-amber-700">Bu rotanın konum eşleşmesi eksik. Mesafe için aşağıdan kalkış ve varış seçin; seçili rota yine de geçiş maliyetini belirler.</p>
+          )}
         </div>
+        {selectedRoute && (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3" aria-live="polite">
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5" htmlFor="quote-toll-alternative">
+              Yol &amp; Geçiş Alternatifi
+            </label>
+            <select
+              id="quote-toll-alternative"
+              className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm disabled:opacity-60"
+              value={tollAlternativeId}
+              disabled={tollsLoading || tollAlternatives.length === 0}
+              onChange={(event) => setTollAlternativeId(event.target.value)}
+            >
+              {tollsLoading && <option>Alternatifler yükleniyor…</option>}
+              {!tollsLoading && tollAlternatives.length === 0 && <option value="">Geçiş alternatifi yok</option>}
+              {!tollsLoading && tollAlternatives.length > 0 && !tollAlternativeId && <option value="">Geçiş alternatifi seçin…</option>}
+              {tollAlternatives.map((alternative) => (
+                <option key={alternative.id} value={alternative.id}>
+                  {alternative.isDefault ? 'Varsayılan — ' : ''}{alternative.name}
+                </option>
+              ))}
+            </select>
+            {tollsError ? (
+              <p className="mt-2 text-xs font-medium text-red-700">{tollsError}</p>
+            ) : tollAlternatives.length === 0 && !tollsLoading ? (
+              <p className="mt-2 text-xs text-slate-600">Bu rota için geçiş maliyeti tanımlanmamış.</p>
+            ) : selectedTollAlternative ? (
+              <>
+                <p className="mt-2 text-xs text-slate-600">
+                  {selectedTollAlternative.pointNames.length
+                    ? selectedTollAlternative.pointNames.join(' → ')
+                    : 'Bu alternatifte ücretli geçiş bulunmuyor.'}
+                </p>
+                {selectedVehicle && !selectedTollAlternative.isPricedForSelectedVehicle && (
+                  <p className="mt-2 text-xs font-bold text-red-700">
+                    {selectedVehicle.pricingClass} sınıfı için aktif/geçerli tarife eksik: {selectedTollAlternative.missingTariffPointNames.join(', ')}. Yanlış fiyat üretilmeyecek.
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="mt-2 text-xs font-medium text-amber-700">Fiyat hesabına geçmeden önce bu rota için bir geçiş alternatifi seçin.</p>
+            )}
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kalkış</label>
-            <select value={originLocationId} onChange={(event) => { setOriginLocationId(event.target.value); setQuoteRouteId(''); }} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm">
+            <select value={originLocationId} onChange={(event) => { setOriginLocationId(event.target.value); }} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm">
               <option value="">Seçin...</option>
               {locations.map((location) => <option key={location.id} value={location.id}>{location.name} ({location.city})</option>)}
             </select>
           </div>
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Varış</label>
-            <select value={destinationLocationId} onChange={(event) => { setDestinationLocationId(event.target.value); setQuoteRouteId(''); }} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm">
+            <select value={destinationLocationId} onChange={(event) => { setDestinationLocationId(event.target.value); }} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm">
               <option value="">Seçin...</option>
               {locations.map((location) => <option key={location.id} value={location.id}>{location.name} ({location.city})</option>)}
             </select>
@@ -436,7 +550,7 @@ function FastQuotePanel({
             Henüz hiçbir fiyat formülü yok. Araç seçimi korunur; otomatik fiyat için <a href="#pricing-profiles" className="font-bold underline">ilk formülü oluşturun</a>.
           </div>
         )}
-        <button onClick={handleQuote} disabled={!quoteVehicleId || !originLocationId || !destinationLocationId || distanceLoading || quoting} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center justify-center gap-2 mt-2">
+        <button onClick={handleQuote} disabled={!quoteVehicleId || !originLocationId || !destinationLocationId || distanceLoading || quoting || tollsLoading || (tollAlternatives.length > 0 && !tollAlternativeId) || Boolean(selectedTollAlternative && selectedVehicle && !selectedTollAlternative.isPricedForSelectedVehicle)} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center justify-center gap-2 mt-2">
           {quoting ? <Loader2 className="animate-spin" size={18} /> : 'Hesapla'}
         </button>
       </div>

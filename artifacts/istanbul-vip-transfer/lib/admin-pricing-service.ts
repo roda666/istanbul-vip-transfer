@@ -24,6 +24,7 @@ import {
   type PricingQuoteResult,
   type PricingServiceInput,
 } from '@/lib/admin-pricing-engine';
+import { getDefaultRouteTollAlternative } from '@/lib/toll-management';
 
 export function currentlyApplicable<T extends { validFrom: Date | null; validUntil: Date | null }>(rows: T[], at: Date): T | undefined {
   return rows
@@ -112,8 +113,20 @@ export async function createAdminQuote(input: {
   const [policy] = await db.select().from(priceCalculatorSettings).where(eq(priceCalculatorSettings.id, 1)).limit(1);
   const rates = await getCurrentExchangeRates();
   const services = await resolveServices(input.serviceQuantities ?? [], rates);
-  const tolls = input.routeId && input.tollAlternativeId
-    ? await resolveTolls(input.routeId, input.tollAlternativeId, vehicle.pricingClass, now)
+  // The server, rather than the browser, resolves a route's chosen default.
+  // This keeps calculations deterministic for reservation snapshots and avoids
+  // silently omitting tolls if an older UI does not submit the optional field.
+  // Always validate the route's default invariant, including when an admin
+  // explicitly chooses an alternative. An explicit id may choose between
+  // valid alternatives; it must never bypass a malformed route configuration.
+  const routeDefaultTollAlternativeId = input.routeId
+    ? await getDefaultRouteTollAlternative(input.routeId)
+    : null;
+  const effectiveTollAlternativeId = input.routeId
+    ? input.tollAlternativeId ?? routeDefaultTollAlternativeId
+    : null;
+  const tolls = input.routeId && effectiveTollAlternativeId
+    ? await resolveTolls(input.routeId, effectiveTollAlternativeId, vehicle.pricingClass, now)
     : [];
 
   const profile = profileRow ? ({
@@ -152,7 +165,15 @@ export async function createAdminQuote(input: {
   const snapshot = {
     version: 1,
     calculatedAt: now.toISOString(),
-    inputs: { ...input, vehicleId, originLocationId, destinationLocationId, distanceKm: distance.distanceKm },
+    inputs: {
+      ...input,
+      tollAlternativeId: effectiveTollAlternativeId,
+      tollAlternativeAutoApplied: Boolean(!input.tollAlternativeId && routeDefaultTollAlternativeId),
+      vehicleId,
+      originLocationId,
+      destinationLocationId,
+      distanceKm: distance.distanceKm,
+    },
     vehicle: { id: vehicle.id, name: vehicle.name, pricingClass: vehicle.pricingClass, priceCalculationEligible: vehicle.priceCalculationEligible },
     route: route ? { id: route.id, name: route.name, distanceKm: distance.distanceKm } : null,
     distance,
@@ -238,8 +259,12 @@ async function resolveTolls(routeId: string, alternativeId: string, vehicleClass
   ));
   return items.map((item) => {
     const point = points.find((candidate) => candidate.id === item.tollPointId)!;
-    const tariff = currentlyApplicable(tariffs.filter((candidate) => candidate.tollPointId === item.tollPointId), now);
-    if (!tariff) throw new Error(`${point.name} için ${vehicleClass} tarifesi bulunamadı.`);
+    const applicableTariffs = tariffs.filter((candidate) => candidate.tollPointId === item.tollPointId);
+    if (applicableTariffs.length === 0) throw new Error(`${point.name} için ${vehicleClass} tarifesi bulunamadı.`);
+    if (applicableTariffs.length > 1) {
+      throw new Error(`${point.name} için ${vehicleClass} sınıfında birden fazla geçerli tarife bulundu. Fiyat üretimi güvenle durduruldu.`);
+    }
+    const tariff = applicableTariffs[0];
     return { id: point.id, name: point.name, amountKurus: tariff.amountKurus };
   });
 }

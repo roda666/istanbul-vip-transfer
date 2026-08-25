@@ -139,6 +139,7 @@ export function getAdminApiPermission(pathname: string, method: string): AdminPe
   // Pricing never has a public route. Formula profiles are fleet data; tax/rate
   // policy is a site setting; generated quotes can be attached to reservations.
   if (pathname.startsWith('/admin/api/pricing/profiles')) return 'FLEET_MANAGE';
+  if (pathname.startsWith('/admin/api/pricing/tolls')) return 'FLEET_MANAGE';
   if (pathname.startsWith('/admin/api/pricing/settings') ||
       pathname.startsWith('/admin/api/pricing/exchange-rates')) return 'SITE_SETTINGS_MANAGE';
   if (pathname.startsWith('/admin/api/pricing/quote')) return 'RESERVATIONS_MANAGE';
@@ -218,7 +219,7 @@ export function getAdminPagePermission(pathname: string): AdminPermission | unde
   if (pathname.startsWith('/admin/ek-hizmetler')) return 'SITE_SETTINGS_MANAGE';
   if (pathname.startsWith('/admin/talepler')) return 'RESERVATIONS_READ';
   if (pathname.startsWith('/admin/bulten-aboneleri')) return 'NEWSLETTER_READ';
-  if (pathname.startsWith('/admin/araclar') || pathname.startsWith('/admin/transfer-rotalari') || pathname.startsWith('/admin/fiyat-kurallari')) return 'FLEET_MANAGE';
+  if (pathname.startsWith('/admin/araclar') || pathname.startsWith('/admin/transfer-rotalari') || pathname.startsWith('/admin/fiyat-kurallari') || pathname.startsWith('/admin/yol-gecis-ucretleri')) return 'FLEET_MANAGE';
   if (pathname.startsWith('/admin/ai-studio') || pathname.startsWith('/admin/ai-oneriler')) return 'AI_USE';
   if (pathname.startsWith('/admin/rakipler')) return 'AI_USE';
   if (pathname.startsWith('/admin/ceviriler') || pathname.startsWith('/admin/dil-ve-ceviri')) return 'TRANSLATIONS_MANAGE';

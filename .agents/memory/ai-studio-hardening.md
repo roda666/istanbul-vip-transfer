@@ -35,6 +35,14 @@ description: Key decisions and constraints for the AI Content Studio — timeout
 
 **Why:** Malformed JSON from network errors or browser quirks caused generic 500s. Turkish 400 messages are user-friendly in the admin panel context.
 
+## Content translation output contract
+- Required source fields (title, slug, excerpt, body, SEO title, SEO description) reject blank AI output rather than treating valid-but-empty JSON as a completed translation.
+- Markdown links from the Turkish source are passed back to the model as mandatory internal URLs; the translated body must retain them as Markdown links.
+
+**Why:** A provider can return syntactically valid JSON with empty values, which previously marked a task complete while producing a blank translation and dropping internal links.
+
+**How to apply:** Keep image metadata optional, but enforce nonempty primary content fields. For any translation prompt carrying Markdown, explicitly supply its source internal URLs and require each to remain in the result.
+
 ## DALL-E response_format (OpenAI SDK 6.x)
 - SDK 6.49.0: `response_format: 'b64_json'` throws `400 Unknown parameter: 'response_format'`
 - Fix: omit `response_format` entirely — defaults to URL; download from CDN URL then re-upload to storage

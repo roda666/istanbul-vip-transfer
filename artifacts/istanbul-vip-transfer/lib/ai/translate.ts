@@ -22,6 +22,15 @@ const coerceString = z
   );
 
 /**
+ * Source content fields must never silently turn into empty translations.
+ * Optional image metadata intentionally continues to use coerceString.
+ */
+const requiredString = coerceString.refine(
+  (value) => value.trim().length > 0,
+  { message: 'Translation field must not be empty.' },
+);
+
+/**
  * Coerce supportingKeywords: model sometimes returns a comma-separated string
  * instead of an array.
  */
@@ -39,12 +48,12 @@ const coerceStringArray = z
 
 /** Schema for structured translation output from OpenAI. */
 export const TranslationOutputSchema = z.object({
-  title: coerceString.describe('Translated title'),
-  slug: coerceString.describe('URL-safe slug in the target language, lowercase, hyphens only, no special chars'),
-  excerpt: coerceString.describe('Translated excerpt/summary (2-3 sentences)'),
-  body: coerceString.describe('Translated full body content, preserving HTML structure exactly'),
-  metaTitle: coerceString.describe('SEO meta title in target language (50-60 chars)'),
-  metaDescription: coerceString.describe('SEO meta description in target language (150-160 chars)'),
+  title: requiredString.describe('Translated title'),
+  slug: requiredString.describe('URL-safe slug in the target language, lowercase, hyphens only, no special chars'),
+  excerpt: requiredString.describe('Translated excerpt/summary (2-3 sentences)'),
+  body: requiredString.describe('Translated full body content, preserving Markdown structure exactly'),
+  metaTitle: requiredString.describe('SEO meta title in target language (50-60 chars)'),
+  metaDescription: requiredString.describe('SEO meta description in target language (150-160 chars)'),
   focusKeyword: coerceString.describe('Primary SEO focus keyword in target language'),
   supportingKeywords: coerceStringArray.describe('2-5 supporting SEO keywords in target language'),
   imageAlt: coerceString.describe('Translated image alt text'),
@@ -106,33 +115,41 @@ export async function translateContent(
 
   // Read contact details from DB (cached, falls back to static config)
   const cs = await getContactSettings();
+  const requiredInternalLinks = [
+    ...(input.body ?? '').matchAll(/\[[^\]]+\]\((\/[^)\s]+)\)/g),
+  ].map((match) => match[1]);
 
   const systemPrompt = `You are an expert translation engine specializing in luxury transportation and tourism content.
 Your task is to translate Turkish content about Istanbul VIP Transfer into ${targetLangName}.
 
 CRITICAL RULES — NEVER VIOLATE:
 1. Do NOT translate these exact strings (keep them verbatim): "VIP Transfer Istanbul", "Istanbul VIP Transfer", "IST", "SAW", "Mercedes Vito", "Mercedes Sprinter", "${cs.phoneDisplay}", "WhatsApp", "wa.me/${cs.whatsappNumber}", "${cs.email}"
-2. Preserve ALL HTML tags exactly — translate only the text nodes inside them
-3. Preserve phone numbers, URLs, and email addresses exactly as-is
+2. Preserve ALL Markdown formatting, heading levels, list markers, links, URLs, phone numbers, and email addresses exactly as-is
+3. Translate only the human-readable text; never change a link target
 4. For Arabic (ar): use Modern Standard Arabic appropriate for a luxury service
 5. The slug must be URL-safe: lowercase, hyphens instead of spaces, no diacritics or special chars
 6. Keep the professional, premium tone matching a luxury transfer service
 7. SEO fields should be optimized for the target language market
-8. Output ONLY the JSON — no markdown fences, no extra text`;
+8. Required output fields (title, slug, excerpt, body, metaTitle, metaDescription) MUST contain the translated source text and must never be blank
+9. Every required internal URL must remain in the translated Markdown body as a Markdown link; never remove an inline link or replace it with plain text
+10. Output ONLY the JSON — no markdown fences, no extra text`;
 
   const userPrompt = `Translate the following Turkish content to ${targetLangName}.
 
 Title: ${input.title}
 Slug: ${input.slug}
 Excerpt: ${input.excerpt ?? ''}
-Body (HTML): ${input.body ?? ''}
+Body (Markdown): ${input.body ?? ''}
 Meta Title: ${input.metaTitle ?? input.title}
 Meta Description: ${input.metaDescription ?? input.excerpt ?? ''}
 Focus Keyword: ${input.focusKeyword ?? ''}
 Supporting Keywords: ${(input.supportingKeywords ?? []).join(', ')}
 Image Alt: ${input.imageAlt ?? ''}
 Image Title: ${input.imageTitle ?? ''}
-Image Caption: ${input.imageCaption ?? ''}`;
+Image Caption: ${input.imageCaption ?? ''}
+
+Required internal URLs — retain every one of these in the translated Markdown body:
+${requiredInternalLinks.length > 0 ? requiredInternalLinks.map((href) => `- ${href}`).join('\n') : '- None'}`;
 
   try {
     const { OpenAI } = await import('openai');

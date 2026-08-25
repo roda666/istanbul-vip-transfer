@@ -104,8 +104,8 @@ async function main() {
   const sql = postgres(process.env.DATABASE_URL, { max: 3 });
   const ai = DRY_RUN ? null : new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
   const model = getOpenAiImageModel();
-  const results: Record<'selected' | 'updated' | 'skipped' | 'configFailed' | 'failed', Array<{ slug: string; reason?: string }>> = {
-    selected: [], updated: [], skipped: [], configFailed: [], failed: [],
+  const results: Record<'selected' | 'uploaded' | 'updated' | 'skipped' | 'configFailed' | 'failed', Array<{ slug: string; reason?: string }>> = {
+    selected: [], uploaded: [], updated: [], skipped: [], configFailed: [], failed: [],
   };
   try {
     console.log(`Hero Image Generation — target=${TARGET_ARGUMENT}, model=${model}, FORCE=${FORCE}, dryRun=${DRY_RUN}`);
@@ -127,12 +127,17 @@ async function main() {
         FROM content
         WHERE content_type = 'BLOG_POST' AND status = 'PUBLISHED' AND is_active = true
         ORDER BY slug`;
-      const blogs = blogRows as unknown as Array<{ id: string; slug: string; hero_image: string | null; hero_image_alt: string | null }>;
+      const publishedBlogs = blogRows as unknown as Array<{ id: string; slug: string; hero_image: string | null; hero_image_alt: string | null }>;
+      const publishedBySlug = new Map(publishedBlogs.map(blog => [blog.slug, blog]));
+      const blogs = BLOG_SLUG_FILTER.size > 0
+        ? [...BLOG_SLUG_FILTER].map(slug => publishedBySlug.get(slug) ?? {
+            id: null,
+            slug,
+            hero_image: null,
+            hero_image_alt: null,
+          })
+        : publishedBlogs;
       for (const blog of blogs) {
-        if (BLOG_SLUG_FILTER.size > 0 && !BLOG_SLUG_FILTER.has(blog.slug)) {
-          results.skipped.push({ slug: blog.slug, reason: 'not included in the explicit blog slug filter' });
-          continue;
-        }
         if (!FORCE && !isBlogHeroEligible(blog.hero_image, blog.hero_image_alt)) {
           results.skipped.push({ slug: blog.slug, reason: 'already has a custom hero image and nonblank alt text' });
           continue;
@@ -165,9 +170,14 @@ async function main() {
           const optimized = await optimizeGeneratedImage(raw);
           if (!optimized || !isWebp(optimized)) throw new Error('Image optimization failed');
           const permanentUrl = await uploadWebp(optimized, blogHeroObjectName(blog.slug, randomUUID()));
-          await sql`UPDATE content SET hero_image = ${permanentUrl}, hero_image_alt = ${entry.config.altText}, updated_at = now() WHERE id::text = ${blog.id}`;
-          results.updated.push({ slug: blog.slug });
-          console.log(`  ✓ ${blog.slug}: updated`);
+           if (blog.id) {
+             await sql`UPDATE content SET hero_image = ${permanentUrl}, hero_image_alt = ${entry.config.altText}, updated_at = now() WHERE id::text = ${blog.id}`;
+             results.updated.push({ slug: blog.slug });
+             console.log(`  ✓ ${blog.slug}: updated`);
+           } else {
+             results.uploaded.push({ slug: blog.slug, reason: 'no matching published CMS record; permanent asset retained without assignment' });
+             console.log(`  ✓ ${blog.slug}: uploaded to permanent storage; no CMS record, not assigned`);
+           }
         } catch (error) {
           const reason = safeError(error);
           results.failed.push({ slug: blog.slug, reason });
@@ -217,7 +227,7 @@ async function main() {
     }
   } finally {
     await sql.end();
-    console.log(`Done: ${results.selected.length} selected, ${results.updated.length} updated, ${results.skipped.length} skipped, ${results.configFailed.length} configuration failures, ${results.failed.length} failed`);
+     console.log(`Done: ${results.selected.length} selected, ${results.uploaded.length} uploaded without assignment, ${results.updated.length} updated, ${results.skipped.length} skipped, ${results.configFailed.length} configuration failures, ${results.failed.length} failed`);
     for (const selected of results.selected) console.log(`  Selected ${selected.slug}`);
     for (const skipped of results.skipped) console.log(`  Skipped ${skipped.slug}: ${skipped.reason}`);
     for (const configFailed of results.configFailed) console.error(`  Configuration failure ${configFailed.slug}: ${configFailed.reason}`);

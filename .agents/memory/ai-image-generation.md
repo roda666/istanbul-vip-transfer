@@ -24,3 +24,11 @@ Treat a blurred, blank, or inpainted rectangular panel in a license-plate positi
 **Why:** Image models can follow “no visible number plate” only partially by removing the characters while leaving the plate-shaped object in place. That still violates an editorial rule that prohibits visible plates.
 
 **How to apply:** Inspect every generated vehicle cover before accepting it. If a plate-shaped panel, readable text, logo, brand mark, or readable sign remains, regenerate only that requested image and replace the CMS attachment only after the replacement passes visual review. Preserve the required negative constraints; when repeated front or rear views keep producing badges or plate panels, add a side-dominant composition that keeps the grille, bumper, and rear hatch out of frame. Record compliance retries separately from API or storage failures.
+
+## Blank built-environment gate
+
+When a prompt includes buildings, entrances, canopies, convention halls, storefronts, or equipment, explicitly require every visible facade and surface to be blank: no signs, banners, billboards, lettering, or logos.
+
+**Why:** Image models tend to introduce fictional text or brand-like visual marks on otherwise generic architecture and equipment, even when the main prompt forbids text.
+
+**How to apply:** Keep this explicit facade/surface constraint alongside the standard no-text restrictions and inspect every accepted cover at full size. Reject only the affected output when visible wording, a logo, or a branded panel remains; do not replace a valid image merely to change the general batch.

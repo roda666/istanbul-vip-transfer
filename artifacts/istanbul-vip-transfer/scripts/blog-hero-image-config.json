@@ -50,5 +50,21 @@
   "yaz-tatilinde-vip-transfer-secenekleri": {
     "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic image of a black premium minivan with plain unmarked body panels and no plate-shaped dark rectangles anywhere on the vehicle, on a sunlit coastal road, deep blue sea on one side and pine trees on the other, bright clear summer daylight with strong contrast and vivid colours. Shot from a roadside angle with the sea visible beyond. Show the minivan from a side-dominant three-quarter angle with the front grille, front bumper, and rear hatch fully out of frame to avoid any badge or plate mounting area. Cinematic summer travel photography, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plate.",
     "altText": "Yaz tatilinde sahil yolunda ilerleyen VIP transfer aracı"
+  },
+  "bodrum-vip-transfer-rehberi": {
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic image of a black premium minivan with plain unmarked body panels and no plate-shaped dark rectangles anywhere on the vehicle, parked on a narrow hillside road above a Mediterranean bay, whitewashed low buildings with bougainvillea cascading over stone walls, deep turquoise sea and moored boats visible below in the distance, bright late-afternoon light. All building facades completely blank with no signs, banners, billboards or lettering of any kind. Editorial travel photography, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plate.",
+    "altText": "Akdeniz koyuna bakan yamaç yolunda park hâlindeki VIP transfer aracı"
+  },
+  "kayak-turlarinda-vip-transfer-rehberi": {
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic image of a black premium minivan with plain unmarked body panels and no plate-shaped dark rectangles anywhere on the vehicle, parked on a snowy mountain road with plain unbranded ski equipment and boot bags leaning against its side, tall snow-laden pine trees and a white mountain slope rising behind, crisp cold winter daylight with soft blue shadows on the snow. All equipment surfaces completely blank with no logos or lettering. Editorial winter sports travel photography, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plate.",
+    "altText": "Karlı dağ yolunda kayak ekipmanlarıyla bekleyen transfer aracı"
+  },
+  "istanbul-mesafe-sure-rehberi": {
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic high aerial view of a wide multi-lane motorway curving through the outskirts of a large city at golden hour, light traffic flowing, green belt and low buildings on both sides, distant sea inlet and hazy skyline on the horizon. All building facades completely blank with no signs, banners, billboards or lettering. No road signs or gantries anywhere. Editorial aerial travel photography, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plate.",
+    "altText": "Şehir çıkışındaki çok şeritli otoyolun gün batımında havadan görünümü"
+  },
+  "soforlu-arac-kiralama-rehberi": {
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic interior shot of the rear passenger cabin of a premium black minivan, clean dark leather seats, soft daylight coming through tinted side windows, the chauffeur's shoulders and hands on the steering wheel visible in the far front of the frame from behind, blurred city street beyond the windscreen. No badges, no emblems, no lettering on the steering wheel or any interior surface. Calm, comfortable, professional atmosphere. Editorial automotive interior photography, shallow depth of field, natural colour grading, no text, no logos, no brand marks, no readable signage.",
+    "altText": "Şoförlü kiralanan premium minivanın arka yolcu kabini ve direksiyondaki şoför"
   }
 }

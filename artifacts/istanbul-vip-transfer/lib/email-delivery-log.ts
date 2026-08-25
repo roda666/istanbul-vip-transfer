@@ -23,6 +23,7 @@ export async function persistEmailDeliveryAttempt(input: EmailDeliveryLogInput):
   try {
     const { db } = await import('@/db');
     const { emailDeliveryAttempts } = await import('@/db/schema');
+    const { sql } = await import('drizzle-orm');
 
     await db.insert(emailDeliveryAttempts).values({
       recipient: input.recipient.trim().toLowerCase().slice(0, 320),
@@ -37,6 +38,15 @@ export async function persistEmailDeliveryAttempt(input: EmailDeliveryLogInput):
       serverResponse: input.serverResponse.slice(0, 1000),
       messageId: input.messageId?.slice(0, 500) || null,
     });
+    await db.execute(sql`
+      DELETE FROM email_delivery_attempts
+      WHERE id NOT IN (
+        SELECT id
+        FROM email_delivery_attempts
+        ORDER BY occurred_at DESC, id DESC
+        LIMIT 20
+      )
+    `);
     return true;
   } catch {
     return false;

@@ -133,7 +133,10 @@ export async function POST(req: NextRequest) {
     // remain mandatory below and above this point.
   }
   if (turnstileCheck.status === 'rejected') {
-    if (data.turnstileUnavailable && !data.turnstileToken) {
+    if (turnstileCheck.configurationError) {
+      await recordBotProtectionBlock({ formType: 'CONTACT', reason: 'TURNSTILE_CONFIG_ERROR' });
+      console.warn('[contact] Turnstile configuration error; allowing contact submission:', turnstileCheck.errorCodes?.join(', ') || 'no-error-code');
+    } else if (data.turnstileUnavailable && !data.turnstileToken) {
       // The browser waited for the configured widget and reported a load
       // failure. Keep the form usable and record the degraded protection mode.
       await recordBotProtectionBlock({ formType: 'CONTACT', reason: 'TURNSTILE_UNAVAILABLE' });

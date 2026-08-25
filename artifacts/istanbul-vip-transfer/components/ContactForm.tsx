@@ -9,7 +9,8 @@ import { useState, useRef, useEffect } from 'react';
 import { useLang } from '@/lib/i18n/context';
 import { trackEvent } from '@/lib/analytics';
 import { localePath } from '@/lib/locale-path';
-import TurnstileWidget from './TurnstileWidget';
+import TurnstileWidget, { type TurnstileWidgetHandle } from './TurnstileWidget';
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
 
 interface FormState {
   name: string;
@@ -36,6 +37,7 @@ export default function ContactForm() {
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileEnabled, setTurnstileEnabled] = useState(false);
   const [turnstileUnavailable, setTurnstileUnavailable] = useState(false);
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
 
   useEffect(() => {
     let active = true;
@@ -66,11 +68,17 @@ export default function ContactForm() {
     // Turnstile normally calls our callback, but Cloudflare also writes its
     // one-time response into this form field. Read it as a final fallback so
     // a successfully completed widget never gets lost during a callback race.
-    const resolvedTurnstileToken = turnstileToken
-      ?? document.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]')?.value?.trim()
-      ?? null;
-    if (turnstileEnabled && !resolvedTurnstileToken) {
-      setServerError('Güvenlik doğrulaması tamamlanmadan form gönderilemez.');
+    const requiresTurnstileToken = turnstileEnabled && !turnstileUnavailable;
+    const resolvedTurnstileToken = requiresTurnstileToken
+      ? await turnstileRef.current?.getFreshToken()
+        ?? turnstileToken
+        ?? document.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]')?.value?.trim()
+        ?? null
+      : turnstileToken
+        ?? document.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]')?.value?.trim()
+        ?? null;
+    if (requiresTurnstileToken && !resolvedTurnstileToken) {
+      setServerError('Güvenlik doğrulaması yenilenemedi. Lütfen birkaç saniye bekleyip tekrar deneyin veya WhatsApp üzerinden bize ulaşın.');
       setStatus('error');
       return;
     }
@@ -79,7 +87,7 @@ export default function ContactForm() {
     setServerError('');
 
     try {
-      const res = await fetch('/data/contact', {
+      const res = await fetchWithTimeout('/data/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -105,9 +113,10 @@ export default function ContactForm() {
       }
       const payload = await res.json().catch(() => ({})) as {
         emailNotification?: { status?: string };
+        message?: string;
       };
       if (!res.ok) {
-        setServerError(cf.errorMessage);
+        setServerError(payload.message ?? cf.errorMessage);
         setStatus('error');
         return;
       }
@@ -122,8 +131,12 @@ export default function ContactForm() {
       trackEvent('contact_form_submit', {
         page_path: window.location.pathname,
       });
-    } catch {
-      setServerError(cf.errorMessage);
+    } catch (error) {
+      setServerError(
+        error instanceof DOMException && error.name === 'AbortError'
+          ? 'İstek zaman aşımına uğradı. Lütfen tekrar deneyin veya WhatsApp üzerinden bize ulaşın.'
+          : cf.errorMessage,
+      );
       setStatus('error');
     }
   }
@@ -324,6 +337,7 @@ export default function ContactForm() {
           )}
 
           <TurnstileWidget
+            ref={turnstileRef}
             form="contact"
             onTokenChange={setTurnstileToken}
             onEnabledChange={setTurnstileEnabled}
@@ -372,16 +386,16 @@ export default function ContactForm() {
           {/* Submit */}
           <button
             type="submit"
-            disabled={status === 'submitting' || (turnstileEnabled && !turnstileToken)}
+            disabled={status === 'submitting' || (turnstileEnabled && !turnstileUnavailable && !turnstileToken)}
             style={{
-              background: status === 'submitting' || (turnstileEnabled && !turnstileToken) ? '#9ca3af' : '#1a1a2e',
+              background: status === 'submitting' || (turnstileEnabled && !turnstileUnavailable && !turnstileToken) ? '#9ca3af' : '#1a1a2e',
               color: '#fff',
               border: 'none',
               borderRadius: '8px',
               padding: '0.85rem 2rem',
               fontSize: '1rem',
               fontWeight: 700,
-              cursor: status === 'submitting' || (turnstileEnabled && !turnstileToken) ? 'not-allowed' : 'pointer',
+              cursor: status === 'submitting' || (turnstileEnabled && !turnstileUnavailable && !turnstileToken) ? 'not-allowed' : 'pointer',
               transition: 'background 0.2s',
               alignSelf: 'flex-start',
             }}

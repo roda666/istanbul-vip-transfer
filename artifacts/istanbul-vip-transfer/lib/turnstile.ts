@@ -6,7 +6,7 @@ import { decryptTurnstileSecret } from '@/lib/turnstile-settings-crypto';
 export type TurnstileVerification =
   | { status: 'disabled' }
   | { status: 'verified' }
-  | { status: 'rejected' }
+  | { status: 'rejected'; errorCodes?: string[]; configurationError?: boolean }
   | { status: 'unavailable' }
   | { status: 'unconfigured' };
 
@@ -95,13 +95,23 @@ export async function verifyTurnstileToken(
       action?: unknown;
       'error-codes'?: unknown;
     };
-    if (result.success === true && result.action === `ivt_${form}`) {
+    if (result.success === true && (typeof result.action !== 'string' || result.action === `ivt_${form}`)) {
       return { status: 'verified' };
     }
 
-    const errors = Array.isArray(result['error-codes']) ? result['error-codes'] : [];
+    const errors = Array.isArray(result['error-codes'])
+      ? result['error-codes'].filter((value): value is string => typeof value === 'string')
+      : [];
     if (errors.includes('invalid-input-secret')) return { status: 'unconfigured' };
-    return { status: 'rejected' };
+    const configurationError = errors.includes('hostname-mismatch');
+    const reason = typeof result.action === 'string' && result.action !== `ivt_${form}`
+      ? `action-mismatch:${result.action}`
+      : undefined;
+    console.warn(
+      '[turnstile] Verification rejected:',
+      errors.length > 0 ? errors.join(', ') : reason ?? 'no-error-code',
+    );
+    return { status: 'rejected', errorCodes: errors, configurationError };
   } catch {
     return { status: 'unavailable' };
   }

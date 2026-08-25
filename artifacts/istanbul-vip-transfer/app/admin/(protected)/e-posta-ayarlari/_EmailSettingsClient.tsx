@@ -6,6 +6,7 @@ import {
   Send, Eye, EyeOff, Info,
 } from 'lucide-react';
 import AdminPageHeader from '../../_components/AdminPageHeader';
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
 
 // ── Styles ─────────────────────────────────────────────────────────────────
 const PAGE_BG   = '#F3F6FA';
@@ -119,6 +120,7 @@ export default function EmailSettingsClient() {
   const [sendResult, setSendResult]   = useState<{ ok: boolean; text: string } | null>(null);
   const [deliveryAttempts, setDeliveryAttempts] = useState<DeliveryAttempt[]>([]);
   const [attemptsError, setAttemptsError] = useState<string | null>(null);
+  const [attemptsExpanded, setAttemptsExpanded] = useState(false);
 
   // ── Load ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -256,9 +258,9 @@ export default function EmailSettingsClient() {
     if (!sendTo.trim()) return;
     setSending(true); setSendResult(null);
     try {
-      const res  = await fetch('/admin/api/email-settings/test-send', {
+      const res  = await fetchWithTimeout('/admin/api/email-settings/test-send', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: sendTo.trim() }),
-      });
+      }, 30_000);
       const data = await res.json().catch(() => ({})) as {
         message?: string;
         error?: string;
@@ -271,8 +273,13 @@ export default function EmailSettingsClient() {
         : '';
       setSendResult({ ok: res.ok, text: [base, acceptance, responseDetail].filter(Boolean).join(' ') });
       await loadDeliveryAttempts();
-    } catch {
-      setSendResult({ ok: false, text: 'Sunucu hatası.' });
+    } catch (error) {
+      setSendResult({
+        ok: false,
+        text: error instanceof DOMException && error.name === 'AbortError'
+          ? 'Gönderim zaman aşımına uğradı. SMTP sunucusu yanıt vermedi; lütfen tekrar deneyin.'
+          : 'Sunucu hatası.',
+      });
     } finally {
       setSending(false);
     }
@@ -639,28 +646,35 @@ export default function EmailSettingsClient() {
           </div>
 
           <div style={s.card}>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap' }}>
-              <div>
-                <div style={s.sectionTitle}>Son E-posta Teslimat Denemeleri</div>
-                <div style={{ fontSize: '12px', color: MUTED_C, fontFamily: 'Inter, sans-serif', marginTop: '-8px', marginBottom: '12px' }}>
-                  Başarı yalnızca SMTP sunucusu alıcıyı kabul ettiğinde gösterilir. Mesaj gövdesi ve parola kaydedilmez.
-                </div>
-              </div>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'space-between', marginBottom: attemptsExpanded ? '8px' : 0, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                aria-expanded={attemptsExpanded}
+                onClick={() => setAttemptsExpanded(prev => !prev)}
+                style={{ border: 0, background: 'transparent', padding: 0, textAlign: 'left', cursor: 'pointer' }}
+              >
+                <div style={s.sectionTitle}>Son E-posta Teslimat Denemeleri {attemptsExpanded ? '▴' : '▾'}</div>
+                {attemptsExpanded && (
+                  <div style={{ fontSize: '12px', color: MUTED_C, fontFamily: 'Inter, sans-serif', marginTop: '-8px', marginBottom: '12px' }}>
+                    Başarı yalnızca SMTP sunucusu alıcıyı kabul ettiğinde gösterilir. Son 20 kayıt kalıcı olarak saklanır; mesaj gövdesi ve parola kaydedilmez.
+                  </div>
+                )}
+              </button>
               <button type="button" onClick={() => void loadDeliveryAttempts()} style={{ ...s.btn, ...s.btnGhost, padding: '7px 12px', fontSize: '12px' }}>
                 Yenile
               </button>
             </div>
-            {attemptsError && (
+            {attemptsExpanded && attemptsError && (
               <div style={{ ...s.msg, marginTop: 0, background: '#FEF0EE', border: '1px solid #F5C6C0', color: DANGER }}>
                 <AlertTriangle size={14} style={{ flexShrink: 0 }} />{attemptsError}
               </div>
             )}
-            {!attemptsError && deliveryAttempts.length === 0 && (
+            {attemptsExpanded && !attemptsError && deliveryAttempts.length === 0 && (
               <p style={{ color: MUTED_C, fontSize: '13px', fontFamily: 'Inter, sans-serif', margin: 0 }}>
                 Henüz gönderim denemesi kaydı yok.
               </p>
             )}
-            {deliveryAttempts.length > 0 && (
+            {attemptsExpanded && deliveryAttempts.length > 0 && (
               <div style={{ display: 'grid', gap: '10px' }}>
                 {deliveryAttempts.map((attempt) => (
                   <div key={attempt.id} style={{ border: `1px solid ${attempt.accepted ? '#A8DEC0' : '#F5C6C0'}`, background: attempt.accepted ? '#F7FCF8' : '#FFF8F7', borderRadius: '8px', padding: '12px' }}>

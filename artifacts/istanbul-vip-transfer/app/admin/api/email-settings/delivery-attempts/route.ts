@@ -32,7 +32,7 @@ export async function GET() {
       messageId: emailDeliveryAttempts.messageId,
     }).from(emailDeliveryAttempts)
       .orderBy(desc(emailDeliveryAttempts.occurredAt))
-      .limit(100);
+      .limit(20);
 
     return NextResponse.json({ attempts });
   } catch {

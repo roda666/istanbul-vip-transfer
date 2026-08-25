@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 
 type TurnstileForm = 'reservation' | 'contact';
 type WidgetState = 'checking' | 'disabled' | 'loading' | 'ready' | 'fallback';
@@ -14,6 +14,10 @@ type TurnstileConfig = {
 type TurnstileApi = {
   render: (container: HTMLElement, options: Record<string, unknown>) => string;
   reset: (widgetId?: string) => void;
+};
+
+export type TurnstileWidgetHandle = {
+  getFreshToken: () => Promise<string | null>;
 };
 
 declare global {
@@ -67,25 +71,92 @@ function withTimeout<T>(promise: Promise<T>, message: string): Promise<T> {
   });
 }
 
-export default function TurnstileWidget({
-  form,
-  onTokenChange,
-  onEnabledChange,
-  onUnavailableChange,
-}: {
+const TOKEN_MAX_AGE_MS = 240_000;
+
+const TurnstileWidget = forwardRef<TurnstileWidgetHandle, {
   form: TurnstileForm;
   onTokenChange: (token: string | null) => void;
   onEnabledChange?: (enabled: boolean) => void;
   onUnavailableChange?: (unavailable: boolean) => void;
-}) {
+}>(function TurnstileWidget({
+  form,
+  onTokenChange,
+  onEnabledChange,
+  onUnavailableChange,
+}, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
+  const tokenRef = useRef<string | null>(null);
+  const tokenIssuedAtRef = useRef(0);
+  const pendingTokenRef = useRef<((token: string | null) => void) | null>(null);
+  const refreshTimerRef = useRef<number | null>(null);
+  const refreshInFlightRef = useRef<Promise<string | null> | null>(null);
   const [config, setConfig] = useState<TurnstileConfig | null>(null);
   const [state, setState] = useState<WidgetState>('checking');
 
+  const clearRefreshTimer = useCallback(() => {
+    if (refreshTimerRef.current) window.clearTimeout(refreshTimerRef.current);
+    refreshTimerRef.current = null;
+  }, []);
+
+  const setToken = useCallback((token: string | null) => {
+    tokenRef.current = token;
+    tokenIssuedAtRef.current = token ? Date.now() : 0;
+    onTokenChange(token);
+    if (token) {
+      clearRefreshTimer();
+      pendingTokenRef.current?.(token);
+      pendingTokenRef.current = null;
+    }
+  }, [clearRefreshTimer, onTokenChange]);
+
+  const activateFallback = useCallback(() => {
+    clearRefreshTimer();
+    tokenRef.current = null;
+    tokenIssuedAtRef.current = 0;
+    onTokenChange(null);
+    onEnabledChange?.(false);
+    onUnavailableChange?.(true);
+    pendingTokenRef.current?.(null);
+    pendingTokenRef.current = null;
+    setState('fallback');
+  }, [clearRefreshTimer, onEnabledChange, onTokenChange, onUnavailableChange]);
+
+  const requestNewToken = useCallback((): Promise<string | null> => {
+    if (refreshInFlightRef.current) return refreshInFlightRef.current;
+    const promise = new Promise<string | null>((resolve) => {
+      pendingTokenRef.current = resolve;
+      setToken(null);
+      onEnabledChange?.(true);
+      onUnavailableChange?.(false);
+      setState('loading');
+      if (widgetIdRef.current && window.turnstile) {
+        clearRefreshTimer();
+        window.turnstile.reset(widgetIdRef.current);
+        refreshTimerRef.current = window.setTimeout(() => activateFallback(), TURNSTILE_WAIT_TIMEOUT_MS);
+      } else {
+        activateFallback();
+      }
+    });
+    refreshInFlightRef.current = promise.finally(() => {
+      refreshInFlightRef.current = null;
+    });
+    return refreshInFlightRef.current;
+  }, [activateFallback, clearRefreshTimer, onEnabledChange, onUnavailableChange, setToken]);
+
+  const getFreshToken = useCallback(() => {
+    const token = tokenRef.current;
+    if (token && Date.now() - tokenIssuedAtRef.current < TOKEN_MAX_AGE_MS) {
+      return Promise.resolve(token);
+    }
+    return requestNewToken();
+  }, [requestNewToken]);
+
+  useImperativeHandle(ref, () => ({ getFreshToken }), [getFreshToken]);
+
   useEffect(() => {
     let active = true;
-    onTokenChange(null);
+    setToken(null);
     onUnavailableChange?.(false);
     fetch(`/data/turnstile-config?form=${form}`, { cache: 'no-store' })
       .then((response) => response.ok ? response.json() : null)
@@ -119,21 +190,13 @@ export default function TurnstileWidget({
       });
 
     return () => { active = false; };
-  }, [form, onEnabledChange, onTokenChange, onUnavailableChange]);
+  }, [form, onEnabledChange, onUnavailableChange, setToken]);
 
   useEffect(() => {
     if (!config?.enabled || !config.configured || !config.siteKey || !containerRef.current) return;
 
     let active = true;
     let challengeTimer: number | null = null;
-    const activateFallback = () => {
-      if (!active) return;
-      if (challengeTimer) window.clearTimeout(challengeTimer);
-      onTokenChange(null);
-      onEnabledChange?.(false);
-      onUnavailableChange?.(true);
-      setState('fallback');
-    };
     setState('loading');
     withTimeout(loadTurnstileApi(), 'Turnstile API zaman aşımına uğradı.')
       .then((api) => {
@@ -146,18 +209,14 @@ export default function TurnstileWidget({
           callback: (token: string) => {
             if (!active) return;
             if (challengeTimer) window.clearTimeout(challengeTimer);
-            onTokenChange(token);
+            setToken(token);
             onEnabledChange?.(true);
             onUnavailableChange?.(false);
             setState('ready');
           },
           'expired-callback': () => {
             if (!active) return;
-            onTokenChange(null);
-            onEnabledChange?.(true);
-            onUnavailableChange?.(false);
-            setState('loading');
-            challengeTimer = window.setTimeout(activateFallback, TURNSTILE_WAIT_TIMEOUT_MS);
+            void requestNewToken();
           },
           'timeout-callback': () => {
             activateFallback();
@@ -173,12 +232,15 @@ export default function TurnstileWidget({
     return () => {
       active = false;
       if (challengeTimer) window.clearTimeout(challengeTimer);
+      clearRefreshTimer();
+      pendingTokenRef.current?.(null);
+      pendingTokenRef.current = null;
       if (widgetIdRef.current && window.turnstile) {
         window.turnstile.reset(widgetIdRef.current);
       }
       widgetIdRef.current = null;
     };
-  }, [config, form, onEnabledChange, onTokenChange, onUnavailableChange]);
+  }, [activateFallback, clearRefreshTimer, config, form, onEnabledChange, onUnavailableChange, requestNewToken, setToken]);
 
   // Keep both the widget slot and loading copy out of the DOM until a real,
   // configured widget has begun loading.
@@ -199,4 +261,8 @@ export default function TurnstileWidget({
       )}
     </div>
   );
-}
+});
+
+TurnstileWidget.displayName = 'TurnstileWidget';
+
+export default TurnstileWidget;

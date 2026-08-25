@@ -84,12 +84,26 @@ function normalizeRequiredDate(value: unknown): Date {
   return normalizeOptionalDate(value) ?? new Date(0);
 }
 
+/**
+ * Image alt text must remain descriptive of the visual, including legitimate
+ * geographic terms such as "otoyol". The public toll-copy filter is for route
+ * and pricing prose only; applying it here can erase a valid alt altogether.
+ */
+function normalizeImageAlt(value: string | null): string | null {
+  const normalized = value
+    ?.replace(/[\u0000-\u001F\u007F]/g, ' ')
+    .replace(/[<>]/g, '')
+    .trim()
+    .slice(0, 200);
+  return normalized || null;
+}
+
 function normalizeBlogCard(post: PublishedBlogCard): PublishedBlogCard {
   return {
     ...post,
     title: removeCustomerVisibleTollCopy(post.title),
     excerpt: post.excerpt ? removeCustomerVisibleTollCopy(post.excerpt) : null,
-    heroImageAlt: post.heroImageAlt ? removeCustomerVisibleTollCopy(post.heroImageAlt) : null,
+    heroImageAlt: normalizeImageAlt(post.heroImageAlt),
     category: post.category ? removeCustomerVisibleTollCopy(post.category) : null,
     author: post.author ? removeCustomerVisibleTollCopy(post.author) : null,
     seoDescription: post.seoDescription ? removeCustomerVisibleTollCopy(post.seoDescription) : null,
@@ -104,7 +118,7 @@ function normalizeBlogPost(post: PublishedBlogPost): PublishedBlogPost {
     title: removeCustomerVisibleTollCopy(post.title),
     excerpt: post.excerpt ? removeCustomerVisibleTollCopy(post.excerpt) : null,
     body: post.body ? removeCustomerVisibleTollCopy(post.body) : null,
-    heroImageAlt: post.heroImageAlt ? removeCustomerVisibleTollCopy(post.heroImageAlt) : null,
+    heroImageAlt: normalizeImageAlt(post.heroImageAlt),
     category: post.category ? removeCustomerVisibleTollCopy(post.category) : null,
     author: post.author ? removeCustomerVisibleTollCopy(post.author) : null,
     tags: post.tags.map(removeCustomerVisibleTollCopy).filter(Boolean),
@@ -130,9 +144,7 @@ function normalizeBlogTranslation(
       ? removeCustomerVisibleTollCopy(translation.metaDescription)
       : null,
     sourceTitle: removeCustomerVisibleTollCopy(translation.sourceTitle),
-    sourceHeroImageAlt: translation.sourceHeroImageAlt
-      ? removeCustomerVisibleTollCopy(translation.sourceHeroImageAlt)
-      : null,
+    sourceHeroImageAlt: normalizeImageAlt(translation.sourceHeroImageAlt),
     sourceCategory: translation.sourceCategory
       ? removeCustomerVisibleTollCopy(translation.sourceCategory)
       : null,
@@ -453,9 +465,7 @@ export async function getPublishedBlogTranslations(
     title: post.title ? removeCustomerVisibleTollCopy(post.title) : null,
     excerpt: post.excerpt ? removeCustomerVisibleTollCopy(post.excerpt) : null,
     sourceCategory: post.sourceCategory ? removeCustomerVisibleTollCopy(post.sourceCategory) : null,
-    sourceHeroImageAlt: post.sourceHeroImageAlt
-      ? removeCustomerVisibleTollCopy(post.sourceHeroImageAlt)
-      : null,
+    sourceHeroImageAlt: normalizeImageAlt(post.sourceHeroImageAlt),
     publishedAt: normalizeOptionalDate(post.publishedAt),
   }));
 }

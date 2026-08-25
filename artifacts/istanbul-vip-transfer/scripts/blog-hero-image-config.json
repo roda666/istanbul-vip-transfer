@@ -18,5 +18,21 @@
   "vito-soforlu-arac-kiralama-rehberi": {
     "prompt": "Photorealistic three-quarter front view of a black mid-size premium passenger van parked on a clean city street at golden hour, a chauffeur in a dark suit standing beside the driver's door in a calm professional posture, seen from a distance and slightly from behind so the face is not the focus. Warm low sunlight along the body panels, blurred urban background. Automotive editorial photography, crisp detail, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plate.",
     "altText": "Şoförlü kiralama için hazır bekleyen siyah premium minivan ve profesyonel şoför"
+  },
+  "ankara-vip-transfer-ozel-sofor-rehberi": {
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic image of a black premium minivan with plain unmarked body panels and no plate-shaped dark rectangles anywhere on the vehicle, on a wide modern boulevard lined with contemporary government-style office buildings under clear afternoon light. Orderly, calm capital-city atmosphere, low traffic, broad pavements and trimmed trees. Shot three-quarter rear from street level with gentle motion blur on the wheels. Editorial travel photography, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plate.",
+    "altText": "Başkentin geniş bulvarında ilerleyen siyah VIP transfer aracı"
+  },
+  "vip-taksi-ile-standart-taksi-farklari": {
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic night street scene showing a black premium minivan with plain unmarked body panels and no plate-shaped dark rectangles anywhere on the vehicle, waiting calmly at the kerb in the foreground with warm interior cabin light visible through its windows, while blurred yellow taxis pass by in the background traffic. Wet asphalt reflecting street lamps, deep blue night sky. Cinematic urban photography, shallow depth of field, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plate.",
+    "altText": "Gece şehir trafiğinde bekleyen siyah VIP araç ve arka planda geçen sarı taksiler"
+  },
+  "istanbul-bursa-uludag-inegol-kartepe-transfer": {
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic image of a black premium minivan with plain unmarked body panels and no plate-shaped dark rectangles anywhere on the vehicle, travelling along a winding mountain road in winter, bare trees and patches of snow along the roadside, distant snow-capped peaks under soft overcast light. Shot from a roadside low angle with gentle motion blur on the wheels. Calm cinematic winter travel atmosphere, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plate.",
+    "altText": "Kış aylarında dağ yolunda ilerleyen siyah şehirlerarası transfer aracı"
+  },
+  "sehirlerarasi-vip-transfer-rehberi": {
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic wide landscape shot of a black premium minivan with plain unmarked body panels and no plate-shaped dark rectangles anywhere on the vehicle, driving along an open intercity motorway at sunrise, rolling green hills stretching to the horizon, soft golden light and light morning mist over the fields. Vehicle small in frame to emphasise distance and journey. Cinematic travel photography, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plate.",
+    "altText": "Gün doğumunda şehirlerarası otoyolda ilerleyen VIP transfer aracı"
   }
 }

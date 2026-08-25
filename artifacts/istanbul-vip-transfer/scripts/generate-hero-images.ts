@@ -23,6 +23,9 @@ import {
 const PLACEHOLDER = '/images/istanbul-vip-transfer-hero.webp';
 const SIDECAR = process.env.REPLIT_SIDECAR_ENDPOINT ?? 'http://127.0.0.1:1106';
 const FORCE = process.env.FORCE === '1';
+const BLOG_SLUG_FILTER = new Set(
+  (process.env.HERO_IMAGE_SLUGS ?? '').split(',').map(slug => slug.trim()).filter(Boolean),
+);
 const TARGET_ARGUMENT = process.argv.find(argument => argument.startsWith('--target='))?.slice('--target='.length)
   ?? process.env.HERO_IMAGE_TARGET ?? 'service';
 const DRY_RUN = process.argv.includes('--dry-run') || process.env.DRY_RUN === '1';
@@ -126,7 +129,11 @@ async function main() {
         ORDER BY slug`;
       const blogs = blogRows as unknown as Array<{ id: string; slug: string; hero_image: string | null; hero_image_alt: string | null }>;
       for (const blog of blogs) {
-        if (!isBlogHeroEligible(blog.hero_image, blog.hero_image_alt)) {
+        if (BLOG_SLUG_FILTER.size > 0 && !BLOG_SLUG_FILTER.has(blog.slug)) {
+          results.skipped.push({ slug: blog.slug, reason: 'not included in the explicit blog slug filter' });
+          continue;
+        }
+        if (!FORCE && !isBlogHeroEligible(blog.hero_image, blog.hero_image_alt)) {
           results.skipped.push({ slug: blog.slug, reason: 'already has a custom hero image and nonblank alt text' });
           continue;
         }

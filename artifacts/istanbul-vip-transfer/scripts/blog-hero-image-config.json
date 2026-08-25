@@ -147,5 +147,33 @@
     "insertAfterHeading": "4. Araç ve bagaj kapasitesi",
     "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic image of a family group of four standing beside a large black passenger van with plain unmarked body panels and no plate-shaped dark rectangles anywhere on the vehicle, in an airport pick-up area, surrounded by five large plain suitcases and travel bags on the ground, soft overcast daylight. Figures seen from behind and in three-quarter view so faces are not the focus. All luggage and clothing surfaces blank with no logos or lettering. Documentary travel photography, natural colours, no text, no logos, no brand marks, no readable signage, no visible number plate.",
     "altText": "Kalabalık aile ve fazla bagaj için geniş kapasiteli transfer aracı"
+  },
+  "vito-soforlu-arac-kiralama-rehberi-body-yolcu-kapasitesi": {
+    "placement": "body",
+    "targetSlug": "vito-soforlu-arac-kiralama-rehberi",
+    "insertAfterHeading": "Vito'nun yolcu kapasitesi",
+    "prompt": "No text, no logos, no brand marks, no readable signage. Photorealistic interior of a premium mid-size passenger van seen from the rear looking forward: two rows of grey leather seats facing forward, generous legroom, clean floor mats, soft daylight through side windows, subtle chrome and dark trim details. Empty cabin, no people. No badges, no emblems, no lettering on the seats, mats, trim or steering wheel. Interior architecture photography style, wide angle without distortion, natural colours, no text, no logos, no brand marks, no readable signage.",
+    "altText": "Mercedes Vito iç mekanı, deri koltuk düzeni ve bacak mesafesi"
+  },
+  "vito-soforlu-arac-kiralama-rehberi-body-bagaj-kapasitesi": {
+    "placement": "body",
+    "targetSlug": "vito-soforlu-arac-kiralama-rehberi",
+    "insertAfterHeading": "Bagaj kapasitesi",
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic view of an open rear luggage compartment of a black passenger van with plain unmarked body panels and no plate-shaped dark rectangles anywhere on the vehicle, containing four large plain hard-shell suitcases neatly stacked and two soft travel bags on top, photographed straight on in soft even daylight. All luggage surfaces completely blank with no logos, badges, labels or lettering. Clean grey asphalt beneath, subtle shadow. Product documentation photography style, sharp detail, muted neutral colours, no text, no logos, no brand marks, no readable signage, no visible number plate.",
+    "altText": "Vito bagaj bölümünde dört büyük valiz ve seyahat çantası yerleşimi"
+  },
+  "vito-soforlu-arac-kiralama-rehberi-body-tercih": {
+    "placement": "body",
+    "targetSlug": "vito-soforlu-arac-kiralama-rehberi",
+    "insertAfterHeading": "Hangi seyahatlerde tercih edilir?",
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic image of a black passenger van with plain unmarked body panels and no plate-shaped dark rectangles anywhere on the vehicle, driving along a scenic countryside road lined with green hills and trees under soft afternoon light, seen from a low roadside angle with gentle motion blur on the wheels. Use a strict side-dominant profile angle with the front grille and front bumper fully out of frame; no visible emblem or badge area. No road signs, no gantries, no billboards anywhere. Open landscape, calm travel atmosphere. Cinematic travel photography, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plate.",
+    "altText": "Şoförlü Vito ile şehir dışı ve günübirlik tur yolculuğu"
+  },
+  "soforlu-arac-kiralama-rehberi-body-saatlik-gunluk": {
+    "placement": "body",
+    "targetSlug": "soforlu-arac-kiralama-rehberi",
+    "insertAfterHeading": "Saatlik ve günlük tahsis",
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic image of a black premium van with plain unmarked body panels and no plate-shaped dark rectangles anywhere on the vehicle, waiting at the kerb outside a modern glass office building during daytime, a business traveller with a plain laptop bag walking toward it from behind, seen from a distance. Use a strict side-dominant view that keeps the rear hatch, rear bumper, grille and every plate-mounting area fully out of frame. All building facades and glass completely blank with no signs, banners, lettering or logos. Clean corporate atmosphere, soft overcast daylight, reflections on the glass facade. Editorial business photography, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plate.",
+    "altText": "Toplantı ve kurumsal program için saatlik tahsis edilen şoförlü araç"
   }
 }

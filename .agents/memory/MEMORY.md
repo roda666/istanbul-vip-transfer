@@ -79,3 +79,4 @@
 - [Turnstile secret storage](turnstile-secret-storage.md) — encrypted keys require persistent wrapped-key verification; failures refuse writes without ever storing plaintext.
 - [Brand wordmark assets](brand-wordmark-assets.md) — publisher logo and future image overlays use static outlined logo files, never AI-drawn brand marks.
 - [Preview versus production URLs](preview-versus-production-urls.md) — report preview paths separately; never turn SITE.siteUrl into a verified live URL without deployment metadata.
+- [Blog translation release gate](blog-translation-release-gate.md) — publish batches only after language, link, visual, copy and RTL checks; use lifecycle transitions and signed cache revalidation.

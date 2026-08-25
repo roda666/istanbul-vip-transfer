@@ -91,5 +91,33 @@
     "insertAfterHeading": "Yolculuk süresi ne kadar?",
     "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate, no plate-shaped dark panels. Photorealistic night view of a wide modern motorway leading toward a large illuminated city skyline in the distance, seen from a slightly elevated angle. Light trails from moving vehicles, deep blue evening sky, warm street lighting along the road. No road signs, no gantries, no billboards anywhere; all distant building facades completely blank, plain and unmarked with no lettering. Cinematic travel photography, long exposure feel, clean composition, no recognisable landmarks, no text, no logos, no brand marks, no readable signage, no visible number plate, no plate-shaped dark panels.",
     "altText": "İstanbul Havalimanı'ndan şehir merkezine gece transfer güzergâhı"
+  },
+  "sabiha-gokcen-transfer-rehberi-body-avrupa": {
+    "placement": "body",
+    "targetSlug": "sabiha-gokcen-transfer-rehberi",
+    "insertAfterHeading": "Avrupa yakasına geçiş",
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate, no plate-shaped dark panels. Photorealistic view from inside a moving vehicle crossing a large suspension bridge over a wide strait at sunset. Warm orange light on the water, distant city silhouette on the far shore, bridge cables sweeping past. Passenger point of view through a clean side window, slight motion blur on the cables, calm cinematic mood. No road signs, no gantries, no billboards anywhere; all visible architectural and roadside surfaces completely blank, plain and unmarked. Natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plate, no plate-shaped dark panels.",
+    "altText": "Sabiha Gökçen'den Avrupa yakasına transfer sırasında boğaz köprüsü geçişi"
+  },
+  "sabiha-gokcen-transfer-rehberi-body-karsilama": {
+    "placement": "body",
+    "targetSlug": "sabiha-gokcen-transfer-rehberi",
+    "insertAfterHeading": "Karşılama nasıl oluyor?",
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate, no plate-shaped dark panels. Photorealistic close-up from behind and slightly to the side of a chauffeur in a dark suit standing in an airport arrivals area, holding a plain blank white name-board. Focus on the board and the chauffeur's shoulder; the arrivals crowd beyond is softly out of focus with warm terminal lighting. The board is completely blank white with absolutely no writing, no marks and no drawings on it. All background surfaces completely blank, plain and unmarked with no signs or lettering. Documentary photography style, natural colours, no text anywhere, no logos, no brand marks, no readable signage, no visible number plate, no plate-shaped dark panels.",
+    "altText": "Havalimanı geliş salonunda isim tabelası tutan transfer şoförü ile karşılama"
+  },
+  "sabiha-gokcen-transfer-rehberi-body-gece": {
+    "placement": "body",
+    "targetSlug": "sabiha-gokcen-transfer-rehberi",
+    "insertAfterHeading": "Gece uçuşları ve erken saat transferleri",
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate, no plate-shaped dark panels. Photorealistic night scene of a quiet airport departure road, a single black minivan with plain, unmarked, completely blank body panels and no plate-shaped dark rectangles anywhere on the vehicle, driving away under warm sodium street lights, empty lanes, deep blue night sky. Soft rain-dampened asphalt reflecting the lights. No road signs, no gantries, no billboards anywhere; all visible roadside and airport surfaces completely blank, plain and unmarked. Calm cinematic slightly melancholic travel atmosphere. Long lens compression, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plate, no plate-shaped dark panels.",
+    "altText": "Gece saatlerinde Sabiha Gökçen Havalimanı'ndan hareket eden transfer aracı"
+  },
+  "istanbul-vip-transfer-fiyatlari-nasil-belirlenir-body-arac-sinifi": {
+    "placement": "body",
+    "targetSlug": "istanbul-vip-transfer-fiyatlari-nasil-belirlenir",
+    "insertAfterHeading": "Araç sınıfı",
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate, no plate-shaped dark panels. Photorealistic image of two black passenger vans of different sizes with plain, unmarked, completely blank body panels and no plate-shaped dark rectangles anywhere on either vehicle, parked side by side in a clean empty parking area under soft overcast daylight. One is a mid-size van, the other noticeably larger and longer. Both shot three-quarter front, evenly lit, plain neutral grey background that is completely blank, unmarked and has nothing written on it. Product comparison photography style, sharp detail, natural colours, no text, no logos, no brand marks, no readable signage, no visible number plate, no plate-shaped dark panels.",
+    "altText": "Orta boy ve büyük transfer araçlarının kapasite karşılaştırması"
   }
 }

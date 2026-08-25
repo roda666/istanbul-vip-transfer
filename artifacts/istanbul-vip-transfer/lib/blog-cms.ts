@@ -11,6 +11,7 @@ import 'server-only';
 import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
 import { SUPPORTED_LANGS } from '@/lib/i18n';
 import { removeCustomerVisibleTollCopy } from '@/lib/customer-visible-copy';
+import { parseMarkdownImage } from '@/lib/blog-markdown';
 
 /** Entity type used in content_translations rows for blog posts. */
 export const BLOG_ENTITY_TYPE = 'content';
@@ -112,12 +113,24 @@ function normalizeBlogCard(post: PublishedBlogCard): PublishedBlogCard {
   };
 }
 
+/**
+ * Preserve valid standalone Markdown images before filtering customer-visible
+ * route and pricing prose. Visual alt text may accurately mention bridges,
+ * roads, or geographic landmarks that the prose filter intentionally removes.
+ */
+function normalizeBlogBody(value: string): string {
+  return value
+    .split('\n')
+    .map(line => parseMarkdownImage(line) ? line : removeCustomerVisibleTollCopy(line))
+    .join('\n');
+}
+
 function normalizeBlogPost(post: PublishedBlogPost): PublishedBlogPost {
   return {
     ...post,
     title: removeCustomerVisibleTollCopy(post.title),
     excerpt: post.excerpt ? removeCustomerVisibleTollCopy(post.excerpt) : null,
-    body: post.body ? removeCustomerVisibleTollCopy(post.body) : null,
+    body: post.body ? normalizeBlogBody(post.body) : null,
     heroImageAlt: normalizeImageAlt(post.heroImageAlt),
     category: post.category ? removeCustomerVisibleTollCopy(post.category) : null,
     author: post.author ? removeCustomerVisibleTollCopy(post.author) : null,
@@ -138,7 +151,7 @@ function normalizeBlogTranslation(
     ...translation,
     title: translation.title ? removeCustomerVisibleTollCopy(translation.title) : null,
     excerpt: translation.excerpt ? removeCustomerVisibleTollCopy(translation.excerpt) : null,
-    body: translation.body ? removeCustomerVisibleTollCopy(translation.body) : null,
+    body: translation.body ? normalizeBlogBody(translation.body) : null,
     metaTitle: translation.metaTitle ? removeCustomerVisibleTollCopy(translation.metaTitle) : null,
     metaDescription: translation.metaDescription
       ? removeCustomerVisibleTollCopy(translation.metaDescription)

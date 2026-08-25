@@ -6,7 +6,7 @@
  */
 import postgres from 'postgres';
 import OpenAI from 'openai';
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { getOpenAiImageModel } from '../lib/ai/model-config-core';
@@ -31,6 +31,7 @@ const TARGET_ARGUMENT = process.argv.find(argument => argument.startsWith('--tar
 const DRY_RUN = process.argv.includes('--dry-run') || process.env.DRY_RUN === '1';
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const BLOG_CONFIG_PATH = fileURLToPath(new URL('./blog-hero-image-config.json', import.meta.url));
+const BLOG_CACHE_REVALIDATION_CONTEXT = 'blog-cache-revalidation:v1';
 
 function safeError(error: unknown): string {
   return String(error instanceof Error ? error.message : error)
@@ -42,6 +43,40 @@ function safeError(error: unknown): string {
 function isWebp(bytes: Uint8Array) {
   return bytes.length >= 12 && Buffer.from(bytes.slice(0, 4)).toString('ascii') === 'RIFF'
     && Buffer.from(bytes.slice(8, 12)).toString('ascii') === 'WEBP';
+}
+
+function matchesHeading(line: string, heading: string): boolean {
+  if (line === `## ${heading}` || line === `### ${heading}`) return true;
+  const numbered = line.match(/^#{2,3}\s+\d+\.\s+(.+)$/);
+  return numbered?.[1].trim() === heading;
+}
+
+async function invalidateBlogCache(slugs: Iterable<string>): Promise<void> {
+  const uniqueSlugs = [...new Set([...slugs].filter(Boolean))];
+  if (!uniqueSlugs.length) return;
+
+  const domain = process.env.REPLIT_DEV_DOMAIN?.trim();
+  const secret = process.env.AUTH_SECRET;
+  if (!domain || !secret) {
+    console.warn('  ! Blog cache invalidation deferred: local preview domain or signing secret unavailable');
+    return;
+  }
+
+  const body = JSON.stringify({ slugs: uniqueSlugs });
+  const signature = createHmac('sha256', secret)
+    .update(`${BLOG_CACHE_REVALIDATION_CONTEXT}.${body}`)
+    .digest('base64url');
+  const response = await fetch(`https://${domain}/admin/api/cron/blog-cache-revalidation`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-blog-cache-revalidation-signature': signature,
+    },
+    body,
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!response.ok) throw new Error(`Blog cache invalidation failed (${response.status})`);
+  console.log(`  ✓ Public blog cache invalidated for ${uniqueSlugs.join(', ')}`);
 }
 
 async function responseBytes(image: { b64_json?: string | null; url?: string | null }): Promise<Uint8Array> {
@@ -110,6 +145,7 @@ async function main() {
   try {
     console.log(`Hero Image Generation — target=${TARGET_ARGUMENT}, model=${model}, FORCE=${FORCE}, dryRun=${DRY_RUN}`);
     if (TARGET_ARGUMENT === 'blog') {
+      const changedBlogSlugs = new Set<string>();
       let config: Map<string, BlogHeroConfigResult> | null = null;
       let configError: string | null = null;
       try {
@@ -199,9 +235,7 @@ async function main() {
             const currentRows = await sql`SELECT body FROM content WHERE id::text = ${blog.id}`;
             const body = String((currentRows[0] as { body?: string | null } | undefined)?.body ?? '');
             const lines = body.split('\n');
-            const headingIndex = lines.findIndex(line => (
-              line === `## ${heading}` || line === `### ${heading}`
-            ));
+            const headingIndex = lines.findIndex(line => matchesHeading(line, heading));
             if (headingIndex < 0) {
               results.uploaded.push({
                 slug: configKey,
@@ -215,11 +249,13 @@ async function main() {
                 slug: configKey,
                 reason: `body image inserted after "${heading}": ${permanentUrl}`,
               });
+              changedBlogSlugs.add(blog.slug);
               console.log(`  ✓ ${configKey}: inserted after "${heading}"`);
             }
           } else {
             await sql`UPDATE content SET hero_image = ${permanentUrl}, hero_image_alt = ${entry.config.altText}, updated_at = now() WHERE id::text = ${blog.id}`;
             results.updated.push({ slug: configKey, reason: `hero image: ${permanentUrl}` });
+            changedBlogSlugs.add(blog.slug);
             console.log(`  ✓ ${configKey}: updated hero`);
           }
         } catch (error) {
@@ -229,6 +265,7 @@ async function main() {
         }
         await new Promise(resolve => setTimeout(resolve, 3_000));
       }
+      await invalidateBlogCache(changedBlogSlugs);
       return;
     }
     const idRows = await sql`SELECT DISTINCT entity_id FROM content_translations WHERE entity_type = 'service_page'`;

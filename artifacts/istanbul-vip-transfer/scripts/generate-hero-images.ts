@@ -123,46 +123,64 @@ async function main() {
         configError = 'configuration is malformed JSON';
       }
       const blogRows = await sql`
-        SELECT id::text, slug, hero_image, hero_image_alt
+        SELECT id::text, slug, hero_image, hero_image_alt, body
         FROM content
         WHERE content_type = 'BLOG_POST' AND status = 'PUBLISHED' AND is_active = true
         ORDER BY slug`;
-      const publishedBlogs = blogRows as unknown as Array<{ id: string; slug: string; hero_image: string | null; hero_image_alt: string | null }>;
+      const publishedBlogs = blogRows as unknown as Array<{
+        id: string;
+        slug: string;
+        hero_image: string | null;
+        hero_image_alt: string | null;
+        body: string | null;
+      }>;
       const publishedBySlug = new Map(publishedBlogs.map(blog => [blog.slug, blog]));
-      const blogs = BLOG_SLUG_FILTER.size > 0
-        ? [...BLOG_SLUG_FILTER].map(slug => publishedBySlug.get(slug) ?? {
+      const selectedKeys = BLOG_SLUG_FILTER.size > 0
+        ? [...BLOG_SLUG_FILTER]
+        : publishedBlogs.map(blog => blog.slug);
+      const candidates = selectedKeys.map(configKey => {
+        const configEntry = config?.get(configKey);
+        const targetSlug = configEntry?.kind === 'valid' && configEntry.config.targetSlug
+          ? configEntry.config.targetSlug
+          : configKey;
+        return {
+          configKey,
+          blog: publishedBySlug.get(targetSlug) ?? {
             id: null,
-            slug,
+            slug: targetSlug,
             hero_image: null,
             hero_image_alt: null,
-          })
-        : publishedBlogs;
-      for (const blog of blogs) {
-        if (!FORCE && !isBlogHeroEligible(blog.hero_image, blog.hero_image_alt)) {
-          results.skipped.push({ slug: blog.slug, reason: 'already has a custom hero image and nonblank alt text' });
-          continue;
-        }
+            body: null,
+          },
+        };
+      });
+      for (const candidate of candidates) {
+        const { blog, configKey } = candidate;
         if (configError) {
-          results.configFailed.push({ slug: blog.slug, reason: configError });
+          results.configFailed.push({ slug: configKey, reason: configError });
           continue;
         }
-        const entry = config?.get(blog.slug);
+        const entry = config?.get(configKey);
         if (!entry) {
-          results.skipped.push({ slug: blog.slug, reason: 'missing explicit blog configuration; no prompt fallback is used' });
+          results.skipped.push({ slug: configKey, reason: 'missing explicit blog configuration; no prompt fallback is used' });
           continue;
         }
         if (entry.kind === 'disabled') {
-          results.skipped.push({ slug: blog.slug, reason: entry.reason });
+          results.skipped.push({ slug: configKey, reason: entry.reason });
           continue;
         }
         if (entry.kind === 'invalid') {
-          results.configFailed.push({ slug: blog.slug, reason: entry.reason });
+          results.configFailed.push({ slug: configKey, reason: entry.reason });
           continue;
         }
-        results.selected.push({ slug: blog.slug });
+        if (entry.config.placement === 'hero' && !FORCE && !isBlogHeroEligible(blog.hero_image, blog.hero_image_alt)) {
+          results.skipped.push({ slug: configKey, reason: 'already has a custom hero image and nonblank alt text' });
+          continue;
+        }
+        results.selected.push({ slug: configKey });
         if (!mayGenerateAndWrite(DRY_RUN)) continue;
         try {
-          console.log(`  [${blog.slug}] generating`);
+          console.log(`  [${configKey}] generating`);
           const generated = await ai!.images.generate({
             model, prompt: entry.config.prompt, n: 1, size: '1536x1024', output_format: 'webp',
           } as never, { signal: AbortSignal.timeout(90_000) });
@@ -170,18 +188,44 @@ async function main() {
           const optimized = await optimizeGeneratedImage(raw);
           if (!optimized || !isWebp(optimized)) throw new Error('Image optimization failed');
           const permanentUrl = await uploadWebp(optimized, blogHeroObjectName(blog.slug, randomUUID()));
-           if (blog.id) {
-             await sql`UPDATE content SET hero_image = ${permanentUrl}, hero_image_alt = ${entry.config.altText}, updated_at = now() WHERE id::text = ${blog.id}`;
-             results.updated.push({ slug: blog.slug });
-             console.log(`  ✓ ${blog.slug}: updated`);
-           } else {
-             results.uploaded.push({ slug: blog.slug, reason: 'no matching published CMS record; permanent asset retained without assignment' });
-             console.log(`  ✓ ${blog.slug}: uploaded to permanent storage; no CMS record, not assigned`);
-           }
+          if (!blog.id) {
+            results.uploaded.push({ slug: configKey, reason: `permanent asset retained without assignment: ${permanentUrl}` });
+            console.log(`  ✓ ${configKey}: uploaded to permanent storage; no CMS record, not assigned`);
+          } else if (entry.config.placement === 'body') {
+            const heading = entry.config.insertAfterHeading!;
+            // Multiple selected inline images may target the same article in one
+            // batch. Re-read its body so an earlier insertion is never replaced
+            // by a stale snapshot captured before the loop began.
+            const currentRows = await sql`SELECT body FROM content WHERE id::text = ${blog.id}`;
+            const body = String((currentRows[0] as { body?: string | null } | undefined)?.body ?? '');
+            const lines = body.split('\n');
+            const headingIndex = lines.findIndex(line => (
+              line === `## ${heading}` || line === `### ${heading}`
+            ));
+            if (headingIndex < 0) {
+              results.uploaded.push({
+                slug: configKey,
+                reason: `permanent asset retained without assignment; heading not found: ${heading}; URL: ${permanentUrl}`,
+              });
+              console.log(`  ✓ ${configKey}: uploaded; heading not found "${heading}", not assigned`);
+            } else {
+              lines.splice(headingIndex + 1, 0, '', `![${entry.config.altText}](${permanentUrl})`, '');
+              await sql`UPDATE content SET body = ${lines.join('\n')}, updated_at = now() WHERE id::text = ${blog.id}`;
+              results.updated.push({
+                slug: configKey,
+                reason: `body image inserted after "${heading}": ${permanentUrl}`,
+              });
+              console.log(`  ✓ ${configKey}: inserted after "${heading}"`);
+            }
+          } else {
+            await sql`UPDATE content SET hero_image = ${permanentUrl}, hero_image_alt = ${entry.config.altText}, updated_at = now() WHERE id::text = ${blog.id}`;
+            results.updated.push({ slug: configKey, reason: `hero image: ${permanentUrl}` });
+            console.log(`  ✓ ${configKey}: updated hero`);
+          }
         } catch (error) {
           const reason = safeError(error);
-          results.failed.push({ slug: blog.slug, reason });
-          console.error(`  ✗ ${blog.slug}: ${reason}`);
+          results.failed.push({ slug: configKey, reason });
+          console.error(`  ✗ ${configKey}: ${reason}`);
         }
         await new Promise(resolve => setTimeout(resolve, 3_000));
       }

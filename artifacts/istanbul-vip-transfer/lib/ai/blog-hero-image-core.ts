@@ -2,6 +2,9 @@ export type BlogHeroImageBrief = {
   prompt: string;
   altText: string;
   enabled?: boolean;
+  placement?: 'hero' | 'body';
+  targetSlug?: string;
+  insertAfterHeading?: string;
 };
 
 export type BlogHeroConfigResult =
@@ -9,7 +12,14 @@ export type BlogHeroConfigResult =
   | { kind: 'disabled'; reason: string }
   | { kind: 'invalid'; reason: string };
 
-const allowedKeys = new Set(['prompt', 'altText', 'enabled']);
+const allowedKeys = new Set([
+  'prompt',
+  'altText',
+  'enabled',
+  'placement',
+  'targetSlug',
+  'insertAfterHeading',
+]);
 
 /** Strictly validate one user-authored blog image brief; intentionally no fallback exists. */
 export function validateBlogHeroImageBrief(value: unknown): BlogHeroConfigResult {
@@ -29,7 +39,31 @@ export function validateBlogHeroImageBrief(value: unknown): BlogHeroConfigResult
   if (typeof entry.altText !== 'string' || !entry.altText.trim()) {
     return { kind: 'invalid', reason: 'altText must be a nonblank string' };
   }
-  return { kind: 'valid', config: { prompt: entry.prompt.trim(), altText: entry.altText.trim(), enabled: entry.enabled } };
+  const placement = entry.placement ?? 'hero';
+  if (placement !== 'hero' && placement !== 'body') {
+    return { kind: 'invalid', reason: 'placement must be hero or body' };
+  }
+  const targetSlug = typeof entry.targetSlug === 'string' ? entry.targetSlug.trim() : undefined;
+  const insertAfterHeading = typeof entry.insertAfterHeading === 'string'
+    ? entry.insertAfterHeading.trim()
+    : undefined;
+  if (placement === 'body' && !targetSlug) {
+    return { kind: 'invalid', reason: 'body placement requires a nonblank targetSlug' };
+  }
+  if (placement === 'body' && !insertAfterHeading) {
+    return { kind: 'invalid', reason: 'body placement requires a nonblank insertAfterHeading' };
+  }
+  return {
+    kind: 'valid',
+    config: {
+      prompt: entry.prompt.trim(),
+      altText: entry.altText.trim(),
+      enabled: entry.enabled,
+      placement,
+      targetSlug,
+      insertAfterHeading,
+    },
+  };
 }
 
 export function validateBlogHeroImageConfig(value: unknown): Map<string, BlogHeroConfigResult> | string {

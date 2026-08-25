@@ -66,5 +66,30 @@
   "soforlu-arac-kiralama-rehberi": {
     "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic interior shot of the rear passenger cabin of a premium black minivan, clean dark leather seats, soft daylight coming through tinted side windows, the chauffeur's shoulders and hands on the steering wheel visible in the far front of the frame from behind, blurred city street beyond the windscreen. No badges, no emblems, no lettering on the steering wheel or any interior surface. Calm, comfortable, professional atmosphere. Editorial automotive interior photography, shallow depth of field, natural colour grading, no text, no logos, no brand marks, no readable signage.",
     "altText": "Şoförlü kiralanan premium minivanın arka yolcu kabini ve direksiyondaki şoför"
+  },
+  "vip-gelin-arabasi-kiralama-rehberi": {
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate, no plate-shaped dark panels. Photorealistic image of an elegant black premium sedan with plain, unmarked, completely blank body panels and no plate-shaped dark rectangles anywhere on the vehicle, decorated for a wedding with a tasteful arrangement of white roses and soft ivory ribbon across the bonnet, parked on a quiet tree-lined street in warm late-afternoon light, soft bokeh foliage in the background. Refined understated bridal atmosphere, no people in frame. Editorial wedding photography, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plate, no plate-shaped dark panels.",
+    "altText": "Beyaz gül süslemeli, gelin arabası olarak hazırlanmış siyah premium sedan"
+  },
+  "istanbul-havalimani-transfer-rehberi-body-bagaj": {
+    "placement": "body",
+    "targetSlug": "istanbul-havalimani-transfer-rehberi",
+    "insertAfterHeading": "Bagaj kapasitesi ve araç seçimi",
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate, no plate-shaped dark panels. Photorealistic image of a black premium minivan with plain, unmarked, completely blank body panels and no plate-shaped dark rectangles anywhere on the vehicle, its side sliding door open in an airport pick-up area at golden hour. A chauffeur in a dark suit is loading two large plain hard-shell suitcases into the rear luggage compartment, captured mid-motion. Suitcase surfaces completely blank with no logos or lettering. Clean grey asphalt, soft directional sunlight, modern airport terminal softly blurred in the background with completely blank, unmarked facades and no signs or banners. Editorial travel photography, natural colours, no text, no logos, no brand marks, no readable signage, no visible number plate, no plate-shaped dark panels.",
+    "altText": "Havalimanı transfer aracına büyük valizlerin yerleştirilmesi ve bagaj kapasitesi"
+  },
+  "istanbul-havalimani-transfer-rehberi-body-konfor": {
+    "placement": "body",
+    "targetSlug": "istanbul-havalimani-transfer-rehberi",
+    "insertAfterHeading": "Transfer sırasında yolculuk konforu",
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate, no plate-shaped dark panels. Photorealistic interior of a luxury passenger van, viewed from the middle row looking forward. Cream leather captain seats with visible stitching, polished wood trim, plain unlabelled water bottles in the seat-back holders, soft warm ambient lighting. No badges, no emblems, no lettering on any interior surface or on the bottles; every visible surface is plain, unmarked and completely blank. Through the windscreen, a blurred highway at dusk with city lights bokeh. Calm premium atmosphere, shallow depth of field, natural colour grading, no people, no text, no logos, no brand marks, no readable signage, no visible number plate, no plate-shaped dark panels.",
+    "altText": "VIP transfer aracının deri koltuklu iç mekanı ve yolcu konfor donanımı"
+  },
+  "istanbul-havalimani-transfer-rehberi-body-sure": {
+    "placement": "body",
+    "targetSlug": "istanbul-havalimani-transfer-rehberi",
+    "insertAfterHeading": "Yolculuk süresi ne kadar?",
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate, no plate-shaped dark panels. Photorealistic night view of a wide modern motorway leading toward a large illuminated city skyline in the distance, seen from a slightly elevated angle. Light trails from moving vehicles, deep blue evening sky, warm street lighting along the road. No road signs, no gantries, no billboards anywhere; all distant building facades completely blank, plain and unmarked with no lettering. Cinematic travel photography, long exposure feel, clean composition, no recognisable landmarks, no text, no logos, no brand marks, no readable signage, no visible number plate, no plate-shaped dark panels.",
+    "altText": "İstanbul Havalimanı'ndan şehir merkezine gece transfer güzergâhı"
   }
 }

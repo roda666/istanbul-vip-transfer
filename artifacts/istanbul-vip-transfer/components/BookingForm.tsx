@@ -343,7 +343,7 @@ export default function BookingForm({
   function rememberLocationLabel(field: keyof FormData, option: import('./LocationCombobox').LocationOption | null) {
     setLocationLabels((current) => {
       const next = { ...current };
-      if (option) next[field] = option.city ? `${option.name} (${option.city})` : option.name;
+      if (option) next[field] = option.name;
       else delete next[field];
       return next;
     });

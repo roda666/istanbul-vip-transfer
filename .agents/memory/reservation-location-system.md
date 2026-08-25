@@ -30,5 +30,13 @@ If unsure whether migration ran, write an idempotent `db/apply-migration.ts` usi
 - `excludeName` prop prevents selecting the same location for both pickup and dropoff.
 - BookingForm uses `react-hook-form Controller` to integrate the combobox.
 
+## Mobile location search
+
+Location choices are search-on-demand: never preload the catalog, keep non-Istanbul choices at province level, and show only the plain place name. On mobile the result list is a fixed, internally scrollable panel positioned above the visual viewport keyboard.
+
+**Why:** A card-relative dropdown can be hidden behind the mobile keyboard and a preloaded catalog delays the booking path. CSS `content-visibility` creates a containing block that breaks fixed positioning for this panel.
+
+**How to apply:** Keep interactive booking sections outside deferred render containment. Query the public locations endpoint only after a search term exists; the endpoint must enforce Istanbul-only local districts and province-only intercity choices.
+
 ## Time selection
 `saatSaat` (HH select, 00-23) + `saatDakika` (MM select, 00/05/.../55) combined to HH:mm in onSubmit. Zod validates minute % 5 === 0.

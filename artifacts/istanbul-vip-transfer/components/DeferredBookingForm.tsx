@@ -60,7 +60,7 @@ export default function DeferredBookingForm() {
     <section
       ref={sectionRef}
       id="rezervasyon"
-      className="scroll-mt-24 ivt-deferred-section"
+      className="scroll-mt-24"
       data-testid="booking-section-shell"
     >
       {shouldLoad ? (

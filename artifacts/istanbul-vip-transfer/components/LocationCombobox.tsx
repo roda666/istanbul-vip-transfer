@@ -1,8 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-
-// ── Types ────────────────────────────────────────────────────────────────────
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export interface LocationOption {
   id: string;
@@ -12,13 +10,6 @@ export interface LocationOption {
   scope: 'LOCAL' | 'INTERCITY' | 'BOTH';
   city: string;
   district: string | null;
-}
-
-interface LocationGroup {
-  id: string;
-  label: string;
-  options: LocationOption[];
-  collapsible?: boolean;
 }
 
 interface LocationLabels {
@@ -34,94 +25,32 @@ interface LocationLabels {
   clearSelection: string;
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function normalizeTurkish(str: string): string {
-  return str
-    .toLowerCase()
-    .replace(/ğ/g, 'g')
-    .replace(/ü/g, 'u')
-    .replace(/ş/g, 's')
-    .replace(/ı/g, 'i')
-    .replace(/İ/g, 'i')
-    .replace(/ö/g, 'o')
-    .replace(/ç/g, 'c');
+interface Props {
+  id: string;
+  ariaLabel: string;
+  for: 'pickup' | 'dropoff';
+  scope?: 'local' | 'intercity';
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  loadingText?: string;
+  labels: LocationLabels;
+  error?: boolean;
+  excludeId?: string;
+  onOptionChange?: (option: LocationOption | null) => void;
 }
 
 const turkishCollator = new Intl.Collator('tr-TR', { sensitivity: 'base' });
 
 function sortOptions(options: LocationOption[]): LocationOption[] {
-  return [...options].sort((left, right) => {
-    const leftIsCenter = normalizeTurkish(left.name) === 'merkez';
-    const rightIsCenter = normalizeTurkish(right.name) === 'merkez';
-    if (leftIsCenter !== rightIsCenter) return leftIsCenter ? -1 : 1;
-    return turkishCollator.compare(left.name, right.name);
-  });
+  return [...options].sort((left, right) => turkishCollator.compare(left.name, right.name));
 }
 
-function groupLocations(options: LocationOption[], labels: LocationLabels, searching: boolean): LocationGroup[] {
-  if (searching) {
-    return [{ id: 'search-results', label: 'Sonuçlar', options: sortOptions(options) }];
-  }
-
-  const airports = sortOptions(options.filter((option) => option.type === 'AIRPORT'));
-  const istanbul = sortOptions(options.filter((option) => (
-    option.type !== 'AIRPORT' && normalizeTurkish(option.city) === 'istanbul'
-  )));
-  const provinceMap = new Map<string, LocationOption[]>();
-  for (const option of options) {
-    if (option.type === 'AIRPORT' || normalizeTurkish(option.city) === 'istanbul') continue;
-    const current = provinceMap.get(option.city) ?? [];
-    current.push(option);
-    provinceMap.set(option.city, current);
-  }
-  const provinces = Array.from(provinceMap.entries())
-    .sort(([left], [right]) => turkishCollator.compare(left, right))
-    .map(([city, cityOptions]) => ({
-      id: `province-${normalizeTurkish(city)}`,
-      label: city,
-      options: sortOptions(cityOptions),
-      collapsible: true,
-    }));
-
-  return [
-    ...(airports.length ? [{ id: 'airports', label: labels.airport, options: airports }] : []),
-    ...(istanbul.length ? [{ id: 'istanbul', label: 'İstanbul', options: istanbul }] : []),
-    ...provinces,
-  ];
-}
-
-function formatOptionLabel(option: LocationOption): string {
-  if (option.type === 'AIRPORT') return option.name;
-  return option.city ? `${option.name} (${option.city})` : option.name;
-}
-
-// ── Component ─────────────────────────────────────────────────────────────────
-
-interface Props {
-  /** Connects the custom input to its visible form label. */
-  id: string;
-  /** Accessible name, matching the visible form label. */
-  ariaLabel: string;
-  /** Which endpoint filter to use */
-  for: 'pickup' | 'dropoff';
-  /** Optional scope: 'local' for Istanbul/city, 'intercity' for provinces */
-  scope?: 'local' | 'intercity';
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  /** Translated "Loading…" text shown while options are being fetched.
-   *  Prevents the Turkish default from appearing in non-TR SSR output. */
-  loadingText?: string;
-  /** Fully localized labels for the picker UI. */
-  labels: LocationLabels;
-  error?: boolean;
-  /** Exclude a stable location ID (e.g. already-selected origin). */
-  excludeId?: string;
-  /** Lets the parent keep readable labels for WhatsApp while form values stay stable IDs. */
-  onOptionChange?: (option: LocationOption | null) => void;
-}
-
+/**
+ * Search-only location picker. It intentionally never downloads the whole
+ * catalog on page load: results arrive from the server after the user types.
+ * On mobile, its result sheet is fixed above the visual viewport keyboard.
+ */
 export default function LocationCombobox({
   id,
   ariaLabel,
@@ -136,141 +65,211 @@ export default function LocationCombobox({
   excludeId,
   onOptionChange,
 }: Props) {
-  const [allOptions, setAllOptions] = useState<LocationOption[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [activeIdx, setActiveIdx] = useState(-1);
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [options, setOptions] = useState<LocationOption[]>([]);
+  const [selectedOption, setSelectedOption] = useState<LocationOption | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const [isMobile, setIsMobile] = useState(false);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
 
-  const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const requestRef = useRef<AbortController | null>(null);
 
-  // Fetch on mount
   useEffect(() => {
-    const url = new URL('/data/locations', window.location.origin);
-    url.searchParams.set('for', forProp);
-    if (scope) url.searchParams.set('scope', scope);
+    if (!value) setSelectedOption(null);
+  }, [value]);
 
-    fetch(url.toString())
-      .then((r) => r.json())
-      .then((d) => {
-        setAllOptions(d.locations ?? []);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [forProp, scope]);
-
-  // Close on outside click
   useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-        setSearch('');
-      }
-    }
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    const media = window.matchMedia('(max-width: 767px)');
+    const updateMobile = () => {
+      setIsMobile(
+        media.matches
+        || window.innerWidth <= 767
+        || (window.visualViewport?.width ?? Number.POSITIVE_INFINITY) <= 767,
+      );
+    };
+    updateMobile();
+    media.addEventListener('change', updateMobile);
+
+    const viewport = window.visualViewport;
+    const updateViewport = () => {
+      if (!viewport) return;
+      // Browsers either resize the layout viewport or overlay the keyboard.
+      // This formula handles both cases and keeps the result sheet visible.
+      setKeyboardOffset(Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop));
+    };
+    viewport?.addEventListener('resize', updateViewport);
+    viewport?.addEventListener('scroll', updateViewport);
+    updateViewport();
+
+    return () => {
+      media.removeEventListener('change', updateMobile);
+      viewport?.removeEventListener('resize', updateViewport);
+      viewport?.removeEventListener('scroll', updateViewport);
+    };
   }, []);
 
-  // Filter options
-  const filtered = allOptions.filter((o) => {
-    if (excludeId && o.id === excludeId) return false;
-    if (!search) return true;
-    const query = normalizeTurkish(search);
-    return normalizeTurkish(o.name).includes(query)
-      || normalizeTurkish(o.city).includes(query)
-      || normalizeTurkish(o.district ?? '').includes(query);
-  });
+  useEffect(() => {
+    const query = search.trim();
+    requestRef.current?.abort();
 
-  const groups = groupLocations(filtered, labels, Boolean(search));
-  const flat = groups.flatMap((group) => (
-    group.collapsible && !expandedGroups.has(group.id) ? [] : group.options
-  ));
+    if (!query) {
+      setOptions([]);
+      setLoading(false);
+      setActiveIndex(-1);
+      return;
+    }
 
-  function handleSelect(opt: LocationOption) {
-    onChange(opt.id);
-    onOptionChange?.(opt);
+    const controller = new AbortController();
+    requestRef.current = controller;
+    const timer = window.setTimeout(async () => {
+      setLoading(true);
+      try {
+        const url = new URL('/data/locations', window.location.origin);
+        url.searchParams.set('for', forProp);
+        url.searchParams.set('q', query);
+        if (scope) url.searchParams.set('scope', scope);
+        const response = await fetch(url.toString(), { signal: controller.signal });
+        const data = response.ok ? await response.json() as { locations?: LocationOption[] } : null;
+        if (!controller.signal.aborted) {
+          setOptions(sortOptions((data?.locations ?? []).filter((option) => option.id !== excludeId)));
+          setActiveIndex(-1);
+        }
+      } catch {
+        if (!controller.signal.aborted) setOptions([]);
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }, 180);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [excludeId, forProp, scope, search]);
+
+  const visibleOptions = useMemo(() => (
+    options.filter((option) => {
+      if (!excludeId || option.id !== excludeId) return true;
+      return false;
+    })
+  ), [excludeId, options]);
+
+  const hasSearch = Boolean(search.trim());
+  const showResults = open && hasSearch;
+
+  const selectOption = useCallback((option: LocationOption) => {
+    onChange(option.id);
+    onOptionChange?.(option);
+    setSelectedOption(option);
     setSearch('');
+    setOptions([]);
     setOpen(false);
-    setActiveIdx(-1);
-  }
+    setActiveIndex(-1);
+    inputRef.current?.blur();
+  }, [onChange, onOptionChange]);
 
-  function handleClear(e: React.MouseEvent) {
-    e.preventDefault();
-    e.stopPropagation();
+  function clearSelection(event: React.MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
     onChange('');
     onOptionChange?.(null);
+    setSelectedOption(null);
     setSearch('');
-    inputRef.current?.focus();
+    setOptions([]);
+    setOpen(false);
+    window.setTimeout(() => inputRef.current?.focus(), 0);
   }
 
-  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setSearch(e.target.value);
-    setOpen(true);
-    setActiveIdx(-1);
+  function handleInputChange(event: React.ChangeEvent<HTMLInputElement>) {
+    setSearch(event.target.value);
+    setOpen(Boolean(event.target.value.trim()));
+    setActiveIndex(-1);
   }
 
   function handleFocus() {
-    setOpen(true);
+    if (search.trim()) setOpen(true);
+    if (isMobile) {
+      window.setTimeout(() => {
+        inputRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }, 150);
+    }
   }
 
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Escape') {
+  function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Escape') {
       setOpen(false);
       setSearch('');
       return;
     }
-    if (!open && (e.key === 'ArrowDown' || e.key === 'Enter')) {
+    if (event.key === 'ArrowDown' && visibleOptions.length > 0) {
+      event.preventDefault();
       setOpen(true);
-      return;
-    }
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setActiveIdx((i) => Math.min(i + 1, flat.length - 1));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setActiveIdx((i) => Math.max(i - 1, 0));
-    } else if (e.key === 'Enter' && activeIdx >= 0 && flat[activeIdx]) {
-      e.preventDefault();
-      handleSelect(flat[activeIdx]);
+      setActiveIndex((current) => Math.min(current + 1, visibleOptions.length - 1));
+    } else if (event.key === 'ArrowUp' && visibleOptions.length > 0) {
+      event.preventDefault();
+      setActiveIndex((current) => Math.max(current - 1, 0));
+    } else if (event.key === 'Enter' && activeIndex >= 0 && visibleOptions[activeIndex]) {
+      event.preventDefault();
+      selectOption(visibleOptions[activeIndex]);
     }
   }
 
-  const selectedOption = allOptions.find((option) => option.id === value);
-  const displayValue = open ? search : (selectedOption ? formatOptionLabel(selectedOption) : '');
+  const displayValue = open ? search : (selectedOption?.name ?? '');
+  const panelStyle: React.CSSProperties = isMobile
+    ? {
+        position: 'fixed',
+        left: '12px',
+        right: '12px',
+        bottom: `${keyboardOffset + 12}px`,
+        maxHeight: 'min(46dvh, 360px)',
+        zIndex: 1000,
+      }
+    : {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: 'calc(100% + 6px)',
+        maxHeight: '300px',
+        zIndex: 200,
+      };
 
   return (
-    <div ref={containerRef} style={{ position: 'relative' }}>
+    <div style={{ position: 'relative' }}>
       <div style={{ position: 'relative' }}>
         <input
           ref={inputRef}
-          type="text"
           id={id}
+          type="search"
           role="combobox"
           aria-label={ariaLabel}
-          aria-expanded={open}
+          aria-expanded={showResults}
           aria-haspopup="listbox"
           aria-autocomplete="list"
-          aria-controls={open ? `${id}-listbox` : undefined}
-           aria-activedescendant={activeIdx >= 0 ? `${id}-option-${activeIdx}` : undefined}
+          aria-controls={showResults ? `${id}-listbox` : undefined}
+          aria-activedescendant={activeIndex >= 0 ? `${id}-option-${activeIndex}` : undefined}
           value={displayValue}
-          placeholder={loading ? (loadingText ?? labels.loading) : (placeholder ?? labels.selectOrType)}
+          placeholder={placeholder ?? labels.selectOrType}
           onChange={handleInputChange}
           onFocus={handleFocus}
           onKeyDown={handleKeyDown}
           autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+          inputMode="search"
+          enterKeyHint="search"
           className="vip-input"
           style={{
             width: '100%',
-            paddingRight: value && !open ? '32px' : undefined,
+            paddingRight: value && !open ? '36px' : undefined,
             borderColor: error ? '#DC2626' : undefined,
           }}
         />
         {value && !open && (
           <button
             type="button"
-            onClick={handleClear}
+            onClick={clearSelection}
             aria-label={labels.clearSelection}
             style={{
               position: 'absolute',
@@ -281,7 +280,7 @@ export default function LocationCombobox({
               border: 'none',
               cursor: 'pointer',
               color: '#718596',
-              fontSize: '18px',
+              fontSize: '20px',
               lineHeight: 1,
               padding: '2px 4px',
               display: 'flex',
@@ -293,134 +292,58 @@ export default function LocationCombobox({
         )}
       </div>
 
-      {open && (
+      {showResults && (
         <div
           id={`${id}-listbox`}
+          className="ivt-location-search-results"
           role="listbox"
+          aria-label={`${ariaLabel} sonuçları`}
           style={{
-            position: 'absolute',
-            top: 'calc(100% + 4px)',
-            left: 0,
-            right: 0,
+            ...panelStyle,
             background: '#FFFFFF',
             border: '1px solid #D9E2EC',
-            borderRadius: '10px',
-            boxShadow: '0 8px 32px rgba(16,42,67,0.13)',
-            zIndex: 200,
-            maxHeight: '300px',
+            borderRadius: '12px',
+            boxShadow: '0 12px 32px rgba(16,42,67,0.18)',
             overflowY: 'auto',
+            overscrollBehavior: 'contain',
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-y',
+            ['--ivt-keyboard-offset' as string]: `${keyboardOffset}px`,
           }}
         >
-          {groups.length === 0 ? (
-            <div
-              style={{
-                padding: '20px 16px',
-                textAlign: 'center',
-                color: '#718596',
-                fontSize: '13px',
-                fontFamily: 'Inter, sans-serif',
-              }}
-            >
-              {loading ? (loadingText ?? labels.loading) : labels.noResults}
-            </div>
+          {loading ? (
+            <div style={emptyStateStyle}>{loadingText ?? labels.loading}</div>
+          ) : visibleOptions.length === 0 ? (
+            <div style={emptyStateStyle}>{labels.noResults}</div>
           ) : (
-            groups.map((group) => {
-              const expanded = !group.collapsible || expandedGroups.has(group.id);
+            visibleOptions.map((option, index) => {
+              const active = index === activeIndex;
               return (
-              <div key={group.id}>
-                {group.collapsible ? (
-                  <button
-                    type="button"
-                    aria-expanded={expanded}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => setExpandedGroups((current) => {
-                      const next = new Set(current);
-                      if (next.has(group.id)) next.delete(group.id);
-                      else next.add(group.id);
-                      return next;
-                    })}
-                    style={{
-                      width: '100%',
-                      border: 'none',
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '9px 14px 6px',
-                      fontSize: '10px',
-                      letterSpacing: '0.12em',
-                      textTransform: 'uppercase',
-                      color: '#C99A32',
-                      fontFamily: 'Inter, sans-serif',
-                      fontWeight: 700,
-                      background: '#FAFBFC',
-                      borderBottom: '1px solid #F0F4F8',
-                      position: 'sticky',
-                      top: 0,
-                      zIndex: 1,
-                    }}
-                  >
-                    {group.label}<span aria-hidden="true">{expanded ? '−' : '+'}</span>
-                  </button>
-                ) : (
-                <div
+                <button
+                  key={option.id}
+                  id={`${id}-option-${index}`}
+                  type="button"
+                  role="option"
+                  aria-selected={value === option.id}
+                  onClick={() => selectOption(option)}
+                  onMouseEnter={() => setActiveIndex(index)}
                   style={{
-                    padding: '8px 14px 4px',
-                    fontSize: '10px',
-                    letterSpacing: '0.12em',
-                    textTransform: 'uppercase',
-                    color: '#C99A32',
+                    width: '100%',
+                    border: 'none',
+                    borderBottom: index === visibleOptions.length - 1 ? 'none' : '1px solid #F0F4F8',
+                    padding: '13px 16px',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    background: active || value === option.id ? '#EEF3F9' : '#FFFFFF',
+                    color: value === option.id ? '#1D5FD1' : '#172B3A',
+                    fontSize: '15px',
                     fontFamily: 'Inter, sans-serif',
-                    fontWeight: 700,
-                    background: '#FAFBFC',
-                    borderBottom: '1px solid #F0F4F8',
-                    position: 'sticky',
-                    top: 0,
+                    fontWeight: value === option.id ? 600 : 500,
+                    minHeight: '48px',
                   }}
                 >
-                  {group.label}
-                </div>
-                )}
-                {expanded && group.options.map((opt) => {
-                  const idx = flat.indexOf(opt);
-                  const isActive = idx === activeIdx;
-                  const isSelected = value === opt.id;
-                  return (
-                    <div
-                      key={opt.id}
-                      id={`${id}-option-${idx}`}
-                      role="option"
-                      aria-selected={isSelected}
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => handleSelect(opt)}
-                      onMouseEnter={() => setActiveIdx(idx)}
-                      style={{
-                        padding: '10px 16px',
-                        cursor: 'pointer',
-                        background: isActive ? '#EEF3F9' : isSelected ? '#EBF4FF' : 'transparent',
-                        color: isSelected ? '#1D5FD1' : '#172B3A',
-                        fontSize: '13px',
-                        fontFamily: 'Inter, sans-serif',
-                        fontWeight: isSelected ? 600 : 400,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                      }}
-                    >
-                      {isSelected && (
-                        <span style={{ color: '#1D5FD1', flexShrink: 0, fontSize: '12px' }}>✓</span>
-                      )}
-                      <span>{opt.name}</span>
-                      {opt.city && (
-                        <span style={{ marginLeft: 'auto', color: '#718596', fontSize: '11px', fontWeight: 400 }}>
-                          ({opt.city})
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                  {option.name}
+                </button>
               );
             })
           )}
@@ -429,3 +352,11 @@ export default function LocationCombobox({
     </div>
   );
 }
+
+const emptyStateStyle: React.CSSProperties = {
+  padding: '20px 16px',
+  textAlign: 'center',
+  color: '#718596',
+  fontSize: '13px',
+  fontFamily: 'Inter, sans-serif',
+};

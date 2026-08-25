@@ -14,3 +14,24 @@ uri = "file://artifacts/istanbul-vip-transfer/public/images/istanbul-havalimani-
 type = "image"
 title = "İstanbul Havalimanı Hero — Yeni Alternatif"
 description = "AI ile üretilen özgün hero görseli. İstanbul Havalimanı kontrol kulesi, alacakaranlık gökyüzü, siyah Mercedes Vito ve takım elbiseli şoför."
+
+[[outputs]]
+id = "piZb2-dtjdX0qeuJvuiAu"
+uri = "file://artifacts/istanbul-vip-transfer/public/logo.png"
+type = "image"
+title = "VIP Transfer Istanbul — renkli logo"
+description = "Şeffaf PNG, 3200×1240. Koyu zeminler için altın renkli Playfair Display wordmark."
+
+[[outputs]]
+id = "zxmKSUu5exPW1cColIpsw"
+uri = "file://artifacts/istanbul-vip-transfer/public/logo-white.png"
+type = "image"
+title = "VIP Transfer Istanbul — beyaz logo"
+description = "Şeffaf PNG, 3200×1240. Görseller üzerindeki güvenli beyaz logo bindirmeleri için."
+
+[[outputs]]
+id = "qfAgLZSy2IAq7KsY1XO2s"
+uri = "file://artifacts/istanbul-vip-transfer/public/logo.svg"
+type = "image"
+title = "VIP Transfer Istanbul — path SVG logo"
+description = "Font bağımsız, Playfair Display harf konturları path olarak saklanan vektörel logo."

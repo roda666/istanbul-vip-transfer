@@ -74,3 +74,4 @@
 - [Turnstile form scope](turnstile-form-scope.md) — protect the contact form by default; keep the WhatsApp-linked reservation flow opt-in only.
 - [Turnstile contact-form fallback](turnstile-contact-form-fallback.md) — unconfigured or unreachable Turnstile must never strand contact visitors; retain independent server safeguards.
 - [Turnstile secret storage](turnstile-secret-storage.md) — encrypted keys require persistent wrapped-key verification; failures refuse writes without ever storing plaintext.
+- [Brand wordmark assets](brand-wordmark-assets.md) — publisher logo and future image overlays use static outlined logo files, never AI-drawn brand marks.

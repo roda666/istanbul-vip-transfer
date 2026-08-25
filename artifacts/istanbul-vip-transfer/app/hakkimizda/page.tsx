@@ -55,8 +55,8 @@ function buildOrganizationSchema(cs: ContactSettings) {
   logo: {
     '@type': 'ImageObject',
     url: `${BASE}/logo.png`,
-    width: 200,
-    height: 60,
+     width: 3200,
+     height: 1240,
   },
   image: SITE.ogImage.url,
   description:
@@ -126,7 +126,12 @@ const aboutArticleSchema = {
     '@type': 'Organization',
     '@id': `${BASE}/#organization`,
     name: 'İstanbul VIP Transfer',
-    logo: { '@type': 'ImageObject', url: `${BASE}/logo.png` },
+     logo: {
+       '@type': 'ImageObject',
+       url: `${BASE}/logo.png`,
+       width: 3200,
+       height: 1240,
+     },
   },
   inLanguage: 'tr-TR',
   about: { '@id': `${BASE}/#organization` },

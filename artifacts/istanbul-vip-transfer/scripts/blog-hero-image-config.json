@@ -34,5 +34,21 @@
   "sehirlerarasi-vip-transfer-rehberi": {
     "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic wide landscape shot of a black premium minivan with plain unmarked body panels and no plate-shaped dark rectangles anywhere on the vehicle, driving along an open intercity motorway at sunrise, rolling green hills stretching to the horizon, soft golden light and light morning mist over the fields. Vehicle small in frame to emphasise distance and journey. Cinematic travel photography, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plate.",
     "altText": "Gün doğumunda şehirlerarası otoyolda ilerleyen VIP transfer aracı"
+  },
+  "istanbul-bogaz-sultanahmet-taksim-tur-rehberi": {
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic image of a black premium minivan with plain unmarked body panels and no plate-shaped dark rectangles anywhere on the vehicle, parked on a narrow historic cobblestone street lined with old stone buildings and warm-toned facades, soft morning light falling between the buildings, a few blurred pedestrians in the distance. Atmospheric old-city character without any identifiable monument. Editorial travel photography, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plate.",
+    "altText": "Tarihî taş sokakta park hâlindeki özel tur aracı"
+  },
+  "havalimani-fuar-kongre-transfer": {
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic image of a black premium minivan with plain unmarked body panels and no plate-shaped dark rectangles anywhere on the vehicle, arriving at the entrance of a large modern exhibition and convention centre, wide glass facade and broad concrete forecourt, small groups of business travellers with wheeled cases walking toward the entrance, seen from behind and at a distance. Clean corporate daytime atmosphere under soft overcast light. Editorial business photography, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plate.",
+    "altText": "Fuar ve kongre merkezi girişine gelen kurumsal transfer aracı"
+  },
+  "otel-transfer-hizmeti-nasil-calisir": {
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic image of a black premium minivan with plain unmarked body panels and no plate-shaped dark rectangles anywhere on the vehicle, parked at the covered entrance canopy of an upscale hotel at blue hour, warm golden light spilling from the lobby doors onto polished paving, a doorman figure standing at a distance in silhouette. Elegant, calm arrival atmosphere. Architectural editorial photography, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plate.",
+    "altText": "Lüks otel girişinde bekleyen otel transfer aracı"
+  },
+  "yaz-tatilinde-vip-transfer-secenekleri": {
+    "prompt": "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic image of a black premium minivan with plain unmarked body panels and no plate-shaped dark rectangles anywhere on the vehicle, on a sunlit coastal road, deep blue sea on one side and pine trees on the other, bright clear summer daylight with strong contrast and vivid colours. Shot from a roadside angle with the sea visible beyond. Show the minivan from a side-dominant three-quarter angle with the front grille, front bumper, and rear hatch fully out of frame to avoid any badge or plate mounting area. Cinematic summer travel photography, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plate.",
+    "altText": "Yaz tatilinde sahil yolunda ilerleyen VIP transfer aracı"
   }
 }

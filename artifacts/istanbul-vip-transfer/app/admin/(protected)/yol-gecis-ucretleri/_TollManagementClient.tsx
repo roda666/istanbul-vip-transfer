@@ -35,6 +35,11 @@ type TollTariff = {
   updatedByName?: string | null;
   lastSyncError?: string | null;
 };
+type SyncPreview = {
+  newAmountKurus?: number | null;
+  amountKurus?: number | null;
+  requiresConfirmation?: boolean;
+};
 
 type TollAlternative = {
   id: string;
@@ -66,6 +71,10 @@ const formatTRY = (kurus?: number | null) =>
     ? (kurus / 100).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 2 }) 
     : '---';
 
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
 function AmountInput({ valueKurus, onChange, label }: { valueKurus: number | null, onChange: (val: number | null) => void, label?: string }) {
   const [str, setStr] = useState(valueKurus != null ? (valueKurus / 100).toFixed(2) : '');
 
@@ -78,7 +87,7 @@ function AmountInput({ valueKurus, onChange, label }: { valueKurus: number | nul
       onChange(null);
       return;
     }
-    let parsed = parseFloat(str.replace(',', '.'));
+    const parsed = parseFloat(str.replace(',', '.'));
     if (isNaN(parsed) || parsed < 0) {
       setStr(valueKurus != null ? (valueKurus / 100).toFixed(2) : '');
       return;
@@ -136,8 +145,8 @@ function PointForm({ onSave, onClose }: { onSave: (point: TollPoint) => void, on
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Kaydedilemedi');
        onSave(data.point);
-    } catch(e: any) {
-      alert(e.message);
+    } catch (error: unknown) {
+      alert(errorMessage(error, 'Kaydedilemedi'));
     } finally {
       setLoading(false);
     }
@@ -210,8 +219,8 @@ function TariffForm({ point, vClass, initialData, onSave, onClose }: { point: To
        const data = await res.json();
        if (!res.ok) throw new Error(data.error || 'Kaydedilemedi');
        onSave();
-     } catch(e: any) {
-       alert(e.message);
+     } catch (error: unknown) {
+       alert(errorMessage(error, 'Kaydedilemedi'));
      } finally {
        setLoading(false);
      }
@@ -292,7 +301,7 @@ function TariffForm({ point, vClass, initialData, onSave, onClose }: { point: To
 }
 
 function SyncModal({ tariff, onClose, onRefresh }: { tariff: TollTariff, onClose: () => void, onRefresh: () => void }) {
-  const [preview, setPreview] = useState<any>(null);
+  const [preview, setPreview] = useState<SyncPreview | null>(null);
   const [loading, setLoading] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const [error, setError] = useState('');
@@ -309,8 +318,8 @@ function SyncModal({ tariff, onClose, onRefresh }: { tariff: TollTariff, onClose
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Önizleme başarısız');
       setPreview(data);
-    } catch(e: any) {
-      setError(e.message);
+    } catch (error: unknown) {
+      setError(errorMessage(error, 'Önizleme başarısız'));
     } finally {
       setLoading(false);
     }
@@ -333,8 +342,8 @@ function SyncModal({ tariff, onClose, onRefresh }: { tariff: TollTariff, onClose
       if (!res.ok) throw new Error(data.error || 'Uygulama başarısız');
       onRefresh();
       onClose();
-    } catch(e: any) {
-      setError(e.message);
+    } catch (error: unknown) {
+      setError(errorMessage(error, 'Uygulama başarısız'));
     } finally {
       setLoading(false);
     }
@@ -446,8 +455,8 @@ function AlternativeForm({ routeId, routes, points, initialData, onSave, onClose
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Kaydedilemedi');
       onSave();
-    } catch(e: any) {
-      alert(e.message);
+    } catch (error: unknown) {
+      alert(errorMessage(error, 'Kaydedilemedi'));
     } finally {
       setLoading(false);
     }
@@ -540,8 +549,8 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
       setSaved(true);
       onRefresh();
       setTimeout(() => setSaved(false), 2000);
-    } catch(e: any) {
-      alert(e.message);
+    } catch (error: unknown) {
+      alert(errorMessage(error, 'Kaydedilemedi'));
     } finally {
       setLoading(false);
     }
@@ -865,8 +874,8 @@ export default function TollManagementClient() {
       if (!res.ok) throw new Error(json.error || 'Veri yüklenemedi');
       setData(json);
       setError('');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (error: unknown) {
+      setError(errorMessage(error, 'Veri yüklenemedi'));
     } finally {
       setLoading(false);
     }

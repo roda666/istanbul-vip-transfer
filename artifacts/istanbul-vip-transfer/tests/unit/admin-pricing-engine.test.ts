@@ -77,6 +77,34 @@ describe('admin pricing engine', () => {
     expect(result).toMatchObject({ state: 'AVAILABLE', quotedEurCents: 500, quotedUsdCents: 1000, quotedTryKurus: 20000 });
   });
 
+  it('includes tolls in round-trip net, VAT, and converted rounded totals', () => {
+    const result = calculateAdminQuote({
+      ...common,
+      profile: distanceProfile,
+      distanceKm: 10,
+      tripType: 'ROUND_TRIP',
+      tolls: [{ id: 'bridge-1', name: 'Test Köprüsü', amountKurus: 3_000 }],
+    });
+
+    expect(result).toMatchObject({
+      state: 'AVAILABLE',
+      netTryKurus: 10_000,
+      vatTryKurus: 2_000,
+      grossTryKurus: 12_000,
+      quotedEurCents: 500,
+      quotedUsdCents: 1_000,
+      quotedTryKurus: 20_000,
+    });
+    if (result.state === 'AVAILABLE') {
+      expect(result.lines).toContainEqual({
+        key: 'toll:bridge-1',
+        label: 'Test Köprüsü',
+        amountKurus: 6_000,
+        visibleToCustomer: false,
+      });
+    }
+  });
+
   it('never reveals a price for an ineligible vehicle', () => {
     expect(calculateAdminQuote({ ...common, vehicleEligible: false, profile: distanceProfile, distanceKm: 5 }))
       .toEqual({ state: 'ON_REQUEST', reason: 'VEHICLE_NOT_ELIGIBLE' });

@@ -23,7 +23,12 @@ export default function SafeArticleImage({
   if (!source) return null;
   const imageAlt = safeImageAlt(alt ?? undefined, fallbackAlt);
 
-  if (source.kind === 'optimized') {
+  // /api storage paths belong to the separate API artifact. Sending them
+  // through Next's optimizer would make the Next server fetch its own /api
+  // route, where locale middleware redirects instead of returning image bytes.
+  const isApiStoredObject = source.src.startsWith('/api/storage/objects/');
+
+  if (source.kind === 'optimized' && !isApiStoredObject) {
     return (
       <Image
         src={source.src}
@@ -53,6 +58,7 @@ export default function SafeArticleImage({
        fetchPriority={priority ? 'high' : 'auto'}
       decoding="async"
       className={className}
+        style={fill ? { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' } : undefined}
     />
   );
 }

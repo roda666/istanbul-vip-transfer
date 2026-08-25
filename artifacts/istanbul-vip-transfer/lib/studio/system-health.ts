@@ -124,6 +124,12 @@ export async function probeStudioMigrations(
 
 function parsePrivateObjectDir(value: string) {
   const cleaned = value.trim().replace(/^gs:\/\//, '');
+  if (cleaned.startsWith('/')) {
+    return {
+      bucketName: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID?.trim() ?? '',
+      prefix: cleaned.replace(/^\/+/, ''),
+    };
+  }
   const slash = cleaned.indexOf('/');
   return {
     bucketName: slash === -1 ? cleaned : cleaned.slice(0, slash),

@@ -25,9 +25,10 @@ export function verifyLegacyImageFormat(
 }
 
 /**
- * Bounds for permanent AI-generated cover images. The input is the 3:2 image
- * returned by GPT Image; keeping it within this desktop landscape box prevents
- * an unnecessarily large original from becoming the storage source.
+ * Bounds for permanent AI-generated cover images. GPT Image returns a 3:2
+ * landscape source, while public blog covers use a 16:9 frame. Normalize
+ * permanent sources to that display ratio so the public page never needs to
+ * add a second, browser-side crop.
  */
 export const GENERATED_IMAGE_MAX_WIDTH = 1_600;
 export const GENERATED_IMAGE_MAX_HEIGHT = 900;
@@ -55,8 +56,19 @@ export async function optimizeGeneratedImage(bytes: Uint8Array): Promise<Uint8Ar
     const metadata = await source.metadata();
     if (!metadata.width || !metadata.height) return null;
 
+    const targetRatio = GENERATED_IMAGE_MAX_WIDTH / GENERATED_IMAGE_MAX_HEIGHT;
+    const cropWidth = metadata.width > metadata.height * targetRatio
+      ? Math.floor(metadata.height * targetRatio)
+      : metadata.width;
+    const cropHeight = metadata.height > metadata.width / targetRatio
+      ? Math.floor(metadata.width / targetRatio)
+      : metadata.height;
+    const cropLeft = Math.floor((metadata.width - cropWidth) / 2);
+    const cropTop = Math.floor((metadata.height - cropHeight) / 2);
+
     const output = await source
       .rotate()
+      .extract({ left: cropLeft, top: cropTop, width: cropWidth, height: cropHeight })
       .resize({
         width: GENERATED_IMAGE_MAX_WIDTH,
         height: GENERATED_IMAGE_MAX_HEIGHT,

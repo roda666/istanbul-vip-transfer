@@ -68,6 +68,15 @@ export class ObjectStorageService {
           'tool and set PRIVATE_OBJECT_DIR env var.',
       );
     }
+    if (dir.startsWith('/')) {
+      const bucket = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || '';
+      if (!bucket) {
+        throw new Error(
+          'PRIVATE_OBJECT_DIR is a prefix but DEFAULT_OBJECT_STORAGE_BUCKET_ID is not configured.',
+        );
+      }
+      return `${bucket}/${dir.replace(/^\/+/, '')}`;
+    }
     return dir;
   }
 

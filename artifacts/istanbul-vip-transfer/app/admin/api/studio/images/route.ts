@@ -83,6 +83,10 @@ async function revalidateAttachedContent(target: {
 
 function parsePrivateObjectDir(dir: string) {
   const cleaned = dir.replace(/^gs:\/\//, '');
+  if (cleaned.startsWith('/')) {
+    const bucket = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID?.trim() ?? '';
+    return { bucket, prefix: cleaned.replace(/^\/+/, '') };
+  }
   const slash = cleaned.indexOf('/');
   return slash < 0 ? { bucket: cleaned, prefix: '' } : { bucket: cleaned.slice(0, slash), prefix: cleaned.slice(slash + 1) };
 }

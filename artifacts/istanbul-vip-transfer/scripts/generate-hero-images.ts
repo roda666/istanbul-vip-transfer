@@ -61,6 +61,10 @@ async function responseBytes(image: { b64_json?: string | null; url?: string | n
 
 function parsePrivateDir(dir: string) {
   const cleaned = dir.replace(/^gs:\/\//, '').replace(/\/$/, '');
+  if (cleaned.startsWith('/')) {
+    const bucket = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID?.trim() ?? '';
+    return { bucket, prefix: cleaned.replace(/^\/+/, '') };
+  }
   const slash = cleaned.indexOf('/');
   return slash < 0 ? { bucket: cleaned, prefix: '' } : { bucket: cleaned.slice(0, slash), prefix: cleaned.slice(slash + 1) };
 }

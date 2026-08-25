@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 type TurnstileForm = 'reservation' | 'contact';
-type WidgetState = 'disabled' | 'loading' | 'ready' | 'error' | 'unconfigured';
+type WidgetState = 'checking' | 'disabled' | 'loading' | 'ready' | 'fallback';
 
 type TurnstileConfig = {
   enabled?: boolean;
@@ -23,6 +23,7 @@ declare global {
 }
 
 let apiLoadPromise: Promise<TurnstileApi> | null = null;
+const TURNSTILE_WAIT_TIMEOUT_MS = 8_000;
 
 function loadTurnstileApi(): Promise<TurnstileApi> {
   if (window.turnstile) return Promise.resolve(window.turnstile);
@@ -56,49 +57,85 @@ function loadTurnstileApi(): Promise<TurnstileApi> {
   return apiLoadPromise;
 }
 
+function withTimeout<T>(promise: Promise<T>, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(message)), TURNSTILE_WAIT_TIMEOUT_MS);
+    promise.then(
+      (value) => { window.clearTimeout(timer); resolve(value); },
+      (error) => { window.clearTimeout(timer); reject(error); },
+    );
+  });
+}
+
 export default function TurnstileWidget({
   form,
   onTokenChange,
   onEnabledChange,
+  onUnavailableChange,
 }: {
   form: TurnstileForm;
   onTokenChange: (token: string | null) => void;
   onEnabledChange?: (enabled: boolean) => void;
+  onUnavailableChange?: (unavailable: boolean) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
   const [config, setConfig] = useState<TurnstileConfig | null>(null);
-  const [state, setState] = useState<WidgetState>('loading');
+  const [state, setState] = useState<WidgetState>('checking');
 
   useEffect(() => {
     let active = true;
+    onTokenChange(null);
+    onUnavailableChange?.(false);
     fetch(`/data/turnstile-config?form=${form}`, { cache: 'no-store' })
       .then((response) => response.ok ? response.json() : null)
       .then((data: TurnstileConfig | null) => {
         if (!active) return;
+        if (!data?.enabled || !data.configured || !data.siteKey) {
+          // No configured Turnstile means no widget and no submission lock.
+          // The contact endpoint still enforces rate limits, honeypots, and
+          // the signed minimum-time form guard.
+          setConfig(null);
+          onEnabledChange?.(false);
+          setState('disabled');
+          return;
+        }
         setConfig(data);
-        // Fail closed while configuration is loading or unavailable. The parent
-        // must not submit a protected form with a null token in that window.
-        onEnabledChange?.(data?.enabled !== false);
-        if (!data?.enabled) setState('disabled');
-        else if (!data.configured || !data.siteKey) setState('unconfigured');
+        onEnabledChange?.(true);
+        // Mount the widget container before the render effect runs. Keeping
+        // this as `checking` would leave containerRef null forever while the
+        // parent form already requires a Turnstile token.
+        setState('loading');
       })
       .catch(() => {
         if (active) {
-          onEnabledChange?.(true);
-          setState('error');
+          // A public config read failure cannot strand a genuine visitor.
+          // The server records this fallback and retains its other safeguards.
+          setConfig(null);
+          onEnabledChange?.(false);
+          onUnavailableChange?.(true);
+          setState('fallback');
         }
       });
 
     return () => { active = false; };
-  }, [form, onEnabledChange]);
+  }, [form, onEnabledChange, onTokenChange, onUnavailableChange]);
 
   useEffect(() => {
     if (!config?.enabled || !config.configured || !config.siteKey || !containerRef.current) return;
 
     let active = true;
+    let challengeTimer: number | null = null;
+    const activateFallback = () => {
+      if (!active) return;
+      if (challengeTimer) window.clearTimeout(challengeTimer);
+      onTokenChange(null);
+      onEnabledChange?.(false);
+      onUnavailableChange?.(true);
+      setState('fallback');
+    };
     setState('loading');
-    loadTurnstileApi()
+    withTimeout(loadTurnstileApi(), 'Turnstile API zaman aşımına uğradı.')
       .then((api) => {
         if (!active || !containerRef.current) return;
         widgetIdRef.current = api.render(containerRef.current, {
@@ -108,48 +145,44 @@ export default function TurnstileWidget({
           action: `ivt_${form}`,
           callback: (token: string) => {
             if (!active) return;
+            if (challengeTimer) window.clearTimeout(challengeTimer);
             onTokenChange(token);
+            onEnabledChange?.(true);
+            onUnavailableChange?.(false);
             setState('ready');
           },
           'expired-callback': () => {
             if (!active) return;
             onTokenChange(null);
+            onEnabledChange?.(true);
+            onUnavailableChange?.(false);
             setState('loading');
+            challengeTimer = window.setTimeout(activateFallback, TURNSTILE_WAIT_TIMEOUT_MS);
           },
           'timeout-callback': () => {
-            if (!active) return;
-            onTokenChange(null);
-            setState('error');
+            activateFallback();
           },
           'error-callback': () => {
-            if (!active) return;
-            onTokenChange(null);
-            setState('error');
+            activateFallback();
           },
         });
+        challengeTimer = window.setTimeout(activateFallback, TURNSTILE_WAIT_TIMEOUT_MS);
       })
-      .catch(() => {
-        if (active) setState('error');
-      });
+      .catch(activateFallback);
 
     return () => {
       active = false;
+      if (challengeTimer) window.clearTimeout(challengeTimer);
       if (widgetIdRef.current && window.turnstile) {
         window.turnstile.reset(widgetIdRef.current);
       }
       widgetIdRef.current = null;
     };
-  }, [config, form, onTokenChange]);
+  }, [config, form, onEnabledChange, onTokenChange, onUnavailableChange]);
 
-  if (state === 'disabled') return null;
-
-  if (state === 'unconfigured') {
-    return (
-      <p role="alert" data-testid="turnstile-unconfigured" style={{ color: '#9A3412', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '8px', padding: '10px 12px', fontSize: '13px', lineHeight: 1.45 }}>
-        Güvenlik doğrulaması henüz yapılandırılmamış. Lütfen daha sonra tekrar deneyin.
-      </p>
-    );
-  }
+  // Keep both the widget slot and loading copy out of the DOM until a real,
+  // configured widget has begun loading.
+  if (state === 'checking' || state === 'disabled') return null;
 
   return (
     <div>
@@ -159,9 +192,9 @@ export default function TurnstileWidget({
           Güvenlik doğrulaması hazırlanıyor…
         </p>
       )}
-      {state === 'error' && (
-        <p role="alert" data-testid="turnstile-error" style={{ color: '#9A3412', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '8px', padding: '10px 12px', fontSize: '13px', lineHeight: 1.45, marginTop: '8px' }}>
-          Güvenlik doğrulaması şu anda yüklenemedi. Lütfen bağlantınızı kontrol edip birkaç saniye sonra tekrar deneyin.
+      {state === 'fallback' && (
+        <p role="status" data-testid="turnstile-fallback" style={{ color: '#52697A', background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: '8px', padding: '10px 12px', fontSize: '13px', lineHeight: 1.45, marginTop: '8px' }}>
+          Ek spam doğrulaması şu anda erişilemiyor. Form, diğer güvenlik kontrolleriyle gönderilebilir.
         </p>
       )}
     </div>

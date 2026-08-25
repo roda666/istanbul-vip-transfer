@@ -48,8 +48,9 @@ const ContactSchema = z.object({
   message: z.string().min(10).max(3000),
   locale:  z.string().min(2).max(5).optional().default('tr'),
   newsletterConsent: z.boolean().optional().default(false),
-  formGuardToken: z.string().optional(),
-  turnstileToken: z.string().optional(),
+  formGuardToken: z.string().nullable().optional(),
+  turnstileToken: z.string().nullable().optional(),
+  turnstileUnavailable: z.boolean().optional().default(false),
   website: z.string().optional(),   // honeypot — must be empty
   company: z.string().optional(),   // honeypot — must be empty
 });
@@ -127,17 +128,22 @@ export async function POST(req: NextRequest) {
   const turnstileCheck = await verifyTurnstileToken(data.turnstileToken, 'contact');
   if (turnstileCheck.status === 'unconfigured') {
     await recordBotProtectionBlock({ formType: 'CONTACT', reason: 'TURNSTILE_UNCONFIGURED' });
-    return NextResponse.json({
-      code: 'TURNSTILE_UNCONFIGURED',
-      message: 'Güvenlik doğrulaması henüz yapılandırılmamış. Lütfen daha sonra tekrar deneyin.',
-    }, { status: 503 });
+    // Turnstile was never configured. Do not make the anti-spam add-on block
+    // legitimate contacts; rate limiting, honeypots, and signed form timing
+    // remain mandatory below and above this point.
   }
   if (turnstileCheck.status === 'rejected') {
-    await recordBotProtectionBlock({ formType: 'CONTACT', reason: 'TURNSTILE_REJECTED' });
-    return NextResponse.json({
-      code: 'TURNSTILE_REJECTED',
-      message: 'Güvenlik doğrulaması tamamlanamadı. Lütfen doğrulamayı yenileyip tekrar deneyin.',
-    }, { status: 422 });
+    if (data.turnstileUnavailable && !data.turnstileToken) {
+      // The browser waited for the configured widget and reported a load
+      // failure. Keep the form usable and record the degraded protection mode.
+      await recordBotProtectionBlock({ formType: 'CONTACT', reason: 'TURNSTILE_UNAVAILABLE' });
+    } else {
+      await recordBotProtectionBlock({ formType: 'CONTACT', reason: 'TURNSTILE_REJECTED' });
+      return NextResponse.json({
+        code: 'TURNSTILE_REJECTED',
+        message: 'Güvenlik doğrulaması tamamlanamadı. Lütfen doğrulamayı yenileyip tekrar deneyin.',
+      }, { status: 422 });
+    }
   }
   if (turnstileCheck.status === 'unavailable') {
     await recordBotProtectionBlock({ formType: 'CONTACT', reason: 'TURNSTILE_UNAVAILABLE' });

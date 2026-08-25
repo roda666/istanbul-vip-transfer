@@ -130,7 +130,7 @@ export default function TurnstileSettingsClient() {
         {warning && (
           <div style={{ display: 'flex', gap: '10px', padding: '14px', marginBottom: '16px', borderRadius: '10px', border: '1px solid #F5D97A', background: '#FEF9EC', color: '#7A5800', fontSize: '13px', lineHeight: 1.5 }}>
             <AlertTriangle size={18} style={{ flexShrink: 0 }} />
-            <div><strong>Turnstile yapılandırılmamış</strong><br />Etkin durumda ancak site anahtarı veya gizli anahtar eksik. Form talepleri kaydedilmez.</div>
+            <div><strong>Turnstile yapılandırılmamış</strong><br />Site anahtarı veya gizli anahtar eksik. İletişim formu, hız sınırı, tuzak alanları ve imzalı süre kontrolüyle çalışmaya devam eder.</div>
           </div>
         )}
         {!config.encryptionReady && (

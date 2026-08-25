@@ -71,4 +71,5 @@
 - [Dashboard database block isolation](dashboard-database-block-isolation.md) — dashboard queries fail independently; missing schema objects show a migration-specific warning only in their block.
 - [Production build memory recovery](production-build-memory-recovery.md) — if Next build dies silently under memory pressure, pause only its artifact web workflow, build, then restart it.
 - [Turnstile form scope](turnstile-form-scope.md) — protect the contact form by default; keep the WhatsApp-linked reservation flow opt-in only.
+- [Turnstile contact-form fallback](turnstile-contact-form-fallback.md) — unconfigured or unreachable Turnstile must never strand contact visitors; retain independent server safeguards.
 - [Turnstile secret storage](turnstile-secret-storage.md) — encrypted keys require persistent wrapped-key verification; failures refuse writes without ever storing plaintext.

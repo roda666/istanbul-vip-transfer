@@ -34,7 +34,8 @@ export default function ContactForm() {
   const companyHoneypotRef = useRef<HTMLInputElement>(null);
   const [formGuardToken, setFormGuardToken] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [turnstileEnabled, setTurnstileEnabled] = useState(true);
+  const [turnstileEnabled, setTurnstileEnabled] = useState(false);
+  const [turnstileUnavailable, setTurnstileUnavailable] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -62,7 +63,13 @@ export default function ContactForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!validate()) return;
-    if (turnstileEnabled && !turnstileToken) {
+    // Turnstile normally calls our callback, but Cloudflare also writes its
+    // one-time response into this form field. Read it as a final fallback so
+    // a successfully completed widget never gets lost during a callback race.
+    const resolvedTurnstileToken = turnstileToken
+      ?? document.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]')?.value?.trim()
+      ?? null;
+    if (turnstileEnabled && !resolvedTurnstileToken) {
       setServerError('Güvenlik doğrulaması tamamlanmadan form gönderilemez.');
       setStatus('error');
       return;
@@ -84,7 +91,8 @@ export default function ContactForm() {
           locale:  lang,
           newsletterConsent,
            formGuardToken,
-            turnstileToken,
+            turnstileToken: resolvedTurnstileToken,
+            turnstileUnavailable,
            website: websiteHoneypotRef.current?.value ?? '',
            company: companyHoneypotRef.current?.value ?? '',
         }),
@@ -319,6 +327,7 @@ export default function ContactForm() {
             form="contact"
             onTokenChange={setTurnstileToken}
             onEnabledChange={setTurnstileEnabled}
+            onUnavailableChange={setTurnstileUnavailable}
           />
 
           {/* Optional newsletter consent */}

@@ -207,6 +207,16 @@ function ContentSectionsBlock({ body, dir, lang }: { body: ServicePageBody; dir?
                {isolateLtrValues(s.heading, lang)}
             </h3>
           )}
+          {s.image ? (
+            <figure style={{ margin: '0 0 20px' }}>
+              <SafeArticleImage
+                src={s.image.src}
+                alt={s.image.alt}
+                sizes="(max-width: 900px) 100vw, 900px"
+                className="block w-full h-auto rounded-xl"
+              />
+            </figure>
+          ) : null}
            <p style={{ ...prose, margin: 0, whiteSpace: 'pre-line' }} dir={dir}>{isolateLtrValues(s.body, lang)}</p>
         </div>
       ))}

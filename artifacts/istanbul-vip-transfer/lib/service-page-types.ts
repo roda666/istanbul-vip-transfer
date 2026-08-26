@@ -34,6 +34,12 @@ export interface ServicePageContentSection {
   headingLevel: 'h2' | 'h3';
   heading: string;
   body: string;
+  /**
+   * Optional CMS-managed image rendered directly below this section's
+   * heading (above the paragraph body). Not translatable — src/alt are
+   * shared across locales, same as top-level inlineImages.
+   */
+  image?: ServicePageInlineImage;
 }
 
 /** A CMS-managed inline image. Source paths are restricted by the admin API. */

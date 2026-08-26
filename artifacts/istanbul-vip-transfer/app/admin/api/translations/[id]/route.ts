@@ -8,6 +8,37 @@ import { z } from 'zod';
 import { requireAdminSession } from '@/lib/auth/session';
 import { eq } from 'drizzle-orm';
 
+function visibleText(value: string | null | undefined) {
+  return (value ?? '')
+    .replace(/!\[[^\]]*]\([^)]+\)/g, ' ')
+    .replace(/\[([^\]]+)]\([^)]+\)/g, '$1')
+    .replace(/[#*_`>|]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getPublicationQualityIssues(fields: {
+  title?: string | null;
+  excerpt?: string | null;
+  body?: string | null;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  imageAlt?: string | null;
+}) {
+  const required = [
+    ['title', fields.title],
+    ['excerpt', fields.excerpt],
+    ['body', fields.body],
+    ['metaTitle', fields.metaTitle],
+    ['metaDescription', fields.metaDescription],
+    ['imageAlt', fields.imageAlt],
+  ].filter(([, value]) => !visibleText(value as string).length).map(([name]) => `Missing ${name}`);
+  const visible = visibleText(Object.values(fields).join('\n'));
+  const turkishGrammar = /\b(?:için|olarak|daha|değil|çok|nasıl|neden|hangi|ancak|veya|kadar|gibi|sonra|önce|arasında|içinde|üzerinde|rehberi|fiyatları|fiyatlari|formunu|filomuz|şoförlü|soförlü|kiralama|havalimanından|havalimanindan|günübirlik|rezervasyon|karşılama|karsilama|belirlenir|çalışır|calisir|ücretleri|ucretleri)\b/iu;
+  if (turkishGrammar.test(visible)) required.push('Visible Turkish grammar remains');
+  return required;
+}
+
 const patchSchema = z.object({
   title: z.string().optional(),
   slug: z.string().optional(),
@@ -119,6 +150,22 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         case 'publish':
           if (!['APPROVED', 'SCHEDULED'].includes(existing.status)) {
             return NextResponse.json({ error: 'Must be APPROVED or SCHEDULED before publishing' }, { status: 400 });
+          }
+          if (existing.entityType === 'content') {
+            const issues = getPublicationQualityIssues({
+              title: (fields.title ?? existing.title) as string | null,
+              excerpt: (fields.excerpt ?? existing.excerpt) as string | null,
+              body: (fields.body ?? existing.body) as string | null,
+              metaTitle: (fields.metaTitle ?? existing.metaTitle) as string | null,
+              metaDescription: (fields.metaDescription ?? existing.metaDescription) as string | null,
+              imageAlt: (fields.imageAlt ?? existing.imageAlt) as string | null,
+            });
+            if (issues.length > 0) {
+              return NextResponse.json(
+                { error: 'Translation failed publication quality checks', issues },
+                { status: 422 },
+              );
+            }
           }
           update.status = 'PUBLISHED';
           update.publishedAt = sql`now()`;

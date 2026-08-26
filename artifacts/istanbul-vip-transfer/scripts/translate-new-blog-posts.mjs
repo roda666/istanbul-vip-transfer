@@ -4,7 +4,8 @@
  * Usage (from artifacts/istanbul-vip-transfer/):
  *   node scripts/translate-new-blog-posts.mjs
  *
- * Idempotent: skips already-PUBLISHED translations, re-runs DRAFT/FAILED ones.
+ * Idempotent: creates AI translations as DRAFT for language review; it never
+ * publishes a generated blog translation directly.
  */
 
 import postgres from '../node_modules/postgres/cjs/src/index.js';
@@ -143,7 +144,7 @@ async function main() {
       imageAlt:        article.hero_image_alt,
     };
 
-    // Check which langs already have a PUBLISHED translation
+    // Do not overwrite translations already awaiting review, approved, or live.
     const existing = await sql`
       SELECT target_language_code, status
       FROM content_translations
@@ -151,11 +152,13 @@ async function main() {
         AND entity_id   = ${article.id}
         AND target_language_code = ANY(${TARGET_LANGS})
     `;
-    const doneSet = new Set(existing.filter(r => r.status === 'PUBLISHED').map(r => r.target_language_code));
+    const doneSet = new Set(existing
+      .filter(r => ['DRAFT', 'UNDER_REVIEW', 'APPROVED', 'SCHEDULED', 'PUBLISHED'].includes(r.status))
+      .map(r => r.target_language_code));
     const langs   = TARGET_LANGS.filter(l => !doneSet.has(l));
 
     if (langs.length === 0) {
-      console.log(`  ⏭  All 8 languages already PUBLISHED — skipping`);
+      console.log(`  ⏭  All 8 languages already exist in the review or publishing workflow — skipping`);
       totalSkip += 8;
       continue;
     }
@@ -185,16 +188,16 @@ async function main() {
           published_at, created_at, updated_at
         ) VALUES (
           gen_random_uuid(), 'content', ${article.id}, 'tr', ${lang},
-          'PUBLISHED', ${t.title ?? source.title}, ${t.slug ?? source.slug},
+          'DRAFT', ${t.title ?? source.title}, ${t.slug ?? source.slug},
           ${t.excerpt ?? source.excerpt}, ${body},
           ${t.metaTitle ?? source.metaTitle}, ${t.metaDescription ?? source.metaDescription},
           ${t.imageAlt ?? source.imageAlt},
           true, ${MODEL},
-          NOW(), NOW(), NOW()
+          NULL, NOW(), NOW()
         )
         ON CONFLICT (entity_type, entity_id, target_language_code)
         DO UPDATE SET
-          status       = 'PUBLISHED',
+          status       = 'DRAFT',
           title        = EXCLUDED.title,
           slug         = EXCLUDED.slug,
           excerpt      = EXCLUDED.excerpt,
@@ -204,7 +207,7 @@ async function main() {
           image_alt    = EXCLUDED.image_alt,
           is_ai_generated = true,
           ai_model     = EXCLUDED.ai_model,
-          published_at = NOW(),
+          published_at = NULL,
           updated_at   = NOW()
       `;
       process.stdout.write(` ✅\n`);

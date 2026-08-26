@@ -335,7 +335,7 @@ async function readPublishedBlogTranslation(
   try {
     const { db }                          = await import('@/db');
     const { contentTranslations, content } = await import('@/db/schema');
-    const { eq, and, or, sql, inArray }   = await import('drizzle-orm');
+    const { eq, and, or, sql }            = await import('drizzle-orm');
 
     const rows = await db
       .select({
@@ -360,7 +360,7 @@ async function readPublishedBlogTranslation(
       .innerJoin(content, sql`${contentTranslations.entityId}::uuid = ${content.id}`)
       .where(and(
         eq(contentTranslations.targetLanguageCode, lang),
-        inArray(contentTranslations.status,        ['DRAFT', 'REVIEW', 'APPROVED', 'PUBLISHED', 'OUTDATED']),
+        eq(contentTranslations.status,             'PUBLISHED'),
         eq(contentTranslations.entityType,         BLOG_ENTITY_TYPE),
         eq(content.contentType,                    'BLOG_POST'),
         eq(content.status,                         'PUBLISHED'),
@@ -430,7 +430,7 @@ async function readPublishedBlogTranslations(
   try {
     const { db }                          = await import('@/db');
     const { contentTranslations, content } = await import('@/db/schema');
-    const { eq, and, desc, asc, sql, inArray } = await import('drizzle-orm');
+    const { eq, and, desc, asc, sql }          = await import('drizzle-orm');
 
     const rows = await db
       .select({
@@ -449,7 +449,7 @@ async function readPublishedBlogTranslations(
       .innerJoin(content, sql`${contentTranslations.entityId}::uuid = ${content.id}`)
       .where(and(
         eq(contentTranslations.targetLanguageCode, lang),
-        inArray(contentTranslations.status,        ['DRAFT', 'REVIEW', 'APPROVED', 'PUBLISHED', 'OUTDATED']),
+        eq(contentTranslations.status,             'PUBLISHED'),
         eq(contentTranslations.entityType,         BLOG_ENTITY_TYPE),
         eq(content.contentType,                    'BLOG_POST'),
         eq(content.status,                         'PUBLISHED'),
@@ -553,7 +553,7 @@ export async function getPublishedBlogLangs(slug: string): Promise<string[]> {
   try {
     const { db }                          = await import('@/db');
     const { content, contentTranslations } = await import('@/db/schema');
-    const { eq, and, inArray }            = await import('drizzle-orm');
+    const { eq, and }                     = await import('drizzle-orm');
 
     const [src] = await db
       .select({ id: content.id, status: content.status, isActive: content.isActive })
@@ -569,7 +569,7 @@ export async function getPublishedBlogLangs(slug: string): Promise<string[]> {
       .where(and(
         eq(contentTranslations.entityType, BLOG_ENTITY_TYPE),
         eq(contentTranslations.entityId,   src.id),
-        inArray(contentTranslations.status, ['DRAFT', 'REVIEW', 'APPROVED', 'PUBLISHED', 'OUTDATED']),
+        eq(contentTranslations.status, 'PUBLISHED'),
       ));
 
     return ['tr', ...txRows.map(r => r.lang)];

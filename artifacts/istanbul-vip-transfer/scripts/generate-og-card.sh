@@ -32,6 +32,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$SCRIPT_DIR/.."
 
+if ! command -v magick >/dev/null 2>&1; then
+  echo "WARNING: ImageMagick ('magick') is required to generate public/images/og-card.jpg." >&2
+  echo "ERROR: Cannot continue without a fresh social card. Install ImageMagick and retry the build." >&2
+  exit 1
+fi
+
 # ── Defaults (used when no --* flags are passed) ─────────────
 DEFAULT_SRC="$ROOT/public/images/istanbul-vip-transfer-hero.webp"
 DEFAULT_OUT="$ROOT/public/images/og-card.jpg"
@@ -115,5 +121,16 @@ magick \
   -quality 92 \
   "$OUT"
 
+if [ ! -s "$OUT" ]; then
+  echo "ERROR: OG card generation did not produce a non-empty file at $OUT" >&2
+  exit 1
+fi
+
+DIMENSIONS="$(magick identify -format '%wx%h' "$OUT")"
+if [ "$DIMENSIONS" != "${W}x${H}" ]; then
+  echo "ERROR: Generated OG card has unexpected dimensions: $DIMENSIONS (expected ${W}x${H})" >&2
+  exit 1
+fi
+
 echo "✓  Written: $OUT"
-echo "   $(magick identify -format '%wx%h px, %[size]' "$OUT")"
+echo "   $DIMENSIONS px, $(magick identify -format '%b' "$OUT")"

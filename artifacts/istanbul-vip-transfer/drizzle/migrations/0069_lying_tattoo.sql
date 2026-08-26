@@ -1,0 +1,1 @@
+ALTER TABLE "reservation_requests" ADD COLUMN "is_test_data" boolean DEFAULT false NOT NULL;

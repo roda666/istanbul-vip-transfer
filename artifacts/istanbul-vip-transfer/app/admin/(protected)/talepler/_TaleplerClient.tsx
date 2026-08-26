@@ -19,6 +19,7 @@ interface RequestRow {
   status: string;
   createdAt: string;
   archivedAt: string | null;
+  isTestData: boolean;
 }
 
 interface PageResult {
@@ -103,17 +104,32 @@ const th: React.CSSProperties = {
 };
 
 /* ── Mobile card ────────────────────────────────────────── */
+function TestDataBadge({ style }: { style?: React.CSSProperties }) {
+  return (
+    <span style={{
+      padding: '2px 8px', borderRadius: '999px', fontSize: '10px', fontWeight: 700,
+      textTransform: 'uppercase', letterSpacing: '0.04em',
+      background: '#FEF3C7', color: '#92400E', border: '1px solid #FDE68A',
+      ...style,
+    }} title="Bu kayıt test/deneme verisi olarak işaretlendi">
+      Test Verisi
+    </span>
+  );
+}
+
 function RequestCard({
   row,
   updating,
   onStatusChange,
   onArchive,
+  onToggleTestData,
   formatDate,
 }: {
   row: RequestRow;
   updating: string | null;
   onStatusChange: (id: string, status: string) => void;
   onArchive: (id: string) => void;
+  onToggleTestData: (id: string, next: boolean) => void;
   formatDate: (iso: string) => string;
 }) {
   const sc = STATUS_COLORS[row.status] ?? STATUS_COLORS.NEW;
@@ -121,8 +137,8 @@ function RequestCard({
 
   return (
     <div style={{
-      background: '#FFFFFF',
-      border: '1px solid #E2E8F0',
+      background: row.isTestData ? '#FFFBEB' : '#FFFFFF',
+      border: row.isTestData ? '1px solid #FDE68A' : '1px solid #E2E8F0',
       borderRadius: '12px',
       padding: '14px 16px',
       marginBottom: '10px',
@@ -130,12 +146,15 @@ function RequestCard({
     }}>
       {/* Header row: ref + status */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', gap: '8px', flexWrap: 'wrap' }}>
-        <Link
-          href={`/admin/talepler/${row.id}`}
-          style={{ fontFamily: 'monospace', fontSize: '13px', fontWeight: 700, color: '#2563EB', textDecoration: 'none' }}
-        >
-          #{row.referenceNumber}
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <Link
+            href={`/admin/talepler/${row.id}`}
+            style={{ fontFamily: 'monospace', fontSize: '13px', fontWeight: 700, color: '#2563EB', textDecoration: 'none' }}
+          >
+            #{row.referenceNumber}
+          </Link>
+          {row.isTestData && <TestDataBadge />}
+        </div>
         {isLegacy ? (
           <span style={{
             padding: '3px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 700,
@@ -211,6 +230,13 @@ function RequestCard({
           >
             Detay
           </Link>
+          <button
+            onClick={() => onToggleTestData(row.id, !row.isTestData)}
+            disabled={!!updating}
+            style={{ padding: '5px 10px', borderRadius: '6px', fontSize: '12px', background: row.isTestData ? '#FEF3C7' : '#F1F5F9', color: row.isTestData ? '#92400E' : '#64748B', border: 'none', cursor: 'pointer' }}
+          >
+            {row.isTestData ? 'Test İşaretini Kaldır' : 'Test Olarak İşaretle'}
+          </button>
           {!row.archivedAt && (
             <button
               onClick={() => onArchive(row.id)}
@@ -241,6 +267,7 @@ export default function TaleplerClient() {
   const [pageSlug, setPageSlug] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo]     = useState('');
+  const [testData, setTestData] = useState(''); // '' = all, 'real', 'test'
   const [updating, setUpdating] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
@@ -257,6 +284,7 @@ export default function TaleplerClient() {
       if (pageSlug) params.set('page_slug', pageSlug);
       if (dateFrom) params.set('date_from', dateFrom);
       if (dateTo)   params.set('date_to',   dateTo);
+      if (testData) params.set('test_data', testData);
       const res = await fetch(`/admin/api/requests?${params}`);
       if (!res.ok) throw new Error('Yüklenemedi');
       setData(await res.json());
@@ -265,7 +293,7 @@ export default function TaleplerClient() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, status, service, intent, lang, source, pageSlug, dateFrom, dateTo]);
+  }, [page, search, status, service, intent, lang, source, pageSlug, dateFrom, dateTo, testData]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -300,6 +328,21 @@ export default function TaleplerClient() {
     }
   }
 
+  async function toggleTestData(id: string, next: boolean) {
+    setUpdating(id);
+    try {
+      const res = await fetch(`/admin/api/requests/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isTestData: next }),
+      });
+      if (res.ok) fetchData();
+      else setError('Test verisi işareti güncellenemedi. Lütfen tekrar deneyin.');
+    } finally {
+      setUpdating(null);
+    }
+  }
+
   function formatDate(iso: string) {
     return new Intl.DateTimeFormat('tr-TR', {
       timeZone: 'Europe/Istanbul',
@@ -311,7 +354,7 @@ export default function TaleplerClient() {
   function resetFilters() {
     setSearch(''); setStatus(''); setService(''); setIntent('');
     setLang(''); setSource(''); setPageSlug(''); setDateFrom(''); setDateTo('');
-    setPage(1);
+    setTestData(''); setPage(1);
   }
 
   const inputStyle: React.CSSProperties = {
@@ -325,7 +368,7 @@ export default function TaleplerClient() {
     outline: 'none',
   };
 
-  const hasActiveFilters = search || status || service || intent || lang || source || pageSlug || dateFrom || dateTo;
+  const hasActiveFilters = search || status || service || intent || lang || source || pageSlug || dateFrom || dateTo || testData;
 
   const pagination = data && data.totalPages > 1 && (
     <div style={{
@@ -406,6 +449,11 @@ export default function TaleplerClient() {
             <option key={value} value={value}>{formatRequestPage(value)} ({count})</option>
           ))}
         </select>
+        <select value={testData} onChange={(e) => { setTestData(e.target.value); setPage(1); }} style={{ ...inputStyle, flex: '1 1 160px' }}>
+          <option value="">Test + Gerçek (Hepsi)</option>
+          <option value="real">Yalnızca Gerçek Talepler</option>
+          <option value="test">Yalnızca Test Verisi</option>
+        </select>
       </div>
 
       {/* Date range */}
@@ -468,6 +516,7 @@ export default function TaleplerClient() {
                   updating={updating}
                   onStatusChange={updateStatus}
                   onArchive={archiveRequest}
+                  onToggleTestData={toggleTestData}
                   formatDate={formatDate}
                 />
               ))}
@@ -509,11 +558,14 @@ export default function TaleplerClient() {
                   const sc = STATUS_COLORS[row.status] ?? STATUS_COLORS.NEW;
                   const isLegacyStatus = row.status === 'COMPLETED' || row.status === 'SPAM';
                   return (
-                    <tr key={row.id} style={{ opacity: row.archivedAt ? 0.55 : 1 }}>
+                    <tr key={row.id} style={{ opacity: row.archivedAt ? 0.55 : 1, background: row.isTestData ? '#FFFBEB' : undefined }}>
                       <td style={td}>
-                        <Link href={`/admin/talepler/${row.id}`} style={{ color: '#2563EB', textDecoration: 'none', fontFamily: 'monospace', fontSize: '12px', fontWeight: 600 }}>
-                          {row.referenceNumber}
-                        </Link>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <Link href={`/admin/talepler/${row.id}`} style={{ color: '#2563EB', textDecoration: 'none', fontFamily: 'monospace', fontSize: '12px', fontWeight: 600 }}>
+                            {row.referenceNumber}
+                          </Link>
+                          {row.isTestData && <TestDataBadge />}
+                        </div>
                       </td>
                       <td style={td}>{row.name}</td>
                       <td style={{ ...td, fontSize: '12px', color: '#475569' }}>{row.phone}</td>
@@ -559,6 +611,14 @@ export default function TaleplerClient() {
                               <Archive size={11} /> Arşivle
                             </button>
                           )}
+                          <button
+                            onClick={() => toggleTestData(row.id, !row.isTestData)}
+                            disabled={!!updating}
+                            title={row.isTestData ? 'Test işaretini kaldır' : 'Test olarak işaretle'}
+                            style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '11px', background: row.isTestData ? '#FEF3C7' : '#F1F5F9', color: row.isTestData ? '#92400E' : '#64748B', border: 'none', cursor: 'pointer' }}
+                          >
+                            {row.isTestData ? 'Test✓' : 'Test?'}
+                          </button>
                         </div>
                       </td>
                     </tr>

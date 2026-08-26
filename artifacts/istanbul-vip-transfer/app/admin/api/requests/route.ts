@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
   const pageSlug  = searchParams.get('page_slug') ?? '';
   const dateFrom  = searchParams.get('date_from') ?? '';
   const dateTo    = searchParams.get('date_to') ?? '';
+  const testData  = searchParams.get('test_data') ?? ''; // 'real' | 'test' | '' (all)
 
   try {
     const { db } = await import('@/db');
@@ -31,6 +32,8 @@ export async function GET(req: NextRequest) {
     const { desc, eq, ilike, or, and, count, isNull, gte, lte } = await import('drizzle-orm');
 
     const conditions = [isNull(reservationRequests.archivedAt)];
+    if (testData === 'real') conditions.push(eq(reservationRequests.isTestData, false));
+    if (testData === 'test') conditions.push(eq(reservationRequests.isTestData, true));
     if (status)  conditions.push(eq(reservationRequests.status,      status as never));
     if (service) conditions.push(eq(reservationRequests.serviceType, service));
     if (intent)  conditions.push(eq(reservationRequests.intent,      intent as never));
@@ -68,6 +71,7 @@ export async function GET(req: NextRequest) {
         status:          reservationRequests.status,
         createdAt:       reservationRequests.createdAt,
         archivedAt:      reservationRequests.archivedAt,
+        isTestData:      reservationRequests.isTestData,
       }).from(reservationRequests).where(where).orderBy(desc(reservationRequests.createdAt)).limit(limit).offset(offset),
       db.select({ count: count() }).from(reservationRequests).where(where),
       db.select({

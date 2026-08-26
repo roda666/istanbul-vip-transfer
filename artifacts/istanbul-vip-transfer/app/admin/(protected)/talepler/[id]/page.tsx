@@ -220,6 +220,7 @@ export default async function TalepDetayPage({ params }: { params: Promise<{ id:
             referenceNumber={req.referenceNumber}
             adminNotes={req.adminNotes ?? null}
             googleReviewUrl={siteSettings.googleReviewUrl}
+            isTestData={req.isTestData}
           />
         </div>
 

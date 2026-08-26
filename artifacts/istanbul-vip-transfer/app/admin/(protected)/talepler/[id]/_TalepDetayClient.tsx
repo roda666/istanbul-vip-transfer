@@ -31,6 +31,7 @@ interface Props {
   adminNotes:      string | null;
   /** Direct Google review link fetched from site_settings */
   googleReviewUrl: string;
+  isTestData:      boolean;
 }
 
 export default function TalepDetayClient({
@@ -42,6 +43,7 @@ export default function TalepDetayClient({
   referenceNumber,
   adminNotes: initialNotes,
   googleReviewUrl,
+  isTestData: initialIsTestData,
 }: Props) {
   const [status, setStatus]   = useState(currentStatus);
   const [loading, setLoading] = useState(false);
@@ -50,6 +52,8 @@ export default function TalepDetayClient({
   const [notesSaving, setNotesSaving] = useState(false);
   const [notesSaved, setNotesSaved]   = useState(false);
   const [copyDone, setCopyDone]       = useState(false);
+  const [isTestData, setIsTestData]   = useState(initialIsTestData);
+  const [testDataSaving, setTestDataSaving] = useState(false);
   const router = useRouter();
 
   const isLegacy = status === 'SPAM';
@@ -84,6 +88,22 @@ export default function TalepDetayClient({
       setNotesSaved(true);
     } finally {
       setNotesSaving(false);
+    }
+  }
+
+  async function toggleTestData() {
+    const next = !isTestData;
+    setTestDataSaving(true);
+    try {
+      await fetch(`/admin/api/requests/${requestId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isTestData: next }),
+      });
+      setIsTestData(next);
+      router.refresh();
+    } finally {
+      setTestDataSaving(false);
     }
   }
 
@@ -140,6 +160,38 @@ export default function TalepDetayClient({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+      {/* Test data flag */}
+      <div>
+        <label style={labelStyle}>Test Verisi</label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          {isTestData && (
+            <span style={{
+              padding: '4px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 700,
+              textTransform: 'uppercase', letterSpacing: '0.04em',
+              background: '#FEF3C7', color: '#92400E', border: '1px solid #FDE68A',
+            }}>
+              Test Verisi
+            </span>
+          )}
+          <button
+            onClick={toggleTestData}
+            disabled={testDataSaving}
+            style={{
+              padding: '7px 14px', borderRadius: '8px', border: 'none',
+              background: isTestData ? '#FEF3C7' : '#F1F5F9',
+              color: isTestData ? '#92400E' : '#64748B',
+              fontSize: '12px', fontWeight: 600, fontFamily: 'Inter, sans-serif',
+              cursor: 'pointer',
+            }}
+          >
+            {testDataSaving ? 'Kaydediliyor…' : isTestData ? 'Test İşaretini Kaldır' : 'Test Verisi Olarak İşaretle'}
+          </button>
+        </div>
+        <p style={{ fontSize: '11px', color: '#94A3B8', fontFamily: 'Inter, sans-serif', margin: '8px 0 0' }}>
+          Bu talep gerçek bir müşteri talebi değil, geliştirme/test amaçlı gönderilmiş görünüyorsa işaretleyin. Kayıt silinmez, yalnızca listelerde ayrıştırılır.
+        </p>
+      </div>
 
       {/* Status section */}
       <div>

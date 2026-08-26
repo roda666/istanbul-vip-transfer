@@ -698,6 +698,8 @@ export const reservationRequests = pgTable('reservation_requests', {
   createdAt:       timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt:       timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   archivedAt:      timestamp('archived_at', { withTimezone: true }),
+  /** True for rows identified as internal QA/dev submissions rather than genuine customer leads. Never auto-deleted; admin-reversible. */
+  isTestData:      boolean('is_test_data').default(false).notNull(),
 });
 
 /**

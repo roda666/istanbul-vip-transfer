@@ -16,13 +16,29 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
 
-  let body: { status?: string; archive?: boolean; notes?: string };
+  let body: { status?: string; archive?: boolean; notes?: string; isTestData?: boolean };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
 
   try {
     const { db } = await import('@/db');
     const { reservationRequests, auditLogs } = await import('@/db/schema');
     const { eq } = await import('drizzle-orm');
+
+    if (typeof body.isTestData === 'boolean') {
+      await db.update(reservationRequests)
+        .set({ isTestData: body.isTestData, updatedAt: new Date() })
+        .where(eq(reservationRequests.id, id));
+
+      await db.insert(auditLogs).values({
+        adminUserId: session.adminId ?? null,
+        action:      body.isTestData ? 'MARK_TEST_DATA' : 'UNMARK_TEST_DATA',
+        entityType:  'reservation_request',
+        entityId:    id,
+        metadata:    {},
+      });
+
+      return NextResponse.json({ ok: true });
+    }
 
     if (body.archive) {
       await db.update(reservationRequests)

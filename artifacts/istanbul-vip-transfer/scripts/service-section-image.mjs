@@ -64,6 +64,35 @@ const SPECS = [
     alt: 'Saatlik ve günlük tahsis için bekleyen şoförlü araç ve şoförü',
     prompt: "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic image of a chauffeur in a dark suit standing calmly beside a black premium minivan with plain unmarked body panels and no plate-shaped dark rectangles, parked at the kerb of a quiet city street in soft midday light, seen from a distance and slightly from behind so the face is not the focus. Trees and blurred low buildings behind, all facades completely blank with no signs, banners or lettering. Editorial business photography, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plate.",
   },
+  // ── Batch 2 ──────────────────────────────────────────────────────────────
+  {
+    index: 5,
+    slug: 'otel-transfer',
+    heading: 'Otel girişinde nasıl işler?',
+    alt: 'Otel girişinde bagajın araçtan alınıp resepsiyona taşınması',
+    prompt: "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic image at the covered entrance of an upscale hotel in soft daylight: a chauffeur in a dark suit lifts two plain hard-shell suitcases from the open rear compartment of a black premium minivan with plain unmarked body panels, onto a plain luggage trolley. Polished paving, tall columns, greenery in planters. All facades, awnings, trolley and luggage surfaces completely blank with no signs, banners, lettering or logos. Editorial hospitality photography, natural colour grading, faces not the focus, no text, no logos, no brand marks, no readable signage.",
+  },
+  {
+    index: 6,
+    slug: 'kurumsal-vip-transfer',
+    heading: 'Karşılama ve protokol',
+    alt: 'Kurumsal transferde araç içinde yolculuk eden iş insanları',
+    prompt: "No text, no logos, no brand marks, no readable signage. Photorealistic interior of the rear cabin of a black premium minivan, two business travellers in dark suits seated in the middle row seen from behind and slightly to the side so faces are not the focus, a plain laptop bag on the seat beside them. Soft daylight through tinted windows, blurred city street outside. No badges, no emblems, no lettering on the seats, trim, bag or any surface. Editorial business photography, shallow depth of field, natural colour grading, no text, no logos, no brand marks, no readable signage.",
+  },
+  {
+    index: 7,
+    slug: 'sehirler-arasi-transfer',
+    heading: 'Mola ve yol düzeni',
+    alt: 'Şehirlerarası yolculukta manzaralı bir noktada verilen mola',
+    prompt: "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic image of a black premium minivan with plain unmarked body panels and no plate-shaped dark rectangles, parked at a quiet roadside viewpoint overlooking rolling green hills in warm late-afternoon light. Two travellers stand a few steps away with their backs to the camera, looking at the view. Empty road curving into the distance. No road signs, no gantries, no billboards, no buildings with lettering. Cinematic travel photography, natural colour grading, no text, no logos, no brand marks, no readable signage.",
+  },
+  {
+    index: 8,
+    slug: 'saglik-turizmi-transfer',
+    heading: 'İşlem sonrası dönüşlerde nelere dikkat edilir?',
+    alt: 'Araca iniş binişte yolcuya destek olan transfer şoförü',
+    prompt: "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic image of a chauffeur in a dark suit standing beside the open sliding door of a black premium minivan with plain unmarked body panels, offering a supporting hand to an older passenger stepping down onto a clean, level paved surface. Seen from a respectful distance and slightly from behind so faces are not the focus. Calm, dignified, unhurried atmosphere. Soft daylight, blurred greenery behind, all surfaces blank with no lettering or logos. No medical equipment visible. Editorial documentary photography, natural colour grading, no text, no logos, no brand marks, no readable signage.",
+  },
 ];
 
 function isWebp(bytes) {

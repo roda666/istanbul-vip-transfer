@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { VEHICLE_TYPE_VALUES } from '@/lib/vehicle-options';
+import { vehicleTollPointClassInputSchema } from '@/lib/toll-input';
 
 const createSchema = z.object({
   name: z.string().min(1, 'Araç adı gereklidir').max(200),
@@ -16,6 +17,10 @@ const createSchema = z.object({
   vehicleType: z.enum(VEHICLE_TYPE_VALUES).optional().nullable(),
   priceCalculationEligible: z.boolean().default(false),
   pricingClass: z.enum(['minivan', 'minibus', 'midibus', 'bus']).default('minivan'),
+  // Official toll class is assigned per toll point (never a single global
+  // value), since different operators can classify vehicles differently.
+  // Never guessed by the system: omitted points stay "not yet assigned".
+  tollPointClasses: z.array(vehicleTollPointClassInputSchema).max(50).default([]),
   isActive: z.boolean().default(true),
   features: z.array(z.string().max(200)).default([]),
   coverImage: z.string().max(500).optional().nullable(),
@@ -169,6 +174,19 @@ export async function POST(request: NextRequest) {
         updatedBy: session.adminId,
       })
       .returning();
+
+    if (data.tollPointClasses.length) {
+      const { vehicleTollPointClasses } = await import('@/db/schema');
+      await db.insert(vehicleTollPointClasses).values(
+        data.tollPointClasses.map((entry) => ({
+          vehicleId: newItem.id,
+          tollPointId: entry.tollPointId,
+          vehicleClass: entry.vehicleClass,
+          createdBy: session.adminId,
+          updatedBy: session.adminId,
+        })),
+      );
+    }
 
     await db.insert(auditLogs).values({
       adminUserId: session.adminId,

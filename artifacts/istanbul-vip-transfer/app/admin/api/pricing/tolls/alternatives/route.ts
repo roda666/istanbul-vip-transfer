@@ -62,6 +62,8 @@ export async function POST(request: NextRequest) {
           alternativeId: created.id,
           tollPointId,
           displayOrder,
+          entryGateName: payload.data.gatePairs?.[tollPointId]?.entryGateName ?? null,
+          exitGateName: payload.data.gatePairs?.[tollPointId]?.exitGateName ?? null,
         })));
       }
       return created;
@@ -73,7 +75,7 @@ export async function POST(request: NextRequest) {
       entityId: alternative.id,
       metadata: { routeId: alternative.routeId, isDefault: alternative.isDefault, points: payload.data.pointIds.length },
     }).catch(() => {});
-    return NextResponse.json({ alternative: { ...alternative, pointIds: payload.data.pointIds } }, { status: 201 });
+    return NextResponse.json({ alternative: { ...alternative, pointIds: payload.data.pointIds, gatePairs: payload.data.gatePairs ?? {} } }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Rota alternatifi kaydedilemedi.' }, { status: 422 });
   }

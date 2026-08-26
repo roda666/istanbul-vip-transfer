@@ -62,6 +62,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           alternativeId: id,
           tollPointId,
           displayOrder,
+          entryGateName: payload.data.gatePairs?.[tollPointId]?.entryGateName ?? null,
+          exitGateName: payload.data.gatePairs?.[tollPointId]?.exitGateName ?? null,
         })));
       }
       const [updated] = await tx.update(routeTollAlternatives).set({

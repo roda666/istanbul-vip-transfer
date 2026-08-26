@@ -30,6 +30,8 @@ type TollAlternative = {
   pointNames: string[];
   isPricedForSelectedVehicle: boolean;
   missingTariffPointNames: string[];
+  isBannedForSelectedVehicle: boolean;
+  bannedPointNames: string[];
 };
 type DistanceResult = {
   state: 'DEFINED_ROUTE' | 'ESTIMATED' | 'UNAVAILABLE';
@@ -106,6 +108,10 @@ type QuoteResult = {
   quotedTryKurus?: number;
   effectiveHours?: number;
   includedKmAllowance?: number;
+  hasMissingTollData?: boolean;
+  missingTollNames?: string[];
+  hasStaleTollData?: boolean;
+  staleTollNames?: string[];
 };
 
 type ExchangeRatePreview = {
@@ -260,6 +266,7 @@ function FastQuotePanel({
   const [destinationLocationId, setDestinationLocationId] = useState('');
   const [quoteHours, setQuoteHours] = useState(4);
   const [quoteTripType, setQuoteTripType] = useState<'ONE_WAY' | 'ROUND_TRIP'>('ONE_WAY');
+  const [quotePickupAt, setQuotePickupAt] = useState('');
   const [quoting, setQuoting] = useState(false);
   const [quoteResult, setQuoteResult] = useState<QuoteResult | null>(null);
   const [distance, setDistance] = useState<DistanceResult | null>(null);
@@ -386,7 +393,8 @@ function FastQuotePanel({
         destinationLocationId,
         mode: quoteMode,
         tripType: quoteTripType,
-        ...(quoteMode === 'HOURLY' ? { requestedHours: quoteHours } : {})
+        ...(quoteMode === 'HOURLY' ? { requestedHours: quoteHours } : {}),
+        ...(quotePickupAt ? { pickupAt: new Date(quotePickupAt).toISOString() } : {})
       };
       const res = await fetch('/admin/api/pricing/quote', {
         method: 'POST',
@@ -490,9 +498,14 @@ function FastQuotePanel({
                     ? selectedTollAlternative.pointNames.join(' → ')
                     : 'Bu alternatifte ücretli geçiş bulunmuyor.'}
                 </p>
-                {selectedVehicle && !selectedTollAlternative.isPricedForSelectedVehicle && (
+                {selectedVehicle && selectedTollAlternative.isBannedForSelectedVehicle && (
                   <p className="mt-2 text-xs font-bold text-red-700">
-                    {selectedVehicle.pricingClass} sınıfı için aktif/geçerli tarife eksik: {selectedTollAlternative.missingTariffPointNames.join(', ')}. Yanlış fiyat üretilmeyecek.
+                    Bu araç şu geçiş noktalarından geçemez (yasaklı sınıf): {selectedTollAlternative.bannedPointNames.join(', ')}. Lütfen bu noktaları içermeyen başka bir alternatif seçin.
+                  </p>
+                )}
+                {selectedVehicle && !selectedTollAlternative.isBannedForSelectedVehicle && selectedTollAlternative.missingTariffPointNames.length > 0 && (
+                  <p className="mt-2 text-xs font-bold text-red-700">
+                    Aktif/geçerli tarife eksik: {selectedTollAlternative.missingTariffPointNames.join(', ')}. Yanlış fiyat üretilmeyecek.
                   </p>
                 )}
               </>
@@ -545,6 +558,10 @@ function FastQuotePanel({
             <AmountInput label="Süre (Saat)" value={quoteHours} onChange={setQuoteHours} symbol="sa" decimals={0} min={1} />
           </div>
         )}
+        <div>
+          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Alış Tarihi/Saati (isteğe bağlı — gündüz/gece geçiş tarifesini belirler)</label>
+          <input type="datetime-local" className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={quotePickupAt} onChange={e => setQuotePickupAt(e.target.value)} />
+        </div>
         {profiles.length === 0 && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800">
             Henüz hiçbir fiyat formülü yok. Araç seçimi korunur; otomatik fiyat için <a href="#pricing-profiles" className="font-bold underline">ilk formülü oluşturun</a>.
@@ -559,6 +576,28 @@ function FastQuotePanel({
         <div className="mt-4 border-t border-slate-100 pt-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
           {quoteResult.state === 'AVAILABLE' ? (
             <div className="space-y-4">
+              {quoteResult.hasMissingTollData && (
+                <div className="p-3.5 bg-amber-50 text-amber-800 rounded-xl border border-amber-200 flex items-start gap-3">
+                  <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                  <div>
+                    <div className="font-bold text-sm">Eksik Geçiş Ücreti Verisi</div>
+                    <div className="text-xs mt-1 font-medium leading-relaxed">
+                      Bu fiyata şu geçişler için tarife tanımlanmadığından hiç yansıtılmadı (0 TL varsayılmadı): {quoteResult.missingTollNames?.join(', ') || '—'}. Fiyatı tam yansıtmak için Yol &amp; Geçiş Ücretleri panelinden tarife girin.
+                    </div>
+                  </div>
+                </div>
+              )}
+              {quoteResult.hasStaleTollData && (
+                <div className="p-3.5 bg-orange-50 text-orange-800 rounded-xl border border-orange-200 flex items-start gap-3">
+                  <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                  <div>
+                    <div className="font-bold text-sm">Bayat Geçiş Ücreti Tarifesi</div>
+                    <div className="text-xs mt-1 font-medium leading-relaxed">
+                      Bu geçişlerin tarifesi uzun süredir güncellenmemiş veya yeni takvim yılına girildi, güncel olmayabilir: {quoteResult.staleTollNames?.join(', ') || '—'}.
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl flex flex-col items-center text-center">
                 <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1">MÜŞTERİ FİYATI</span>
                 <span className="text-3xl font-black text-emerald-900">{formatMoneyCents(quoteResult.quotedEurCents || 0, 'EUR')}</span>

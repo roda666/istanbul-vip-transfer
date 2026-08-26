@@ -8,6 +8,20 @@ import { STATUS_LABELS } from '@/lib/workflow';
 import StatusBadge from '../../_components/StatusBadge';
 import { ImageUploadField } from '../../_components/ImageUploadField';
 import { normalizeVehicleType, VEHICLE_TYPE_OPTIONS } from '@/lib/vehicle-options';
+import { TOLL_VEHICLE_CLASSES, TOLL_VEHICLE_CLASS_DESCRIPTIONS, TOLL_VEHICLE_CLASS_LABELS, TOLL_VEHICLE_CLASS_SELECTION_WARNING } from '@/lib/toll-management';
+
+/** Active toll point, as needed for per-point class assignment. */
+export interface TollPointOption {
+  id: string;
+  name: string;
+  classificationLabel: string | null;
+  bannedVehicleClasses: string[] | null;
+}
+
+export interface TollPointClassAssignment {
+  tollPointId: string;
+  vehicleClass: string;
+}
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 const GOLD = '#C9A84C';
@@ -32,6 +46,8 @@ interface FormState {
   vehicleType: string;
   priceCalculationEligible: boolean;
   pricingClass: string;
+  /** Per-toll-point class assignment (class_1..class_6), keyed by tollPointId. Missing/'' entry = not yet assigned at that point. */
+  tollPointClasses: Record<string, string>;
   isActive: boolean;
   passengerCapacity: string;
   luggageCapacity: string;
@@ -60,7 +76,7 @@ function slugify(val: string) {
     .replace(/^-|-$/g, '');
 }
 
-function vehicleToForm(v: Vehicle): FormState {
+function vehicleToForm(v: Vehicle, initialTollPointClasses: TollPointClassAssignment[]): FormState {
   return {
     name: v.name,
     slug: v.slug,
@@ -69,6 +85,7 @@ function vehicleToForm(v: Vehicle): FormState {
     vehicleType: normalizeVehicleType(v.vehicleType) ?? '',
     priceCalculationEligible: v.priceCalculationEligible,
     pricingClass: v.pricingClass,
+    tollPointClasses: Object.fromEntries(initialTollPointClasses.map((entry) => [entry.tollPointId, entry.vehicleClass])),
     isActive: v.isActive,
     passengerCapacity: v.passengerCapacity != null ? String(v.passengerCapacity) : '',
     luggageCapacity: v.luggageCapacity != null ? String(v.luggageCapacity) : '',
@@ -98,6 +115,7 @@ const emptyForm: FormState = {
   vehicleType: '',
   priceCalculationEligible: false,
   pricingClass: 'minivan',
+  tollPointClasses: {},
   isActive: true,
   passengerCapacity: '',
   luggageCapacity: '',
@@ -609,12 +627,14 @@ function ConfirmDialog({
 interface Props {
   vehicle?: Vehicle;
   userRole: string;
+  tollPoints?: TollPointOption[];
+  initialTollPointClasses?: TollPointClassAssignment[];
 }
 
-export default function VehicleForm({ vehicle, userRole }: Props) {
+export default function VehicleForm({ vehicle, userRole, tollPoints = [], initialTollPointClasses = [] }: Props) {
   const router = useRouter();
   const isEdit = !!vehicle;
-  const [form, setForm] = useState<FormState>(vehicle ? vehicleToForm(vehicle) : emptyForm);
+  const [form, setForm] = useState<FormState>(vehicle ? vehicleToForm(vehicle, initialTollPointClasses) : emptyForm);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(isEdit);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -700,6 +720,9 @@ export default function VehicleForm({ vehicle, userRole }: Props) {
       vehicleType: form.vehicleType || null,
       priceCalculationEligible: form.priceCalculationEligible,
       pricingClass: form.pricingClass,
+      tollPointClasses: Object.entries(form.tollPointClasses)
+        .filter(([, vehicleClass]) => vehicleClass)
+        .map(([tollPointId, vehicleClass]) => ({ tollPointId, vehicleClass })),
       isActive: form.isActive,
       features: form.features.filter(Boolean),
       coverImage: form.coverImage || null,
@@ -900,6 +923,62 @@ export default function VehicleForm({ vehicle, userRole }: Props) {
           <option value="midibus">Midibüs</option>
           <option value="bus">Otobüs</option>
         </select>
+        <div style={{ color: MUTED, fontSize: '11px', marginTop: '4px' }}>Bu alan yalnızca genel fiyat profilini belirler; köprü/tünel geçiş ücretlerini aşağıdaki resmî KGM sınıfı belirler.</div>
+      </div>
+      <div style={{ marginBottom: '16px' }}>
+        <Label>Köprü/Tünel Geçiş Sınıfı (geçiş noktası başına)</Label>
+        <div style={{ color: MUTED, fontSize: '11px', marginBottom: '10px', lineHeight: 1.5 }}>
+          Her işletmecinin kendi sınıflandırması olabilir, bu yüzden bu araç her geçiş noktasında ayrı ayrı sınıflandırılır. Bir nokta boş bırakılırsa, o nokta için geçiş ücreti her zaman &quot;eksik veri&quot; olarak işaretlenir — sistem tahmin yapmaz.
+        </div>
+        <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px', color: '#92400E', fontSize: '11px', lineHeight: 1.6, fontWeight: 600 }}>
+          {TOLL_VEHICLE_CLASS_SELECTION_WARNING}
+        </div>
+        {tollPoints.length === 0 ? (
+          <div style={{ background: '#F8FAFC', border: `1px solid ${BORDER}`, borderRadius: '8px', padding: '12px', color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>
+            Aktif bir geçiş noktası tanımlı değil.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {tollPoints.map((point) => {
+              const assigned = form.tollPointClasses[point.id] ?? '';
+              const bannedClasses = point.bannedVehicleClasses ?? [];
+              return (
+                <div key={point.id} style={{ background: '#F8FAFC', border: `1px solid ${BORDER}`, borderRadius: '8px', padding: '12px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                    <div>
+                      <div style={{ color: TEXT, fontSize: '13px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>{point.name}</div>
+                      {point.classificationLabel && (
+                        <div style={{ color: MUTED, fontSize: '11px', marginTop: '2px' }}>{point.classificationLabel}</div>
+                      )}
+                    </div>
+                    <select
+                      value={assigned}
+                      onChange={(event) => setForm((current) => ({ ...current, tollPointClasses: { ...current.tollPointClasses, [point.id]: event.target.value } }))}
+                      style={{ minWidth: '220px', background: BG2, border: `1px solid ${BORDER}`, borderRadius: '6px', color: '#172B3A', fontSize: '13px', fontFamily: 'Inter, sans-serif', padding: '8px 12px', outline: 'none', boxSizing: 'border-box' }}
+                    >
+                      <option value="">— Henüz seçilmedi —</option>
+                      {TOLL_VEHICLE_CLASSES.map((cls) => (
+                        <option key={cls} value={cls} disabled={bannedClasses.includes(cls)}>
+                          {TOLL_VEHICLE_CLASS_LABELS[cls]}{bannedClasses.includes(cls) ? ' (geçişe kapalı)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {assigned && (
+                    <div style={{ color: MUTED, fontSize: '11px', marginTop: '8px', lineHeight: 1.5 }}>
+                      {TOLL_VEHICLE_CLASS_LABELS[assigned as keyof typeof TOLL_VEHICLE_CLASS_LABELS]}: {TOLL_VEHICLE_CLASS_DESCRIPTIONS[assigned as keyof typeof TOLL_VEHICLE_CLASS_DESCRIPTIONS]}
+                      {bannedClasses.includes(assigned) && (
+                        <div style={{ color: '#D64545', marginTop: '4px', fontWeight: 600 }}>
+                          Bu sınıf bu geçiş noktasında yasaklı — bu araç bu noktadan geçemez, fiyat hesaplaması bu noktayı içeren alternatifleri reddedecektir.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
       {isEdit ? (
         <VehiclePricingProfileEditor vehicleId={vehicle!.id} eligible={form.priceCalculationEligible} />

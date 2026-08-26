@@ -6,9 +6,12 @@ import { auditLogs, tollPoints, tollTariffs } from '@/db/schema';
 import {
   assertNoActiveTariffOverlap,
   assertTollDateRange,
+  assertVerifiedSourceForAmount,
   effectiveTollAmount,
+  isOfficialTollSourceUrl,
   parseTollDate,
   safeOfficialSourceUrl,
+  tollTimeBandFlags,
 } from '@/lib/toll-management';
 import { tollTariffInputSchema } from '@/lib/toll-input';
 
@@ -39,31 +42,43 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     assertTollDateRange(validFrom, validUntil);
     const sourceUrl = safeOfficialSourceUrl(payload.data.sourceUrl);
     const amountKurus = effectiveTollAmount(payload.data);
-    if (!amountKurus) return NextResponse.json({ error: 'Etkili TRY tutarı bulunamadı.' }, { status: 422 });
+    assertVerifiedSourceForAmount(amountKurus, sourceUrl);
+    const sourceVerified = isOfficialTollSourceUrl(sourceUrl);
+    const { appliesDay, appliesNight } = tollTimeBandFlags(payload.data.timeBand);
     if (payload.data.active) {
       await assertNoActiveTariffOverlap({
         tollPointId: payload.data.tollPointId,
         vehicleClass: payload.data.vehicleClass,
+        timeBand: payload.data.timeBand,
         validFrom,
         validUntil,
         excludeId: id,
+        entryGateName: payload.data.entryGateName ?? null,
+        exitGateName: payload.data.exitGateName ?? null,
       });
     }
     const now = new Date();
     const [tariff] = await db.update(tollTariffs).set({
       tollPointId: payload.data.tollPointId,
       vehicleClass: payload.data.vehicleClass,
+      timeBand: payload.data.timeBand,
+      appliesDay,
+      appliesNight,
       amountKurus,
       automaticAmountKurus: payload.data.automaticAmountKurus ?? null,
       manualAmountKurus: payload.data.manualAmountKurus ?? null,
       sourceName: payload.data.sourceName?.trim() || null,
       sourceUrl,
-      sourceVerified: payload.data.sourceVerified,
+      sourceVerified,
       sourceFetchedAt: payload.data.automaticAmountKurus !== existing.automaticAmountKurus ? now : existing.sourceFetchedAt,
       manualUpdatedAt: payload.data.manualAmountKurus !== existing.manualAmountKurus ? now : existing.manualUpdatedAt,
       validFrom,
       validUntil,
+      queriedAt: parseTollDate(payload.data.queriedAt),
       active: payload.data.active,
+      entryGateName: payload.data.entryGateName ?? null,
+      exitGateName: payload.data.exitGateName ?? null,
+      direction: payload.data.direction ?? null,
       updatedAt: now,
       updatedBy: session.adminId,
     }).where(eq(tollTariffs.id, id)).returning();
@@ -72,7 +87,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       action: tariff.active ? 'UPDATE' : 'DEACTIVATE',
       entityType: 'TollTariff',
       entityId: tariff.id,
-      metadata: { tollPointId: tariff.tollPointId, vehicleClass: tariff.vehicleClass, active: tariff.active, sourceVerified: tariff.sourceVerified },
+      metadata: { tollPointId: tariff.tollPointId, vehicleClass: tariff.vehicleClass, timeBand: tariff.timeBand, active: tariff.active, sourceVerified: tariff.sourceVerified },
     }).catch(() => {});
     return NextResponse.json({ tariff });
   } catch (error) {

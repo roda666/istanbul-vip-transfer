@@ -421,20 +421,62 @@
       "when": 1789000000003,
       "tag": "0059_mute_alex_power",
       "breakpoints": true
-  },
-  {
-    "idx": 60,
-    "version": "7",
-    "when": 1789000000004,
-    "tag": "0060_toll_tariff_window_integrity",
-    "breakpoints": true
-  },
-  {
-    "idx": 61,
-    "version": "7",
-    "when": 1789000000005,
-    "tag": "0061_backfill_route_toll_defaults",
-    "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1789000000004,
+      "tag": "0060_toll_tariff_window_integrity",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1789000000005,
+      "tag": "0061_backfill_route_toll_defaults",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1789000000006,
+      "tag": "0062_nostalgic_sabretooth",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1789000000007,
+      "tag": "0063_striped_slipstream",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1789000000008,
+      "tag": "0064_ancient_madame_web",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1789000000009,
+      "tag": "0065_bored_morg",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1789000000010,
+      "tag": "0066_aspiring_zzzax",
+      "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1789000000011,
+      "tag": "0067_toll_tariff_gate_pair_window_integrity",
+      "breakpoints": true
     }
   ]
 }

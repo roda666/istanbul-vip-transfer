@@ -32,7 +32,7 @@ export default function TollManagementPage() {
         }}
       >
         <Navigation size={14} />
-        Eksik veya geçersiz araç sınıfı tarifesi bulunan geçişler için sistem fiyat üretmez. Manuel değerler her zaman otomatik kaynaktan önceliklidir.
+        Eksik araç sınıfı tarifesi olan geçişler fiyattan hiç etkilenmez (asla 0 TL varsayılmaz); teklif yine üretilir ama "eksik veri" olarak işaretlenir ve panelde vurgulanır. Manuel değerler her zaman otomatik kaynaktan önceliklidir. Belirlenen eşiği aşan veya yeni takvim yılına giren tarifeler "bayat" olarak uyarılır (Ayarlar sekmesinden yapılandırılabilir).
       </div>
       <TollManagementClient />
     </div>

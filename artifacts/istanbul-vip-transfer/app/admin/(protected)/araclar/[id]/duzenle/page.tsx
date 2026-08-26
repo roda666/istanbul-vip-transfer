@@ -3,8 +3,8 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { db } from '@/db';
-import { vehicles } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { tollPoints, vehicleTollPointClasses, vehicles } from '@/db/schema';
+import { and, asc, eq } from 'drizzle-orm';
 import { requireAdminSession } from '@/lib/auth/session';
 import AdminPageHeader from '../../../../_components/AdminPageHeader';
 import VehicleForm from '../../_VehicleForm';
@@ -30,6 +30,13 @@ export default async function AracDuzenlePage({ params }: Props) {
   const vehicle = rows[0];
   if (!vehicle) notFound();
 
+  const [activeTollPoints, existingClasses] = await Promise.all([
+    db.select().from(tollPoints).where(eq(tollPoints.active, true)).orderBy(asc(tollPoints.name)),
+    db.select({ tollPointId: vehicleTollPointClasses.tollPointId, vehicleClass: vehicleTollPointClasses.vehicleClass })
+      .from(vehicleTollPointClasses)
+      .where(eq(vehicleTollPointClasses.vehicleId, id)),
+  ]);
+
   return (
     <div style={{ padding: '28px 24px' }}>
       <Link
@@ -54,7 +61,7 @@ export default async function AracDuzenlePage({ params }: Props) {
         description={`Slug: ${vehicle.slug}`}
       />
 
-      <VehicleForm vehicle={vehicle} userRole={session.role} />
+      <VehicleForm vehicle={vehicle} userRole={session.role} tollPoints={activeTollPoints} initialTollPointClasses={existingClasses} />
     </div>
   );
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "toll_tariffs" ADD COLUMN "queried_at" timestamp with time zone;

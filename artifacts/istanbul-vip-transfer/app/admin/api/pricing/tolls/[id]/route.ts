@@ -7,7 +7,7 @@ import { tollPointInputSchema } from '@/lib/toll-input';
 
 export const dynamic = 'force-dynamic';
 
-/** PATCH /admin/api/pricing/tolls/[id] — edit or soft-deactivate a crossing point. */
+/** PATCH /admin/api/pricing/tolls/[id] — edit or soft-deactivate a crossing point, including its own day/night cutover hours. */
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   let session;
   try {

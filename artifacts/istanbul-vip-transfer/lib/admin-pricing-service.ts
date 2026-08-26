@@ -15,6 +15,7 @@ import {
   tollTariffs,
   transferRoutes,
   vehiclePricingProfiles,
+  vehicleTollPointClasses,
   vehicles,
 } from '@/db/schema';
 import { resolveLocationDistance, type LocationDistanceResult } from '@/lib/location-distance';
@@ -24,7 +25,12 @@ import {
   type PricingQuoteResult,
   type PricingServiceInput,
 } from '@/lib/admin-pricing-engine';
-import { getDefaultRouteTollAlternative } from '@/lib/toll-management';
+import {
+  evaluateTollTariffStaleness,
+  getDefaultRouteTollAlternative,
+  getTollPricingSettings,
+  resolveActiveTimeBandForPoint,
+} from '@/lib/toll-management';
 
 export function currentlyApplicable<T extends { validFrom: Date | null; validUntil: Date | null }>(rows: T[], at: Date): T | undefined {
   return rows
@@ -58,9 +64,12 @@ export async function createAdminQuote(input: {
   tollAlternativeId?: string;
   serviceQuantities?: Array<{ serviceId: string; quantity: number }>;
   reservationRequestId?: string;
+  /** Trip pickup instant used only to pick the DAY/NIGHT toll tariff band; defaults to now. */
+  pickupAt?: Date;
   adminId: string;
 }): Promise<{ result: PricingQuoteResult; distance: LocationDistanceResult; snapshot?: Record<string, unknown>; quoteSnapshotId?: string }> {
   const now = new Date();
+  const pickupAt = input.pickupAt ?? now;
   let route = null;
   let override = undefined;
   if (input.routeId) {
@@ -126,7 +135,7 @@ export async function createAdminQuote(input: {
     ? input.tollAlternativeId ?? routeDefaultTollAlternativeId
     : null;
   const tolls = input.routeId && effectiveTollAlternativeId
-    ? await resolveTolls(input.routeId, effectiveTollAlternativeId, vehicle.pricingClass, now)
+    ? await resolveTolls(input.routeId, effectiveTollAlternativeId, vehicleId, now, pickupAt, input.tripType)
     : [];
 
   const profile = profileRow ? ({
@@ -238,7 +247,30 @@ async function resolveServices(
   });
 }
 
-async function resolveTolls(routeId: string, alternativeId: string, vehicleClass: string, now: Date) {
+/**
+ * Resolves one line per toll point in the chosen alternative. A point with no
+ * matching active tariff is returned with `amountKurus: null, missing: true`
+ * instead of throwing — a missing tariff must never silently price as zero,
+ * but it also must not block the entire quote. This also covers a point
+ * where the vehicle has no admin-assigned class yet (per toll point, since
+ * classification systems differ by operator): it resolves as "missing" for
+ * that point, since the class was never manually chosen there.
+ *
+ * A point where the vehicle's assigned class is on that point's confirmed
+ * ban list is a different, harder case: the vehicle genuinely cannot use
+ * that crossing, so silently treating it as "missing" (i.e. free) would
+ * underprice, and showing it as ordinary missing data would mislead the
+ * admin into thinking it just needs a tariff entered. This throws instead —
+ * the admin must pick a different alternative that does not route through a
+ * banned crossing for this vehicle.
+ *
+ * Only genuine data-integrity problems (an inactive point, more than one
+ * conflicting active tariff, or a banned crossing) throw; everything else
+ * that is simply not-yet-entered stays non-blocking. Each point resolves its
+ * own day/night band independently, since cutover hours are configured per
+ * toll point, not globally.
+ */
+async function resolveTolls(routeId: string, alternativeId: string, vehicleId: string, now: Date, pickupAt: Date, tripType: 'ONE_WAY' | 'ROUND_TRIP') {
   const [alternative] = await db.select().from(routeTollAlternatives).where(and(
     eq(routeTollAlternatives.id, alternativeId),
     eq(routeTollAlternatives.routeId, routeId),
@@ -250,21 +282,113 @@ async function resolveTolls(routeId: string, alternativeId: string, vehicleClass
   const pointIds = items.map((item) => item.tollPointId);
   const points = await db.select().from(tollPoints).where(and(inArray(tollPoints.id, pointIds), eq(tollPoints.active, true)));
   if (points.length !== pointIds.length) throw new Error('Geçiş noktası artık aktif değil.');
-  const tariffs = await db.select().from(tollTariffs).where(and(
-    inArray(tollTariffs.tollPointId, pointIds),
-    eq(tollTariffs.vehicleClass, vehicleClass),
-    eq(tollTariffs.active, true),
-    or(isNull(tollTariffs.validFrom), lte(tollTariffs.validFrom, now)),
-    or(isNull(tollTariffs.validUntil), gte(tollTariffs.validUntil, now)),
+  const settings = await getTollPricingSettings();
+  const pointBand = new Map(points.map((point) => [point.id, resolveActiveTimeBandForPoint(pickupAt, point)]));
+
+  const pointClassRows = await db.select().from(vehicleTollPointClasses).where(and(
+    eq(vehicleTollPointClasses.vehicleId, vehicleId),
+    inArray(vehicleTollPointClasses.tollPointId, pointIds),
   ));
+  const classByPointId = new Map(pointClassRows.map((row) => [row.tollPointId, row.vehicleClass]));
+  const assignedClasses = [...new Set(pointClassRows.map((row) => row.vehicleClass))];
+
+  const allTariffs = assignedClasses.length
+    ? await db.select().from(tollTariffs).where(and(
+      inArray(tollTariffs.tollPointId, pointIds),
+      inArray(tollTariffs.vehicleClass, assignedClasses),
+      eq(tollTariffs.active, true),
+      or(isNull(tollTariffs.validFrom), lte(tollTariffs.validFrom, now)),
+      or(isNull(tollTariffs.validUntil), gte(tollTariffs.validUntil, now)),
+    ))
+    : [];
+  const tariffs = allTariffs.filter((tariff) => {
+    const vehicleClassAtPoint = classByPointId.get(tariff.tollPointId);
+    if (vehicleClassAtPoint !== tariff.vehicleClass) return false;
+    const band = pointBand.get(tariff.tollPointId) ?? 'DAY';
+    return band === 'DAY' ? tariff.appliesDay : tariff.appliesNight;
+  });
+
   return items.map((item) => {
     const point = points.find((candidate) => candidate.id === item.tollPointId)!;
-    const applicableTariffs = tariffs.filter((candidate) => candidate.tollPointId === item.tollPointId);
-    if (applicableTariffs.length === 0) throw new Error(`${point.name} için ${vehicleClass} tarifesi bulunamadı.`);
-    if (applicableTariffs.length > 1) {
-      throw new Error(`${point.name} için ${vehicleClass} sınıfında birden fazla geçerli tarife bulundu. Fiyat üretimi güvenle durduruldu.`);
+    const vehicleClassAtPoint = classByPointId.get(point.id) ?? null;
+    const bannedClasses = (point.bannedVehicleClasses ?? []) as string[];
+    if (vehicleClassAtPoint && bannedClasses.includes(vehicleClassAtPoint)) {
+      throw new Error(`${point.name} bu araç sınıfı (${vehicleClassAtPoint}) için geçişe kapalıdır. Fiyat üretimi güvenle durduruldu — lütfen bu geçiş noktasını içermeyen başka bir alternatif seçin.`);
     }
-    const tariff = applicableTariffs[0];
-    return { id: point.id, name: point.name, amountKurus: tariff.amountKurus };
+    if (!vehicleClassAtPoint) {
+      return { id: point.id, name: point.name, amountKurus: null as number | null, missing: true as const, stale: false, directionUnconfirmed: point.tollDirection == null };
+    }
+    const isGatePair = point.pricingMode === 'GATE_PAIR';
+    if (isGatePair && (!item.entryGateName || !item.exitGateName)) {
+      // A GATE_PAIR point (e.g. Osmangazi Köprüsü / O-5 corridor) has no
+      // single point-level tariff — this route was never told which gate
+      // pair it actually uses, which is a configuration gap, not a priced
+      // amount waiting on data entry, but it stays non-blocking like any
+      // other missing tariff.
+      return { id: point.id, name: point.name, amountKurus: null as number | null, missing: true as const, stale: false, directionUnconfirmed: point.tollDirection == null };
+    }
+    const pointTariffs = tariffs.filter((candidate) => candidate.tollPointId === item.tollPointId);
+    const forwardCandidates = pointTariffs.filter((candidate) => {
+      if (isGatePair) return candidate.entryGateName === item.entryGateName && candidate.exitGateName === item.exitGateName;
+      if (point.tollDirection === 'TWO_WAY_DIRECTIONAL') return candidate.direction === 'FORWARD';
+      return true;
+    });
+    if (forwardCandidates.length > 1) {
+      throw new Error(`${point.name} için ${vehicleClassAtPoint} sınıfında birden fazla geçerli tarife bulundu. Fiyat üretimi güvenle durduruldu.`);
+    }
+    const forwardAmountKurus = forwardCandidates[0]?.amountKurus ?? null;
+    if (forwardCandidates.length === 0 || forwardAmountKurus == null) {
+      return { id: point.id, name: point.name, amountKurus: null as number | null, missing: true as const, stale: false, directionUnconfirmed: point.tollDirection == null };
+    }
+    const forwardTariff = forwardCandidates[0];
+    const forwardStaleness = evaluateTollTariffStaleness(forwardTariff, settings, now);
+
+    // ONE_WAY trips only ever charge the forward leg, regardless of the
+    // point's tollDirection (that field only governs what a ROUND_TRIP adds).
+    if (tripType === 'ONE_WAY') {
+      return { id: point.id, name: point.name, amountKurus: forwardTariff.amountKurus, missing: false as const, stale: forwardStaleness.stale, directionUnconfirmed: point.tollDirection == null };
+    }
+
+    // ROUND_TRIP: how much the return leg adds depends on tollDirection.
+    if (point.tollDirection === 'ONE_WAY') {
+      // Charged in one direction only — a round trip still pays it once.
+      return { id: point.id, name: point.name, amountKurus: forwardTariff.amountKurus, missing: false as const, stale: forwardStaleness.stale, directionUnconfirmed: false };
+    }
+    if (point.tollDirection === 'TWO_WAY_DIRECTIONAL') {
+      const backwardCandidates = pointTariffs.filter((candidate) => {
+        if (isGatePair) return candidate.entryGateName === item.exitGateName && candidate.exitGateName === item.entryGateName;
+        return candidate.direction === 'BACKWARD';
+      });
+      if (backwardCandidates.length > 1) {
+        throw new Error(`${point.name} için ${vehicleClassAtPoint} sınıfında dönüş yönünde birden fazla geçerli tarife bulundu. Fiyat üretimi güvenle durduruldu.`);
+      }
+      const backwardAmountKurus = backwardCandidates[0]?.amountKurus ?? null;
+      if (backwardCandidates.length === 0 || backwardAmountKurus == null) {
+        // The forward leg is priced but the return leg's own tariff is
+        // missing — summing only the forward amount would silently
+        // under-price the round trip, so the whole toll is missing instead.
+        return { id: point.id, name: point.name, amountKurus: null as number | null, missing: true as const, stale: false, directionUnconfirmed: false };
+      }
+      const backwardTariff = backwardCandidates[0];
+      const backwardStaleness = evaluateTollTariffStaleness(backwardTariff, settings, now);
+      return {
+        id: point.id,
+        name: point.name,
+        amountKurus: forwardAmountKurus + backwardAmountKurus,
+        missing: false as const,
+        stale: forwardStaleness.stale || backwardStaleness.stale,
+        directionUnconfirmed: false,
+      };
+    }
+    // TWO_WAY_SAME, or null/unconfirmed (preserved legacy behavior so
+    // existing quotes don't silently change without a verified source).
+    return {
+      id: point.id,
+      name: point.name,
+      amountKurus: forwardAmountKurus * 2,
+      missing: false as const,
+      stale: forwardStaleness.stale,
+      directionUnconfirmed: point.tollDirection == null,
+    };
   });
 }

@@ -19,8 +19,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (vehicleId && !z.string().uuid().safeParse(vehicleId).success) {
     return NextResponse.json({ error: 'Geçersiz araç.' }, { status: 422 });
   }
+  const pickupAtRaw = request.nextUrl.searchParams.get('pickupAt');
+  let pickupAt: Date | undefined;
+  if (pickupAtRaw) {
+    const parsedDate = new Date(pickupAtRaw);
+    if (Number.isNaN(parsedDate.getTime())) return NextResponse.json({ error: 'Geçersiz geçiş zamanı.' }, { status: 422 });
+    pickupAt = parsedDate;
+  }
   try {
-    return NextResponse.json(await getRouteTollAlternatives(routeId, vehicleId ?? undefined));
+    return NextResponse.json(await getRouteTollAlternatives(routeId, vehicleId ?? undefined, pickupAt));
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Geçiş alternatifleri alınamadı.' }, { status: 422 });
   }

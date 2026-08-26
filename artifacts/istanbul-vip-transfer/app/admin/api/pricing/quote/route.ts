@@ -12,6 +12,8 @@ const quoteSchema = z.object({
   tollAlternativeId: z.string().uuid().optional(),
   serviceQuantities: z.array(z.object({ serviceId: z.string().uuid(), quantity: z.number().int().min(1).max(99) })).max(20).optional(),
   reservationRequestId: z.string().uuid().optional(),
+  /** Trip pickup instant (ISO string), used only to pick the DAY/NIGHT toll tariff band. Defaults to now. */
+  pickupAt: z.string().datetime().optional(),
 }).superRefine((value, ctx) => {
   if (value.mode === 'HOURLY' && !value.requestedHours) ctx.addIssue({ code: 'custom', path: ['requestedHours'], message: 'Tahsis için süre gereklidir.' });
   if (value.tollAlternativeId && !value.routeId) ctx.addIssue({ code: 'custom', path: ['tollAlternativeId'], message: 'Geçiş seçimi için güzergâh gereklidir.' });
@@ -37,7 +39,8 @@ export async function POST(request: NextRequest) {
   if (!payload.success) return NextResponse.json({ error: payload.error.errors[0]?.message ?? 'Doğrulama hatası.' }, { status: 422 });
   try {
     const { createAdminQuote } = await import('@/lib/admin-pricing-service');
-    const quote = await createAdminQuote({ ...payload.data, adminId: session.adminId });
+    const { pickupAt, ...rest } = payload.data;
+    const quote = await createAdminQuote({ ...rest, pickupAt: pickupAt ? new Date(pickupAt) : undefined, adminId: session.adminId });
     return NextResponse.json(quote, { status: quote.result.state === 'AVAILABLE' ? 200 : 422 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Fiyat hesaplanamadı.';

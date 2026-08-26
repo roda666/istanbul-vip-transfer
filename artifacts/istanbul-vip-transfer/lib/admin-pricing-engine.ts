@@ -52,6 +52,24 @@ export type PricingQuoteResult =
     quotedTryKurus: number;
     effectiveHours?: number;
     includedKmAllowance?: number;
+    /**
+     * A missing tariff never silently contributes zero: it is excluded from
+     * the sum and surfaced here so the admin panel can flag the quote as
+     * incomplete instead of quietly under-pricing it.
+     */
+    hasMissingTollData: boolean;
+    missingTollNames: string[];
+    /** A tariff past the configurable staleness threshold still prices the quote, but is flagged for admin review. */
+    hasStaleTollData: boolean;
+    staleTollNames: string[];
+    /**
+     * A toll point whose tollDirection was never confirmed against an
+     * official source still prices the quote using the legacy "double on
+     * round trip" assumption, but is flagged here so the admin knows that
+     * assumption is unverified rather than a sourced fact.
+     */
+    hasUnconfirmedTollDirection: boolean;
+    directionUnconfirmedTollNames: string[];
   };
 
 export function roundUp(value: number, step: number): number {
@@ -83,7 +101,7 @@ export function calculateAdminQuote(input: {
   distanceKm: number;
   requestedHours?: number;
   tripType: 'ONE_WAY' | 'ROUND_TRIP';
-  tolls?: Array<{ id: string; name: string; amountKurus: number }>;
+  tolls?: Array<{ id: string; name: string; amountKurus: number | null; missing?: boolean; stale?: boolean; directionUnconfirmed?: boolean }>;
   services?: PricingServiceInput[];
   vatRateBasisPoints: number;
   vatDisplayMode: 'EXCLUDED' | 'INCLUDED';
@@ -155,9 +173,21 @@ export function calculateAdminQuote(input: {
     if (excessKm) lines.push({ key: 'hourly-km-excess', label: `Km aşımı (${excessKm} km)`, amountKurus: excessKm * profile.excessKmKurus * tripMultiplier, visibleToCustomer: false });
   }
 
+  const missingTollNames: string[] = [];
+  const staleTollNames: string[] = [];
+  const directionUnconfirmedTollNames: string[] = [];
   for (const toll of input.tolls ?? []) {
+    if (toll.missing || toll.amountKurus == null) {
+      missingTollNames.push(toll.name);
+      continue;
+    }
     if (!positiveInteger(toll.amountKurus) || toll.amountKurus < 1) return { state: 'UNAVAILABLE', reason: 'INVALID_INPUT' };
-    lines.push({ key: `toll:${toll.id}`, label: toll.name, amountKurus: toll.amountKurus * tripMultiplier, visibleToCustomer: false });
+    if (toll.stale) staleTollNames.push(toll.name);
+    if (toll.directionUnconfirmed) directionUnconfirmedTollNames.push(toll.name);
+    // Direction-aware round-trip handling already happened upstream (see
+    // resolveTolls): amountKurus here is the FULL round-trip amount for this
+    // point when applicable, so it must never be multiplied again here.
+    lines.push({ key: `toll:${toll.id}`, label: toll.name, amountKurus: toll.amountKurus, visibleToCustomer: false });
   }
   for (const service of input.services ?? []) {
     const amountKurus = serviceTryKurus(service, input.rates);
@@ -189,5 +219,11 @@ export function calculateAdminQuote(input: {
     quotedTryKurus,
     effectiveHours,
     includedKmAllowance,
+    hasMissingTollData: missingTollNames.length > 0,
+    missingTollNames,
+    hasStaleTollData: staleTollNames.length > 0,
+    staleTollNames,
+    hasUnconfirmedTollDirection: directionUnconfirmedTollNames.length > 0,
+    directionUnconfirmedTollNames,
   };
 }

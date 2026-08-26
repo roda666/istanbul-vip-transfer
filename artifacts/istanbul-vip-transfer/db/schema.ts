@@ -75,6 +75,25 @@ export const includedKmModeEnum = pgEnum('included_km_mode', ['PER_HOUR', 'PACKA
 export const fxModeEnum = pgEnum('fx_mode', ['LIVE', 'MANUAL']);
 export const vatDisplayModeEnum = pgEnum('vat_display_mode', ['EXCLUDED', 'INCLUDED']);
 export const tollPointTypeEnum = pgEnum('toll_point_type', ['BRIDGE', 'TUNNEL', 'HIGHWAY']);
+/**
+ * How many times a round trip is actually charged at this point:
+ * ONE_WAY = only ever charged in one direction (a round trip still only pays it once);
+ * TWO_WAY_SAME = charged both directions at the same amount (round trip = 2x forward tariff — today's legacy behavior, also the default for unconfirmed/null points);
+ * TWO_WAY_DIRECTIONAL = charged both directions but the two legs are priced as distinct tariff rows (see toll_tariffs.direction / entry+exit gate names) and must be summed, never doubled.
+ * null = not yet confirmed against an official source; treated like TWO_WAY_SAME so existing quotes don't silently change, but flagged as unconfirmed in the admin panel.
+ */
+export const tollDirectionEnum = pgEnum('toll_direction', ['ONE_WAY', 'TWO_WAY_SAME', 'TWO_WAY_DIRECTIONAL']);
+/**
+ * FLAT = a single tariff row per (point, class, time band) — the vast majority of points.
+ * GATE_PAIR = this point's real-world fee is only ever published via an interactive entry-gate/exit-gate
+ * calculator (e.g. an otoyol operator's fee tool), never a flat table — so each toll_tariffs row here means
+ * "this exact entry gate -> exit gate + class + amount", not "this point's fee".
+ */
+export const tollPricingModeEnum = pgEnum('toll_pricing_mode', ['FLAT', 'GATE_PAIR']);
+/** Used only on FLAT + TWO_WAY_DIRECTIONAL points, where the same physical point charges a different flat amount per direction without needing full gate-pair modeling. Null for every other combination. */
+export const tollTariffDirectionEnum = pgEnum('toll_tariff_direction', ['FORWARD', 'BACKWARD']);
+/** ALL applies around the clock; DAY/NIGHT let an admin enter split tariffs when a crossing genuinely charges differently by time of day. */
+export const tollTimeBandEnum = pgEnum('toll_time_band', ['ALL', 'DAY', 'NIGHT']);
 
 /** Status lifecycle for translation jobs. */
 export const translationStatusEnum = pgEnum('translation_status', [
@@ -430,7 +449,7 @@ export const vehicles = pgTable('vehicles', {
   vehicleType: text('vehicle_type'),
   /** Pricing eligibility is intentionally independent from public publishing. */
   priceCalculationEligible: boolean('price_calculation_eligible').default(false).notNull(),
-  /** Toll tariff class: minivan | minibus | midibus | bus. */
+  /** Toll tariff class: minivan | minibus | midibus | bus. Unrelated to tollClass below — this drives base-fare pricing profiles only. */
   pricingClass: text('pricing_class').default('minivan').notNull(),
   /** Lets admins temporarily remove a published vehicle from public use without archiving it. */
   isActive: boolean('is_active').default(true).notNull(),
@@ -1424,22 +1443,98 @@ export const tollPoints = pgTable('toll_points', {
   name: text('name').notNull(),
   type: tollPointTypeEnum('type').notNull(),
   active: boolean('active').default(true).notNull(),
+  /**
+   * Per-point day/night cutover hours (0-23). Only meaningful for points that
+   * actually have DAY/NIGHT-banded tariffs (e.g. Avrasya Tüneli); null means
+   * this point has no day/night differentiation configured. Deliberately not
+   * a global setting — different crossings can (and do) cut over at
+   * different hours per their own official tariff.
+   */
+  dayStartHour: integer('day_start_hour'),
+  nightStartHour: integer('night_start_hour'),
+  /** Free-text restriction/business-rule note, e.g. "Ağır araçlar (Sınıf 3/4/5) bu tünelden geçemez" — genuine "not applicable", distinct from a missing tariff. */
+  notes: text('notes'),
+  /**
+   * Admin-facing description of which vehicle-classification system this
+   * point actually uses, e.g. "KGM Resmî Sınıf 1-6" or, for an operator whose
+   * own classification only turns out to be compatible with a subset of KGM
+   * classes, a note documenting that finding and its source. Never inferred:
+   * an admin/agent must read the operator's own tariff page and record what
+   * it says here — a class code (class_1..class_6) shared across points is
+   * only usable per-point once this label confirms it applies at that point.
+   */
+  classificationLabel: text('classification_label'),
+  /**
+   * class_1..class_6 codes that CANNOT cross this point at all (e.g. Avrasya
+   * Tüneli bans 3+ axle vehicles outright). null = not yet confirmed either
+   * way — the admin must check the operator's own restriction notice before
+   * this is set. An empty array is itself a confirmed claim ("no class is
+   * banned here") and must carry its own source, same as a non-empty one.
+   * This is a genuine "vehicle cannot use this crossing" fact, distinct from
+   * "missing tariff": the pricing engine must never add a fee for a banned
+   * class, and must refuse to price an alternative that requires one.
+   */
+  bannedVehicleClasses: jsonb('banned_vehicle_classes').$type<string[]>(),
+  /** Required whenever bannedVehicleClasses is non-null; verified the same way as a tariff's sourceUrl (see assertVerifiedSourceForBan). */
+  bannedVehicleClassesSourceUrl: text('banned_vehicle_classes_source_url'),
+  /**
+   * How many times a round trip actually pays this point. Null = unconfirmed
+   * (an official source was never checked for this specific point) — the
+   * engine treats null the same as TWO_WAY_SAME to avoid silently changing
+   * already-live pricing, but the admin panel visibly flags it as unverified.
+   */
+  tollDirection: tollDirectionEnum('toll_direction'),
+  /** Required together with tollDirection whenever it is set (same verification pattern as assertVerifiedSourceForBan). */
+  tollDirectionSourceUrl: text('toll_direction_source_url'),
+  /** Free-text note on what the source actually said (e.g. "iki yönlü ücretlendirme 1 Ocak 2022'den itibaren başladı"). */
+  tollDirectionNotes: text('toll_direction_notes'),
+  /**
+   * FLAT (default) = normal single-amount-per-class tariff rows. GATE_PAIR =
+   * this point's real fee only exists as an entry-gate/exit-gate calculator
+   * result (e.g. an otoyol operator's fee tool) — toll_tariffs rows for this
+   * point must carry entryGateName/exitGateName and mean "this exact gate
+   * pair", not "this point".
+   */
+  pricingMode: tollPricingModeEnum('pricing_mode').default('FLAT').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   createdBy: uuid('created_by').references(() => adminUsers.id, { onDelete: 'set null' }),
   updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
 });
 
+/**
+ * A vehicle's toll class is assigned per toll point, never globally: two
+ * operators can (and here, do) use different classification systems, so
+ * "this vehicle is class_2" is only meaningful at a specific point. Absence
+ * of a row for a (vehicle, point) pair means "not yet assigned" — resolved
+ * as a missing tariff for that point, never a guessed class.
+ */
+export const vehicleTollPointClasses = pgTable('vehicle_toll_point_classes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  vehicleId: uuid('vehicle_id').notNull().references(() => vehicles.id, { onDelete: 'cascade' }),
+  tollPointId: uuid('toll_point_id').notNull().references(() => tollPoints.id, { onDelete: 'cascade' }),
+  /** class_1..class_6 — the shared code vocabulary; classificationLabel on the point documents what it means there. */
+  vehicleClass: text('vehicle_class').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  createdBy: uuid('created_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+  updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+}, (table) => [
+  uniqueIndex('vehicle_toll_point_classes_unique').on(table.vehicleId, table.tollPointId),
+]);
+
 export const tollTariffs = pgTable('toll_tariffs', {
   id: uuid('id').primaryKey().defaultRandom(),
   tollPointId: uuid('toll_point_id').notNull().references(() => tollPoints.id, { onDelete: 'cascade' }),
+  /** class_1..class_6, the official KGM taxonomy. */
   vehicleClass: text('vehicle_class').notNull(),
   /**
    * Effective, server-resolved TRY amount. It is kept for fast quote lookups;
    * when a manual override exists it must equal manualAmountKurus, otherwise it
-   * equals automaticAmountKurus.
+   * equals automaticAmountKurus. Nullable: a scaffolded row with no amount yet
+   * is a legitimate "not sourced yet" state, not an error.
    */
-  amountKurus: integer('amount_kurus').notNull(),
+  amountKurus: integer('amount_kurus'),
   /** Latest amount received from a configured, verified official adapter. */
   automaticAmountKurus: integer('automatic_amount_kurus'),
   /** Admin-entered value that always takes precedence over automatic updates. */
@@ -1450,10 +1545,34 @@ export const tollTariffs = pgTable('toll_tariffs', {
   sourceVerified: boolean('source_verified').default(false).notNull(),
   sourceFetchedAt: timestamp('source_fetched_at', { withTimezone: true }),
   manualUpdatedAt: timestamp('manual_updated_at', { withTimezone: true }),
+  /**
+   * None of OTOYOL A.Ş., the YSS Köprüsü/Kuzey Marmara Otoyolu operator, or
+   * (presumably) other BOT-style highway operators publish a flat tariff
+   * table — their pages are live entry/exit-gate calculators with NO stated
+   * tariff effective date. When validFrom is null, this is the only honest
+   * staleness baseline: the date/time an admin/agent personally queried the
+   * calculator for this exact amount. Required (see tollTariffInputSchema)
+   * whenever an amount is set and validFrom is not.
+   */
+  queriedAt: timestamp('queried_at', { withTimezone: true }),
   lastSyncError: text('last_sync_error'),
+  /** ALL/DAY/NIGHT. Admin-facing selector; appliesDay/appliesNight below are derived from it for overlap enforcement. */
+  timeBand: tollTimeBandEnum('time_band').default('ALL').notNull(),
+  /** Derived from timeBand (ALL sets both true). Feeds the day/night exclusion constraints — never set independently of timeBand. */
+  appliesDay: boolean('applies_day').default(true).notNull(),
+  appliesNight: boolean('applies_night').default(true).notNull(),
   validFrom: timestamp('valid_from', { withTimezone: true }),
   validUntil: timestamp('valid_until', { withTimezone: true }),
   active: boolean('active').default(true).notNull(),
+  /**
+   * Only set (both together) when the parent toll_points.pricingMode is
+   * GATE_PAIR: this row's amount applies to exactly this entry->exit gate
+   * pair, not to the point as a whole. Null/null for every FLAT point.
+   */
+  entryGateName: text('entry_gate_name'),
+  exitGateName: text('exit_gate_name'),
+  /** Only set on a FLAT point whose tollDirection is TWO_WAY_DIRECTIONAL (a flat amount that itself differs by direction without needing gate-pair modeling). Null everywhere else, including GATE_PAIR points (direction there is implied by entry/exit gate order). */
+  direction: tollTariffDirectionEnum('direction'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   createdBy: uuid('created_by').references(() => adminUsers.id, { onDelete: 'set null' }),
@@ -1481,9 +1600,28 @@ export const routeTollAlternativeItems = pgTable('route_toll_alternative_items',
   alternativeId: uuid('alternative_id').notNull().references(() => routeTollAlternatives.id, { onDelete: 'cascade' }),
   tollPointId: uuid('toll_point_id').notNull().references(() => tollPoints.id, { onDelete: 'restrict' }),
   displayOrder: integer('display_order').default(0).notNull(),
+  /**
+   * Required together, only when the referenced toll point has
+   * pricingMode = GATE_PAIR: which gate pair this route uses in its forward
+   * direction (the return leg looks up the swapped exit->entry pair). Null
+   * for every FLAT point.
+   */
+  entryGateName: text('entry_gate_name'),
+  exitGateName: text('exit_gate_name'),
 }, (table) => [
   uniqueIndex('route_toll_alternative_item_unique').on(table.alternativeId, table.tollPointId),
 ]);
+
+/** Singleton: staleness threshold only. Day/night cutover hours are per-toll-point (see toll_points), not global. */
+export const tollPricingSettings = pgTable('toll_pricing_settings', {
+  id: integer('id').primaryKey().default(1),
+  /** A tariff not reviewed/updated within this many days is flagged stale in the admin panel. */
+  staleAfterDays: integer('stale_after_days').default(180).notNull(),
+  /** Also flag a tariff stale once the calendar year has turned over since it was last reviewed. */
+  warnOnNewYearRollover: boolean('warn_on_new_year_rollover').default(true).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+});
 
 /** Shared paid-service catalog used by the admin quote engine. Public rendering stays opt-in. */
 export const optionalServices = pgTable('optional_services', {

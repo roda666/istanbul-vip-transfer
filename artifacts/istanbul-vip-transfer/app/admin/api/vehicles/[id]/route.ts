@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { VEHICLE_TYPE_VALUES } from '@/lib/vehicle-options';
+import { vehicleTollPointClassInputSchema } from '@/lib/toll-input';
 
 const updateSchema = z.object({
   name: z.string().min(1, 'Araç adı gereklidir').max(200).optional(),
@@ -17,6 +18,10 @@ const updateSchema = z.object({
   vehicleType: z.enum(VEHICLE_TYPE_VALUES).optional().nullable(),
   priceCalculationEligible: z.boolean().optional(),
   pricingClass: z.enum(['minivan', 'minibus', 'midibus', 'bus']).optional(),
+  // Per-toll-point class assignment, manually admin-picked. Omitted entirely
+  // means "leave assignments unchanged"; an explicit [] clears all of them
+  // back to "not yet assigned" at every point.
+  tollPointClasses: z.array(vehicleTollPointClassInputSchema).max(50).optional(),
   isActive: z.boolean().optional(),
   features: z.array(z.string().max(200)).optional(),
   coverImage: z.string().max(500).optional().nullable(),
@@ -182,6 +187,24 @@ export async function PUT(request: NextRequest, { params }: Params) {
       .set(updateValues)
       .where(eq(vehicles.id, id))
       .returning();
+
+    if (data.tollPointClasses !== undefined) {
+      const { vehicleTollPointClasses } = await import('@/db/schema');
+      // Replace-all semantics: the admin's submitted set is the full,
+      // authoritative per-point assignment for this vehicle.
+      await db.delete(vehicleTollPointClasses).where(eq(vehicleTollPointClasses.vehicleId, id));
+      if (data.tollPointClasses.length) {
+        await db.insert(vehicleTollPointClasses).values(
+          data.tollPointClasses.map((entry) => ({
+            vehicleId: id,
+            tollPointId: entry.tollPointId,
+            vehicleClass: entry.vehicleClass,
+            createdBy: session.adminId,
+            updatedBy: session.adminId,
+          })),
+        );
+      }
+    }
 
     await db
       .insert(auditLogs)

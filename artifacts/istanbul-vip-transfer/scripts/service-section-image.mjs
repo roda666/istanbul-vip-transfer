@@ -93,6 +93,35 @@ const SPECS = [
     alt: 'Araca iniş binişte yolcuya destek olan transfer şoförü',
     prompt: "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic image of a chauffeur in a dark suit standing beside the open sliding door of a black premium minivan with plain unmarked body panels, offering a supporting hand to an older passenger stepping down onto a clean, level paved surface. Seen from a respectful distance and slightly from behind so faces are not the focus. Calm, dignified, unhurried atmosphere. Soft daylight, blurred greenery behind, all surfaces blank with no lettering or logos. No medical equipment visible. Editorial documentary photography, natural colour grading, no text, no logos, no brand marks, no readable signage.",
   },
+  // ── Batch 3 ──────────────────────────────────────────────────────────────
+  {
+    index: 9,
+    slug: 'istanbul-bursa-transfer',
+    heading: 'Hangi güzergâh kullanılır?',
+    alt: "Körfez geçişli otoyolda İstanbul'dan Bursa'ya ilerleyen transfer aracı",
+    prompt: "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic wide shot of a long modern motorway bridge crossing a wide calm bay in clear morning light, a black premium minivan with plain unmarked body panels and no plate-shaped dark rectangles travelling across it, seen from an elevated side angle with distant green hills beyond the water. Light traffic. No road signs, no gantries, no billboards anywhere. Cinematic travel photography, natural colour grading, no text, no logos, no brand marks, no readable signage.",
+  },
+  {
+    index: 10,
+    slug: 'istanbul-sapanca-transfer',
+    heading: 'Villa ve bungalov adreslerinde nelere dikkat edilir?',
+    alt: 'Sapanca çevresinde dar ve ağaçlıklı bir yolda ilerleyen transfer aracı',
+    prompt: "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic image of a black premium minivan with plain unmarked body panels and no plate-shaped dark rectangles, moving slowly along a narrow tree-lined country lane with dappled sunlight falling through dense green foliage, low wooden fences and a glimpse of a lake below through the trees. Quiet, unhurried atmosphere. No road signs, no billboards, no buildings with lettering. Editorial travel photography, natural colour grading, no text, no logos, no brand marks, no readable signage.",
+  },
+  {
+    index: 11,
+    slug: 'istanbul-gunubirlik-turlar',
+    heading: 'Zamanlama ve kalabalık',
+    alt: 'Sabah erken saatte sakin bir tarihi sokakta bekleyen tur aracı',
+    prompt: "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic image of an empty historic cobblestone street in early morning light, warm-toned old stone buildings on both sides, long soft shadows, a black premium minivan with plain unmarked body panels and no plate-shaped dark rectangles parked at the kerb. Almost no people, calm and quiet. All facades, shutters and windows completely blank with no signs, banners, menus or lettering. No identifiable monument. Editorial travel photography, natural colour grading, no text, no logos, no brand marks, no readable signage.",
+  },
+  {
+    index: 12,
+    slug: 'bursa-gunubirlik-tur',
+    heading: 'Nereler gezilir?',
+    alt: "Bursa'da tarihi han ve çarşı bölgesinin sakin bir avlusu",
+    prompt: "No text, no logos, no brand marks, no readable signage. Photorealistic image of a quiet historic Ottoman-era caravanserai courtyard with stone arcades on two levels, a large plane tree in the centre, simple wooden chairs and tables in the shade, soft morning light falling across worn stone paving. A few blurred figures in the distance. All walls, doors, shutters and surfaces completely blank with no signs, boards, menus or lettering anywhere. Editorial travel photography, natural colour grading, no text, no logos, no brand marks, no readable signage.",
+  },
 ];
 
 function isWebp(bytes) {

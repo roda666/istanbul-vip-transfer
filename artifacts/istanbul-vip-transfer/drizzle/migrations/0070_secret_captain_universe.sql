@@ -1,0 +1,1 @@
+ALTER TABLE "site_settings" ADD COLUMN "image_compression_max_kb" integer DEFAULT 200 NOT NULL;

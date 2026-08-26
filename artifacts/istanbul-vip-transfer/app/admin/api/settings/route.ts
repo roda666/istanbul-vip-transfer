@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { invalidateContactSettings } from '@/lib/site-settings-server';
+import { invalidateImageSettings } from '@/lib/image-settings-server';
 import { revalidateTag } from 'next/cache';
 import { PUBLIC_CHROME_TAG } from '@/lib/public-chrome-cache';
 import { normalizeEmailLinkBaseUrl, resolveEmailLinkOrigin } from '@/lib/email-link-url';
@@ -45,6 +46,7 @@ const settingsSchema = z.object({
   tiktokUrl:       optionalHttpsUrl,
   youtubeUrl:      optionalHttpsUrl,
   approvalGateEnabled: z.boolean().optional(),
+  imageCompressionMaxKb: z.number().int().min(50).max(2000).optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -96,6 +98,7 @@ export async function POST(request: NextRequest) {
 
     await db.insert(auditLogs).values({ adminUserId: session.adminId, action: 'UPDATE', entityType: 'SiteSettings', entityId: '1' }).catch(() => {});
     invalidateContactSettings(); // flush module-level cache so next request reflects updated values
+    invalidateImageSettings();
     revalidateTag(PUBLIC_CHROME_TAG);
     return NextResponse.json({ settings: updated });
   } catch (err) {

@@ -107,11 +107,36 @@ function parsePrivateDir(dir: string) {
   return slash < 0 ? { bucket: cleaned, prefix: '' } : { bucket: cleaned.slice(0, slash), prefix: cleaned.slice(slash + 1) };
 }
 
-async function uploadWebp(bytes: Uint8Array, objectName: string): Promise<string> {
+let cachedCompressionMaxBytes: number | null = null;
+
+/** Reads the admin-configurable compression threshold from site_settings (falls back to 200 KB). */
+async function getCompressionMaxBytes(sql: ReturnType<typeof postgres>): Promise<number> {
+  if (cachedCompressionMaxBytes !== null) return cachedCompressionMaxBytes;
+  try {
+    const rows = await sql`SELECT image_compression_max_kb FROM site_settings WHERE id = 1`;
+    const kb = (rows[0] as { image_compression_max_kb?: number } | undefined)?.image_compression_max_kb;
+    cachedCompressionMaxBytes = (typeof kb === 'number' && kb > 0 ? kb : 200) * 1024;
+  } catch {
+    cachedCompressionMaxBytes = 200 * 1024;
+  }
+  return cachedCompressionMaxBytes;
+}
+
+async function uploadWebp(bytes: Uint8Array, objectName: string, sql: ReturnType<typeof postgres>): Promise<string> {
   const configured = process.env.PRIVATE_OBJECT_DIR?.trim();
   if (!configured) throw new Error('PRIVATE_OBJECT_DIR is not configured');
   const { bucket, prefix } = parsePrivateDir(configured);
   if (!bucket) throw new Error('PRIVATE_OBJECT_DIR is invalid');
+
+  const maxBytes = await getCompressionMaxBytes(sql);
+  let finalBytes = bytes;
+  if (bytes.byteLength > maxBytes) {
+    const { recompressWebpToBudget } = await import('../lib/studio/image-media');
+    const result = await recompressWebpToBudget(bytes, maxBytes);
+    finalBytes = result.bytes;
+    if (result.recompressed) console.log(`  ↓ recompressed: ${bytes.byteLength} → ${finalBytes.byteLength} bytes (threshold ${maxBytes / 1024} KB)`);
+  }
+
   const sign = await fetch(`${SIDECAR}/object-storage/signed-object-url`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ bucket_name: bucket, object_name: [prefix, objectName].filter(Boolean).join('/'), method: 'PUT', expires_at: new Date(Date.now() + 900_000).toISOString() }),
@@ -120,10 +145,10 @@ async function uploadWebp(bytes: Uint8Array, objectName: string): Promise<string
   if (!sign.ok) throw new Error(`Storage signing failed (${sign.status})`);
   const signed = await sign.json() as { signed_url?: unknown };
   if (typeof signed.signed_url !== 'string') throw new Error('Storage signing returned an invalid response');
-  const uploadBody = new ArrayBuffer(bytes.byteLength);
-  new Uint8Array(uploadBody).set(bytes);
+  const uploadBody = new ArrayBuffer(finalBytes.byteLength);
+  new Uint8Array(uploadBody).set(finalBytes);
   const upload = await fetch(signed.signed_url, {
-    method: 'PUT', headers: { 'Content-Type': 'image/webp', 'Content-Length': String(bytes.byteLength) },
+    method: 'PUT', headers: { 'Content-Type': 'image/webp', 'Content-Length': String(finalBytes.byteLength) },
     body: uploadBody, signal: AbortSignal.timeout(60_000),
   });
   if (!upload.ok) throw new Error(`Storage upload failed (${upload.status})`);
@@ -223,7 +248,7 @@ async function main() {
           const raw = await responseBytes(generated.data?.[0] ?? {});
           const optimized = await optimizeGeneratedImage(raw);
           if (!optimized || !isWebp(optimized)) throw new Error('Image optimization failed');
-          const permanentUrl = await uploadWebp(optimized, blogHeroObjectName(blog.slug, randomUUID()));
+          const permanentUrl = await uploadWebp(optimized, blogHeroObjectName(blog.slug, randomUUID()), sql);
           if (!blog.id) {
             results.uploaded.push({ slug: configKey, reason: `permanent asset retained without assignment: ${permanentUrl}` });
             console.log(`  ✓ ${configKey}: uploaded to permanent storage; no CMS record, not assigned`);
@@ -295,7 +320,7 @@ async function main() {
         const optimized = await optimizeGeneratedImage(raw);
         if (!optimized || !isWebp(optimized)) throw new Error('Image optimization failed');
         const objectName = `ai-images/service/${service.slug}/${randomUUID()}.webp`;
-        const permanentUrl = await uploadWebp(optimized, objectName);
+        const permanentUrl = await uploadWebp(optimized, objectName, sql);
         await sql`UPDATE content SET hero_image = ${permanentUrl}, hero_image_alt = ${config.altText}, updated_at = now() WHERE id::text = ${service.id}`;
         results.updated.push({ slug: service.slug });
         console.log(`  ✓ ${service.slug}: updated`);

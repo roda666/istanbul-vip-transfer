@@ -95,3 +95,4 @@
 - [Shared vs translated content fields](content-shared-vs-translated-fields.md) — structural fields (category, order, active, indexable...) are single shared columns; a "changed in TR but not other languages" symptom is usually a public reader using a too-narrow translation-status filter, not a data bug.
 - [Reservation panel count vs DB count](reservation-panel-archived-rows.md) — admin Talepler list excludes archived_at rows by default; DB total will exceed the panel's displayed count by the archived-row count.
 - [ShellExec background process lifecycle](shellexec-background-process-lifecycle.md) — nohup/& processes die when the ShellExec call returns; split long scripts into sequential foreground slice calls instead.
+- [Image compression threshold system](image-compression-threshold-system.md) — admin-configurable max-KB ceiling on WebP uploads; in-place overwrite backfill so URLs never change; direct-browser-upload path not yet covered.

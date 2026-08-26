@@ -122,6 +122,21 @@ const SPECS = [
     alt: "Bursa'da tarihi han ve çarşı bölgesinin sakin bir avlusu",
     prompt: "No text, no logos, no brand marks, no readable signage. Photorealistic image of a quiet historic Ottoman-era caravanserai courtyard with stone arcades on two levels, a large plane tree in the centre, simple wooden chairs and tables in the shade, soft morning light falling across worn stone paving. A few blurred figures in the distance. All walls, doors, shutters and surfaces completely blank with no signs, boards, menus or lettering anywhere. Editorial travel photography, natural colour grading, no text, no logos, no brand marks, no readable signage.",
   },
+  // ── Batch 4 ──────────────────────────────────────────────────────────────
+  {
+    index: 13,
+    slug: 'yalova-gunubirlik-tur',
+    heading: 'Feribotla mı, karayoluyla mı?',
+    alt: 'Yalova yolculuğunda feribot güvertesinden deniz ve kıyı görünümü',
+    prompt: "No text, no logos, no brand marks, no readable signage. Photorealistic view from the open upper deck of a passenger ferry crossing a calm sea in soft afternoon light, wooden benches and metal railings in the foreground, a distant green coastline and low hills on the horizon, gentle wake trailing behind. A few blurred passengers seen from behind. All surfaces, railings, lifebuoys and walls completely blank with no lettering, numbers, signs or logos. Editorial travel photography, natural colour grading, no text, no logos, no brand marks, no readable signage.",
+  },
+  {
+    index: 14,
+    slug: 'sapanca-masukiye-turu',
+    heading: 'Maşukiye\'de ne var?',
+    alt: 'Maşukiye\'de dere kenarındaki ağaçlık dinlenme alanı',
+    prompt: "No text, no logos, no brand marks, no readable signage. Photorealistic image of a clear shallow mountain stream running through dense green forest, simple wooden platforms and plain tables set close to the water under tall trees, dappled sunlight on the surface, moss-covered rocks. Calm, cool, unhurried atmosphere, no people in focus. All wooden surfaces, boards and structures completely blank with no signs, menus, lettering or logos. Editorial nature photography, natural colour grading, no text, no logos, no brand marks, no readable signage.",
+  },
 ];
 
 function isWebp(bytes) {
@@ -208,6 +223,37 @@ async function uploadWebp(bytes, objectName) {
   return `/api/storage/objects/${objectName}`;
 }
 
+const RECOMPRESS_QUALITY_STEPS = [82, 76, 70, 64];
+
+/** Re-encode WebP at lower quality/higher effort until under budget; never enlarges, never below the quality floor. */
+async function recompressToBudget(bytes, maxBytes) {
+  if (bytes.byteLength <= maxBytes) return { bytes, recompressed: false };
+  let best = bytes;
+  for (const quality of RECOMPRESS_QUALITY_STEPS) {
+    const candidate = await sharp(Buffer.from(bytes), { failOn: 'error', limitInputPixels: MAX_GENERATED_IMAGE_PIXELS })
+      .webp({ quality, effort: 6, smartSubsample: true })
+      .toBuffer();
+    if (candidate.byteLength === 0) continue;
+    if (candidate.byteLength < best.byteLength) best = new Uint8Array(candidate);
+    if (candidate.byteLength <= maxBytes) return { bytes: new Uint8Array(candidate), recompressed: true };
+  }
+  return { bytes: best, recompressed: best.byteLength < bytes.byteLength };
+}
+
+/** Reads the admin-configurable compression threshold from site_settings (falls back to 200 KB). */
+async function getCompressionMaxBytes() {
+  const sql = postgres(process.env.DATABASE_URL);
+  try {
+    const rows = await sql`SELECT image_compression_max_kb FROM site_settings WHERE id = 1`;
+    const kb = rows[0]?.image_compression_max_kb;
+    return (typeof kb === 'number' && kb > 0 ? kb : 200) * 1024;
+  } catch {
+    return 200 * 1024;
+  } finally {
+    await sql.end();
+  }
+}
+
 function parseArgs() {
   const args = Object.fromEntries(process.argv.slice(3).map(a => {
     const [k, ...rest] = a.replace(/^--/, '').split('=');
@@ -238,8 +284,14 @@ async function cmdPlace(args) {
   const spec = SPECS.find(s => String(s.index) === args.index);
   if (!spec) throw new Error(`Unknown --index=${args.index}`);
   if (!args.file) throw new Error('--file is required');
-  const bytes = new Uint8Array(readFileSync(args.file));
-  if (!isWebp(bytes)) throw new Error('--file is not a valid WebP');
+  const original = new Uint8Array(readFileSync(args.file));
+  if (!isWebp(original)) throw new Error('--file is not a valid WebP');
+
+  const maxBytes = await getCompressionMaxBytes();
+  const { bytes, recompressed } = await recompressToBudget(original, maxBytes);
+  if (recompressed) {
+    console.log(`↓ Recompressed: ${original.byteLength} → ${bytes.byteLength} bytes (threshold ${maxBytes / 1024} KB)`);
+  }
 
   const objectName = `ai-images/service/${spec.slug}/section-images/${randomUUID()}.webp`;
   const permanentUrl = await uploadWebp(bytes, objectName);

@@ -104,11 +104,17 @@ function exactArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   return Uint8Array.from(bytes).buffer;
 }
 
-async function putPrivateWebp(entityId: string, bytes: Uint8Array): Promise<{ ok: true } | { ok: false; message: string }> {
+async function putPrivateWebp(entityId: string, inputBytes: Uint8Array): Promise<{ ok: true } | { ok: false; message: string }> {
   const privateDir = process.env.PRIVATE_OBJECT_DIR?.trim();
   if (!privateDir) return { ok: false, message: 'Görsel depolama hizmeti yapılandırılmamış.' };
   const { bucket, prefix } = parsePrivateObjectDir(privateDir);
   if (!bucket) return { ok: false, message: 'Görsel depolama yapılandırması geçersiz.' };
+
+  const { getImageCompressionMaxKb } = await import('@/lib/image-settings-server');
+  const { recompressWebpToBudget } = await import('@/lib/studio/image-media');
+  const maxKb = await getImageCompressionMaxKb();
+  const { bytes } = await recompressWebpToBudget(inputBytes, maxKb * 1024);
+
   try {
     const sign = await fetch(`${process.env.REPLIT_SIDECAR_ENDPOINT ?? 'http://127.0.0.1:1106'}/object-storage/signed-object-url`, {
       method: 'POST',

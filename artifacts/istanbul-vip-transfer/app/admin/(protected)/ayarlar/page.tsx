@@ -25,6 +25,7 @@ interface Settings {
   googleReviewUrl?: string | null;
   tiktokUrl?: string | null;
   youtubeUrl?: string | null;
+  imageCompressionMaxKb?: number | null;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -198,6 +199,24 @@ export default function AyarlarPage() {
             <div>
               <label style={labelStyle}>Varsayılan Meta Açıklama</label>
               <textarea {...field('defaultSeoDescription')} style={{ ...inputStyle, minHeight: '64px', resize: 'vertical' }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Medya */}
+        <div style={{ background: '#FFFFFF', border: '1px solid #D8E1E9', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
+          <p style={{ color: '#52697A', fontSize: '11px', fontFamily: 'Inter, sans-serif', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '16px', paddingBottom: '10px', borderBottom: '1px solid #EDF2F7', margin: '0 0 16px' }}>Medya</p>
+          <div style={{ display: 'grid', gap: '12px' }}>
+            <div>
+              <label style={labelStyle}>Görsel Sıkıştırma Eşiği (KB)</label>
+              <input
+                type="number" min={50} max={2000} step={10}
+                value={settings.imageCompressionMaxKb ?? ''}
+                onChange={(e) => setSettings(s => ({ ...s, imageCompressionMaxKb: e.target.value === '' ? null : Number(e.target.value) }))}
+                style={inputStyle}
+                placeholder="200"
+              />
+              <p style={hintStyle}>Kalıcı depoya yüklenen görseller bu boyutu (KB) aşarsa, görünür kalite kaybı olmadan otomatik olarak yeniden sıkıştırılır. Görsel adresi değişmez.</p>
             </div>
           </div>
         </div>

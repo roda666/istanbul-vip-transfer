@@ -25,3 +25,10 @@ tables from an earlier session (`classification_label`, `banned_vehicle_classes`
 that `__drizzle_migrations` showed as "applied" were actually absent from the live DB. This is a standing risk
 in this project, not a one-off: always verify schema state directly against `information_schema` after any
 `drizzle-kit migrate`, especially before writing seed/backfill scripts that assume new columns exist.
+
+**Recurrence #3 (2026-08-26, same day):** a single new column (`site_settings.image_compression_max_kb`)
+generated as migration 0070 was also silently skipped — `drizzle.__drizzle_migrations` had no row with its
+hash, and the column was missing from `information_schema.columns`, right after `drizzle-kit migrate` printed
+success. Manual fix each time: run the migration's own `ALTER TABLE` directly, then hand-insert a row into
+`drizzle.__drizzle_migrations` with that migration file's real sha256 hash and a `created_at` one greater than
+`MAX(created_at::bigint)` in that table — otherwise the same file will be silently skipped forever.

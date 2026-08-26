@@ -262,6 +262,12 @@ export const siteSettings = pgTable('site_settings', {
    * account owner may turn it off through the protected settings endpoint.
    */
   approvalGateEnabled: boolean('approval_gate_enabled').default(true).notNull(),
+  /**
+   * Any WebP uploaded to permanent object storage above this size is
+   * automatically recompressed (lower quality/higher effort, same
+   * dimensions) before being kept, without visibly degrading it.
+   */
+  imageCompressionMaxKb: integer('image_compression_max_kb').default(200).notNull(),
 });
 
 export const navigationItems = pgTable('navigation_items', {

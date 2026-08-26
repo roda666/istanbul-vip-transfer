@@ -101,3 +101,42 @@ export async function optimizeGeneratedImage(bytes: Uint8Array): Promise<Uint8Ar
     return null;
   }
 }
+
+/**
+ * If `bytes` (already a valid WebP at the standard 1600x900 dimensions) is
+ * larger than `maxBytes`, re-encode at progressively lower quality/higher
+ * effort until it fits, without going below a quality floor considered
+ * visually lossless for photographic content. Dimensions never change.
+ *
+ * Returns the original bytes unchanged when already under budget, or on any
+ * decode/encode failure (never throws, never returns something larger than
+ * the input). `recompressed` tells the caller whether re-encoding happened.
+ */
+const RECOMPRESS_QUALITY_STEPS = [82, 76, 70, 64] as const;
+
+export async function recompressWebpToBudget(
+  bytes: Uint8Array,
+  maxBytes: number,
+): Promise<{ bytes: Uint8Array; recompressed: boolean }> {
+  if (bytes.byteLength <= maxBytes) return { bytes, recompressed: false };
+
+  try {
+    let best = bytes;
+    for (const quality of RECOMPRESS_QUALITY_STEPS) {
+      const candidate = await sharp(Buffer.from(bytes), {
+        failOn: 'error',
+        limitInputPixels: MAX_GENERATED_IMAGE_PIXELS,
+      })
+        .webp({ quality, effort: 6, smartSubsample: true })
+        .toBuffer();
+      if (candidate.byteLength === 0) continue;
+      if (candidate.byteLength < best.byteLength) best = new Uint8Array(candidate);
+      if (candidate.byteLength <= maxBytes) return { bytes: new Uint8Array(candidate), recompressed: true };
+    }
+    // Never found a step under budget — keep the smallest valid result
+    // reached at the quality floor rather than degrading further.
+    return { bytes: best, recompressed: best.byteLength < bytes.byteLength };
+  } catch {
+    return { bytes, recompressed: false };
+  }
+}

@@ -83,3 +83,5 @@
 - [Preview versus production URLs](preview-versus-production-urls.md) — report preview paths separately; never turn SITE.siteUrl into a verified live URL without deployment metadata.
 - [Blog translation release gate](blog-translation-release-gate.md) — publish batches only after language, link, visual, copy and RTL checks; use lifecycle transitions and signed cache revalidation.
 - [Generated social-card build dependency](generated-social-card-build-dependency.md) — generated public assets must declare required system tools and fail the build if they cannot be refreshed.
+- [Toll/crossing-fee build guard](toll-fee-build-guard.md) — per-language geo+fee co-occurrence rules; SERVICE content.body is JSON (walk leaf strings, don't treat as prose); IT plural/RU generic-fee regex gaps to watch for.
+- [LLM translation-audit false positives](llm-translation-audit-false-positives.md) — GPT Turkish-leftover audit flags proper nouns it's told to allow and occasionally hallucinates text not in the row; always verify flags against the DB directly.

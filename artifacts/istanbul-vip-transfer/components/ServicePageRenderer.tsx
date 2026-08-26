@@ -207,7 +207,7 @@ function ContentSectionsBlock({ body, dir, lang }: { body: ServicePageBody; dir?
                {isolateLtrValues(s.heading, lang)}
             </h3>
           )}
-           <p style={{ ...prose, margin: 0 }} dir={dir}>{isolateLtrValues(s.body, lang)}</p>
+           <p style={{ ...prose, margin: 0, whiteSpace: 'pre-line' }} dir={dir}>{isolateLtrValues(s.body, lang)}</p>
         </div>
       ))}
     </section>

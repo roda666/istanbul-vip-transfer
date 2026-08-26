@@ -73,7 +73,9 @@ const RULES = {
   en: {
     direct: [tokenRe('toll')],
     geo: ['bridge', 'tunnel', 'highway', 'motorway', 'ferry'].map(t => tokenRe(t)),
-    fee: ['fee', 'charge', 'cost', 'fare'].map(t => tokenRe(t)),
+    // "fee" must be exact-plural only (not the generic wildcard tokenRe) —
+    // the open \p{L}* suffix also matches unrelated real words like "feel"/"feed".
+    fee: [/\bfees?\b/iu, tokenRe('charge'), tokenRe('cost'), tokenRe('fare')],
   },
   de: {
     // Maut already means "toll" on its own.

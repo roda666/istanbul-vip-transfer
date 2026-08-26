@@ -94,3 +94,4 @@
 - [Vitest running & known failures](vitest-running-and-known-failures.md) — no root "test" script, use `pnpm exec vitest run`; current 5 pre-existing failures span 2 files, not just one — always re-verify by running, don't trust a remembered count.
 - [Shared vs translated content fields](content-shared-vs-translated-fields.md) — structural fields (category, order, active, indexable...) are single shared columns; a "changed in TR but not other languages" symptom is usually a public reader using a too-narrow translation-status filter, not a data bug.
 - [Reservation panel count vs DB count](reservation-panel-archived-rows.md) — admin Talepler list excludes archived_at rows by default; DB total will exceed the panel's displayed count by the archived-row count.
+- [ShellExec background process lifecycle](shellexec-background-process-lifecycle.md) — nohup/& processes die when the ShellExec call returns; split long scripts into sequential foreground slice calls instead.

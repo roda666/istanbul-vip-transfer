@@ -16,6 +16,7 @@ Cross-language substring matching produces false positives (see multilingual-con
 - Italian plural: match the shorter stem ("pedaggi") not the singular ("pedaggio") — a plural is not always a suffix of the singular, so `tokenRe`'s trailing-letters allowance only helps if the shorter form is the pattern root.
 - Russian generic transit fee "сборы за проезд" needed its own direct pattern (`сбор\p{L}*\s+за\s+проезд`) separate from the "плата за проезд" / "дорожный сбор" patterns already covered.
 - Turkish "gider" (expense) collides with "giderken" (while going) — needs `(?!ken)` negative lookahead. Spanish "coste" collides with "costera/costero" (coastal) — needs `(?!r)`.
+- English "fee" as a `tokenRe('fee')` (with its trailing `\p{L}*` suffix allowance) also matches "**fee**l"/"**fee**d" — any short (3-4 letter) root is unsafe with the generic wildcard-suffix `tokenRe` helper. Fixed by using an exact-form regex (`/\bfees?\b/`) instead of `tokenRe` for that one term. Before adding a new short fee/geo root in any language, sanity-check it against common real words in that language, not just against the toll-related vocabulary.
 
 ## Known remaining gap (not yet closed, low priority — user did not ask for it)
 The **runtime** render-layer filter `removeCustomerVisibleTollCopy()`/`TOLL_FEE_TERMS` in `lib/customer-visible-copy.ts` (separate from this build-time guard) deletes the whole sentence rather than rewriting it, is missing ferry/feribot terms, and has an unresolved Italian boundary issue. Not in scope unless the user explicitly asks for it.

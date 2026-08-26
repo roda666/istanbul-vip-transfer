@@ -135,7 +135,7 @@ export async function createAdminQuote(input: {
     ? input.tollAlternativeId ?? routeDefaultTollAlternativeId
     : null;
   const tolls = input.routeId && effectiveTollAlternativeId
-    ? await resolveTolls(input.routeId, effectiveTollAlternativeId, vehicleId, now, pickupAt, input.tripType)
+    ? await resolveTolls(input.routeId, effectiveTollAlternativeId, vehicleId, vehicle.pricingClass, now, pickupAt, input.tripType)
     : [];
 
   const profile = profileRow ? ({
@@ -270,7 +270,7 @@ async function resolveServices(
  * own day/night band independently, since cutover hours are configured per
  * toll point, not globally.
  */
-async function resolveTolls(routeId: string, alternativeId: string, vehicleId: string, now: Date, pickupAt: Date, tripType: 'ONE_WAY' | 'ROUND_TRIP') {
+async function resolveTolls(routeId: string, alternativeId: string, vehicleId: string, vehiclePricingClass: string, now: Date, pickupAt: Date, tripType: 'ONE_WAY' | 'ROUND_TRIP') {
   const [alternative] = await db.select().from(routeTollAlternatives).where(and(
     eq(routeTollAlternatives.id, alternativeId),
     eq(routeTollAlternatives.routeId, routeId),
@@ -310,6 +310,14 @@ async function resolveTolls(routeId: string, alternativeId: string, vehicleId: s
 
   return items.map((item) => {
     const point = points.find((candidate) => candidate.id === item.tollPointId)!;
+    // Vehicle-TYPE ban (e.g. Avrasya Tüneli categorically bans "Otobüs") is a
+    // separate, independent axis from the axle-based class ban below — a
+    // vehicle can be banned by type even before it has an assigned class at
+    // this point, so this check runs first and unconditionally.
+    const bannedTypes = (point.bannedVehicleTypes ?? []) as string[];
+    if (vehiclePricingClass && bannedTypes.includes(vehiclePricingClass)) {
+      throw new Error(`${point.name} bu araç tipi (${vehiclePricingClass}) için geçişe kapalıdır. Fiyat üretimi güvenle durduruldu — lütfen bu geçiş noktasını içermeyen başka bir alternatif seçin.`);
+    }
     const vehicleClassAtPoint = classByPointId.get(point.id) ?? null;
     const bannedClasses = (point.bannedVehicleClasses ?? []) as string[];
     if (vehicleClassAtPoint && bannedClasses.includes(vehicleClassAtPoint)) {

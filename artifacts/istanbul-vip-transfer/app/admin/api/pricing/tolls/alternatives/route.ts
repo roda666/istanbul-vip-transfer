@@ -54,6 +54,8 @@ export async function POST(request: NextRequest) {
         active: payload.data.active,
         isDefault,
         displayOrder: payload.data.displayOrder,
+        needsReview: payload.data.needsReview,
+        reviewNote: payload.data.reviewNote,
         createdAt: now,
         updatedAt: now,
       }).returning();

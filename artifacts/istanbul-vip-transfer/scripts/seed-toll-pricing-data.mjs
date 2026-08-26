@@ -158,6 +158,12 @@ const POINTS = [
     dayStartHour: null, nightStartHour: null,
     notes: 'Distance-based OGS/HGS ücretlendirmesi kullanılır; belirli bir giriş/çıkış çifti olmadan resmî bir tutar üretilemez (kapsam dışı). Tüm sınıflar kasıtlı olarak boş bırakılmıştır.',
     classificationLabel: null, bannedVehicleClasses: null, bannedVehicleClassesSourceUrl: null,
+    // 2026-08-26 correction: a highway/otoyol segment is priced by entry+exit
+    // gate pair, never a single flat amount — see the sahibi's explicit rule
+    // ("otoyolda giriş ve çıkış olarak hesaplanır"). This point had no real
+    // gate-pair data yet, but its pricingMode must still reflect the correct
+    // model so a future amount is never entered as a flat single price.
+    pricingMode: 'GATE_PAIR',
   },
   {
     // Superseded 2026-08-26 by the dedicated 'KUZEY MARMARA OTOYOLU' point
@@ -169,6 +175,7 @@ const POINTS = [
     notes: 'Bu nokta 2026-08-26 itibarıyla "Kuzey Marmara Otoyolu (O-7)" adlı ayrı noktayla değiştirildi (bkz. KUZEY MARMARA OTOYOLU) — o noktanın gerçek bir işletmeci kaynağı (ysskoprusuveotoyolu.com.tr) var. Bu eski nokta artık hiçbir rotada kullanılmıyor, yalnızca geçmiş kayıt amacıyla pasif tutulur.',
     classificationLabel: null, bannedVehicleClasses: null, bannedVehicleClassesSourceUrl: null,
     active: false,
+    pricingMode: 'GATE_PAIR',
   },
   {
     // Superseded — see the note on the Sapanca placeholder above; same
@@ -178,6 +185,7 @@ const POINTS = [
     notes: 'Bu nokta 2026-08-26 itibarıyla "Kuzey Marmara Otoyolu (O-7)" adlı ayrı noktayla değiştirildi (bkz. KUZEY MARMARA OTOYOLU) — o noktanın gerçek bir işletmeci kaynağı (ysskoprusuveotoyolu.com.tr) var. Bu eski nokta artık hiçbir rotada kullanılmıyor, yalnızca geçmiş kayıt amacıyla pasif tutulur.',
     classificationLabel: null, bannedVehicleClasses: null, bannedVehicleClassesSourceUrl: null,
     active: false,
+    pricingMode: 'GATE_PAIR',
   },
   {
     key: 'KUZEY MARMARA OTOYOLU', name: 'Kuzey Marmara Otoyolu (O-7, YSS Köprüsü hariç ilave kesim)', type: 'HIGHWAY',
@@ -198,12 +206,14 @@ const POINTS = [
     dayStartHour: null, nightStartHour: null,
     notes: 'Distance-based OGS/HGS ücretlendirmesi kullanılır; belirli bir giriş/çıkış çifti olmadan resmî bir tutar üretilemez (kapsam dışı). Tüm sınıflar kasıtlı olarak boş bırakılmıştır. AYRICA KAPSAM UYARISI (2026-08-26): rota alternatifleri "Osmangazi Köprüsü" (FLAT) noktasını bu yer tutucuyla birlikte kullanıyor — bu tutar bir gün girilirse, Osmangazi\'yi zaten içerip içermediği ayrıca doğrulanmalı (bkz. İZMİR OTOBAN notundaki aynı desen); emin olunamıyorsa ikisi birden eklenmemeli.',
     classificationLabel: null, bannedVehicleClasses: null, bannedVehicleClassesSourceUrl: null,
+    pricingMode: 'GATE_PAIR',
   },
   {
     key: 'İstanbul–Bodrum Otoyolu Güzergahı', name: 'İstanbul–Bodrum Otoyolu Güzergahı (doğrulanmamış ilave ücret)', type: 'HIGHWAY',
     dayStartHour: null, nightStartHour: null,
     notes: 'Distance-based OGS/HGS ücretlendirmesi kullanılır; belirli bir giriş/çıkış çifti olmadan resmî bir tutar üretilemez (kapsam dışı). Tüm sınıflar kasıtlı olarak boş bırakılmıştır. AYRICA KAPSAM UYARISI (2026-08-26): rota alternatifleri "Osmangazi Köprüsü" (FLAT) noktasını bu yer tutucuyla birlikte kullanıyor — bu tutar bir gün girilirse, Osmangazi\'yi zaten içerip içermediği ayrıca doğrulanmalı (bkz. İZMİR OTOBAN notundaki aynı desen); emin olunamıyorsa ikisi birden eklenmemeli.',
     classificationLabel: null, bannedVehicleClasses: null, bannedVehicleClassesSourceUrl: null,
+    pricingMode: 'GATE_PAIR',
   },
 ];
 

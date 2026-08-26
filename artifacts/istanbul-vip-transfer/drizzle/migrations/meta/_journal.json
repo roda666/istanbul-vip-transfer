@@ -477,6 +477,13 @@
       "when": 1789000000011,
       "tag": "0067_toll_tariff_gate_pair_window_integrity",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1789000000012,
+      "tag": "0068_nappy_morg",
+      "breakpoints": true
     }
   ]
 }

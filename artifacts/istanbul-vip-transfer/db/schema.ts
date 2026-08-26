@@ -1478,6 +1478,19 @@ export const tollPoints = pgTable('toll_points', {
   /** Required whenever bannedVehicleClasses is non-null; verified the same way as a tariff's sourceUrl (see assertVerifiedSourceForBan). */
   bannedVehicleClassesSourceUrl: text('banned_vehicle_classes_source_url'),
   /**
+   * A DIFFERENT, additional ban axis from bannedVehicleClasses: some
+   * operators ban a whole fleet vehicle TYPE (vehicles.pricingClass values:
+   * minivan/minibus/midibus/bus) categorically, regardless of its axle-based
+   * class_1..class_6 — e.g. Avrasya Tüneli bans "Otobüs" outright even though
+   * a 2-axle bus would otherwise share class_1/class_2 with an allowed car.
+   * Never derive this from bannedVehicleClasses or vice-versa: they are
+   * independent official facts and both must be checked. null = unconfirmed;
+   * [] = confirmed nothing is banned; both require bannedVehicleTypesSourceUrl.
+   */
+  bannedVehicleTypes: jsonb('banned_vehicle_types').$type<string[]>(),
+  /** Required whenever bannedVehicleTypes is non-null; same verification pattern as bannedVehicleClassesSourceUrl. */
+  bannedVehicleTypesSourceUrl: text('banned_vehicle_types_source_url'),
+  /**
    * How many times a round trip actually pays this point. Null = unconfirmed
    * (an official source was never checked for this specific point) — the
    * engine treats null the same as TWO_WAY_SAME to avoid silently changing
@@ -1588,6 +1601,15 @@ export const routeTollAlternatives = pgTable('route_toll_alternatives', {
   active: boolean('active').default(true).notNull(),
   isDefault: boolean('is_default').default(false).notNull(),
   displayOrder: integer('display_order').default(0).notNull(),
+  /**
+   * True when this alternative was entered speculatively (e.g. a plausible
+   * but unconfirmed route via a specific highway station) and the owner has
+   * not yet confirmed it is actually used, or which exact gate/station it
+   * uses. Never implied from other fields — set explicitly at creation.
+   */
+  needsReview: boolean('needs_review').default(false).notNull(),
+  /** Free-text question for the owner when needsReview is true (e.g. "which Kuzey Marmara station does this route use?"). */
+  reviewNote: text('review_note'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [

@@ -21,6 +21,14 @@ The toll engine's vehicle classes are `class_1`..`class_6`, matching KGM's own a
 
 **Example — Avrasya Tüneli** (confirmed 2026-08-26 from the operator's own canonical page `https://www.avrasyatuneli.com/ucretlendirme/`): classes 1/2/6 are priced (Day ₺330/₺495/₺257.40, Night ₺165/₺247.50/₺128.70); classes 3/4/5 are `bannedVehicleClasses`, sourced to the operator's own "Yasaklı Araçlar" modal image (`https://www.avrasyatuneli.com/_assets/img/subpage/yasakli-araclar-modal.png`, which lists bicycles/scooters/buses/trucks/>2-axle/>5000kg/hazmat/>2.8m/N2-N3/O1-O4 freight as banned). The tariff page itself has no explicit effective-date text; `validFrom` (2026-07-01) is carried over from a separately-fetched announcement page whose amounts matched exactly — this gap is intentionally disclosed, never silently assumed.
 
+## Vehicle-TYPE ban is a second, independent axis from vehicle-CLASS ban
+
+A fleet vehicle's seat count/body style (`vehicles.pricingClass`: minivan/minibus/midibus/bus) is NOT the same thing as its axle-based KGM toll class, and a point can ban one without the other. `toll_points.bannedVehicleTypes` (same tri-state null/[]/list semantics + required `bannedVehicleTypesSourceUrl` as `bannedVehicleClasses`) exists specifically because Avrasya Tüneli's official "Yasaklı Araçlar" graphic bans "Otobüs" *categorically*, independent of axle count — a 2-axle bus would otherwise share `class_1`/`class_2` with an allowed car. Confirmed 2026-08-26: `bannedVehicleTypes: ['bus']` at Avrasya Tüneli; fleet `minibus` (Sprinter-type) is NOT banned; fleet `midibus` (yarım otobüs) is genuinely ambiguous in the official material and is left unconfirmed by design (never guessed from seat count).
+
+**Why:** never infer an official vehicle ban from a fleet vehicle's seat count or "looks like a bus" reasoning — only from what the operator's own source explicitly states, and only for the exact `pricingClass` value it clearly covers.
+
+**How to apply:** any new ban-type work must check the point's `bannedVehicleTypes` (via `vehicle.pricingClass`) as a hard-block *in addition to*, not instead of, the axle-class ban check — both `getRouteTollAlternatives` (admin listing) and `resolveTolls` (actual quote resolver, in `lib/admin-pricing-service.ts`) need the same two checks kept in sync; see the dual-implementation note in `toll-resolution-dual-implementation.md`.
+
 ## Real 2026 tariffs sourced directly from operator PDFs/pages (fetched/re-verified 2026-08-26)
 
 15 Temmuz Şehitler Köprüsü + Fatih Sultan Mehmet Köprüsü share one KGM PDF tariff table (effective 01/01/2026); Yavuz Sultan Selim Köprüsü, Osmangazi Köprüsü, and 1915 Çanakkale Köprüsü each have their own KGM PDF (effective 01/07/2026) — all five bridges are confirmed `bannedVehicleClasses: []` (their own PDFs price all six classes with no exclusion, which is itself the evidence of no ban).

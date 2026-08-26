@@ -72,6 +72,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         active: payload.data.active,
         isDefault,
         displayOrder: payload.data.displayOrder,
+        needsReview: payload.data.needsReview,
+        reviewNote: payload.data.reviewNote,
         updatedAt: now,
       }).where(eq(routeTollAlternatives.id, id)).returning();
       return updated;

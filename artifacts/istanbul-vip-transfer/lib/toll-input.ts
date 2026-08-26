@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { isOfficialTollSourceUrl, TOLL_DIRECTIONS, TOLL_PRICING_MODES, TOLL_TIME_BANDS, TOLL_VEHICLE_CLASSES } from '@/lib/toll-management';
+import { assertTypeMatchesPricingMode, isOfficialTollSourceUrl, TOLL_DIRECTIONS, TOLL_PRICING_MODES, TOLL_TIME_BANDS, TOLL_VEHICLE_CLASSES, TOLL_VEHICLE_TYPES } from '@/lib/toll-management';
 
 const nullableAmount = z.number().int().min(1).max(100_000_000).nullable().optional();
 const nullableText = z.string().trim().max(500).nullable().optional();
@@ -21,6 +21,9 @@ export const tollPointInputSchema = z.object({
   /** null = unconfirmed (ask owner), [] = confirmed nothing is banned, non-empty = confirmed banned list. Requires bannedVehicleClassesSourceUrl whenever non-null. */
   bannedVehicleClasses: z.array(z.enum(TOLL_VEHICLE_CLASSES)).max(6).nullable().optional(),
   bannedVehicleClassesSourceUrl: nullableText,
+  /** A separate ban axis (fleet vehicle TYPE, e.g. "Otobüs" categorically) — independent of bannedVehicleClasses. Same null/[]/non-empty semantics. Requires bannedVehicleTypesSourceUrl whenever non-null. */
+  bannedVehicleTypes: z.array(z.enum(TOLL_VEHICLE_TYPES)).max(4).nullable().optional(),
+  bannedVehicleTypesSourceUrl: nullableText,
   /** null = unconfirmed (never checked against an official source). Requires tollDirectionSourceUrl whenever non-null. */
   tollDirection: z.enum(TOLL_DIRECTIONS).nullable().optional(),
   tollDirectionSourceUrl: nullableText,
@@ -41,9 +44,23 @@ export const tollPointInputSchema = z.object({
   if (value.bannedVehicleClasses !== undefined && value.bannedVehicleClasses !== null && !isOfficialTollSourceUrl(value.bannedVehicleClassesSourceUrl)) {
     context.addIssue({ code: 'custom', path: ['bannedVehicleClassesSourceUrl'], message: 'Yasaklı araç sınıfları listesi (boş liste dahil) yalnızca resmî bir kaynak adresiyle birlikte kaydedilebilir.' });
   }
+  // Same pattern again for the separate vehicle-TYPE ban axis (e.g. a
+  // categorical "Otobüs" ban, independent of the axle-based class ban above).
+  if (value.bannedVehicleTypes !== undefined && value.bannedVehicleTypes !== null && !isOfficialTollSourceUrl(value.bannedVehicleTypesSourceUrl)) {
+    context.addIssue({ code: 'custom', path: ['bannedVehicleTypesSourceUrl'], message: 'Yasaklı araç tipleri listesi (boş liste dahil) yalnızca resmî bir kaynak adresiyle birlikte kaydedilebilir.' });
+  }
   // Same pattern again for the tolling-direction claim.
   if (value.tollDirection != null && !isOfficialTollSourceUrl(value.tollDirectionSourceUrl)) {
     context.addIssue({ code: 'custom', path: ['tollDirectionSourceUrl'], message: 'Geçiş yönü bilgisi yalnızca resmî bir kaynak adresiyle birlikte kaydedilebilir.' });
+  }
+  // Bridges/tunnels (açık sistem, tek fiyat) must always be FLAT; highway
+  // segments (kapalı sistem, giriş+çıkış) must always be GATE_PAIR — this can
+  // never drift apart, enforced here so both the point form and any future
+  // API caller are covered by the same schema.
+  try {
+    assertTypeMatchesPricingMode(value.type, value.pricingMode);
+  } catch (error) {
+    context.addIssue({ code: 'custom', path: ['pricingMode'], message: error instanceof Error ? error.message : 'Geçiş tipi ile ücretlendirme modu uyuşmuyor.' });
   }
 });
 
@@ -111,6 +128,10 @@ export const tollAlternativeInputSchema = z.object({
   active: z.boolean().default(true),
   isDefault: z.boolean().default(false),
   displayOrder: z.number().int().min(0).max(10_000).default(0),
+  /** True when this alternative is speculative (e.g. a plausible but unconfirmed station/route) and the owner has not yet confirmed it. */
+  needsReview: z.boolean().default(false),
+  /** The specific question for the owner when needsReview is true — e.g. which exact station pair a highway leg uses. */
+  reviewNote: nullableText,
   pointIds: z.array(z.string().uuid()).max(30).default([]),
   /**
    * Only meaningful for a GATE_PAIR toll point included in pointIds (e.g.

@@ -26,6 +26,13 @@ type TollPoint = {
   // = confirmed banned class list. A banned class can never be priced here.
   bannedVehicleClasses: string[] | null;
   bannedVehicleClassesSourceUrl: string | null;
+  // A SEPARATE, independent ban axis from bannedVehicleClasses: some
+  // operators ban a whole fleet vehicle TYPE (minivan/minibus/midibus/bus)
+  // categorically, regardless of axle-based class (e.g. Avrasya Tüneli bans
+  // "Otobüs" outright even though a 2-axle bus would otherwise share
+  // class_1/class_2 with an allowed car). Same null/[]/list semantics.
+  bannedVehicleTypes: string[] | null;
+  bannedVehicleTypesSourceUrl: string | null;
   // null = unconfirmed (a round trip here still uses the legacy "double the
   // forward tariff" behavior, flagged to the admin as unconfirmed).
   tollDirection: 'ONE_WAY' | 'TWO_WAY_SAME' | 'TWO_WAY_DIRECTIONAL' | null;
@@ -65,6 +72,17 @@ const TOLL_VEHICLE_CLASS_SELECTION_WARNING =
   'Sınıf, aracın ruhsatındaki aks aralığına/aks sayısına bakılarak seçilmelidir — yolcu sayısına veya "buna benzer araçlar genelde şu sınıftır" gibi bir tahmine göre değil. Bu taksonomi OTOYOL A.Ş. ve YSS Köprüsü/Kuzey Marmara Otoyolu işletmecisinde ortaktır, ancak her aracın sınıfı yine de kendi ruhsatından teyit edilmelidir.';
 function vehicleClassLabel(vc: string) {
   return TOLL_VEHICLE_CLASS_LABELS[vc] ?? vc;
+}
+
+// Mirrors TOLL_VEHICLE_TYPES / TOLL_VEHICLE_TYPE_LABELS in lib/toll-management.ts
+// (itself re-exported from lib/vehicle-options.ts) — the fleet vehicle-TYPE
+// taxonomy, used ONLY as the value set for a toll point's separate,
+// categorical bannedVehicleTypes ban (distinct from bannedVehicleClasses above).
+const TOLL_VEHICLE_TYPE_LABELS: Record<string, string> = {
+  minivan: 'Minivan', minibus: 'Minibüs', midibus: 'Midibüs', bus: 'Otobüs',
+};
+function vehicleTypeLabel(vt: string) {
+  return TOLL_VEHICLE_TYPE_LABELS[vt] ?? vt;
 }
 
 type TollTimeBand = 'ALL' | 'DAY' | 'NIGHT';
@@ -128,6 +146,10 @@ type TollAlternative = {
   // Keyed by tollPointId; only present for points whose pricingMode is
   // GATE_PAIR — the specific entry/exit gate this alternative uses there.
   gatePairs?: Record<string, { entryGateName: string, exitGateName: string }>;
+  // True when this alternative was entered speculatively (e.g. a plausible
+  // but unconfirmed station/route) and the owner has not yet confirmed it.
+  needsReview?: boolean;
+  reviewNote?: string | null;
 };
 
 type Route = {
@@ -307,6 +329,68 @@ function BannedClassesEditor({
   );
 }
 
+// Tri-state banned VEHICLE-TYPE editor — a separate, independent axis from
+// BannedClassesEditor above (axle-based class vs. categorical fleet type,
+// e.g. Avrasya Tüneli bans "Otobüs" outright regardless of axle count).
+// Same null/[]/list semantics and source-URL requirement.
+function BannedTypesEditor({
+  bannedVehicleTypes, bannedSourceUrl, onChange,
+}: {
+  bannedVehicleTypes: string[] | null;
+  bannedSourceUrl: string;
+  onChange: (bannedVehicleTypes: string[] | null, bannedSourceUrl: string) => void;
+}) {
+  const mode: 'unknown' | 'none' | 'list' = bannedVehicleTypes === null ? 'unknown' : bannedVehicleTypes.length === 0 ? 'none' : 'list';
+  return (
+    <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <div>
+        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Araç Tipi Yasağı (sınıf yasağından bağımsız)</label>
+        <select
+          value={mode}
+          onChange={e => {
+            const next = e.target.value;
+            if (next === 'unknown') onChange(null, '');
+            else if (next === 'none') onChange([], bannedSourceUrl);
+            else onChange(bannedVehicleTypes && bannedVehicleTypes.length ? bannedVehicleTypes : [], bannedSourceUrl);
+          }}
+          className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all"
+        >
+          <option value="unknown">Belirsiz — sahibine sorulmalı</option>
+          <option value="none">Onaylı — hiçbir araç tipi yasaklı değil</option>
+          <option value="list">Onaylı — belirli araç tipleri yasaklı</option>
+        </select>
+        <p className="text-[10px] font-medium text-slate-500 mt-1.5 leading-relaxed">Örn: Avrasya Tüneli, aks sayısına bakılmaksızın "Otobüs" tipini kategorik olarak yasaklar — bu, aşağıdaki Sınıf 1-6 yasağından tamamen ayrı bir kuraldır.</p>
+      </div>
+      {mode === 'list' && (
+        <div className="grid grid-cols-2 gap-2">
+          {Object.keys(TOLL_VEHICLE_TYPE_LABELS).map(vt => (
+            <label key={vt} className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-800">
+              <input
+                type="checkbox"
+                checked={(bannedVehicleTypes ?? []).includes(vt)}
+                onChange={e => {
+                  const current = bannedVehicleTypes ?? [];
+                  const next = e.target.checked ? [...current, vt] : current.filter(c => c !== vt);
+                  onChange(next, bannedSourceUrl);
+                }}
+                className="w-4 h-4 rounded border-slate-300 text-red-600 focus:ring-red-500"
+              />
+              {vehicleTypeLabel(vt)}
+            </label>
+          ))}
+        </div>
+      )}
+      {mode !== 'unknown' && (
+        <div>
+          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kaynak URL <span className="text-red-600">*</span></label>
+          <input type="url" value={bannedSourceUrl} onChange={e => onChange(bannedVehicleTypes, e.target.value)} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all" placeholder="https://..." />
+          <p className="text-[10px] font-medium text-slate-500 mt-1">Bu bilginin doğrulandığı resmî sayfa veya belge bağlantısı zorunludur.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Tolling-direction editor, shared by PointForm and PointDetail. Mirrors the
 // tri-state pattern of BannedClassesEditor: null = unconfirmed (fiyat motoru
 // bunu bilgilendirici bir uyarıyla birlikte eski davranışa — gidiş tarifesini
@@ -376,12 +460,16 @@ function DirectionEditor({
 }
 
 function PointForm({ onSave, onClose }: { onSave: (point: TollPoint) => void, onClose: () => void }) {
-  const [formData, setFormData] = useState<{ name: string, type: string, active: boolean, dayStartHour: number | null, nightStartHour: number | null, notes: string, classificationLabel: string, bannedVehicleClasses: string[] | null, bannedVehicleClassesSourceUrl: string, tollDirection: TollPoint['tollDirection'], tollDirectionSourceUrl: string, tollDirectionNotes: string, pricingMode: TollPoint['pricingMode'] }>({ name: '', type: 'BRIDGE', active: true, dayStartHour: null, nightStartHour: null, notes: '', classificationLabel: '', bannedVehicleClasses: null, bannedVehicleClassesSourceUrl: '', tollDirection: null, tollDirectionSourceUrl: '', tollDirectionNotes: '', pricingMode: 'FLAT' });
+  const [formData, setFormData] = useState<{ name: string, type: string, active: boolean, dayStartHour: number | null, nightStartHour: number | null, notes: string, classificationLabel: string, bannedVehicleClasses: string[] | null, bannedVehicleClassesSourceUrl: string, bannedVehicleTypes: string[] | null, bannedVehicleTypesSourceUrl: string, tollDirection: TollPoint['tollDirection'], tollDirectionSourceUrl: string, tollDirectionNotes: string, pricingMode: TollPoint['pricingMode'] }>({ name: '', type: 'BRIDGE', active: true, dayStartHour: null, nightStartHour: null, notes: '', classificationLabel: '', bannedVehicleClasses: null, bannedVehicleClassesSourceUrl: '', bannedVehicleTypes: null, bannedVehicleTypesSourceUrl: '', tollDirection: null, tollDirectionSourceUrl: '', tollDirectionNotes: '', pricingMode: 'FLAT' });
   const [loading, setLoading] = useState(false);
   
   const handleSubmit = async () => {
     if (formData.bannedVehicleClasses !== null && !formData.bannedVehicleClassesSourceUrl.trim()) {
       alert('Araç sınıfı yasağı belirtildiğinde kaynak URL zorunludur.');
+      return;
+    }
+    if (formData.bannedVehicleTypes !== null && !formData.bannedVehicleTypesSourceUrl.trim()) {
+      alert('Araç tipi yasağı belirtildiğinde kaynak URL zorunludur.');
       return;
     }
     if (formData.tollDirection !== null && !formData.tollDirectionSourceUrl.trim()) {
@@ -398,6 +486,7 @@ function PointForm({ onSave, onClose }: { onSave: (point: TollPoint) => void, on
           notes: formData.notes || null,
           classificationLabel: formData.classificationLabel || null,
           bannedVehicleClassesSourceUrl: formData.bannedVehicleClasses !== null ? formData.bannedVehicleClassesSourceUrl : null,
+          bannedVehicleTypesSourceUrl: formData.bannedVehicleTypes !== null ? formData.bannedVehicleTypesSourceUrl : null,
           tollDirectionSourceUrl: formData.tollDirection !== null ? formData.tollDirectionSourceUrl : null,
           tollDirectionNotes: formData.tollDirectionNotes || null,
         })
@@ -437,6 +526,11 @@ function PointForm({ onSave, onClose }: { onSave: (point: TollPoint) => void, on
         bannedVehicleClasses={formData.bannedVehicleClasses}
         bannedSourceUrl={formData.bannedVehicleClassesSourceUrl}
         onChange={(banned, sourceUrl) => setFormData(f => ({ ...f, bannedVehicleClasses: banned, bannedVehicleClassesSourceUrl: sourceUrl }))}
+      />
+      <BannedTypesEditor
+        bannedVehicleTypes={formData.bannedVehicleTypes}
+        bannedSourceUrl={formData.bannedVehicleTypesSourceUrl}
+        onChange={(banned, sourceUrl) => setFormData(f => ({ ...f, bannedVehicleTypes: banned, bannedVehicleTypesSourceUrl: sourceUrl }))}
       />
       <DirectionEditor
         pricingMode={formData.pricingMode}
@@ -786,6 +880,8 @@ function AlternativeForm({ routeId, routes, points, initialData, onSave, onClose
      displayOrder: initialData?.displayOrder ?? 0,
      pointIds: initialData?.pointIds ?? [],
      gatePairs: (initialData?.gatePairs ?? {}) as Record<string, { entryGateName: string, exitGateName: string }>,
+     needsReview: initialData?.needsReview ?? false,
+     reviewNote: initialData?.reviewNote ?? '',
   });
   const [loading, setLoading] = useState(false);
   const routeName = routes.find(r => r.id === routeId)?.name || 'Bilinmeyen Rota';
@@ -833,6 +929,8 @@ function AlternativeForm({ routeId, routes, points, initialData, onSave, onClose
          displayOrder: formData.displayOrder,
          pointIds: formData.pointIds,
          gatePairs,
+         needsReview: formData.needsReview,
+         reviewNote: formData.reviewNote.trim() || null,
       };
       
       const res = await fetch(url, { method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
@@ -916,6 +1014,22 @@ function AlternativeForm({ routeId, routes, points, initialData, onSave, onClose
          </label>
        </div>
 
+       <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+         <label className="flex items-center gap-3 cursor-pointer min-h-[44px]">
+           <input type="checkbox" checked={formData.needsReview} onChange={e => setFormData(f => ({...f, needsReview: e.target.checked}))} className="w-5 h-5 rounded border-amber-400 text-amber-600 focus:ring-amber-500" />
+           <div>
+             <div className="font-bold text-sm text-amber-900">Sahibi Onayı Bekliyor</div>
+             <div className="text-[10px] text-amber-700 leading-relaxed mt-0.5">Bu alternatif spekülatif/teyit edilmemiş — kullanım ve gişe/durak bilgisi sahibi tarafından onaylanana kadar liste ve karşılaştırmalarda uyarı rozetiyle gösterilir.</div>
+           </div>
+         </label>
+         {formData.needsReview && (
+           <div>
+             <label className="block text-xs font-bold text-amber-700 uppercase tracking-wider mb-1.5">İnceleme Notu (sahibine sorulacak soru)</label>
+             <textarea value={formData.reviewNote} onChange={e => setFormData(f => ({...f, reviewNote: e.target.value}))} rows={2} className="w-full bg-white border border-amber-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 shadow-sm transition-all" placeholder="Örn: Bu güzergahta YSS Köprüsü + Kuzey Marmara Otoyolu kullanılıyor mu? Kullanılan giriş/çıkış gişesi (örn. S5 Fenertepe) hangisi?" />
+           </div>
+         )}
+       </div>
+
        <div className="flex gap-3 pt-3 border-t border-slate-100">
          <button onClick={onClose} className="flex-1 min-h-[44px] py-2 text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">İptal</button>
          <button onClick={handleSubmit} disabled={loading || !formData.name.trim()} className="flex-1 min-h-[44px] py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm">
@@ -938,6 +1052,8 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
     classificationLabel: point.classificationLabel ?? '',
     bannedVehicleClasses: point.bannedVehicleClasses,
     bannedVehicleClassesSourceUrl: point.bannedVehicleClassesSourceUrl ?? '',
+    bannedVehicleTypes: point.bannedVehicleTypes,
+    bannedVehicleTypesSourceUrl: point.bannedVehicleTypesSourceUrl ?? '',
     tollDirection: point.tollDirection,
     tollDirectionSourceUrl: point.tollDirectionSourceUrl ?? '',
     tollDirectionNotes: point.tollDirectionNotes ?? '',
@@ -950,6 +1066,7 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
     setFormData({
       name: point.name, type: point.type, active: point.active, dayStartHour: point.dayStartHour, nightStartHour: point.nightStartHour, notes: point.notes ?? '',
       classificationLabel: point.classificationLabel ?? '', bannedVehicleClasses: point.bannedVehicleClasses, bannedVehicleClassesSourceUrl: point.bannedVehicleClassesSourceUrl ?? '',
+      bannedVehicleTypes: point.bannedVehicleTypes, bannedVehicleTypesSourceUrl: point.bannedVehicleTypesSourceUrl ?? '',
       tollDirection: point.tollDirection, tollDirectionSourceUrl: point.tollDirectionSourceUrl ?? '', tollDirectionNotes: point.tollDirectionNotes ?? '', pricingMode: point.pricingMode,
     });
     setSaved(false);
@@ -958,6 +1075,10 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
   const handleSave = async () => {
     if (formData.bannedVehicleClasses !== null && !formData.bannedVehicleClassesSourceUrl.trim()) {
       alert('Araç sınıfı yasağı belirtildiğinde kaynak URL zorunludur.');
+      return;
+    }
+    if (formData.bannedVehicleTypes !== null && !formData.bannedVehicleTypesSourceUrl.trim()) {
+      alert('Araç tipi yasağı belirtildiğinde kaynak URL zorunludur.');
       return;
     }
     if (formData.tollDirection !== null && !formData.tollDirectionSourceUrl.trim()) {
@@ -974,6 +1095,7 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
           notes: formData.notes || null,
           classificationLabel: formData.classificationLabel || null,
           bannedVehicleClassesSourceUrl: formData.bannedVehicleClasses !== null ? formData.bannedVehicleClassesSourceUrl : null,
+          bannedVehicleTypesSourceUrl: formData.bannedVehicleTypes !== null ? formData.bannedVehicleTypesSourceUrl : null,
           tollDirectionSourceUrl: formData.tollDirection !== null ? formData.tollDirectionSourceUrl : null,
           tollDirectionNotes: formData.tollDirectionNotes || null,
         })
@@ -1034,6 +1156,15 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
             onChange={(banned, sourceUrl) => setFormData(f => ({ ...f, bannedVehicleClasses: banned, bannedVehicleClassesSourceUrl: sourceUrl }))}
           />
           <p className="text-[10px] font-medium text-slate-500 mt-1.5 leading-relaxed">Yasaklı olarak işaretlenen bir sınıf, bu noktayı içeren hiçbir alternatifte bu araç için fiyatlandırılmaz — fiyat motoru bu alternatifi tamamen reddeder, "eksik veri" olarak göstermez.</p>
+        </div>
+
+        <div className="mb-5">
+          <BannedTypesEditor
+            bannedVehicleTypes={formData.bannedVehicleTypes}
+            bannedSourceUrl={formData.bannedVehicleTypesSourceUrl}
+            onChange={(banned, sourceUrl) => setFormData(f => ({ ...f, bannedVehicleTypes: banned, bannedVehicleTypesSourceUrl: sourceUrl }))}
+          />
+          <p className="text-[10px] font-medium text-slate-500 mt-1.5 leading-relaxed">Sınıf yasağından bağımsız, kategorik bir yasaktır — örn. Avrasya Tüneli aks sayısına bakılmaksızın "Otobüs" tipini yasaklar.</p>
         </div>
 
         <div className="mb-5">
@@ -1263,11 +1394,50 @@ function PointsManager({ data, onRefresh }: { data: DataPayload, onRefresh: () =
   );
 }
 
+// One alternative's live comparison figure for a chosen vehicle, returned by
+// GET .../route-alternatives/[routeId]?vehicleId=...
+type AlternativeComparison = {
+  id: string;
+  totalKurus: number | null;
+  needsReview?: boolean;
+  reviewNote?: string | null;
+};
+
 function AlternativesManager({ data, onRefresh }: { data: DataPayload, onRefresh: () => void }) {
   const [selectedRouteId, setSelectedRouteId] = useState<string>('');
   const [editAltModal, setEditAltModal] = useState<{alt?: TollAlternative, routeId: string} | null>(null);
+  const [compareVehicles, setCompareVehicles] = useState<{ id: string, name: string }[]>([]);
+  const [compareVehicleId, setCompareVehicleId] = useState<string>('');
+  const [comparison, setComparison] = useState<Record<string, AlternativeComparison>>({});
+  const [comparisonLoading, setComparisonLoading] = useState(false);
+
+  // Vehicle list isn't part of DataPayload (this page is about toll points,
+  // not the fleet) — fetch it once from the pricing-profiles endpoint, which
+  // already exposes { id, name } for every vehicle.
+  useEffect(() => {
+    fetch('/admin/api/pricing/profiles')
+      .then(res => res.ok ? res.json() : null)
+      .then(json => { if (json?.vehicles) setCompareVehicles(json.vehicles.map((v: { id: string, name: string }) => ({ id: v.id, name: v.name }))); })
+      .catch(() => {});
+  }, []);
 
   const routeAlts = data.alternatives.filter(a => a.routeId === selectedRouteId).sort((a,b) => a.displayOrder - b.displayOrder);
+
+  useEffect(() => {
+    setComparison({});
+    if (!selectedRouteId || !compareVehicleId) return;
+    setComparisonLoading(true);
+    fetch(`/admin/api/pricing/tolls/route-alternatives/${selectedRouteId}?vehicleId=${compareVehicleId}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(json => {
+        const list: AlternativeComparison[] = json?.alternatives ?? [];
+        const byId: Record<string, AlternativeComparison> = {};
+        for (const alt of list) byId[alt.id] = alt;
+        setComparison(byId);
+      })
+      .catch(() => {})
+      .finally(() => setComparisonLoading(false));
+  }, [selectedRouteId, compareVehicleId]);
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-5 md:p-8 shadow-sm min-h-[500px]">
@@ -1296,6 +1466,21 @@ function AlternativesManager({ data, onRefresh }: { data: DataPayload, onRefresh
                <Plus size={16} /> Yeni Alternatif
             </button>
           </div>
+
+          {routeAlts.length > 1 && (
+            <div className="mb-6 p-4 bg-blue-50/50 border border-blue-200 rounded-xl">
+              <label className="block text-xs font-bold text-blue-800 uppercase tracking-wider mb-2">Maliyet Karşılaştırması — Araç Seçin</label>
+              <select
+                value={compareVehicleId}
+                onChange={e => setCompareVehicleId(e.target.value)}
+                className="w-full sm:w-80 min-h-[44px] bg-white border border-blue-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all"
+              >
+                <option value="">-- Karşılaştırmak için araç seçin --</option>
+                {compareVehicles.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+              </select>
+              <p className="text-[10px] font-medium text-blue-700 mt-2 leading-relaxed">Seçilen araç için her alternatifin toplam geçiş ücreti aşağıda gösterilir, böylece hangisinin varsayılan yapılacağına karar verebilirsiniz. Bu tutarlar yalnızca admin panelinde görünür, müşteriye asla gösterilmez.</p>
+            </div>
+          )}
           
           {routeAlts.length === 0 ? (
              <div className="text-center py-16 px-6 bg-slate-50 border border-slate-200 border-dashed rounded-2xl">
@@ -1312,8 +1497,27 @@ function AlternativesManager({ data, onRefresh }: { data: DataPayload, onRefresh
                            <div className="font-black text-slate-900 text-base">{alt.name}</div>
                            {alt.isDefault && <span className="bg-emerald-100 text-emerald-900 text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-widest">Varsayılan Alternatif</span>}
                            {!alt.active && <span className="bg-red-100 text-red-800 text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-widest">Pasif</span>}
+                           {alt.needsReview && <span className="bg-amber-100 text-amber-900 text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-widest flex items-center gap-1"><AlertCircle size={12} /> Sahibi Onayı Bekliyor</span>}
                            <span className="bg-slate-100 text-slate-600 text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-widest sm:ml-auto">Gösterim: {alt.displayOrder}</span>
                         </div>
+
+                        {alt.needsReview && alt.reviewNote && (
+                          <div className="mb-3.5 text-xs font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 leading-relaxed">
+                            {alt.reviewNote}
+                          </div>
+                        )}
+
+                        {compareVehicleId && (
+                          <div className="mb-3.5 text-sm font-black">
+                            {comparisonLoading ? (
+                              <span className="text-slate-400 flex items-center gap-1.5"><Loader2 size={14} className="animate-spin" /> Hesaplanıyor…</span>
+                            ) : comparison[alt.id]?.totalKurus != null ? (
+                              <span className="text-slate-900">Toplam geçiş ücreti: <span className="text-blue-700">{formatTRY(comparison[alt.id].totalKurus)}</span></span>
+                            ) : (
+                              <span className="text-red-700 bg-red-50 border border-red-200 px-2.5 py-1 rounded text-xs uppercase tracking-widest">Eksik veya yasaklı — hesaplanamadı</span>
+                            )}
+                          </div>
+                        )}
                         
                         <div className="flex flex-wrap gap-2.5">
                            {alt.pointIds.map(pid => {

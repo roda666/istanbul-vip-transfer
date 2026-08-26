@@ -13,6 +13,7 @@ import {
   vehicleTollPointClasses,
   vehicles,
 } from '@/db/schema';
+import { VEHICLE_TYPE_OPTIONS, VEHICLE_TYPE_VALUES, type VehicleType } from '@/lib/vehicle-options';
 
 /**
  * KGM's official toll-tariff taxonomy. These are the ONLY allowed values —
@@ -333,6 +334,49 @@ export function assertVerifiedSourceForBan(bannedVehicleClasses: string[] | null
 }
 
 /**
+ * The fleet vehicle-TYPE taxonomy (minivan/minibus/midibus/bus, from
+ * vehicles.pricingClass — see lib/vehicle-options.ts), reused here ONLY as
+ * the value set for a toll point's bannedVehicleTypes field. This is a
+ * categorical ban independent of TOLL_VEHICLE_CLASSES: an operator can ban
+ * "Otobüs" outright even though a 2-axle bus would otherwise share
+ * class_1/class_2 with an allowed car. Never derive one list from the other.
+ */
+export const TOLL_VEHICLE_TYPES = VEHICLE_TYPE_VALUES;
+export type TollVehicleType = VehicleType;
+export const TOLL_VEHICLE_TYPE_LABELS: Record<TollVehicleType, string> = Object.fromEntries(
+  VEHICLE_TYPE_OPTIONS.map((option) => [option.value, option.label]),
+) as Record<TollVehicleType, string>;
+
+/**
+ * Same verification pattern as assertVerifiedSourceForBan, for the separate
+ * vehicle-TYPE ban axis (see bannedVehicleTypes on toll_points).
+ */
+export function assertVerifiedSourceForVehicleTypeBan(bannedVehicleTypes: string[] | null, sourceUrl: string | null): void {
+  if (bannedVehicleTypes == null) return;
+  if (!isOfficialTollSourceUrl(sourceUrl)) {
+    throw new Error('Yasaklı araç tipleri listesi (boş liste dahil) yalnızca resmî bir kaynak adresiyle birlikte kaydedilebilir.');
+  }
+}
+
+/**
+ * Mirrors assertPricingModeMatchesGatePair at the point level: the owner's
+ * rule is that bridges/tunnels are always a flat per-crossing fee (open
+ * system, summed across genuinely distinct crossings) while highway
+ * segments are always priced by entry+exit gate pair (closed system,
+ * intermediate stations never separately summed). Enforced at write time so
+ * the type/pricingMode pairing can never drift apart, even though existing
+ * data already happens to be consistent.
+ */
+export function assertTypeMatchesPricingMode(type: 'BRIDGE' | 'TUNNEL' | 'HIGHWAY', pricingMode: TollPricingMode): void {
+  if ((type === 'BRIDGE' || type === 'TUNNEL') && pricingMode !== 'FLAT') {
+    throw new Error('Köprü/tünel noktaları her zaman sabit ücretli (FLAT) olmalıdır — açık sistemde her geçiş kendi başına ücretlendirilir.');
+  }
+  if (type === 'HIGHWAY' && pricingMode !== 'GATE_PAIR') {
+    throw new Error('Otoyol kesimleri her zaman giriş/çıkış gişe çiftiyle (GATE_PAIR) ücretlendirilmelidir — kapalı sistemde ara istasyonlar ayrı ayrı toplanmaz.');
+  }
+}
+
+/**
  * Same verification pattern again: a tolling-direction claim (ONE_WAY /
  * TWO_WAY_SAME / TWO_WAY_DIRECTIONAL) may only be saved alongside a
  * matching-domain official source URL — never self-certified. Leaving
@@ -342,6 +386,28 @@ export function assertVerifiedSourceForDirection(tollDirection: string | null, s
   if (tollDirection == null) return;
   if (!isOfficialTollSourceUrl(sourceUrl)) {
     throw new Error('Geçiş yönü bilgisi yalnızca resmî bir kaynak adresiyle birlikte kaydedilebilir.');
+  }
+}
+
+/**
+ * Enforces the two-system separation the owner requires: a bridge/tunnel
+ * (pricingMode FLAT) is charged one fixed amount per crossing and must never
+ * carry an entry/exit gate pair; a highway segment (pricingMode GATE_PAIR)
+ * is priced by its specific entry+exit gate pair and must never be assigned
+ * a single flat amount with no gate pair. Both directions of the mismatch
+ * are rejected outright — never silently coerced.
+ */
+export function assertPricingModeMatchesGatePair(
+  pricingMode: TollPricingMode,
+  entryGateName: string | null | undefined,
+  exitGateName: string | null | undefined,
+): void {
+  const hasGatePair = !!entryGateName && !!exitGateName;
+  if (pricingMode === 'FLAT' && hasGatePair) {
+    throw new Error('Bu bir sabit ücretli (köprü/tünel) geçiş noktasıdır — giriş/çıkış gişe çifti girilemez, tek bir tutar geçerlidir.');
+  }
+  if (pricingMode === 'GATE_PAIR' && !hasGatePair) {
+    throw new Error('Bu bir otoyol kesimidir — tek bir sabit tutar girilemez, giriş ve çıkış gişesi birlikte seçilmelidir.');
   }
 }
 
@@ -454,7 +520,7 @@ export async function getRouteTollAlternatives(routeId: string, vehicleId?: stri
   if (!route) throw new Error('Güzergâh bulunamadı.');
 
   const [vehicle] = vehicleId
-    ? await db.select({ id: vehicles.id }).from(vehicles).where(eq(vehicles.id, vehicleId)).limit(1)
+    ? await db.select({ id: vehicles.id, pricingClass: vehicles.pricingClass }).from(vehicles).where(eq(vehicles.id, vehicleId)).limit(1)
     : [null];
   if (vehicleId && !vehicle) throw new Error('Araç bulunamadı.');
 
@@ -508,23 +574,34 @@ export async function getRouteTollAlternatives(routeId: string, vehicleId?: stri
       const alternativeItems = items.filter((item) => item.alternativeId === alternative.id);
       const missingTariffPointNames: string[] = [];
       const bannedPointNames: string[] = [];
+      let totalKurus = 0;
+      let hasPricedAmount = true;
       for (const item of alternativeItems) {
         const point = pointById.get(item.tollPointId);
-        if (!point) { missingTariffPointNames.push('Bilinmeyen geçiş noktası'); continue; }
-        if (!point.active) { missingTariffPointNames.push(`${point.name} (pasif)`); continue; }
-        if (!vehicle) continue;
+        if (!point) { missingTariffPointNames.push('Bilinmeyen geçiş noktası'); hasPricedAmount = false; continue; }
+        if (!point.active) { missingTariffPointNames.push(`${point.name} (pasif)`); hasPricedAmount = false; continue; }
+        if (!vehicle) { hasPricedAmount = false; continue; }
+        // Vehicle-TYPE ban (e.g. Avrasya Tüneli categorically bans "Otobüs")
+        // is a separate, independent axis from the axle-based class ban
+        // below — both must be checked, neither substitutes for the other.
+        const bannedTypes = (point.bannedVehicleTypes ?? []) as string[];
+        if (vehicle.pricingClass && bannedTypes.includes(vehicle.pricingClass)) {
+          bannedPointNames.push(point.name);
+          continue;
+        }
         const vehicleClassAtPoint = classByPointId.get(point.id);
         const bannedClasses = (point.bannedVehicleClasses ?? []) as string[];
         if (vehicleClassAtPoint && bannedClasses.includes(vehicleClassAtPoint)) {
           bannedPointNames.push(point.name);
           continue;
         }
-        if (!vehicleClassAtPoint) { missingTariffPointNames.push(point.name); continue; }
+        if (!vehicleClassAtPoint) { missingTariffPointNames.push(point.name); hasPricedAmount = false; continue; }
         // A GATE_PAIR point (e.g. Osmangazi Köprüsü / O-5) has no single
         // "the" tariff for the point — a matching tariff must also carry the
         // exact entry/exit gate pair configured on this route item.
         if (point.pricingMode === 'GATE_PAIR' && (!item.entryGateName || !item.exitGateName)) {
           missingTariffPointNames.push(`${point.name} (gişe çifti seçilmedi)`);
+          hasPricedAmount = false;
           continue;
         }
         const matchingTariffs = tariffs.filter((tariff) => {
@@ -532,7 +609,13 @@ export async function getRouteTollAlternatives(routeId: string, vehicleId?: stri
           if (point.pricingMode !== 'GATE_PAIR') return true;
           return tariff.entryGateName === item.entryGateName && tariff.exitGateName === item.exitGateName;
         });
-        if (!matchingTariffs.length) missingTariffPointNames.push(point.name);
+        // Exactly one match is required for a usable amount — zero is a
+        // missing tariff, and more than one is a data-integrity problem
+        // (duplicate overlapping rows); neither can be safely summed.
+        if (matchingTariffs.length !== 1) { missingTariffPointNames.push(point.name); hasPricedAmount = false; continue; }
+        const amount = effectiveTollAmount(matchingTariffs[0]);
+        if (amount == null) { missingTariffPointNames.push(point.name); hasPricedAmount = false; continue; }
+        totalKurus += amount;
       }
       return {
         id: alternative.id,
@@ -540,6 +623,8 @@ export async function getRouteTollAlternatives(routeId: string, vehicleId?: stri
         active: alternative.active,
         isDefault: alternative.isDefault,
         displayOrder: alternative.displayOrder,
+        needsReview: alternative.needsReview,
+        reviewNote: alternative.reviewNote,
         pointIds: alternativeItems.map((item) => item.tollPointId),
         pointNames: alternativeItems.map((item) => pointById.get(item.tollPointId)?.name ?? 'Bilinmeyen geçiş'),
         // A banned point makes this alternative permanently unusable for the
@@ -549,6 +634,11 @@ export async function getRouteTollAlternatives(routeId: string, vehicleId?: stri
         bannedPointNames,
         isPricedForSelectedVehicle: !vehicle || (missingTariffPointNames.length === 0 && bannedPointNames.length === 0),
         missingTariffPointNames,
+        // Tek yönlü karşılaştırma tutarı — yalnızca seçili araç için tüm
+        // noktalar fiyatlanmış VE yasaklı değilse gerçek bir toplamdır;
+        // aksi halde null (asla 0 veya eksik veriyle tahmini bir toplam).
+        // Bu bir müşteri teklifi değildir, yalnızca admin karşılaştırması içindir.
+        totalKurus: vehicle && hasPricedAmount && bannedPointNames.length === 0 ? totalKurus : null,
       };
     }),
   };

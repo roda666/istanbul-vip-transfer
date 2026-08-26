@@ -4,6 +4,9 @@
 .next/
 .next-dev/
 
+# Generated during the prebuild step; never commit a stale social card.
+public/images/og-card.jpg
+
 # Playwright test artifacts
 test-results/
 playwright-report/

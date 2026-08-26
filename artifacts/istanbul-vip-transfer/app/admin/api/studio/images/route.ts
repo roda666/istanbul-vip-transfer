@@ -12,6 +12,7 @@ import { requireAdminSession } from '@/lib/auth/session';
 import { SUPPORTED_LANGS } from '@/lib/i18n';
 import { localizedServicePath, localizedStaticPath } from '@/lib/localized-service-path';
 import { appendServiceInlineImage, parseServicePageBody } from '@/lib/service-page-types';
+import { buildSeoImageFilename } from '@/lib/studio/image-filename';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +28,7 @@ const attachSchema = z.object({
   action: z.literal('attach'),
   target: targetSchema,
   id: z.string().uuid(),
-  imagePath: z.string().regex(/^\/api\/storage\/objects\/ai-images\/(blog|service)\/[a-z0-9-]+\/[0-9a-f-]{36}\.webp$/),
+  imagePath: z.string().regex(/^\/api\/storage\/objects\/ai-images\/(blog|service)\/[a-z0-9-]+\/[a-z0-9]+(?:-[a-z0-9]+)*\.webp$/),
   altText: z.string().trim().min(5).max(300),
   placement: z.enum(['hero', 'body']),
 });
@@ -187,7 +188,8 @@ export async function POST(req: NextRequest) {
             : 502;
       return NextResponse.json({ error: result.message }, { status });
     }
-    const entityId = `ai-images/${targetFolder(data.target)}/${target.slug}/${crypto.randomUUID()}.webp`;
+    const filename = buildSeoImageFilename(data.altText, { fallback: target.slug });
+    const entityId = `ai-images/${targetFolder(data.target)}/${target.slug}/${filename}`;
     const stored = await putPrivateWebp(entityId, result.data.bytes);
     if (!stored.ok) return NextResponse.json({ error: stored.message }, { status: 503 });
     return NextResponse.json({

@@ -30,6 +30,26 @@ import sharp from '../node_modules/sharp/dist/index.cjs';
 
 const SIDECAR = process.env.REPLIT_SIDECAR_ENDPOINT ?? 'http://127.0.0.1:1106';
 const MODEL = process.env.OPENAI_IMAGE_MODEL?.trim() || 'gpt-image-2';
+
+// Keep in sync with lib/studio/image-filename.ts — this is a plain .mjs script
+// and cannot import the TS module directly.
+const TURKISH_CHAR_MAP = { ı: 'i', İ: 'i', ş: 's', Ş: 's', ğ: 'g', Ğ: 'g', ü: 'u', Ü: 'u', ö: 'o', Ö: 'o', ç: 'c', Ç: 'c' };
+const STOPWORDS = new Set(['ve', 'ile', 'için', 'bir', 'bu', 'şu', 'da', 'de', 'ki', 'mi', 'mı', 'mu', 'mü', 'gibi', 'çok', 'daha', 'en', 'olan', 'olarak']);
+function slugWords(input) {
+  let s = input;
+  for (const [from, to] of Object.entries(TURKISH_CHAR_MAP)) s = s.split(from).join(to);
+  s = s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  s = s.replace(/[^a-z0-9\s-]/g, ' ');
+  return s.split(/[\s-]+/).map(w => w.trim()).filter(Boolean);
+}
+function buildSeoImageFilename(altText, { fallback, sourceId } = {}) {
+  const suffix = (sourceId ?? randomUUID()).replace(/-/g, '').slice(0, 8);
+  const primary = slugWords(altText ?? '').filter(w => w.length >= 2 && !STOPWORDS.has(w));
+  const words = primary.length > 0 ? primary : slugWords(fallback ?? '').filter(w => w.length >= 2 && !STOPWORDS.has(w));
+  const chosen = words.slice(0, 6);
+  const base = chosen.length > 0 ? chosen.join('-') : 'gorsel';
+  return `${base}-${suffix}.webp`;
+}
 const MAX_GENERATED_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_GENERATED_IMAGE_PIXELS = 40_000_000;
 const OUT_W = 1600;
@@ -293,7 +313,7 @@ async function cmdPlace(args) {
     console.log(`↓ Recompressed: ${original.byteLength} → ${bytes.byteLength} bytes (threshold ${maxBytes / 1024} KB)`);
   }
 
-  const objectName = `ai-images/service/${spec.slug}/section-images/${randomUUID()}.webp`;
+  const objectName = `ai-images/service/${spec.slug}/section-images/${buildSeoImageFilename(spec.alt, { fallback: spec.heading })}`;
   const permanentUrl = await uploadWebp(bytes, objectName);
   console.log(`✓ Uploaded to permanent storage: ${permanentUrl} (${bytes.byteLength} bytes)`);
 

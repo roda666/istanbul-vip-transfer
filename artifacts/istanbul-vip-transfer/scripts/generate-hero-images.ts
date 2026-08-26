@@ -6,12 +6,13 @@
  */
 import postgres from 'postgres';
 import OpenAI from 'openai';
-import { createHmac, randomUUID } from 'node:crypto';
+import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { getOpenAiImageModel } from '../lib/ai/model-config-core';
 import { getServiceHeroImageConfig } from '../lib/ai/service-hero-image-config';
 import { optimizeGeneratedImage } from '../lib/studio/image-media';
+import { buildSeoImageFilename } from '../lib/studio/image-filename';
 import {
   blogHeroObjectName,
   isBlogHeroEligible,
@@ -248,7 +249,8 @@ async function main() {
           const raw = await responseBytes(generated.data?.[0] ?? {});
           const optimized = await optimizeGeneratedImage(raw);
           if (!optimized || !isWebp(optimized)) throw new Error('Image optimization failed');
-          const permanentUrl = await uploadWebp(optimized, blogHeroObjectName(blog.slug, randomUUID()), sql);
+          const seoId = buildSeoImageFilename(entry.config.altText, { fallback: blog.slug }).replace(/\.webp$/, '');
+          const permanentUrl = await uploadWebp(optimized, blogHeroObjectName(blog.slug, seoId), sql);
           if (!blog.id) {
             results.uploaded.push({ slug: configKey, reason: `permanent asset retained without assignment: ${permanentUrl}` });
             console.log(`  ✓ ${configKey}: uploaded to permanent storage; no CMS record, not assigned`);
@@ -319,7 +321,7 @@ async function main() {
         const raw = await responseBytes(generated.data?.[0] ?? {});
         const optimized = await optimizeGeneratedImage(raw);
         if (!optimized || !isWebp(optimized)) throw new Error('Image optimization failed');
-        const objectName = `ai-images/service/${service.slug}/${randomUUID()}.webp`;
+        const objectName = `ai-images/service/${service.slug}/${buildSeoImageFilename(config.altText, { fallback: service.slug })}`;
         const permanentUrl = await uploadWebp(optimized, objectName, sql);
         await sql`UPDATE content SET hero_image = ${permanentUrl}, hero_image_alt = ${config.altText}, updated_at = now() WHERE id::text = ${service.id}`;
         results.updated.push({ slug: service.slug });

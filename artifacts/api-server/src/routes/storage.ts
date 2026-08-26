@@ -128,7 +128,11 @@ router.get('/storage/objects/*path', async (req: Request, res: Response) => {
     // Keep namespace validation strict; do not turn this into a general private
     // bucket proxy. AI assets have a fixed target/slug/UUID WebP layout.
     const isServicePage = /^service-pages\/[a-z0-9-]+\/[a-z0-9-]+\.(?:jpe?g|png|webp|gif|avif)$/i.test(wildcardPath);
-    const isAiImage = /^ai-images\/(?:blog|service)\/[a-z0-9-]+\/[0-9a-f-]{36}\.webp$/i.test(wildcardPath);
+    // Filename covers both the legacy bare-UUID convention and the current
+    // SEO-descriptive-words + 8-hex-suffix convention (both are
+    // dash-separated lowercase alphanumerics). Service images may additionally
+    // live one level deeper under a `section-images/` folder.
+    const isAiImage = /^ai-images\/(?:blog|service)\/[a-z0-9-]+\/(?:section-images\/)?[a-z0-9]+(?:-[a-z0-9]+)*\.webp$/i.test(wildcardPath);
     // Legacy Studio project images are retained for already-created projects.
     const isLegacyStudioImage = /^studio\/[0-9a-f-]{36}\/\d+\.(?:png|webp)$/i.test(wildcardPath);
     if (!isServicePage && !isAiImage && !isLegacyStudioImage) {

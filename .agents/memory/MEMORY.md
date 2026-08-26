@@ -96,3 +96,6 @@
 - [Reservation panel count vs DB count](reservation-panel-archived-rows.md) — admin Talepler list excludes archived_at rows by default; DB total will exceed the panel's displayed count by the archived-row count.
 - [ShellExec background process lifecycle](shellexec-background-process-lifecycle.md) — nohup/& processes die when the ShellExec call returns; split long scripts into sequential foreground slice calls instead.
 - [Image compression threshold system](image-compression-threshold-system.md) — admin-configurable max-KB ceiling on WebP uploads; in-place overwrite backfill so URLs never change; direct-browser-upload path not yet covered.
+- [AI image SEO filename convention](ai-image-seo-filenames.md) — alt-text-derived filenames + prebuild guard + image sitemap; any ai-images/ path change must also update the api-server serving-route regex or images silently 403.
+- [og:locale format bug](istanbul-vip-transfer-og-locale-format.md) — getOgLocale() reuses hreflang's hyphen BCP47 format for og:locale (needs underscore); affects 8 templates.
+- [Sitemap vs hardcoded noindex conflict](sitemap-noindex-conflict-pattern.md) — sitemap.ts doesn't know about per-page hardcoded robots overrides; some noindex pages are also legacy-redirect destinations.

@@ -42,7 +42,7 @@ export async function validateInstagramCoverImage(input: {
   // constrained studio flow. Arbitrary pasted/uploaded images have no
   // provenance or visual-safety attestations, so they are refused for
   // Instagram instead of being published on trust.
-  if (!/^\/api\/storage\/objects\/ai-images\/blog\/[a-z0-9-]+\/[0-9a-f-]{36}\.webp$/i.test(url.pathname)) {
+  if (!/^\/api\/storage\/objects\/ai-images\/blog\/[a-z0-9-]+\/[a-z0-9]+(?:-[a-z0-9]+)*\.webp$/i.test(url.pathname)) {
     throw new Error('Instagram için yalnızca güvenli AI Studio blog kapak görseli kullanılabilir; desteklenmeyen varlık reddedildi.');
   }
   const descriptiveText = `${input.altText ?? ''} ${input.topic} ${url.pathname}`;

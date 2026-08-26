@@ -20,6 +20,6 @@ export default function robots(): MetadataRoute.Robots {
       // General crawlers — block internal/API paths from all bots
       { userAgent: '*', allow: '/', disallow: ['/admin', '/admin/', '/admin/api', '/data', '/data/', '/api'] },
     ],
-    sitemap: `${SITE.siteUrl}/sitemap.xml`,
+    sitemap: [`${SITE.siteUrl}/sitemap.xml`, `${SITE.siteUrl}/image-sitemap.xml`],
   };
 }

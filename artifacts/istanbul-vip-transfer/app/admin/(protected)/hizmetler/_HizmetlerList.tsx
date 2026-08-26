@@ -19,6 +19,8 @@ export interface ServiceListItem {
   heroImage: string | null;
   updatedAt: string;
   translations: Record<string, string>; // locale → status
+  /** Live "starting from" EUR price computed from panel pricing data. null = no price data defined yet. */
+  startingPriceEur: number | null;
 }
 
 interface Props { items: ServiceListItem[] }
@@ -440,7 +442,18 @@ export default function HizmetlerList({ items }: Props) {
                 </p>
               </div>
 
-              <span style={{ fontSize: '11px', color: '#64748B' }}>{catLabel}</span>
+              <span style={{ fontSize: '11px', color: '#64748B' }}>
+                {catLabel}
+                {item.startingPriceEur === null && (
+                  <span title="Bu hizmet için tanımlı fiyat verisi yok" style={{
+                    display: 'block', marginTop: '3px', fontSize: '10px', fontWeight: 700,
+                    color: '#B45309', background: '#FFF7ED', border: '1px solid #FBBF24',
+                    borderRadius: '8px', padding: '1px 6px', width: 'fit-content',
+                  }}>
+                    ⚠ Fiyat verisi eksik
+                  </span>
+                )}
+              </span>
 
               <LangDots translations={item.translations} />
 
@@ -501,6 +514,12 @@ export default function HizmetlerList({ items }: Props) {
               {/* Meta row */}
               <div className="hl-card-meta">
                 {catLabel && <span style={{ background: '#F1F5F9', borderRadius: '4px', padding: '1px 6px' }}>{catLabel}</span>}
+                {item.startingPriceEur === null && (
+                  <span title="Bu hizmet için tanımlı fiyat verisi yok" style={{
+                    background: '#FFF7ED', color: '#B45309', border: '1px solid #FBBF24',
+                    borderRadius: '4px', padding: '1px 6px', fontWeight: 700,
+                  }}>⚠ Fiyat verisi eksik</span>
+                )}
                 <span style={{
                   background: item.showOnHomepage ? '#ECFDF5' : '#F1F5F9',
                   color: item.showOnHomepage ? '#059669' : '#64748B',

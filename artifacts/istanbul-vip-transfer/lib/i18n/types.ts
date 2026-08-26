@@ -468,4 +468,8 @@ export interface Dictionary {
     kvkkLink: string;
     commercialLink: string;
   };
+  servicePricing: {
+    /** Template string with a literal "{price}" placeholder for the EUR amount. */
+    startingFrom: string;
+  };
 }

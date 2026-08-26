@@ -422,6 +422,9 @@ const fr: Dictionary = {
     kvkkLink: 'Avis de confidentialité',
     commercialLink: 'Avis relatif aux communications commerciales',
     },
+    servicePricing: {
+      startingFrom: 'À partir de {price} €',
+    },
     };
 
 export default fr;

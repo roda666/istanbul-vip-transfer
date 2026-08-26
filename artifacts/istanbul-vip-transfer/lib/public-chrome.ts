@@ -118,7 +118,13 @@ async function getChromeServices(locale: string): Promise<{
           sql`${contentTranslations.entityId}::uuid = ${content.id}`,
           eq(contentTranslations.targetLanguageCode, locale),
           eq(contentTranslations.entityType, 'service_page'),
-          inArray(contentTranslations.status, ['PUBLISHED']),
+          // Visitor-ready policy (see lib/service-page-cms.ts getServicePage /
+          // getPublishedLocalesForService): DRAFT/REVIEW/APPROVED/PUBLISHED/OUTDATED
+          // translations are all served to visitors — only TRANSLATING/QUEUED/
+          // FAILED/NOT_STARTED/ARCHIVED stay hidden. The nav must use the same
+          // set, or a page that's fully live can still vanish from the menu in
+          // that language whenever an unrelated TR edit re-flags it OUTDATED.
+          inArray(contentTranslations.status, ['DRAFT', 'REVIEW', 'APPROVED', 'PUBLISHED', 'OUTDATED']),
         ))
         .where(and(
           eq(content.contentType, 'SERVICE'),

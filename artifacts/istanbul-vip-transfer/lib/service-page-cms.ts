@@ -65,6 +65,14 @@ export interface PublishedServicePage {
   body: ServicePageBody | null;
   /** Translation status for non-TR locales. 'OUTDATED' = stale, null = up-to-date. */
   translationStatus: 'OUTDATED' | null;
+  /**
+   * Curated internal links (related services, blog posts, route pages, quote CTA).
+   * Authored once in Turkish on the source `content` row and reused across all
+   * locales — only the resolved href is locale-aware, the label text is not
+   * translated yet, so callers should only render this for lang === 'tr' until
+   * a translation workflow for this field exists.
+   */
+  internalLinks: Array<{ label: string; href: string; anchor?: string }>;
 }
 
 /**
@@ -110,6 +118,7 @@ export async function getPublishedServicePage(
         category:       src.category ?? null,
         body,
         translationStatus: null,
+        internalLinks:  src.internalLinks ?? [],
       };
     }
 
@@ -155,6 +164,7 @@ export async function getPublishedServicePage(
       category:       src.category ?? null,
       body,
       translationStatus: tx.status === 'OUTDATED' ? 'OUTDATED' : null,
+      internalLinks:  src.internalLinks ?? [],
     };
   } catch {
     return null;

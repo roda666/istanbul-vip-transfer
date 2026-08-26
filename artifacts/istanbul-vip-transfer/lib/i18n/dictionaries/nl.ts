@@ -422,6 +422,9 @@ const nl: Dictionary = {
       kvkkLink: 'Privacyverklaring',
     commercialLink: 'Informatie over commerciële communicatie',
     },
+    servicePricing: {
+      startingFrom: 'Vanaf {price} €',
+    },
     };
 
 export default nl;

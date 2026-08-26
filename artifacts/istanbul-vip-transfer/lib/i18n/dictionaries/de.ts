@@ -421,6 +421,9 @@ const de: Dictionary = {
     kvkkLink: 'Datenschutzhinweis',
     commercialLink: 'Hinweis zur kommerziellen Kommunikation',
   },
+  servicePricing: {
+    startingFrom: 'Preise ab {price} €',
+  },
 };
 
 export default de;

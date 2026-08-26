@@ -421,6 +421,9 @@ const ru: Dictionary = {
     kvkkLink: 'Уведомление о конфиденциальности',
     commercialLink: 'Уведомление о коммерческих сообщениях',
   },
+  servicePricing: {
+    startingFrom: 'Цены от {price} €',
+  },
 };
 
 export default ru;

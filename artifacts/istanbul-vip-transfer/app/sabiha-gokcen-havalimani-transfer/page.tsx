@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import { buildAlternates } from '@/lib/i18n/seo';
 import { getPublishedServicePage, getPublishedServicePageLangs } from '@/lib/service-page-cms';
 import ServicePageRenderer from '@/components/ServicePageRenderer';
-import RelatedBlogSection from '@/components/RelatedBlogSection';
 import { SITE } from '@/lib/site-config';
 import { getServiceOgImageUrl } from '@/lib/service-og-images';
 
@@ -33,10 +32,6 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function SabihaGokcenPage() {
   return (
-    <>
-      <ServicePageRenderer slug="sabiha-gokcen-havalimani-transfer" lang="tr" canonicalPath="/sabiha-gokcen-havalimani-transfer" />
-
-      <RelatedBlogSection page="sabiha-gokcen-havalimani-transfer" lang="tr" />
-    </>
+    <ServicePageRenderer slug="sabiha-gokcen-havalimani-transfer" lang="tr" canonicalPath="/sabiha-gokcen-havalimani-transfer" />
   );
 }

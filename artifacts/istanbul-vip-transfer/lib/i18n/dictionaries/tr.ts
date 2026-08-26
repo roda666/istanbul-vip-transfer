@@ -421,6 +421,9 @@ const tr: Dictionary = {
     kvkkLink: 'Aydınlatma Metni',
     commercialLink: 'Ticari İletişim Bilgilendirmesi',
   },
+  servicePricing: {
+    startingFrom: '{price} EUR\'dan başlayan fiyatlarla',
+  },
 };
 
 export default tr;

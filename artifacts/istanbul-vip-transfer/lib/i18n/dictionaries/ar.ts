@@ -421,6 +421,9 @@ const ar: Dictionary = {
     kvkkLink: 'إشعار الخصوصية',
     commercialLink: 'إشعار التواصل التجاري',
   },
+  servicePricing: {
+    startingFrom: 'أسعار تبدأ من {price} يورو',
+  },
 };
 
 export default ar;

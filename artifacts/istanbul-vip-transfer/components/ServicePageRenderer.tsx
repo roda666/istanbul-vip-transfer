@@ -24,6 +24,8 @@ import { getContentDirection, isolateLtrValues } from '@/lib/i18n/bidi';
 import { localizedServicePath, localizedStaticPath } from '@/lib/localized-service-path';
 import { serializeJsonLd } from '@/lib/json-ld';
 import SafeArticleImage from '@/components/SafeArticleImage';
+import { getServiceStartingPriceEur } from '@/lib/service-starting-price';
+import ServiceRelatedLinksSection from '@/components/ServiceRelatedLinksSection';
 
 interface Props {
   slug: string;
@@ -161,6 +163,23 @@ function FeaturesBlock({ features, dir, lang }: { features: string[]; dir?: stri
   );
 }
 
+function StartingPriceBadge({ priceEur, dict, dir }: { priceEur: number; dict: ReturnType<typeof getDictionary>; dir?: string }) {
+  const label = dict.servicePricing.startingFrom.replace('{price}', String(priceEur));
+  return (
+    <div style={{ padding: '0 24px', maxWidth: '900px', margin: '24px auto 0' }}>
+      <span style={{
+        display: 'inline-flex', alignItems: 'center', gap: '8px',
+        padding: '8px 18px', borderRadius: '999px',
+        background: 'linear-gradient(135deg, rgba(199,154,53,0.12), rgba(228,184,75,0.12))',
+        border: '1px solid rgba(199,154,53,0.35)',
+        fontFamily: 'Inter, sans-serif', fontSize: '14px', fontWeight: 600, color: '#8A6516',
+      }} dir={dir}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
 function IntroSection({ text, dir, lang }: { text: string; dir?: string; lang: string }) {
   return (
     <section style={{ padding: '48px 24px', maxWidth: '900px', margin: '0 auto' }}>
@@ -291,9 +310,10 @@ function FaqBlock({ body, dir, lang }: { body: ServicePageBody; dir?: string; la
 // ── Main renderer ─────────────────────────────────────────────────────────────
 
 export default async function ServicePageRenderer({ slug, lang, canonicalPath }: Props) {
-  const [dbPage, cs] = await Promise.all([
+  const [dbPage, cs, startingPriceEur] = await Promise.all([
     getPublishedServicePage(slug, lang),
     getContactSettings(),
+    getServiceStartingPriceEur(slug),
   ]);
   // If the locale has no published CMS row, keep the page's existing
   // localized static fallback but still show the source FAQ rather than
@@ -360,6 +380,10 @@ export default async function ServicePageRenderer({ slug, lang, canonicalPath }:
           heroImageAlt={dbPage.heroImageAlt}
         />
 
+        {startingPriceEur !== null && (
+          <StartingPriceBadge priceEur={startingPriceEur} dict={dict} dir={dir} />
+        )}
+
         {/* Introductory content */}
         {dbPage.body.introBody && (
           <IntroSection text={dbPage.body.introBody} dir={dir} lang={lang} />
@@ -383,6 +407,11 @@ export default async function ServicePageRenderer({ slug, lang, canonicalPath }:
 
         {/* FAQ */}
         <FaqBlock body={dbPage.body} dir={dir} lang={lang} />
+
+        {/* Related services / blog guides / route detail / quote CTA — TR only for now, see doc-comment on internalLinks */}
+        {lang === 'tr' && (
+          <ServiceRelatedLinksSection links={dbPage.internalLinks} lang={lang} />
+        )}
 
         <Contact />
       </div>

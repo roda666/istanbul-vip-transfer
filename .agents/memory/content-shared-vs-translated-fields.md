@@ -1,0 +1,10 @@
+---
+name: Shared structural fields vs per-locale translation fields
+description: Why "category changed in Turkish but not other languages" wasn't a data bug, and the real class of bug to watch for.
+---
+
+`content` (category, displayOrder, isActive, indexable, heroImage/ogImage, showInNav/showOnHomepage) holds one shared value per service/page. `content_translations` never has these columns — only text fields (title, excerpt, body, metaTitle, metaDescription) are per-locale. The admin `saveTranslation` action's zod schema only accepts those text fields, so a structural field can never be written from a non-TR locale tab even if a client tried to send one.
+
+**Why it still looked like a per-locale bug:** every *public reader* of shared data must independently agree on which translation `status` values are "live" for a locale. `lib/service-page-cms.ts` treats DRAFT/REVIEW/APPROVED/PUBLISHED/OUTDATED as visitor-ready (see visitor-ready-translations.md), but `lib/public-chrome.ts`'s nav-building query only joined `status = PUBLISHED`. Editing TR content routinely flips that service's translations to OUTDATED (expected — it just means "stale, needs re-translation review", the translated page itself keeps serving). Because the nav query excluded OUTDATED, the service would vanish from the menu in whichever locales got OUTDATED — looking exactly like "the category/menu change didn't apply in the other languages" even though `content.category` was always correct and identical everywhere.
+
+**How to apply:** whenever adding a new public reader of `content`/`content_translations` (nav, sitemap, related-content widgets, search index, etc.), reuse the same visitor-ready status set (`['DRAFT','REVIEW','APPROVED','PUBLISHED','OUTDATED']`), not a narrower `PUBLISHED`-only filter. Regression tests: `tests/unit/service-page-structural-fields-locale-independence.test.ts` (structural fields never reach a translation-row write) and `tests/unit/public-chrome-outdated-translation-nav.test.ts` (nav includes OUTDATED translations).

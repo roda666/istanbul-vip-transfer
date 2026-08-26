@@ -13,6 +13,7 @@ import {
 import RunHealthCheckButton from './_RunHealthCheckButton';
 import BulkRetranslateButton from './_BulkRetranslateButton';
 import HizmetlerList, { type ServiceListItem } from './_HizmetlerList';
+import { getServiceStartingPriceEur } from '@/lib/service-starting-price';
 
 export const metadata: Metadata = { title: 'Hizmetler | Admin', robots: { index: false } };
 export const dynamic = 'force-dynamic';
@@ -77,6 +78,12 @@ export default async function HizmetlerPage() {
     }
 
     // ── 3. Build list items ───────────────────────────────────────────────────
+    const priceBySlug = new Map<string, number | null>(
+      await Promise.all(
+        rows.map(async r => [r.slug, await getServiceStartingPriceEur(r.slug)] as const),
+      ),
+    );
+
     items = rows.map(r => ({
       id:             r.id,
       title:          r.title,
@@ -90,6 +97,7 @@ export default async function HizmetlerPage() {
       heroImage:      r.heroImage,
       updatedAt:      r.updatedAt.toISOString(),
       translations:   txByService.get(r.id) ?? {},
+      startingPriceEur: priceBySlug.get(r.slug) ?? null,
     }));
 
     // ── 4. Health check ───────────────────────────────────────────────────────

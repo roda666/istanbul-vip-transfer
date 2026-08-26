@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import ServicePageRenderer from '@/components/ServicePageRenderer';
-import RelatedBlogSection from '@/components/RelatedBlogSection';
 import { SITE } from '@/lib/site-config';
 import { getServiceOgImageUrl } from '@/lib/service-og-images';
 
@@ -45,10 +44,6 @@ export const metadata: Metadata = {
 
 export default async function VipTransferPage() {
   return (
-    <>
-      <ServicePageRenderer slug="vip-transfer" lang="tr" canonicalPath="/vip-transfer" />
-
-      <RelatedBlogSection page="vip-transfer" lang="tr" />
-    </>
+    <ServicePageRenderer slug="vip-transfer" lang="tr" canonicalPath="/vip-transfer" />
   );
 }

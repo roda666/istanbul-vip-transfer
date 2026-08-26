@@ -28,7 +28,7 @@ import {
 } from '@/lib/service-page-types';
 import { translateServicePageFields } from '@/lib/ai/translate-service-page';
 import { SITE } from '@/lib/site-config';
-import { validateServiceImageAsset } from '@/lib/service-image-assets';
+import { resolveImageField, validateServiceImageAsset } from '@/lib/service-image-assets';
 import 'server-only';
 
 type Params = { params: Promise<{ id: string }> };
@@ -277,15 +277,20 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const srcHash = computeTranslatableHash(bodyObj);
   const savingDraftOfPublished = data.saveAsDraft && row.status === 'PUBLISHED';
 
+  const imageWarnings: string[] = [];
   let heroImage: string | null;
   let ogImage: string | null;
-  try {
-    heroImage = await validateServiceImageAsset(data.heroImage);
-    ogImage = await validateServiceImageAsset(data.ogImage);
-  } catch (error) {
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : 'Görsel doğrulanamadı.',
-    }, { status: 422 });
+  if (savingDraftOfPublished) {
+    // Draft-of-published save never touches live image fields — nothing to validate.
+    heroImage = row.heroImage ?? null;
+    ogImage = row.ogImage ?? null;
+  } else {
+    const heroResult = await resolveImageField(data.heroImage, row.heroImage, 'Hero görseli');
+    const ogResult   = await resolveImageField(data.ogImage, row.ogImage, 'OG görseli');
+    heroImage = heroResult.value;
+    ogImage   = ogResult.value;
+    if (heroResult.warning) imageWarnings.push(heroResult.warning);
+    if (ogResult.warning) imageWarnings.push(ogResult.warning);
   }
   if (!savingDraftOfPublished && !data.saveAsDraft && !heroImage) {
     return NextResponse.json({ error: 'Yayımlamak için hizmete özel bir hero görseli zorunludur.' }, { status: 422 });
@@ -395,7 +400,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   const record = await getServicePageAdminRecord(id);
-  return NextResponse.json({ record, translationResults });
+  return NextResponse.json({
+    record,
+    translationResults,
+    // Non-blocking: the save above already succeeded even if an image
+    // field could not be validated. The admin sees this as a warning, not
+    // an error — the previous (still valid) image value was kept.
+    warnings: imageWarnings.length > 0 ? imageWarnings : undefined,
+  });
 }
 
 // ── POST (actions on translations + source record) ────────────────────────────

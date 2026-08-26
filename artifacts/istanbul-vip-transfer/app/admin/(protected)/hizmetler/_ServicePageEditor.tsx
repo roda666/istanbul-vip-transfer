@@ -752,12 +752,18 @@ export default function ServicePageEditor({ initialRecord }: Props) {
           autoTranslate: true,
         }),
       });
-      const data = await safeJson<{ record?: ServicePageRecord; error?: string }>(res);
+      const data = await safeJson<{ record?: ServicePageRecord; error?: string; warnings?: string[] }>(res);
       if (!res.ok) throw new Error(data.error ?? 'Kaydetme hatası.');
       if (data.record) setRecord(data.record);
-      showToast('success', saveAsDraft
-        ? 'Taslak kaydedildi. Çeviri taslakları oluşturuluyor…'
-        : 'Yayımlandı. Çeviri taslakları oluşturuluyor…');
+      if (data.warnings?.length) {
+        // Non-blocking: the save succeeded, but at least one image field could
+        // not be validated and was left as its previous value.
+        showToast('error', data.warnings.join(' '));
+      } else {
+        showToast('success', saveAsDraft
+          ? 'Taslak kaydedildi. Çeviri taslakları oluşturuluyor…'
+          : 'Yayımlandı. Çeviri taslakları oluşturuluyor…');
+      }
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Bilinmeyen hata.');
     } finally {

@@ -46,6 +46,46 @@ const APP_DIR = path.join(ROOT, 'app');
 
 const ALWAYS_VALID_STATIC = ['hizmetler', 'araclar', 'hakkimizda', 'iletisim'];
 
+// Canonical service slug → its English nav-translated slug, mirroring
+// localizedServicePath()/SERVICE_NAV_KEYS in lib/localized-service-path.ts.
+// Duplicated here (not imported) because that module pulls in 'server-only'
+// dependencies that a plain Node script can't resolve.
+const EN_SERVICE_SLUGS = new Set([
+  'istanbul-havalimani-transfer',
+  'sabiha-gokcen-havalimani-transfer',
+  'vip-transfer',
+  'sehirler-arasi-transfer',
+  'soforlu-arac-kiralama',
+  'otel-transfer',
+  'saglik-turizmi-transfer',
+  'kurumsal-vip-transfer',
+  'istanbul-bursa-transfer',
+  'istanbul-sapanca-transfer',
+  'istanbul-gunubirlik-turlar',
+  'sapanca-masukiye-turu',
+  'bursa-gunubirlik-tur',
+  'yalova-gunubirlik-tur',
+]);
+const EN_STATIC_SLUGS = new Set(['hizmetler', 'araclar', 'hakkimizda', 'iletisim']);
+// English nav-translated slugs currently used as redirect destinations
+// (kept as an explicit allowlist since the actual slugify() output can't be
+// recomputed here without importing the i18n dictionary module tree).
+const KNOWN_EN_DESTINATION_SLUGS = new Set([
+  'yalova-day-tour',
+  'bursa-day-tour',
+  'sapanca-masukiye-tour',
+  'about-us',
+]);
+
+// Legal pages live under a single app/yasal/[slug]/page.tsx dynamic route,
+// mirroring the KNOWN_LEGAL_SLUGS allowlist in lib/legal-page-cms.ts.
+const LEGAL_SLUGS = new Set([
+  'kvkk-aydinlatma-metni',
+  'cerez-politikasi',
+  'kullanim-kosullari',
+  'gizlilik-politikasi',
+]);
+
 function stripToPathname(destination) {
   let p = destination
     .replace(/^https:\/\/www\.istanbulviptransfer\.com/, '')
@@ -138,6 +178,42 @@ async function main() {
       `;
       if (rows.length === 0) {
         failures.push(`${rule.source} → ${rule.destination}: no PUBLISHED blog post with slug "${slug}".`);
+      }
+      continue;
+    }
+
+    // ── Legal pages (app/yasal/[slug] dynamic route) ───────────────────────
+    if (pathname.startsWith('/yasal/')) {
+      const slug = pathname.replace('/yasal/', '');
+      if (!LEGAL_SLUGS.has(slug)) {
+        failures.push(`${rule.source} → ${rule.destination}: "${slug}" is not a recognized legal page slug.`);
+      }
+      continue;
+    }
+
+    // ── Route (guzergah) detail pages ──────────────────────────────────────
+    if (pathname.startsWith('/guzergah/')) {
+      const slug = pathname.replace('/guzergah/', '');
+      const rows = await sql`SELECT 1 FROM transfer_routes WHERE slug = ${slug} LIMIT 1`;
+      if (rows.length === 0) {
+        failures.push(`${rule.source} → ${rule.destination}: no transfer_routes row with slug "${slug}".`);
+      }
+      continue;
+    }
+
+    // ── Locale-prefixed pages (/en/..., /de/..., etc.) ─────────────────────
+    // These are rendered by the catch-all [lang]/[...slug] route from the
+    // same underlying service/static-page data as the TR page, keyed by a
+    // locale-translated slug — not a file on disk. Verified against the
+    // known nav-translation allowlist above rather than the filesystem.
+    const localeMatch = pathname.match(/^\/([a-z]{2})\/(.+)$/);
+    if (localeMatch) {
+      const [, , rest] = localeMatch;
+      if (!KNOWN_EN_DESTINATION_SLUGS.has(rest) && !EN_SERVICE_SLUGS.has(rest) && !EN_STATIC_SLUGS.has(rest)) {
+        failures.push(
+          `${rule.source} → ${rule.destination}: "${rest}" is not a recognized localized slug — add it to ` +
+            `KNOWN_EN_DESTINATION_SLUGS in this script once verified, or fix the destination.`,
+        );
       }
       continue;
     }

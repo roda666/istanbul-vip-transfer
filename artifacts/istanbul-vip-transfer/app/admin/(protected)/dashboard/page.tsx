@@ -33,6 +33,16 @@ interface RecentError {
   href: string;
 }
 
+interface ReservationWriteAlert {
+  count: number;
+  items: Array<{
+    id: string;
+    referenceNumber: string;
+    lastError: string;
+    updatedAt: Date;
+  }>;
+}
+
 interface BotProtectionSummary {
   rateLimit: number;
   honeypot: number;
@@ -302,6 +312,67 @@ async function getRecentErrors(): Promise<DashboardBlock<RecentError[]>> {
   }
 }
 
+async function getReservationWriteAlert(): Promise<DashboardBlock<ReservationWriteAlert>> {
+  let storageItems: Awaited<ReturnType<typeof import('@/lib/reservation-recovery-storage')['listReservationRecoveryFallbacks']>> = [];
+  let storageError: string | null = null;
+  try {
+    const { listReservationRecoveryFallbacks } = await import('@/lib/reservation-recovery-storage');
+    storageItems = await listReservationRecoveryFallbacks();
+  } catch (error) {
+    storageError = error instanceof Error ? error.message : 'App Storage kurtarma kayıtları alınamadı.';
+  }
+  try {
+    const { db } = await import('@/db');
+    const { reservationSubmissionFailures } = await import('@/db/schema');
+    const { count, desc, isNull } = await import('drizzle-orm');
+    const where = isNull(reservationSubmissionFailures.resolvedAt);
+    const [totalRows, items] = await Promise.all([
+      db.select({ count: count() }).from(reservationSubmissionFailures).where(where),
+      db.select({
+        id: reservationSubmissionFailures.id,
+        submissionId: reservationSubmissionFailures.submissionId,
+        referenceNumber: reservationSubmissionFailures.referenceNumber,
+        lastError: reservationSubmissionFailures.lastError,
+        updatedAt: reservationSubmissionFailures.updatedAt,
+      }).from(reservationSubmissionFailures)
+        .where(where)
+        .orderBy(desc(reservationSubmissionFailures.updatedAt))
+        .limit(5),
+    ]);
+    const dbSubmissionIds = new Set(items.map((item) => item.submissionId));
+    const uniqueStorageItems = storageItems.filter((item) => !dbSubmissionIds.has(item.submissionId));
+    const combinedItems = [
+      ...items,
+      ...uniqueStorageItems.map((item) => ({
+        id: item.id,
+        referenceNumber: item.referenceNumber,
+        lastError: `${item.lastError}; recovery=private_object_storage`,
+        updatedAt: item.updatedAt,
+      })),
+    ].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+    return {
+      data: {
+        count: (totalRows[0]?.count ?? 0) + uniqueStorageItems.length,
+        items: combinedItems.slice(0, 5),
+      },
+      error: storageError,
+    };
+  } catch (error) {
+    return {
+      data: {
+        count: storageItems.length,
+        items: storageItems.slice(0, 5).map((item) => ({
+          id: item.id,
+          referenceNumber: item.referenceNumber,
+          lastError: `${item.lastError}; recovery=private_object_storage`,
+          updatedAt: item.updatedAt,
+        })),
+      },
+      error: [describeDashboardError(error), storageError].filter(Boolean).join(' '),
+    };
+  }
+}
+
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat('tr-TR', {
     timeZone: 'Europe/Istanbul',
@@ -342,12 +413,13 @@ const ACTION_COLORS: Record<string, { bg: string; text: string }> = {
 };
 
 export default async function DashboardPage() {
-  const [operations, counts, logs, botProtection, recentErrors] = await Promise.all([
+  const [operations, counts, logs, botProtection, recentErrors, reservationWriteAlert] = await Promise.all([
     getOperationsCenter(),
     getStatusCounts(),
     getRecentAuditLogs(),
     getBotProtectionSummary(),
     getRecentErrors(),
+    getReservationWriteAlert(),
   ]);
 
   const operationCards: OperationCard[] = [
@@ -440,7 +512,6 @@ export default async function DashboardPage() {
           href: '/admin/sayfalar',
         },
       ];
-
   return (
     <div className="dashboard-page" style={{ padding: '28px 24px' }}>
       <style>{`
@@ -469,6 +540,38 @@ export default async function DashboardPage() {
         title="Dashboard"
         description="Günlük operasyonlar, talepler ve içerik iş akışı"
       />
+      {reservationWriteAlert.error && <DashboardBlockWarning message={reservationWriteAlert.error} />}
+      {reservationWriteAlert.data.count > 0 && (
+        <section
+          role="alert"
+          aria-live="assertive"
+          style={{
+            marginBottom: '24px',
+            padding: '18px 20px',
+            borderRadius: '12px',
+            border: '2px solid #DC2626',
+            background: '#FEF2F2',
+            boxShadow: '0 6px 20px rgba(220,38,38,0.12)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+            <TriangleAlert size={24} style={{ color: '#B91C1C', flexShrink: 0 }} />
+            <div>
+              <h2 style={{ margin: 0, color: '#991B1B', fontSize: '17px', fontFamily: 'Inter, sans-serif' }}>
+                ACİL: {reservationWriteAlert.data.count} rezervasyon talebi kaydedilemedi
+              </h2>
+              <p style={{ margin: '6px 0 10px', color: '#7F1D1D', fontSize: '13px', lineHeight: 1.5, fontFamily: 'Inter, sans-serif' }}>
+                Kurtarma kaydı bekliyor. Müşteriye dönüş yapılmadan bu uyarıyı kapatmayın.
+              </p>
+              {reservationWriteAlert.data.items.map((error) => (
+                <div key={error.id} style={{ color: '#7F1D1D', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>
+                  <strong>{error.referenceNumber}</strong> · {formatDate(error.updatedAt)} · {error.lastError}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section style={{ marginBottom: '32px' }}>
           <h2

@@ -22,10 +22,16 @@ import { getRequestPageSlug } from '@/lib/request-origin';
 import { getTrustedClientIp } from '@/lib/request-client-ip';
 import { verifyFormGuardToken } from '@/lib/form-guard';
 import { recordBotProtectionBlock } from '@/lib/bot-protection-metrics';
+import {
+  persistReservationRecoveryFallback,
+  resolveReservationRecoveryFallback,
+} from '@/lib/reservation-recovery-storage';
 
 export const dynamic = 'force-dynamic';
 
 const MAX_RESERVATION_BODY_BYTES = 64 * 1024;
+const RESERVATION_WRITE_ATTEMPTS = 3;
+const RESERVATION_WRITE_RETRY_DELAYS_MS = [0, 150, 600] as const;
 
 async function readBodyWithinLimit(req: NextRequest, maxBytes: number): Promise<string | null> {
   const declaredLength = Number(req.headers.get('content-length'));
@@ -92,6 +98,69 @@ function escapeHtml(value: string): string {
 }
 function deliverySummary(result: Awaited<ReturnType<typeof sendEmailDetailed>>) {
   return { status: result.ok ? 'sent' : result.code === 'SMTP_NOT_CONFIGURED' ? 'not-configured' : 'failed', code: result.code, acceptedCount: result.acceptedCount, rejectedCount: result.rejectedCount };
+}
+
+class ReservationWriteAttemptsError extends Error {
+  readonly originalError: unknown;
+  readonly attempts: number;
+
+  constructor(originalError: unknown, attempts: number) {
+    super('Reservation write attempts exhausted');
+    this.name = 'ReservationWriteAttemptsError';
+    this.originalError = originalError;
+    this.attempts = attempts;
+  }
+}
+
+function safeDatabaseIdentifier(value: unknown): string | null {
+  if (typeof value !== 'string' || !/^[A-Za-z0-9_.-]{1,120}$/.test(value)) return null;
+  return value;
+}
+
+function describeDatabaseFailure(error: unknown, stage: string): string {
+  let candidate = error;
+  for (let depth = 0; depth < 3; depth += 1) {
+    if (!candidate || typeof candidate !== 'object') break;
+    const record = candidate as Record<string, unknown>;
+    const code = safeDatabaseIdentifier(record.code);
+    const constraint = safeDatabaseIdentifier(record.constraint);
+    const table = safeDatabaseIdentifier(record.table);
+    const column = safeDatabaseIdentifier(record.column);
+    if (code || constraint || table || column) {
+      return [
+        'reservation_write_failed',
+        `stage=${stage}`,
+        `code=${code ?? 'unknown'}`,
+        constraint ? `constraint=${constraint}` : null,
+        table ? `table=${table}` : null,
+        column ? `column=${column}` : null,
+      ].filter(Boolean).join('; ');
+    }
+    candidate = record.cause;
+  }
+  return `reservation_write_failed; stage=${stage}; code=unknown`;
+}
+
+function sanitizeStructuredValue(value: unknown, depth = 0): unknown {
+  if (depth > 4) return undefined;
+  if (typeof value === 'string') return sanitizeText(value).slice(0, 500);
+  if (typeof value === 'boolean' || value === null) return value;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+  if (Array.isArray(value)) {
+    return value.slice(0, 20)
+      .map((item) => sanitizeStructuredValue(item, depth + 1))
+      .filter((item) => item !== undefined);
+  }
+  if (value && typeof value === 'object') {
+    const sanitized: Record<string, unknown> = {};
+    for (const [key, nestedValue] of Object.entries(value).slice(0, 50)) {
+      if (!/^[A-Za-z0-9_-]{1,80}$/.test(key)) continue;
+      const nested = sanitizeStructuredValue(nestedValue, depth + 1);
+      if (nested !== undefined) sanitized[key] = nested;
+    }
+    return sanitized;
+  }
+  return undefined;
 }
 
 // ── Zod input schema ──────────────────────────────────────────────────────────
@@ -194,29 +263,78 @@ async function recordSubmissionFailure(input: {
   submissionId: string;
   referenceNumber: string;
   requestPayload: Record<string, unknown>;
-}) {
+  lastError: string;
+  attempts: number;
+}): Promise<{ persisted: boolean; created: boolean }> {
   try {
     const { db } = await import('@/db');
     const { reservationSubmissionFailures } = await import('@/db/schema');
-    const { sql } = await import('drizzle-orm');
+    const { eq, sql } = await import('drizzle-orm');
 
-    await db.insert(reservationSubmissionFailures).values({
+    const inserted = await db.insert(reservationSubmissionFailures).values({
       submissionId: input.submissionId,
       referenceNumber: input.referenceNumber,
       requestPayload: input.requestPayload,
-      lastError: 'reservation_write_failed',
-    }).onConflictDoUpdate({
+      lastError: input.lastError,
+      attempts: input.attempts,
+    }).onConflictDoNothing({
       target: reservationSubmissionFailures.submissionId,
-      set: {
-        requestPayload: input.requestPayload,
-        lastError: 'reservation_write_failed',
-        attempts: sql`${reservationSubmissionFailures.attempts} + 1`,
-        updatedAt: new Date(),
-      },
-    });
+    }).returning({ id: reservationSubmissionFailures.id });
+
+    if (inserted.length > 0) return { persisted: true, created: true };
+
+    const updated = await db.update(reservationSubmissionFailures).set({
+      requestPayload: input.requestPayload,
+      lastError: input.lastError,
+      attempts: sql`${reservationSubmissionFailures.attempts} + ${input.attempts}`,
+      updatedAt: new Date(),
+    }).where(eq(reservationSubmissionFailures.submissionId, input.submissionId))
+      .returning({ id: reservationSubmissionFailures.id });
+    return { persisted: updated.length > 0, created: false };
   } catch {
     console.error('[submit-request] failed to persist recovery record', {
       submissionId: input.submissionId,
+      referenceNumber: input.referenceNumber,
+    });
+    return persistReservationRecoveryFallback(input);
+  }
+}
+
+async function notifyAdminsOfReservationFailure(input: {
+  referenceNumber: string;
+  attempts: number;
+  lastError: string;
+}) {
+  try {
+    const recipients = await getAdminNotifyEmails();
+    const results = await Promise.all(recipients.map((to) => sendEmailDetailed({
+      to,
+      subject: `ACİL: Rezervasyon yazılamadı — ${input.referenceNumber}`,
+      text: [
+        `Rezervasyon talebi ${input.attempts} veritabanı yazma denemesinden sonra kaydedilemedi.`,
+        `Referans: ${input.referenceNumber}`,
+        `Hata: ${input.lastError}`,
+        'Kurtarma kaydı admin dashboardunda bekliyor.',
+      ].join('\n'),
+      html: [
+        '<h2 style="color:#b91c1c">Rezervasyon yazma hatası</h2>',
+        `<p><strong>Referans:</strong> ${escapeHtml(input.referenceNumber)}</p>`,
+        `<p><strong>Deneme:</strong> ${input.attempts}</p>`,
+        `<p><strong>Hata:</strong> ${escapeHtml(input.lastError)}</p>`,
+        '<p>Kurtarma kaydı admin dashboardunda bekliyor.</p>',
+      ].join(''),
+      source: 'BOOKING_WRITE_FAILURE_ALERT',
+      requestReference: input.referenceNumber,
+    })));
+    const failedCodes = [...new Set(results.filter((result) => !result.ok).map((result) => result.code))];
+    if (failedCodes.length > 0) {
+      console.error('[submit-request] reservation failure alert delivery failed', {
+        referenceNumber: input.referenceNumber,
+        failedCodes,
+      });
+    }
+  } catch {
+    console.error('[submit-request] failed to send reservation failure alert', {
       referenceNumber: input.referenceNumber,
     });
   }
@@ -228,28 +346,6 @@ export async function POST(req: NextRequest) {
   const ct = req.headers.get('content-type') ?? '';
   if (!ct.includes('application/json')) {
     return NextResponse.json({ error: 'JSON required' }, { status: 415 });
-  }
-
-  // Rate limit by IP
-  const ip = getTrustedClientIp(req);
-  const rateLimitIdentity = ip ?? 'unknown';
-  const maxAttempts = ip ? 10 : 100;
-  try {
-    const limit = await rateLimit(`reservation:${rateLimitIdentity}`, {
-      maxAttempts,
-      windowMs: 60 * 60 * 1000,
-    });
-    if (!limit.success) {
-      await recordBotProtectionBlock({ formType: 'RESERVATION', reason: 'RATE_LIMIT' });
-      return NextResponse.json(
-        { error: 'Too many requests' },
-        { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } },
-      );
-    }
-  } catch {
-    // Fail closed when the persistent guard is unavailable rather than making
-    // the public form an unbounded abuse path.
-    return NextResponse.json({ error: 'Temporarily unavailable' }, { status: 503 });
   }
 
   // Parse body
@@ -271,6 +367,64 @@ export async function POST(req: NextRequest) {
   }
 
   const data = parsed.data;
+  // This key is created by the browser and reused by its retry loop. Legacy
+  // callers without one still receive a server-generated UUID.
+  const submissionId = data.submissionId ?? randomUUID();
+  const referenceNumber = generateRefNumber();
+
+  // A committed request must remain replayable even when the caller has since
+  // exhausted its rate limit. This lookup returns no PII and does not mutate a
+  // new-submission budget.
+  if (data.submissionId) {
+    try {
+      const { db } = await import('@/db');
+      const { reservationRequests, reservationSubmissionFailures } = await import('@/db/schema');
+      const { eq } = await import('drizzle-orm');
+      const [existingRequest] = await db
+        .select({ referenceNumber: reservationRequests.referenceNumber })
+        .from(reservationRequests)
+        .where(eq(reservationRequests.submissionId, submissionId))
+        .limit(1);
+      if (existingRequest) {
+        await db.update(reservationSubmissionFailures).set({
+          resolvedAt: new Date(),
+          updatedAt: new Date(),
+        }).where(eq(reservationSubmissionFailures.submissionId, submissionId)).catch(() => {});
+        await resolveReservationRecoveryFallback(submissionId);
+        return NextResponse.json({
+          referenceNumber: existingRequest.referenceNumber,
+          requestSaved: true,
+          replayed: true,
+        });
+      }
+    } catch {
+      // New submissions still pass through the persistent fail-closed limiter.
+      // If the database is unavailable, the main write path records its
+      // independently durable recovery fallback.
+    }
+  }
+
+  // Rate limit only genuinely new submissions by IP.
+  const ip = getTrustedClientIp(req);
+  const rateLimitIdentity = ip ?? 'unknown';
+  const maxAttempts = ip ? 10 : 100;
+  try {
+    const limit = await rateLimit(`reservation:${rateLimitIdentity}`, {
+      maxAttempts,
+      windowMs: 60 * 60 * 1000,
+    });
+    if (!limit.success) {
+      await recordBotProtectionBlock({ formType: 'RESERVATION', reason: 'RATE_LIMIT' });
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } },
+      );
+    }
+  } catch {
+    // Fail closed when the persistent guard is unavailable rather than making
+    // the public form an unbounded abuse path.
+    return NextResponse.json({ error: 'Temporarily unavailable' }, { status: 503 });
+  }
 
   // A reservation can only claim a language that is actually public. This is
   // catalog-backed so a future language does not fail schema validation merely
@@ -307,23 +461,17 @@ export async function POST(req: NextRequest) {
   const safeFormData: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(data.formData)) {
     if (DISCONTINUED_FORM_FIELDS.has(k)) continue;
-    if (typeof v === 'string') {
-      safeFormData[k] = sanitizeText(v).slice(0, 500);
-    } else {
-      safeFormData[k] = v;
-    }
+    if (!/^[A-Za-z0-9_-]{1,80}$/.test(k)) continue;
+    const sanitizedValue = sanitizeStructuredValue(v);
+    if (sanitizedValue !== undefined) safeFormData[k] = sanitizedValue;
   }
   const submittedCustomFields = getSubmittedCustomFields(data.formData.customFields);
-
-  // This key is created by the browser and reused by its retry loop. Legacy
-  // callers without one still receive a server-generated UUID.
-  const submissionId = data.submissionId ?? randomUUID();
-  const referenceNumber = generateRefNumber();
 
   try {
     const { db } = await import('@/db');
     const {
       reservationRequests,
+      reservationSubmissionFailures,
       customReservationFields,
       locations,
       vehicles,
@@ -338,7 +486,16 @@ export async function POST(req: NextRequest) {
       .where(eq(reservationRequests.submissionId, submissionId))
       .limit(1);
     if (existingRequest) {
-      return NextResponse.json({ referenceNumber: existingRequest.referenceNumber, replayed: true });
+      await db.update(reservationSubmissionFailures).set({
+        resolvedAt: new Date(),
+        updatedAt: new Date(),
+      }).where(eq(reservationSubmissionFailures.submissionId, submissionId)).catch(() => {});
+      await resolveReservationRecoveryFallback(submissionId);
+      return NextResponse.json({
+        referenceNumber: existingRequest.referenceNumber,
+        requestSaved: true,
+        replayed: true,
+      });
     }
 
     // A browser may only submit values for existing active admin-defined
@@ -431,33 +588,84 @@ export async function POST(req: NextRequest) {
       safeFormData.locationReferences = references;
     }
 
-    // Save reservation request
-    await db.insert(reservationRequests).values({
-      referenceNumber,
-      submissionId,
-      intent:          data.intent,
-      serviceType:     data.serviceType,
-      name:            sanitizeText(data.adSoyad).slice(0, 120),
-      phone:           sanitizeText(data.telefon).slice(0, 30),
-      normalizedEmail,
-      locale:          data.locale ?? 'tr',
-      source:          `booking-form:${data.serviceType}`,
-      pageSlug:        getRequestPageSlug(req, '/bilinmiyor'),
-      requestData:     safeFormData,
-      status:          'NEW',
-    });
+    // Save reservation request. Browser navigation to WhatsApp can interrupt a
+    // client-side retry, so the durability guarantee belongs on the server.
+    let writeError: unknown = null;
+    let writeAttempts = 0;
+    for (let attempt = 1; attempt <= RESERVATION_WRITE_ATTEMPTS; attempt += 1) {
+      writeAttempts = attempt;
+      if (attempt > 1) {
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, RESERVATION_WRITE_RETRY_DELAYS_MS[attempt - 1]);
+        });
+      }
+      try {
+        const inserted = await db.insert(reservationRequests).values({
+          referenceNumber,
+          submissionId,
+          intent:          data.intent,
+          serviceType:     data.serviceType,
+          name:            sanitizeText(data.adSoyad).slice(0, 120),
+          phone:           sanitizeText(data.telefon).slice(0, 30),
+          normalizedEmail,
+          locale:          data.locale ?? 'tr',
+          source:          `booking-form:${data.serviceType}`,
+          pageSlug:        getRequestPageSlug(req, '/bilinmiyor'),
+          requestData:     safeFormData,
+          status:          'NEW',
+        }).onConflictDoNothing({
+          target: reservationRequests.submissionId,
+        }).returning({ referenceNumber: reservationRequests.referenceNumber });
 
-    // Explicit consent starts double opt-in only; no marketing is sent to a
-    // PENDING address and an old opt-out is never reactivated automatically.
+        // Two keepalive requests can overlap: both may pass the pre-insert
+        // lookup before the first transaction commits. The unique submission
+        // key is idempotency, not a write failure. Return the committed request
+        // instead of creating a false recovery incident.
+        if (inserted.length === 0) {
+          const [concurrentRequest] = await db
+            .select({ referenceNumber: reservationRequests.referenceNumber })
+            .from(reservationRequests)
+            .where(eq(reservationRequests.submissionId, submissionId))
+            .limit(1);
+          if (concurrentRequest) {
+            await db.update(reservationSubmissionFailures).set({
+              resolvedAt: new Date(),
+              updatedAt: new Date(),
+            }).where(eq(reservationSubmissionFailures.submissionId, submissionId)).catch(() => {});
+            await resolveReservationRecoveryFallback(submissionId);
+            return NextResponse.json({
+              referenceNumber: concurrentRequest.referenceNumber,
+              requestSaved: true,
+              replayed: true,
+            });
+          }
+          throw new Error('Idempotent reservation conflict could not be resolved');
+        }
+        writeError = null;
+        break;
+      } catch (error) {
+        writeError = error;
+      }
+    }
+    if (writeError) throw new ReservationWriteAttemptsError(writeError, writeAttempts);
+    await resolveReservationRecoveryFallback(submissionId);
+
+    const communications: Record<string, unknown> = {};
+    // Explicit consent starts double opt-in only. A newsletter-side failure
+    // cannot turn an already durable reservation into a write incident.
     if (normalizedEmail && data.newsletterConsent) {
-      await startNewsletterOptIn({
-        email: normalizedEmail, name: sanitizeText(data.adSoyad).slice(0, 120),
-        language: data.locale, source: `booking-form:${data.serviceType}`, request: req,
-      });
+      try {
+        await startNewsletterOptIn({
+          email: normalizedEmail, name: sanitizeText(data.adSoyad).slice(0, 120),
+          language: data.locale, source: `booking-form:${data.serviceType}`, request: req,
+        });
+        communications.newsletterOptIn = { status: 'started' };
+      } catch {
+        communications.newsletterOptIn = { status: 'failed', code: 'NEWSLETTER_PROCESSING_FAILED' };
+      }
     }
     // Booking is durable before mail is attempted. Store only sanitized,
     // non-PII delivery categories for the panel.
-    const communications: Record<string, unknown> = {};
     try {
       const customer = normalizedEmail ? await sendEmailDetailed({
         to: normalizedEmail, subject: `Talebiniz alındı — ${referenceNumber}`,
@@ -496,9 +704,17 @@ export async function POST(req: NextRequest) {
       emailNotification: { status: adminNotification?.status ?? 'failed' },
     }, { status: adminNotification?.status === 'sent' ? 201 : 202 });
   } catch (err) {
-    await recordSubmissionFailure({
+    const writeAttempts = err instanceof ReservationWriteAttemptsError ? err.attempts : 1;
+    const originalError = err instanceof ReservationWriteAttemptsError ? err.originalError : err;
+    const lastError = describeDatabaseFailure(
+      originalError,
+      err instanceof ReservationWriteAttemptsError ? 'reservation_insert' : 'reservation_flow',
+    );
+    const recovery = await recordSubmissionFailure({
       submissionId,
       referenceNumber,
+      attempts: writeAttempts,
+      lastError,
       requestPayload: {
         intent: data.intent,
         serviceType: data.serviceType,
@@ -509,8 +725,11 @@ export async function POST(req: NextRequest) {
         formData: safeFormData,
       },
     });
+    if (recovery.created || !recovery.persisted) {
+      await notifyAdminsOfReservationFailure({ referenceNumber, attempts: writeAttempts, lastError });
+    }
     // Log error type only — never log personal data.
-    console.error('[submit-request] DB error:', (err as Error)?.message ?? 'unknown');
-    return NextResponse.json({ error: 'Database error' }, { status: 500 });
+    console.error('[submit-request] DB error', { referenceNumber, lastError, recoveryPersisted: recovery.persisted });
+    return NextResponse.json({ error: 'Database error', requestSaved: false, referenceNumber }, { status: 500 });
   }
 }

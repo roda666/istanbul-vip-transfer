@@ -50,6 +50,44 @@ const HONEYPOT_STYLE: React.CSSProperties = {
 };
 const RESERVATION_SUBMISSION_ATTEMPTS = 3;
 const RESERVATION_RETRY_DELAYS_MS = [0, 500, 1_500] as const;
+const SUBMISSION_STATUS_COPY: Record<string, { saved: string; failed: string }> = {
+  tr: {
+    saved: 'Talebiniz sisteme kaydedildi. WhatsApp mesajını göndererek görüşmeyi başlatabilirsiniz.',
+    failed: 'WhatsApp açıldı ancak talebiniz sisteme kaydedilemedi. Lütfen WhatsApp mesajını mutlaka gönderin veya formu tekrar deneyin.',
+  },
+  en: {
+    saved: 'Your request was saved. Send the WhatsApp message to start the conversation.',
+    failed: 'WhatsApp opened, but your request could not be saved. Please send the WhatsApp message or try the form again.',
+  },
+  de: {
+    saved: 'Ihre Anfrage wurde gespeichert. Senden Sie die WhatsApp-Nachricht, um das Gespräch zu beginnen.',
+    failed: 'WhatsApp wurde geöffnet, aber Ihre Anfrage konnte nicht gespeichert werden. Bitte senden Sie die WhatsApp-Nachricht oder versuchen Sie es erneut.',
+  },
+  ru: {
+    saved: 'Ваш запрос сохранён. Отправьте сообщение WhatsApp, чтобы начать общение.',
+    failed: 'WhatsApp открылся, но запрос не удалось сохранить. Отправьте сообщение WhatsApp или повторите попытку.',
+  },
+  ar: {
+    saved: 'تم حفظ طلبك. أرسل رسالة واتساب لبدء المحادثة.',
+    failed: 'تم فتح واتساب، لكن تعذر حفظ طلبك. يرجى إرسال رسالة واتساب أو إعادة المحاولة.',
+  },
+  fr: {
+    saved: 'Votre demande a été enregistrée. Envoyez le message WhatsApp pour démarrer la conversation.',
+    failed: 'WhatsApp s’est ouvert, mais votre demande n’a pas pu être enregistrée. Envoyez le message WhatsApp ou réessayez.',
+  },
+  es: {
+    saved: 'Tu solicitud se guardó. Envía el mensaje de WhatsApp para iniciar la conversación.',
+    failed: 'WhatsApp se abrió, pero no se pudo guardar tu solicitud. Envía el mensaje de WhatsApp o inténtalo de nuevo.',
+  },
+  it: {
+    saved: 'La richiesta è stata salvata. Invia il messaggio WhatsApp per iniziare la conversazione.',
+    failed: 'WhatsApp si è aperto, ma la richiesta non è stata salvata. Invia il messaggio WhatsApp o riprova.',
+  },
+  nl: {
+    saved: 'Uw aanvraag is opgeslagen. Verstuur het WhatsApp-bericht om het gesprek te starten.',
+    failed: 'WhatsApp is geopend, maar uw aanvraag kon niet worden opgeslagen. Verstuur het WhatsApp-bericht of probeer het opnieuw.',
+  },
+};
 
 interface CustomField {
   id: number;
@@ -282,8 +320,6 @@ function buildWhatsAppMessage(
     }
   }
 
-  if (b.waSavedNotice) lines.push('', b.waSavedNotice);
-
   // Plain text only — openWhatsAppChat() is the single place that encodes
   // this for the wa.me URL / Android intent. Encoding it here too produced
   // double-encoded, unreadable messages (%2520 etc. instead of spaces and
@@ -368,6 +404,7 @@ export default function BookingForm({
   const [publishedVehicles, setPublishedVehicles] = useState<PublishedVehicleOption[]>([]);
   const [locationLabels, setLocationLabels] = useState<Record<string, string>>({});
   const [formSettings, setFormSettings] = useState<FormSettings>({ showVehiclePreference: false });
+  const [submissionNotice, setSubmissionNotice] = useState<{ kind: 'saved' | 'failed'; message: string } | null>(null);
   const [intercityPickupOption, setIntercityPickupOption] = useState<LocationOption | null>(null);
   const [intercityDropoffOption, setIntercityDropoffOption] = useState<LocationOption | null>(null);
 
@@ -557,6 +594,7 @@ export default function BookingForm({
       return;
     }
     setNewsletterError('');
+    setSubmissionNotice(null);
     setSubmitting(true);
 
     const serviceLabel = ST_LABELS[activeService] ?? activeST?.label ?? activeService;
@@ -581,14 +619,14 @@ export default function BookingForm({
       locationLabels,
       publishedVehicles,
     );
-    // Open synchronously from the click/submit event. Waiting for the
-    // reservation request first could be blocked by mobile popup policies.
-    openWhatsAppChat(WA_NUMBER, msg);
 
-    // Persist in the background. Transient failures are retried using the same
-    // idempotency key, so a late first response can never duplicate the request.
+    // Build and start the first keepalive request before Android navigates away
+    // to WhatsApp. No await occurs before openWhatsAppChat, so popup/deep-link
+    // user activation is preserved while the write is already in flight.
+    let payload: string | null = null;
+    let firstRequest: Promise<Response> | null = null;
     try {
-      const payload = JSON.stringify({
+      payload = JSON.stringify({
         intent:           'QUOTE',
         serviceType:      activeService,
         adSoyad:          data.adSoyad,
@@ -602,7 +640,27 @@ export default function BookingForm({
         company:          companyHoneypotRef.current?.value ?? '',
         formData:         submittedFormData,
       });
+      firstRequest = fetch('/data/submit-request', {
+        method:    'POST',
+        keepalive: true,
+        signal:    AbortSignal.timeout(2500),
+        headers:   { 'Content-Type': 'application/json' },
+        body: payload,
+      });
+    } catch {
+      // The visible failure notice below handles payload construction failures.
+    }
 
+    // Open synchronously from the original submit event. Waiting for the
+    // reservation response first could be blocked by mobile popup policies.
+    openWhatsAppChat(WA_NUMBER, msg);
+
+    // Await the already-started request. Gateway/network failures are retried
+    // with the same idempotency key, so a late response cannot duplicate data.
+    try {
+      let requestSaved = false;
+      let savedReference: string | undefined;
+      if (!payload || !firstRequest) throw new Error('Reservation payload unavailable');
       for (let attempt = 0; attempt < RESERVATION_SUBMISSION_ATTEMPTS; attempt += 1) {
         if (attempt > 0) {
           await new Promise<void>((resolve) => {
@@ -611,25 +669,44 @@ export default function BookingForm({
         }
 
         try {
-          const response = await fetch('/data/submit-request', {
-            method:    'POST',
-            keepalive: true,
-            signal:    AbortSignal.timeout(2500),
-            headers:   { 'Content-Type': 'application/json' },
-            body: payload,
-          });
+          const response = attempt === 0
+            ? await firstRequest
+            : await fetch('/data/submit-request', {
+                method:    'POST',
+                keepalive: true,
+                signal:    AbortSignal.timeout(2500),
+                headers:   { 'Content-Type': 'application/json' },
+                body: payload,
+              });
 
-          // Validation/auth errors are permanent for this payload. Retry only
-          // network errors and server failures, which can recover on their own.
-          if (response.ok || (response.status >= 400 && response.status < 500)) break;
+          const result = await response.json().catch(() => null) as {
+            requestSaved?: boolean;
+            referenceNumber?: string;
+          } | null;
+          if (response.ok && result?.requestSaved === true) {
+            requestSaved = true;
+            savedReference = result.referenceNumber;
+            break;
+          }
+          // The application server already performs three database writes.
+          // Browser retries are reserved for gateway/network failures.
+          if (![502, 503, 504].includes(response.status)) break;
         } catch {
-          // Continue to the next bounded retry. Any write failure the server
-          // sees is persisted there with this same submission ID.
+          // Continue to the next bounded network retry with the same ID.
         }
       }
+      const statusCopy = SUBMISSION_STATUS_COPY[lang] ?? SUBMISSION_STATUS_COPY.en;
+      setSubmissionNotice({
+        kind: requestSaved ? 'saved' : 'failed',
+        message: requestSaved && savedReference
+          ? `${statusCopy.saved} ${savedReference}`
+          : requestSaved ? statusCopy.saved : statusCopy.failed,
+      });
     } catch {
       // Do not block the WhatsApp journey if browser-side payload construction
       // itself fails. No personal data is emitted to client-side logs.
+      const statusCopy = SUBMISSION_STATUS_COPY[lang] ?? SUBMISSION_STATUS_COPY.en;
+      setSubmissionNotice({ kind: 'failed', message: statusCopy.failed });
     } finally {
       // WhatsApp now opens in its own window, so this form remains mounted.
       // Always restore the CTA after persistence succeeds, fails, or times out.
@@ -1207,6 +1284,22 @@ export default function BookingForm({
                 <p className="mt-4 text-xs" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
                   {b.directMessage}
                 </p>
+                {submissionNotice && (
+                  <div
+                    role={submissionNotice.kind === 'saved' ? 'status' : 'alert'}
+                    aria-live="polite"
+                    data-testid="reservation-submission-status"
+                    className="mt-4 rounded-xl px-4 py-3 text-left text-sm"
+                    style={{
+                      background: submissionNotice.kind === 'saved' ? '#F0FDF4' : '#FEF2F2',
+                      border: `1px solid ${submissionNotice.kind === 'saved' ? '#86EFAC' : '#FCA5A5'}`,
+                      color: submissionNotice.kind === 'saved' ? '#166534' : '#991B1B',
+                      fontFamily: 'Inter, sans-serif',
+                    }}
+                  >
+                    {submissionNotice.message}
+                  </div>
+                )}
               </div>
             </form>
           </div>

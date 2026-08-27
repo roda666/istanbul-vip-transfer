@@ -4,7 +4,6 @@ import type { PublicTransferRoute } from '@/lib/transfer-route-pages';
 import { localizedServicePath, localizedStaticPath, localizedTransferRoutePath } from '@/lib/localized-service-path';
 import { serializeJsonLd } from '@/lib/json-ld';
 import { SITE } from '@/lib/site-config';
-import CollapsibleBookingForm from '@/components/CollapsibleBookingForm';
 
 const copy = {
   tr: { route: 'Transfer Güzergâhı', distance: 'Yaklaşık mesafe', normal: 'Normal trafik', peak: 'Yoğun saat', crossing: 'Yaka geçişi', yes: 'Var', no: 'Yok', transport: 'Ulaşım seçenekleri', option: 'Seçenek', detail: 'Nasıl çalışır?', downside: 'Bilmeniz gerekenler', fleet: 'Araç seçenekleri', capacity: 'Yolcu kapasitesi', suitable: 'Kimler için uygun?', routeNotes: 'Güzergâh ve trafik notları', faq: 'Sık sorulan sorular', related: 'İlgili rotalar', reserve: 'Teklif al / rezervasyon iste', transfer: 'Özel transfer', allFleet: 'Tüm filoyu inceleyin', min: 'dk', hours: 'sa' },
@@ -124,7 +123,6 @@ export default function TransferRouteDetail({ route, locale }: { route: PublicTr
 
       {route.relatedRoutes.length > 0 && <section style={{ maxWidth: '1120px', margin: '0 auto', padding: '28px 24px 54px' }}><div className="route-card"><h2 style={{ margin: 0, fontFamily: 'Georgia, serif', fontSize: 'clamp(26px, 4vw, 36px)' }}>{t.related}</h2><div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '18px' }}>{route.relatedRoutes.map((related) => <Link key={related.slug} href={localizedTransferRoutePath(related.slug, locale)} style={{ border: '1px solid #CBD5E1', borderRadius: '8px', padding: '11px 14px', color: '#27465A', fontWeight: 700, textDecoration: 'none' }}>{related.name}</Link>)}</div></div></section>}
 
-      <section id="rezervasyon" style={{ background: '#FFF', borderTop: '1px solid #E2E8F0', padding: '12px 0 54px' }}><div style={{ maxWidth: '1120px', margin: '0 auto', padding: '0 24px' }}><CollapsibleBookingForm /></div></section>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(serviceSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(pageSchema) }} />
       {faqSchema && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(faqSchema) }} />}

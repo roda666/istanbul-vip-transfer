@@ -119,11 +119,6 @@ export default async function BlogPage() {
                       {post.excerpt}
                     </p>
                   )}
-                  {post.author && (
-                    <p className="text-xs mb-3" style={{ color: '#94A3B8', fontFamily: 'Inter, sans-serif' }}>
-                      {post.author}
-                    </p>
-                  )}
                   <Link
                     href={`/blog/${post.slug}`}
                     className="inline-block text-xs tracking-wider uppercase transition-colors hover:text-[#174EA6] mt-auto"

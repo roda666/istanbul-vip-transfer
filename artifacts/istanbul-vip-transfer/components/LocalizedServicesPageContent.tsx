@@ -1,5 +1,4 @@
 import PageHero from '@/components/PageHero';
-import BookingForm from '@/components/BookingForm';
 import Contact from '@/components/Contact';
 import HizmetlerServiceGridCms from '@/components/HizmetlerServiceGridCms';
 import HizmetlerCategoryNav from '@/components/HizmetlerCategoryNav';
@@ -31,7 +30,6 @@ export default async function LocalizedServicesPageContent({ lang }: { lang: str
         <HizmetlerServiceGridCms locale={lang} categories={catalog.categories} services={catalog.services} />
       </section>
 
-      <BookingForm />
       <Contact />
 
       <script

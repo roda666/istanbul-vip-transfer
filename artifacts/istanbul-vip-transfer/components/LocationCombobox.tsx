@@ -37,6 +37,7 @@ interface Props {
   labels: LocationLabels;
   error?: boolean;
   excludeId?: string;
+  excludeCity?: string;
   onOptionChange?: (option: LocationOption | null) => void;
 }
 
@@ -65,6 +66,7 @@ export default function LocationCombobox({
   labels,
   error,
   excludeId,
+  excludeCity,
   onOptionChange,
 }: Props) {
   const [search, setSearch] = useState('');
@@ -179,10 +181,11 @@ export default function LocationCombobox({
 
   const visibleOptions = useMemo(() => (
     options.filter((option) => {
-      if (!excludeId || option.id !== excludeId) return true;
-      return false;
+      if (excludeId && option.id === excludeId) return false;
+      if (excludeCity && option.city.localeCompare(excludeCity, 'tr', { sensitivity: 'base' }) === 0) return false;
+      return true;
     })
-  ), [excludeId, options]);
+  ), [excludeCity, excludeId, options]);
 
   const selectOption = useCallback((option: LocationOption) => {
     onChange(option.id);

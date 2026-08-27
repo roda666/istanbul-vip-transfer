@@ -5,7 +5,6 @@ import PageHero from '@/components/PageHero';
 import HakkimizdaArticle from '@/components/HakkimizdaArticle';
 import TrustSignals from '@/components/TrustSignals';
 import Reviews from '@/components/Reviews';
-import BookingForm from '@/components/BookingForm';
 import Contact from '@/components/Contact';
 import { SITE } from '@/lib/site-config';
 import { getContactSettings, type ContactSettings } from '@/lib/site-settings-server';
@@ -147,7 +146,6 @@ export default async function HakkimizdaPage() {
       <HakkimizdaArticle />
       <TrustSignals />
       <Reviews />
-      <BookingForm />
       <Contact />
       <script
         type="application/ld+json"

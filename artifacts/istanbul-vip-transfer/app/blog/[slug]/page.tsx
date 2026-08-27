@@ -3,7 +3,6 @@ import { buildBlogAlternates } from '@/lib/blog-hreflang';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import PageHero from '@/components/PageHero';
-import CollapsibleBookingForm from '@/components/CollapsibleBookingForm';
 import ArticleBody from '@/components/ArticleBody';
 import SafeArticleImage from '@/components/SafeArticleImage';
 import { getPublishedBlogPost, getPublishedBlogSlugs, getRelatedPublishedBlogPosts } from '@/lib/blog-cms';
@@ -86,9 +85,7 @@ export default async function BlogArticlePage({ params }: Props) {
     dateModified: post.updatedAt.toISOString(),
     image: post.heroImage ?? undefined,
     url: PAGE,
-    author: post.author
-      ? { '@type': 'Person', name: post.author }
-      : { '@type': 'Organization', name: 'İstanbul VIP Transfer', url: BASE },
+    author: { '@type': 'Organization', name: 'İstanbul VIP Transfer', url: BASE },
     publisher: { '@type': 'Organization', name: 'İstanbul VIP Transfer', url: BASE },
     keywords: post.tags.join(', ') || undefined,
   };
@@ -124,7 +121,6 @@ export default async function BlogArticlePage({ params }: Props) {
         title={post.title}
         subtitle={[
           post.category,
-          post.author,
           post.readTimeMinutes ? `${post.readTimeMinutes} dk okuma` : null,
           post.publishedAt ? post.publishedAt.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }) : null,
         ].filter(Boolean).join(' · ')}
@@ -191,8 +187,6 @@ export default async function BlogArticlePage({ params }: Props) {
           </div>
         </section>
       )}
-
-      <CollapsibleBookingForm />
 
       {/* Diğer Yazılar */}
       {otherPosts.length > 0 && (

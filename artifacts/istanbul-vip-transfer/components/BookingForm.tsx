@@ -15,7 +15,7 @@ import {
   MapPin, Calendar, Clock, Users, User, Phone, Home,
   Plane, ArrowRightLeft, Car, Compass, Mail, Briefcase,
 } from 'lucide-react';
-import LocationCombobox from './LocationCombobox';
+import LocationCombobox, { type LocationOption } from './LocationCombobox';
 import { useLang } from '@/lib/i18n/context';
 import { formatServiceDate } from '@/lib/booking-date';
 import {
@@ -295,23 +295,33 @@ function buildWhatsAppMessage(
  * Produces a date input value in the local operating timezone.
  * Kept outside the component so the initial SSR/client render can remain static.
  */
-function getIstanbulToday(): string {
+function getIstanbulNow(): { date: string; hour: string; minute: string } {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Istanbul',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
   }).formatToParts(new Date());
 
   const year  = parts.find((part) => part.type === 'year')?.value;
   const month = parts.find((part) => part.type === 'month')?.value;
   const day   = parts.find((part) => part.type === 'day')?.value;
+  const hour  = parts.find((part) => part.type === 'hour')?.value;
+  const rawMinute = parts.find((part) => part.type === 'minute')?.value;
 
-  if (!year || !month || !day) {
-    throw new Error('Istanbul tarihi oluşturulamadı.');
+  if (!year || !month || !day || !hour || !rawMinute) {
+    throw new Error('Istanbul tarih ve saati oluşturulamadı.');
   }
 
-  return `${year}-${month}-${day}`;
+  const minute = String(Math.floor(Number(rawMinute) / 5) * 5).padStart(2, '0');
+  return { date: `${year}-${month}-${day}`, hour, minute };
+}
+
+function isIstanbulCity(city: string | null | undefined): boolean {
+  return city?.localeCompare('İstanbul', 'tr', { sensitivity: 'base' }) === 0;
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -358,6 +368,8 @@ export default function BookingForm({
   const [publishedVehicles, setPublishedVehicles] = useState<PublishedVehicleOption[]>([]);
   const [locationLabels, setLocationLabels] = useState<Record<string, string>>({});
   const [formSettings, setFormSettings] = useState<FormSettings>({ showVehiclePreference: false });
+  const [intercityPickupOption, setIntercityPickupOption] = useState<LocationOption | null>(null);
+  const [intercityDropoffOption, setIntercityDropoffOption] = useState<LocationOption | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -370,7 +382,7 @@ export default function BookingForm({
     return () => { active = false; };
   }, []);
 
-  function rememberLocationLabel(field: keyof FormData, option: import('./LocationCombobox').LocationOption | null) {
+  function rememberLocationLabel(field: keyof FormData, option: LocationOption | null) {
     setLocationLabels((current) => {
       const next = { ...current };
       if (option) next[field] = option.name;
@@ -461,10 +473,16 @@ export default function BookingForm({
   // input's min attribute and cause a hydration warning.
   const [today, setToday] = useState('');
   useEffect(() => {
-    const currentDate = getIstanbulToday();
-    setToday(currentDate);
+    const current = getIstanbulNow();
+    setToday(current.date);
     if (!getValues('tarih')) {
-      setValue('tarih', currentDate, { shouldDirty: false, shouldValidate: false });
+      setValue('tarih', current.date, { shouldDirty: false, shouldValidate: false });
+    }
+    if (!getValues('saatSaat')) {
+      setValue('saatSaat', current.hour, { shouldDirty: false, shouldValidate: false });
+    }
+    if (!getValues('saatDakika')) {
+      setValue('saatDakika', current.minute, { shouldDirty: false, shouldValidate: false });
     }
   }, [getValues, setValue]);
 
@@ -790,8 +808,12 @@ export default function BookingForm({
                       <label htmlFor="bf-kalkis-ili" style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.departureCity}</label>
                       <Controller control={control} name="kalkisIli" render={({ field }) => (
                         <LocationCombobox id="bf-kalkis-ili" ariaLabel={b.departureCity} for="pickup" scope="intercity" value={field.value ?? ''} onChange={field.onChange}
-                          onOptionChange={(option) => rememberLocationLabel('kalkisIli', option)}
-                          placeholder={b.departureCityPlaceholder} loadingText={dict.common.loading} labels={ui.location} error={!!errors.kalkisIli} excludeId={varisIliValue} />
+                          onOptionChange={(option) => {
+                            rememberLocationLabel('kalkisIli', option);
+                            setIntercityPickupOption(option);
+                          }}
+                          placeholder={b.departureCityPlaceholder} loadingText={dict.common.loading} labels={ui.location} error={!!errors.kalkisIli} excludeId={varisIliValue}
+                          excludeCity={isIstanbulCity(intercityDropoffOption?.city) ? 'İstanbul' : undefined} />
                       )} />
                       {errors.kalkisIli && <p role="alert" style={errorStyle}>{errors.kalkisIli.message}</p>}
                     </div>
@@ -799,8 +821,12 @@ export default function BookingForm({
                       <label htmlFor="bf-varis-ili" style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.arrivalCity}</label>
                       <Controller control={control} name="varisIli" render={({ field }) => (
                         <LocationCombobox id="bf-varis-ili" ariaLabel={b.arrivalCity} for="dropoff" scope="intercity" value={field.value ?? ''} onChange={field.onChange}
-                          onOptionChange={(option) => rememberLocationLabel('varisIli', option)}
-                          placeholder={b.arrivalCityPlaceholder} loadingText={dict.common.loading} labels={ui.location} error={!!errors.varisIli} excludeId={kalkisIliValue} />
+                          onOptionChange={(option) => {
+                            rememberLocationLabel('varisIli', option);
+                            setIntercityDropoffOption(option);
+                          }}
+                          placeholder={b.arrivalCityPlaceholder} loadingText={dict.common.loading} labels={ui.location} error={!!errors.varisIli} excludeId={kalkisIliValue}
+                          excludeCity={isIstanbulCity(intercityPickupOption?.city) ? 'İstanbul' : undefined} />
                       )} />
                       {errors.varisIli && <p role="alert" style={errorStyle}>{errors.varisIli.message}</p>}
                     </div>

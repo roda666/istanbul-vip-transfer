@@ -1,6 +1,5 @@
 import PageHero from '@/components/PageHero';
 import VehicleFleet from '@/components/VehicleFleet';
-import BookingForm from '@/components/BookingForm';
 import Contact from '@/components/Contact';
 import { getDictionary } from '@/lib/i18n';
 import { SITE } from '@/lib/site-config';
@@ -224,7 +223,6 @@ export default async function VehiclesPageContent({ locale }: { locale: string }
       {/* /araclar is the fleet's own dedicated page — grouping by class stays
           meaningful here, unlike on service pages where it just adds scroll. */}
       <VehicleFleet grouped />
-      <BookingForm />
       <Contact />
       <script
         type="application/ld+json"

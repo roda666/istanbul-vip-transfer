@@ -19,6 +19,7 @@ import type {
 
 import LangProvider from './LangProvider';
 import CookieConsentBanner from './CookieConsentBanner';
+import CollapsibleBookingForm from './CollapsibleBookingForm';
 
 // WhatsApp stays available independently of chat. ChatWidget is deliberately
 // imported only by DeferredChatLauncher after a visitor clicks its launcher.
@@ -46,6 +47,8 @@ export default function PublicLayoutWrapper({
 }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith('/admin');
+  const normalizedPath = pathname && pathname !== '/' ? pathname.replace(/\/+$/, '') : pathname;
+  const isHomepage = normalizedPath === '/' || normalizedPath === `/${initialLang}`;
 
   if (isAdmin) {
     // Admin pages manage their own layout
@@ -55,7 +58,10 @@ export default function PublicLayoutWrapper({
   return (
     <LangProvider forceLang={initialLang}>
       <Header serviceNavigationGroups={serviceNavigationGroups} />
-      <main>{children}</main>
+      <main>
+        {children}
+        {!isHomepage && <CollapsibleBookingForm />}
+      </main>
       <Footer serviceLinks={serviceLinks} homepageFooter={homepageFooter} />
       <WhatsAppFloat />
       <DeferredChatLauncher />

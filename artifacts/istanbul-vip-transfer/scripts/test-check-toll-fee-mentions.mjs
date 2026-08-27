@@ -51,8 +51,10 @@ const CASES = [
   { lang: 'ru', text: 'Оплата за проезд по мосту взимается отдельно.', expectViolation: true, note: 'ru: genuine "оплата" + мост must still fire' },
   { lang: 'ru', text: 'Дорожный сбор за туннель включён в стоимость.', expectViolation: true, note: 'ru: genuine "дорожный сбор" direct rule must still fire' },
   // Italian "costo" vs "costola"; "ponte" vs "pontefice".
+  { lang: 'it', text: 'È più facile tollerare il traffico quando il veicolo è confortevole.', expectViolation: false, note: 'it: "tollerare" must not match "toll"' },
   { lang: 'it', text: 'Il passeggero si è fatto male alla costola durante il traghetto.', expectViolation: false, note: 'it: "costola" (rib) must not match "costo"' },
   { lang: 'it', text: 'Il Pontefice ha visitato la città in traghetto.', expectViolation: false, note: 'it: "Pontefice" must not match "ponte"' },
+  { lang: 'it', text: 'Il pedaggio autostradale viene addebitato separatamente.', expectViolation: true, note: 'it: genuine standalone "pedaggio" must still fire' },
   { lang: 'it', text: 'Il costo del pedaggio per il ponte non è incluso.', expectViolation: true, note: 'it: genuine "costo" + ponte must still fire' },
   // Spanish "cargo" vs "cargador".
   { lang: 'es', text: 'Hay un cargador USB disponible junto al puente.', expectViolation: false, note: 'es: "cargador" (charger) must not match "cargo"' },

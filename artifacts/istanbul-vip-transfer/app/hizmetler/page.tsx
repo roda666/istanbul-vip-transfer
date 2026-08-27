@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import { NON_SOURCE_LOCALES } from '@/lib/i18n/locale-registry';
 import { buildAlternates } from '@/lib/i18n/seo';
 import PageHero from '@/components/PageHero';
-import BookingForm from '@/components/BookingForm';
 import Contact from '@/components/Contact';
 import HizmetlerServiceGridCms from '@/components/HizmetlerServiceGridCms';
 import HizmetlerCategoryNav from '@/components/HizmetlerCategoryNav';
@@ -60,7 +59,6 @@ export default async function HizmetlerPage() {
         <HizmetlerServiceGridCms locale="tr" categories={catalog.categories} services={catalog.services} />
       </section>
 
-      <BookingForm />
       <Contact />
 
       <script

@@ -58,7 +58,9 @@ export const RULES = {
     fee: ['ücret', 'masraf', 'bedel', 'maliyet'].map(t => tokenRe(t)).concat([/(?<![\p{L}\p{N}_])gider(?!ken)\p{L}*(?![\p{L}\p{N}_])/iu]),
   },
   en: {
-    direct: [tokenRe('toll')],
+    // Exact forms only: the generic suffix matcher also matched the unrelated
+    // Italian verb "tollerare" when text was misclassified as English.
+    direct: [/\btolls?\b/iu],
     geo: ['bridge', 'tunnel', 'highway', 'motorway', 'ferry'].map(t => tokenRe(t)),
     // Short fee roots must use exact-form regexes, not the generic wildcard
     // tokenRe — the open \p{L}* suffix also matches unrelated real words:
@@ -115,9 +117,8 @@ export const RULES = {
     ]),
   },
   it: {
-    // 'pedaggi' (plural) is not a suffix of 'pedaggio' (singular) — matching the
-    // shorter stem catches both via the trailing \p{L}* allowance in tokenRe.
-    direct: [tokenRe('pedaggi')],
+    // Exact singular/plural forms; never treat "tollerare" as a toll word.
+    direct: [/\bpedaggi(?:o)?\b/iu],
     // "ponte" (bridge) must not match "pontefice" (pontiff) — unrelated word
     // with the same 5-letter start.
     geo: [/(?<![\p{L}\p{N}_])ponte(?!fice)\p{L}*(?![\p{L}\p{N}_])/iu, ...['tunnel', 'autostrada', 'traghetto'].map(t => tokenRe(t))],

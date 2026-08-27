@@ -1,7 +1,6 @@
 import 'server-only';
 
 import Link from 'next/link';
-import BookingForm from '@/components/BookingForm';
 import Contact from '@/components/Contact';
 import HizmetlerServiceGridCms from '@/components/HizmetlerServiceGridCms';
 import type { ServiceCategoryItem } from '@/lib/service-category-server';
@@ -104,7 +103,6 @@ export default async function ServiceCategoryPageContent({ locale, category }: P
         />
       </section>
 
-      <BookingForm />
       <Contact />
 
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumb) }} />

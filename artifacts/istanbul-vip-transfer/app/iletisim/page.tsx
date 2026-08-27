@@ -4,7 +4,6 @@ import { buildAlternates } from '@/lib/i18n/seo';
 import PageHero from '@/components/PageHero';
 import Contact from '@/components/Contact';
 import ContactForm from '@/components/ContactForm';
-import BookingForm from '@/components/BookingForm';
 import { SITE } from '@/lib/site-config';
 import { getContactSettings, type ContactSettings } from '@/lib/site-settings-server';
 import { serializeJsonLd } from '@/lib/json-ld';
@@ -83,7 +82,6 @@ export default async function IletisimPage() {
       <PageHero pageKey="contact" />
       <Contact />
       <ContactForm />
-      <BookingForm />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbSchema) }}

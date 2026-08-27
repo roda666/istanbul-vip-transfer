@@ -11,7 +11,6 @@
  */
 import type { ServicePageBody, ServicePageFaq, ServicePageSchemaExtras } from '@/lib/service-page-types';
 import PageHero from '@/components/PageHero';
-import CollapsibleBookingForm from '@/components/CollapsibleBookingForm';
 import DeferredVehicleFleet from '@/components/DeferredVehicleFleet';
 import Contact from '@/components/Contact';
 import TranslationNotice from '@/components/TranslationNotice';
@@ -405,8 +404,6 @@ export default async function ServicePageRenderer({ slug, lang, canonicalPath }:
           <FeaturesBlock features={dbPage.body.features} dir={dir} lang={lang} />
         )}
 
-        <CollapsibleBookingForm />
-
         {/* Rich content sections */}
         <ContentSectionsBlock body={dbPage.body} dir={dir} lang={lang} />
 
@@ -437,7 +434,6 @@ export default async function ServicePageRenderer({ slug, lang, canonicalPath }:
           <TranslationNotice status="missing" lang={lang} />
         )}
         <PageHero pageKey={pageKey} />
-        <CollapsibleBookingForm />
         <DeferredVehicleFleet grouped={false} />
         {faqFallbackPage?.body?.faqs?.length ? (
           <FaqBlock body={faqFallbackPage.body} dir={dir} lang={lang} />

@@ -236,6 +236,10 @@ const it: Dictionary = {
       sapancaTour: 'Tour Sapanca–Masukiye',
       bursaTour: 'Tour giornaliero di Bursa',
       yalovaTour: 'Tour giornaliero di Yalova',
+      weddingCarRental: 'Noleggio auto per matrimoni',
+      dailyVillaRental: 'Noleggio villa giornaliero',
+      meetGreetService: 'Servizio di accoglienza in aeroporto',
+      vipProtocolVehicle: 'Veicolo di protocollo VIP',
     },
     hero: {
       badge: 'Il servizio di transfer premium di Istanbul',

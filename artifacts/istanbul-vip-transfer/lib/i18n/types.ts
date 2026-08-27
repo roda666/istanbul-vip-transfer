@@ -256,6 +256,10 @@ export interface Dictionary {
     sapancaTour: string;
     bursaTour: string;
     yalovaTour: string;
+    weddingCarRental: string;
+    dailyVillaRental: string;
+    meetGreetService: string;
+    vipProtocolVehicle: string;
   };
   hero: {
     badge: string;

@@ -19,6 +19,10 @@ const SERVICE_NAV_KEYS: Record<string, keyof ReturnType<typeof getDictionary>['n
   'sapanca-masukiye-turu': 'sapancaTour',
   'bursa-gunubirlik-tur': 'bursaTour',
   'yalova-gunubirlik-tur': 'yalovaTour',
+  'gelin-arabasi-kiralama': 'weddingCarRental',
+  'gunluk-villa-kiralama': 'dailyVillaRental',
+  'ucus-karsilama-meet-greet': 'meetGreetService',
+  'vip-protokol-secim-araci': 'vipProtocolVehicle',
 };
 
 const STATIC_NAV_KEYS: Record<string, keyof ReturnType<typeof getDictionary>['nav']> = {
@@ -28,7 +32,15 @@ const STATIC_NAV_KEYS: Record<string, keyof ReturnType<typeof getDictionary>['na
   iletisim: 'contact',
 };
 
-const SERVICE_SLUGS = new Set(Object.keys(SLUG_TO_PAGE_KEY));
+// Route resolution must recognize every slug that can produce a translated
+// locale path, not just the subset with a PageHero fallback (SLUG_TO_PAGE_KEY).
+// Otherwise a canonical slug added only to SERVICE_NAV_KEYS gets a translated
+// outbound link but 404s on the way back in, since resolveLocalizedServiceSlug()
+// can only match slugs it iterates over.
+const SERVICE_SLUGS = new Set([
+  ...Object.keys(SLUG_TO_PAGE_KEY),
+  ...Object.keys(SERVICE_NAV_KEYS),
+]);
 const STATIC_SLUGS = new Set(Object.keys(STATIC_NAV_KEYS));
 // Existing admin-created categories use underscores (for example `city_vip`);
 // keep those persistent slugs routable alongside conventional hyphenated ones.

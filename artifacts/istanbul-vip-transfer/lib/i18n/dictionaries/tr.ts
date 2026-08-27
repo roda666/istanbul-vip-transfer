@@ -236,6 +236,10 @@ const tr: Dictionary = {
     sapancaTour: 'Sapanca–Maşukiye Turu',
     bursaTour: 'Bursa Günübirlik Tur',
     yalovaTour: 'Yalova Günübirlik Tur',
+    weddingCarRental: 'Gelin Arabası Kiralama',
+    dailyVillaRental: 'Günlük Villa Kiralama',
+    meetGreetService: 'Uçuş Karşılama (Meet & Greet)',
+    vipProtocolVehicle: 'VIP Protokol Seçim Aracı',
   },
   hero: {
     badge: "İstanbul'un Prestijli Transfer Hizmeti",

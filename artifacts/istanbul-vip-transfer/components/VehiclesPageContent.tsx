@@ -12,6 +12,8 @@ import ArticleBody from '@/components/ArticleBody';
 import { VEHICLES_INTRO_ARTICLE, VEHICLES_INTRO_FAQS } from '@/lib/vehicles-page-content';
 
 const BASE = SITE.siteUrl;
+type IntroFaq = { question: string; answer: string };
+type IntroContent = { body: string; faqs: IntroFaq[] };
 
 function getPageUrl(locale: string): string {
   return `${BASE}${localizedStaticPath('araclar', locale)}`;
@@ -71,6 +73,38 @@ async function getVehicles(locale: string): Promise<DbVehicle[]> {
     });
   } catch {
     return [];
+  }
+}
+
+async function getIntroContent(locale: string): Promise<IntroContent | null> {
+  if (locale === 'tr') {
+    return { body: VEHICLES_INTRO_ARTICLE, faqs: [...VEHICLES_INTRO_FAQS] };
+  }
+
+  const { db } = await import('@/db');
+  const { content, contentTranslations } = await import('@/db/schema');
+  const { and, eq } = await import('drizzle-orm');
+  const [row] = await db
+    .select({ body: contentTranslations.body, faqJson: contentTranslations.excerpt })
+    .from(contentTranslations)
+    .innerJoin(content, and(
+      eq(contentTranslations.entityType, 'content'),
+      eq(contentTranslations.entityId, content.id),
+    ))
+    .where(and(
+      eq(content.slug, 'araclar'),
+      eq(contentTranslations.targetLanguageCode, locale),
+      eq(contentTranslations.status, 'PUBLISHED'),
+    ))
+    .limit(1);
+
+  if (!row?.body || !row.faqJson) return null;
+  try {
+    const faqs = JSON.parse(row.faqJson) as IntroFaq[];
+    if (!Array.isArray(faqs) || faqs.length !== 5) return null;
+    return { body: row.body, faqs };
+  } catch {
+    return null;
   }
 }
 
@@ -143,13 +177,12 @@ function buildBreadcrumbSchema(locale: string) {
   };
 }
 
-function buildVehicleFaqSchema(locale: string) {
-  if (locale !== 'tr') return null;
+function buildVehicleFaqSchema(locale: string, faqs: IntroFaq[]) {
   return {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
     inLanguage: locale,
-    mainEntity: VEHICLES_INTRO_FAQS.map((faq) => ({
+    mainEntity: faqs.map((faq) => ({
       '@type': 'Question',
       name: faq.question,
       acceptedAnswer: {
@@ -161,15 +194,20 @@ function buildVehicleFaqSchema(locale: string) {
 }
 
 export default async function VehiclesPageContent({ locale }: { locale: string }) {
-  const vehicles = await getVehicles(locale);
+  const [vehicles, introContent] = await Promise.all([
+    getVehicles(locale),
+    getIntroContent(locale),
+  ]);
   const vehicleSchema = buildVehicleSchema(vehicles, locale);
   const breadcrumbSchema = buildBreadcrumbSchema(locale);
-  const vehicleFaqSchema = buildVehicleFaqSchema(locale);
+  const vehicleFaqSchema = introContent
+    ? buildVehicleFaqSchema(locale, introContent.faqs)
+    : null;
 
   return (
     <>
       <PageHero pageKey="vehicles" />
-      {locale === 'tr' && (
+      {introContent && (
         <section
           aria-labelledby="vehicles-intro-title"
           data-testid="vehicles-intro-article"
@@ -178,7 +216,7 @@ export default async function VehiclesPageContent({ locale }: { locale: string }
           <div className="mx-auto max-w-4xl px-5 py-8 md:px-8 md:py-12">
             <article>
               <h1 id="vehicles-intro-title" className="sr-only">Araç seçimi ve filo rehberi</h1>
-              <ArticleBody body={VEHICLES_INTRO_ARTICLE} />
+               <ArticleBody body={introContent.body} />
             </article>
           </div>
         </section>

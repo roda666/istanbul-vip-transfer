@@ -107,3 +107,4 @@
 - [Card carousel exactly-N-visible pattern](card-carousel-strip-pattern.md) — CSS-calc based card width per breakpoint avoids clipping; lazy-mounted sections need scroll-into-view before E2E checks find their elements.
 - [Pricing calculator settings bootstrap gate](pricing-settings-bootstrap-gate.md) — price_calculator_settings has no row until admin saves Fiyat Kuralları once; every pricing consumer sees "no data", not an error.
 - [UTC round-trip day-offset bug class](utc-roundtrip-day-offset-bugclass.md) — a zoned instant round-tripped through UTC is wrong every day, not just at midnight; derive calendar dates from Intl parts only.
+- [Fleet-page translation gate](fleet-page-translation-gate.md) — preserve the exact numeric-token sequence and spell-out durations; translate generic vehicle categories, then run native-language QA.

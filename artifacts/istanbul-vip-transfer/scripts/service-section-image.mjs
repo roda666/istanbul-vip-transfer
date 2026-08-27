@@ -157,6 +157,35 @@ const SPECS = [
     alt: 'Maşukiye\'de dere kenarındaki ağaçlık dinlenme alanı',
     prompt: "No text, no logos, no brand marks, no readable signage. Photorealistic image of a clear shallow mountain stream running through dense green forest, simple wooden platforms and plain tables set close to the water under tall trees, dappled sunlight on the surface, moss-covered rocks. Calm, cool, unhurried atmosphere, no people in focus. All wooden surfaces, boards and structures completely blank with no signs, menus, lettering or logos. Editorial nature photography, natural colour grading, no text, no logos, no brand marks, no readable signage.",
   },
+  // ── Batch 5 ──────────────────────────────────────────────────────────────
+  {
+    index: 15,
+    slug: 'ankara-vip-transfer',
+    heading: 'Esenboğa Havalimanı Transfer Hizmeti',
+    alt: 'Ankara Esenboğa Havalimanı yolcu alma noktasında bekleyen VIP transfer aracı',
+    prompt: "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic image of a black premium minivan with plain unmarked body panels and no plate-shaped dark rectangles, waiting at the passenger pick-up kerb of a modern airport terminal in clear morning light, wide clean forecourt, orderly and uncrowded, a chauffeur in a dark suit standing beside the rear door seen from behind. Distant low hills under an open sky. All terminal facades, canopies and glass completely blank with no signs, banners or lettering. Editorial travel photography, natural colour grading, no text, no logos, no brand marks, no readable signage.",
+  },
+  {
+    index: 16,
+    slug: 'antalya-vip-transfer',
+    heading: 'Tatil Bölgelerine Transfer',
+    alt: 'Akdeniz kıyısındaki tatil bölgesine varan VIP transfer aracı',
+    prompt: "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic image of a black premium minivan with plain unmarked body panels and no plate-shaped dark rectangles, arriving along a palm-lined driveway toward a low Mediterranean resort building surrounded by pines and bougainvillea, bright clear summer daylight, deep blue sea visible in the distance. All building facades, walls and surfaces completely blank with no signs, banners or lettering. Editorial travel photography, natural colour grading, no text, no logos, no brand marks, no readable signage.",
+  },
+  {
+    index: 17,
+    slug: 'izmir-vip-transfer',
+    heading: 'Çeşme ve Alaçatı Transferleri',
+    alt: "Ege'nin taş sokaklı beyaz badanalı kasabasında ilerleyen transfer aracı",
+    prompt: "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic image of a black premium minivan with plain unmarked body panels and no plate-shaped dark rectangles, moving slowly along a narrow Aegean village street with whitewashed stone houses, blue-painted wooden shutters and bougainvillea spilling over low walls, warm late-afternoon light and long shadows. All walls, shutters, doors and surfaces completely blank with no signs, menus, numbers or lettering. Editorial travel photography, natural colour grading, no text, no logos, no brand marks, no readable signage.",
+  },
+  {
+    index: 18,
+    slug: 'gelin-arabasi-kiralama',
+    heading: 'Araç Süsleme Seçenekleri',
+    alt: 'Gelin arabası için hazırlanmış beyaz gül ve kurdele süslemesinin yakın görünümü',
+    prompt: "No text, no logos, no brand marks, no readable signage. Photorealistic close-up detail of an elegant floral arrangement of white roses and soft ivory ribbon resting on the polished black bonnet of a premium car with plain unmarked panels, shallow depth of field, warm late-afternoon light reflecting softly on the paintwork, blurred green foliage in the background. No badges, no emblems, no ornaments, no lettering anywhere on the car or the arrangement. Editorial wedding detail photography, natural colour grading, no text, no logos, no brand marks, no readable signage.",
+  },
 ];
 
 function isWebp(bytes) {

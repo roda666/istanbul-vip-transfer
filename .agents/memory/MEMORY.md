@@ -1,4 +1,5 @@
 - [Istanbul VIP Transfer contact config](istanbul-vip-transfer-contact-config.md) — contact info in lib/site-config.ts; title template removed; airport pages linked from nav/services/footer; robots.txt conflict resolved.
+- [Service section image batch tool](service-section-image-batches.md) — scripts/service-section-image.mjs generate/place two-step pipeline for CMS in-content service images; append SPECS, don't rewrite.
 - [Multilingual content audit regex traps](multilingual-content-audit-regex-traps.md) — substring false-positive traps (tol-in-Anatolian, cost-in-costa, цен-in-центр, etc.) that inflate cross-language topic-match counts; use Unicode word boundaries.
 - [Translation quality-repair audit trail](translation-quality-repair-audit-trail.md) — audit_logs 'translation.quality_repair' rows are the authoritative record of what/how many translations were fixed; don't rely on memory/reasoning estimates.
 - [Locale switch cookie race](locale-switch-cookie-race.md) — use POST /api/locale + window.location.assign(); ResponseCookies.set() key-collision trap with headers.append() fix.

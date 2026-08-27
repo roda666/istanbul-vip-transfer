@@ -8,6 +8,8 @@ import { resolvePublicVehicle } from '@/lib/vehicle-localization';
 import { resolveVehicleBrand } from '@/lib/vehicle-brand';
 import { localizedStaticPath } from '@/lib/localized-service-path';
 import { serializeJsonLd } from '@/lib/json-ld';
+import ArticleBody from '@/components/ArticleBody';
+import { VEHICLES_INTRO_ARTICLE, VEHICLES_INTRO_FAQS } from '@/lib/vehicles-page-content';
 
 const BASE = SITE.siteUrl;
 
@@ -141,14 +143,46 @@ function buildBreadcrumbSchema(locale: string) {
   };
 }
 
+function buildVehicleFaqSchema(locale: string) {
+  if (locale !== 'tr') return null;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    inLanguage: locale,
+    mainEntity: VEHICLES_INTRO_FAQS.map((faq) => ({
+      '@type': 'Question',
+      name: faq.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: faq.answer,
+      },
+    })),
+  };
+}
+
 export default async function VehiclesPageContent({ locale }: { locale: string }) {
   const vehicles = await getVehicles(locale);
   const vehicleSchema = buildVehicleSchema(vehicles, locale);
   const breadcrumbSchema = buildBreadcrumbSchema(locale);
+  const vehicleFaqSchema = buildVehicleFaqSchema(locale);
 
   return (
     <>
       <PageHero pageKey="vehicles" />
+      {locale === 'tr' && (
+        <section
+          aria-labelledby="vehicles-intro-title"
+          data-testid="vehicles-intro-article"
+          style={{ background: '#FFFFFF', borderBottom: '1px solid #D9E2EC' }}
+        >
+          <div className="mx-auto max-w-4xl px-5 py-8 md:px-8 md:py-12">
+            <article>
+              <h1 id="vehicles-intro-title" className="sr-only">Araç seçimi ve filo rehberi</h1>
+              <ArticleBody body={VEHICLES_INTRO_ARTICLE} />
+            </article>
+          </div>
+        </section>
+      )}
       {/* /araclar is the fleet's own dedicated page — grouping by class stays
           meaningful here, unlike on service pages where it just adds scroll. */}
       <VehicleFleet grouped />
@@ -162,6 +196,12 @@ export default async function VehiclesPageContent({ locale }: { locale: string }
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: serializeJsonLd(vehicleSchema) }}
+        />
+      )}
+      {vehicleFaqSchema && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(vehicleFaqSchema) }}
         />
       )}
     </>

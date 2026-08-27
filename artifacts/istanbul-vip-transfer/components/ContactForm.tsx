@@ -21,6 +21,19 @@ interface FormState {
 }
 
 const INIT: FormState = { name: '', email: '', phone: '', subject: '', message: '' };
+// Visually-hidden (not off-screen) so the field never inflates document scrollWidth.
+const HONEYPOT_STYLE: React.CSSProperties = {
+  position: 'absolute',
+  width: '1px',
+  height: '1px',
+  padding: 0,
+  margin: '-1px',
+  overflow: 'hidden',
+  clip: 'rect(0,0,0,0)',
+  whiteSpace: 'nowrap',
+  border: 0,
+  opacity: 0,
+};
 
 export default function ContactForm() {
   const { dict, lang } = useLang();

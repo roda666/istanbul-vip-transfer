@@ -135,7 +135,9 @@ const nextConfig: NextConfig = {
           "font-src 'self' data:",
           "img-src 'self' data: blob: https:",
           // wss: needed for Next.js HMR websocket connection.
-          "connect-src 'self' wss: https://www.googletagmanager.com https://www.google-analytics.com https://region1.google-analytics.com https://challenges.cloudflare.com",
+          // storage.googleapis.com: admin image uploads PUT the file directly
+          // from the browser to a GCS presigned URL (see request-url route).
+          "connect-src 'self' wss: https://www.googletagmanager.com https://www.google-analytics.com https://region1.google-analytics.com https://challenges.cloudflare.com https://storage.googleapis.com",
           "media-src 'self'",
           "object-src 'none'",
           "worker-src 'none'",
@@ -159,7 +161,9 @@ const nextConfig: NextConfig = {
           "img-src 'self' data: blob: https:",
           // All application APIs are same-origin. The named Google endpoints are
           // used only by consent-gated Google Analytics telemetry.
-          "connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com https://region1.google-analytics.com https://challenges.cloudflare.com",
+          // storage.googleapis.com: admin image uploads PUT the file directly
+          // from the browser to a GCS presigned URL (see request-url route).
+          "connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com https://region1.google-analytics.com https://challenges.cloudflare.com https://storage.googleapis.com",
           "media-src 'self'",
           "object-src 'none'",
           "worker-src 'none'",

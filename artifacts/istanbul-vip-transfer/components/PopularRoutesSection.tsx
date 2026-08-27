@@ -5,6 +5,8 @@ import { useLang } from '@/lib/i18n/context';
 import type { TransferRouteCard } from '@/lib/transfer-route-pages';
 import { useEffect, useState } from 'react';
 import { localizedPublicPath, localizedTransferRoutePath } from '@/lib/localized-service-path';
+import { getPublicUiCopy } from '@/lib/i18n/public-ui';
+import CardCarouselStrip from '@/components/CardCarouselStrip';
 
 // ── Design tokens (matches site dark/gold aesthetic) ──────────────────────────
 const DARK_BG    = '#0C1B2A';
@@ -42,6 +44,7 @@ function RouteCard({ route, lang, t }: {
 
   return (
     <article
+      className="ivt-card-strip-item"
       style={{
         background: CARD_BG,
         border: `1px solid ${BORDER}`,
@@ -143,6 +146,7 @@ function RouteCard({ route, lang, t }: {
 export default function PopularRoutesSection({ routes }: { routes: TransferRouteCard[] }) {
   const { dict, lang } = useLang();
   const t = dict.routes;
+  const ui = getPublicUiCopy(lang);
   const [hydrated, setHydrated] = useState(false);
   const visibleRoutes = routes.filter((route) => (
     localize(route.name, route.nameTranslations, lang)
@@ -183,18 +187,16 @@ export default function PopularRoutesSection({ routes }: { routes: TransferRoute
           </p>
         </div>
 
-        {/* Grid */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: '20px',
-          }}
+        <CardCarouselStrip
+          itemCount={visibleRoutes.length}
+          previousLabel={ui.routes.previous}
+          nextLabel={ui.routes.next}
+          testId="route-strip"
         >
           {visibleRoutes.map((route) => (
             <RouteCard key={route.id} route={route} lang={lang} t={t} />
           ))}
-        </div>
+        </CardCarouselStrip>
       </div>
     </section>
   );

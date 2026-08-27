@@ -43,7 +43,12 @@ export type StorageRequestUrlHandlerDependencies = {
 };
 
 function parsePrivateObjectDir(dir: string): { bucketName: string; prefix: string } {
-  const cleaned = dir.replace(/^gs:\/\//, '');
+  // PRIVATE_OBJECT_DIR is provisioned as "/<bucket-id>/.private" (leading
+  // slash). Stripping only the "gs://" prefix left the leading "/" in place,
+  // so indexOf('/') returned 0 and bucketName was always sliced to an empty
+  // string — every signing request silently failed with "bucket_name is
+  // required", surfacing to admins as a generic upload failure.
+  const cleaned = dir.replace(/^gs:\/\//, '').replace(/^\/+/, '');
   const idx = cleaned.indexOf('/');
   if (idx === -1) return { bucketName: cleaned, prefix: '' };
   return { bucketName: cleaned.slice(0, idx), prefix: cleaned.slice(idx + 1) };

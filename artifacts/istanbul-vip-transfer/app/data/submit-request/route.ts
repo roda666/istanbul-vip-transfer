@@ -111,12 +111,9 @@ const RequestSchema = z.object({
 });
 
 const DISCONTINUED_FORM_FIELDS = new Set([
-  'bagajSayisi',
   'cocukKoltugu',
   'aracTercihi',
   'ekNotlar',
-  'ucusNumarasi',
-  'seyahatYonu',
 ]);
 
 const LOCATION_FIELD_KEYS = [

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { Users, Luggage, Wifi, Wind, UserCheck, Droplets, Star, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, Luggage, Wifi, Wind, UserCheck, Droplets, Star } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
 import { useHomepageCms } from '@/lib/homepage-cms-context';
 import { resolveHomepageCtaAction } from '@/lib/homepage-cta-route';
@@ -12,6 +12,7 @@ import { isolateLtrValues } from '@/lib/i18n/bidi';
 import type { Dictionary } from '@/lib/i18n/types';
 import { groupFleetVehicles, normalizeVehicleType, type VehicleType } from '@/lib/vehicle-options';
 import { isSuccessfulVehicleResponse } from '@/lib/vehicle-api-contract';
+import CardCarouselStrip from '@/components/CardCarouselStrip';
 
 const FEATURE_ICON_MAP: Record<string, React.ElementType> = {
   WIFI:       Wifi,
@@ -26,9 +27,6 @@ const SAFE_NEUTRAL_FEATURE_LABELS: Record<string, string> = {
   WIFI: 'WiFi',
   MEET_GREET: 'Meet & Greet',
 };
-
-const DRAG_START_THRESHOLD_PX = 6;
-const DRAG_CLICK_SUPPRESSION_MS = 350;
 
 interface DbVehicle {
   id: number;
@@ -124,17 +122,13 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
 }) {
   return (
     <motion.div
-      className="group relative rounded-2xl overflow-hidden"
+      className="group relative rounded-2xl overflow-hidden ivt-card-strip-item"
       style={{
         background: '#FFFFFF',
         border: vehicle.featured ? '1px solid rgba(199,154,53,0.5)' : '1px solid #D9E2EC',
         boxShadow: vehicle.featured
           ? '0 8px 40px rgba(16,42,67,0.1)'
           : '0 4px 24px rgba(16,42,67,0.07)',
-        minWidth: '320px',
-        width: '320px',
-        flexShrink: 0,
-        scrollSnapAlign: 'start',
       }}
       initial={{ opacity: 0, y: 30 }}
       whileInView={{ opacity: 1, y: 0 }}
@@ -168,7 +162,7 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
           alt={vehicle.alt}
           fill
           className="object-cover object-center transition-transform duration-700 group-hover:scale-105"
-          sizes="320px"
+          sizes="(min-width: 1200px) 25vw, (min-width: 900px) 33vw, (min-width: 480px) 50vw, 100vw"
         />
         <div
           className="absolute inset-x-0 bottom-0 h-16"
@@ -270,20 +264,6 @@ export default function VehicleFleet({ homepageMode = false }: { homepageMode?: 
   const cms = useHomepageCms();
   const section = homepageMode ? cms?.vehiclesSection : null;
   const ui = getPublicUiCopy(lang);
-  const trackRef = useRef<HTMLDivElement>(null);
-  const [canPrev, setCanPrev] = useState(false);
-  const [canNext, setCanNext] = useState(true);
-  const isDragging = useRef(false);
-  const startX = useRef(0);
-  const scrollLeft = useRef(0);
-  const activePointerId = useRef<number | null>(null);
-  const didDrag = useRef(false);
-  const suppressClicksUntil = useRef(0);
-  const cleanupPointerTracking = useRef<(() => void) | null>(null);
-
-  useEffect(() => () => {
-    cleanupPointerTracking.current?.();
-  }, []);
 
   const scrollToBooking = () => {
     const action = resolveHomepageCtaAction(section?.ctaRoute, lang);
@@ -331,108 +311,6 @@ export default function VehicleFleet({ homepageMode = false }: { homepageMode?: 
     minibus: 'Minibüs',
     midibus: 'Midibüs',
     bus: 'Otobüs',
-  };
-
-  // Update prev/next button state on scroll
-  function updateScrollState() {
-    const el = trackRef.current;
-    if (!el) return;
-    setCanPrev(el.scrollLeft > 8);
-    setCanNext(el.scrollLeft < el.scrollWidth - el.clientWidth - 8);
-  }
-
-  useEffect(() => {
-    const el = trackRef.current;
-    if (!el) return;
-    el.addEventListener('scroll', updateScrollState, { passive: true });
-    updateScrollState();
-    return () => el.removeEventListener('scroll', updateScrollState);
-  }, [displayVehicles]);
-
-  function scrollBy(dir: 'prev' | 'next') {
-    const el = trackRef.current;
-    if (!el) return;
-    const cardWidth = 320 + 24; // card min-width + gap
-    el.scrollBy({ left: dir === 'next' ? cardWidth : -cardWidth, behavior: 'smooth' });
-  }
-
-  function finishPointerDrag() {
-    if (!isDragging.current) return;
-
-    isDragging.current = false;
-    activePointerId.current = null;
-    if (didDrag.current) {
-      // Click follows pointerup in the browser event sequence. Hold a brief,
-      // drag-only guard so releasing over a card CTA cannot activate it.
-      suppressClicksUntil.current = Date.now() + DRAG_CLICK_SUPPRESSION_MS;
-    }
-    cleanupPointerTracking.current?.();
-    cleanupPointerTracking.current = null;
-    if (trackRef.current) trackRef.current.style.cursor = 'grab';
-  }
-
-  // Window-level pointer tracking preserves the drag lifecycle after the
-  // pointer leaves the track without retargeting a normal CTA click to the
-  // track (as element-level pointer capture would). Touch pointers are left to
-  // native scrolling so mobile, trackpad and keyboard behaviour stay unchanged.
-  function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    if (e.pointerType !== 'mouse' || e.button !== 0) return;
-
-    const el = e.currentTarget;
-    // A new pointer sequence is an intentional fresh interaction, not the
-    // synthetic click that follows the previous drag's pointerup.
-    suppressClicksUntil.current = 0;
-    isDragging.current = true;
-    activePointerId.current = e.pointerId;
-    didDrag.current = false;
-    startX.current = e.clientX;
-    scrollLeft.current = el.scrollLeft;
-    el.style.cursor = 'grabbing';
-
-    const handlePointerMove = (event: PointerEvent) => {
-      if (activePointerId.current !== event.pointerId) return;
-
-      const distance = event.clientX - startX.current;
-      if (!didDrag.current && Math.abs(distance) < DRAG_START_THRESHOLD_PX) return;
-
-      didDrag.current = true;
-      event.preventDefault();
-      el.scrollLeft = scrollLeft.current - distance * 1.5;
-    };
-    const handlePointerEnd = (event: PointerEvent) => {
-      if (activePointerId.current === event.pointerId) finishPointerDrag();
-    };
-    const cleanup = () => {
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', handlePointerEnd);
-      window.removeEventListener('pointercancel', handlePointerEnd);
-      window.removeEventListener('blur', finishPointerDrag);
-    };
-
-    cleanupPointerTracking.current?.();
-    cleanupPointerTracking.current = cleanup;
-    window.addEventListener('pointermove', handlePointerMove, { passive: false });
-    window.addEventListener('pointerup', handlePointerEnd);
-    window.addEventListener('pointercancel', handlePointerEnd);
-    window.addEventListener('blur', finishPointerDrag);
-  }
-
-  function suppressClickAfterDrag(e: React.MouseEvent<HTMLDivElement>) {
-    if (Date.now() >= suppressClicksUntil.current) return;
-    e.preventDefault();
-    e.stopPropagation();
-  }
-
-  const GOLD = '#C79A35';
-  const NAV_BTN: React.CSSProperties = {
-    width: '40px', height: '40px', borderRadius: '50%',
-    border: `1px solid rgba(199,154,53,0.4)`,
-    background: 'rgba(255,255,255,0.95)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    cursor: 'pointer',
-    boxShadow: '0 2px 8px rgba(16,42,67,0.12)',
-    transition: 'all 0.2s',
-    flexShrink: 0,
   };
 
   if (section && !section.enabled) return null;
@@ -511,108 +389,46 @@ export default function VehicleFleet({ homepageMode = false }: { homepageMode?: 
                   <h3 className="mb-4 text-xl font-bold" style={{ color: '#102A43', fontFamily: 'Playfair Display, Georgia, serif' }}>
                     {fleetGroupLabels[group.type]}
                   </h3>
-                  <div className="flex gap-6 overflow-x-auto pb-3" style={{ scrollbarWidth: 'none' }}>
+                  <CardCarouselStrip
+                    itemCount={group.vehicles.length}
+                    previousLabel={ui.vehicles.previous}
+                    nextLabel={ui.vehicles.next}
+                    testId={`vehicle-strip-${group.type}`}
+                  >
                     {group.vehicles.map((vehicle, i) => (
                       <VehicleCard key={vehicle.name} vehicle={vehicle} i={i}
                         cta={section?.ctaText ?? v.cta} popular={v.popular}
                         passengers={v.passengers} luggage={v.luggage} lang={lang}
                         scrollToBooking={scrollToBooking} />
                     ))}
-                  </div>
+                  </CardCarouselStrip>
                 </div>
               ))}
             </div>
           )}
           {!vehiclesLoading && !vehiclesError && homepageMode && (
-            <div style={{ position: 'relative' }}>
-          {/* Nav buttons */}
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginBottom: '16px' }}>
-            <button
-              onClick={() => scrollBy('prev')}
-              disabled={!canPrev}
-              className="focus:outline-none focus-visible:ring-2 focus-visible:ring-[#102A43] focus-visible:ring-offset-2"
-              style={{ ...NAV_BTN, opacity: canPrev ? 1 : 0.35, color: GOLD }}
-              aria-label={ui.vehicles.previous}
+            <CardCarouselStrip
+              itemCount={displayVehicles.length}
+              previousLabel={ui.vehicles.previous}
+              nextLabel={ui.vehicles.next}
+              testId="vehicle-strip"
             >
-              <ChevronLeft size={18} />
-            </button>
-            <button
-              onClick={() => scrollBy('next')}
-              disabled={!canNext}
-              className="focus:outline-none focus-visible:ring-2 focus-visible:ring-[#102A43] focus-visible:ring-offset-2"
-              style={{ ...NAV_BTN, opacity: canNext ? 1 : 0.35, color: GOLD }}
-              aria-label={ui.vehicles.next}
-            >
-              <ChevronRight size={18} />
-            </button>
-            </div>
-
-          {/* Scrollable track */}
-          <div
-            ref={trackRef}
-            onPointerDown={onPointerDown}
-            onClickCapture={suppressClickAfterDrag}
-            onDragStart={e => e.preventDefault()}
-            data-testid="vehicle-track"
-            style={{
-              display: 'flex',
-              gap: '24px',
-              overflowX: 'auto',
-              scrollSnapType: 'x mandatory',
-              paddingBottom: '12px',
-              cursor: 'grab',
-              userSelect: 'none',
-              /* Hide scrollbar visually but keep function */
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
-            } as React.CSSProperties}
-          >
-            {displayVehicles.map((vehicle, i) => (
-              <VehicleCard
-                key={vehicle.name}
-                vehicle={vehicle}
-                i={i}
-                cta={section?.ctaText ?? v.cta}
-                popular={v.popular}
-                passengers={v.passengers}
-                luggage={v.luggage}
-                lang={lang}
-                scrollToBooking={scrollToBooking}
-              />
-            ))}
-          </div>
-
-          {/* Dot indicators */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '16px' }}>
-            {displayVehicles.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => {
-                  const el = trackRef.current;
-                  if (!el) return;
-                  el.scrollTo({ left: i * (320 + 24), behavior: 'smooth' });
-                }}
-                aria-label={ui.vehicles.slide(i + 1)}
-                className="focus:outline-none focus-visible:ring-2 focus-visible:ring-[#102A43] focus-visible:ring-offset-2"
-                style={{
-                  width: '44px', height: '44px', borderRadius: '50%',
-                  background: `radial-gradient(circle, ${GOLD} 0 4px, transparent 5px)`, border: 'none', cursor: 'pointer',
-                  opacity: 0.3, padding: 0,
-                  transition: 'opacity 0.2s',
-                }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.3'; }}
-              />
-            ))}
-          </div>
-            </div>
+              {displayVehicles.map((vehicle, i) => (
+                <VehicleCard
+                  key={vehicle.name}
+                  vehicle={vehicle}
+                  i={i}
+                  cta={section?.ctaText ?? v.cta}
+                  popular={v.popular}
+                  passengers={v.passengers}
+                  luggage={v.luggage}
+                  lang={lang}
+                  scrollToBooking={scrollToBooking}
+                />
+              ))}
+            </CardCarouselStrip>
           )}
         </div>
-
-      {/* Hide scrollbar in WebKit browsers */}
-      <style>{`
-        #araclar [style*="overflow-x"]::-webkit-scrollbar { display: none; }
-      `}</style>
     </section>
   );
 }

@@ -1,4 +1,6 @@
 - [Istanbul VIP Transfer contact config](istanbul-vip-transfer-contact-config.md) — contact info in lib/site-config.ts; title template removed; airport pages linked from nav/services/footer; robots.txt conflict resolved.
+- [Admin upload CSP allowlist](admin-upload-csp-storage.md) — connect-src must include storage.googleapis.com or presigned browser PUT uploads silently fail even after signing bugs are fixed.
+- [Temporary QA admin accounts for testing](qa-admin-test-accounts.md) — create/delete a scoped temp admin instead of resetting an existing account's password when E2E testing needs a login.
 - [Service section image batch tool](service-section-image-batches.md) — scripts/service-section-image.mjs generate/place two-step pipeline for CMS in-content service images; append SPECS, don't rewrite.
 - [Multilingual content audit regex traps](multilingual-content-audit-regex-traps.md) — substring false-positive traps (tol-in-Anatolian, cost-in-costa, цен-in-центр, etc.) that inflate cross-language topic-match counts; use Unicode word boundaries.
 - [Translation quality-repair audit trail](translation-quality-repair-audit-trail.md) — audit_logs 'translation.quality_repair' rows are the authoritative record of what/how many translations were fixed; don't rely on memory/reasoning estimates.
@@ -101,3 +103,5 @@
 - [og:locale format bug](istanbul-vip-transfer-og-locale-format.md) — getOgLocale() reuses hreflang's hyphen BCP47 format for og:locale (needs underscore); affects 8 templates.
 - [Sitemap vs hardcoded noindex conflict](sitemap-noindex-conflict-pattern.md) — sitemap.ts doesn't know about per-page hardcoded robots overrides; some noindex pages are also legacy-redirect destinations.
 - [Server-only/client boundary for shared constants](server-only-client-boundary-constants.md) — pure constants used by client components must live outside any 'server-only'/db-importing module, or the build breaks; don't duplicate constants to dodge this.
+- [Istanbul VIP Transfer overflow-guard suite](istanbul-vip-transfer-overflow-guard.md) — permanent Playwright doc-width≤viewport check across 5 templates × 4 widths; run split-by-width in ShellExec, not via validation-run poller, in dev mode.
+- [Card carousel exactly-N-visible pattern](card-carousel-strip-pattern.md) — CSS-calc based card width per breakpoint avoids clipping; lazy-mounted sections need scroll-into-view before E2E checks find their elements.

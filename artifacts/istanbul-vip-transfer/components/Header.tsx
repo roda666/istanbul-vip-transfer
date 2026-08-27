@@ -80,9 +80,12 @@ export default function Header({ serviceNavigationGroups }: HeaderProps = {}) {
   const ctaEntry = nav.find((e) => e.cta);
   const accessibleGold = '#9A6A12';
 
-  // German has longer nav labels — tighten tracking + padding to avoid wrapping
+  // German has longer nav labels — tighten tracking + padding to avoid wrapping.
+  // Padding/tracking is intentionally tighter between xl and 2xl (1280–1535px):
+  // the full desktop nav + CTA cluster only just fits that range, so every
+  // item trims itself there and relaxes again at 2xl+ where there's headroom.
   const isDE = lang === 'de';
-  const navLinkCls = `text-xs ${isDE ? 'tracking-wide px-1.5' : 'tracking-wider px-2'} uppercase whitespace-nowrap transition-colors duration-300 py-7 block focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C79A35] rounded`;
+  const navLinkCls = `text-xs ${isDE ? 'tracking-normal 2xl:tracking-wide px-1 2xl:px-1.5' : 'tracking-normal 2xl:tracking-wider px-1 2xl:px-2'} uppercase whitespace-nowrap transition-colors duration-300 py-7 block focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C79A35] rounded`;
   const homePath = localizedPublicPath('/', lang);
   const servicesPath = localizedPublicPath('/hizmetler', lang);
 
@@ -147,7 +150,7 @@ export default function Header({ serviceNavigationGroups }: HeaderProps = {}) {
                         aria-expanded={dropdownOpen}
                         aria-controls="hizmetler-dropdown"
                         aria-label={dict.header.servicesSubmenuToggle}
-                        className="flex items-center justify-center w-11 h-11 mr-1 rounded transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C79A35]"
+                        className="flex items-center justify-center w-7 h-7 2xl:w-11 2xl:h-11 mr-0 2xl:mr-1 rounded transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C79A35]"
                         style={{ color: isActive ? accessibleGold : '#50677A' }}
                         onClick={() => setDropdownOpen((o) => !o)}
                         onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = accessibleGold; }}
@@ -261,14 +264,20 @@ export default function Header({ serviceNavigationGroups }: HeaderProps = {}) {
               })}
             </nav>
 
-            {/* ── Desktop right CTAs ── */}
-            <div className="hidden xl:flex items-center gap-2 flex-shrink-0">
-              <LanguageSelector variant="light" />
+            {/* ── Desktop right CTAs ──
+                Between xl and 2xl (1280–1535px) this whole cluster is at its
+                tightest: the CTA/WhatsApp buttons drop their label text (icon
+                only) and the language selector shows a 2-letter code, because
+                the full-width version of all three does not fit that range
+                without pushing the page wider than the viewport. Both regain
+                their full text at 2xl+ where there is room. */}
+            <div className="hidden xl:flex items-center gap-1 2xl:gap-2 flex-shrink-0">
+              <LanguageSelector variant="light" responsiveCompact />
               {ctaEntry && (
                 <div className="ivt-hdr-cta">
                   <Link
                     href={ctaEntry.href!}
-                    className="text-xs tracking-wider uppercase whitespace-nowrap px-4 py-2 rounded-lg border transition-all duration-300 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#102A43]"
+                    className="text-xs tracking-wider uppercase whitespace-nowrap px-2.5 2xl:px-4 py-2 rounded-lg border transition-all duration-300 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#102A43]"
                     style={{ borderColor: '#102A43', color: '#102A43', fontFamily: 'Inter, sans-serif' }}
                     onMouseEnter={(e) => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = '#102A43'; el.style.color = '#FFFFFF'; }}
                     onMouseLeave={(e) => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = 'transparent'; el.style.color = '#102A43'; }}
@@ -282,12 +291,13 @@ export default function Header({ serviceNavigationGroups }: HeaderProps = {}) {
                 href={cs.whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="ivt-hdr-wa flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#16A36A]"
+                className="ivt-hdr-wa flex items-center gap-1.5 2xl:gap-2 px-2.5 2xl:px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#16A36A]"
                 style={{ background: '#16A36A', color: '#102A43', fontFamily: 'Inter, sans-serif' }}
                 data-testid="header-whatsapp-cta"
+                aria-label={dict.header.whatsappCta}
               >
                 <Phone size={13} aria-hidden="true" />
-                {dict.header.whatsappCta}
+                <span className="hidden 2xl:inline">{dict.header.whatsappCta}</span>
               </a>
             </div>
 
@@ -326,6 +336,14 @@ export default function Header({ serviceNavigationGroups }: HeaderProps = {}) {
             style={{ borderColor: '#D9E2EC' }}
             aria-label={dict.header.mobileMenu}
           >
+            {/* Language selector (mobile) — placed first so it's reachable
+                without scrolling past the full nav list. */}
+            <div className="ivt-hdr-mobile-fade pb-5" style={{ '--delay': '0s' } as React.CSSProperties}>
+              <div style={{ borderBottom: '1px solid rgba(217,226,236,0.8)', paddingBottom: '16px' }}>
+                <LanguageSelector variant="light" />
+              </div>
+            </div>
+
             {mainEntries.map((entry, i) => {
               if (entry.groups) {
                 const isActive =

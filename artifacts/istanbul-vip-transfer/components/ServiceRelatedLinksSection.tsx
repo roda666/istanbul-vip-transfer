@@ -39,7 +39,7 @@ export default function ServiceRelatedLinksSection({ links, lang }: Props) {
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: `repeat(${Math.max(groups.length, 1)}, minmax(200px, 1fr))`,
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
           gap: '28px',
         }}>
           {groups.map(({ group, items }) => {

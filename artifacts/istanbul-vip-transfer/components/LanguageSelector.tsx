@@ -42,9 +42,17 @@ interface Props {
   /** Visual variant — dark background or light background. */
   variant?: 'light' | 'dark';
   className?: string;
+  /**
+   * When true, the native language name collapses to its 2-letter code
+   * between the `xl` and `2xl` breakpoints (1280–1535px) and expands back to
+   * the full name at 2xl+. Used only in the desktop header, where the full
+   * nav + CTA cluster is tight for room in that range; the mobile menu and
+   * footer instances always show the full name.
+   */
+  responsiveCompact?: boolean;
 }
 
-export default function LanguageSelector({ variant = 'light', className = '' }: Props) {
+export default function LanguageSelector({ variant = 'light', className = '', responsiveCompact = false }: Props) {
   const { lang, dict } = useLang();
   const pathname = usePathname() ?? '/';
   const [open, setOpen]       = useState(false);
@@ -120,7 +128,7 @@ export default function LanguageSelector({ variant = 'light', className = '' }: 
          aria-label={`${nativeNameOf(pending ?? lang)} — ${dict.langSelector.ariaLabel}`}
         aria-expanded={open}
         aria-haspopup="listbox"
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C79A35]"
+        className={`flex items-center gap-1.5 ${responsiveCompact ? 'px-2 2xl:px-2.5' : 'px-2.5'} py-1.5 rounded-lg text-xs font-medium transition-all duration-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C79A35]`}
         style={{
           color:         pending ? '#aaa' : textColor,
           border:        `1px solid ${borderColor}`,
@@ -133,9 +141,20 @@ export default function LanguageSelector({ variant = 'light', className = '' }: 
         onMouseLeave={(e) => { if (!pending) (e.currentTarget as HTMLButtonElement).style.color = textColor; }}
       >
         <Globe size={13} aria-hidden="true" style={{ flexShrink: 0 }} />
-        <span>
-          {pending ? nativeNameOf(pending) : nativeNameOf(lang)}
-        </span>
+        {responsiveCompact ? (
+          <>
+            <span className="2xl:hidden" aria-hidden="true">
+              {(pending ?? lang).toUpperCase()}
+            </span>
+            <span className="hidden 2xl:inline">
+              {pending ? nativeNameOf(pending) : nativeNameOf(lang)}
+            </span>
+          </>
+        ) : (
+          <span>
+            {pending ? nativeNameOf(pending) : nativeNameOf(lang)}
+          </span>
+        )}
         <ChevronDown
           size={11}
           aria-hidden="true"

@@ -210,8 +210,8 @@ export interface Dictionary {
     expand?: string;
     collapse?: string;
     // Optional admin-configured booking fields
-    luggageCount?: string;
-    luggageCountPlaceholder?: string;
+    luggageCount: string;
+    luggageCountPlaceholder: string;
     childSeatCount?: string;
     childSeatCountPlaceholder?: string;
     vehiclePreference?: string;
@@ -222,6 +222,16 @@ export interface Dictionary {
     waChildSeatCount?: string;
     waVehiclePreference?: string;
     waAdditionalNotes?: string;
+    // Flight number / trip direction (airport & intercity transfers)
+    flightNumber: string;
+    flightNumberPlaceholder: string;
+    tripDirection: string;
+    tripOneWay: string;
+    tripRoundTrip: string;
+    waFlightNumber: string;
+    waTripDirection: string;
+    // Closing WhatsApp message line confirming the request was also saved
+    waSavedNotice: string;
   };
   langSelector: {
     label: string;

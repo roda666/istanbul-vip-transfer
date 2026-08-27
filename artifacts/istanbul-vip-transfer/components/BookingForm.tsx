@@ -13,7 +13,7 @@ import { z } from 'zod';
 // a different attribute representation and warns).
 import {
   MapPin, Calendar, Clock, Users, User, Phone, Home,
-  Plane, ArrowRightLeft, Car, Compass, Mail,
+  Plane, ArrowRightLeft, Car, Compass, Mail, Briefcase,
 } from 'lucide-react';
 import LocationCombobox from './LocationCombobox';
 import { useLang } from '@/lib/i18n/context';
@@ -34,6 +34,20 @@ import { openWhatsAppChat } from '@/lib/whatsapp';
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const WA_NUMBER = '905326600847';
+// Visually-hidden (not off-screen) so the field never inflates document scrollWidth.
+// tabIndex={-1} already removes it from keyboard/AT navigation.
+const HONEYPOT_STYLE: React.CSSProperties = {
+  position: 'absolute',
+  width: '1px',
+  height: '1px',
+  padding: 0,
+  margin: '-1px',
+  overflow: 'hidden',
+  clip: 'rect(0,0,0,0)',
+  whiteSpace: 'nowrap',
+  border: 0,
+  opacity: 0,
+};
 const RESERVATION_SUBMISSION_ATTEMPTS = 3;
 const RESERVATION_RETRY_DELAYS_MS = [0, 500, 1_500] as const;
 
@@ -121,6 +135,11 @@ function buildSchema(b: import('@/lib/i18n/types').Dictionary['booking']) {
     alisAdresi:     z.string().optional(),
     varisLokasyonu: z.string().optional(),
     varisAdresi:    z.string().optional(),
+    ucusNumarasi:   z.string().optional(),
+
+    // AIRPORT_TRANSFER + INTERCITY
+    bagajSayisi: z.string().optional(),
+    seyahatYonu: z.enum(['GIDIS', 'GIDIS_DONUS']).optional(),
 
     // INTERCITY
     kalkisIli:   z.string().optional(),
@@ -211,6 +230,9 @@ function buildWhatsAppMessage(
     lines.push(`${b.waDropoff}: ${displayValue(locationLabel('varisLokasyonu'))}`);
     if (data.varisAdresi?.trim()) lines.push(`${b.waDropoffAddress}: ${displayValue(data.varisAdresi)}`);
     lines.push(`${b.waDate}: ${displayValue(fmtDate)}`, `${b.waTime}: ${displayValue(saat)}`);
+    if (data.seyahatYonu) lines.push(`${b.waTripDirection}: ${data.seyahatYonu === 'GIDIS_DONUS' ? b.tripRoundTrip : b.tripOneWay}`);
+    if (data.ucusNumarasi?.trim()) lines.push(`${b.waFlightNumber}: ${displayValue(data.ucusNumarasi)}`);
+    if (data.bagajSayisi?.trim()) lines.push(`${b.waLuggageCount}: ${displayValue(data.bagajSayisi)}`);
 
   } else if (activeService === 'INTERCITY') {
     lines.push(`${b.waDepartureCity}: ${displayValue(locationLabel('kalkisIli'))}`);
@@ -218,6 +240,8 @@ function buildWhatsAppMessage(
     lines.push(`${b.waArrivalCity}: ${displayValue(locationLabel('varisIli'))}`);
     if (data.varisAdres?.trim())  lines.push(`${b.waArrivalAddress}: ${displayValue(data.varisAdres)}`);
     lines.push(`${b.waDate}: ${displayValue(fmtDate)}`, `${b.waTime}: ${displayValue(saat)}`);
+    if (data.seyahatYonu) lines.push(`${b.waTripDirection}: ${data.seyahatYonu === 'GIDIS_DONUS' ? b.tripRoundTrip : b.tripOneWay}`);
+    if (data.bagajSayisi?.trim()) lines.push(`${b.waLuggageCount}: ${displayValue(data.bagajSayisi)}`);
 
   } else if (activeService === 'ALLOCATION') {
     lines.push(`${b.waPickup}: ${displayValue(locationLabel('alisLokasyonu'))}`);
@@ -258,7 +282,13 @@ function buildWhatsAppMessage(
     }
   }
 
-  return encodeURIComponent(lines.join('\n'));
+  if (b.waSavedNotice) lines.push('', b.waSavedNotice);
+
+  // Plain text only — openWhatsAppChat() is the single place that encodes
+  // this for the wa.me URL / Android intent. Encoding it here too produced
+  // double-encoded, unreadable messages (%2520 etc. instead of spaces and
+  // line breaks) in WhatsApp.
+  return lines.join('\n');
 }
 
 /**
@@ -683,7 +713,7 @@ export default function BookingForm({
                 tabIndex={-1}
                 aria-label="Website"
                 autoComplete="url"
-                style={{ position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0 }}
+                style={HONEYPOT_STYLE}
               />
               <input
                 ref={companyHoneypotRef}
@@ -692,7 +722,7 @@ export default function BookingForm({
                 tabIndex={-1}
                 aria-label="Company"
                 autoComplete="organization"
-                style={{ position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0 }}
+                style={HONEYPOT_STYLE}
               />
 
               {/* Panel A — Service-specific fields */}
@@ -735,6 +765,23 @@ export default function BookingForm({
                       <input id="bf-varis-adresi" type="text" {...register('varisAdresi')} className="vip-input"
                         placeholder={b.dropoffAddressPlaceholder} autoComplete="off" />
                     </div>
+                    <div>
+                      <label htmlFor="bf-ucus-no" style={labelStyle}><Plane size={12} aria-hidden="true" /> {b.flightNumber} {optionalBadge}</label>
+                      <input id="bf-ucus-no" type="text" {...register('ucusNumarasi')} className="vip-input"
+                        placeholder={b.flightNumberPlaceholder} autoComplete="off" />
+                    </div>
+                    <div>
+                      <label htmlFor="bf-bagaj" style={labelStyle}><Briefcase size={12} aria-hidden="true" /> {b.luggageCount} {optionalBadge}</label>
+                      <input id="bf-bagaj" type="number" min="0" inputMode="numeric" {...register('bagajSayisi')} className="vip-input"
+                        placeholder={b.luggageCountPlaceholder} />
+                    </div>
+                    <div>
+                      <label htmlFor="bf-seyahat-yonu" style={labelStyle}><ArrowRightLeft size={12} aria-hidden="true" /> {b.tripDirection} {optionalBadge}</label>
+                      <select id="bf-seyahat-yonu" {...register('seyahatYonu')} className="vip-input vip-select">
+                        <option value="GIDIS">{b.tripOneWay}</option>
+                        <option value="GIDIS_DONUS">{b.tripRoundTrip}</option>
+                      </select>
+                    </div>
                   </>)}
 
                   {/* INTERCITY */}
@@ -766,6 +813,18 @@ export default function BookingForm({
                       <label htmlFor="bf-varis-adres" style={labelStyle}><Home size={12} aria-hidden="true" /> {b.arrivalAddress} {optionalBadge}</label>
                       <input id="bf-varis-adres" type="text" {...register('varisAdres')} className="vip-input"
                         placeholder={b.arrivalCityAddressPlaceholder} autoComplete="off" />
+                    </div>
+                    <div>
+                      <label htmlFor="bf-bagaj-ic" style={labelStyle}><Briefcase size={12} aria-hidden="true" /> {b.luggageCount} {optionalBadge}</label>
+                      <input id="bf-bagaj-ic" type="number" min="0" inputMode="numeric" {...register('bagajSayisi')} className="vip-input"
+                        placeholder={b.luggageCountPlaceholder} />
+                    </div>
+                    <div>
+                      <label htmlFor="bf-seyahat-yonu-ic" style={labelStyle}><ArrowRightLeft size={12} aria-hidden="true" /> {b.tripDirection} {optionalBadge}</label>
+                      <select id="bf-seyahat-yonu-ic" {...register('seyahatYonu')} className="vip-input vip-select">
+                        <option value="GIDIS">{b.tripOneWay}</option>
+                        <option value="GIDIS_DONUS">{b.tripRoundTrip}</option>
+                      </select>
                     </div>
                   </>)}
 

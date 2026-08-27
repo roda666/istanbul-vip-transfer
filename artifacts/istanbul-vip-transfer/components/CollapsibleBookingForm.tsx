@@ -4,8 +4,15 @@ import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { ChevronDown, CalendarCheck } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
+import BookingFormSkeleton from './BookingFormSkeleton';
 
-const BookingForm = dynamic(() => import('./BookingForm'), { ssr: false });
+// No `loading` option previously meant Next rendered nothing at all while the
+// chunk downloaded after the accordion opened — visitors saw an empty panel
+// that looked broken. The skeleton keeps the opened panel visibly "there".
+const BookingForm = dynamic(() => import('./BookingForm'), {
+  ssr: false,
+  loading: () => <BookingFormSkeleton />,
+});
 
 /**
  * Wraps BookingForm in a collapsible accordion for service and blog pages.

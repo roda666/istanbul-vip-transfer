@@ -157,6 +157,14 @@
 html {
   /* matches h-20 (80px) sticky header height */
   scroll-padding-top: 80px;
+  /* Defensive: some mobile browsers briefly resize the layout viewport width
+     when the on-screen keyboard opens/closes over a fixed-position sheet
+     (e.g. the booking form's location panel), which can reveal horizontal
+     scroll for a frame. Nothing on the page intentionally exceeds 100vw. */
+  overflow-x: hidden;
+}
+body {
+  overflow-x: hidden;
 }
 
 /* Custom scrollbar */
@@ -543,6 +551,34 @@ html {
   outline: 3px solid #fff;
   outline-offset: 2px;
   box-shadow: 0 0 0 5px #102A43;
+}
+
+/* ── Horizontal card-strip carousel (vehicles + popular routes) ────────────
+   Exactly N fully-visible cards at a time — never a clipped partial card —
+   via a CSS custom property that steps up at breakpoints. Card width is a
+   fraction of the track's own width (not a fixed px value), so this holds
+   at every viewport without any JS-measured breakpoint logic. */
+.ivt-card-strip {
+  --ivt-strip-n: 1;
+  --ivt-strip-gap: 16px;
+}
+@media (min-width: 480px) {
+  .ivt-card-strip { --ivt-strip-n: 2; }
+}
+@media (min-width: 900px) {
+  .ivt-card-strip { --ivt-strip-n: 3; --ivt-strip-gap: 20px; }
+}
+@media (min-width: 1200px) {
+  .ivt-card-strip { --ivt-strip-n: 4; --ivt-strip-gap: 24px; }
+}
+.ivt-card-strip-track {
+  gap: var(--ivt-strip-gap);
+}
+.ivt-card-strip-track::-webkit-scrollbar { display: none; }
+.ivt-card-strip-item {
+  flex: 0 0 calc((100% - (var(--ivt-strip-n) - 1) * var(--ivt-strip-gap)) / var(--ivt-strip-n));
+  min-width: 0;
+  scroll-snap-align: start;
 }
 
 /* Admin request list: the desktop table never mounts visibly on a phone.

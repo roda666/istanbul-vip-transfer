@@ -20,6 +20,14 @@ author = "agent"
 task = "workflow.run"
 args = "GitHub Auto-Sync"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "build"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "overflow-guard"
+
 [[workflows.workflow]]
 name = "GitHub Auto-Sync"
 author = "agent"
@@ -30,6 +38,28 @@ args = "sh scripts/github-sync.sh"
 
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow]]
+name = "build"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd artifacts/istanbul-vip-transfer && pnpm run build"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "overflow-guard"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd artifacts/istanbul-vip-transfer && npx playwright test tests/overflow-guard.spec.ts"
+
+[workflows.workflow.metadata]
+isValidation = true
 
 [agent]
 stack = "PNPM_WORKSPACE"

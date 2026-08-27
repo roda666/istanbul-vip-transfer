@@ -3,24 +3,28 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * Public (no auth) locations endpoint for the booking form.
  * GET /data/locations?for=pickup|dropoff&scope=local|intercity&q=...
- * Returns a small, server-filtered result set only after the visitor types.
- * Local search is deliberately limited to Istanbul locations. Intercity search
- * only returns province records, never districts outside Istanbul.
+ *
+ * With no `q`, this returns a full "browse" list (grouped by category, then
+ * Turkish-alphabetized) so the combobox has something to show the moment a
+ * visitor opens it — before, an empty `q` short-circuited to `[]` and the
+ * dropdown looked empty/broken until the visitor started typing.
+ *
+ * Local search is limited to Istanbul locations. Intercity search returns
+ * every province, plus Istanbul's own airports/districts (scope BOTH) so
+ * they can appear ahead of the generic province list.
  * Uses force-dynamic so admin changes appear immediately.
  */
 export const dynamic = 'force-dynamic';
+
+const BROWSE_LIMIT = 200;
+const SEARCH_LIMIT = 24;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const forParam = searchParams.get('for'); // 'pickup' | 'dropoff' | null
   const scopeParam = searchParams.get('scope'); // 'local' | 'intercity' | null
   const query = searchParams.get('q')?.trim() ?? '';
-
-  // Do not ship the booking catalog on initial page load. The search field
-  // requests its results only after the visitor has started typing.
-  if (!query) {
-    return NextResponse.json({ locations: [], query: '', limit: 24 });
-  }
+  const isBrowse = !query;
 
   try {
     const { db } = await import('@/db');
@@ -48,27 +52,34 @@ export async function GET(request: NextRequest) {
       conditions.push(
         or(eq(locations.scope, 'INTERCITY'), eq(locations.scope, 'BOTH'))!,
       );
-      // A city is sufficient for intercity bookings; the detailed address is
-      // collected by the adjacent address field.
-      conditions.push(eq(locations.type, 'PROVINCE'));
+      // Every other city is only ever represented at the PROVINCE level, but
+      // Istanbul's own airports/districts (scope BOTH) should also surface
+      // here — a previous hard `type = 'PROVINCE'` filter blocked that
+      // granularity from ever appearing in intercity search.
+      conditions.push(
+        or(eq(locations.type, 'PROVINCE'), eq(locations.city, 'İstanbul'))!,
+      );
     }
 
-    const normalizedQuery = query
-      .toLocaleLowerCase('tr-TR')
-      .replace(/ğ/g, 'g')
-      .replace(/ü/g, 'u')
-      .replace(/ş/g, 's')
-      .replace(/ı/g, 'i')
-      .replace(/İ/g, 'i')
-      .replace(/ö/g, 'o')
-      .replace(/ç/g, 'c');
-    const pattern = `%${normalizedQuery}%`;
-    conditions.push(or(
-      sql`translate(lower(${locations.name}), 'çğıöşü', 'cgiosu') LIKE ${pattern}`,
-      sql`translate(lower(${locations.city}), 'çğıöşü', 'cgiosu') LIKE ${pattern}`,
-      sql`translate(lower(${locations.district}), 'çğıöşü', 'cgiosu') LIKE ${pattern}`,
-    )!);
+    if (query) {
+      const normalizedQuery = query
+        .toLocaleLowerCase('tr-TR')
+        .replace(/ğ/g, 'g')
+        .replace(/ü/g, 'u')
+        .replace(/ş/g, 's')
+        .replace(/ı/g, 'i')
+        .replace(/İ/g, 'i')
+        .replace(/ö/g, 'o')
+        .replace(/ç/g, 'c');
+      const pattern = `%${normalizedQuery}%`;
+      conditions.push(or(
+        sql`translate(lower(${locations.name}), 'çğıöşü', 'cgiosu') LIKE ${pattern}`,
+        sql`translate(lower(${locations.city}), 'çğıöşü', 'cgiosu') LIKE ${pattern}`,
+        sql`translate(lower(${locations.district}), 'çğıöşü', 'cgiosu') LIKE ${pattern}`,
+      )!);
+    }
 
+    const limit = isBrowse ? BROWSE_LIMIT : SEARCH_LIMIT;
     const rows = await db
       .select({
         id: locations.id,
@@ -82,9 +93,30 @@ export async function GET(request: NextRequest) {
       .from(locations)
       .where(and(...conditions))
       .orderBy(asc(locations.displayOrder), asc(locations.name))
-      .limit(24);
+      .limit(limit);
 
-    return NextResponse.json({ locations: rows, query, limit: 24 });
+    // Category-rank first, then Turkish alphabetical, so the ordering rules
+    // hold regardless of displayOrder: for intercity, Istanbul's own
+    // locations must lead the generic province list; for local, airports
+    // lead districts lead landmark/region points.
+    const collator = new Intl.Collator('tr-TR', { sensitivity: 'base' });
+    const categoryRank = (row: (typeof rows)[number]): number => {
+      if (scopeParam === 'intercity') {
+        return row.type === 'PROVINCE' ? 1 : 0;
+      }
+      switch (row.type) {
+        case 'AIRPORT':  return 0;
+        case 'DISTRICT': return 1;
+        case 'REGION':   return 2;
+        default:         return 3;
+      }
+    };
+    rows.sort((a, b) => {
+      const rankDiff = categoryRank(a) - categoryRank(b);
+      return rankDiff !== 0 ? rankDiff : collator.compare(a.name, b.name);
+    });
+
+    return NextResponse.json({ locations: rows, query, limit });
   } catch (err) {
     console.error('Public locations error:', err);
     return NextResponse.json({ locations: [] }, { status: 200 });

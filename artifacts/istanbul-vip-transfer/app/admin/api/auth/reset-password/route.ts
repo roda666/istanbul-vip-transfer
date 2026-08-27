@@ -87,6 +87,8 @@ export async function POST(req: NextRequest) {
     const { sendEmail } = await import('@/lib/email');
     await sendEmail({
       to: user.email,
+      linkOriginMode: linkOrigin.mode,
+      previewDomainUsed: linkOrigin.isPreviewDomain,
       subject: 'Admin Şifre Sıfırlama — İstanbul VIP Transfer',
       html: `
         <div style="font-family:Inter,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;background:#F8FAFC;border-radius:12px;">

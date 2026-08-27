@@ -25,6 +25,10 @@ export interface SendEmailOptions {
   requestReference?: string;
   /** Present only for an authenticated admin-triggered send. */
   adminUserId?: string;
+  /** 'setting' | 'proxy-fallback' | 'unavailable' — set when this email embeds a link built from resolveEmailLinkOrigin(). */
+  linkOriginMode?: string;
+  /** True when the embedded link used a Replit preview domain (.replit.dev / .repl.co) instead of a real production domain. */
+  previewDomainUsed?: boolean;
 }
 
 /** Default recipient for booking, contact, and system notifications. */
@@ -399,6 +403,8 @@ export async function sendEmailDetailed(opts: SendEmailOptions): Promise<EmailDe
       smtpResponseCode: result.smtpResponseCode,
       serverResponse: result.serverResponse,
       messageId: result.messageId,
+      linkOriginMode: opts.linkOriginMode,
+      previewDomainUsed: opts.previewDomainUsed,
     });
     return result;
   };

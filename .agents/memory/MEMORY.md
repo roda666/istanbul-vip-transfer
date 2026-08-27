@@ -99,3 +99,4 @@
 - [AI image SEO filename convention](ai-image-seo-filenames.md) — alt-text-derived filenames + prebuild guard + image sitemap; any ai-images/ path change must also update the api-server serving-route regex or images silently 403.
 - [og:locale format bug](istanbul-vip-transfer-og-locale-format.md) — getOgLocale() reuses hreflang's hyphen BCP47 format for og:locale (needs underscore); affects 8 templates.
 - [Sitemap vs hardcoded noindex conflict](sitemap-noindex-conflict-pattern.md) — sitemap.ts doesn't know about per-page hardcoded robots overrides; some noindex pages are also legacy-redirect destinations.
+- [Server-only/client boundary for shared constants](server-only-client-boundary-constants.md) — pure constants used by client components must live outside any 'server-only'/db-importing module, or the build breaks; don't duplicate constants to dodge this.

@@ -31,14 +31,23 @@ export async function POST(req: NextRequest) {
     const plainFooter = unsubscribeUrl
       ? `\n\nAbonelikten ayrıl: ${unsubscribeUrl}`
       : '\n\nAbonelikten çıkış bağlantısı şu anda oluşturulamadı.';
-    return sendEmailDetailed({ to: recipient.email, subject, html: `${parsed.data.html}${footer}`, text: `${parsed.data.text ?? ''}${plainFooter}` });
+    return sendEmailDetailed({
+      to: recipient.email, subject, html: `${parsed.data.html}${footer}`, text: `${parsed.data.text ?? ''}${plainFooter}`,
+      linkOriginMode: linkOrigin.mode, previewDomainUsed: linkOrigin.isPreviewDomain,
+    });
   }));
   const accepted = outcomes.filter((result) => result.ok).length;
   const failureCodes = [...new Set(outcomes.filter((result) => !result.ok).map((result) => result.code))];
-  const result = { recipientCount: recipients.length, acceptedCount: accepted, rejectedCount: recipients.length - accepted, failureCodes, emailLinkOrigin: linkOrigin.mode };
+  const result = {
+    recipientCount: recipients.length, acceptedCount: accepted, rejectedCount: recipients.length - accepted, failureCodes,
+    emailLinkOrigin: linkOrigin.mode, previewDomainUsed: linkOrigin.isPreviewDomain,
+  };
   await db.insert(auditLogs).values({
     adminUserId: session.adminId ?? null, action: 'NEWSLETTER_SEND', entityType: 'newsletter',
-    metadata: { ...result, subjectLength: subject.length },
+    metadata: {
+      ...result, subjectLength: subject.length,
+      note: linkOrigin.isPreviewDomain ? 'Bu gönderimdeki abonelikten çıkma bağlantısı bir önizleme (.replit.dev) adresi kullandı.' : undefined,
+    },
   }).catch(() => {});
   if (!accepted && failureCodes.includes('SMTP_NOT_CONFIGURED')) {
     return NextResponse.json({ error: 'SMTP yapılandırılmamış. E-posta Ayarları bölümünde sunucu, port, kullanıcı adı, parola ve gönderen adresini girip etkinleştirin.', result }, { status: 503 });

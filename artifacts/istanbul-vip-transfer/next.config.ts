@@ -217,28 +217,33 @@ const nextConfig: NextConfig = {
   },
 
   // Permanent redirects
+  //
+  // ── Single-hop guarantee ────────────────────────────────────────────────────
+  // Every rule below (except the final catch-all) redirects straight to a
+  // fully-qualified `https://www.istanbulviptransfer.com/...` URL, and all of
+  // them are listed BEFORE the non-www→www catch-all rule. Next.js picks the
+  // FIRST matching rule in array order, so a legacy request arriving on the
+  // bare (non-www) domain resolves directly to its final canonical URL in one
+  // 301 — it never bounces through an intermediate non-www→www hop first.
+  // (Fixed 2026-08-27: previously the catch-all was first and used a relative
+  // destination, which kept a bare-domain request on the bare domain, so a
+  // second hop through the legacy-slug rule was always required afterwards.)
+  //
+  // The non-www→www catch-all stays LAST as a safety net for any URL (current
+  // or future) not covered by a specific rule below.
   async redirects() {
+    const WWW = 'https://www.istanbulviptransfer.com';
     return [
-      // ── Canonical domain: non-www → www ───────────────────────────────────────
-      // Ensures istanbulviptransfer.com redirects to www.istanbulviptransfer.com.
-      // Only fires if the non-www host resolves to this server.
-      {
-        source:      '/:path*',
-        has:         [{ type: 'host', value: 'istanbulviptransfer.com' }],
-        destination: 'https://www.istanbulviptransfer.com/:path*',
-        permanent:   true,
-      },
-
       // ── Internal admin / CMS redirects ────────────────────────────────────────
       // Old admin routes → unified Dil ve Çeviri module
       {
         source: '/admin/diller',
-        destination: '/admin/dil-ve-ceviri?tab=diller',
+        destination: `${WWW}/admin/dil-ve-ceviri?tab=diller`,
         permanent: true,
       },
       {
         source: '/admin/ceviriler',
-        destination: '/admin/dil-ve-ceviri?tab=icerik-cevirileri',
+        destination: `${WWW}/admin/dil-ve-ceviri?tab=icerik-cevirileri`,
         permanent: true,
       },
       // /ana-sayfa was accidentally created as a generic PAGE record.
@@ -247,13 +252,13 @@ const nextConfig: NextConfig = {
       // index the duplicate and existing bookmarks/links still work.
       {
         source: '/ana-sayfa',
-        destination: '/',
+        destination: WWW,
         permanent: true,
       },
       // Locale-prefixed variants: /en/ana-sayfa → /en, etc.
       {
         source: '/:lang(en|de|ru|ar|es|fr|it|nl)/ana-sayfa',
-        destination: '/:lang',
+        destination: `${WWW}/:lang`,
         permanent: true,
       },
 
@@ -267,44 +272,44 @@ const nextConfig: NextConfig = {
       // bu sayede Google arama sıralamaları yeni URL'lere aktarılır.
       //
       // ── TR Hizmet sayfaları (ana sayfada listeleniyordu) ──────────────────────
-      { source: '/sabiha-gokcen-havalimani-transfer-82-8',              destination: '/sabiha-gokcen-havalimani-transfer', permanent: true },
-      { source: '/soforlu-arac-kiralama-83-8',                          destination: '/soforlu-arac-kiralama',             permanent: true },
-      { source: '/gelin-arabasi-kiralama-84-8',                         destination: '/gelin-arabasi-kiralama',            permanent: true },
-      { source: '/istanbul-havalimani-transfer-85-8',                   destination: '/istanbul-havalimani-transfer',      permanent: true },
-      { source: '/istanbul-gunubirlik-turlar-86-8',                     destination: '/istanbul-gunubirlik-turlar',        permanent: true },
-      { source: '/yalova-gunubirlik-turlar-90-8',                       destination: '/yalova-gunubirlik-tur',             permanent: true },
-      { source: '/sapanca-ve-masukiye-gunubirlik-turlari-91-8',         destination: '/sapanca-masukiye-turu',             permanent: true },
-      { source: '/bursa-gunubirlik-turlar-92-8',                        destination: '/bursa-gunubirlik-tur',              permanent: true },
-      { source: '/vip-protokol-ve-secim-araci-102-8',                   destination: '/vip-protokol-secim-araci',          permanent: true },
-      { source: '/istanbul-airport-transfer-103-8',                     destination: '/istanbul-havalimani-transfer',      permanent: true },
-      { source: '/sehirlerarasi-transfer-105-8',                        destination: '/sehirler-arasi-transfer',           permanent: true },
-      { source: '/gunluk-villa-kiralama-villa-azelya-106-8',            destination: '/gunluk-villa-kiralama',             permanent: true },
-      { source: '/kurumsal-transfer-107-8',                             destination: '/istanbul-bursa-transfer',           permanent: true },
-      { source: '/istanbuldan-sakarya-ve--sapanca-arasi-transfer-109-8',destination: '/istanbul-sapanca-transfer',         permanent: true },
-      { source: '/vip-transfer-110-8',                                  destination: '/vip-transfer',                     permanent: true },
-      { source: '/ankara-vip-transfer-115-8',                           destination: '/ankara-vip-transfer',              permanent: true },
-      { source: '/antalya-vip-transfer-119-8',                          destination: '/antalya-vip-transfer',             permanent: true },
-      { source: '/istanbul-vip-transfer-121-8',                         destination: '/vip-transfer',                     permanent: true },
-      { source: '/izmir-vip-transfer-122-8',                            destination: '/izmir-vip-transfer',               permanent: true },
-      { source: '/saglik-turizmi-123-8',                                destination: '/saglik-turizmi-transfer',          permanent: true },
+      { source: '/sabiha-gokcen-havalimani-transfer-82-8',              destination: `${WWW}/sabiha-gokcen-havalimani-transfer`, permanent: true },
+      { source: '/soforlu-arac-kiralama-83-8',                          destination: `${WWW}/soforlu-arac-kiralama`,             permanent: true },
+      { source: '/gelin-arabasi-kiralama-84-8',                         destination: `${WWW}/gelin-arabasi-kiralama`,            permanent: true },
+      { source: '/istanbul-havalimani-transfer-85-8',                   destination: `${WWW}/istanbul-havalimani-transfer`,      permanent: true },
+      { source: '/istanbul-gunubirlik-turlar-86-8',                     destination: `${WWW}/istanbul-gunubirlik-turlar`,        permanent: true },
+      { source: '/yalova-gunubirlik-turlar-90-8',                       destination: `${WWW}/yalova-gunubirlik-tur`,             permanent: true },
+      { source: '/sapanca-ve-masukiye-gunubirlik-turlari-91-8',         destination: `${WWW}/sapanca-masukiye-turu`,             permanent: true },
+      { source: '/bursa-gunubirlik-turlar-92-8',                        destination: `${WWW}/bursa-gunubirlik-tur`,              permanent: true },
+      { source: '/vip-protokol-ve-secim-araci-102-8',                   destination: `${WWW}/vip-protokol-secim-araci`,          permanent: true },
+      { source: '/istanbul-airport-transfer-103-8',                     destination: `${WWW}/istanbul-havalimani-transfer`,      permanent: true },
+      { source: '/sehirlerarasi-transfer-105-8',                        destination: `${WWW}/sehirler-arasi-transfer`,           permanent: true },
+      { source: '/gunluk-villa-kiralama-villa-azelya-106-8',            destination: `${WWW}/gunluk-villa-kiralama`,             permanent: true },
+      { source: '/kurumsal-transfer-107-8',                             destination: `${WWW}/istanbul-bursa-transfer`,           permanent: true },
+      { source: '/istanbuldan-sakarya-ve--sapanca-arasi-transfer-109-8',destination: `${WWW}/istanbul-sapanca-transfer`,         permanent: true },
+      { source: '/vip-transfer-110-8',                                  destination: `${WWW}/vip-transfer`,                     permanent: true },
+      { source: '/ankara-vip-transfer-115-8',                           destination: `${WWW}/ankara-vip-transfer`,              permanent: true },
+      { source: '/antalya-vip-transfer-119-8',                          destination: `${WWW}/antalya-vip-transfer`,             permanent: true },
+      { source: '/istanbul-vip-transfer-121-8',                         destination: `${WWW}/vip-transfer`,                     permanent: true },
+      { source: '/izmir-vip-transfer-122-8',                            destination: `${WWW}/izmir-vip-transfer`,               permanent: true },
+      { source: '/saglik-turizmi-123-8',                                destination: `${WWW}/saglik-turizmi-transfer`,          permanent: true },
       // ── Ek erişilebilir sayfalar (EN varyantları / terk edilmişler) ───────────
-      { source: '/havalimani-transfer-111-8',                           destination: '/antalya-vip-transfer',             permanent: true },
-      { source: '/istanbul-tur-112-8',                                  destination: '/vip-transfer',                     permanent: true },
-      { source: '/kartepe-kayak-turu-113-8',                            destination: '/hizmetler',                        permanent: true },
-      { source: '/uludag-kayak-turu-114-8',                             destination: '/istanbul-havalimani-transfer',     permanent: true },
-      { source: '/istanbul-tour-116-8',                                 destination: '/istanbul-havalimani-transfer',     permanent: true },
-      { source: '/vip-transfer-117-8',                                  destination: '/istanbul-bursa-transfer',          permanent: true },
-      { source: '/kiralik-mercedes-118-8',                              destination: '/soforlu-arac-kiralama',            permanent: true },
-      { source: '/bursa-vip-transfer-120-8',                            destination: '/vip-transfer',                     permanent: true },
-      { source: '/trabzon-vip-transfer-124-8',                          destination: '/saglik-turizmi-transfer',          permanent: true },
+      { source: '/havalimani-transfer-111-8',                           destination: `${WWW}/antalya-vip-transfer`,             permanent: true },
+      { source: '/istanbul-tur-112-8',                                  destination: `${WWW}/vip-transfer`,                     permanent: true },
+      { source: '/kartepe-kayak-turu-113-8',                            destination: `${WWW}/hizmetler`,                        permanent: true },
+      { source: '/uludag-kayak-turu-114-8',                             destination: `${WWW}/istanbul-havalimani-transfer`,     permanent: true },
+      { source: '/istanbul-tour-116-8',                                 destination: `${WWW}/istanbul-havalimani-transfer`,     permanent: true },
+      { source: '/vip-transfer-117-8',                                  destination: `${WWW}/istanbul-bursa-transfer`,          permanent: true },
+      { source: '/kiralik-mercedes-118-8',                              destination: `${WWW}/soforlu-arac-kiralama`,            permanent: true },
+      { source: '/bursa-vip-transfer-120-8',                            destination: `${WWW}/vip-transfer`,                     permanent: true },
+      { source: '/trabzon-vip-transfer-124-8',                          destination: `${WWW}/saglik-turizmi-transfer`,          permanent: true },
       // ── Server error dönen sayfalar ───────────────────────────────────────────
-      { source: '/kurumsal-87-8',                                       destination: '/',                                 permanent: true },
-      { source: '/uludag-kayak-turu-93-8',                              destination: '/',                                 permanent: true },
-      { source: '/vip-transfer-hizmetleri-108-8',                       destination: '/vip-transfer',                     permanent: true },
-      { source: '/bodrum-vip-transfer-125-8',                           destination: '/antalya-vip-transfer',             permanent: true },
+      { source: '/kurumsal-87-8',                                       destination: WWW,                                        permanent: true },
+      { source: '/uludag-kayak-turu-93-8',                              destination: WWW,                                        permanent: true },
+      { source: '/vip-transfer-hizmetleri-108-8',                       destination: `${WWW}/vip-transfer`,                     permanent: true },
+      { source: '/bodrum-vip-transfer-125-8',                           destination: `${WWW}/antalya-vip-transfer`,             permanent: true },
       // ── Üyelik sayfaları (yeni sitede mevcut değil) ───────────────────────────
-      { source: '/giris-yap',                                           destination: '/',                                 permanent: true },
-      { source: '/uye-kayit',                                           destination: '/',                                 permanent: true },
+      { source: '/giris-yap',                                           destination: WWW,                                        permanent: true },
+      { source: '/uye-kayit',                                           destination: WWW,                                        permanent: true },
 
       // ── Dil önekli URL varyantları (hizmet sayfaları) ─────────────────────────
       //
@@ -313,36 +318,47 @@ const nextConfig: NextConfig = {
       // indexlemiş olabilir.
       {
         source: '/:lang(en|de|ru|ar|es|fr|it|nl)/:slug(.*)-:id(\\d+)-8',
-        destination: '/:lang/:slug',
+        destination: `${WWW}/:lang/:slug`,
         permanent: true,
       },
 
       // ── Blog yazıları: mevcut makalelerle eşleşenler ─────────────────────────
       // 6 eski URL → 3 mevcut yeni makale
-      { source: '/istanbul-yeni-havalimanina-ulasim-1467-5',                          destination: '/blog/istanbul-havalimani-transfer-rehberi',               permanent: true },
-      { source: '/istanbul-havalimanina-ulasim-1472-5',                               destination: '/blog/istanbul-havalimani-transfer-rehberi',               permanent: true },
-      { source: '/istanbul-havalimanina-nasil-gidilir-1524-5',                        destination: '/blog/istanbul-havalimani-transfer-rehberi',               permanent: true },
-      { source: '/sabiha-gokcen-havalimanina-ulasim-1471-5',                          destination: '/blog/sabiha-gokcen-transfer-rehberi',                     permanent: true },
-      { source: '/vip-transfer-1473-5',                                               destination: '/blog/vip-transfer-ile-taksi-arasindaki-farklar',          permanent: true },
-      { source: '/kapidan-kapiya-transfer-sehir-ici-transfer-1470-5',                 destination: '/blog/vip-transfer-ile-taksi-arasindaki-farklar',          permanent: true },
+      { source: '/istanbul-yeni-havalimanina-ulasim-1467-5',                          destination: `${WWW}/blog/istanbul-havalimani-transfer-rehberi`,               permanent: true },
+      { source: '/istanbul-havalimanina-ulasim-1472-5',                               destination: `${WWW}/blog/istanbul-havalimani-transfer-rehberi`,               permanent: true },
+      { source: '/istanbul-havalimanina-nasil-gidilir-1524-5',                        destination: `${WWW}/blog/istanbul-havalimani-transfer-rehberi`,               permanent: true },
+      { source: '/sabiha-gokcen-havalimanina-ulasim-1471-5',                          destination: `${WWW}/blog/sabiha-gokcen-transfer-rehberi`,                     permanent: true },
+      { source: '/vip-transfer-1473-5',                                               destination: `${WWW}/blog/vip-transfer-ile-taksi-arasindaki-farklar`,          permanent: true },
+      { source: '/kapidan-kapiya-transfer-sehir-ici-transfer-1470-5',                 destination: `${WWW}/blog/vip-transfer-ile-taksi-arasindaki-farklar`,          permanent: true },
 
       // ── Blog yazıları: yeni makalelere yönlendirilecekler ─────────────────────
       // 15 eski URL → 12 yeni makale
-      { source: '/kayak-turlari-1458-5',                                              destination: '/blog/kayak-turlarinda-vip-transfer-rehberi',              permanent: true },
-      { source: '/populer-kayak-merkezlerine-transfer-hizmeti-1469-5',                destination: '/blog/kayak-turlarinda-vip-transfer-rehberi',              permanent: true },
-      { source: '/uludag-kayak-turu-1528-5',                                          destination: '/blog/kayak-turlarinda-vip-transfer-rehberi',              permanent: true },
-      { source: '/istanbuldan-kis-tatili-kis-turizmi-icin-en-iyi-secenekler-1535-5',  destination: '/blog/kayak-turlarinda-vip-transfer-rehberi',              permanent: true },
-      { source: '/bodrum-vip-transfer-1515-5',                                        destination: '/blog/bodrum-vip-transfer-rehberi',                        permanent: true },
-      { source: '/yaz-tatilinde-seyahat-secenekleri-istanbul-vip-transfer-1516-5',    destination: '/blog/yaz-tatilinde-vip-transfer-secenekleri',             permanent: true },
-      { source: '/hotel-transfer-1517-5',                                             destination: '/blog/otel-transfer-hizmeti-nasil-calisir',                permanent: true },
-      { source: '/havaalanindan-fuarlara-transfer-hizmeti--1518-5',                   destination: '/blog/havalimani-fuar-kongre-transfer',                    permanent: true },
-      { source: '/istanbul-bogaz-camlica-sultanahmet-taksim-beyoglu-turlari-1520-5',  destination: '/blog/istanbul-bogaz-sultanahmet-taksim-tur-rehberi',      permanent: true },
-      { source: '/istanbul-vip-transfer-ile-sehirler-arasi-transfer-1521-5',          destination: '/blog/sehirlerarasi-vip-transfer-rehberi',                 permanent: true },
-      { source: '/istanbul-cikisli--bursa--uludag-inegol-ve--kartepe-transfer-hizmetleri-1522-5', destination: '/blog/istanbul-bursa-uludag-inegol-kartepe-transfer', permanent: true },
-      { source: '/istanbul-vip-transfer-fiyatlari-1527-5',                            destination: '/blog/istanbul-vip-transfer-fiyatlari-nasil-belirlenir',   permanent: true },
-      { source: '/vito-kiralama-1531-5',                                              destination: '/blog/vito-soforlu-arac-kiralama-rehberi',                 permanent: true },
-      { source: '/vip-taksi-1532-5',                                                  destination: '/blog/vip-taksi-ile-standart-taksi-farklari',              permanent: true },
-      { source: '/ankarada-vip-taksi-hizmeti-1534-5',                                 destination: '/blog/ankara-vip-transfer-ozel-sofor-rehberi',             permanent: true },
+      { source: '/kayak-turlari-1458-5',                                              destination: `${WWW}/blog/kayak-turlarinda-vip-transfer-rehberi`,              permanent: true },
+      { source: '/populer-kayak-merkezlerine-transfer-hizmeti-1469-5',                destination: `${WWW}/blog/kayak-turlarinda-vip-transfer-rehberi`,              permanent: true },
+      { source: '/uludag-kayak-turu-1528-5',                                          destination: `${WWW}/blog/kayak-turlarinda-vip-transfer-rehberi`,              permanent: true },
+      { source: '/istanbuldan-kis-tatili-kis-turizmi-icin-en-iyi-secenekler-1535-5',  destination: `${WWW}/blog/kayak-turlarinda-vip-transfer-rehberi`,              permanent: true },
+      { source: '/bodrum-vip-transfer-1515-5',                                        destination: `${WWW}/blog/bodrum-vip-transfer-rehberi`,                        permanent: true },
+      { source: '/yaz-tatilinde-seyahat-secenekleri-istanbul-vip-transfer-1516-5',    destination: `${WWW}/blog/yaz-tatilinde-vip-transfer-secenekleri`,             permanent: true },
+      { source: '/hotel-transfer-1517-5',                                             destination: `${WWW}/blog/otel-transfer-hizmeti-nasil-calisir`,                permanent: true },
+      { source: '/havaalanindan-fuarlara-transfer-hizmeti--1518-5',                   destination: `${WWW}/blog/havalimani-fuar-kongre-transfer`,                    permanent: true },
+      { source: '/istanbul-bogaz-camlica-sultanahmet-taksim-beyoglu-turlari-1520-5',  destination: `${WWW}/blog/istanbul-bogaz-sultanahmet-taksim-tur-rehberi`,      permanent: true },
+      { source: '/istanbul-vip-transfer-ile-sehirler-arasi-transfer-1521-5',          destination: `${WWW}/blog/sehirlerarasi-vip-transfer-rehberi`,                 permanent: true },
+      { source: '/istanbul-cikisli--bursa--uludag-inegol-ve--kartepe-transfer-hizmetleri-1522-5', destination: `${WWW}/blog/istanbul-bursa-uludag-inegol-kartepe-transfer`, permanent: true },
+      { source: '/istanbul-vip-transfer-fiyatlari-1527-5',                            destination: `${WWW}/blog/istanbul-vip-transfer-fiyatlari-nasil-belirlenir`,   permanent: true },
+      { source: '/vito-kiralama-1531-5',                                              destination: `${WWW}/blog/vito-soforlu-arac-kiralama-rehberi`,                 permanent: true },
+      { source: '/vip-taksi-1532-5',                                                  destination: `${WWW}/blog/vip-taksi-ile-standart-taksi-farklari`,              permanent: true },
+      { source: '/ankarada-vip-taksi-hizmeti-1534-5',                                 destination: `${WWW}/blog/ankara-vip-transfer-ozel-sofor-rehberi`,             permanent: true },
+
+      // ── Canonical domain: non-www → www ───────────────────────────────────────
+      // Catch-all safety net for any URL (current or future) not covered by a
+      // specific rule above. Must stay LAST — Next.js uses the first matching
+      // rule, and every rule above already targets a fully-qualified www URL.
+      {
+        source:      '/:path*',
+        has:         [{ type: 'host', value: 'istanbulviptransfer.com' }],
+        destination: 'https://www.istanbulviptransfer.com/:path*',
+        permanent:   true,
+      },
     ];
   },
 };

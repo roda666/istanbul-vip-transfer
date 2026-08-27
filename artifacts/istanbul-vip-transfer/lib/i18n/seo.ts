@@ -142,11 +142,18 @@ export async function buildTransferRouteAlternates(routeSlug: string, publishedL
 }
 
 /**
- * Returns the Open Graph locale string for a given language code.
- * Falls back to LOCALE_BCP47 for the full registry, then English.
+ * Returns the Open Graph locale string for a given language code, in the
+ * underscore format the Open Graph spec requires (e.g. `tr_TR`, `en_GB`).
+ *
+ * `LOCALE_BCP47` / `LANG_LOCALES` store the hyphenated BCP47 form used for
+ * hreflang (`tr-TR`). `og:locale` is a different tag with a different format
+ * requirement — reusing the hreflang value here was a bug (found 2026-08-27
+ * audit: live pages rendered `og:locale="tr-TR"` / `"en-GB"`, which Facebook/
+ * LinkedIn/WhatsApp link-preview parsers do not recognize as valid locales).
  */
 export function getOgLocale(lang: string): string {
-  return LOCALE_BCP47[lang] ?? LANG_LOCALES.en;
+  const bcp47 = LOCALE_BCP47[lang] ?? LANG_LOCALES.en;
+  return bcp47.replace('-', '_');
 }
 
 /**

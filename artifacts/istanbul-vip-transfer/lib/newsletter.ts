@@ -59,6 +59,8 @@ export async function startNewsletterOptIn(input: {
   const noLinkText = 'Güvenli doğrulama bağlantısı şu anda oluşturulamadı. Lütfen daha sonra tekrar deneyin.';
   const delivery = await sendEmailDetailed({
     to: input.email, subject: 'Bülten aboneliğinizi doğrulayın',
+    linkOriginMode: linkOrigin.mode,
+    previewDomainUsed: linkOrigin.isPreviewDomain,
     text: link
       ? `Bülten aboneliğinizi etkinleştirmek için bu bağlantıyı açın: ${link}`
       : noLinkText,

@@ -73,6 +73,14 @@ export default function AbonelerClient() {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [sendMessage, setSendMessage] = useState('');
+  const [previewDomainWarning, setPreviewDomainWarning] = useState(false);
+
+  useEffect(() => {
+    fetch('/admin/api/settings')
+      .then((r) => r.json())
+      .then((d) => setPreviewDomainWarning(Boolean(d?.emailLinkOrigin?.isPreviewDomain)))
+      .catch(() => {});
+  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -164,6 +172,12 @@ export default function AbonelerClient() {
           <input required value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Konu" maxLength={200} style={inputStyle} />
           <textarea required value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Mesaj (HTML kullanılabilir)" maxLength={100000} rows={6} style={inputStyle} />
           <div style={{ fontSize: '12px', color: '#64748B' }}>Her e-postaya tek kullanımlık abonelikten ayrılma bağlantısı eklenir. Yalnızca Aktif aboneler alır.</div>
+          {previewDomainWarning && (
+            <div style={{ fontSize: '12px', fontWeight: 700, color: '#B91C1C', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', padding: '10px 12px' }}>
+              ⚠️ Genel Site Adresi şu an geçici bir önizleme adresi (.replit.dev). Bu bültendeki abonelikten çıkma bağlantısı kalıcı olmayacak.
+              Gönderime devam edebilirsiniz, ancak Ayarlar sayfasından kalıcı bir adres girmeniz önerilir.
+            </div>
+          )}
           <div><button disabled={sending} style={{ ...inputStyle, background: '#2563EB', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }}>{sending ? 'Gönderiliyor…' : 'Bülteni Gönder'}</button></div>
           {sendMessage && <div style={{ fontSize: '13px', color: sendMessage.includes('sonucu') ? '#15803D' : '#BE123C' }}>{sendMessage}</div>}
         </div>

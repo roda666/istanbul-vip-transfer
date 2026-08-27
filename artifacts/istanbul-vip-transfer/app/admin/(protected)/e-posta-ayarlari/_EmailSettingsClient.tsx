@@ -80,6 +80,8 @@ interface DeliveryAttempt {
   smtpResponseCode: number | null;
   serverResponse: string;
   messageId: string | null;
+  linkOriginMode: string | null;
+  previewDomainUsed: boolean;
 }
 
 const DEFAULTS: Settings = {
@@ -694,6 +696,11 @@ export default function EmailSettingsClient() {
                       {attempt.smtpResponseCode && <span>SMTP: {attempt.smtpResponseCode}</span>}
                       {attempt.requestReference && <span>Referans: {attempt.requestReference}</span>}
                     </div>
+                    {attempt.previewDomainUsed && (
+                      <div style={{ marginTop: '8px', ...s.badge, background: '#FEF2F2', color: DANGER, border: '1px solid #FECACA' }}>
+                        ⚠️ Önizleme adresi kullanıldı — bu e-postadaki bağlantı kalıcı olmayan bir .replit.dev adresine işaret ediyor.
+                      </div>
+                    )}
                     <div style={{ marginTop: '8px', padding: '8px 10px', borderRadius: '6px', background: '#FFFFFF', border: `1px solid ${BORDER}`, color: '#31536E', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: '12px', overflowWrap: 'anywhere' }}>
                       {attempt.serverResponse}
                     </div>

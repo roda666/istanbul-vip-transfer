@@ -498,6 +498,13 @@
       "when": 1787781056874,
       "tag": "0070_secret_captain_universe",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1787812865840,
+      "tag": "0071_crazy_monster_badoon",
+      "breakpoints": true
     }
   ]
 }

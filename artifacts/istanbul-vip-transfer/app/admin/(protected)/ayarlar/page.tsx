@@ -47,7 +47,7 @@ export default function AyarlarPage() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
-  const [emailLinkOrigin, setEmailLinkOrigin] = useState<{ mode: 'setting' | 'proxy-fallback' | 'unavailable'; baseUrl: string | null } | null>(null);
+  const [emailLinkOrigin, setEmailLinkOrigin] = useState<{ mode: 'setting' | 'proxy-fallback' | 'unavailable'; baseUrl: string | null; isPreviewDomain: boolean } | null>(null);
 
   useEffect(() => {
     fetch('/admin/api/settings').then(r => r.json()).then(d => { setSettings(d.settings ?? {}); setEmailLinkOrigin(d.emailLinkOrigin ?? null); setLoading(false); }).catch(() => setLoading(false));
@@ -180,8 +180,15 @@ export default function AyarlarPage() {
           <label style={labelStyle}>Genel Site Adresi</label>
           <input type="url" {...field('publicSiteUrl')} style={inputStyle} placeholder="https://preview-adresiniz.replit.dev" />
           <p style={hintStyle}>Bülten doğrulama, abonelikten çıkma ve şifre sıfırlama bağlantıları yalnızca bu HTTPS adresiyle üretilir. Port numarası kabul edilmez.</p>
+          {emailLinkOrigin?.mode === 'setting' && emailLinkOrigin.isPreviewDomain && (
+            <p style={{ margin: '10px 0 0', color: '#B91C1C', fontSize: '12px', fontWeight: 700, background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', padding: '10px 12px' }}>
+              ⚠️ Uyarı: Genel Site Adresi geçici bir önizleme adresi ({emailLinkOrigin.baseUrl}). Bu adres çalışma alanı kapandığında değişir veya geçersiz olur —
+              bu adresle gönderilen bülten, abonelikten çıkma ve şifre sıfırlama bağlantıları o zaman kırık olur. Yayına alınan (production) adresinizi girin.
+            </p>
+          )}
           {emailLinkOrigin?.mode === 'proxy-fallback' && (
-            <p style={{ margin: '10px 0 0', color: '#92400E', fontSize: '12px' }}>Uyarı: Ayar boş. E-posta bağlantıları şu an vekil sunucunun bildirdiği genel adresi kullanıyor: {emailLinkOrigin.baseUrl}</p>
+            <p style={{ margin: '10px 0 0', color: '#92400E', fontSize: '12px' }}>Uyarı: Ayar boş. E-posta bağlantıları şu an vekil sunucunun bildirdiği genel adresi kullanıyor: {emailLinkOrigin.baseUrl}
+              {emailLinkOrigin.isPreviewDomain && ' (bu da geçici bir önizleme adresi — kalıcı değil)'}</p>
           )}
           {emailLinkOrigin?.mode === 'unavailable' && (
             <p style={{ margin: '10px 0 0', color: '#B91C1C', fontSize: '12px', fontWeight: 600 }}>Uyarı: Güvenli bir genel adres bulunamadı. E-postalar gönderilir ancak bozuk bağlantı eklenmez. Lütfen Genel Site Adresi alanını doldurun.</p>

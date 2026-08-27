@@ -12,6 +12,10 @@ export type EmailDeliveryLogInput = {
   smtpResponseCode?: number;
   serverResponse: string;
   messageId?: string;
+  /** 'setting' | 'proxy-fallback' | 'unavailable' — omitted for emails that don't embed a link. */
+  linkOriginMode?: string;
+  /** True when the embedded link used a Replit preview domain (.replit.dev / .repl.co). */
+  previewDomainUsed?: boolean;
 };
 
 /**
@@ -37,6 +41,8 @@ export async function persistEmailDeliveryAttempt(input: EmailDeliveryLogInput):
       smtpResponseCode: input.smtpResponseCode ?? null,
       serverResponse: input.serverResponse.slice(0, 1000),
       messageId: input.messageId?.slice(0, 500) || null,
+      linkOriginMode: input.linkOriginMode?.slice(0, 40) || null,
+      previewDomainUsed: input.previewDomainUsed ?? false,
     });
     await db.execute(sql`
       DELETE FROM email_delivery_attempts

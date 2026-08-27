@@ -26,7 +26,8 @@ export async function generateMetadata(): Promise<Metadata> {
       type: 'website',
       images: [{ url: getServiceOgImageUrl('yalova-gunubirlik-tur', SITE.siteUrl), width: 1200, height: 630 }],
     },
-    robots: { index: false, follow: true },
+    // Indexed as of 2026-08-27: content, images, FAQ, and schema for this page are complete.
+    robots: { index: true, follow: true },
   };
 }
 

@@ -972,6 +972,10 @@ export const emailDeliveryAttempts = pgTable(
     smtpResponseCode: integer('smtp_response_code'),
     serverResponse:   text('server_response').notNull(),
     messageId:        text('message_id'),
+    /** 'setting' | 'proxy-fallback' | 'unavailable' — how the link base URL used in this email was resolved. */
+    linkOriginMode:    text('link_origin_mode'),
+    /** True when the link base URL was a Replit preview domain (.replit.dev / .repl.co), not a real production domain. */
+    previewDomainUsed: boolean('preview_domain_used').notNull().default(false),
   },
   (table) => [
     index('email_delivery_attempts_occurred_at_idx').on(table.occurredAt),

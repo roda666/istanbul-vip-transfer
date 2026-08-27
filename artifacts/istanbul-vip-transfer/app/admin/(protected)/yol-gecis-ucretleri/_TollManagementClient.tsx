@@ -5,6 +5,7 @@ import {
   MapPin, Navigation, Plus, Save, Edit2, 
   RefreshCw, Check, X, AlertCircle, Loader2, Car, ShieldCheck, Clock, Settings2
 } from 'lucide-react';
+import { TOLL_VEHICLE_CLASS_LABELS, TOLL_VEHICLE_CLASS_SELECTION_WARNING } from '@/lib/toll-vehicle-classes';
 
 // --- Types ---
 type TollPoint = {
@@ -52,26 +53,8 @@ const TOLL_DIRECTION_LABELS: Record<string, string> = {
   TWO_WAY_DIRECTIONAL: 'Çift Yön — Yöne Göre Farklı Tarife (gidiş ve dönüş ayrı tarifelendirilir)',
 };
 
-// Mirrors TOLL_VEHICLE_CLASSES / labels / descriptions in lib/toll-management.ts.
-// Duplicated here (rather than imported) because that module pulls in the
-// server-only DB client and cannot be bundled into this 'use client' file.
-const TOLL_VEHICLE_CLASS_LABELS: Record<string, string> = {
-  class_1: 'Sınıf 1', class_2: 'Sınıf 2', class_3: 'Sınıf 3',
-  class_4: 'Sınıf 4', class_5: 'Sınıf 5', class_6: 'Sınıf 6',
-};
-const TOLL_VEHICLE_CLASS_DESCRIPTIONS: Record<string, string> = {
-  class_1: 'Aks aralığı 3,20 m’den küçük araçlar (otomobil, panelvan/kamyonet, minibüs örnek olarak verilir — aks aralığını kontrol edin)',
-  class_2: 'Aks aralığı 3,20 m ve üzeri, 2 akslı araçlar (minibüs, midibüs, kamyonet vb. dahil olabilir — aks aralığını kontrol edin)',
-  class_3: 'Üç akslı her türlü araç',
-  class_4: 'Dört ve beş akslı her türlü araç',
-  class_5: 'Altı ve üzeri akslı araçlar',
-  class_6: 'Motosikletler',
-};
-// Mirrors TOLL_VEHICLE_CLASS_SELECTION_WARNING in lib/toll-management.ts (see note above).
-const TOLL_VEHICLE_CLASS_SELECTION_WARNING =
-  'Sınıf, aracın ruhsatındaki aks aralığına/aks sayısına bakılarak seçilmelidir — yolcu sayısına veya "buna benzer araçlar genelde şu sınıftır" gibi bir tahmine göre değil. Bu taksonomi OTOYOL A.Ş. ve YSS Köprüsü/Kuzey Marmara Otoyolu işletmecisinde ortaktır, ancak her aracın sınıfı yine de kendi ruhsatından teyit edilmelidir.';
 function vehicleClassLabel(vc: string) {
-  return TOLL_VEHICLE_CLASS_LABELS[vc] ?? vc;
+  return (TOLL_VEHICLE_CLASS_LABELS as Record<string, string>)[vc] ?? vc;
 }
 
 // Mirrors TOLL_VEHICLE_TYPES / TOLL_VEHICLE_TYPE_LABELS in lib/toll-management.ts
@@ -359,7 +342,7 @@ function BannedTypesEditor({
           <option value="none">Onaylı — hiçbir araç tipi yasaklı değil</option>
           <option value="list">Onaylı — belirli araç tipleri yasaklı</option>
         </select>
-        <p className="text-[10px] font-medium text-slate-500 mt-1.5 leading-relaxed">Örn: Avrasya Tüneli, aks sayısına bakılmaksızın "Otobüs" tipini kategorik olarak yasaklar — bu, aşağıdaki Sınıf 1-6 yasağından tamamen ayrı bir kuraldır.</p>
+        <p className="text-[10px] font-medium text-slate-500 mt-1.5 leading-relaxed">Örn: Avrasya Tüneli, aks sayısına bakılmaksızın &quot;Otobüs&quot; tipini kategorik olarak yasaklar — bu, aşağıdaki Sınıf 1-6 yasağından tamamen ayrı bir kuraldır.</p>
       </div>
       {mode === 'list' && (
         <div className="grid grid-cols-2 gap-2">
@@ -630,7 +613,7 @@ function TariffForm({ point, vClass, initialData, onSave, onClose }: { point: To
          <div className="bg-red-50 text-red-700 p-3 rounded-lg border border-red-100 text-xs font-bold leading-relaxed">{error}</div>
        )}
        <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs font-medium text-slate-600 leading-relaxed">
-         Bu satırı tutar girmeden boş bırakabilirsiniz — bu, "henüz kaynak bulunamadı" anlamına gelir ve fiyat motoru bu geçişi güvenle eksik veri olarak işaretler. Ancak bir TRY tutarı girerseniz, yalnızca KGM (vatandas.kgm.gov.tr dahil), Avrasya Tüneli, 1915 Çanakkale Köprüsü, OTOYOL A.Ş. veya YSS Köprüsü/Kuzey Marmara Otoyolu işletmecisi gibi resmî bir kaynak adresiyle birlikte kaydedilebilir — üçüncü taraf/karşılaştırma siteleri (ör. sigortam.net) kabul edilmez.
+         Bu satırı tutar girmeden boş bırakabilirsiniz — bu, &quot;henüz kaynak bulunamadı&quot; anlamına gelir ve fiyat motoru bu geçişi güvenle eksik veri olarak işaretler. Ancak bir TRY tutarı girerseniz, yalnızca KGM (vatandas.kgm.gov.tr dahil), Avrasya Tüneli, 1915 Çanakkale Köprüsü, OTOYOL A.Ş. veya YSS Köprüsü/Kuzey Marmara Otoyolu işletmecisi gibi resmî bir kaynak adresiyle birlikte kaydedilebilir — üçüncü taraf/karşılaştırma siteleri (ör. sigortam.net) kabul edilmez.
        </div>
        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-[11px] font-semibold text-amber-800 leading-relaxed">
          {TOLL_VEHICLE_CLASS_SELECTION_WARNING}
@@ -670,7 +653,7 @@ function TariffForm({ point, vClass, initialData, onSave, onClose }: { point: To
             <option value="NIGHT">Sadece Gece</option>
          </select>
          <p className="text-[10px] font-medium text-slate-500 mt-1.5 leading-relaxed">
-           Gündüz/gece farklı ücretlendiriliyorsa bu araç sınıfı için ayrı ayrı "Sadece Gündüz" ve "Sadece Gece" tarifeleri girin. Aynı anda "Tüm Gün" tarifesiyle çakışamaz.
+           Gündüz/gece farklı ücretlendiriliyorsa bu araç sınıfı için ayrı ayrı &quot;Sadece Gündüz&quot; ve &quot;Sadece Gece&quot; tarifeleri girin. Aynı anda &quot;Tüm Gün&quot; tarifesiyle çakışamaz.
          </p>
        </div>
 
@@ -1144,7 +1127,7 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
         <div className="mb-5">
           <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Not / Kısıtlama (isteğe bağlı)</label>
           <textarea value={formData.notes} onChange={e => setFormData(f => ({...f, notes: e.target.value}))} rows={2} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all" placeholder="Örn: Ağır araçlar (Sınıf 3/4/5) bu tünelden geçemez" />
-          <p className="text-[10px] font-medium text-slate-500 mt-1.5 leading-relaxed">Bu alan, gerçek bir iş kuralını (örn. araç geçiş yasağı) belirtir — bu sınıflar için tarife satırı hiç oluşturulmaz ve "eksik veri" olarak değil "uygulanamaz" olarak gösterilir.</p>
+          <p className="text-[10px] font-medium text-slate-500 mt-1.5 leading-relaxed">Bu alan, gerçek bir iş kuralını (örn. araç geçiş yasağı) belirtir — bu sınıflar için tarife satırı hiç oluşturulmaz ve &quot;eksik veri&quot; olarak değil &quot;uygulanamaz&quot; olarak gösterilir.</p>
         </div>
 
         <div className="mb-5">
@@ -1155,7 +1138,7 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
             bannedSourceUrl={formData.bannedVehicleClassesSourceUrl}
             onChange={(banned, sourceUrl) => setFormData(f => ({ ...f, bannedVehicleClasses: banned, bannedVehicleClassesSourceUrl: sourceUrl }))}
           />
-          <p className="text-[10px] font-medium text-slate-500 mt-1.5 leading-relaxed">Yasaklı olarak işaretlenen bir sınıf, bu noktayı içeren hiçbir alternatifte bu araç için fiyatlandırılmaz — fiyat motoru bu alternatifi tamamen reddeder, "eksik veri" olarak göstermez.</p>
+          <p className="text-[10px] font-medium text-slate-500 mt-1.5 leading-relaxed">Yasaklı olarak işaretlenen bir sınıf, bu noktayı içeren hiçbir alternatifte bu araç için fiyatlandırılmaz — fiyat motoru bu alternatifi tamamen reddeder, &quot;eksik veri&quot; olarak göstermez.</p>
         </div>
 
         <div className="mb-5">
@@ -1164,7 +1147,7 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
             bannedSourceUrl={formData.bannedVehicleTypesSourceUrl}
             onChange={(banned, sourceUrl) => setFormData(f => ({ ...f, bannedVehicleTypes: banned, bannedVehicleTypesSourceUrl: sourceUrl }))}
           />
-          <p className="text-[10px] font-medium text-slate-500 mt-1.5 leading-relaxed">Sınıf yasağından bağımsız, kategorik bir yasaktır — örn. Avrasya Tüneli aks sayısına bakılmaksızın "Otobüs" tipini yasaklar.</p>
+          <p className="text-[10px] font-medium text-slate-500 mt-1.5 leading-relaxed">Sınıf yasağından bağımsız, kategorik bir yasaktır — örn. Avrasya Tüneli aks sayısına bakılmaksızın &quot;Otobüs&quot; tipini yasaklar.</p>
         </div>
 
         <div className="mb-5">
@@ -1202,7 +1185,7 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
         {point.notes && (
           <div className="mx-5 md:mx-6 mt-5 bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs font-medium text-blue-900 leading-relaxed flex items-start gap-2">
             <AlertCircle size={14} className="shrink-0 mt-0.5 text-blue-500" />
-            <span><strong>Kısıtlama notu:</strong> {point.notes} — bu kurala göre aşağıda tarifesi bulunmayan sınıflar "eksik veri" değil, kasıtlı olarak tanımsız (uygulanamaz) olabilir.</span>
+            <span><strong>Kısıtlama notu:</strong> {point.notes} — bu kurala göre aşağıda tarifesi bulunmayan sınıflar &quot;eksik veri&quot; değil, kasıtlı olarak tanımsız (uygulanamaz) olabilir.</span>
           </div>
         )}
         
@@ -1609,7 +1592,7 @@ function SettingsPanel({ settings, onSaved }: { settings: TollSettings, onSaved:
       <h3 className="font-black text-slate-900 text-lg flex items-center gap-2.5 mb-1.5">
         <Settings2 className="text-blue-600" size={22} /> Bayat Tarife Ayarları
       </h3>
-      <p className="text-sm font-medium text-slate-500 mb-6">Bu eşik, geçiş ücretlerinin ne zaman "bayat" (güncellenmesi gereken) olarak işaretleneceğini belirler. Gündüz/gece geçiş saatleri artık her geçiş noktasının kendi sayfasında ayrı ayrı tanımlanır (örn. Avrasya Tüneli), çünkü farklı köprü/tünellerin farklı saatleri olabilir.</p>
+      <p className="text-sm font-medium text-slate-500 mb-6">Bu eşik, geçiş ücretlerinin ne zaman &quot;bayat&quot; (güncellenmesi gereken) olarak işaretleneceğini belirler. Gündüz/gece geçiş saatleri artık her geçiş noktasının kendi sayfasında ayrı ayrı tanımlanır (örn. Avrasya Tüneli), çünkü farklı köprü/tünellerin farklı saatleri olabilir.</p>
 
       {error && (
         <div className="mb-5 bg-red-50 text-red-700 p-3 rounded-lg border border-red-100 text-xs font-bold">{error}</div>

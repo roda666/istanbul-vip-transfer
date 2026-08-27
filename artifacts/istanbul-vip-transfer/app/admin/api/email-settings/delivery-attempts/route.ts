@@ -30,6 +30,8 @@ export async function GET() {
       smtpResponseCode: emailDeliveryAttempts.smtpResponseCode,
       serverResponse: emailDeliveryAttempts.serverResponse,
       messageId: emailDeliveryAttempts.messageId,
+      linkOriginMode: emailDeliveryAttempts.linkOriginMode,
+      previewDomainUsed: emailDeliveryAttempts.previewDomainUsed,
     }).from(emailDeliveryAttempts)
       .orderBy(desc(emailDeliveryAttempts.occurredAt))
       .limit(20);

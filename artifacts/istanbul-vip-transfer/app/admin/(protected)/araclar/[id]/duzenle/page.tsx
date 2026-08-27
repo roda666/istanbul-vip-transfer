@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { db } from '@/db';
 import { tollPoints, vehicleTollPointClasses, vehicles } from '@/db/schema';
-import { and, asc, eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { requireAdminSession } from '@/lib/auth/session';
 import AdminPageHeader from '../../../../_components/AdminPageHeader';
 import VehicleForm from '../../_VehicleForm';

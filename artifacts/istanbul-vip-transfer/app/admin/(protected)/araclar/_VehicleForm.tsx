@@ -8,7 +8,7 @@ import { STATUS_LABELS } from '@/lib/workflow';
 import StatusBadge from '../../_components/StatusBadge';
 import { ImageUploadField } from '../../_components/ImageUploadField';
 import { normalizeVehicleType, VEHICLE_TYPE_OPTIONS } from '@/lib/vehicle-options';
-import { TOLL_VEHICLE_CLASSES, TOLL_VEHICLE_CLASS_DESCRIPTIONS, TOLL_VEHICLE_CLASS_LABELS, TOLL_VEHICLE_CLASS_SELECTION_WARNING } from '@/lib/toll-management';
+import { TOLL_VEHICLE_CLASSES, TOLL_VEHICLE_CLASS_DESCRIPTIONS, TOLL_VEHICLE_CLASS_LABELS, TOLL_VEHICLE_CLASS_SELECTION_WARNING } from '@/lib/toll-vehicle-classes';
 
 /** Active toll point, as needed for per-point class assignment. */
 export interface TollPointOption {

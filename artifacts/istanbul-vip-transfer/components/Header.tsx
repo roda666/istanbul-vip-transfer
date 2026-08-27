@@ -305,7 +305,12 @@ export default function Header({ serviceNavigationGroups }: HeaderProps = {}) {
             <button
               className="xl:hidden p-2 rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C79A35]"
               style={{ color: '#102A43' }}
-              onClick={() => setMenuOpen((o) => !o)}
+              onClick={() => setMenuOpen((open) => {
+                const nextOpen = !open;
+                setMobileServicesOpen(nextOpen);
+                if (!nextOpen) setMobileOpenGroups(new Set());
+                return nextOpen;
+              })}
               aria-label={menuOpen ? dict.header.menuClose : dict.header.menuOpen}
               aria-expanded={menuOpen}
               data-testid="hamburger-button"
@@ -321,7 +326,7 @@ export default function Header({ serviceNavigationGroups }: HeaderProps = {}) {
           CSS handles the entry animation; exit is instant (no AnimatePresence).  */}
       {menuOpen && (
         <div
-          className="ivt-hdr-mobile-overlay fixed inset-0 z-40 lg:hidden overflow-y-auto overflow-x-hidden"
+          className="ivt-hdr-mobile-overlay fixed inset-0 z-40 xl:hidden overflow-y-auto overflow-x-hidden"
           data-testid="mobile-menu"
         >
           {/* Backdrop */}
@@ -456,16 +461,6 @@ export default function Header({ serviceNavigationGroups }: HeaderProps = {}) {
                 </div>
               );
             })}
-
-            {/* Language selector (mobile) */}
-            <div
-              className="ivt-hdr-mobile-fade pt-5"
-              style={{ '--delay': '0.32s' } as React.CSSProperties}
-            >
-              <div style={{ borderBottom: '1px solid rgba(217,226,236,0.8)', paddingBottom: '16px' }}>
-                <LanguageSelector variant="light" />
-              </div>
-            </div>
 
             {/* Mobile CTAs */}
             <div

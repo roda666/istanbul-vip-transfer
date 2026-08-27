@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { translateToTurkish } from '@/lib/chatbot-translate';
-import { getOpenAIChatbot, buildChatbotAiMessages, CHATBOT_MODEL } from '@/lib/chatbot-ai';
+import { getOpenAIChatbot, buildChatbotAiContext, CHATBOT_MODEL } from '@/lib/chatbot-ai';
+import { sanitizeChatbotReply } from '@/lib/chatbot-message-safety';
 import { persistAssistantReplyForAdmin } from '@/lib/chatbot-response-storage';
 
 export const dynamic = 'force-dynamic';
@@ -167,7 +168,8 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Stream AI response ─────────────────────────────────────────────────────
-    const aiMessages = await buildChatbotAiMessages(session.visitorLang, messages);
+    const { messages: aiMessages, reservationFormUrl } =
+      await buildChatbotAiContext(session.visitorLang, messages, request);
     const aiStream = await getOpenAIChatbot().chat.completions.create({
       model:                 CHATBOT_MODEL,
       max_completion_tokens: 512,
@@ -177,6 +179,7 @@ export async function POST(request: NextRequest) {
 
     const encoder    = new TextEncoder();
     let fullResponse = '';
+    let safeResponse = '';
 
     const readable = new ReadableStream({
       async start(controller) {
@@ -186,18 +189,28 @@ export async function POST(request: NextRequest) {
         try {
           for await (const chunk of aiStream) {
             const content = chunk.choices[0]?.delta?.content;
-            if (content) {
-              fullResponse += content;
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+            if (content) fullResponse += content;
+          }
+          if (fullResponse) {
+            safeResponse = sanitizeChatbotReply(
+              fullResponse,
+              reservationFormUrl,
+              session.visitorLang,
+            );
+            if (safeResponse !== fullResponse) {
+              console.warn('[chatbot] Repaired an unresolved response placeholder.');
             }
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ content: safeResponse })}\n\n`),
+            );
           }
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
         } finally {
           controller.close();
-          if (fullResponse) {
+          if (safeResponse) {
             persistAssistantReplyForAdmin(
               sid,
-              fullResponse,
+              safeResponse,
               (message) => db.insert(chatbotMessages).values(message),
             ).catch(() => {});
           }

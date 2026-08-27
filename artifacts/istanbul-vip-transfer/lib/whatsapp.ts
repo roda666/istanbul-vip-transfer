@@ -3,6 +3,24 @@
  * database request. Android's package-qualified intent prefers WhatsApp
  * Business when it is installed; the regular wa.me URL remains the fallback.
  */
+export function formatWhatsAppLabel(label: string): string {
+  return `*${label.trim().replace(/^\*+|\*+$/g, '')}*`;
+}
+
+/**
+ * Keeps an explicitly entered international "+" and restores it when a
+ * Turkish country code (90 + 10 digits) was entered without the plus.
+ * Local numbers are left as typed because guessing a country code is unsafe.
+ */
+export function formatPhoneForWhatsAppMessage(phone: string): string {
+  const trimmed = phone.trim();
+  const digits = trimmed.replace(/\D/g, '');
+  if (!digits) return trimmed;
+  if (trimmed.startsWith('+')) return `+${digits}`;
+  if (/^90\d{10}$/.test(digits)) return `+${digits}`;
+  return trimmed;
+}
+
 export function openWhatsAppChat(phone: string, message: string): void {
   const digits = phone.replace(/\D/g, '');
   // The message contains visitor-provided fields and can include spaces, line

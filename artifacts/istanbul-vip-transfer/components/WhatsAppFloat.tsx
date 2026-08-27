@@ -89,12 +89,12 @@ export default function WhatsAppFloat() {
           page_path: window.location.pathname,
         })
       }
-      className="fixed z-50 flex items-center justify-center w-14 h-14 rounded-full"
+      className="ivt-float-button ivt-whatsapp-float fixed z-50 flex items-center justify-center w-14 h-14 rounded-full"
       style={{
         background:    '#25D366',
         boxShadow:     '0 4px 20px rgba(37,211,102,0.4)',
         /* iOS notch / home-bar safe area */
-        bottom:        'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
+        bottom:        'calc(1.25rem + env(safe-area-inset-bottom, 0px))',
         left:          'calc(1.25rem + env(safe-area-inset-left, 0px))',
         touchAction:   'manipulation',
         /* Visibility — React owns all three properties, no FM conflict */

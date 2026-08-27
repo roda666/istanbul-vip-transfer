@@ -149,7 +149,7 @@ export default function CardCarouselStrip({ children, itemCount, previousLabel, 
         type="button"
         onClick={() => scrollByPage('prev')}
         disabled={!canPrev}
-        className="focus:outline-none focus-visible:ring-2 focus-visible:ring-[#102A43] focus-visible:ring-offset-2"
+        className="ivt-card-strip-nav ivt-card-strip-nav-prev focus:outline-none focus-visible:ring-2 focus-visible:ring-[#102A43] focus-visible:ring-offset-2"
         style={{ ...NAV_BTN, opacity: canPrev ? 1 : 0.35 }}
         aria-label={previousLabel}
         data-testid={testId ? `${testId}-prev` : undefined}
@@ -166,6 +166,7 @@ export default function CardCarouselStrip({ children, itemCount, previousLabel, 
         className="ivt-card-strip-track"
         style={{
           display: 'flex',
+          width: '100%',
           overflowX: 'auto',
           scrollSnapType: 'x mandatory',
           cursor: 'grab',
@@ -182,7 +183,7 @@ export default function CardCarouselStrip({ children, itemCount, previousLabel, 
         type="button"
         onClick={() => scrollByPage('next')}
         disabled={!canNext}
-        className="focus:outline-none focus-visible:ring-2 focus-visible:ring-[#102A43] focus-visible:ring-offset-2"
+        className="ivt-card-strip-nav ivt-card-strip-nav-next focus:outline-none focus-visible:ring-2 focus-visible:ring-[#102A43] focus-visible:ring-offset-2"
         style={{ ...NAV_BTN, opacity: canNext ? 1 : 0.35 }}
         aria-label={nextLabel}
         data-testid={testId ? `${testId}-next` : undefined}

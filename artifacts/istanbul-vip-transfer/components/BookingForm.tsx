@@ -29,11 +29,15 @@ import { isolateLtrValues } from '@/lib/i18n/bidi';
 import { getPublicUiCopy } from '@/lib/i18n/public-ui';
 import { localizedPublicPath } from '@/lib/localized-service-path';
 import { useHomepageCms } from '@/lib/homepage-cms-context';
-import { openWhatsAppChat } from '@/lib/whatsapp';
+import {
+  formatPhoneForWhatsAppMessage,
+  formatWhatsAppLabel,
+  openWhatsAppChat,
+} from '@/lib/whatsapp';
+import { SITE } from '@/lib/site-config';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const WA_NUMBER = '905326600847';
 // Visually-hidden (not off-screen) so the field never inflates document scrollWidth.
 // tabIndex={-1} already removes it from keyboard/AT navigation.
 const HONEYPOT_STYLE: React.CSSProperties = {
@@ -255,68 +259,70 @@ function buildWhatsAppMessage(
   vehicleOptions: PublishedVehicleOption[],
 ): string {
   const displayValue = (value: string | undefined) => isolateLtrValues(value ?? '', locale);
+  const field = (label: string, value: string | undefined) =>
+    `${formatWhatsAppLabel(label)}: ${displayValue(value)}`;
   const locationLabel = (field: keyof FormData) => locationLabels[field] ?? (data[field] as string | undefined);
   const saat      = `${data.saatSaat}:${data.saatDakika}`;
   const fmtDate   = formatServiceDate(data.tarih, locale);
   const lines: string[] = [];
 
-  lines.push(b.waHeading, `${b.waService}: ${displayValue(serviceLabel)}`, '');
+  lines.push(formatWhatsAppLabel(b.waHeading), field(b.waService, serviceLabel), '');
 
   if (activeService === 'AIRPORT_TRANSFER') {
-    lines.push(`${b.waPickup}: ${displayValue(locationLabel('alisLokasyonu'))}`);
-    if (data.alisAdresi?.trim())  lines.push(`${b.waPickupAddress}: ${displayValue(data.alisAdresi)}`);
-    lines.push(`${b.waDropoff}: ${displayValue(locationLabel('varisLokasyonu'))}`);
-    if (data.varisAdresi?.trim()) lines.push(`${b.waDropoffAddress}: ${displayValue(data.varisAdresi)}`);
-    lines.push(`${b.waDate}: ${displayValue(fmtDate)}`, `${b.waTime}: ${displayValue(saat)}`);
-    if (data.seyahatYonu) lines.push(`${b.waTripDirection}: ${data.seyahatYonu === 'GIDIS_DONUS' ? b.tripRoundTrip : b.tripOneWay}`);
-    if (data.ucusNumarasi?.trim()) lines.push(`${b.waFlightNumber}: ${displayValue(data.ucusNumarasi)}`);
-    if (data.bagajSayisi?.trim()) lines.push(`${b.waLuggageCount}: ${displayValue(data.bagajSayisi)}`);
+    lines.push(field(b.waPickup, locationLabel('alisLokasyonu')));
+    if (data.alisAdresi?.trim())  lines.push(field(b.waPickupAddress, data.alisAdresi));
+    lines.push(field(b.waDropoff, locationLabel('varisLokasyonu')));
+    if (data.varisAdresi?.trim()) lines.push(field(b.waDropoffAddress, data.varisAdresi));
+    lines.push(field(b.waDate, fmtDate), field(b.waTime, saat));
+    if (data.seyahatYonu) lines.push(field(b.waTripDirection, data.seyahatYonu === 'GIDIS_DONUS' ? b.tripRoundTrip : b.tripOneWay));
+    if (data.ucusNumarasi?.trim()) lines.push(field(b.waFlightNumber, data.ucusNumarasi));
+    if (data.bagajSayisi?.trim()) lines.push(field(b.waLuggageCount!, data.bagajSayisi));
 
   } else if (activeService === 'INTERCITY') {
-    lines.push(`${b.waDepartureCity}: ${displayValue(locationLabel('kalkisIli'))}`);
-    if (data.kalkisAdres?.trim()) lines.push(`${b.waDepartureAddress}: ${displayValue(data.kalkisAdres)}`);
-    lines.push(`${b.waArrivalCity}: ${displayValue(locationLabel('varisIli'))}`);
-    if (data.varisAdres?.trim())  lines.push(`${b.waArrivalAddress}: ${displayValue(data.varisAdres)}`);
-    lines.push(`${b.waDate}: ${displayValue(fmtDate)}`, `${b.waTime}: ${displayValue(saat)}`);
-    if (data.seyahatYonu) lines.push(`${b.waTripDirection}: ${data.seyahatYonu === 'GIDIS_DONUS' ? b.tripRoundTrip : b.tripOneWay}`);
-    if (data.bagajSayisi?.trim()) lines.push(`${b.waLuggageCount}: ${displayValue(data.bagajSayisi)}`);
+    lines.push(field(b.waDepartureCity, locationLabel('kalkisIli')));
+    if (data.kalkisAdres?.trim()) lines.push(field(b.waDepartureAddress, data.kalkisAdres));
+    lines.push(field(b.waArrivalCity, locationLabel('varisIli')));
+    if (data.varisAdres?.trim())  lines.push(field(b.waArrivalAddress, data.varisAdres));
+    lines.push(field(b.waDate, fmtDate), field(b.waTime, saat));
+    if (data.seyahatYonu) lines.push(field(b.waTripDirection, data.seyahatYonu === 'GIDIS_DONUS' ? b.tripRoundTrip : b.tripOneWay));
+    if (data.bagajSayisi?.trim()) lines.push(field(b.waLuggageCount!, data.bagajSayisi));
 
   } else if (activeService === 'ALLOCATION') {
-    lines.push(`${b.waPickup}: ${displayValue(locationLabel('alisLokasyonu'))}`);
-    if (data.alisAdresi?.trim())  lines.push(`${b.waPickupAddress}: ${displayValue(data.alisAdresi)}`);
-    lines.push(`${b.waStartDate}: ${displayValue(fmtDate)}`, `${b.waStartTime}: ${displayValue(saat)}`);
+    lines.push(field(b.waPickup, locationLabel('alisLokasyonu')));
+    if (data.alisAdresi?.trim())  lines.push(field(b.waPickupAddress, data.alisAdresi));
+    lines.push(field(b.waStartDate, fmtDate), field(b.waStartTime, saat));
     if (data.tahsisSuresi) {
       const unit = data.tahsisSuresiUnit === 'GUN' ? b.waDays : b.waHours;
-       lines.push(`${b.waDuration}: ${displayValue(data.tahsisSuresi)} ${unit}`);
+      lines.push(field(b.waDuration, `${data.tahsisSuresi} ${unit}`));
     }
-    if (data.rotaAciklama?.trim()) lines.push(`${b.waRouteDescription}: ${data.rotaAciklama}`);
+    if (data.rotaAciklama?.trim()) lines.push(field(b.waRouteDescription, data.rotaAciklama));
 
   } else if (activeService === 'TOUR') {
-    lines.push(`${b.waPickup}: ${displayValue(locationLabel('alisLokasyonu'))}`);
-    if (data.alisAdresi?.trim())  lines.push(`${b.waPickupAddress}: ${displayValue(data.alisAdresi)}`);
-    lines.push(`${b.waTourRoute}: ${displayValue(data.talepsRota)}`);
-    if (data.talepsYerler?.trim()) lines.push(`${b.waTourPlaces}: ${displayValue(data.talepsYerler)}`);
-    lines.push(`${b.waDate}: ${displayValue(fmtDate)}`, `${b.waStartTime}: ${displayValue(saat)}`);
+    lines.push(field(b.waPickup, locationLabel('alisLokasyonu')));
+    if (data.alisAdresi?.trim())  lines.push(field(b.waPickupAddress, data.alisAdresi));
+    lines.push(field(b.waTourRoute, data.talepsRota));
+    if (data.talepsYerler?.trim()) lines.push(field(b.waTourPlaces, data.talepsYerler));
+    lines.push(field(b.waDate, fmtDate), field(b.waStartTime, saat));
     if (data.planlananSure?.trim()) {
       const unit = data.planlananSureUnit === 'GUN' ? b.waDays : b.waHours;
-       lines.push(`${b.waPlannedDuration}: ${displayValue(data.planlananSure)} ${unit}`);
+      lines.push(field(b.waPlannedDuration, `${data.planlananSure} ${unit}`));
     }
   }
 
   lines.push(
     '',
-    `${b.waPassengers}: ${displayValue(data.yolcuSayisi)} ${b.passengerSuffix}`,
-    `${b.waFullName}: ${displayValue(data.adSoyad)}`,
-    `${b.waPhone}: ${displayValue(data.telefon)}`,
+    field(b.waPassengers, `${data.yolcuSayisi} ${b.passengerSuffix}`),
+    field(b.waFullName, data.adSoyad),
+    field(b.waPhone, formatPhoneForWhatsAppMessage(data.telefon)),
   );
-  if (data.email?.trim()) lines.push(`${b.waEmail}: ${displayValue(data.email.trim())}`);
+  if (data.email?.trim()) lines.push(field(b.waEmail, data.email.trim()));
   const selectedVehicle = vehicleOptions.find((vehicle) => vehicle.id === data.vehiclePreference);
-  if (selectedVehicle) lines.push(`${b.waVehiclePreference}: ${displayValue(selectedVehicle.displayName)}`);
+  if (selectedVehicle) lines.push(field(b.waVehiclePreference!, selectedVehicle.displayName));
   for (const field of customFieldAnswers) {
     if (field.value === true) {
-      lines.push(`✓ ${displayValue(field.label)}`);
+      lines.push(`✓ ${formatWhatsAppLabel(field.label)}`);
     } else if (typeof field.value === 'string' && field.value.trim()) {
-      lines.push(`${displayValue(field.label)}: ${displayValue(field.value.trim())}`);
+      lines.push(`${formatWhatsAppLabel(field.label)}: ${displayValue(field.value.trim())}`);
     }
   }
 
@@ -653,7 +659,7 @@ export default function BookingForm({
 
     // Open synchronously from the original submit event. Waiting for the
     // reservation response first could be blocked by mobile popup policies.
-    openWhatsAppChat(WA_NUMBER, msg);
+    openWhatsAppChat(SITE.whatsappNumber, msg);
 
     // Await the already-started request. Gateway/network failures are retried
     // with the same idempotency key, so a late response cannot duplicate data.

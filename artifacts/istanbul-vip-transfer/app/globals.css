@@ -162,6 +162,7 @@ html {
      (e.g. the booking form's location panel), which can reveal horizontal
      scroll for a frame. Nothing on the page intentionally exceeds 100vw. */
   overflow-x: hidden;
+  --ivt-cookie-banner-offset: 0px;
 }
 body {
   overflow-x: hidden;
@@ -579,6 +580,44 @@ body {
   flex: 0 0 calc((100% - (var(--ivt-strip-n) - 1) * var(--ivt-strip-gap)) / var(--ivt-strip-n));
   min-width: 0;
   scroll-snap-align: start;
+}
+
+/* On phones the controls sit on top of the card instead of consuming a third
+   of the row. The track therefore owns the full content width and one card
+   fills it exactly; the translucent controls remain comfortable touch targets. */
+@media (max-width: 767px) {
+  .ivt-card-strip {
+    display: block !important;
+    position: relative;
+    width: 100%;
+    --ivt-strip-gap: 0px;
+  }
+  .ivt-card-strip-track {
+    width: 100% !important;
+  }
+  .ivt-card-strip-nav {
+    position: absolute !important;
+    z-index: 2;
+    top: 50%;
+    width: 48px !important;
+    height: 48px !important;
+    margin: 0 !important;
+    transform: translateY(-50%);
+    border-color: rgba(255,255,255,0.55) !important;
+    background: rgba(16,42,67,0.52) !important;
+    box-shadow: 0 3px 12px rgba(16,42,67,0.18) !important;
+    backdrop-filter: blur(3px);
+  }
+  .ivt-card-strip-nav-prev { left: 8px; }
+  .ivt-card-strip-nav-next { right: 8px; }
+  .ivt-card-strip-nav svg { color: #FFFFFF !important; }
+
+  .ivt-float-button {
+    bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px) + var(--ivt-cookie-banner-offset, 0px)) !important;
+  }
+  .ivt-whatsapp-float { left: calc(1rem + env(safe-area-inset-left, 0px)) !important; }
+  .ivt-chat-float { right: calc(1rem + env(safe-area-inset-right, 0px)) !important; }
+  .ivt-back-to-top { left: 50% !important; }
 }
 
 /* Admin request list: the desktop table never mounts visibly on a phone.

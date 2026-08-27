@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLang } from '@/lib/i18n/context';
 import { localizedPublicPath } from '@/lib/localized-service-path';
 import Link from 'next/link';
@@ -36,6 +36,7 @@ export default function CookieConsentBanner({
 }) {
   const { lang, dict } = useLang();
   const [visible, setVisible] = useState(!hasInitialDecision);
+  const bannerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Re-check during hydration in case a consent cookie changed between the
@@ -43,6 +44,26 @@ export default function CookieConsentBanner({
     const current = getCookie(COOKIE_NAME);
     setVisible(!current);
   }, [hasInitialDecision]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (!visible) {
+      root.style.removeProperty('--ivt-cookie-banner-offset');
+      return;
+    }
+    const banner = bannerRef.current;
+    if (!banner) return;
+    const updateOffset = () => {
+      root.style.setProperty('--ivt-cookie-banner-offset', `${banner.getBoundingClientRect().height}px`);
+    };
+    updateOffset();
+    const observer = new ResizeObserver(updateOffset);
+    observer.observe(banner);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty('--ivt-cookie-banner-offset');
+    };
+  }, [visible]);
 
   if (!visible) return null;
 
@@ -63,6 +84,8 @@ export default function CookieConsentBanner({
 
   return (
     <div
+      ref={bannerRef}
+      className="ivt-cookie-banner"
       role="dialog"
       aria-label={dict.common.cookieBannerAccept}
       style={{

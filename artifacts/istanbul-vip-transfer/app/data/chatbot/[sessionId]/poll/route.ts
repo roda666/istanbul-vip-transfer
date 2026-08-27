@@ -73,7 +73,7 @@ export async function GET(
           .filter(m => m.role === 'user' || m.role === 'assistant')
           .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }));
 
-        const aiContent = await generateAIReply(session.visitorLang, aiHistory);
+        const aiContent = await generateAIReply(session.visitorLang, aiHistory, request);
 
         if (aiContent) {
           await persistAssistantReplyForAdmin(

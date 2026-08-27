@@ -11,6 +11,7 @@ import { usePathname } from 'next/navigation';
 import Header from './Header';
 import Footer from './Footer';
 import DeferredChatLauncher from './DeferredChatLauncher';
+import BackToTop from './BackToTop';
 import type { HomepageSections } from '@/lib/homepage-types';
 import type {
   PublicServiceNavigationGroup,
@@ -65,6 +66,7 @@ export default function PublicLayoutWrapper({
       <Footer serviceLinks={serviceLinks} homepageFooter={homepageFooter} />
       <WhatsAppFloat />
       <DeferredChatLauncher />
+      <BackToTop />
       <CookieConsentBanner hasInitialDecision={hasCookieConsentDecision} />
     </LangProvider>
   );

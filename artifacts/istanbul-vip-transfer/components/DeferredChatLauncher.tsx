@@ -39,7 +39,7 @@ export default function DeferredChatLauncher() {
   return (
     <button
       type="button"
-      className="ivt-chat-control"
+      className="ivt-chat-control ivt-float-button ivt-chat-float"
       onClick={openChat}
       aria-label={dict.chatbot.aria}
       aria-busy={isLoading}
@@ -49,7 +49,7 @@ export default function DeferredChatLauncher() {
       style={{
         position: 'fixed',
         zIndex: 50,
-        bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))',
+        bottom: 'calc(1.25rem + env(safe-area-inset-bottom, 0px))',
         right: 'calc(1.25rem + env(safe-area-inset-right, 0px))',
         width: 52,
         height: 52,

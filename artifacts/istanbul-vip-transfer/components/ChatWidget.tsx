@@ -27,6 +27,28 @@ interface Message {
 const SESSION_KEY = 'ivt_chat_sid';
 const ADMIN_POLL_INTERVAL = 3000; // ms
 
+function renderChatMessageContent(content: string) {
+  return content.split(/(https:\/\/[^\s]+)/g).map((part, index) => {
+    if (!part.startsWith('https://')) return part;
+    try {
+      const url = new URL(part);
+      return (
+        <a
+          key={`${url.href}-${index}`}
+          href={url.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: 'inherit', textDecoration: 'underline', overflowWrap: 'anywhere' }}
+        >
+          {part}
+        </a>
+      );
+    } catch {
+      return part;
+    }
+  });
+}
+
 export default function ChatWidget({
   initialOpen = false,
   modal = false,
@@ -448,7 +470,7 @@ export default function ChatWidget({
                 <div style={bubbleStyle(msg.role, msg.pending)}>
                   {msg.pending
                     ? cb.typing
-                    : msg.content || (streaming && i === messages.length - 1
+                    : (msg.content ? renderChatMessageContent(msg.content) : null) || (streaming && i === messages.length - 1
                         ? <span style={{ opacity: 0.6 }}>{cb.typing}</span>
                         : null)
                   }
@@ -515,11 +537,11 @@ export default function ChatWidget({
         aria-expanded={open}
         aria-hidden={formVisible || undefined}
         tabIndex={formVisible ? -1 : undefined}
-        className="ivt-chat-control"
+        className="ivt-chat-control ivt-float-button ivt-chat-float"
         style={{
           position: 'fixed',
           zIndex: open && modal ? 59 : 50,
-          bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))',
+          bottom: 'calc(1.25rem + env(safe-area-inset-bottom, 0px))',
           right:  'calc(1.25rem + env(safe-area-inset-right, 0px))',
           width: 52, height: 52, borderRadius: '50%',
           background: open ? '#102A43' : '#C99A32',

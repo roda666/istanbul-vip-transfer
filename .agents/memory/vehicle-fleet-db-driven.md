@@ -38,3 +38,7 @@ wide desktop. Homepage and service-page calls keep the shared horizontal `CardCa
 **Why:** The site owner rejected class sections after seeing single midibus and coach cards stranded in narrow,
 one-item strips. The comparison page must expose every published vehicle together; equal card height comes from
 fixed image, tagline, title, description, feature and CTA zones inside the same shared card component.
+
+Vehicle imagery is mandatory content on the fleet page, not optional decoration. Preserve a fixed 4:3 image
+frame with cover cropping, intrinsic dimensions, lazy loading and meaningful alt text; never remove images to
+equalize card height. A failed or absent source must retain the frame and visibly report that the image is missing.

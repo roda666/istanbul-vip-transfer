@@ -123,6 +123,8 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
   scrollToBooking: () => void;
   gridItem?: boolean;
 }) {
+  const [imageFailed, setImageFailed] = useState(!vehicle.image);
+
   return (
     <motion.div
       className={`group relative flex h-full min-w-0 flex-col rounded-2xl overflow-hidden ${gridItem ? '' : 'ivt-card-strip-item'}`}
@@ -159,14 +161,34 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
       )}
 
       {/* Vehicle Image */}
-      <div className="relative aspect-[4/3] shrink-0 overflow-hidden" style={{ background: '#EAF2F8' }}>
-        <Image
-          src={vehicle.image}
-          alt={vehicle.alt}
-          fill
-          className="object-cover object-center transition-transform duration-700 group-hover:scale-105"
-          sizes="(min-width: 1200px) 25vw, (min-width: 900px) 33vw, (min-width: 480px) 50vw, 100vw"
-        />
+      <div
+        className="relative aspect-[4/3] shrink-0 overflow-hidden"
+        style={{ background: '#EAF2F8' }}
+        data-testid={`vehicle-image-frame-${i}`}
+      >
+        {imageFailed ? (
+          <div
+            className="flex h-full w-full items-center justify-center px-4 text-center text-sm"
+            style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
+            role="img"
+            aria-label={`${vehicle.name}: Görseli eksik`}
+            data-testid={`vehicle-image-missing-${i}`}
+          >
+            Görseli eksik
+          </div>
+        ) : (
+          <Image
+            src={vehicle.image}
+            alt={vehicle.alt || vehicle.name}
+            width={1200}
+            height={900}
+            loading="lazy"
+            onError={() => setImageFailed(true)}
+            className="h-full w-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
+            sizes="(min-width: 1200px) 25vw, (min-width: 900px) 33vw, (min-width: 480px) 50vw, 100vw"
+            data-testid={`vehicle-image-${i}`}
+          />
+        )}
         <div
           className="absolute inset-x-0 bottom-0 h-16"
           style={{ background: 'linear-gradient(to top, rgba(255,255,255,0.4) 0%, transparent 100%)' }}

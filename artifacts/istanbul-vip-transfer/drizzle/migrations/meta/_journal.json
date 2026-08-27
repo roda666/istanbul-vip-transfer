@@ -505,6 +505,13 @@
       "when": 1787812865840,
       "tag": "0071_crazy_monster_badoon",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1789000000015,
+      "tag": "0072_nervous_banshee",
+      "breakpoints": true
     }
   ]
 }

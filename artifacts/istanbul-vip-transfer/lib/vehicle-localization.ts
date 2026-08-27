@@ -3,14 +3,9 @@
  * vehicle schema. Do not fall back to Turkish source fields for non-Turkish
  * visitors: incomplete cards are withheld until their translation is ready.
  */
-export const LOCALIZED_FEATURE_CODES = new Set([
-  'WIFI',
-  'CLIMATE',
-  'MEET_GREET',
-  'LEATHER',
-  'LUXURY',
-  'WATER',
-]);
+import { VEHICLE_FEATURE_CODES } from '@/lib/vehicle-feature-catalog';
+
+export const LOCALIZED_FEATURE_CODES = new Set<string>(VEHICLE_FEATURE_CODES);
 
 type Feature = { icon?: string; label?: string } | string;
 
@@ -52,10 +47,11 @@ export interface ResolvedPublicVehicle {
 export function resolvePublishedVehicles<T extends LocalizableVehicle & { status?: string }>(
   vehicles: T[],
   locale: string,
+  defaultFeatureCodes: string[] = [],
 ): ResolvedPublicVehicle[] {
   return vehicles.flatMap((vehicle) => {
     if (vehicle.status !== undefined && vehicle.status !== 'PUBLISHED') return [];
-    const localized = resolvePublicVehicle(vehicle, locale);
+    const localized = resolvePublicVehicle(vehicle, locale, defaultFeatureCodes);
     return localized ? [localized] : [];
   });
 }
@@ -72,6 +68,7 @@ function featureCode(feature: Feature): string | null {
 export function resolvePublicVehicle(
   vehicle: LocalizableVehicle,
   locale: string,
+  defaultFeatureCodes: string[] = [],
 ): ResolvedPublicVehicle | null {
   const isTurkish = locale === 'tr';
   const displayName = nonEmpty(
@@ -92,13 +89,19 @@ export function resolvePublicVehicle(
   const coverImageAlt = nonEmpty(vehicle.coverImageAlt);
   if (!displayName || !displayShortDesc || !displayTagline || !coverImage || !coverImageAlt) return null;
 
+  // A vehicle's own features always win (a real, admin-set exception). Only
+  // when nobody has configured anything for this vehicle does it inherit the
+  // fleet-wide default list, so "no data" never reads as "this car has none".
+  const ownFeatures = vehicle.features ?? [];
+  const effectiveFeatures = ownFeatures.length > 0 ? ownFeatures : defaultFeatureCodes;
+
   return {
     id: vehicle.id,
     slug: vehicle.slug,
     passengerCapacity: vehicle.passengerCapacity,
     luggageCapacity: vehicle.luggageCapacity,
     vehicleType: vehicle.vehicleType,
-    features: (vehicle.features ?? []).filter((feature) => (
+    features: effectiveFeatures.filter((feature) => (
       isTurkish || LOCALIZED_FEATURE_CODES.has(featureCode(feature) ?? '')
     )),
     coverImage,

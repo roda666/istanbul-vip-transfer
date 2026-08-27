@@ -105,3 +105,5 @@
 - [Server-only/client boundary for shared constants](server-only-client-boundary-constants.md) — pure constants used by client components must live outside any 'server-only'/db-importing module, or the build breaks; don't duplicate constants to dodge this.
 - [Istanbul VIP Transfer overflow-guard suite](istanbul-vip-transfer-overflow-guard.md) — permanent Playwright doc-width≤viewport check across 5 templates × 4 widths; run split-by-width in ShellExec, not via validation-run poller, in dev mode.
 - [Card carousel exactly-N-visible pattern](card-carousel-strip-pattern.md) — CSS-calc based card width per breakpoint avoids clipping; lazy-mounted sections need scroll-into-view before E2E checks find their elements.
+- [Pricing calculator settings bootstrap gate](pricing-settings-bootstrap-gate.md) — price_calculator_settings has no row until admin saves Fiyat Kuralları once; every pricing consumer sees "no data", not an error.
+- [UTC round-trip day-offset bug class](utc-roundtrip-day-offset-bugclass.md) — a zoned instant round-tripped through UTC is wrong every day, not just at midnight; derive calendar dates from Intl parts only.

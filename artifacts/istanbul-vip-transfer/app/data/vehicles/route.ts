@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 
 import { isLocaleCodeSyntax } from '@/lib/i18n/locale-registry';
 import { resolvePublishedVehicles } from '@/lib/vehicle-localization';
+import { getVehicleFeatureDefaults } from '@/lib/vehicle-feature-defaults-server';
 
 export async function GET(request: Request) {
   const { NextResponse } = await import('next/server');
@@ -40,7 +41,8 @@ export async function GET(request: Request) {
        .where(and(eq(vehicles.status, 'PUBLISHED'), eq(vehicles.isActive, true)))
       .orderBy(asc(vehicles.displayOrder));
 
-    const resolved = resolvePublishedVehicles(rows, lang);
+    const defaultFeatureCodes = await getVehicleFeatureDefaults();
+    const resolved = resolvePublishedVehicles(rows, lang, defaultFeatureCodes);
 
     return NextResponse.json(
       { vehicles: resolved },

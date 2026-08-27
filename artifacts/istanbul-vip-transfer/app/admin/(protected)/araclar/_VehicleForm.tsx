@@ -8,6 +8,7 @@ import { STATUS_LABELS } from '@/lib/workflow';
 import StatusBadge from '../../_components/StatusBadge';
 import { ImageUploadField } from '../../_components/ImageUploadField';
 import { normalizeVehicleType, VEHICLE_TYPE_OPTIONS } from '@/lib/vehicle-options';
+import { VEHICLE_FEATURE_CATALOG } from '@/lib/vehicle-feature-catalog';
 import { TOLL_VEHICLE_CLASSES, TOLL_VEHICLE_CLASS_DESCRIPTIONS, TOLL_VEHICLE_CLASS_LABELS, TOLL_VEHICLE_CLASS_SELECTION_WARNING } from '@/lib/toll-vehicle-classes';
 
 /** Active toll point, as needed for per-point class assignment. */
@@ -679,19 +680,16 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [], initia
     setForm((f) => ({ ...f, slug: val }));
   }
 
-  // Features helpers
-  function setFeature(i: number, val: string) {
-    setForm((f) => {
-      const features = [...f.features];
-      features[i] = val;
-      return { ...f, features };
-    });
-  }
-  function addFeature() {
-    setForm((f) => ({ ...f, features: [...f.features, ''] }));
-  }
-  function removeFeature(i: number) {
-    setForm((f) => ({ ...f, features: f.features.filter((_, idx) => idx !== i) }));
+  // Features helpers — a fixed catalog, not free text, so every checked code
+  // has a real icon and translation in every public language. Leaving this
+  // empty means the vehicle inherits the fleet-wide default list.
+  function toggleFeature(code: string) {
+    setForm((f) => ({
+      ...f,
+      features: f.features.includes(code)
+        ? f.features.filter((c) => c !== code)
+        : [...f.features, code],
+    }));
   }
 
   // Gallery helpers
@@ -1011,51 +1009,37 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [], initia
 
       {/* ── Özellikler ──────────────────────────────────── */}
       <SectionTitle>Araç Özellikleri</SectionTitle>
-
-      {form.features.map((feat, i) => (
-        <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-          <div style={{ flex: 1 }}>
-            <Input
-              value={feat}
-              onChange={(v) => setFeature(i, v)}
-              placeholder={`ör. Klima, Wi-Fi, Deri Koltuk`}
-            />
-          </div>
-          {form.features.length > 1 && (
-            <button
-              onClick={() => removeFeature(i)}
+      <p style={{ color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif', margin: '0 0 10px' }}>
+        Hiçbiri seçilmezse bu araç, panelde tanımlı ortak varsayılan listeyi kullanır
+        (Araçlar sayfasındaki &quot;Varsayılan Özellikler&quot; ayarından yönetilir). Burada seçim
+        yaparsanız bu araç için gerçek bir istisna tanımlarsınız ve yalnızca seçtikleriniz gösterilir.
+      </p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+        {VEHICLE_FEATURE_CATALOG.map(({ code, label }) => {
+          const checked = form.features.includes(code);
+          return (
+            <label
+              key={code}
               style={{
-                background: 'rgba(239,68,68,0.1)',
-                border: '1px solid rgba(239,68,68,0.2)',
-                borderRadius: '6px',
-                color: '#f87171',
-                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
                 padding: '8px 12px',
-                fontSize: '12px',
+                borderRadius: '7px',
+                border: `1px solid ${checked ? GOLD : BORDER}`,
+                background: checked ? 'rgba(201,168,76,0.1)' : BG2,
+                color: TEXT,
+                fontSize: '13px',
                 fontFamily: 'Inter, sans-serif',
+                cursor: 'pointer',
               }}
             >
-              Kaldır
-            </button>
-          )}
-        </div>
-      ))}
-      <button
-        onClick={addFeature}
-        style={{
-          background: 'transparent',
-          border: `1px dashed ${BORDER}`,
-          borderRadius: '6px',
-          color: '#666',
-          cursor: 'pointer',
-          padding: '8px 16px',
-          fontSize: '12px',
-          fontFamily: 'Inter, sans-serif',
-          marginTop: '4px',
-        }}
-      >
-        + Özellik Ekle
-      </button>
+              <input type="checkbox" checked={checked} onChange={() => toggleFeature(code)} />
+              {label}
+            </label>
+          );
+        })}
+      </div>
 
       {/* ── Galeri ──────────────────────────────────────── */}
       <SectionTitle>Galeri</SectionTitle>

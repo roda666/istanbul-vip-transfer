@@ -2,6 +2,7 @@
 
 import { useState, type ComponentType } from 'react';
 import { useLang } from '@/lib/i18n/context';
+import { useBookingFormVisible } from '@/lib/hooks/useBookingFormVisible';
 
 type ChatWidgetComponent = ComponentType<{ initialOpen?: boolean; modal?: boolean }>;
 
@@ -15,6 +16,7 @@ export default function DeferredChatLauncher() {
   const [ChatWidget, setChatWidget] = useState<ChatWidgetComponent | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const formVisible = useBookingFormVisible();
 
   const openChat = async () => {
     if (isLoading) return;
@@ -42,6 +44,8 @@ export default function DeferredChatLauncher() {
       aria-label={dict.chatbot.aria}
       aria-busy={isLoading}
       title={dict.chatbot.aria}
+      aria-hidden={formVisible || undefined}
+      tabIndex={formVisible ? -1 : undefined}
       style={{
         position: 'fixed',
         zIndex: 50,
@@ -59,6 +63,10 @@ export default function DeferredChatLauncher() {
         boxShadow: '0 4px 18px rgba(201,154,50,0.45)',
         color: '#fff',
         touchAction: 'manipulation',
+        opacity: formVisible ? 0 : 1,
+        visibility: formVisible ? 'hidden' : 'visible',
+        pointerEvents: formVisible ? 'none' : 'auto',
+        transition: 'opacity 0.2s ease, visibility 0.2s ease',
       }}
     >
       {isLoading ? (

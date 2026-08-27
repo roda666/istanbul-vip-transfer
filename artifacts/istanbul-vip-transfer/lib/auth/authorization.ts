@@ -150,6 +150,7 @@ export function getAdminApiPermission(pathname: string, method: string): AdminPe
   if (pathname.startsWith('/admin/api/competitors')) return 'AI_USE';
 
   if (pathname.startsWith('/admin/api/vehicles') ||
+      pathname.startsWith('/admin/api/vehicle-feature-defaults') ||
       pathname.startsWith('/admin/api/locations') ||
       pathname.startsWith('/admin/api/transfer-routes') ||
       pathname.startsWith('/admin/api/price-rules') ||

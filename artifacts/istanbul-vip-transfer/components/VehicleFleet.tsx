@@ -258,7 +258,7 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
   );
 }
 
-export default function VehicleFleet({ homepageMode = false }: { homepageMode?: boolean }) {
+export default function VehicleFleet({ homepageMode = false, grouped = !homepageMode }: { homepageMode?: boolean; grouped?: boolean }) {
   const { dict, lang } = useLang();
   const v = dict.vehicles;
   const cms = useHomepageCms();
@@ -382,7 +382,7 @@ export default function VehicleFleet({ homepageMode = false }: { homepageMode?: 
               </button>
             </div>
           )}
-          {!vehiclesLoading && !vehiclesError && !homepageMode && fleetGroups.length > 0 && (
+          {!vehiclesLoading && !vehiclesError && grouped && fleetGroups.length > 0 && (
             <div className="space-y-10">
               {fleetGroups.map((group) => (
                 <div key={group.type}>
@@ -406,7 +406,7 @@ export default function VehicleFleet({ homepageMode = false }: { homepageMode?: 
               ))}
             </div>
           )}
-          {!vehiclesLoading && !vehiclesError && homepageMode && (
+          {!vehiclesLoading && !vehiclesError && !grouped && (
             <CardCarouselStrip
               itemCount={displayVehicles.length}
               previousLabel={ui.vehicles.previous}

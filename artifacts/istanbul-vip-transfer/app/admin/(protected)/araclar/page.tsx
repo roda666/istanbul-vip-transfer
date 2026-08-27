@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import AdminPageHeader from '../../_components/AdminPageHeader';
 import AraclarList from './_AraclarList';
+import VehicleFeatureDefaultsPanel from './_VehicleFeatureDefaultsPanel';
 
 export const metadata: Metadata = {
   title: 'Araçlar | Admin',
@@ -37,6 +38,7 @@ export default function AraclarPage() {
           </Link>
         }
       />
+      <VehicleFeatureDefaultsPanel />
       <AraclarList />
     </div>
   );

@@ -41,7 +41,7 @@ export default function ContactForm() {
 
   const [form, setForm]       = useState<FormState>(INIT);
   const [errors, setErrors]   = useState<Partial<FormState>>({});
-  const [status, setStatus]   = useState<'idle' | 'submitting' | 'success' | 'saved-with-email-error' | 'error'>('idle');
+  const [status, setStatus]   = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [serverError, setServerError] = useState('');
   const [newsletterConsent, setNewsletterConsent] = useState(false);
   const websiteHoneypotRef = useRef<HTMLInputElement>(null);
@@ -133,11 +133,10 @@ export default function ContactForm() {
         setStatus('error');
         return;
       }
-      if (payload.emailNotification?.status !== 'sent') {
-        setForm(INIT);
-        setStatus('saved-with-email-error');
-        return;
-      }
+      // The request is saved either way — an SMTP delivery hiccup on our end
+      // is an internal/admin-panel concern (visible there via delivery
+      // status + audit log), never something the customer should have to
+      // parse or worry about. They always see the same simple confirmation.
       setStatus('success');
       setForm(INIT);
       // GA4: contact form successfully submitted
@@ -181,28 +180,6 @@ export default function ContactForm() {
       </div>
     );
   }
-  if (status === 'saved-with-email-error') {
-    return (
-      <div style={{
-        background: '#fffbeb',
-        border: '1px solid #fcd34d',
-        borderRadius: '12px',
-        padding: '2rem',
-        textAlign: 'center',
-        maxWidth: '560px',
-        margin: '0 auto',
-      }}>
-        <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>⚠️</div>
-        <h3 style={{ color: '#92400e', fontWeight: 700, fontSize: '1.2rem', marginBottom: '0.5rem' }}>
-          Talebiniz kaydedildi
-        </h3>
-        <p style={{ color: '#78350f', fontSize: '0.95rem', lineHeight: 1.6 }}>
-          E-posta bildiriminin SMTP sunucusu tarafından kabul edildiği doğrulanamadı. İşletme bu durumu panelden görebilir; acil bir konuda lütfen telefon veya WhatsApp ile de ulaşın.
-        </p>
-      </div>
-    );
-  }
-
   const fieldStyle: React.CSSProperties = {
     width: '100%',
     padding: '0.75rem 1rem',

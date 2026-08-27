@@ -410,7 +410,7 @@ export default async function ServicePageRenderer({ slug, lang, canonicalPath }:
         {/* Rich content sections */}
         <ContentSectionsBlock body={dbPage.body} dir={dir} lang={lang} />
 
-        <DeferredVehicleFleet />
+        <DeferredVehicleFleet grouped={false} />
 
         {/* Service area */}
         <ServiceAreaBlock body={dbPage.body} dir={dir} lang={lang} />
@@ -438,7 +438,7 @@ export default async function ServicePageRenderer({ slug, lang, canonicalPath }:
         )}
         <PageHero pageKey={pageKey} />
         <CollapsibleBookingForm />
-        <DeferredVehicleFleet />
+        <DeferredVehicleFleet grouped={false} />
         {faqFallbackPage?.body?.faqs?.length ? (
           <FaqBlock body={faqFallbackPage.body} dir={dir} lang={lang} />
         ) : null}

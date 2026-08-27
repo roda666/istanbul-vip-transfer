@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 // the hero, so defer both until a visitor is about to reach the section.
 const VehicleFleet = dynamic(() => import('./VehicleFleet'), { ssr: false });
 
-export default function DeferredVehicleFleet({ homepageMode = false }: { homepageMode?: boolean }) {
+export default function DeferredVehicleFleet({ homepageMode = false, grouped }: { homepageMode?: boolean; grouped?: boolean }) {
   const sectionRef = useRef<HTMLDivElement>(null);
   const [shouldLoad, setShouldLoad] = useState(false);
 
@@ -33,7 +33,7 @@ export default function DeferredVehicleFleet({ homepageMode = false }: { homepag
 
   return (
     <div ref={sectionRef} className="ivt-deferred-section" aria-busy={!shouldLoad}>
-      {shouldLoad && <VehicleFleet homepageMode={homepageMode} />}
+      {shouldLoad && <VehicleFleet homepageMode={homepageMode} grouped={grouped} />}
     </div>
   );
 }

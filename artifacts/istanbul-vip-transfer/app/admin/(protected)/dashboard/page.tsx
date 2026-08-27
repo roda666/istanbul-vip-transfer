@@ -5,6 +5,7 @@ import {
   MessageCircle, Languages, Inbox, TriangleAlert, ArrowRight, ShieldCheck,
 } from 'lucide-react';
 import AdminPageHeader from '../../_components/AdminPageHeader';
+import { getIstanbulCalendarDate } from '@/lib/istanbul-time';
 
 export const metadata: Metadata = {
   title: 'Dashboard | Admin',
@@ -92,23 +93,9 @@ async function loadDashboardBlock<T>(loader: () => Promise<T>, fallback: T): Pro
   }
 }
 
-function getIstanbulDayRange(offsetDays: number) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Istanbul',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(new Date());
-  const value = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((part) => part.type === type)?.value ?? '';
-  const istanbulMidnight = new Date(`${value('year')}-${value('month')}-${value('day')}T00:00:00+03:00`);
-  istanbulMidnight.setUTCDate(istanbulMidnight.getUTCDate() + offsetDays);
-  return istanbulMidnight.toISOString().slice(0, 10);
-}
-
 async function getOperationsCenter(): Promise<DashboardBlock<OperationsCenter>> {
-  const today = getIstanbulDayRange(0);
-  const tomorrow = getIstanbulDayRange(1);
+  const today = getIstanbulCalendarDate(0);
+  const tomorrow = getIstanbulCalendarDate(1);
   return loadDashboardBlock(async () => {
     const { db } = await import('@/db');
     const {

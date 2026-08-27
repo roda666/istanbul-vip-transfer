@@ -32,3 +32,13 @@ hash, and the column was missing from `information_schema.columns`, right after 
 success. Manual fix each time: run the migration's own `ALTER TABLE` directly, then hand-insert a row into
 `drizzle.__drizzle_migrations` with that migration file's real sha256 hash and a `created_at` one greater than
 `MAX(created_at::bigint)` in that table — otherwise the same file will be silently skipped forever.
+
+**Recurrence #4 (2026-08-27):** hit again for a new singleton table (`vehicle_feature_defaults`, migration
+0072). By this point the project had grown its own regression test for exactly this bug —
+`tests/unit/migration-journal-order.test.ts` — which asserts the last `_journal.json` entry's `when` is
+greater than every prior entry's `when`. It failed immediately after the manual DDL fix because the freshly
+generated migration's real epoch-ms `when` was still smaller than the artificial far-future ones. Fix was the
+same (bump `when` in `_journal.json` to exceed the max, matching the `created_at` hand-inserted into
+`drizzle.__drizzle_migrations`) — but now `pnpm exec vitest run tests/unit/migration-journal-order.test.ts`
+gives a fast, authoritative check instead of manually eyeballing timestamps. Run it (or the full suite) after
+any manual migration-journal fix in this project.

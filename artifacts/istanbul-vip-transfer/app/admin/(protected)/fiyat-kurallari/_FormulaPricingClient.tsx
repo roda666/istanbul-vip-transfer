@@ -186,6 +186,16 @@ const getReasonText = (reason?: string) => {
   }
 };
 
+const describeDistanceUnavailableReason = (reason?: string) => {
+  switch (reason) {
+    case 'SAME_LOCATION': return 'Kalkış ve varış aynı';
+    case 'LOCATION_NOT_FOUND': return 'Konum bulunamadı';
+    case 'MISSING_COORDINATES': return 'Koordinat kayıtlı değil';
+    case 'COINCIDENT_COORDINATES': return 'Koordinatlar aynı noktada';
+    default: return reason || 'Bilinmeyen neden';
+  }
+};
+
 // --- Reusable Components ---
 
 function AmountInput({ value, onChange, label, symbol = '', decimals = 2, min = 0 }: { value: number, onChange: (val: number) => void, label: string, symbol?: string, decimals?: number, min?: number }) {
@@ -530,12 +540,23 @@ function FastQuotePanel({
             </select>
           </div>
         </div>
-        <div className={`rounded-lg border px-3 py-2 text-xs font-medium ${distance?.state === 'DEFINED_ROUTE' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-blue-200 bg-blue-50 text-blue-800'}`}>
-          {distanceLoading ? 'Mesafe koordinatlardan çözülüyor…' : distance?.state === 'DEFINED_ROUTE'
-            ? `Doğrulanmış rota: ${distance.distanceKm} km`
-            : distance?.state === 'ESTIMATED'
-              ? `Koordinat tahmini: ${distance.distanceKm} km${distance.roadDistanceMultiplier ? ` (yol katsayısı ×${distance.roadDistanceMultiplier})` : ''}`
-              : distanceError || 'İki kayıtlı konum seçildiğinde mesafe otomatik gelir.'}
+        <div className={`rounded-lg border px-3 py-2 text-xs font-medium ${
+          distance?.state === 'DEFINED_ROUTE'
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+            : distance?.state === 'UNAVAILABLE'
+              ? 'border-amber-200 bg-amber-50 text-amber-800'
+              : 'border-blue-200 bg-blue-50 text-blue-800'
+        }`}>
+          {distanceLoading
+            ? 'Mesafe koordinatlardan çözülüyor…'
+            : distance?.state === 'DEFINED_ROUTE'
+              ? `Doğrulanmış rota: ${distance.distanceKm} km`
+              : distance?.state === 'ESTIMATED'
+                ? `Koordinat tahmini: ${distance.distanceKm} km${distance.roadDistanceMultiplier ? ` (yol katsayısı ×${distance.roadDistanceMultiplier})` : ''}`
+                : distance?.state === 'UNAVAILABLE'
+                  // Never show a guessed number — say plainly that it could not be calculated, with the reason.
+                  ? `Hesaplanamadı${distance.reason ? ` (${describeDistanceUnavailableReason(distance.reason)})` : ''}`
+                  : distanceError || 'İki kayıtlı konum seçildiğinde mesafe otomatik gelir.'}
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>

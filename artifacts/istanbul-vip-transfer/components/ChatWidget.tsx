@@ -15,6 +15,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLang } from '@/lib/i18n/context';
+import { useBookingFormVisible } from '@/lib/hooks/useBookingFormVisible';
 
 interface Message {
   id?: string;
@@ -55,6 +56,7 @@ export default function ChatWidget({
   const abortRef      = useRef<AbortController | null>(null);
   const pollTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastPollTime  = useRef<string>(new Date().toISOString());
+  const formVisible   = useBookingFormVisible();
 
   // Entrance delay
   useEffect(() => {
@@ -350,7 +352,7 @@ export default function ChatWidget({
       {/* This backdrop is intentionally non-interactive: it prevents pointer
           and touch input from reaching the public page while the modal is open.
           10000 sits above CookieConsentBanner's documented z-index of 9999. */}
-      {open && modal && (
+      {open && modal && !formVisible && (
         <div
           aria-hidden="true"
           role="presentation"
@@ -363,11 +365,14 @@ export default function ChatWidget({
           }}
         />
       )}
-      {/* Panel */}
+      {/* Panel — hidden (not unmounted, so the conversation isn't lost) while
+          the booking form section is on screen: it both crowds the already
+          tight mobile layout and distracts from finishing the request. */}
       {open && (
         <div
           ref={dialogRef}
           role="dialog"
+          aria-hidden={formVisible || undefined}
           aria-modal={modal || undefined}
           aria-label={cb.title}
           aria-labelledby="ivt-chat-title"
@@ -502,12 +507,14 @@ export default function ChatWidget({
         </div>
       )}
 
-      {/* Floating button */}
+      {/* Floating button — also hidden while the booking form is on screen. */}
       <button
         ref={launcherRef}
         onClick={() => open ? closeChat() : setOpen(true)}
         aria-label={cb.aria}
         aria-expanded={open}
+        aria-hidden={formVisible || undefined}
+        tabIndex={formVisible ? -1 : undefined}
         className="ivt-chat-control"
         style={{
           position: 'fixed',
@@ -519,8 +526,9 @@ export default function ChatWidget({
           border: 'none', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           boxShadow: '0 4px 18px rgba(201,154,50,0.45)',
-          opacity: appeared ? 1 : 0,
-          visibility: appeared ? 'visible' : 'hidden',
+          opacity: appeared && !formVisible ? 1 : 0,
+          visibility: appeared && !formVisible ? 'visible' : 'hidden',
+          pointerEvents: formVisible ? 'none' : 'auto',
           transform: appeared ? 'scale(1)' : 'scale(0)',
           transition: appeared
             ? 'opacity 0.35s ease, transform 0.4s cubic-bezier(0.34,1.56,0.64,1), background 0.2s ease, visibility 0s'

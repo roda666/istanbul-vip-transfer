@@ -1365,6 +1365,22 @@ export const priceCalculatorSettings = pgTable('price_calculator_settings', {
   updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
 });
 
+/**
+ * Singleton row (id=1) holding the fleet-wide default "ek özellikler" (amenity)
+ * codes shown on a vehicle card whose own `vehicles.features` is empty. A
+ * vehicle with its own non-empty `features` always overrides this default —
+ * this row only fills the gap for vehicles nobody has configured yet, so
+ * "no data" never reads to a visitor as "this vehicle lacks amenities".
+ */
+export const vehicleFeatureDefaults = pgTable('vehicle_feature_defaults', {
+  id:        integer('id').primaryKey().default(1),
+  codes:     jsonb('codes').$type<string[]>().default([]).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+});
+
+export type VehicleFeatureDefaults = typeof vehicleFeatureDefaults.$inferSelect;
+
 export const routePriceRules = pgTable('route_price_rules', {
   id:          uuid('id').primaryKey().defaultRandom(),
   routeId:     uuid('route_id').notNull().references(() => transferRoutes.id, { onDelete: 'cascade' }),

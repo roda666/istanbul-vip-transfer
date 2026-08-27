@@ -186,6 +186,28 @@ const SPECS = [
     alt: 'Gelin arabası için hazırlanmış beyaz gül ve kurdele süslemesinin yakın görünümü',
     prompt: "No text, no logos, no brand marks, no readable signage. Photorealistic close-up detail of an elegant floral arrangement of white roses and soft ivory ribbon resting on the polished black bonnet of a premium car with plain unmarked panels, shallow depth of field, warm late-afternoon light reflecting softly on the paintwork, blurred green foliage in the background. No badges, no emblems, no ornaments, no lettering anywhere on the car or the arrangement. Editorial wedding detail photography, natural colour grading, no text, no logos, no brand marks, no readable signage.",
   },
+  // ── Batch 6 (final) ────────────────────────────────────────────────────
+  {
+    index: 19,
+    slug: 'gunluk-villa-kiralama',
+    heading: 'İstanbul Çevresinde Villa Bölgeleri',
+    alt: 'İstanbul çevresinde havuzlu ve bahçeli günlük kiralık villa',
+    prompt: "No text, no logos, no brand marks, no readable signage. Photorealistic image of a modern private villa with a clean rectangular swimming pool in a green garden, tall pines and a wooden deck with simple loungers, warm late-afternoon light, soft reflections on the water. No people. All walls, doors, windows and surfaces completely blank with no signs, numbers or lettering. Architectural editorial photography, natural colour grading, no text, no logos, no brand marks, no readable signage.",
+  },
+  {
+    index: 20,
+    slug: 'ucus-karsilama-meet-greet',
+    heading: 'Uçuş Karşılama Hizmeti Nasıl İşler?',
+    alt: 'Havalimanı geliş salonunda boş isim tabelasıyla bekleyen karşılama görevlisi',
+    prompt: "No text, no logos, no brand marks, no readable signage. Photorealistic close-up from behind and slightly to the side of a person in a dark suit standing in an airport arrivals area, holding a completely blank white name-board at chest height. Focus on the board and the shoulder; the arrivals crowd beyond is softly out of focus with warm terminal lighting. The board is pure white with absolutely no writing, no marks and no drawings on it. All background walls, screens and surfaces blank with no lettering. Documentary photography, natural colours, no text anywhere, no logos, no brand marks, no readable signage.",
+  },
+  {
+    index: 21,
+    slug: 'vip-protokol-secim-araci',
+    heading: 'Çoklu Araç ve Filo Organizasyonu',
+    alt: 'Protokol organizasyonu için sıralanmış birden fazla siyah transfer aracı',
+    prompt: "No text, no logos, no brand marks, no readable signage, no visible number plate. Photorealistic image of four black premium minivans with plain unmarked body panels and no plate-shaped dark rectangles, parked in a neat row on a wide clean forecourt in soft overcast daylight, seen from a three-quarter front angle with even spacing between them. Orderly, disciplined, understated. Blurred low buildings behind with completely blank facades, no signs, banners or lettering. Editorial business photography, natural colour grading, no text, no logos, no brand marks, no readable signage, no visible number plates.",
+  },
 ];
 
 function isWebp(bytes) {

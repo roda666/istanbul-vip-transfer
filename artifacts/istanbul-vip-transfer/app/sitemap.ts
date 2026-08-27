@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { SITE } from '@/lib/site-config';
+import { LANG_LOCALES } from '@/lib/i18n';
 import {
   localizedServiceCategoryPath,
   localizedServicePath,
@@ -265,91 +266,112 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // A database issue must never cause unverified route locales to be indexed.
   }
 
-  // ── 6. DB-driven Turkish blog posts ──────────────────────────────────────
+  // ── 6 & 7. DB-driven blog posts (TR + published translations) ───────────
+  // Only BLOG_POST source content that is itself PUBLISHED generates blog URLs.
+  // Service/Page translations must never appear under /blog/ or /lang/blog/.
+  // Each URL (TR and every translation) carries an <xhtml:link rel="alternate">
+  // hreflang set built from every PUBLISHED translation of that same article,
+  // so crawlers can discover every language variant directly from any one entry.
   try {
-    const { getPublishedBlogPosts } = await import('@/lib/blog-cms');
-    const dbBlogPosts = await getPublishedBlogPosts();
-    if (dbBlogPosts.length > 0) {
+    const { db }                            = await import('@/db');
+    const { content, contentTranslations }  = await import('@/db/schema');
+    const { eq, and, inArray }              = await import('drizzle-orm');
+
+    const posts = await db
+      .select({ id: content.id, slug: content.slug, updatedAt: content.updatedAt })
+      .from(content)
+      .where(and(
+        eq(content.contentType, 'BLOG_POST'),
+        eq(content.status,      'PUBLISHED'),
+        eq(content.isActive,    true),
+      ));
+
+    if (posts.length > 0) {
+      const postIds = posts.map((p) => p.id);
+
+      const txRows = await db
+        .select({
+          entityId:           contentTranslations.entityId,
+          targetLanguageCode: contentTranslations.targetLanguageCode,
+          slug:               contentTranslations.slug,
+          publishedAt:        contentTranslations.publishedAt,
+          updatedAt:          contentTranslations.updatedAt,
+        })
+        .from(contentTranslations)
+        .where(and(
+          eq(contentTranslations.entityType, 'content'),
+          eq(contentTranslations.status,     'PUBLISHED'),
+          inArray(contentTranslations.entityId, postIds),
+        ));
+
+      // Map source content ID → Map<lang, translation row>. Passive/unpublished
+      // catalog languages are guarded out here, same as the rest of the sitemap.
+      const txByPost = new Map<string, Map<string, (typeof txRows)[number]>>();
+      for (const tx of txRows) {
+        if (!publicCodes.has(tx.targetLanguageCode)) continue;
+        if (!txByPost.has(tx.entityId)) txByPost.set(tx.entityId, new Map());
+        txByPost.get(tx.entityId)!.set(tx.targetLanguageCode, tx);
+      }
+
       push({ url: `${BASE}/blog`, changeFrequency: 'weekly', priority: 0.65 });
-      for (const post of dbBlogPosts) {
+
+      // Collect which non-TR languages have ≥1 published blog translation
+      // so we can emit their /lang/blog index exactly once.
+      const langsWithBlog = new Set<string>();
+
+      for (const post of posts) {
+        const trUrl     = `${BASE}/blog/${post.slug}`;
+        const txLocales = txByPost.get(post.id);
+
+        // hreflang set shared by the TR entry and every translated entry of
+        // this same article — x-default + tr-TR always point at the TR URL.
+        const languages: Record<string, string> = {
+          'x-default':      trUrl,
+          [LANG_LOCALES.tr]: trUrl,
+        };
+        if (txLocales) {
+          for (const [lang, tx] of txLocales) {
+            const slug = tx.slug ?? post.slug;
+            languages[LANG_LOCALES[lang as keyof typeof LANG_LOCALES] ?? lang] = `${BASE}/${lang}/blog/${slug}`;
+          }
+        }
+
         push({
-          url: `${BASE}/blog/${post.slug}`,
+          url: trUrl,
           lastModified: post.updatedAt,
           changeFrequency: 'monthly',
           priority: 0.6,
+          alternates: { languages },
         });
+
+        if (txLocales) {
+          for (const [lang, tx] of txLocales) {
+            // Use the translated slug when present; fall back to the source slug.
+            const slug = tx.slug ?? post.slug;
+            langsWithBlog.add(lang);
+            push({
+              url: `${BASE}/${lang}/blog/${slug}`,
+              // Use real timestamps — no new Date() fallback for dynamic content.
+              ...(tx.publishedAt || tx.updatedAt
+                ? { lastModified: tx.publishedAt ?? tx.updatedAt! }
+                : {}),
+              changeFrequency: 'monthly',
+              priority: 0.55,
+              alternates: { languages },
+            });
+          }
+        }
       }
-    }
-  } catch {
-    // DB unavailable — omit TR blog entries from sitemap
-  }
 
-  // ── 7. DB-driven: published BLOG_POST translations ────────────────────────
-  // Only BLOG_POST source content that is itself PUBLISHED generates translated
-  // blog URLs.  Service/Page translations must never appear under /lang/blog/.
-  try {
-    const { db }                  = await import('@/db');
-    const { contentTranslations, content } = await import('@/db/schema');
-    const { eq, and, sql }        = await import('drizzle-orm');
-
-    const rows = await db
-      .select({
-        targetLanguageCode: contentTranslations.targetLanguageCode,
-        slug:               contentTranslations.slug,
-        sourceSlug:         content.slug,
-        publishedAt:        contentTranslations.publishedAt,
-        updatedAt:          contentTranslations.updatedAt,
-      })
-      .from(contentTranslations)
-      // innerJoin ensures the source content row exists; leftJoin would allow
-      // orphaned translations to generate URLs with null sourceSlug.
-      // entity_id is TEXT, content.id is UUID — explicit cast required.
-      .innerJoin(content, sql`${contentTranslations.entityId}::uuid = ${content.id}`)
-      .where(
-        and(
-          eq(contentTranslations.status,     'PUBLISHED'),
-          eq(contentTranslations.entityType, 'content'),
-          // Only original blog posts — never service or static page translations.
-          eq(content.contentType, 'BLOG_POST'),
-          // Source must itself be published (no drafts leaking through).
-          eq(content.status, 'PUBLISHED'),
-        ),
-      );
-
-    // Collect which non-TR languages have ≥1 published blog translation
-    // so we can emit their /lang/blog index exactly once.
-    const langsWithBlog = new Set<string>();
-
-    for (const row of rows) {
-      const lang = row.targetLanguageCode;
-      // No /tr/blog/… URLs — TR is served at /blog/…
-      if (lang === 'tr') continue;
-      if (!publicCodes.has(lang)) continue; // guard against passive catalog leaks
-
-      // Use the translated slug when present; fall back to the source content slug.
-      const slug = row.slug ?? row.sourceSlug;
-      if (!slug) continue;
-
-      langsWithBlog.add(lang);
-      push({
-        url: `${BASE}/${lang}/blog/${slug}`,
-        // Use real timestamps — no new Date() fallback for dynamic content.
-        ...(row.publishedAt || row.updatedAt
-          ? { lastModified: row.publishedAt ?? row.updatedAt! }
-          : {}),
-        changeFrequency: 'monthly',
-        priority: 0.55,
-      });
-    }
-
-    // Locale blog index pages — no lastModified (no reliable updatedAt).
-    for (const lang of nonTrLangs) {
-      if (langsWithBlog.has(lang.code)) {
-        push({
-          url: `${BASE}/${lang.code}/blog`,
-          changeFrequency: 'weekly',
-          priority: 0.6,
-        });
+      // Locale blog index pages — no lastModified (no reliable updatedAt).
+      for (const lang of nonTrLangs) {
+        if (langsWithBlog.has(lang.code)) {
+          push({
+            url: `${BASE}/${lang.code}/blog`,
+            changeFrequency: 'weekly',
+            priority: 0.6,
+          });
+        }
       }
     }
   } catch {

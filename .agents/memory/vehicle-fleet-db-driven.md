@@ -30,8 +30,11 @@ checkbox picker against that catalog, not a text input. **Why:** several vehicle
 amenity tags because there was no shared baseline — this "own data wins, else inherit shared default" pattern
 is the general fix for that class of problem and should be reused for similar per-item-vs-shared-default needs.
 
-## Grouped vs ungrouped rendering (added 2026-08-27)
-`VehicleFleet` takes an independent `grouped` boolean prop (default `!homepageMode`) rather than overloading
-`homepageMode` — the two are orthogonal (where it's placed vs. whether vehicle-class headings are shown). Only
-the dedicated fleet page (`/araclar`) passes `grouped` explicitly true; all service-page call sites pass
-`grouped={false}` to render one flat `CardCarouselStrip` with no class headings.
+## Dedicated fleet-page layout decision (confirmed 2026-08-27)
+The dedicated fleet page must not group vehicles by class or use horizontal strips. Its `grouped` rendering
+branch is intentionally a single responsive comparison grid: one column on mobile, two on tablet, three on
+wide desktop. Homepage and service-page calls keep the shared horizontal `CardCarouselStrip`.
+
+**Why:** The site owner rejected class sections after seeing single midibus and coach cards stranded in narrow,
+one-item strips. The comparison page must expose every published vehicle together; equal card height comes from
+fixed image, tagline, title, description, feature and CTA zones inside the same shared card component.

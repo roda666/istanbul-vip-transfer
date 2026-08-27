@@ -10,7 +10,7 @@ import { resolveHomepageCtaAction } from '@/lib/homepage-cta-route';
 import { getPublicUiCopy } from '@/lib/i18n/public-ui';
 import { isolateLtrValues } from '@/lib/i18n/bidi';
 import type { Dictionary } from '@/lib/i18n/types';
-import { groupFleetVehicles, normalizeVehicleType, type VehicleType } from '@/lib/vehicle-options';
+import { normalizeVehicleType } from '@/lib/vehicle-options';
 import { isSuccessfulVehicleResponse } from '@/lib/vehicle-api-contract';
 import CardCarouselStrip from '@/components/CardCarouselStrip';
 
@@ -100,17 +100,19 @@ function adaptDbVehicle(
     passengerCapacity: vehicle.passengerCapacity,
     luggage:     vehicle.luggageCapacity,
     description: vehicle.displayShortDesc,
-    features:    (vehicle.features ?? []).map(f => ({
-      icon:  FEATURE_ICON_MAP[getFeatureParts(f).code] ?? Star,
-      label: localizeFeatureLabel(f, labels, lang),
-    })),
+    features:    (vehicle.features ?? [])
+      .map(f => ({
+        icon:  FEATURE_ICON_MAP[getFeatureParts(f).code] ?? Star,
+        label: localizeFeatureLabel(f, labels, lang),
+      }))
+      .filter(feature => feature.label.trim().length > 0),
     featured: vehicle.isFeatured,
     vehicleType: normalizeVehicleType(vehicle.vehicleType),
   };
 }
 
-/** Single vehicle card (extracted for carousel use) */
-function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage: lugLabel, lang, scrollToBooking }: {
+/** Shared vehicle card used by the homepage, service pages, and fleet grid. */
+function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage: lugLabel, lang, scrollToBooking, gridItem = false }: {
   vehicle: DisplayVehicle;
   i: number;
   cta: string;
@@ -119,10 +121,11 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
   luggage: string;
   lang: string;
   scrollToBooking: () => void;
+  gridItem?: boolean;
 }) {
   return (
     <motion.div
-      className="group relative rounded-2xl overflow-hidden ivt-card-strip-item"
+      className={`group relative flex h-full min-w-0 flex-col rounded-2xl overflow-hidden ${gridItem ? '' : 'ivt-card-strip-item'}`}
       style={{
         background: '#FFFFFF',
         border: vehicle.featured ? '1px solid rgba(199,154,53,0.5)' : '1px solid #D9E2EC',
@@ -156,7 +159,7 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
       )}
 
       {/* Vehicle Image */}
-      <div className="relative overflow-hidden" style={{ height: '200px', background: '#EAF2F8' }}>
+      <div className="relative aspect-[4/3] shrink-0 overflow-hidden" style={{ background: '#EAF2F8' }}>
         <Image
           src={vehicle.image}
           alt={vehicle.alt}
@@ -172,27 +175,29 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
       </div>
 
       {/* Content */}
-      <div className="p-6">
+      <div className="flex flex-1 flex-col p-6">
         <span
-          className="text-xs tracking-[0.2em] uppercase font-semibold block mb-1"
+          className="mb-1 block h-[18px] overflow-hidden text-xs font-semibold uppercase tracking-[0.2em] line-clamp-1"
           style={{ color: '#8A651C', fontFamily: 'Inter, sans-serif' }}
         >
           {isolateLtrValues(vehicle.tagline, lang)}
         </span>
         <h3
-          className="text-xl font-bold mb-2"
+          className="mb-2 h-[30px] overflow-hidden text-xl font-bold line-clamp-1"
           style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}
         >
           {isolateLtrValues(vehicle.name, lang)}
         </h3>
-        <p className="text-sm mb-4 leading-relaxed" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
+        <p
+          className="mb-4 h-[60px] overflow-hidden line-clamp-3 text-sm leading-relaxed"
+          style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
+        >
           {isolateLtrValues(vehicle.description, lang)}
         </p>
 
         {/* Capacity */}
         <div
-          className="flex items-center gap-5 mb-4 pb-4"
-          style={{ borderBottom: '1px solid #D9E2EC' }}
+          className="mb-4 flex h-[39px] shrink-0 items-start gap-5 border-b border-[#D9E2EC] pb-4"
         >
           <div className="flex items-center gap-1.5">
             <Users size={14} style={{ color: '#8A651C' }} aria-hidden="true" />
@@ -209,7 +214,7 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
         </div>
 
         {/* Features */}
-        <div className="flex flex-wrap gap-1.5 mb-5">
+        <div className="mb-5 flex h-[58px] shrink-0 flex-wrap content-start gap-1.5 overflow-hidden">
           {vehicle.features.map((feature) => (
             <div
               key={feature.label}
@@ -229,14 +234,7 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
         {/* CTA */}
         <button
           onClick={scrollToBooking}
-          className="w-full py-3 rounded-xl text-sm font-semibold tracking-wider uppercase transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-          style={{
-            background: vehicle.featured ? '#C79A35' : 'transparent',
-            border: vehicle.featured ? 'none' : '1.5px solid #102A43',
-            color: '#102A43',
-            fontFamily: 'Inter, sans-serif',
-            letterSpacing: '0.08em',
-          }}
+          className="flex h-12 w-full shrink-0 items-center justify-center rounded-xl text-sm font-semibold uppercase tracking-wider transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
           onMouseEnter={(e) => {
             if (!vehicle.featured) {
               (e.currentTarget as HTMLButtonElement).style.background = '#102A43';
@@ -248,6 +246,14 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
               (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
               (e.currentTarget as HTMLButtonElement).style.color = '#102A43';
             }
+          }}
+          style={{
+            background: vehicle.featured ? '#C79A35' : 'transparent',
+            border: vehicle.featured ? 'none' : '1.5px solid #102A43',
+            color: '#102A43',
+            fontFamily: 'Inter, sans-serif',
+            letterSpacing: '0.08em',
+            marginTop: 'auto',
           }}
           data-testid={`vehicle-cta-${i}`}
         >
@@ -305,14 +311,6 @@ export default function VehicleFleet({ homepageMode = false, grouped = !homepage
   }, [lang, v, vehiclesRequest]);
 
   const displayVehicles = dbVehicles;
-  const fleetGroups = groupFleetVehicles(displayVehicles);
-  const fleetGroupLabels: Record<VehicleType, string> = {
-    minivan: 'Minivan',
-    minibus: 'Minibüs',
-    midibus: 'Midibüs',
-    bus: 'Otobüs',
-  };
-
   if (section && !section.enabled) return null;
 
   return (
@@ -354,8 +352,9 @@ export default function VehicleFleet({ homepageMode = false, grouped = !homepage
           </p>
         </motion.div>
 
-          {/* Homepage is a compact carousel. The dedicated fleet page keeps
-              the same cards but makes the authoritative classes explicit. */}
+           {/* Homepage and service pages use a compact carousel. The dedicated
+               fleet page is a comparison grid so every vehicle is visible
+               without horizontal scrolling. */}
           {vehiclesLoading && (
             <div role="status" aria-live="polite" aria-label={ui.location.loading} className="flex gap-6 overflow-hidden pb-3">
               <span className="sr-only">{ui.location.loading}</span>
@@ -382,28 +381,25 @@ export default function VehicleFleet({ homepageMode = false, grouped = !homepage
               </button>
             </div>
           )}
-          {!vehiclesLoading && !vehiclesError && grouped && fleetGroups.length > 0 && (
-            <div className="space-y-10">
-              {fleetGroups.map((group) => (
-                <div key={group.type}>
-                  <h3 className="mb-4 text-xl font-bold" style={{ color: '#102A43', fontFamily: 'Playfair Display, Georgia, serif' }}>
-                    {fleetGroupLabels[group.type]}
-                  </h3>
-                  <CardCarouselStrip
-                    itemCount={group.vehicles.length}
-                    previousLabel={ui.vehicles.previous}
-                    nextLabel={ui.vehicles.next}
-                    testId={`vehicle-strip-${group.type}`}
-                  >
-                    {group.vehicles.map((vehicle, i) => (
-                      <VehicleCard key={vehicle.name} vehicle={vehicle} i={i}
-                        cta={section?.ctaText ?? v.cta} popular={v.popular}
-                        passengers={v.passengers} luggage={v.luggage} lang={lang}
-                        scrollToBooking={scrollToBooking} />
-                    ))}
-                  </CardCarouselStrip>
-                </div>
-              ))}
+           {!vehiclesLoading && !vehiclesError && grouped && displayVehicles.length > 0 && (
+             <div
+               className="grid grid-cols-1 items-stretch gap-6 md:grid-cols-2 xl:grid-cols-3"
+               data-testid="vehicles-grid"
+             >
+               {displayVehicles.map((vehicle, i) => (
+                 <VehicleCard
+                   key={vehicle.name}
+                   vehicle={vehicle}
+                   i={i}
+                   cta={section?.ctaText ?? v.cta}
+                   popular={v.popular}
+                   passengers={v.passengers}
+                   luggage={v.luggage}
+                   lang={lang}
+                   scrollToBooking={scrollToBooking}
+                   gridItem
+                 />
+               ))}
             </div>
           )}
           {!vehiclesLoading && !vehiclesError && !grouped && (

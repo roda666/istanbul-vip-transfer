@@ -8,9 +8,8 @@
 import OpenAI from 'openai';
 import { formatChatbotKnowledgeContext, getRelevantChatbotKnowledge } from '@/lib/chatbot-knowledge';
 import { formatChatbotFareRangeContext, getChatbotFareRangeMatches } from '@/lib/chatbot-pricing';
-import { normalizeEmailLinkBaseUrl, resolveEmailLinkOrigin } from '@/lib/email-link-url';
+import { resolveEmailLinkOrigin } from '@/lib/email-link-url';
 import { sanitizeChatbotReply } from '@/lib/chatbot-message-safety';
-import { SITE } from '@/lib/site-config';
 
 /** Configurable via env var; defaults to gpt-5.4-mini. */
 export const CHATBOT_MODEL = process.env.OPENAI_CHATBOT_MODEL ?? 'gpt-5.4-mini';
@@ -58,11 +57,10 @@ export async function resolveChatbotReservationFormUrl(
   request?: Request,
 ): Promise<string | null> {
   const origin = await resolveEmailLinkOrigin(request);
-  const verifiedBaseUrl = origin.baseUrl && !origin.isPreviewDomain
-    ? origin.baseUrl
-    : normalizeEmailLinkBaseUrl(SITE.siteUrl);
-  if (!verifiedBaseUrl) return null;
-  return new URL(getReservationFormPath(lang), verifiedBaseUrl).toString();
+  // Chatbot links must follow the admin-managed central site URL exactly.
+  // Never substitute a request host or a compile-time site constant.
+  if (origin.mode !== 'setting' || !origin.baseUrl) return null;
+  return new URL(getReservationFormPath(lang), origin.baseUrl).toString();
 }
 
 export function getSystemPrompt(lang: string, reservationFormUrl: string | null = null): string {

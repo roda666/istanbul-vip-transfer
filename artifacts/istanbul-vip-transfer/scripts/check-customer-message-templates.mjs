@@ -10,6 +10,13 @@ const TARGETS = [
   'lib/newsletter.ts',
   'app/admin/api/auth/reset-password/route.ts',
 ];
+const CHATBOT_TARGETS = [
+  'lib/chatbot-ai.ts',
+  'lib/chatbot-message-safety.ts',
+  'app/data/chatbot/route.ts',
+  'app/data/chatbot/[sessionId]/poll/route.ts',
+  'components/ChatWidget.tsx',
+];
 const ALLOWED_INTERNAL_LOG_LABELS = new Set(['[contact]']);
 
 const FORBIDDEN = [
@@ -87,6 +94,22 @@ for (const relativePath of TARGETS) {
   }
 }
 
+for (const relativePath of CHATBOT_TARGETS) {
+  const absolutePath = path.join(ROOT, relativePath);
+  const source = fs.readFileSync(absolutePath, 'utf8');
+  for (const chunk of staticMessageChunks(source, relativePath)) {
+    const hardcodedUrl = /https?:\/\/[a-z0-9][^\s"'<>)]*/giu;
+    for (const match of chunk.text.matchAll(hardcodedUrl)) {
+      findings.push({
+        file: relativePath,
+        line: lineNumber(source, chunk.index),
+        name: 'chatbot içinde sabit mutlak adres',
+        value: match[0].slice(0, 100),
+      });
+    }
+  }
+}
+
 if (findings.length > 0) {
   console.error('✗ Müşteriye giden mesaj şablonlarında doldurulmamış alan bulundu:');
   for (const finding of findings) {
@@ -95,4 +118,4 @@ if (findings.length > 0) {
   process.exit(1);
 }
 
-console.log(`✓ ${TARGETS.length} chatbot/rezervasyon/iletişim e-posta şablonu yer tutucu içermiyor.`);
+console.log(`✓ ${TARGETS.length} chatbot/rezervasyon/iletişim e-posta şablonu yer tutucu içermiyor; chatbot adresleri merkezi ayara bağlı.`);

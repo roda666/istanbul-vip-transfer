@@ -40,3 +40,11 @@ Location choices are search-on-demand: never preload the catalog, keep non-Istan
 
 ## Time selection
 `saatSaat` (HH select, 00-23) + `saatDakika` (MM select, 00/05/.../55) combined to HH:mm in onSubmit. Zod validates minute % 5 === 0.
+
+## Intercity province rule
+
+Every province may be paired with every other province. Istanbul is not a required endpoint.
+
+**Why:** The business explicitly accepts routes such as Ankara–İzmir. The only invalid intercity pairing is Istanbul–Istanbul, which belongs to the local-transfer service and would distort pricing.
+
+**How to apply:** When either intercity combobox contains an Istanbul location, hide all Istanbul locations only from the opposite combobox. For a non-Istanbul selection, keep Istanbul and every other province available.

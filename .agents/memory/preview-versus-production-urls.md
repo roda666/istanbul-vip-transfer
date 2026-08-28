@@ -9,8 +9,8 @@ Never present a project’s configured site URL as proof that the current Replit
 
 **How to apply:** Use deployment metadata for `isDeployed` and the production URL. Describe browser checks as preview-only unless the exact production URL was explicitly fetched and verified.
 
-Customer-facing links must also reject Replit preview domains even when a preview URL was accidentally saved in the central public-site setting. Prefer a non-preview central setting; otherwise use the product’s shared verified site URL rather than the request host.
+Chatbot booking links must use the admin-managed central public-site setting exactly, including when that setting intentionally points to a Replit preview URL. Never replace it with a compile-time domain or request-derived host.
 
-**Why:** Development-origin auto-detection can persist a temporary preview hostname in an otherwise authoritative setting, causing chat and transactional messages to expose an unstable URL.
+**Why:** During pre-launch, the preview app is the intended customer-test destination while the legacy custom domain still serves the old site. A compile-time fallback can silently send visitors to stale content.
 
-**How to apply:** Validate both detected and configured origins before composing public links. Domain changes should still be made through the central public-site setting, which takes precedence once it contains a non-preview HTTPS origin.
+**How to apply:** Normalize the configured HTTPS origin, append the localized booking path, and return no URL when the setting is unavailable. Surface preview-domain warnings in admin UI rather than silently substituting another domain.

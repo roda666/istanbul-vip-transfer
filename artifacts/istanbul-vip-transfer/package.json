@@ -7,6 +7,7 @@
     "dev": "next dev --hostname 0.0.0.0",
     "build": "next build",
     "start": "next start --hostname 0.0.0.0",
+    "audit:lighthouse": "NODE_OPTIONS='--conditions=react-server' tsx scripts/lighthouse-audit.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "next lint",
     "check:page-meta": "tsx scripts/check-page-meta.ts",

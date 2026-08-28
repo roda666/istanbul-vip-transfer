@@ -33,6 +33,8 @@ export const SITE = {
 
   /** Canonical base URL */
   siteUrl: 'https://www.istanbulviptransfer.com',
+  /** Canonical transparent brand mark used by Organization/LocalBusiness schema. */
+  logoUrl: 'https://www.istanbulviptransfer.com/logo.png',
 
   /** Default og:image used in social/AI previews (1200×630 px — canonical social card) */
   ogImage: {

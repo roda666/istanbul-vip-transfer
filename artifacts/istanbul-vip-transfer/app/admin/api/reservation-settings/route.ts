@@ -117,6 +117,8 @@ export async function POST(request: NextRequest) {
       metadata: data,
     }).catch(() => {});
 
+    const { revalidateBookingFormBootstrap } = await import('@/lib/booking-form-bootstrap');
+    revalidateBookingFormBootstrap();
     return NextResponse.json({ settings: updated });
   } catch (err) {
     console.error('Reservation settings POST error:', err);

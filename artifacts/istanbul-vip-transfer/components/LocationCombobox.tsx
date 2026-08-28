@@ -1,16 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { BookingLocationOption as LocationOption } from '@/lib/booking-form-types';
 
-export interface LocationOption {
-  id: string;
-  name: string;
-  slug: string;
-  type: 'AIRPORT' | 'DISTRICT' | 'REGION' | 'HOTEL_ZONE' | 'CUSTOM' | 'PROVINCE';
-  scope: 'LOCAL' | 'INTERCITY' | 'BOTH';
-  city: string;
-  district: string | null;
-}
+export type { BookingLocationOption as LocationOption } from '@/lib/booking-form-types';
 
 interface LocationLabels {
   airport: string;
@@ -35,6 +28,7 @@ interface Props {
   placeholder?: string;
   loadingText?: string;
   labels: LocationLabels;
+  options: LocationOption[];
   error?: boolean;
   excludeId?: string;
   excludeCity?: string;
@@ -64,15 +58,13 @@ export default function LocationCombobox({
   placeholder,
   loadingText,
   labels,
+  options,
   error,
   excludeId,
   excludeCity,
   onOptionChange,
 }: Props) {
   const [search, setSearch] = useState('');
-  const [options, setOptions] = useState<LocationOption[]>([]);
-  const [selectedOption, setSelectedOption] = useState<LocationOption | null>(null);
-  const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [isMobile, setIsMobile] = useState(false);
@@ -80,11 +72,6 @@ export default function LocationCombobox({
 
   const inputRef = useRef<HTMLInputElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const requestRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    if (!value) setSelectedOption(null);
-  }, [value]);
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 767px)');
@@ -116,44 +103,6 @@ export default function LocationCombobox({
     };
   }, []);
 
-  // Fetch results whenever the panel is open. A blank search still fetches —
-  // it returns the full browse list — instead of the old behaviour of
-  // short-circuiting to an empty array before the visitor typed anything.
-  useEffect(() => {
-    requestRef.current?.abort();
-    if (!open) return;
-
-    const query = search.trim();
-    const controller = new AbortController();
-    requestRef.current = controller;
-    const timer = window.setTimeout(async () => {
-      setLoading(true);
-      try {
-        const url = new URL('/data/locations', window.location.origin);
-        url.searchParams.set('for', forProp);
-        if (query) url.searchParams.set('q', query);
-        if (scope) url.searchParams.set('scope', scope);
-        const response = await fetch(url.toString(), { signal: controller.signal });
-        const data = response.ok ? await response.json() as { locations?: LocationOption[] } : null;
-        if (!controller.signal.aborted) {
-          // Trust the server's category-rank + Turkish-alphabetical ordering;
-          // re-sorting here would flatten it back to plain alphabetical.
-          setOptions(data?.locations ?? []);
-          setActiveIndex(-1);
-        }
-      } catch {
-        if (!controller.signal.aborted) setOptions([]);
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    }, query ? 180 : 0);
-
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [excludeId, forProp, scope, search, open]);
-
   // Desktop only: auto-focus the search field the moment the panel opens, for
   // fast typing. Mobile skips this on purpose so opening the panel never pops
   // the keyboard — the visitor sees the browsable list first.
@@ -179,20 +128,33 @@ export default function LocationCombobox({
     return () => document.removeEventListener('mousedown', handlePointerDown);
   }, [open]);
 
-  const visibleOptions = useMemo(() => (
-    options.filter((option) => {
+  const selectedOption = useMemo(
+    () => options.find((option) => option.id === value) ?? null,
+    [options, value],
+  );
+
+  const visibleOptions = useMemo(() => {
+    const normalize = (text: string) => text
+      .toLocaleLowerCase('tr-TR')
+      .replace(/ğ/g, 'g')
+      .replace(/ü/g, 'u')
+      .replace(/ş/g, 's')
+      .replace(/ı/g, 'i')
+      .replace(/ö/g, 'o')
+      .replace(/ç/g, 'c');
+    const query = normalize(search.trim());
+    return options.filter((option) => {
       if (excludeId && option.id === excludeId) return false;
       if (excludeCity && option.city.localeCompare(excludeCity, 'tr', { sensitivity: 'base' }) === 0) return false;
+      if (query && !normalize(`${option.name} ${option.city} ${option.district ?? ''}`).includes(query)) return false;
       return true;
-    })
-  ), [excludeCity, excludeId, options]);
+    });
+  }, [excludeCity, excludeId, options, search]);
 
   const selectOption = useCallback((option: LocationOption) => {
     onChange(option.id);
     onOptionChange?.(option);
-    setSelectedOption(option);
     setSearch('');
-    setOptions([]);
     setOpen(false);
     setActiveIndex(-1);
     triggerRef.current?.focus();
@@ -203,9 +165,7 @@ export default function LocationCombobox({
     event.stopPropagation();
     onChange('');
     onOptionChange?.(null);
-    setSelectedOption(null);
     setSearch('');
-    setOptions([]);
     setOpen(false);
   }
 
@@ -378,9 +338,7 @@ export default function LocationCombobox({
                 touchAction: 'pan-y',
               }}
             >
-              {loading ? (
-                <div style={emptyStateStyle}>{loadingText ?? labels.loading}</div>
-              ) : visibleOptions.length === 0 ? (
+              {visibleOptions.length === 0 ? (
                 <div style={emptyStateStyle}>{labels.noResults}</div>
               ) : (
                 visibleOptions.map((option, index) => {

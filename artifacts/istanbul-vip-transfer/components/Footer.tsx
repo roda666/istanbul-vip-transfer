@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { Phone, MapPin, Mail, Lock, ShieldCheck, Banknote, ArrowLeftRight, Smartphone, ExternalLink, Music2, Youtube } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
 import type { HomepageSections } from '@/lib/homepage-types';
@@ -176,12 +177,13 @@ export default function Footer({ serviceLinks = [], homepageFooter }: FooterProp
           <div className="lg:col-span-1">
             <div className="mb-5">
               <Link href={p('/')}>
-                <div
-                  className="text-2xl font-bold tracking-widest uppercase mb-1"
-                  style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#C79A35', letterSpacing: '0.15em' }}
-                >
-                  {cs.businessName}
-                </div>
+                <Image
+                  src="/logo-white.png"
+                  alt={cs.businessName}
+                  width={1600}
+                  height={640}
+                  className="h-auto w-[190px] max-w-full"
+                />
                 <div
                   className="text-[10px] tracking-[0.35em] uppercase"
                   style={{ color: 'rgba(255,255,255,0.65)', fontFamily: 'Inter, sans-serif' }}

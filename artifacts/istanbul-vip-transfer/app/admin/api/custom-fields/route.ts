@@ -40,5 +40,7 @@ export async function POST(req: Request) {
     sortOrder: body.sortOrder ?? 0,
   }).returning();
 
+  const { revalidateBookingFormBootstrap } = await import('@/lib/booking-form-bootstrap');
+  revalidateBookingFormBootstrap();
   return NextResponse.json({ field: row }, { status: 201 });
 }

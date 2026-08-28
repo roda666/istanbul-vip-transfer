@@ -149,6 +149,8 @@ export async function POST(request: NextRequest) {
     // Invalidate public locations cache
     const { revalidatePath } = await import('next/cache');
     revalidatePath('/data/locations');
+    const { revalidateBookingFormBootstrap } = await import('@/lib/booking-form-bootstrap');
+    revalidateBookingFormBootstrap();
 
     return NextResponse.json({ item: newItem }, { status: 201 });
   } catch (err: unknown) {

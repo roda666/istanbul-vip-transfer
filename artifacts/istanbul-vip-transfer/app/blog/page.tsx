@@ -64,6 +64,7 @@ export default async function BlogPage() {
       '@type': 'Organization',
       name: 'VIP Transfer Istanbul',
       url: BASE,
+      logo: { '@type': 'ImageObject', url: SITE.logoUrl, width: 600, height: 240 },
       telephone: cs.phoneE164,
       email: cs.email,
     },

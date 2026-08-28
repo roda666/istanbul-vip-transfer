@@ -217,6 +217,8 @@ export async function PUT(request: NextRequest, { params }: Params) {
       })
       .catch(() => {});
 
+    const { revalidateBookingFormBootstrap } = await import('@/lib/booking-form-bootstrap');
+    revalidateBookingFormBootstrap();
     return NextResponse.json({ item: updated });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : '';
@@ -290,6 +292,8 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     })
     .catch(() => {});
 
+  const { revalidateBookingFormBootstrap } = await import('@/lib/booking-form-bootstrap');
+  revalidateBookingFormBootstrap();
   return NextResponse.json({ success: true });
 }
 
@@ -431,6 +435,8 @@ export async function POST(request: NextRequest, { params }: Params) {
       })
       .catch(() => {});
 
+    const { revalidateBookingFormBootstrap } = await import('@/lib/booking-form-bootstrap');
+    revalidateBookingFormBootstrap();
     return NextResponse.json({ item: updated });
   } catch (err) {
     console.error('Vehicle action error:', err);

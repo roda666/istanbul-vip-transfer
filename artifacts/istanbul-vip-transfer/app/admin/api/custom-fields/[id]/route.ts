@@ -38,6 +38,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     .returning();
 
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  const { revalidateBookingFormBootstrap } = await import('@/lib/booking-form-bootstrap');
+  revalidateBookingFormBootstrap();
   return NextResponse.json({ field: row });
 }
 
@@ -50,5 +52,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   if (isNaN(numId)) return NextResponse.json({ error: 'Bad id' }, { status: 400 });
 
   await db.delete(customReservationFields).where(eq(customReservationFields.id, numId));
+  const { revalidateBookingFormBootstrap } = await import('@/lib/booking-form-bootstrap');
+  revalidateBookingFormBootstrap();
   return NextResponse.json({ ok: true });
 }

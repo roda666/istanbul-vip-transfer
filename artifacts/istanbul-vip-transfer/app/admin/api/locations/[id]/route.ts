@@ -138,6 +138,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
     const { revalidatePath } = await import('next/cache');
     revalidatePath('/data/locations');
+    const { revalidateBookingFormBootstrap } = await import('@/lib/booking-form-bootstrap');
+    revalidateBookingFormBootstrap();
 
     return NextResponse.json({ item: updated });
   } catch (err: unknown) {
@@ -172,6 +174,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   if (!current) return NextResponse.json({ error: 'Bulunamadı.' }, { status: 404 });
 
   const { revalidatePath } = await import('next/cache');
+  const { revalidateBookingFormBootstrap } = await import('@/lib/booking-form-bootstrap');
 
   if (!current.archivedAt) {
     const [updated] = await db.update(locations)
@@ -188,6 +191,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     }).catch(() => {});
 
     revalidatePath('/data/locations');
+    revalidateBookingFormBootstrap();
     return NextResponse.json({ item: updated, archived: true });
   } else {
     await db.delete(locations).where(eq(locations.id, id));
@@ -201,6 +205,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     }).catch(() => {});
 
     revalidatePath('/data/locations');
+    revalidateBookingFormBootstrap();
     return NextResponse.json({ success: true, deleted: true });
   }
 }

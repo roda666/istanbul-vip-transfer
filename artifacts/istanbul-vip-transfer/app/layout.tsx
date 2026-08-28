@@ -10,6 +10,8 @@ import { SiteSettingsProvider } from '@/components/SiteSettingsContext';
 import { cookies, headers } from 'next/headers';
 import { getPublicLanguage } from '@/lib/i18n/active-locales';
 import { getPublicChrome, type PublicChromePayload } from '@/lib/public-chrome';
+import { getBookingFormBootstrap } from '@/lib/booking-form-bootstrap';
+import { EMPTY_BOOKING_FORM_BOOTSTRAP } from '@/lib/booking-form-types';
 
 /**
  * Self-hosted via next/font — eliminates the external Google Fonts request
@@ -45,10 +47,13 @@ export const metadata: Metadata = {
     'İstanbul VIP transfer hizmeti; İstanbul Havalimanı, Sabiha Gökçen, şehir içi ve şehirler arası minivan, minibüs, midibüs ve otobüs seçenekleri.',
   metadataBase: new URL(SITE.siteUrl),
   icons: {
-    // SVG favicon for modern browsers (served via app/icon.svg)
-    icon:  [{ url: '/icon.svg', type: 'image/svg+xml' }],
-    // Apple touch icon (180×180 static PNG in public/)
-    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+    // Explicit PNG sizes keep browser, Android and crawler discovery deterministic.
+    icon: [
+      { url: '/favicon-16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [{ url: '/favicon-180.png', sizes: '180x180', type: 'image/png' }],
     // Classic ICO fallback for older browsers and bookmarks
     shortcut: [{ url: '/favicon.ico' }],
   },
@@ -88,6 +93,9 @@ export default async function RootLayout({
   const publicChrome = isPublicRequest
     ? await getPublicChrome(initialLang).catch((): PublicChromePayload => EMPTY_PUBLIC_CHROME)
     : { ...EMPTY_PUBLIC_CHROME, contactSettings: await getContactSettings() };
+  const bookingFormData = isPublicRequest
+    ? await getBookingFormBootstrap(initialLang)
+    : EMPTY_BOOKING_FORM_BOOTSTRAP;
 
   return (
     <html lang={initialLang} dir={initialDirection} className={`${playfairDisplay.variable} ${inter.variable}`}>
@@ -100,6 +108,7 @@ export default async function RootLayout({
         <SiteSettingsProvider settings={publicChrome.contactSettings}>
           <PublicLayoutWrapper
             initialLang={initialLang}
+            bookingFormData={bookingFormData}
             serviceNavigationGroups={publicChrome.serviceNavigationGroups}
             serviceLinks={publicChrome.serviceLinks}
             hasCookieConsentDecision={hasCookieConsentDecision}

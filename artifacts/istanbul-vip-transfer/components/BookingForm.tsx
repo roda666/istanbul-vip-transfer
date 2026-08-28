@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { trackEvent } from '@/lib/analytics';
 import { Controller, useForm } from 'react-hook-form';
@@ -35,6 +35,12 @@ import {
   openWhatsAppChat,
 } from '@/lib/whatsapp';
 import { SITE } from '@/lib/site-config';
+import { useBookingFormData } from './BookingFormDataContext';
+import type {
+  BookingCustomField as CustomField,
+  BookingServiceTypeOption as ServiceTypeOption,
+  BookingVehicleOption as PublishedVehicleOption,
+} from '@/lib/booking-form-types';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -54,6 +60,7 @@ const HONEYPOT_STYLE: React.CSSProperties = {
 };
 const RESERVATION_SUBMISSION_ATTEMPTS = 3;
 const RESERVATION_RETRY_DELAYS_MS = [0, 500, 1_500] as const;
+const RESERVATION_REQUEST_TIMEOUT_MS = 20_000;
 const SUBMISSION_STATUS_COPY: Record<string, { saved: string; failed: string }> = {
   tr: {
     saved: 'Talebiniz sisteme kaydedildi. WhatsApp mesajını göndererek görüşmeyi başlatabilirsiniz.',
@@ -93,15 +100,6 @@ const SUBMISSION_STATUS_COPY: Record<string, { saved: string; failed: string }> 
   },
 };
 
-interface CustomField {
-  id: number;
-  label: string;
-  appliesToSlugs: string[];
-  fieldType: string;
-  isActive: boolean;
-  sortOrder: number;
-}
-
 interface CustomFieldAnswer {
   id: number;
   label: string;
@@ -109,27 +107,6 @@ interface CustomFieldAnswer {
 }
 
 // ── Service type defs ─────────────────────────────────────────────────────────
-
-interface ServiceTypeOption {
-  id: string;
-  key: string;
-  label: string;
-  description: string | null;
-  quoteEnabled: boolean;
-  reservationEnabled: boolean;
-}
-
-interface PublishedVehicleOption {
-  id: string;
-  slug: string;
-  displayName: string;
-  passengerCapacity: number | null;
-  vehicleType: string | null;
-}
-
-interface FormSettings {
-  showVehiclePreference: boolean;
-}
 
 const SERVICE_ICONS: Record<string, React.ReactNode> = {
   AIRPORT_TRANSFER: <Plane        size={20} aria-hidden="true" />,
@@ -380,6 +357,7 @@ export default function BookingForm({
   const b = dict.booking;
   const ui = getPublicUiCopy(lang);
   const cms = useHomepageCms();
+  const bootstrap = useBookingFormData();
   const homepageSection = homepageMode ? cms?.reservationSection : null;
 
   // Localised service-type card labels — DB labels are always Turkish
@@ -395,21 +373,25 @@ export default function BookingForm({
   // e.g. /tr/istanbul-havalimani-transfer → istanbul-havalimani-transfer
   const pageSlug = pathname?.split('/').filter(Boolean).at(-1) ?? '';
 
-  const [serviceTypes, setServiceTypes]   = useState<ServiceTypeOption[]>([]);
-  const [activeService, setActiveService] = useState('AIRPORT_TRANSFER');
-  const [loadingST, setLoadingST]         = useState(true);
+  const serviceTypes = bootstrap.serviceTypes;
+  const [activeService, setActiveService] = useState(() => serviceTypes[0]?.key ?? 'AIRPORT_TRANSFER');
   const [submitting, setSubmitting]       = useState(false);
   const [newsletterConsent, setNewsletterConsent] = useState(false);
   const [newsletterError, setNewsletterError]     = useState('');
   const websiteHoneypotRef = useRef<HTMLInputElement>(null);
   const companyHoneypotRef = useRef<HTMLInputElement>(null);
   const [formGuardToken, setFormGuardToken] = useState<string | null>(null);
-  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const customFields = useMemo(
+    () => bootstrap.customFields.filter((field) =>
+      field.isActive
+      && (field.appliesToSlugs.length === 0 || field.appliesToSlugs.includes(pageSlug))),
+    [bootstrap.customFields, pageSlug],
+  );
   // State values for custom checkbox fields (keyed by field id)
   const [customFieldValues, setCustomFieldValues] = useState<Record<number, boolean | string>>({});
-  const [publishedVehicles, setPublishedVehicles] = useState<PublishedVehicleOption[]>([]);
+  const publishedVehicles = bootstrap.vehicles;
   const [locationLabels, setLocationLabels] = useState<Record<string, string>>({});
-  const [formSettings, setFormSettings] = useState<FormSettings>({ showVehiclePreference: false });
+  const formSettings = bootstrap.formSettings;
   const [submissionNotice, setSubmissionNotice] = useState<{ kind: 'saved' | 'failed'; message: string } | null>(null);
   const [intercityPickupOption, setIntercityPickupOption] = useState<LocationOption | null>(null);
   const [intercityDropoffOption, setIntercityDropoffOption] = useState<LocationOption | null>(null);
@@ -433,52 +415,6 @@ export default function BookingForm({
       return next;
     });
   }
-
-  // Fetch admin-defined custom fields for this service slug
-  useEffect(() => {
-    const url = pageSlug ? `/data/custom-fields?slug=${encodeURIComponent(pageSlug)}` : '/data/custom-fields';
-    fetch(url)
-      .then(r => r.ok ? r.json() : null)
-      .then((d: { fields?: CustomField[] } | null) => {
-        if (d?.fields) setCustomFields(d.fields.filter(f => f.isActive));
-      })
-      .catch(() => {});
-  }, [pageSlug]);
-
-  useEffect(() => {
-    fetch('/data/form-settings')
-      .then((response) => response.ok ? response.json() : null)
-      .then((settings: FormSettings | null) => {
-        if (settings) setFormSettings({ showVehiclePreference: settings.showVehiclePreference === true });
-      })
-      .catch(() => {});
-  }, []);
-
-  // Recommendations must always use the public endpoint: it already excludes
-  // archived, unpublished and incomplete-translation records.
-  useEffect(() => {
-    let active = true;
-    fetch(`/data/vehicles?lang=${encodeURIComponent(lang)}`)
-      .then((response) => response.ok ? response.json() : null)
-      .then((data: { vehicles?: PublishedVehicleOption[] } | null) => {
-        if (active) setPublishedVehicles(data?.vehicles ?? []);
-      })
-      .catch(() => { if (active) setPublishedVehicles([]); });
-    return () => { active = false; };
-  }, [lang]);
-
-  // Load service types once on mount
-  useEffect(() => {
-    fetch('/data/service-types')
-      .then((r) => r.json())
-      .then((d) => {
-        const items: ServiceTypeOption[] = d.items ?? [];
-        setServiceTypes(items);
-        if (items.length > 0) setActiveService(items[0].key);
-        setLoadingST(false);
-      })
-      .catch(() => setLoadingST(false));
-  }, []);
 
   // Read ?hizmet= query param once on mount
   useEffect(() => {
@@ -626,9 +562,17 @@ export default function BookingForm({
       publishedVehicles,
     );
 
-    // Build and start the first keepalive request before Android navigates away
-    // to WhatsApp. No await occurs before openWhatsAppChat, so popup/deep-link
-    // user activation is preserved while the write is already in flight.
+    // Open WhatsApp synchronously while the submit click still carries browser
+    // user activation. This navigation is isolated from persistence: a blocked
+    // tab never prevents the request, and a failed request never closes WhatsApp.
+    try {
+      openWhatsAppChat(SITE.whatsappNumber, msg);
+    } catch {
+      // Persistence below remains mandatory even if browser navigation fails.
+    }
+
+    // Start the independent keepalive write immediately after opening the tab.
+    // The request and every retry keep the same idempotency key.
     let payload: string | null = null;
     let firstRequest: Promise<Response> | null = null;
     try {
@@ -649,17 +593,13 @@ export default function BookingForm({
       firstRequest = fetch('/data/submit-request', {
         method:    'POST',
         keepalive: true,
-        signal:    AbortSignal.timeout(2500),
+        signal:    AbortSignal.timeout(RESERVATION_REQUEST_TIMEOUT_MS),
         headers:   { 'Content-Type': 'application/json' },
         body: payload,
       });
     } catch {
       // The visible failure notice below handles payload construction failures.
     }
-
-    // Open synchronously from the original submit event. Waiting for the
-    // reservation response first could be blocked by mobile popup policies.
-    openWhatsAppChat(SITE.whatsappNumber, msg);
 
     // Await the already-started request. Gateway/network failures are retried
     // with the same idempotency key, so a late response cannot duplicate data.
@@ -680,7 +620,7 @@ export default function BookingForm({
             : await fetch('/data/submit-request', {
                 method:    'POST',
                 keepalive: true,
-                signal:    AbortSignal.timeout(2500),
+                signal:    AbortSignal.timeout(RESERVATION_REQUEST_TIMEOUT_MS),
                 headers:   { 'Content-Type': 'application/json' },
                 body: payload,
               });
@@ -771,10 +711,7 @@ export default function BookingForm({
               <p className="text-xs tracking-[0.18em] uppercase mb-3 font-semibold" style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}>
                 {b.serviceTypeLabel}
               </p>
-              {loadingST ? (
-                <div className="h-16 rounded-xl" style={{ background: '#EBF4FF' }} />
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2" role="group" aria-label={b.serviceTypeLabel}>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2" role="group" aria-label={b.serviceTypeLabel}>
                   {serviceTypes.map((st) => {
                     const isActive  = activeService === st.key;
                     const iconColor = isActive ? SERVICE_ICON_COLORS[st.key] ?? '#C79A35' : '#718596';
@@ -800,8 +737,7 @@ export default function BookingForm({
                       </button>
                     );
                   })}
-                </div>
-              )}
+              </div>
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} data-testid="booking-form" noValidate>
@@ -841,7 +777,7 @@ export default function BookingForm({
                     <div data-testid="field-alis-lokasyon">
                       <label htmlFor="bf-alis-lokasyon" style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.pickupLocation}</label>
                       <Controller control={control} name="alisLokasyonu" render={({ field }) => (
-                        <LocationCombobox id="bf-alis-lokasyon" ariaLabel={b.pickupLocation} for="pickup" scope="local" value={field.value ?? ''} onChange={field.onChange}
+                        <LocationCombobox id="bf-alis-lokasyon" ariaLabel={b.pickupLocation} for="pickup" scope="local" options={bootstrap.locations.localPickup} value={field.value ?? ''} onChange={field.onChange}
                           onOptionChange={(option) => rememberLocationLabel('alisLokasyonu', option)}
                           placeholder={b.pickupPlaceholder} loadingText={dict.common.loading} labels={ui.location} error={!!errors.alisLokasyonu} excludeId={varisLokasyonuValue} />
                       )} />
@@ -850,7 +786,7 @@ export default function BookingForm({
                     <div data-testid="field-varis-lokasyon">
                       <label htmlFor="bf-varis-lokasyon" style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.dropoffLocation}</label>
                       <Controller control={control} name="varisLokasyonu" render={({ field }) => (
-                        <LocationCombobox id="bf-varis-lokasyon" ariaLabel={b.dropoffLocation} for="dropoff" scope="local" value={field.value ?? ''} onChange={field.onChange}
+                        <LocationCombobox id="bf-varis-lokasyon" ariaLabel={b.dropoffLocation} for="dropoff" scope="local" options={bootstrap.locations.localDropoff} value={field.value ?? ''} onChange={field.onChange}
                           onOptionChange={(option) => rememberLocationLabel('varisLokasyonu', option)}
                           placeholder={b.dropoffPlaceholder} loadingText={dict.common.loading} labels={ui.location} error={!!errors.varisLokasyonu} excludeId={alisLokasyonuValue} />
                       )} />
@@ -890,7 +826,7 @@ export default function BookingForm({
                     <div data-testid="field-kalkis-ili">
                       <label htmlFor="bf-kalkis-ili" style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.departureCity}</label>
                       <Controller control={control} name="kalkisIli" render={({ field }) => (
-                        <LocationCombobox id="bf-kalkis-ili" ariaLabel={b.departureCity} for="pickup" scope="intercity" value={field.value ?? ''} onChange={field.onChange}
+                        <LocationCombobox id="bf-kalkis-ili" ariaLabel={b.departureCity} for="pickup" scope="intercity" options={bootstrap.locations.intercityPickup} value={field.value ?? ''} onChange={field.onChange}
                           onOptionChange={(option) => {
                             rememberLocationLabel('kalkisIli', option);
                             setIntercityPickupOption(option);
@@ -903,7 +839,7 @@ export default function BookingForm({
                     <div data-testid="field-varis-ili">
                       <label htmlFor="bf-varis-ili" style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.arrivalCity}</label>
                       <Controller control={control} name="varisIli" render={({ field }) => (
-                        <LocationCombobox id="bf-varis-ili" ariaLabel={b.arrivalCity} for="dropoff" scope="intercity" value={field.value ?? ''} onChange={field.onChange}
+                        <LocationCombobox id="bf-varis-ili" ariaLabel={b.arrivalCity} for="dropoff" scope="intercity" options={bootstrap.locations.intercityDropoff} value={field.value ?? ''} onChange={field.onChange}
                           onOptionChange={(option) => {
                             rememberLocationLabel('varisIli', option);
                             setIntercityDropoffOption(option);
@@ -942,7 +878,7 @@ export default function BookingForm({
                     <div data-testid="field-alis-alloc">
                       <label htmlFor="bf-alis-lokasyon" style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.allocationLocation}</label>
                       <Controller control={control} name="alisLokasyonu" render={({ field }) => (
-                        <LocationCombobox id="bf-alis-lokasyon" ariaLabel={b.allocationLocation} for="pickup" scope="local" value={field.value ?? ''} onChange={field.onChange}
+                        <LocationCombobox id="bf-alis-lokasyon" ariaLabel={b.allocationLocation} for="pickup" scope="local" options={bootstrap.locations.localPickup} value={field.value ?? ''} onChange={field.onChange}
                           onOptionChange={(option) => rememberLocationLabel('alisLokasyonu', option)}
                           placeholder={b.tourPickupPlaceholder} loadingText={dict.common.loading} labels={ui.location} error={!!errors.alisLokasyonu} />
                       )} />
@@ -997,7 +933,7 @@ export default function BookingForm({
                     <div data-testid="field-alis-tour">
                       <label htmlFor="bf-alis-lokasyon" style={labelStyle}><MapPin size={12} aria-hidden="true" /> {b.allocationLocation}</label>
                       <Controller control={control} name="alisLokasyonu" render={({ field }) => (
-                        <LocationCombobox id="bf-alis-lokasyon" ariaLabel={b.allocationLocation} for="pickup" scope="local" value={field.value ?? ''} onChange={field.onChange}
+                        <LocationCombobox id="bf-alis-lokasyon" ariaLabel={b.allocationLocation} for="pickup" scope="local" options={bootstrap.locations.localPickup} value={field.value ?? ''} onChange={field.onChange}
                           onOptionChange={(option) => rememberLocationLabel('alisLokasyonu', option)}
                           placeholder={b.tourPickupPlaceholder} loadingText={dict.common.loading} labels={ui.location} error={!!errors.alisLokasyonu} />
                       )} />

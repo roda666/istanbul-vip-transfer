@@ -79,6 +79,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     // Invalidate the public service-types cache
     const { revalidatePath } = await import('next/cache');
     revalidatePath('/data/service-types');
+    const { revalidateBookingFormBootstrap } = await import('@/lib/booking-form-bootstrap');
+    revalidateBookingFormBootstrap();
 
     return NextResponse.json({ item: updated });
   } catch (err) {

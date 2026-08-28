@@ -48,7 +48,12 @@ export default function TransferRouteDetail({ route, locale }: { route: PublicTr
     name: route.content.title,
     description: intro,
     url: canonicalUrl,
-    provider: { '@type': 'Organization', name: 'Istanbul VIP Transfer', url: SITE.siteUrl },
+    provider: {
+      '@type': 'Organization',
+      name: 'Istanbul VIP Transfer',
+      url: SITE.siteUrl,
+      logo: { '@type': 'ImageObject', url: SITE.logoUrl, width: 600, height: 240 },
+    },
     areaServed: [{ '@type': 'Place', name: route.origin }, { '@type': 'Place', name: route.destination }],
     availableChannel: { '@type': 'ServiceChannel', serviceUrl: `${canonicalUrl}#rezervasyon` },
   };

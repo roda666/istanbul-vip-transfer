@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import Image from 'next/image';
 import { Menu, X, Phone, ChevronDown } from 'lucide-react';
 import { getNav } from '@/lib/nav-config';
 import { useLang } from '@/lib/i18n/context';
@@ -103,20 +104,16 @@ export default function Header({ serviceNavigationGroups }: HeaderProps = {}) {
           <div className="flex items-center justify-between h-20">
 
             {/* ── Logo ── */}
-            <div className="flex-shrink-0 ivt-hdr-logo">
-              <Link href={homePath} className="flex flex-col leading-none" data-testid="logo-link">
-                <span
-                  className="text-xl md:text-2xl font-bold tracking-widest uppercase whitespace-nowrap"
-                   style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#9A6A12', letterSpacing: '0.15em' }}
-                >
-                  {cs.businessName}
-                </span>
-                <span
-                  className="text-[10px] tracking-[0.35em] uppercase"
-                  style={{ color: '#50677A', fontFamily: 'Inter, sans-serif', marginTop: '1px' }}
-                >
-                  {cs.businessName ? '' : 'Istanbul'}
-                </span>
+            <div className="flex-shrink-0 ivt-hdr-logo min-w-0">
+              <Link href={homePath} className="flex items-center min-w-0" data-testid="logo-link" aria-label={cs.businessName}>
+                <Image
+                  src="/logo.png"
+                  alt={cs.businessName}
+                  width={600}
+                  height={240}
+                  priority
+                  className="h-auto w-[122px] max-w-[42vw] md:w-[154px]"
+                />
               </Link>
             </div>
 

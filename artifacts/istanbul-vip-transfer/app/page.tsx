@@ -90,6 +90,12 @@ export default async function HomePage() {
     description:
       'İstanbul havalimanı ve şehir içi VIP transfer hizmeti. Mercedes Vito ve Sprinter ile 7/24 hizmet.',
     url: BASE,
+    logo: {
+      '@type': 'ImageObject',
+      url: SITE.logoUrl,
+      width: 600,
+      height: 240,
+    },
     telephone: cs.phoneE164,
     email: cs.email,
     address: {

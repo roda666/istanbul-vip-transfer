@@ -1,7 +1,7 @@
 /**
- * Opens a WhatsApp conversation without making the visitor wait for a
- * database request. Android's package-qualified intent prefers WhatsApp
- * Business when it is installed; the regular wa.me URL remains the fallback.
+ * Opens a WhatsApp conversation in a separate browsing context without making
+ * the visitor wait for a database request. A real target=_blank link avoids
+ * iframe navigation in Replit preview and preserves the booking page.
  */
 export function formatWhatsAppLabel(label: string): string {
   return `*${label.trim().replace(/^\*+|\*+$/g, '')}*`;
@@ -32,24 +32,12 @@ export function openWhatsAppChat(phone: string, message: string): void {
 
   if (typeof window === 'undefined') return;
 
-  if (/Android/i.test(navigator.userAgent)) {
-    const businessIntent =
-      `intent://send?phone=${digits}&text=${encodedMessage}` +
-      '#Intent;scheme=whatsapp;package=com.whatsapp.w4b;end';
-    const fallbackTimer = window.setTimeout(() => {
-      document.removeEventListener('visibilitychange', clearFallback);
-      if (!document.hidden) window.location.assign(webUrl);
-    }, 1400);
-    const clearFallback = () => {
-      window.clearTimeout(fallbackTimer);
-      document.removeEventListener('visibilitychange', clearFallback);
-    };
-
-    document.addEventListener('visibilitychange', clearFallback, { once: true });
-    window.location.assign(businessIntent);
-    return;
-  }
-
-  const popup = window.open(webUrl, '_blank', 'noopener,noreferrer');
-  if (!popup) window.location.assign(webUrl);
+  const link = document.createElement('a');
+  link.href = webUrl;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
 }

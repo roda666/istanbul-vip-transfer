@@ -54,6 +54,7 @@ function buildServiceJsonLd({ name, canonicalUrl, body, cs }: SchemaContext) {
       '@type':     'LocalBusiness',
        name:        cs.businessName,
       url:         SITE.siteUrl,
+      logo:        { '@type': 'ImageObject', url: SITE.logoUrl, width: 600, height: 240 },
       telephone:   cs.phoneE164,
     },
     areaServed: body?.serviceArea?.areas?.length

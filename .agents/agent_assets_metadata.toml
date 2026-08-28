@@ -35,3 +35,17 @@ uri = "file://artifacts/istanbul-vip-transfer/public/logo.svg"
 type = "image"
 title = "VIP Transfer Istanbul — path SVG logo"
 description = "Font bağımsız, Playfair Display harf konturları path olarak saklanan vektörel logo."
+
+[[outputs]]
+id = "9u38ie8DUnzXyYTxQGNQN"
+uri = "file://screenshots/istanbul-vip-transfer-logo-desktop.jpg"
+type = "image"
+title = "Masaüstü logo doğrulaması"
+description = "Yeni header logosunun 1440×900 ana sayfa görünümü."
+
+[[outputs]]
+id = "yEaZTp1fpAAatHxbT6L9h"
+uri = "file://screenshots/istanbul-vip-transfer-logo-mobile.jpg"
+type = "image"
+title = "Mobil logo doğrulaması"
+description = "Yeni header logosunun 390×844 mobil görünümü; taşma yok."

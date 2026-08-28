@@ -85,7 +85,12 @@ export default async function BlogArticlePage({ params }: Props) {
     dateModified: post.updatedAt.toISOString(),
     image: post.heroImage ?? undefined,
     url: PAGE,
-    publisher: { '@type': 'Organization', name: 'İstanbul VIP Transfer', url: BASE },
+    publisher: {
+      '@type': 'Organization',
+      name: 'İstanbul VIP Transfer',
+      url: BASE,
+      logo: { '@type': 'ImageObject', url: SITE.logoUrl, width: 600, height: 240 },
+    },
     keywords: post.tags.join(', ') || undefined,
   };
 

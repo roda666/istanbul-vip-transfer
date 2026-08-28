@@ -1,20 +1,13 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import { useEffect, useRef, useState } from 'react';
 import { useLang } from '@/lib/i18n/context';
 import { useHomepageCms } from '@/lib/homepage-cms-context';
-import BookingFormSkeleton from './BookingFormSkeleton';
+import BookingForm from './BookingForm';
 
-// The full reservation UI includes validation, location comboboxes and several
-// optional-field requests. It is intentionally split out of the initial hero
-// bundle, but is loaded immediately when a visitor asks to book. While the
-// chunk downloads, a field-shaped skeleton renders instead of a bare empty
-// box — a blank box read as "broken" to visitors who had just triggered load.
-const BookingForm = dynamic(() => import('./BookingForm'), {
-  ssr: false,
-  loading: () => <BookingFormSkeleton />,
-});
+// Keep the form code in the initial page bundle even while its UI is collapsed.
+// The reservation section is revenue-critical: once the visitor clicks, no
+// component chunk or catalog request may delay the service choices.
 
 export default function DeferredBookingForm() {
   const sectionRef = useRef<HTMLElement>(null);

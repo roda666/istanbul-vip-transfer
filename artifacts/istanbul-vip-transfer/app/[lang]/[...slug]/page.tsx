@@ -323,6 +323,12 @@ export default async function LocalizedPassthrough({ params }: Props) {
             '@type': 'Organization',
             name: 'VIP Transfer Istanbul',
             url: SITE.siteUrl,
+            logo: {
+              '@type': 'ImageObject',
+              url: SITE.logoUrl,
+              width: 600,
+              height: 240,
+            },
             telephone: cs.phoneE164,
             email: cs.email,
           },

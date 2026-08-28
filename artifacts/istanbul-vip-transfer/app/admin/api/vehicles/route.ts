@@ -196,6 +196,8 @@ export async function POST(request: NextRequest) {
       metadata: { name: newItem.name, status: newItem.status },
     });
 
+    const { revalidateBookingFormBootstrap } = await import('@/lib/booking-form-bootstrap');
+    revalidateBookingFormBootstrap();
     return NextResponse.json({ item: newItem }, { status: 201 });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : '';

@@ -158,7 +158,14 @@ export default async function TranslatedBlogPage({ params }: Props) {
           '@context': 'https://schema.org', '@type': 'WebPage',
           name: lang === 'ru' ? 'Блог | Стамбул VIP Трансфер' : lang === 'ar' ? 'المدونة | إسطنبول VIP ترانسفير' : 'Blog | Istanbul VIP Transfer',
           url: `${SITE.siteUrl}/${lang}/blog`, inLanguage: lang,
-          publisher: { '@type': 'Organization', name: 'VIP Transfer Istanbul', url: SITE.siteUrl, telephone: cs.phoneE164, email: cs.email },
+          publisher: {
+            '@type': 'Organization',
+            name: 'VIP Transfer Istanbul',
+            url: SITE.siteUrl,
+            logo: { '@type': 'ImageObject', url: SITE.logoUrl, width: 600, height: 240 },
+            telephone: cs.phoneE164,
+            email: cs.email,
+          },
         }),
       }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{

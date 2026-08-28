@@ -481,7 +481,7 @@ export default function Services({ catalogServices, serviceCopy, homepageMode = 
           <Link
             href={allServicesHref}
             className="inline-flex items-center gap-2 text-sm font-semibold tracking-wide focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C79A35] rounded"
-            style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
+            style={{ color: '#8A651C', fontFamily: 'Inter, sans-serif' }}
           >
             {section?.allServicesText ?? s.detailsLink}
             <ArrowRight size={15} aria-hidden="true" />

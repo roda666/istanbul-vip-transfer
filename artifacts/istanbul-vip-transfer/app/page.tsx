@@ -29,8 +29,8 @@ const TITLE = 'İstanbul VIP Transfer | Minivan, Minibüs ve Otobüs';
 const DESCRIPTION = 'İstanbul VIP transfer hizmeti; İstanbul Havalimanı, Sabiha Gökçen, şehir içi ve şehirler arası minivan, minibüs, midibüs ve otobüs seçenekleri.';
 
 export const metadata: Metadata = {
-  title: TITLE,
-  description: DESCRIPTION,
+  // The root layout owns this page's identical title and description so both
+  // stay in the initial head instead of being streamed as child overrides.
   alternates: {
     canonical: BASE,
     languages: {

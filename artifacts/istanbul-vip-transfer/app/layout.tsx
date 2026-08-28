@@ -33,6 +33,9 @@ const inter = Inter({
   weight:   ['300', '400', '500', '600', '700'],
 });
 
+const HOMEPAGE_DESCRIPTION =
+  'İstanbul VIP transfer hizmeti; İstanbul Havalimanı, Sabiha Gökçen, şehir içi ve şehirler arası minivan, minibüs, midibüs ve otobüs seçenekleri.';
+
 const notoSansArabic = Noto_Sans_Arabic({
   subsets: ['arabic'],
   variable: '--font-noto-arabic',
@@ -54,8 +57,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   // Plain string fallback — all public pages set their own complete title.
   title: 'İstanbul VIP Transfer | Minivan, Minibüs ve Otobüs',
-  description:
-    'İstanbul VIP transfer hizmeti; İstanbul Havalimanı, Sabiha Gökçen, şehir içi ve şehirler arası minivan, minibüs, midibüs ve otobüs seçenekleri.',
+  description: HOMEPAGE_DESCRIPTION,
   metadataBase: new URL(SITE.siteUrl),
   icons: {
     // Explicit PNG sizes keep browser, Android and crawler discovery deterministic.
@@ -95,6 +97,7 @@ export default async function RootLayout({
   // Only middleware-marked public documents read the shared chrome cache.
   // Admin routes remain request-specific and never populate/read that cache.
   const isPublicRequest = requestHeaders.has('x-ivt-lang');
+  const isHomepageRequest = requestHeaders.get('x-ivt-home') === '1';
   const requestedLang = requestHeaders.get('x-ivt-lang') ?? 'tr';
   const hasCookieConsentDecision = Boolean(cookieStore.get('ivt_cookie_consent')?.value);
   const activeLanguage = isPublicRequest ? await getPublicLanguage(requestedLang) : null;
@@ -117,6 +120,11 @@ export default async function RootLayout({
       dir={initialDirection}
       className={`${playfairDisplay.variable} ${inter.variable} ${notoSansArabic.variable}`}
     >
+      {isHomepageRequest ? (
+        <head>
+          <meta name="description" content={HOMEPAGE_DESCRIPTION} />
+        </head>
+      ) : null}
       <body
         className="grain-overlay"
         style={{ backgroundColor: 'var(--pub-page-bg, #F7F5EF)', minHeight: '100dvh' }}

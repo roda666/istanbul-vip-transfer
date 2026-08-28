@@ -187,6 +187,7 @@ export default async function HizmetlerServiceGridCms({
                           className="object-cover"
                           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 340px"
                           priority={catIdx === 0 && svcIdx === 0}
+                          fetchPriority={catIdx === 0 && svcIdx === 0 ? 'high' : 'auto'}
                         />
                       ) : null}
                       {/* Gold overlay on hover */}

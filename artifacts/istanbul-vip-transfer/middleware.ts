@@ -106,6 +106,9 @@ function isExemptFromLocale(pathname: string): boolean {
 function localizedResponse(request: NextRequest, locale: string): NextResponse {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-ivt-lang', locale);
+  if (request.nextUrl.pathname === '/') {
+    requestHeaders.set('x-ivt-home', '1');
+  }
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   // The document is locale-aware and must never be shared-cached. Avoiding
   // `no-store` still lets modern browsers use bfcache for an instant back visit.

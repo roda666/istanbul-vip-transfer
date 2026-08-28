@@ -31,7 +31,7 @@ export default function Hero({ homepageMode = false }: { homepageMode?: boolean 
       }
     : {
         ...dict.hero,
-        imageSrc: '/images/istanbul-vip-transfer-hero.webp',
+        imageSrc: '/images/istanbul-havalimani-mercedes-vip-transfer-hero.webp',
       };
   const trustItems = homepageCms?.heroStats
     ? homepageCms.heroStats
@@ -207,7 +207,7 @@ export default function Hero({ homepageMode = false }: { homepageMode?: boolean 
             <div
               className="relative rounded-2xl xl:rounded-3xl overflow-hidden"
               style={{
-                aspectRatio: '4 / 3',
+                aspectRatio: '16 / 9',
                 boxShadow: '0 24px 64px rgba(16,42,67,0.16), 0 4px 16px rgba(16,42,67,0.08)',
                 zIndex: 1,
               }}

@@ -39,7 +39,7 @@ if ! command -v magick >/dev/null 2>&1; then
 fi
 
 # ── Defaults (used when no --* flags are passed) ─────────────
-DEFAULT_SRC="$ROOT/public/images/istanbul-vip-transfer-hero.webp"
+DEFAULT_SRC="$ROOT/public/images/istanbul-havalimani-mercedes-vip-transfer-hero.webp"
 DEFAULT_OUT="$ROOT/public/images/og-card.jpg"
 DEFAULT_LOGO="$ROOT/public/logo.png"
 DEFAULT_LINE1="İSTANBUL"

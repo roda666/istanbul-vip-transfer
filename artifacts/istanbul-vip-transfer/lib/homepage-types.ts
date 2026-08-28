@@ -147,8 +147,8 @@ export const HOMEPAGE_FALLBACK: Record<string, HomepageSections> = {
       subheadline: 'Havalimanından otelinize, toplantınıza ve her hedefe — lüks Mercedes araçlarımız ve profesyonel sürücülerimizle zamanında, güvenle ulaşın.',
       ctaBookingText: 'Fiyat Al / Rezervasyon',
       ctaCallText: 'Hemen Ara',
-      imagePath: '/images/istanbul-vip-transfer-hero.webp',
-      imageAlt: 'İstanbul Boğazı manzarası eşliğinde VIP transfer hizmeti',
+      imagePath: '/images/istanbul-havalimani-mercedes-vip-transfer-hero.webp',
+      imageAlt: 'İstanbul Havalimanı terminalinde bekleyen siyah Mercedes VIP transfer aracı ve profesyonel şoför',
       enabled: true,
     },
     heroStats: [
@@ -184,7 +184,7 @@ export const HOMEPAGE_FALLBACK: Record<string, HomepageSections> = {
   },
   en: {
     version: 1,
-    hero: { badge: "Istanbul's Premium Transfer Service", headline1: 'Discover', headlineAccent: 'Istanbul', headline2: 'in Comfort', subheadline: 'From the airport to your hotel, meetings and every destination — arrive on time and safely with our luxury Mercedes vehicles and professional drivers.', ctaBookingText: 'Get a Quote / Reserve', ctaCallText: 'Call Now', imagePath: '/images/istanbul-vip-transfer-hero.webp', imageAlt: 'VIP transfer service with a view of the Bosphorus', enabled: true },
+    hero: { badge: "Istanbul's Premium Transfer Service", headline1: 'Discover', headlineAccent: 'Istanbul', headline2: 'in Comfort', subheadline: 'From the airport to your hotel, meetings and every destination — arrive on time and safely with our luxury Mercedes vehicles and professional drivers.', ctaBookingText: 'Get a Quote / Reserve', ctaCallText: 'Call Now', imagePath: '/images/istanbul-havalimani-mercedes-vip-transfer-hero.webp', imageAlt: 'Black Mercedes VIP transfer vehicle and professional chauffeur waiting at Istanbul Airport terminal', enabled: true },
     heroStats: [
       { key: 'airport',  numberText: 'IST & SAW',       label: 'Airport Transfer',    order: 0, enabled: true },
       { key: 'support',  numberText: '7/24',             label: 'Booking Support',     order: 1, enabled: true },
@@ -210,7 +210,7 @@ export const HOMEPAGE_FALLBACK: Record<string, HomepageSections> = {
   },
   de: {
     version: 1,
-    hero: { badge: 'Istanbuls Premium Transfer-Service', headline1: 'Istanbul', headlineAccent: 'komfortabel', headline2: 'entdecken', subheadline: 'Vom Flughafen zu Ihrem Hotel, Meetings und jedem Ziel — pünktlich und sicher mit unseren luxuriösen Mercedes-Fahrzeugen und professionellen Fahrern.', ctaBookingText: 'Preisanfrage / Reservierung', ctaCallText: 'Jetzt anrufen', imagePath: '/images/istanbul-vip-transfer-hero.webp', imageAlt: 'VIP-Transferservice mit Blick auf den Bosporus', enabled: true },
+    hero: { badge: 'Istanbuls Premium Transfer-Service', headline1: 'Istanbul', headlineAccent: 'komfortabel', headline2: 'entdecken', subheadline: 'Vom Flughafen zu Ihrem Hotel, Meetings und jedem Ziel — pünktlich und sicher mit unseren luxuriösen Mercedes-Fahrzeugen und professionellen Fahrern.', ctaBookingText: 'Preisanfrage / Reservierung', ctaCallText: 'Jetzt anrufen', imagePath: '/images/istanbul-havalimani-mercedes-vip-transfer-hero.webp', imageAlt: 'Schwarzer Mercedes VIP-Transfer und professioneller Chauffeur am Terminal des Flughafens Istanbul', enabled: true },
     heroStats: [
       { key: 'airport',  numberText: 'IST & SAW',       label: 'Flughafentransfer',    order: 0, enabled: true },
       { key: 'support',  numberText: '7/24',             label: 'Buchungsservice',      order: 1, enabled: true },
@@ -236,7 +236,7 @@ export const HOMEPAGE_FALLBACK: Record<string, HomepageSections> = {
   },
   ru: {
     version: 1,
-    hero: { badge: 'Престижный трансфер-сервис Стамбула', headline1: 'Стамбул', headlineAccent: 'с комфортом', headline2: 'откройте для себя', subheadline: 'Из аэропорта в отель, на встречи и в любую точку — вовремя и безопасно на наших люксовых Mercedes с профессиональными водителями.', ctaBookingText: 'Запрос цены / Бронирование', ctaCallText: 'Позвонить', imagePath: '/images/istanbul-vip-transfer-hero.webp', imageAlt: 'Услуга VIP-трансфера с видом на Босфор', enabled: true },
+    hero: { badge: 'Престижный трансфер-сервис Стамбула', headline1: 'Стамбул', headlineAccent: 'с комфортом', headline2: 'откройте для себя', subheadline: 'Из аэропорта в отель, на встречи и в любую точку — вовремя и безопасно на наших люксовых Mercedes с профессиональными водителями.', ctaBookingText: 'Запрос цены / Бронирование', ctaCallText: 'Позвонить', imagePath: '/images/istanbul-havalimani-mercedes-vip-transfer-hero.webp', imageAlt: 'Чёрный Mercedes для VIP-трансфера и профессиональный водитель у терминала аэропорта Стамбула', enabled: true },
     heroStats: [
       { key: 'airport',  numberText: 'IST & SAW',       label: 'Трансфер из аэропорта',       order: 0, enabled: true },
       { key: 'support',  numberText: '7/24',             label: 'Поддержка бронирования',      order: 1, enabled: true },
@@ -262,7 +262,7 @@ export const HOMEPAGE_FALLBACK: Record<string, HomepageSections> = {
   },
   ar: {
     version: 1,
-    hero: { badge: 'خدمة النقل المميزة في إسطنبول', headline1: 'اكتشف', headlineAccent: 'إسطنبول', headline2: 'براحة', subheadline: 'من المطار إلى فندقك واجتماعاتك وكل وجهة — في الوقت المحدد وبأمان مع سياراتنا الفاخرة وسائقينا المحترفين.', ctaBookingText: 'طلب سعر / حجز', ctaCallText: 'اتصل الآن', imagePath: '/images/istanbul-vip-transfer-hero.webp', imageAlt: 'خدمة نقل VIP مع إطلالة على مضيق البوسفور', enabled: true },
+    hero: { badge: 'خدمة النقل المميزة في إسطنبول', headline1: 'اكتشف', headlineAccent: 'إسطنبول', headline2: 'براحة', subheadline: 'من المطار إلى فندقك واجتماعاتك وكل وجهة — في الوقت المحدد وبأمان مع سياراتنا الفاخرة وسائقينا المحترفين.', ctaBookingText: 'طلب سعر / حجز', ctaCallText: 'اتصل الآن', imagePath: '/images/istanbul-havalimani-mercedes-vip-transfer-hero.webp', imageAlt: 'سيارة مرسيدس سوداء لنقل كبار الشخصيات وسائق محترف أمام مبنى مطار إسطنبول', enabled: true },
     heroStats: [
       { key: 'airport',  numberText: 'IST & SAW',       label: 'نقل المطار',          order: 0, enabled: true },
       { key: 'support',  numberText: '7/24',             label: 'دعم الحجز',           order: 1, enabled: true },
@@ -288,7 +288,7 @@ export const HOMEPAGE_FALLBACK: Record<string, HomepageSections> = {
   },
   es: {
     version: 1,
-    hero: { badge: 'El servicio premium de traslados de Istanbul', headline1: 'Descubra', headlineAccent: 'Istanbul', headline2: 'con comodidad', subheadline: 'Del aeropuerto a su hotel, reuniones y cualquier destino: llegue puntual y seguro con nuestros vehículos Mercedes de lujo y conductores profesionales.', ctaBookingText: 'Solicitar presupuesto / Reservar', ctaCallText: 'Llamar ahora', imagePath: '/images/istanbul-vip-transfer-hero.webp', imageAlt: 'Servicio de traslado VIP con vistas al Bosphorus', enabled: true },
+    hero: { badge: 'El servicio premium de traslados de Istanbul', headline1: 'Descubra', headlineAccent: 'Istanbul', headline2: 'con comodidad', subheadline: 'Del aeropuerto a su hotel, reuniones y cualquier destino: llegue puntual y seguro con nuestros vehículos Mercedes de lujo y conductores profesionales.', ctaBookingText: 'Solicitar presupuesto / Reservar', ctaCallText: 'Llamar ahora', imagePath: '/images/istanbul-havalimani-mercedes-vip-transfer-hero.webp', imageAlt: 'Vehículo Mercedes negro para traslado VIP y chófer profesional en la terminal del Aeropuerto de Estambul', enabled: true },
     heroStats: [
       { key: 'airport',  numberText: 'IST & SAW',       label: 'Traslado al aeropuerto',    order: 0, enabled: true },
       { key: 'support',  numberText: '7/24',             label: 'Asistencia para reservas',  order: 1, enabled: true },
@@ -314,7 +314,7 @@ export const HOMEPAGE_FALLBACK: Record<string, HomepageSections> = {
   },
   fr: {
     version: 1,
-    hero: { badge: "Le service de transfert premium d'Istanbul", headline1: 'Découvrez', headlineAccent: 'Istanbul', headline2: 'en confort', subheadline: "De l'aéroport à votre hôtel, vos réunions et chaque destination — arrivez à l'heure et en toute sécurité avec nos véhicules Mercedes de luxe et nos chauffeurs professionnels.", ctaBookingText: 'Demande de devis / Réservation', ctaCallText: 'Appeler maintenant', imagePath: '/images/istanbul-vip-transfer-hero.webp', imageAlt: 'Service de transfert VIP avec vue sur le Bosphore', enabled: true },
+    hero: { badge: "Le service de transfert premium d'Istanbul", headline1: 'Découvrez', headlineAccent: 'Istanbul', headline2: 'en confort', subheadline: "De l'aéroport à votre hôtel, vos réunions et chaque destination — arrivez à l'heure et en toute sécurité avec nos véhicules Mercedes de luxe et nos chauffeurs professionnels.", ctaBookingText: 'Demande de devis / Réservation', ctaCallText: 'Appeler maintenant', imagePath: '/images/istanbul-havalimani-mercedes-vip-transfer-hero.webp', imageAlt: "Véhicule Mercedes noir pour transfert VIP et chauffeur professionnel au terminal de l'aéroport d'Istanbul", enabled: true },
     heroStats: [
       { key: 'airport',  numberText: 'IST & SAW',       label: 'Transfert aéroport',         order: 0, enabled: true },
       { key: 'support',  numberText: '7/24',             label: 'Assistance à la réservation', order: 1, enabled: true },
@@ -340,7 +340,7 @@ export const HOMEPAGE_FALLBACK: Record<string, HomepageSections> = {
   },
   it: {
     version: 1,
-    hero: { badge: 'Il servizio di transfer premium di Istanbul', headline1: 'Scopri', headlineAccent: 'Istanbul', headline2: 'in comfort', subheadline: "Dall'aeroporto al tuo hotel, riunioni e ogni destinazione — arriva puntuale e in sicurezza con i nostri veicoli Mercedes di lusso e autisti professionisti.", ctaBookingText: 'Richiedi un preventivo / Prenota', ctaCallText: 'Chiama ora', imagePath: '/images/istanbul-vip-transfer-hero.webp', imageAlt: 'Servizio di transfer VIP con vista sul Bosforo', enabled: true },
+    hero: { badge: 'Il servizio di transfer premium di Istanbul', headline1: 'Scopri', headlineAccent: 'Istanbul', headline2: 'in comfort', subheadline: "Dall'aeroporto al tuo hotel, riunioni e ogni destinazione — arriva puntuale e in sicurezza con i nostri veicoli Mercedes di lusso e autisti professionisti.", ctaBookingText: 'Richiedi un preventivo / Prenota', ctaCallText: 'Chiama ora', imagePath: '/images/istanbul-havalimani-mercedes-vip-transfer-hero.webp', imageAlt: "Veicolo Mercedes nero per transfer VIP e autista professionista al terminal dell'aeroporto di Istanbul", enabled: true },
     heroStats: [
       { key: 'airport',  numberText: 'IST & SAW',       label: 'Transfer aeroportuale',         order: 0, enabled: true },
       { key: 'support',  numberText: '7/24',             label: 'Assistenza per le prenotazioni', order: 1, enabled: true },
@@ -366,7 +366,7 @@ export const HOMEPAGE_FALLBACK: Record<string, HomepageSections> = {
   },
   nl: {
     version: 1,
-    hero: { badge: 'De premium transferdienst van Istanbul', headline1: 'Ontdek', headlineAccent: 'Istanbul', headline2: 'in comfort', subheadline: 'Van de luchthaven naar uw hotel, vergaderingen en elke bestemming — op tijd en veilig met onze luxe Mercedes-voertuigen en professionele chauffeurs.', ctaBookingText: 'Vraag een offerte aan / reserveer', ctaCallText: 'Bel nu', imagePath: '/images/istanbul-vip-transfer-hero.webp', imageAlt: 'VIP-transferdienst met uitzicht op de Bosporus', enabled: true },
+    hero: { badge: 'De premium transferdienst van Istanbul', headline1: 'Ontdek', headlineAccent: 'Istanbul', headline2: 'in comfort', subheadline: 'Van de luchthaven naar uw hotel, vergaderingen en elke bestemming — op tijd en veilig met onze luxe Mercedes-voertuigen en professionele chauffeurs.', ctaBookingText: 'Vraag een offerte aan / reserveer', ctaCallText: 'Bel nu', imagePath: '/images/istanbul-havalimani-mercedes-vip-transfer-hero.webp', imageAlt: 'Zwarte Mercedes voor VIP-transfer en professionele chauffeur bij de terminal van Istanbul Airport', enabled: true },
     heroStats: [
       { key: 'airport',  numberText: 'IST & SAW',       label: 'Luchthaventransfer',      order: 0, enabled: true },
       { key: 'support',  numberText: '7/24',             label: 'Boekingsondersteuning',   order: 1, enabled: true },

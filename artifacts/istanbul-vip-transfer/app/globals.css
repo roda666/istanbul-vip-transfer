@@ -460,6 +460,59 @@ body {
 .ivt-hdr-mobile-item    { animation: ivt-hdr-from-left 0.3s  ease both; animation-delay: var(--delay, 0s); }
 .ivt-hdr-mobile-fade    { animation: ivt-fade-in       0.3s  ease both; animation-delay: var(--delay, 0s); }
 
+/* ── Mobile public header theme ────────────────────────────────────────────
+   The desktop header remains cream. At the mobile/tablet breakpoint the header
+   and its open menu share the logo's slate background. Inline component colors
+   are intentionally overridden here only within the mobile breakpoint. */
+@media (max-width: 1279px) {
+  .ivt-site-header {
+    background: #3A4450 !important;
+    border-bottom-color: rgba(255, 255, 255, 0.18) !important;
+    color: #FFFFFF;
+  }
+
+  .ivt-site-header .ivt-hdr-mobile-toggle { color: #FFFFFF !important; }
+
+  .ivt-hdr-mobile-overlay,
+  .ivt-hdr-mobile-backdrop,
+  .ivt-hdr-mobile-nav {
+    background: #3A4450 !important;
+  }
+
+  .ivt-hdr-mobile-nav {
+    border-color: rgba(255, 255, 255, 0.18) !important;
+  }
+
+  .ivt-hdr-mobile-nav > div,
+  .ivt-hdr-mobile-nav > div > div,
+  .ivt-hdr-mobile-nav > div > div > div,
+  .ivt-hdr-mobile-nav > div > div > div > div {
+    border-color: rgba(255, 255, 255, 0.18) !important;
+  }
+
+  .ivt-hdr-mobile-nav-link,
+  .ivt-hdr-mobile-sub-link {
+    color: rgba(255, 255, 255, 0.95) !important;
+  }
+
+  .ivt-hdr-mobile-service-toggle,
+  .ivt-hdr-mobile-group-label,
+  .ivt-hdr-mobile-service-toggle svg,
+  .ivt-hdr-mobile-group-label + svg {
+    color: #FFFFFF !important;
+  }
+
+  .ivt-hdr-mobile-sub-link span {
+    background: rgba(255, 255, 255, 0.45) !important;
+  }
+
+  .ivt-hdr-mobile-reservation-cta {
+    background: #C99A32 !important;
+    border-color: #C99A32 !important;
+    color: #102A43 !important;
+  }
+}
+
 /* Mobile accordion — CSS grid-template-rows trick.
    Works for open AND close because grid-template-rows is transition-able.
    Direct child MUST have overflow:hidden + min-height:0.                   */

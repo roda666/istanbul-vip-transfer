@@ -37,7 +37,10 @@ export const viewport: Viewport = {
   width:        'device-width',
   initialScale: 1,
   viewportFit:  'cover',   // expose safe-area-inset-* CSS env vars
-  themeColor:   '#102A43',
+  themeColor: [
+    { media: '(max-width: 1279px)', color: '#3A4450' },
+    { media: '(min-width: 1280px)', color: '#102A43' },
+  ],
 };
 
 export const metadata: Metadata = {

@@ -114,10 +114,10 @@ export default function LanguageSelector({ variant = 'light', className = '', re
 
   const isDark          = variant === 'dark';
   const textColor       = isDark ? 'rgba(255,255,255,0.75)' : '#263F55';
-  const textHover       = '#C99A32';
+  const textHover       = isDark ? '#F3C866' : '#C99A32';
   const borderColor     = isDark ? 'rgba(255,255,255,0.15)' : '#D9E2EC';
-  const dropdownBg      = isDark ? '#102A43' : '#FFFDF8';
-  const activeLangColor = '#C99A32';
+  const dropdownBg      = isDark ? '#3A4450' : '#FFFDF8';
+  const activeLangColor = isDark ? '#F3C866' : '#C99A32';
 
   return (
     <div ref={wrapRef} className={`relative ${className}`} style={{ userSelect: 'none' }}>
@@ -221,7 +221,7 @@ export default function LanguageSelector({ variant = 'light', className = '', re
                 {entry.direction === 'rtl' && (
                   <span
                     className="text-[9px] ml-auto"
-                    style={{ color: isDark ? 'rgba(255,255,255,0.4)' : '#8899AA' }}
+                    style={{ color: isDark ? 'rgba(255,255,255,0.75)' : '#8899AA' }}
                   >
                     RTL
                   </span>

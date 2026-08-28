@@ -93,7 +93,7 @@ export default function Header({ serviceNavigationGroups }: HeaderProps = {}) {
   return (
     <>
       <header
-        className={`sticky top-0 left-0 right-0 z-50 transition-all duration-400 ${
+        className={`ivt-site-header sticky top-0 left-0 right-0 z-50 transition-all duration-400 ${
           scrolled
             ? 'bg-[#FFFDF8]/95 backdrop-blur-xl border-b border-[#D9E2EC] shadow-sm'
             : 'bg-[#FFFDF8] border-b border-[#D9E2EC]'
@@ -112,7 +112,7 @@ export default function Header({ serviceNavigationGroups }: HeaderProps = {}) {
                   width={600}
                   height={240}
                   priority
-                  className="h-auto w-[122px] max-w-[42vw] md:w-[154px]"
+                    className="h-auto w-[122px] max-w-[42vw] md:w-[154px]"
                 />
               </Link>
             </div>
@@ -300,7 +300,7 @@ export default function Header({ serviceNavigationGroups }: HeaderProps = {}) {
 
             {/* ── Hamburger ── */}
             <button
-              className="xl:hidden p-2 rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C79A35]"
+              className="ivt-hdr-mobile-toggle xl:hidden p-2 rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C79A35]"
               style={{ color: '#102A43' }}
               onClick={() => setMenuOpen((open) => {
                 const nextOpen = !open;
@@ -328,7 +328,7 @@ export default function Header({ serviceNavigationGroups }: HeaderProps = {}) {
         >
           {/* Backdrop */}
           <div
-            className="absolute inset-0 bg-[#FFFDF8]/98 backdrop-blur-2xl"
+            className="ivt-hdr-mobile-backdrop absolute inset-0 bg-[#FFFDF8]/98 backdrop-blur-2xl"
             onClick={() => setMenuOpen(false)}
             aria-hidden="true"
           />
@@ -342,7 +342,7 @@ export default function Header({ serviceNavigationGroups }: HeaderProps = {}) {
                 without scrolling past the full nav list. */}
             <div className="ivt-hdr-mobile-fade pb-5" style={{ '--delay': '0s' } as React.CSSProperties}>
               <div style={{ borderBottom: '1px solid rgba(217,226,236,0.8)', paddingBottom: '16px' }}>
-                <LanguageSelector variant="light" />
+                <LanguageSelector variant="dark" />
               </div>
             </div>
 
@@ -357,14 +357,14 @@ export default function Header({ serviceNavigationGroups }: HeaderProps = {}) {
                     <div className="flex items-center">
                       <Link
                         href={entry.href!}
-                        className="flex-1 py-4 text-2xl transition-colors duration-300 focus:outline-none"
+                        className="ivt-hdr-mobile-nav-link flex-1 py-4 text-2xl transition-colors duration-300 focus:outline-none"
                         style={{ fontFamily: 'Playfair Display, Georgia, serif', color: isActive ? '#C99A32' : '#102A43' }}
                         data-testid="mobile-nav-hizmetler-link"
                       >
                         {entry.label}
                       </Link>
                       <button
-                        className="p-3 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C79A35] rounded"
+                         className="ivt-hdr-mobile-service-toggle p-3 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C79A35] rounded"
                         aria-expanded={mobileServicesOpen}
                         aria-label={dict.header.servicesSubmenuToggle}
                         onClick={() => setMobileServicesOpen((o) => !o)}
@@ -392,7 +392,7 @@ export default function Header({ serviceNavigationGroups }: HeaderProps = {}) {
                                   onClick={() => toggleMobileGroup(group.groupLabel)}
                                 >
                                   <span
-                                    className="text-xs tracking-[0.14em] uppercase"
+                                    className="ivt-hdr-mobile-group-label text-xs tracking-[0.14em] uppercase"
                                     style={{ color: '#C99A32', fontFamily: 'Inter, sans-serif' }}
                                   >
                                     {group.groupLabel}
@@ -411,7 +411,7 @@ export default function Header({ serviceNavigationGroups }: HeaderProps = {}) {
                                       <li key={item.href}>
                                         <Link
                                           href={item.href}
-                                          className="flex items-center gap-3 py-2.5 text-base transition-colors duration-200 focus:outline-none"
+                                          className="ivt-hdr-mobile-sub-link flex items-center gap-3 py-2.5 text-base transition-colors duration-200 focus:outline-none"
                                           style={{
                                             color: pathname === item.href ? '#C99A32' : '#50677A',
                                             fontFamily: 'Inter, sans-serif',
@@ -445,7 +445,7 @@ export default function Header({ serviceNavigationGroups }: HeaderProps = {}) {
                 >
                   <Link
                     href={entry.href!}
-                    className="block py-4 text-2xl transition-colors duration-300 focus:outline-none"
+                    className="ivt-hdr-mobile-nav-link block py-4 text-2xl transition-colors duration-300 focus:outline-none"
                     style={{
                       fontFamily: 'Playfair Display, Georgia, serif',
                       color: pathname === entry.href ? '#C99A32' : '#102A43',
@@ -467,7 +467,7 @@ export default function Header({ serviceNavigationGroups }: HeaderProps = {}) {
               {ctaEntry && (
                 <Link
                   href={ctaEntry.href!}
-                  className="flex items-center justify-center gap-2 px-6 py-4 rounded-xl border text-base font-medium transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[#102A43]"
+                  className="ivt-hdr-mobile-reservation-cta flex items-center justify-center gap-2 px-6 py-4 rounded-xl border text-base font-medium transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[#102A43]"
                   style={{ borderColor: '#102A43', color: '#102A43', fontFamily: 'Inter, sans-serif', minHeight: '52px' }}
                   data-testid="mobile-rezervasyon-cta"
                 >

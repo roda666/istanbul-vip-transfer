@@ -49,23 +49,6 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* Mobile reservation location results remain above the virtual keyboard.
- * The component updates --ivt-keyboard-offset from visualViewport for browsers
- * that overlay rather than resize around the keyboard. !important makes this
- * reliable even when a browser reports desktop media capabilities briefly
- * during hydration. */
-@media (max-width: 767px) {
-  .ivt-location-search-results {
-    position: fixed !important;
-    top: auto !important;
-    right: 12px !important;
-    bottom: calc(var(--ivt-keyboard-offset, 0px) + 12px) !important;
-    left: 12px !important;
-    z-index: 1000 !important;
-    max-height: min(46dvh, 360px) !important;
-  }
-}
-
 /* ── Public website design tokens ─────────────────── */
 :root {
   /* Public palette */

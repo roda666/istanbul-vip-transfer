@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { BookingLocationOption as LocationOption } from '@/lib/booking-form-types';
 
 export type { BookingLocationOption as LocationOption } from '@/lib/booking-form-types';
@@ -33,6 +34,13 @@ interface Props {
   excludeId?: string;
   excludeCity?: string;
   onOptionChange?: (option: LocationOption | null) => void;
+}
+
+interface PanelPosition {
+  top: number;
+  left: number;
+  width: number;
+  maxHeight: number;
 }
 
 /**
@@ -69,9 +77,16 @@ export default function LocationCombobox({
   const [activeIndex, setActiveIndex] = useState(-1);
   const [isMobile, setIsMobile] = useState(false);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
+  const [mounted, setMounted] = useState(false);
+  const [panelPosition, setPanelPosition] = useState<PanelPosition | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 767px)');
@@ -120,7 +135,7 @@ export default function LocationCombobox({
     function handlePointerDown(event: MouseEvent) {
       const target = event.target as Node;
       if (triggerRef.current?.contains(target)) return;
-      if (inputRef.current?.closest('[data-ivt-location-panel]')?.contains(target)) return;
+      if (panelRef.current?.contains(target)) return;
       setOpen(false);
       setSearch('');
     }
@@ -173,6 +188,74 @@ export default function LocationCombobox({
     setOpen(true);
   }
 
+  const updatePanelPosition = useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const viewport = window.visualViewport;
+    const viewportTop = viewport?.offsetTop ?? 0;
+    const viewportHeight = viewport?.height ?? window.innerHeight;
+    const viewportBottom = viewportTop + viewportHeight;
+    const edgePadding = isMobile ? 12 : 8;
+    const gap = 6;
+    const belowSpace = viewportBottom - rect.bottom - gap - edgePadding;
+    const aboveSpace = rect.top - viewportTop - gap - edgePadding;
+    const opensDown = belowSpace >= 220 || belowSpace >= aboveSpace;
+    const availableSpace = opensDown ? belowSpace : aboveSpace;
+    const maxHeight = Math.max(120, Math.min(420, availableSpace));
+    const top = opensDown
+      ? rect.bottom + gap
+      : Math.max(viewportTop + edgePadding, rect.top - gap - maxHeight);
+    const commitPosition = (next: PanelPosition) => {
+      setPanelPosition((current) => (
+        current
+        && Math.abs(current.top - next.top) < 0.5
+        && Math.abs(current.left - next.left) < 0.5
+        && Math.abs(current.width - next.width) < 0.5
+        && Math.abs(current.maxHeight - next.maxHeight) < 0.5
+          ? current
+          : next
+      ));
+    };
+
+    if (isMobile) {
+      commitPosition({
+        top,
+        left: 12,
+        width: Math.max(0, window.innerWidth - 24),
+        maxHeight,
+      });
+      return;
+    }
+
+    const left = Math.min(Math.max(edgePadding, rect.left), Math.max(edgePadding, window.innerWidth - rect.width - edgePadding));
+    commitPosition({
+      top,
+      left,
+      width: rect.width,
+      maxHeight,
+    });
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (!open) {
+      setPanelPosition(null);
+      return undefined;
+    }
+
+    let frame = 0;
+    const trackTrigger = () => {
+      updatePanelPosition();
+      frame = window.requestAnimationFrame(trackTrigger);
+    };
+    frame = window.requestAnimationFrame(trackTrigger);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [open, updatePanelPosition]);
+
   function handleInputChange(event: React.ChangeEvent<HTMLInputElement>) {
     setSearch(event.target.value);
     setActiveIndex(-1);
@@ -204,24 +287,6 @@ export default function LocationCombobox({
       selectOption(visibleOptions[activeIndex]);
     }
   }
-
-  const panelStyle: React.CSSProperties = isMobile
-    ? {
-        position: 'fixed',
-        left: '12px',
-        right: '12px',
-        bottom: `${keyboardOffset + 12}px`,
-        maxHeight: 'min(56dvh, 420px)',
-        zIndex: 1000,
-      }
-    : {
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        top: 'calc(100% + 6px)',
-        maxHeight: '340px',
-        zIndex: 200,
-      };
 
   return (
     <div style={{ position: 'relative' }}>
@@ -278,20 +343,27 @@ export default function LocationCombobox({
         )}
       </div>
 
-      {open && (
+      {open && mounted && panelPosition && createPortal(
         <>
-          {/* Backdrop closes the panel on outside tap; kept transparent so
-              the page underneath stays visible. */}
+          {/* The backdrop and panel live under body, outside every form panel's
+              overflow and stacking context. Fixed coordinates are recalculated
+              on scroll, resize, and visual-viewport keyboard changes. */}
           <div
             aria-hidden="true"
             onClick={() => { setOpen(false); setSearch(''); }}
-            style={{ position: 'fixed', inset: 0, zIndex: isMobile ? 999 : 199, background: isMobile ? 'rgba(16,42,67,0.28)' : 'transparent' }}
+            style={{ position: 'fixed', inset: 0, zIndex: 999, background: isMobile ? 'rgba(16,42,67,0.28)' : 'transparent' }}
           />
           <div
+            ref={panelRef}
             data-ivt-location-panel
             className="ivt-location-search-results"
             style={{
-              ...panelStyle,
+              position: 'fixed',
+              top: `${panelPosition.top}px`,
+              left: `${panelPosition.left}px`,
+              width: `${panelPosition.width}px`,
+              maxHeight: `${panelPosition.maxHeight}px`,
+              zIndex: 1000,
               background: '#FFFFFF',
               border: '1px solid #D9E2EC',
               borderRadius: '12px',
@@ -374,7 +446,8 @@ export default function LocationCombobox({
               )}
             </div>
           </div>
-        </>
+        </>,
+        document.body,
       )}
     </div>
   );

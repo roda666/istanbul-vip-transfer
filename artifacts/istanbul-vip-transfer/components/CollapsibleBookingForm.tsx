@@ -5,8 +5,8 @@ import { ChevronDown, CalendarCheck } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
 import BookingForm from './BookingForm';
 
-// Form code and server-provided catalogs are already present before expansion;
-// opening the revenue-critical accordion must not trigger a component download.
+// Form code and server-provided service choices are present before expansion;
+// large option catalogs are prefetched independently in the background.
 
 /**
  * Wraps BookingForm in a collapsible accordion for service and blog pages.

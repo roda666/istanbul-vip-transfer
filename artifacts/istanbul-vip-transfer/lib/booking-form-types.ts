@@ -49,6 +49,16 @@ export interface BookingFormBootstrap {
   };
 }
 
+export type BookingFormInitialData = Pick<
+  BookingFormBootstrap,
+  'serviceTypes' | 'formSettings' | 'customFields'
+>;
+
+export type BookingFormOptions = Pick<
+  BookingFormBootstrap,
+  'vehicles' | 'locations'
+>;
+
 export const FALLBACK_BOOKING_SERVICE_TYPES: BookingServiceTypeOption[] = [
   { id: '1', key: 'AIRPORT_TRANSFER', label: 'Havalimanı / Şehir İçi Transfer', description: null, quoteEnabled: true, reservationEnabled: true },
   { id: '2', key: 'INTERCITY', label: 'Şehirler Arası Transfer', description: null, quoteEnabled: true, reservationEnabled: true },
@@ -67,4 +77,20 @@ export const EMPTY_BOOKING_FORM_BOOTSTRAP: BookingFormBootstrap = {
     intercityPickup: [],
     intercityDropoff: [],
   },
+};
+
+export const EMPTY_BOOKING_FORM_OPTIONS: BookingFormOptions = {
+  vehicles: [],
+  locations: {
+    localPickup: [],
+    localDropoff: [],
+    intercityPickup: [],
+    intercityDropoff: [],
+  },
+};
+
+export const EMPTY_BOOKING_FORM_INITIAL_DATA: BookingFormInitialData = {
+  serviceTypes: FALLBACK_BOOKING_SERVICE_TYPES,
+  formSettings: { showVehiclePreference: false },
+  customFields: [],
 };

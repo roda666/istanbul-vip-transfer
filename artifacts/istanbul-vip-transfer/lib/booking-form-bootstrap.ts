@@ -13,10 +13,14 @@ import { and, asc, eq, isNull, notInArray } from 'drizzle-orm';
 import { getVehicleFeatureDefaults } from '@/lib/vehicle-feature-defaults-server';
 import { resolvePublishedVehicles } from '@/lib/vehicle-localization';
 import {
+  EMPTY_BOOKING_FORM_INITIAL_DATA,
+  EMPTY_BOOKING_FORM_OPTIONS,
   EMPTY_BOOKING_FORM_BOOTSTRAP,
   FALLBACK_BOOKING_SERVICE_TYPES,
   type BookingFormBootstrap,
+  type BookingFormInitialData,
   type BookingLocationOption,
+  type BookingFormOptions,
 } from '@/lib/booking-form-types';
 import { PUBLICLY_UNAVAILABLE_BOOKING_LOCATION_SLUGS } from '@/lib/booking-location-policy';
 
@@ -36,10 +40,9 @@ function sortLocations(rows: BookingLocationOption[], scope: 'local' | 'intercit
   });
 }
 
-const getCachedBookingFormBootstrap = unstable_cache(
-  async (lang: string): Promise<BookingFormBootstrap> => {
-    const [serviceRows, locationRows, vehicleRows, settingRows, customFieldRows, defaultFeatureCodes] =
-      await Promise.all([
+const getCachedBookingFormInitialData = unstable_cache(
+  async (): Promise<BookingFormInitialData> => {
+    const [serviceRows, settingRows, customFieldRows] = await Promise.all([
         db.select({
           id: serviceTypes.id,
           key: serviceTypes.key,
@@ -48,6 +51,35 @@ const getCachedBookingFormBootstrap = unstable_cache(
           quoteEnabled: serviceTypes.quoteEnabled,
           reservationEnabled: serviceTypes.reservationEnabled,
         }).from(serviceTypes).where(eq(serviceTypes.enabled, true)).orderBy(asc(serviceTypes.displayOrder)),
+        db.select({ showVehiclePreference: siteSettings.showVehiclePreference })
+          .from(siteSettings).where(eq(siteSettings.id, 1)).limit(1),
+        db.select().from(customReservationFields)
+          .where(eq(customReservationFields.isActive, true))
+          .orderBy(asc(customReservationFields.sortOrder), asc(customReservationFields.id)),
+      ]);
+
+    return {
+      serviceTypes: serviceRows.length ? serviceRows : FALLBACK_BOOKING_SERVICE_TYPES,
+      formSettings: {
+        showVehiclePreference: settingRows[0]?.showVehiclePreference === true,
+      },
+      customFields: customFieldRows.map((field) => ({
+        id: field.id,
+        label: field.label,
+        appliesToSlugs: (field.appliesToSlugs as string[] | null) ?? [],
+        fieldType: field.fieldType,
+        isActive: field.isActive,
+        sortOrder: field.sortOrder,
+      })),
+    };
+  },
+  ['booking-form-initial-data'],
+  { revalidate: 300, tags: [BOOKING_FORM_BOOTSTRAP_TAG] },
+);
+
+const getCachedBookingFormOptions = unstable_cache(
+  async (lang: string): Promise<BookingFormOptions> => {
+    const [locationRows, vehicleRows, defaultFeatureCodes] = await Promise.all([
         db.select({
           id: locations.id,
           name: locations.name,
@@ -84,11 +116,6 @@ const getCachedBookingFormBootstrap = unstable_cache(
         }).from(vehicles)
           .where(and(eq(vehicles.status, 'PUBLISHED'), eq(vehicles.isActive, true)))
           .orderBy(asc(vehicles.displayOrder)),
-        db.select({ showVehiclePreference: siteSettings.showVehiclePreference })
-          .from(siteSettings).where(eq(siteSettings.id, 1)).limit(1),
-        db.select().from(customReservationFields)
-          .where(eq(customReservationFields.isActive, true))
-          .orderBy(asc(customReservationFields.sortOrder), asc(customReservationFields.id)),
         getVehicleFeatureDefaults(),
       ]);
 
@@ -106,24 +133,12 @@ const getCachedBookingFormBootstrap = unstable_cache(
     const resolvedVehicles = resolvePublishedVehicles(vehicleRows, lang, defaultFeatureCodes);
 
     return {
-      serviceTypes: serviceRows.length ? serviceRows : FALLBACK_BOOKING_SERVICE_TYPES,
       vehicles: resolvedVehicles.map((vehicle) => ({
         id: vehicle.id,
         slug: vehicle.slug,
         displayName: vehicle.displayName,
         passengerCapacity: vehicle.passengerCapacity,
         vehicleType: vehicle.vehicleType,
-      })),
-      formSettings: {
-        showVehiclePreference: settingRows[0]?.showVehiclePreference === true,
-      },
-      customFields: customFieldRows.map((field) => ({
-        id: field.id,
-        label: field.label,
-        appliesToSlugs: (field.appliesToSlugs as string[] | null) ?? [],
-        fieldType: field.fieldType,
-        isActive: field.isActive,
-        sortOrder: field.sortOrder,
       })),
       locations: {
         localPickup: sortLocations(localRows.filter((row) => row.pickupEnabled).map(toPublicLocation), 'local'),
@@ -133,17 +148,38 @@ const getCachedBookingFormBootstrap = unstable_cache(
       },
     };
   },
-  ['booking-form-bootstrap'],
+  ['booking-form-options'],
   { revalidate: 300, tags: [BOOKING_FORM_BOOTSTRAP_TAG] },
 );
 
-export async function getBookingFormBootstrap(lang: string): Promise<BookingFormBootstrap> {
+export async function getBookingFormInitialData(): Promise<BookingFormInitialData> {
   try {
-    return await getCachedBookingFormBootstrap(lang);
+    return await getCachedBookingFormInitialData();
   } catch (error) {
-    console.error('Booking form bootstrap error:', error);
-    return EMPTY_BOOKING_FORM_BOOTSTRAP;
+    console.error('Booking form initial data error:', error);
+    return EMPTY_BOOKING_FORM_INITIAL_DATA;
   }
+}
+
+export async function getBookingFormOptions(lang: string): Promise<BookingFormOptions> {
+  try {
+    return await getBookingFormOptionsStrict(lang);
+  } catch (error) {
+    console.error('Booking form options error:', error);
+    return EMPTY_BOOKING_FORM_OPTIONS;
+  }
+}
+
+export async function getBookingFormOptionsStrict(lang: string): Promise<BookingFormOptions> {
+  return getCachedBookingFormOptions(lang);
+}
+
+export async function getBookingFormBootstrap(lang: string): Promise<BookingFormBootstrap> {
+  const [initial, options] = await Promise.all([
+    getBookingFormInitialData(),
+    getBookingFormOptions(lang),
+  ]);
+  return { ...initial, ...options };
 }
 
 export function revalidateBookingFormBootstrap(): void {

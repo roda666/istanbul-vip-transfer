@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Playfair_Display, Inter } from 'next/font/google';
+import { Playfair_Display, Inter, Noto_Sans_Arabic } from 'next/font/google';
 import './globals.css';
 import PublicLayoutWrapper from '@/components/PublicLayoutWrapper';
 import WebVitalsReporter from '@/components/WebVitalsReporter';
@@ -10,8 +10,8 @@ import { SiteSettingsProvider } from '@/components/SiteSettingsContext';
 import { cookies, headers } from 'next/headers';
 import { getPublicLanguage } from '@/lib/i18n/active-locales';
 import { getPublicChrome, type PublicChromePayload } from '@/lib/public-chrome';
-import { getBookingFormBootstrap } from '@/lib/booking-form-bootstrap';
-import { EMPTY_BOOKING_FORM_BOOTSTRAP } from '@/lib/booking-form-types';
+import { getBookingFormInitialData } from '@/lib/booking-form-bootstrap';
+import { EMPTY_BOOKING_FORM_INITIAL_DATA } from '@/lib/booking-form-types';
 
 /**
  * Self-hosted via next/font — eliminates the external Google Fonts request
@@ -22,8 +22,8 @@ const playfairDisplay = Playfair_Display({
   subsets:  ['latin'],
   variable: '--font-playfair',
   display:  'swap',
-  weight:   ['400', '500', '600', '700', '800', '900'],
-  style:    ['normal', 'italic'],
+  weight:   ['700'],
+  style:    ['normal'],
 });
 
 const inter = Inter({
@@ -31,6 +31,14 @@ const inter = Inter({
   variable: '--font-inter',
   display:  'swap',
   weight:   ['300', '400', '500', '600', '700'],
+});
+
+const notoSansArabic = Noto_Sans_Arabic({
+  subsets: ['arabic'],
+  variable: '--font-noto-arabic',
+  display: 'swap',
+  weight: ['400', '500', '600', '700'],
+  preload: false,
 });
 
 export const viewport: Viewport = {
@@ -93,15 +101,22 @@ export default async function RootLayout({
   const initialLang = activeLanguage?.code ?? 'tr';
   const initialDirection = activeLanguage?.direction ?? 'ltr';
 
-  const publicChrome = isPublicRequest
-    ? await getPublicChrome(initialLang).catch((): PublicChromePayload => EMPTY_PUBLIC_CHROME)
-    : { ...EMPTY_PUBLIC_CHROME, contactSettings: await getContactSettings() };
-  const bookingFormData = isPublicRequest
-    ? await getBookingFormBootstrap(initialLang)
-    : EMPTY_BOOKING_FORM_BOOTSTRAP;
+  const [publicChrome, bookingFormData] = isPublicRequest
+    ? await Promise.all([
+        getPublicChrome(initialLang).catch((): PublicChromePayload => EMPTY_PUBLIC_CHROME),
+        getBookingFormInitialData(),
+      ])
+    : [
+        { ...EMPTY_PUBLIC_CHROME, contactSettings: await getContactSettings() },
+        EMPTY_BOOKING_FORM_INITIAL_DATA,
+      ];
 
   return (
-    <html lang={initialLang} dir={initialDirection} className={`${playfairDisplay.variable} ${inter.variable}`}>
+    <html
+      lang={initialLang}
+      dir={initialDirection}
+      className={`${playfairDisplay.variable} ${inter.variable} ${notoSansArabic.variable}`}
+    >
       <body
         className="grain-overlay"
         style={{ backgroundColor: 'var(--pub-page-bg, #F7F5EF)', minHeight: '100dvh' }}

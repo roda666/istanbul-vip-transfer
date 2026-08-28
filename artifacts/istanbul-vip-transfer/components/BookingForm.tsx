@@ -740,6 +740,23 @@ export default function BookingForm({
               </div>
             </div>
 
+            {bootstrap.optionsStatus === 'error' && (
+              <div
+                role="alert"
+                className="mb-5 rounded-xl border px-4 py-3 text-sm"
+                style={{ borderColor: '#F5C2C7', background: '#FFF5F5', color: '#842029' }}
+              >
+                <p>{ui.errors.message}</p>
+                <button
+                  type="button"
+                  onClick={bootstrap.retryOptions}
+                  className="mt-2 font-semibold underline underline-offset-2"
+                >
+                  {ui.errors.retry}
+                </button>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit(onSubmit)} data-testid="booking-form" noValidate>
               {/* Honeypots — offscreen + tabIndex=-1 hides from keyboard and AT;
                   aria-hidden removed because WCAG forbids aria-hidden on focusable elements */}

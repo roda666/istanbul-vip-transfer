@@ -113,6 +113,22 @@
   --destructive-border: hsl(var(--destructive));
 }
 
+html[lang='ar'] {
+  --app-font-sans: var(--font-noto-arabic), sans-serif;
+  --app-font-serif: var(--font-noto-arabic), sans-serif;
+}
+
+html[lang='ar'] body,
+html[lang='ar'] h1,
+html[lang='ar'] h2,
+html[lang='ar'] h3,
+html[lang='ar'] h4,
+html[lang='ar'] [style*='Inter'],
+html[lang='ar'] [style*='Playfair Display'],
+html[lang='ar'] .vip-input {
+  font-family: var(--font-noto-arabic), sans-serif !important;
+}
+
 @layer base {
   * {
     @apply border-border;

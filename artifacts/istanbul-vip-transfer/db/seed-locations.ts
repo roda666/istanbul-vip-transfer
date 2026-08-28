@@ -24,7 +24,6 @@ const AIRPORTS = [
 ] as const;
 
 const DISTRICTS = [
-  'Adalar',
   'Arnavutköy',
   'Ataşehir',
   'Avcılar',

@@ -9,7 +9,7 @@ import {
   siteSettings,
   vehicles,
 } from '@/db/schema';
-import { and, asc, eq, isNull } from 'drizzle-orm';
+import { and, asc, eq, isNull, notInArray } from 'drizzle-orm';
 import { getVehicleFeatureDefaults } from '@/lib/vehicle-feature-defaults-server';
 import { resolvePublishedVehicles } from '@/lib/vehicle-localization';
 import {
@@ -18,6 +18,7 @@ import {
   type BookingFormBootstrap,
   type BookingLocationOption,
 } from '@/lib/booking-form-types';
+import { PUBLICLY_UNAVAILABLE_BOOKING_LOCATION_SLUGS } from '@/lib/booking-location-policy';
 
 export const BOOKING_FORM_BOOTSTRAP_TAG = 'public-booking-form-bootstrap';
 
@@ -58,7 +59,11 @@ const getCachedBookingFormBootstrap = unstable_cache(
           pickupEnabled: locations.pickupEnabled,
           dropoffEnabled: locations.dropoffEnabled,
         }).from(locations)
-          .where(and(isNull(locations.archivedAt), eq(locations.isActive, true)))
+          .where(and(
+            isNull(locations.archivedAt),
+            eq(locations.isActive, true),
+            notInArray(locations.slug, [...PUBLICLY_UNAVAILABLE_BOOKING_LOCATION_SLUGS]),
+          ))
           .orderBy(asc(locations.displayOrder), asc(locations.name)),
         db.select({
           id: vehicles.id,

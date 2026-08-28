@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { PUBLICLY_UNAVAILABLE_BOOKING_LOCATION_SLUGS } from '@/lib/booking-location-policy';
 
 /**
  * Public (no auth) locations endpoint for the booking form.
@@ -29,11 +30,12 @@ export async function GET(request: NextRequest) {
   try {
     const { db } = await import('@/db');
     const { locations } = await import('@/db/schema');
-    const { eq, and, isNull, asc, or, sql } = await import('drizzle-orm');
+    const { eq, and, isNull, asc, or, sql, notInArray } = await import('drizzle-orm');
 
     const conditions = [
       isNull(locations.archivedAt),
       eq(locations.isActive, true),
+      notInArray(locations.slug, [...PUBLICLY_UNAVAILABLE_BOOKING_LOCATION_SLUGS]),
     ];
 
     if (forParam === 'pickup') conditions.push(eq(locations.pickupEnabled, true));

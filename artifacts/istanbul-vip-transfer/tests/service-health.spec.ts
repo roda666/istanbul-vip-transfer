@@ -15,6 +15,7 @@ import {
   getRegisteredServiceSlugs,
   type ServiceDbRow,
 } from '../lib/service-page-health';
+import { PAGE_REGISTRY } from '../lib/page-registry';
 
 // ── Fixture helpers ────────────────────────────────────────────────────────────
 
@@ -205,9 +206,13 @@ test.describe('computeServiceHealthIssues — fixture-based unit tests', () => {
 
 test.describe('getRegisteredServiceSlugs — PAGE_REGISTRY integration', () => {
 
-  test('returns exactly 14 service slugs matching the known registry', () => {
+  test('returns exactly the slugs whose schemaType is Service in PAGE_REGISTRY', () => {
+    // Derived from the registry itself (not a hardcoded count) so this test
+    // never goes stale as new Service pages are added to PAGE_REGISTRY.
+    const expectedCount = Object.values(PAGE_REGISTRY)
+      .filter(entry => entry.schemaType === 'Service').length;
     const slugs = getRegisteredServiceSlugs();
-    expect(slugs).toHaveLength(14);
+    expect(slugs).toHaveLength(expectedCount);
   });
 
   test('includes all expected service page slugs', () => {

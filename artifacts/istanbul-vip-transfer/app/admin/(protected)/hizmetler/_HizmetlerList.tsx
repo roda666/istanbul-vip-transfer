@@ -21,6 +21,13 @@ export interface ServiceListItem {
   translations: Record<string, string>; // locale → status
   /** Live "starting from" EUR price computed from panel pricing data. null = no price data defined yet. */
   startingPriceEur: number | null;
+  /**
+   * True for synthetic rows representing a Service slug registered in
+   * PAGE_REGISTRY that has zero CMS records — not even a draft. These rows
+   * have no real database id, so normal edit/preview/duplicate/archive
+   * actions do not apply; only a "create content" shortcut is shown.
+   */
+  missingRecord?: boolean;
 }
 
 interface Props { items: ServiceListItem[] }
@@ -31,6 +38,7 @@ const STATUS_STYLE: Record<string, { label: string; color: string; bg: string }>
   DRAFT:     { label: 'Taslak',  color: '#9333EA', bg: '#FAF5FF' },
   PUBLISHED: { label: 'Yayında', color: '#059669', bg: '#ECFDF5' },
   ARCHIVED:  { label: 'Arşiv',   color: '#64748B', bg: '#F1F5F9' },
+  MISSING:   { label: '⚠ Kayıt Yok', color: '#B42318', bg: '#FEF3F2' },
 };
 
 const TX_STATUS_DOT: Record<string, string> = {
@@ -132,6 +140,21 @@ function ActionButtons({
   onArchive:   (item: ServiceListItem) => void;
 }) {
   const isLoading = actionLoading?.endsWith(item.id);
+
+  if (item.missingRecord) {
+    return (
+      <a
+        href={`/admin/hizmetler/yeni?slug=${encodeURIComponent(item.slug)}&title=${encodeURIComponent(item.title)}`}
+        style={{
+          fontSize: '11px', fontWeight: 700, color: '#B42318',
+          textDecoration: 'none', padding: '4px 8px',
+          background: '#FEF3F2', borderRadius: '5px', border: '1px solid #FDA29B',
+          whiteSpace: 'nowrap',
+        }}
+      >+ İçerik Oluştur</a>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
       <a href={`/admin/hizmetler/${item.id}`} style={{
@@ -382,6 +405,7 @@ export default function HizmetlerList({ items }: Props) {
           <option value="PUBLISHED">Yayında</option>
           <option value="DRAFT">Taslak</option>
           <option value="ARCHIVED">Arşiv</option>
+          <option value="MISSING">⚠ Kayıt Yok</option>
         </select>
         <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={sel}>
           <option value="displayOrder">Sıraya göre</option>
@@ -425,45 +449,53 @@ export default function HizmetlerList({ items }: Props) {
               gap: '8px', padding: '12px 18px',
               borderBottom: '1px solid #F1F5F9', alignItems: 'center',
               fontFamily: 'Inter, sans-serif',
-              background: !item.isActive ? '#FAFAFA' : undefined,
+              background: item.missingRecord ? '#FFFBFA' : (!item.isActive ? '#FAFAFA' : undefined),
               opacity: actionLoading?.endsWith(item.id) ? 0.6 : 1,
               minWidth: '760px',
-            }}>
+            }}
+              title={item.missingRecord ? `"${item.slug}" PAGE_REGISTRY'de kayıtlı ama veritabanında hiç kaydı yok (taslak dahi yok). Ziyaretçiler bu sayfada boş/noindex içerik görür.` : undefined}
+            >
               <span style={{ fontSize: '11px', color: '#94A3B8' }}>{idx + 1}</span>
               <CoverThumbnail src={item.heroImage} title={item.title} />
 
               <div>
                 <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: '#1E293B' }}>
                   {item.title}
-                  {!item.isActive && <span style={{ marginLeft: '6px', fontSize: '10px', color: '#94A3B8', fontWeight: 400 }}>(pasif)</span>}
+                  {!item.isActive && !item.missingRecord && <span style={{ marginLeft: '6px', fontSize: '10px', color: '#94A3B8', fontWeight: 400 }}>(pasif)</span>}
                 </p>
                 <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#94A3B8' }}>
                   /{item.slug.slice(0, 40)}{item.slug.length > 40 ? '…' : ''}
                 </p>
               </div>
 
-              <span style={{ fontSize: '11px', color: '#64748B' }}>
-                {catLabel}
-                {item.startingPriceEur === null && (
-                  <span title="Bu hizmet için tanımlı fiyat verisi yok" style={{
-                    display: 'block', marginTop: '3px', fontSize: '10px', fontWeight: 700,
-                    color: '#B45309', background: '#FFF7ED', border: '1px solid #FBBF24',
-                    borderRadius: '8px', padding: '1px 6px', width: 'fit-content',
-                  }}>
-                    ⚠ Fiyat verisi eksik
-                  </span>
-                )}
-              </span>
+              {item.missingRecord ? (
+                <span style={{ fontSize: '11px', color: '#B45309', fontWeight: 600 }}>
+                  PAGE_REGISTRY&apos;de var, DB kaydı yok
+                </span>
+              ) : (
+                <span style={{ fontSize: '11px', color: '#64748B' }}>
+                  {catLabel}
+                  {item.startingPriceEur === null && (
+                    <span title="Bu hizmet için tanımlı fiyat verisi yok" style={{
+                      display: 'block', marginTop: '3px', fontSize: '10px', fontWeight: 700,
+                      color: '#B45309', background: '#FFF7ED', border: '1px solid #FBBF24',
+                      borderRadius: '8px', padding: '1px 6px', width: 'fit-content',
+                    }}>
+                      ⚠ Fiyat verisi eksik
+                    </span>
+                  )}
+                </span>
+              )}
 
-              <LangDots translations={item.translations} />
+              {item.missingRecord ? <span /> : <LangDots translations={item.translations} />}
 
               <span style={{
                 fontSize: '11px', fontWeight: 600, padding: '3px 8px',
                 borderRadius: '12px', color: s.color, background: s.bg, textAlign: 'center',
               }}>{s.label}</span>
 
-              <span style={{ fontSize: '13px', textAlign: 'center' }}>{item.showOnHomepage ? '✓' : '—'}</span>
-              <span style={{ fontSize: '13px', textAlign: 'center' }}>{item.showInNav ? '✓' : '—'}</span>
+              <span style={{ fontSize: '13px', textAlign: 'center' }}>{item.missingRecord ? '—' : (item.showOnHomepage ? '✓' : '—')}</span>
+              <span style={{ fontSize: '13px', textAlign: 'center' }}>{item.missingRecord ? '—' : (item.showInNav ? '✓' : '—')}</span>
 
               <ActionButtons
                 item={item}
@@ -491,7 +523,10 @@ export default function HizmetlerList({ items }: Props) {
 
           return (
             <div key={item.id} className="hl-card"
-              style={{ opacity: actionLoading?.endsWith(item.id) ? 0.6 : 1 }}
+              style={{
+                opacity: actionLoading?.endsWith(item.id) ? 0.6 : 1,
+                ...(item.missingRecord ? { background: '#FFFBFA', borderColor: '#FDA29B' } : {}),
+              }}
             >
               {/* Title row */}
               <div className="hl-card-top">
@@ -499,7 +534,7 @@ export default function HizmetlerList({ items }: Props) {
                 <p className="hl-card-title">
                   <span style={{ color: '#94A3B8', fontWeight: 400, marginRight: '6px' }}>{idx + 1}.</span>
                   {item.title}
-                  {!item.isActive && <span style={{ marginLeft: '6px', fontSize: '10px', color: '#94A3B8', fontWeight: 400 }}>(pasif)</span>}
+                  {!item.isActive && !item.missingRecord && <span style={{ marginLeft: '6px', fontSize: '10px', color: '#94A3B8', fontWeight: 400 }}>(pasif)</span>}
                 </p>
                 <span style={{
                   flexShrink: 0,
@@ -511,31 +546,39 @@ export default function HizmetlerList({ items }: Props) {
               {/* Slug */}
               <p className="hl-card-slug">/{item.slug}</p>
 
-              {/* Meta row */}
-              <div className="hl-card-meta">
-                {catLabel && <span style={{ background: '#F1F5F9', borderRadius: '4px', padding: '1px 6px' }}>{catLabel}</span>}
-                {item.startingPriceEur === null && (
-                  <span title="Bu hizmet için tanımlı fiyat verisi yok" style={{
-                    background: '#FFF7ED', color: '#B45309', border: '1px solid #FBBF24',
-                    borderRadius: '4px', padding: '1px 6px', fontWeight: 700,
-                  }}>⚠ Fiyat verisi eksik</span>
-                )}
-                <span style={{
-                  background: item.showOnHomepage ? '#ECFDF5' : '#F1F5F9',
-                  color: item.showOnHomepage ? '#059669' : '#64748B',
-                  borderRadius: '4px', padding: '1px 6px',
-                }}>Ana Sayfa: {item.showOnHomepage ? 'Açık' : 'Kapalı'}</span>
-                <span style={{
-                  background: item.showInNav ? '#EFF6FF' : '#F1F5F9',
-                  color: item.showInNav ? '#2563EB' : '#64748B',
-                  borderRadius: '4px', padding: '1px 6px',
-                }}>Menü: {item.showInNav ? 'Açık' : 'Kapalı'}</span>
-              </div>
+              {item.missingRecord ? (
+                <p style={{ margin: '0 0 10px', fontSize: '11px', color: '#B45309', fontWeight: 600 }}>
+                  PAGE_REGISTRY&apos;de kayıtlı ama veritabanında hiç kaydı yok (taslak dahi yok).
+                </p>
+              ) : (
+                <>
+                  {/* Meta row */}
+                  <div className="hl-card-meta">
+                    {catLabel && <span style={{ background: '#F1F5F9', borderRadius: '4px', padding: '1px 6px' }}>{catLabel}</span>}
+                    {item.startingPriceEur === null && (
+                      <span title="Bu hizmet için tanımlı fiyat verisi yok" style={{
+                        background: '#FFF7ED', color: '#B45309', border: '1px solid #FBBF24',
+                        borderRadius: '4px', padding: '1px 6px', fontWeight: 700,
+                      }}>⚠ Fiyat verisi eksik</span>
+                    )}
+                    <span style={{
+                      background: item.showOnHomepage ? '#ECFDF5' : '#F1F5F9',
+                      color: item.showOnHomepage ? '#059669' : '#64748B',
+                      borderRadius: '4px', padding: '1px 6px',
+                    }}>Ana Sayfa: {item.showOnHomepage ? 'Açık' : 'Kapalı'}</span>
+                    <span style={{
+                      background: item.showInNav ? '#EFF6FF' : '#F1F5F9',
+                      color: item.showInNav ? '#2563EB' : '#64748B',
+                      borderRadius: '4px', padding: '1px 6px',
+                    }}>Menü: {item.showInNav ? 'Açık' : 'Kapalı'}</span>
+                  </div>
 
-              {/* Language status dots */}
-              <div className="hl-card-langs">
-                <LangDots translations={item.translations} />
-              </div>
+                  {/* Language status dots */}
+                  <div className="hl-card-langs">
+                    <LangDots translations={item.translations} />
+                  </div>
+                </>
+              )}
 
               {/* Actions */}
               <div className="hl-card-actions">

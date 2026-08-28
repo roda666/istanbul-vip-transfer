@@ -5,10 +5,19 @@ import { useRouter } from 'next/navigation';
 import { slugify } from '@/lib/ai/slugify';
 import type { PublicServiceCategory } from '@/lib/public-service-catalog-types';
 
-export default function CreateServicePageForm({ categories }: { categories: PublicServiceCategory[] }) {
+interface Props {
+  categories: PublicServiceCategory[];
+  /** Pre-fills the slug field — used when creating content for a Service
+   * slug already registered in PAGE_REGISTRY but missing from the CMS. */
+  initialSlug?: string;
+  /** Pre-fills the title field, paired with initialSlug. */
+  initialTitle?: string;
+}
+
+export default function CreateServicePageForm({ categories, initialSlug, initialTitle }: Props) {
   const router = useRouter();
-  const [title, setTitle] = useState('');
-  const [slug, setSlug] = useState('');
+  const [title, setTitle] = useState(initialTitle ?? '');
+  const [slug, setSlug] = useState(initialSlug ?? '');
   const [category, setCategory] = useState(categories[0]?.slug ?? '');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -33,6 +42,16 @@ export default function CreateServicePageForm({ categories }: { categories: Publ
 
   return (
     <form onSubmit={submit} style={{ maxWidth: '680px', display: 'grid', gap: '16px' }}>
+      {initialSlug && (
+        <p style={{
+          margin: 0, padding: '10px 14px', fontSize: '13px', color: '#B45309',
+          background: '#FFF7ED', border: '1px solid #FBBF24', borderRadius: '8px',
+          fontFamily: 'Inter, sans-serif', lineHeight: 1.5,
+        }}>
+          ⚠ &quot;{initialSlug}&quot; slug&apos;ı PAGE_REGISTRY&apos;de kayıtlı ama veritabanında hiç içeriği yok —
+          bu form o eksik kaydı oluşturacak.
+        </p>
+      )}
       <p style={{ margin: 0, color: '#50677A', fontSize: '14px', fontFamily: 'Inter, sans-serif', lineHeight: 1.6 }}>
         İlk taslak oluşturulduktan sonra içerik, SEO, görseller ve çeviriler için hizmet sayfası editörüne yönlendirileceksiniz.
       </p>

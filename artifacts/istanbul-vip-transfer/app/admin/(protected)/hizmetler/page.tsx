@@ -10,6 +10,7 @@ import {
   type ServiceDbRow,
   type ServiceHealthItem,
 } from '@/lib/service-page-health';
+import { PAGE_REGISTRY } from '@/lib/page-registry';
 import RunHealthCheckButton from './_RunHealthCheckButton';
 import BulkRetranslateButton from './_BulkRetranslateButton';
 import HizmetlerList, { type ServiceListItem } from './_HizmetlerList';
@@ -110,6 +111,31 @@ export default async function HizmetlerPage() {
       body:     r.body ?? null,
     }));
     healthIssues = computeServiceHealthIssues(getRegisteredServiceSlugs(), dbRows);
+
+    // ── 5. Turn "missing_record" issues into synthetic rows so the list ──────
+    // itself (not just the banner) visibly flags a Service slug that was
+    // added to PAGE_REGISTRY but never got a CMS record — not even a draft.
+    // These have no DB id, so edit/duplicate/archive actions are replaced
+    // with a single "create content" shortcut.
+    const missingItems: ServiceListItem[] = healthIssues
+      .filter(h => h.issues.includes('missing_record'))
+      .map(h => ({
+        id:               `missing:${h.slug}`,
+        title:            PAGE_REGISTRY[h.slug]?.tr.title ?? h.slug,
+        slug:             h.slug,
+        status:           'MISSING',
+        isActive:         false,
+        displayOrder:     -1,
+        category:         null,
+        showOnHomepage:   false,
+        showInNav:        false,
+        heroImage:        null,
+        updatedAt:        new Date(0).toISOString(),
+        translations:     {},
+        startingPriceEur: null,
+        missingRecord:    true,
+      }));
+    items = [...missingItems, ...items];
 
     const lastRun = await db
       .select({ checkedAt: serviceHealthRuns.checkedAt })

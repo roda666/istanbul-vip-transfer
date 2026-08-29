@@ -3,6 +3,7 @@ import { isLocaleCodeSyntax } from '@/lib/i18n/locale-registry';
 import { localePath } from '@/lib/locale-path';
 import { slugify } from '@/lib/ai/slugify';
 import { SLUG_TO_PAGE_KEY } from '@/lib/service-page-config';
+import { STATIC_PAGE_SLUGS } from '@/lib/static-page-slugs';
 
 const SERVICE_NAV_KEYS: Record<string, keyof ReturnType<typeof getDictionary>['nav']> = {
   'istanbul-havalimani-transfer': 'istTransfer',
@@ -41,7 +42,10 @@ const SERVICE_SLUGS = new Set([
   ...Object.keys(SLUG_TO_PAGE_KEY),
   ...Object.keys(SERVICE_NAV_KEYS),
 ]);
-const STATIC_SLUGS = new Set(Object.keys(STATIC_NAV_KEYS));
+// Every scaffolded WebPage is routable in every locale. The original four
+// navigation-backed pages get translated URL segments from STATIC_NAV_KEYS;
+// pages without a dictionary nav key keep their canonical slug after /<locale>.
+const STATIC_SLUGS = new Set(STATIC_PAGE_SLUGS);
 // Existing admin-created categories use underscores (for example `city_vip`);
 // keep those persistent slugs routable alongside conventional hyphenated ones.
 const CATEGORY_SLUG_PATTERN = /^[a-z0-9]+(?:[-_][a-z0-9]+)*$/;
@@ -112,20 +116,33 @@ export function resolveLocalizedServiceSlug(routeSlug: string, locale: string): 
   return null;
 }
 
-/** Returns the canonical Turkish static slug for a localized or legacy route segment. */
-export function resolveLocalizedStaticSlug(routeSlug: string, locale: string): string | null {
+/**
+ * Resolves a static route against an explicit slug set.
+ * Exported so the scaffold contract can be tested with a not-yet-registered
+ * fixture slug without mutating the production registry.
+ */
+export function resolveLocalizedStaticSlugFromSet(
+  routeSlug: string,
+  locale: string,
+  staticSlugs: ReadonlySet<string>,
+): string | null {
   if (!routeSlug || routeSlug.includes('/')) return null;
-  if (locale === 'tr') return STATIC_SLUGS.has(routeSlug) ? routeSlug : null;
+  if (locale === 'tr') return staticSlugs.has(routeSlug) ? routeSlug : null;
 
   // Locale-prefixed Turkish static slugs remain valid solely for redirects.
-  if (STATIC_SLUGS.has(routeSlug)) return routeSlug;
+  if (staticSlugs.has(routeSlug)) return routeSlug;
 
-  for (const canonicalSlug of STATIC_SLUGS) {
+  for (const canonicalSlug of staticSlugs) {
     if (localizedStaticPath(canonicalSlug, locale).split('/').at(-1) === routeSlug) {
       return canonicalSlug;
     }
   }
   return null;
+}
+
+/** Returns the canonical Turkish static slug for a localized or legacy route segment. */
+export function resolveLocalizedStaticSlug(routeSlug: string, locale: string): string | null {
+  return resolveLocalizedStaticSlugFromSet(routeSlug, locale, STATIC_SLUGS);
 }
 
 /**

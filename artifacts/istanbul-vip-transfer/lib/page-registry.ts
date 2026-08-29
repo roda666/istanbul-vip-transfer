@@ -5,18 +5,15 @@
  * This file has NO React, Next.js, or browser dependencies so it can be
  * safely imported by both the Next.js app and standalone tsx scripts.
  *
- * HOW TO ADD A NEW PAGE
- * ─────────────────────
- * 1. Add an entry here (slug, schemaType, Turkish title + description).
- * 2. Run `pnpm generate:page-meta` to AI-translate the new entry into
- *    en / de / ru / ar and update lib/page-meta.json.
- * 3. For WebPage slugs only:
- *    a. Create the React component (e.g. app/yeni-sayfa/page.tsx).
- *    b. Add the slug to lib/static-page-slugs.ts.
- *    c. Import the component and add it to STATIC_PAGE_MAP in
- *       app/[lang]/[...slug]/page.tsx.
- *    Service slugs are handled automatically by ServicePageRenderer.
- * 4. Commit page-meta.json, static-page-slugs.ts, and this file.
+ * HOW TO ADD A NEW STATIC PAGE
+ * ────────────────────────────
+ * Run `pnpm new:page <slug>` from this package. The scaffold command creates
+ * the component, updates the registry, static slug list, localized route map,
+ * and draft page metadata as one operation. Run `pnpm generate:page-meta`
+ * afterward to replace the draft metadata with AI translations.
+ *
+ * Service slugs are still added to this registry directly and are handled
+ * automatically by ServicePageRenderer.
  *
  * The prebuild step (`check:page-meta`) will fail the build if:
  *   • page-meta.json is missing translations for any registered slug.

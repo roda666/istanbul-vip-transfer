@@ -9,11 +9,8 @@
  *
  * HOW TO KEEP THIS IN SYNC
  * ─────────────────────────
- * When you add a new WebPage entry to PAGE_REGISTRY:
- *   1. Create the component (e.g. app/yeni-sayfa/page.tsx).
- *   2. Add the slug to STATIC_PAGE_SLUGS (this file).
- *   3. Import the component and add it to STATIC_PAGE_MAP in
- *      app/[lang]/[...slug]/page.tsx.
+ * Run `pnpm new:page <slug>` to add a static page. It updates this list and
+ * the component route map together with PAGE_REGISTRY.
  *
  * The prebuild step (`check:page-meta`) will fail the build if this list
  * does not match the WebPage slugs in PAGE_REGISTRY, catching a forgotten

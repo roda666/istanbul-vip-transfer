@@ -64,7 +64,11 @@ interface SlugMeta {
   description: string;
 }
 /** Each slug entry: language code → translation, plus an optional _sourceHash. */
-type SlugEntry = Record<string, SlugMeta> & { _sourceHash?: string };
+type SlugEntry = Record<string, SlugMeta> & {
+  _sourceHash?: string;
+  /** Set by new:page until the draft metadata is replaced by translations. */
+  _scaffolded?: boolean;
+};
 type PageMeta = Record<string, SlugEntry>;
 
 // ── Hashing ──────────────────────────────────────────────────────────────────
@@ -237,9 +241,11 @@ async function main() {
     }
 
     // Determine which languages need (re-)translation
+    const isScaffolded = meta[slug]._scaffolded === true;
     const langsToTranslate = Object.entries(TARGET_LANGS).filter(([code]) => {
       if (force) return true;
       if (sourceChanged) return true;
+      if (isScaffolded) return true;
       return !meta[slug][code]?.title || !meta[slug][code]?.description;
     });
 
@@ -274,6 +280,7 @@ async function main() {
     // If any language failed, leave the hash stale so the next run retries them.
     if (allSucceeded) {
       meta[slug]._sourceHash = currentHash;
+      delete meta[slug]._scaffolded;
     } else {
       console.warn(
         `   ⚠ ${slug} — some languages failed; hash not updated so they will be retried next run`,

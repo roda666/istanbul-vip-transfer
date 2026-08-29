@@ -47,12 +47,8 @@ import RelatedBlogSection from '@/components/RelatedBlogSection';
 import { getServiceCategories } from '@/lib/service-category-server';
 
 // ── Non-service static pages ─────────────────────────────────────────────
-// When adding a new WebPage slug:
-//   1. Import the component above.
-//   2. Add it to STATIC_PAGE_MAP below.
-//   3. Add the slug to lib/static-page-slugs.ts.
-//   4. Add the entry to PAGE_REGISTRY in lib/page-registry.ts.
-// `check:page-meta` (prebuild) will catch a mismatch before it ships.
+// Run `pnpm new:page <slug>` to create and wire a new WebPage in one step.
+// `check:page-meta` (prebuild) catches any hand-edited mismatch before it ships.
 const STATIC_PAGE_MAP: Record<string, React.ComponentType> = {
   'hizmetler':  HizmetlerPage,
   'araclar':    AraclarPage,

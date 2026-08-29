@@ -9,7 +9,9 @@ import {
   resolveLocalizedServiceCategoryPath,
   resolveLocalizedServiceSlug,
   resolveLocalizedStaticSlug,
+  resolveLocalizedStaticSlugFromSet,
 } from '../../lib/localized-service-path';
+import { STATIC_PAGE_SLUGS } from '../../lib/static-page-slugs';
 
 const TARGET_LOCALES = ['en', 'de', 'ru', 'ar', 'fr', 'es', 'it', 'nl'] as const;
 const ISTANBUL_AIRPORT_SERVICE = 'istanbul-havalimani-transfer';
@@ -54,6 +56,24 @@ describe('localized service paths', () => {
     expect(routeSegment).not.toBe(SERVICES_PAGE);
     expect(resolveLocalizedStaticSlug(routeSegment, locale)).toBe(SERVICES_PAGE);
     expect(resolveLocalizedStaticSlug(SERVICES_PAGE, locale)).toBe(SERVICES_PAGE);
+  });
+
+  it('keeps a scaffolded page routable when it has no navigation dictionary key', () => {
+    const scaffoldedSlugs = new Set(['2025-transfers']);
+
+    expect(localizedStaticPath('2025-transfers', 'tr')).toBe('/2025-transfers');
+    expect(localizedStaticPath('2025-transfers', 'en')).toBe('/en/2025-transfers');
+    expect(resolveLocalizedStaticSlugFromSet('2025-transfers', 'tr', scaffoldedSlugs))
+      .toBe('2025-transfers');
+    expect(resolveLocalizedStaticSlugFromSet('2025-transfers', 'en', scaffoldedSlugs))
+      .toBe('2025-transfers');
+  });
+
+  it.each(STATIC_PAGE_SLUGS)('resolves registered static page "%s" in Turkish and English', (slug) => {
+    const englishSegment = localizedStaticPath(slug, 'en').split('/').at(-1)!;
+
+    expect(resolveLocalizedStaticSlug(slug, 'tr')).toBe(slug);
+    expect(resolveLocalizedStaticSlug(englishSegment, 'en')).toBe(slug);
   });
 
   it('rewrites static suffixes for generic links and language switching', () => {

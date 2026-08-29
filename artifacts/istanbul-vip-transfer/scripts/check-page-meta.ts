@@ -10,10 +10,9 @@
  * Run via:  pnpm --filter @workspace/istanbul-vip-transfer check:page-meta
  * This is automatically called as the `prebuild` step.
  *
- * When you add a new page to PAGE_REGISTRY, this script will fail until you
- * also run `pnpm generate:page-meta` and commit the updated page-meta.json.
- * For WebPage slugs, you must also update lib/static-page-slugs.ts and
- * add the component to app/[lang]/[...slug]/page.tsx STATIC_PAGE_MAP.
+ * Use `pnpm new:page <slug>` to scaffold a new WebPage. It creates draft
+ * metadata and all component wiring in one operation, so this check passes
+ * immediately; run `pnpm generate:page-meta` to replace draft translations.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -134,8 +133,8 @@ function main() {
              to auto-generate missing translations via AI, then commit the updated
              lib/page-meta.json.
 
-[components] Fix: update lib/static-page-slugs.ts and STATIC_PAGE_MAP in
-             app/[lang]/[...slug]/page.tsx to stay in sync with PAGE_REGISTRY.
+[components] Fix: run pnpm new:page <slug> for new static pages, or update
+             lib/static-page-slugs.ts and STATIC_PAGE_MAP together.
 `);
     process.exit(1);
   }

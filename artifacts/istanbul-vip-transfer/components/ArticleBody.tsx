@@ -187,5 +187,9 @@ export default function ArticleBody({ body }: { body: string }) {
   }
   flushList();
 
-  return <>{elements}</>;
+  return (
+    <div style={{ minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+      {elements}
+    </div>
+  );
 }

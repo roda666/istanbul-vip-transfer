@@ -387,14 +387,13 @@ export default function ChatWidget({
           }}
         />
       )}
-      {/* Panel — hidden (not unmounted, so the conversation isn't lost) while
-          the booking form section is on screen: it both crowds the already
-          tight mobile layout and distracts from finishing the request. */}
-      {open && (
+      {/* Conversation state lives in React state, so the panel can be unmounted
+          while the booking form is visible without leaving focusable controls
+          inside an aria-hidden subtree. */}
+      {open && !formVisible && (
         <div
           ref={dialogRef}
           role="dialog"
-          aria-hidden={formVisible || undefined}
           aria-modal={modal || undefined}
           aria-label={cb.title}
           aria-labelledby="ivt-chat-title"

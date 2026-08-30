@@ -37,7 +37,7 @@ const PUBLIC_PAGES = [
   { path: '/araclar',   name: 'Araçlar'    },
   { path: '/blog',      name: 'Blog'       },
   { path: '/iletisim',  name: 'İletişim'   },
-  { path: '/rezervasyon', name: 'Rezervasyon' },
+  { path: '/istanbul-havalimani-transfer#rezervasyon', name: 'Rezervasyon Akışı' },
 ] as const;
 
 // RTL locale pages
@@ -95,12 +95,21 @@ for (const vp of VIEWPORTS) {
 
     for (const pg of PUBLIC_PAGES) {
       test(`${pg.name} — core quality checks`, async ({ page }) => {
+        // Next dev compiles a route on its first request. Warm that compile so
+        // this gate measures the rendered application rather than compiler time.
+        await page.request.get(pg.path);
         const res = await page.goto(pg.path, { waitUntil: 'domcontentloaded' });
 
         // HTTP status
         expect(res?.status(), `${pg.name} HTTP status`).toBeLessThan(400);
 
-        await page.waitForLoadState('networkidle');
+        // Third-party widgets (for example Turnstile) may keep network
+        // connections open. FCP is the actual metric this gate needs.
+        await page.waitForFunction(
+          () => performance.getEntriesByType('paint').some(entry => entry.name === 'first-contentful-paint'),
+          undefined,
+          { timeout: 5_000 },
+        );
 
         // ── Performance metrics ──────────────────────────────────────────────
         const { ttfb, fcp } = await collectMetrics(page);
@@ -144,10 +153,15 @@ for (const vp of VIEWPORTS) {
 
     for (const pg of RTL_PAGES) {
       test(`${pg.name} — RTL layout checks`, async ({ page }) => {
+        await page.request.get(pg.path);
         const res = await page.goto(pg.path, { waitUntil: 'domcontentloaded' });
         expect(res?.status(), `${pg.name} HTTP status`).toBeLessThan(400);
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForFunction(
+          () => performance.getEntriesByType('paint').some(entry => entry.name === 'first-contentful-paint'),
+          undefined,
+          { timeout: 5_000 },
+        );
 
         // dir="rtl" must be applied to <html>
         const dir = await page.locator('html').getAttribute('dir');

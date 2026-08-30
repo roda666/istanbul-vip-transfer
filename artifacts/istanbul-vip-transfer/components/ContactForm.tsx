@@ -228,7 +228,6 @@ export default function ContactForm() {
             tabIndex={-1}
             autoComplete="url"
             style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0 }}
-            aria-hidden="true"
           />
           <input
             ref={companyHoneypotRef}
@@ -237,7 +236,6 @@ export default function ContactForm() {
             tabIndex={-1}
             autoComplete="organization"
             style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0 }}
-            aria-hidden="true"
           />
 
           {/* Name */}

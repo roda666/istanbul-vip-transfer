@@ -36,6 +36,11 @@ const mocks = vi.hoisted(() => {
     auditLogs,
     getAdminNotifyEmails: vi.fn(),
     sendEmailDetailed: vi.fn(),
+    startNewsletterOptIn: vi.fn(),
+    rateLimit: vi.fn(),
+    verifyFormGuardToken: vi.fn(),
+    verifyTurnstileToken: vi.fn(),
+    recordBotProtectionBlock: vi.fn(),
     selectLimit: vi.fn(),
   };
 });
@@ -50,6 +55,21 @@ vi.mock('@/db/schema', () => ({
 vi.mock('@/lib/email', () => ({
   getAdminNotifyEmails: mocks.getAdminNotifyEmails,
   sendEmailDetailed: mocks.sendEmailDetailed,
+}));
+vi.mock('@/lib/newsletter', () => ({
+  startNewsletterOptIn: mocks.startNewsletterOptIn,
+}));
+vi.mock('@/lib/auth/rate-limit', () => ({
+  rateLimit: mocks.rateLimit,
+}));
+vi.mock('@/lib/form-guard', () => ({
+  verifyFormGuardToken: mocks.verifyFormGuardToken,
+}));
+vi.mock('@/lib/turnstile', () => ({
+  verifyTurnstileToken: mocks.verifyTurnstileToken,
+}));
+vi.mock('@/lib/bot-protection-metrics', () => ({
+  recordBotProtectionBlock: mocks.recordBotProtectionBlock,
 }));
 vi.mock('@/lib/i18n/active-locales', () => ({
   getPublicLangCodes: vi.fn().mockResolvedValue(['tr', 'en', 'de', 'ru', 'ar', 'fr', 'es', 'it', 'nl']),
@@ -90,6 +110,11 @@ describe('contact form newsletter consent', () => {
     mocks.selectLimit.mockReset().mockResolvedValue([]);
     mocks.getAdminNotifyEmails.mockReset().mockResolvedValue([]);
     mocks.sendEmailDetailed.mockReset();
+    mocks.startNewsletterOptIn.mockReset().mockResolvedValue({ status: 'pending' });
+    mocks.rateLimit.mockReset().mockResolvedValue({ success: true });
+    mocks.verifyFormGuardToken.mockReset().mockReturnValue('valid');
+    mocks.verifyTurnstileToken.mockReset().mockResolvedValue({ status: 'unconfigured' });
+    mocks.recordBotProtectionBlock.mockReset().mockResolvedValue(undefined);
 
     mocks.db.select.mockReturnValue({
       from: () => ({
@@ -118,61 +143,35 @@ describe('contact form newsletter consent', () => {
   it('does not create newsletter records when consent is unchecked', async () => {
     const response = await POST(contactRequest({ newsletterConsent: false }, '10.0.0.1'));
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(202);
     expect(mocks.db.select).not.toHaveBeenCalled();
     expect(mocks.db.insert).toHaveBeenCalledWith(mocks.reservationRequests);
     expect(mocks.db.insert).not.toHaveBeenCalledWith(mocks.newsletterSubscribers);
     expect(mocks.db.insert).not.toHaveBeenCalledWith(mocks.newsletterConsentEvents);
+    expect(mocks.startNewsletterOptIn).not.toHaveBeenCalled();
   });
 
-  it('creates an active subscriber and localized granted-consent event when opted in', async () => {
+  it('starts localized double opt-in when consent is checked', async () => {
     const response = await POST(contactRequest({ newsletterConsent: true, locale: 'de' }, '10.0.0.2'));
 
-    expect(response.status).toBe(200);
-    const subscriberInsert = mocks.db.insert.mock.calls.find(
-      ([table]) => table === mocks.newsletterSubscribers,
-    )?.[0];
-    expect(subscriberInsert).toBe(mocks.newsletterSubscribers);
-
-    const subscriberValues = mocks.db.insert.mock.results
-      .find((result, index) => mocks.db.insert.mock.calls[index][0] === mocks.newsletterSubscribers)
-      ?.value.values.mock.calls[0][0];
-    expect(subscriberValues).toMatchObject({
-      normalizedEmail: 'visitor@example.com',
-      status: 'ACTIVE',
-      preferredLanguage: 'de',
-      source: 'contact-form',
-    });
-
-    const consentValues = mocks.db.insert.mock.results
-      .find((result, index) => mocks.db.insert.mock.calls[index][0] === mocks.newsletterConsentEvents)
-      ?.value.values.mock.calls[0][0];
-    expect(consentValues).toMatchObject({
-      subscriberId: 'new-subscriber-id',
-      normalizedEmail: 'visitor@example.com',
-      action: 'GRANTED',
+    expect(response.status).toBe(202);
+    expect(mocks.startNewsletterOptIn).toHaveBeenCalledWith(expect.objectContaining({
+      email: 'visitor@example.com',
+      name: 'Newsletter Visitor',
       language: 'de',
       source: 'contact-form',
-    });
+    }));
   });
 
-  it('reactivates an existing subscriber and still records a fresh consent event', async () => {
-    mocks.selectLimit.mockResolvedValue([{ id: 'existing-subscriber-id' }]);
-
+  it('delegates repeated consent to the idempotent double-opt-in lifecycle', async () => {
     const response = await POST(contactRequest({ newsletterConsent: true }, '10.0.0.3'));
 
-    expect(response.status).toBe(200);
-    expect(mocks.db.insert).not.toHaveBeenCalledWith(mocks.newsletterSubscribers);
-    expect(mocks.db.update).toHaveBeenCalledWith(mocks.newsletterSubscribers);
-
-    const consentValues = mocks.db.insert.mock.results
-      .find((result, index) => mocks.db.insert.mock.calls[index][0] === mocks.newsletterConsentEvents)
-      ?.value.values.mock.calls[0][0];
-    expect(consentValues).toMatchObject({
-      subscriberId: 'existing-subscriber-id',
-      action: 'GRANTED',
+    expect(response.status).toBe(202);
+    expect(mocks.startNewsletterOptIn).toHaveBeenCalledWith(expect.objectContaining({
+      email: 'visitor@example.com',
+      language: 'en',
       source: 'contact-form',
-    });
+    }));
   });
 
   it('keeps existing contact validation intact', async () => {

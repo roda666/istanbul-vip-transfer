@@ -17,6 +17,7 @@
  *   pnpm --filter @workspace/istanbul-vip-transfer run test:e2e
  */
 import { test, expect } from '@playwright/test';
+import { localizedServicePath } from '../lib/localized-service-path';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -79,7 +80,7 @@ test.describe('Locale-prefixed service pages — EN / DE / RU / AR', () => {
   for (const slug of TOP_SERVICE_SLUGS) {
     for (const locale of LOCALE_PREFIXES) {
       test(`/${locale}/${slug} returns 200 and renders an H1`, async ({ request }) => {
-        const path     = `/${locale}/${slug}`;
+        const path     = localizedServicePath(slug, locale);
         const response = await request.get(path);
 
         expect(response.status(), `Expected 200 for ${path}`).toBe(200);
@@ -137,15 +138,17 @@ const RELATED_BLOG_LOCALES = [
 
 test.describe('Localized related-blog cards', () => {
   for (const { path, texts } of RELATED_BLOG_LOCALES) {
-    test(`${path} renders localized related-blog link labels`, async ({ request }) => {
-      const response = await request.get(path);
-      expect(response.status(), `Expected 200 for ${path}`).toBe(200);
+    test(`${path} renders localized related-blog link labels`, async ({ page }) => {
+      const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
+      expect(response?.status(), `Expected 200 for ${path}`).toBe(200);
 
-      const html = await response.text();
       for (const text of texts) {
-        expect(html, `Expected localized related-blog text on ${path}: ${text}`).toContain(text);
+        await expect(
+          page.getByText(text, { exact: true }),
+          `Expected localized related-blog text on ${path}: ${text}`,
+        ).toBeVisible();
       }
-      expect(html).not.toContain('İstanbul Havalimanı Transfer Rehberi');
+      await expect(page.getByText('İstanbul Havalimanı Transfer Rehberi', { exact: true })).toHaveCount(0);
     });
   }
 });

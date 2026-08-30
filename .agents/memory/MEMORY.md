@@ -109,3 +109,4 @@
 - [UTC round-trip day-offset bug class](utc-roundtrip-day-offset-bugclass.md) — a zoned instant round-tripped through UTC is wrong every day, not just at midnight; derive calendar dates from Intl parts only.
 - [Fleet-page translation gate](fleet-page-translation-gate.md) — preserve the exact numeric-token sequence and spell-out durations; translate generic vehicle categories, then run native-language QA.
 - [Reservation idempotency recovery](reservation-idempotency-recovery.md) — overlapping keepalive retries can create false failures after a successful commit; replay precedes rate limits and uses private storage fallback.
+- [Performance E2E environment](performance-e2e-environment.md) — run the full perf suite against a production build; Next dev cold compilation and concurrent builds create false timing and connection failures.

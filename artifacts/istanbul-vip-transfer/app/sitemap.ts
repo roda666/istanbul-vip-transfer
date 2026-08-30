@@ -10,6 +10,21 @@ import {
 
 const BASE = SITE.siteUrl;
 
+function buildLanguageAlternates(
+  trPath: string,
+  localePaths: ReadonlyMap<string, string>,
+): Record<string, string> {
+  const trUrl = `${BASE}${trPath}`;
+  const languages: Record<string, string> = {
+    'x-default': trUrl,
+    [LANG_LOCALES.tr]: trUrl,
+  };
+  for (const [locale, path] of localePaths) {
+    languages[LANG_LOCALES[locale as keyof typeof LANG_LOCALES] ?? locale] = `${BASE}${path}`;
+  }
+  return languages;
+}
+
 // Service/category publication changes must be reflected immediately.
 export const dynamic = 'force-dynamic';
 
@@ -137,10 +152,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     for (const r of serviceSlugList) idToSlug.set(r.id, r.slug);
 
-    // Fetch all PUBLISHED or OUTDATED service translations in one query.
-    // OUTDATED means was previously published; the old content remains live until
-    // a new translation is approved and published. Exclude from sitemap only if
-    // the content has never been published (DRAFT/REVIEW/FAILED/NOT_STARTED).
+    // Sitemap alternates are intentionally stricter than visitor rendering:
+    // only explicitly PUBLISHED translations may be advertised to crawlers.
     if (serviceSlugList.length > 0) {
       const txRows = await db
         .select({
@@ -151,7 +164,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .from(contentTranslations)
         .where(and(
           eq(contentTranslations.entityType, 'service_page'),
-          inArray(contentTranslations.status, ['PUBLISHED', 'OUTDATED']),
+          eq(contentTranslations.status, 'PUBLISHED'),
         ));
 
       for (const tx of txRows) {
@@ -168,11 +181,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   for (const { id, slug, priority, updatedAt } of serviceSlugList) {
+    const txLocales = publishedTxByContent.get(id);
+    const localePaths = new Map<string, string>();
+    for (const lang of nonTrLangs) {
+      if (txLocales?.has(lang.code)) {
+        localePaths.set(lang.code, localizedServicePath(slug, lang.code));
+      }
+    }
+    const languages = buildLanguageAlternates(`/${slug}`, localePaths);
+
     // TR root — always emitted (no translation needed)
-    push({ url: `${BASE}/${slug}`, ...(updatedAt ? { lastModified: updatedAt } : {}), changeFrequency: 'monthly', priority });
+    push({
+      url: `${BASE}/${slug}`,
+      ...(updatedAt ? { lastModified: updatedAt } : {}),
+      changeFrequency: 'monthly',
+      priority,
+      alternates: { languages },
+    });
 
     // Non-TR: only emit when a PUBLISHED translation exists for this lang
-    const txLocales = publishedTxByContent.get(id);
     for (const lang of nonTrLangs) {
       if (!txLocales?.has(lang.code)) continue; // skip — no published translation
       const txUpdatedAt = txLocales.get(lang.code) ?? updatedAt;
@@ -181,6 +208,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         ...(txUpdatedAt ? { lastModified: txUpdatedAt } : {}),
         changeFrequency: 'monthly',
         priority: Math.max(priority - 0.05, 0.5),
+        alternates: { languages },
       });
     }
   }
@@ -243,21 +271,33 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         publishedByRoute.set(translation.routeId, locales);
       }
       for (const route of routes) {
+        const locales = publishedByRoute.get(route.id);
+        const localePaths = new Map<string, string>();
+        for (const lang of nonTrLangs) {
+          if (locales?.has(lang.code)) {
+            localePaths.set(lang.code, localizedTransferRoutePath(route.slug, lang.code));
+          }
+        }
+        const languages = buildLanguageAlternates(
+          localizedTransferRoutePath(route.slug, 'tr'),
+          localePaths,
+        );
         push({
           url: `${BASE}${localizedTransferRoutePath(route.slug, 'tr')}`,
           ...(route.updatedAt ? { lastModified: route.updatedAt } : {}),
           changeFrequency: 'monthly',
           priority: 0.7,
+          alternates: { languages },
         });
-        const locales = publishedByRoute.get(route.id);
         for (const lang of nonTrLangs) {
           const translatedAt = locales?.get(lang.code);
-          if (!translatedAt) continue;
+          if (!locales?.has(lang.code)) continue;
           push({
             url: `${BASE}${localizedTransferRoutePath(route.slug, lang.code)}`,
-            lastModified: translatedAt,
+            ...(translatedAt ? { lastModified: translatedAt } : {}),
             changeFrequency: 'monthly',
             priority: 0.65,
+            alternates: { languages },
           });
         }
       }

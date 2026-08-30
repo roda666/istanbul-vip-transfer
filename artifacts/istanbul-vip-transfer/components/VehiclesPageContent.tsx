@@ -214,7 +214,7 @@ export default async function VehiclesPageContent({ locale }: { locale: string }
         >
           <div className="mx-auto max-w-4xl px-5 py-8 md:px-8 md:py-12">
             <article>
-              <h1 id="vehicles-intro-title" className="sr-only">Araç seçimi ve filo rehberi</h1>
+              <h2 id="vehicles-intro-title" className="sr-only">Araç seçimi ve filo rehberi</h2>
                <ArticleBody body={introContent.body} />
             </article>
           </div>

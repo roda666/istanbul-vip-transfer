@@ -37,11 +37,16 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const PAGE_META_PATH = path.join(ROOT, 'lib', 'page-meta.json');
 
-/** Non-Turkish languages that must have translations for every slug. */
-const REQUIRED_LANGS = ['en', 'de', 'ru', 'ar', 'es', 'fr', 'it', 'nl'];
+/** Public languages that must have valid metadata for every registered slug. */
+const REQUIRED_LANGS = ['tr', 'en', 'de', 'ru', 'ar', 'es', 'fr', 'it', 'nl'] as const;
+const ALLOWED_ENTRY_KEYS = new Set<string>([...REQUIRED_LANGS, '_sourceHash']);
 
 interface SlugMeta { title: string; description: string }
 type PageMeta = Record<string, Record<string, SlugMeta>>;
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
 function main() {
   const errors: string[] = [];
@@ -52,22 +57,39 @@ function main() {
     process.exit(1);
   }
 
-  const meta: PageMeta = JSON.parse(fs.readFileSync(PAGE_META_PATH, 'utf8')) as PageMeta;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(fs.readFileSync(PAGE_META_PATH, 'utf8'));
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : 'unknown JSON parse error';
+    console.error(`✗  lib/page-meta.json contains malformed JSON: ${detail}`);
+    process.exit(1);
+  }
+  if (!isObject(parsed)) {
+    console.error('✗  lib/page-meta.json must contain a JSON object keyed by page slug');
+    process.exit(1);
+  }
+  const meta = parsed as PageMeta;
   const registeredSlugs = Object.keys(PAGE_REGISTRY);
 
   for (const slug of registeredSlugs) {
-    if (!meta[slug]) {
+    if (!isObject(meta[slug])) {
       errors.push(`[page-meta] slug "${slug}" is missing entirely from page-meta.json`);
       continue;
+    }
+    const slugEntry = meta[slug] as unknown as Record<string, unknown>;
+    for (const key of Object.keys(slugEntry)) {
+      if (!ALLOWED_ENTRY_KEYS.has(key)) {
+        errors.push(`[page-meta] slug "${slug}" contains invalid locale/key "${key}"`);
+      }
     }
 
     // ── Hash staleness check ──────────────────────────────────────────────
     const { tr: trSource } = PAGE_REGISTRY[slug];
     const currentHash = hashTrSource(trSource.title, trSource.description);
-    const storedEntry = meta[slug] as Record<string, unknown>;
-    const storedHash = storedEntry._sourceHash as string | undefined;
+    const storedHash = slugEntry._sourceHash;
 
-    if (!storedHash) {
+    if (typeof storedHash !== 'string' || storedHash.trim() === '') {
       errors.push(
         `[stale-hash] slug "${slug}" has no _sourceHash in page-meta.json — ` +
           `run generate:page-meta to record the current hash`,
@@ -82,12 +104,16 @@ function main() {
 
     // ── Translation coverage check ────────────────────────────────────────
     for (const lang of REQUIRED_LANGS) {
-      const entry = meta[slug][lang];
-      if (!entry?.title) {
-        errors.push(`[page-meta] slug "${slug}" is missing "${lang}.title"`);
+      const entry = slugEntry[lang];
+      if (!isObject(entry)) {
+        errors.push(`[page-meta] slug "${slug}" has invalid or missing metadata object for locale "${lang}"`);
+        continue;
       }
-      if (!entry?.description) {
-        errors.push(`[page-meta] slug "${slug}" is missing "${lang}.description"`);
+      if (typeof entry.title !== 'string' || entry.title.trim() === '') {
+        errors.push(`[page-meta] slug "${slug}" has empty, null, or non-string "${lang}.title"`);
+      }
+      if (typeof entry.description !== 'string' || entry.description.trim() === '') {
+        errors.push(`[page-meta] slug "${slug}" has empty, null, or non-string "${lang}.description"`);
       }
     }
   }
@@ -140,7 +166,7 @@ function main() {
   }
 
   console.log(
-    `✓  page-meta coverage OK — all ${registeredSlugs.length} slugs in PAGE_REGISTRY have metadata for all 8 target locales`,
+    `✓  page-meta coverage OK — all ${registeredSlugs.length} slugs in PAGE_REGISTRY have valid metadata for all 9 public locales`,
   );
   console.log(
     `✓  component coverage OK — all ${webPageSlugs.length} WebPage slugs have entries in lib/static-page-slugs.ts`,

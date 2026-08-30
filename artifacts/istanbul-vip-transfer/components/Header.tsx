@@ -168,6 +168,7 @@ export default function Header({ serviceNavigationGroups }: HeaderProps = {}) {
                         className="ivt-hdr-dropdown absolute top-full left-1/2 mt-0 rounded-xl shadow-xl border overflow-hidden"
                         data-open={String(dropdownOpen)}
                         aria-hidden={!dropdownOpen}
+                        inert={!dropdownOpen}
                         style={{
                           translate: '-50% 0',
                           width: '600px',
@@ -205,6 +206,7 @@ export default function Header({ serviceNavigationGroups }: HeaderProps = {}) {
                                         onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#8A6516'; }}
                                         onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = active ? '#8A6516' : '#50677A'; }}
                                         onClick={() => setDropdownOpen(false)}
+                                        tabIndex={dropdownOpen ? undefined : -1}
                                       >
                                         <span
                                           className="h-px flex-shrink-0 transition-all duration-200 group-hover:w-5"
@@ -230,6 +232,7 @@ export default function Header({ serviceNavigationGroups }: HeaderProps = {}) {
                             onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = '0.75'; }}
                             onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = '1'; }}
                             onClick={() => setDropdownOpen(false)}
+                            tabIndex={dropdownOpen ? undefined : -1}
                           >
                             {dict.header.allServices}
                           </Link>

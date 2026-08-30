@@ -88,9 +88,9 @@ describe('admin pricing engine', () => {
 
     expect(result).toMatchObject({
       state: 'AVAILABLE',
-      netTryKurus: 10_000,
-      vatTryKurus: 2_000,
-      grossTryKurus: 12_000,
+      netTryKurus: 7_000,
+      vatTryKurus: 1_400,
+      grossTryKurus: 8_400,
       quotedEurCents: 500,
       quotedUsdCents: 1_000,
       quotedTryKurus: 20_000,
@@ -99,7 +99,7 @@ describe('admin pricing engine', () => {
       expect(result.lines).toContainEqual({
         key: 'toll:bridge-1',
         label: 'Test Köprüsü',
-        amountKurus: 6_000,
+        amountKurus: 3_000,
         visibleToCustomer: false,
       });
     }

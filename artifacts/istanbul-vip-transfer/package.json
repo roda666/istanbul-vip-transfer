@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "next lint",
     "check:page-meta": "tsx scripts/check-page-meta.ts",
+    "test:meta-guard": "tsx scripts/test-page-meta-guard.ts",
     "new:page": "node scripts/new-page.mjs",
     "check:service-health": "tsx scripts/check-service-health.ts",
     "check:locale-contamination": "node scripts/check-locale-contamination.mjs",

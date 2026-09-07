@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { motion } from 'framer-motion';
 import { Plane, Hotel, Map, Briefcase, PartyPopper, Route, ArrowRight, Heart, Building2, Home, type LucideIcon } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
 import { localizedPublicPath, localizedServicePath } from '@/lib/localized-service-path';
@@ -380,17 +379,13 @@ export default function Services({ catalogServices, serviceCopy, homepageMode = 
     >
       <div className="absolute top-0 left-0 right-0 h-px" style={{ background: '#D9E2EC' }} aria-hidden="true" />
       <div className="max-w-6xl mx-auto px-5 md:px-8">
-        <motion.div
+        <div
           className="text-center mb-14"
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-80px' }}
-          transition={{ duration: 0.7 }}
           data-testid="services-header"
         >
           <span
             className="text-xs tracking-[0.3em] uppercase mb-4 block"
-            style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
+            style={{ color: '#755700', fontFamily: 'Inter, sans-serif' }}
           >
             {section?.eyebrow ?? s.sectionLabel}
           </span>
@@ -407,7 +402,7 @@ export default function Services({ catalogServices, serviceCopy, homepageMode = 
           <p className="text-base max-w-xl mx-auto" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
             {section?.description ?? s.subheading}
           </p>
-        </motion.div>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {services.map((service, i) => {
@@ -415,24 +410,14 @@ export default function Services({ catalogServices, serviceCopy, homepageMode = 
             const title = managedCopy?.title ?? service.title;
             const description = managedCopy?.description ?? service.description;
             const card = (
-              <motion.div
+              <div
                 key={service.slug ?? String(service.title)}
-                className="group relative p-7 rounded-2xl overflow-hidden cursor-pointer h-full"
+                className="ivt-service-card group relative p-7 rounded-2xl overflow-hidden cursor-pointer h-full"
                 style={{
                   background: '#FFFFFF',
                   border: '1px solid #D9E2EC',
                   boxShadow: '0 2px 12px rgba(16,42,67,0.05)',
                   transition: 'box-shadow 0.25s, transform 0.25s, border-color 0.25s',
-                }}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-80px' }}
-                transition={{ duration: 0.6, delay: (i % 3) * 0.1 }}
-                whileHover={{
-                  y: -4,
-                  boxShadow: '0 12px 40px rgba(16,42,67,0.1)',
-                  borderColor: 'rgba(199,154,53,0.4)',
-                  transition: { duration: 0.25 },
                 }}
                 data-testid={`service-card-${i}`}
               >
@@ -454,7 +439,7 @@ export default function Services({ catalogServices, serviceCopy, homepageMode = 
                 {'href' in service && (
                   <div
                     className="flex items-center gap-1.5 mt-5 text-xs font-semibold tracking-wider uppercase transition-colors duration-300 group-hover:text-[#C79A35]"
-                    style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
+                    style={{ color: '#755700', fontFamily: 'Inter, sans-serif' }}
                   >
                     {s.detailsLink}
                     <ArrowRight size={12} className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true" />
@@ -466,7 +451,7 @@ export default function Services({ catalogServices, serviceCopy, homepageMode = 
                   style={{ background: 'linear-gradient(90deg, #C79A35, transparent)' }}
                   aria-hidden="true"
                 />
-              </motion.div>
+              </div>
             );
             return 'href' in service ? (
               <Link key={service.slug ?? String(service.title)} href={service.href!} title={typeof title === 'string' ? title : undefined} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C79A35] rounded-2xl">

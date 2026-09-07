@@ -1,6 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { Clock, Plane, Car, User } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
 import { useHomepageCms } from '@/lib/homepage-cms-context';
@@ -48,17 +47,13 @@ export default function TrustSignals({ homepageMode = false }: { homepageMode?: 
     >
       <div className="absolute top-0 left-0 right-0 h-px" style={{ background: '#D9E2EC' }} aria-hidden="true" />
       <div className="max-w-6xl mx-auto px-5 md:px-8">
-        <motion.div
+        <div
           className="text-center mb-14"
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-80px' }}
-          transition={{ duration: 0.7 }}
           data-testid="trust-header"
         >
           <span
             className="text-xs tracking-[0.3em] uppercase mb-4 block"
-            style={{ color: '#C79A35', fontFamily: 'Inter, sans-serif' }}
+            style={{ color: '#755700', fontFamily: 'Inter, sans-serif' }}
           >
             {section?.eyebrow ?? t.sectionLabel}
           </span>
@@ -72,24 +67,19 @@ export default function TrustSignals({ homepageMode = false }: { homepageMode?: 
             className="mx-auto"
             style={{ width: '60px', height: '3px', background: 'linear-gradient(90deg, #C79A35, #E4B84B)', borderRadius: '2px' }}
           />
-        </motion.div>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {stats.map((stat, i) => (
-            <motion.div
+            <div
               key={stat.id}
-              className="relative text-center p-8 rounded-2xl overflow-hidden group"
+              className="ivt-trust-card relative text-center p-8 rounded-2xl overflow-hidden group"
               style={{
                 background: '#FFFFFF',
                 border: '1px solid #D9E2EC',
                 boxShadow: '0 2px 16px rgba(16,42,67,0.06)',
                 transition: 'box-shadow 0.25s, transform 0.25s',
               }}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-80px' }}
-              transition={{ duration: 0.6, delay: i * 0.12 }}
-              whileHover={{ y: -4, boxShadow: '0 8px 32px rgba(16,42,67,0.12)' }}
               data-testid={`trust-card-${i}`}
             >
               <div
@@ -105,7 +95,7 @@ export default function TrustSignals({ homepageMode = false }: { homepageMode?: 
               </div>
               <div
                 className="text-3xl md:text-4xl font-bold mb-1"
-                style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#C79A35', lineHeight: 1 }}
+                style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#755700', lineHeight: 1 }}
                 data-testid={`trust-number-${i}`}
                 dir="ltr"
               >
@@ -120,7 +110,7 @@ export default function TrustSignals({ homepageMode = false }: { homepageMode?: 
               <p className="text-sm leading-relaxed" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
                 {stat.description}
               </p>
-            </motion.div>
+            </div>
           ))}
         </div>
       </div>

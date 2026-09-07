@@ -1,6 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { Star, Quote, ExternalLink } from 'lucide-react';
 import { useLang } from '@/lib/i18n/context';
 import { useSiteSettings } from '@/components/SiteSettingsContext';
@@ -209,12 +208,8 @@ export default function Reviews({
       <div className="absolute top-0 left-0 right-0 h-px" style={{ background: '#D9E2EC' }} aria-hidden="true" />
       <div className="max-w-6xl mx-auto px-5 md:px-8">
         {/* Section Header */}
-        <motion.div
+        <div
           className="text-center mb-14"
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-80px' }}
-          transition={{ duration: 0.7 }}
           data-testid="reviews-header"
         >
           <div
@@ -239,12 +234,12 @@ export default function Reviews({
             className="mx-auto"
             style={{ width: '60px', height: '3px', background: 'linear-gradient(90deg, #C79A35, #E4B84B)', borderRadius: '2px' }}
           />
-        </motion.div>
+        </div>
 
         {/* Review Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           {reviews.map((review, i) => (
-            <motion.div
+            <div
               key={review.name}
               className="relative p-7 rounded-2xl overflow-hidden flex flex-col"
               style={{
@@ -252,10 +247,6 @@ export default function Reviews({
                 border: '1px solid #D9E2EC',
                 boxShadow: '0 2px 16px rgba(16,42,67,0.06)',
               }}
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-80px' }}
-              transition={{ duration: 0.7, delay: i * 0.15 }}
               data-testid={`review-card-${i}`}
             >
               <div
@@ -299,17 +290,13 @@ export default function Reviews({
                 </div>
                 <div><GoogleMark size={18} /></div>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
 
         {/* CTA */}
-        <motion.div
+        <div
           className="text-center"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.6, delay: 0.3 }}
         >
           <a
             href={cs.googleBusinessUrl}
@@ -327,7 +314,7 @@ export default function Reviews({
             {section?.viewAllText ?? r.viewAll}
             <ExternalLink size={16} aria-hidden="true" />
           </a>
-        </motion.div>
+        </div>
       </div>
     </section>
   );

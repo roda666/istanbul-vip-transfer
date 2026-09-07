@@ -182,6 +182,10 @@ export async function PATCH(
         metadata: { locale, manual: true },
       });
 
+      // A draft can replace a previously published translation. Flush the
+      // public payload so visitors do not keep seeing the old published copy.
+      revalidatePath(`/${locale}`);
+      revalidateTag(PUBLIC_CHROME_TAG);
       return NextResponse.json({ success: true, draftSaved: true });
     }
 
@@ -212,11 +216,10 @@ export async function PATCH(
       metadata: { locale: 'tr', autoTranslate, targetLocales },
     });
 
-    // Revalidate TR homepage cache immediately after save
-    if (autoPublish) {
-      revalidatePath('/');
-      revalidateTag(PUBLIC_CHROME_TAG);
-    }
+    // Revalidate after every source status/content change. This also prevents
+    // stale published HTML if a future workflow saves the source as DRAFT.
+    revalidatePath('/');
+    revalidateTag(PUBLIC_CHROME_TAG);
 
     const trHash = computeTranslatableHash(sections);
     const trFields = extractTranslatableFields(sections);
@@ -685,10 +688,10 @@ export async function PATCH(
         metadata: { locale: targetLocale, model: aiResult.model, status: txStatus },
       });
 
-      if (autoPublish) {
-        revalidatePath(`/${targetLocale}`);
-        revalidateTag(PUBLIC_CHROME_TAG);
-      }
+      // Publishing exposes the new body; saving a draft can remove a previously
+      // published body. Both transitions must invalidate the public payload.
+      revalidatePath(`/${targetLocale}`);
+      revalidateTag(PUBLIC_CHROME_TAG);
       syncResults[targetLocale] = { status: autoPublish ? 'published' : 'translated', jobId, aiModel: aiResult.model };
     }
 

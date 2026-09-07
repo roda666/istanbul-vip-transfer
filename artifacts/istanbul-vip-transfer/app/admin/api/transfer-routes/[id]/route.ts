@@ -5,6 +5,7 @@ import { locations, transferRoutes, transferRouteTranslations, vehicles } from '
 import type { NewTransferRoute } from '@/db/schema';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { revalidateAllHomepages } from '@/lib/homepage-revalidation';
 
 export const dynamic = 'force-dynamic';
 const VALID_TRANSLATION_STATUSES = new Set(['NOT_STARTED', 'DRAFT', 'REVIEW', 'APPROVED', 'PUBLISHED', 'OUTDATED', 'FAILED']);
@@ -240,6 +241,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     for (const locale of ['en', 'de', 'ru', 'ar', 'fr', 'es', 'it', 'nl']) {
       revalidatePath(`/${locale}/guzergah/${row.slug}`);
     }
+    revalidateAllHomepages();
     return NextResponse.json({ route: row });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -266,6 +268,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
         revalidatePath(`/${locale}/guzergah/${existing.slug}`);
       }
     }
+    revalidateAllHomepages();
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('admin transfer-routes DELETE error:', err);

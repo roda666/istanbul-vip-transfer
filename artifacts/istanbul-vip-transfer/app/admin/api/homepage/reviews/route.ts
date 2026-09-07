@@ -6,6 +6,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdminSession } from '@/lib/auth/session';
 import { ALL_LOCALE_CODES } from '@/lib/i18n/locale-registry';
+import { revalidateTag } from 'next/cache';
+import { PUBLIC_CHROME_TAG } from '@/lib/public-chrome-cache';
 
 const createSchema = z.object({
   reviewerName: z.string().min(1).max(120),
@@ -75,6 +77,7 @@ export async function POST(req: NextRequest) {
       metadata: { reviewerName: data.reviewerName },
     });
 
+    revalidateTag(PUBLIC_CHROME_TAG);
     return NextResponse.json({ review }, { status: 201 });
   } catch (err) {
     console.error('Review create error:', err);

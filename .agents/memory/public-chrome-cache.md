@@ -21,3 +21,16 @@ rules.
 **How to apply:** Keep the full homepage aggregate out of the compact chrome
 payload. When adding a new database-backed homepage surface, add it to the
 aggregate reader and ensure its mutation path invalidates the public-chrome tag.
+
+Cache-invalidation behavior must be verified against a production build. Next
+development mode may reflect a database write immediately even when the
+mutation forgot to invalidate the aggregate cache, producing a false pass.
+
+**Why:** A homepage FAQ mutation with no tag invalidation appeared immediately
+under `next dev` but remained absent behind the warmed aggregate cache under
+`next start`.
+
+**How to apply:** Warm the public route on a production server, perform the
+authenticated mutation, then check the first rendered HTML response. Verify the
+delete/restore path through the same API so stale test content cannot remain in
+the cache.

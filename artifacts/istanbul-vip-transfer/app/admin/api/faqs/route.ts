@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { revalidateHomepageLocale } from '@/lib/homepage-revalidation';
 
 const faqSchema = z.object({
   question: z.string().min(1, 'Soru gereklidir').max(500),
@@ -52,6 +53,7 @@ export async function POST(request: NextRequest) {
     const { faqs, auditLogs } = await import('@/db/schema');
     const [newFaq] = await db.insert(faqs).values(parsed.data).returning();
     await db.insert(auditLogs).values({ adminUserId: session.adminId, action: 'CREATE', entityType: 'FAQ', entityId: newFaq.id }).catch(() => {});
+    revalidateHomepageLocale('tr');
     return NextResponse.json({ item: newFaq }, { status: 201 });
   } catch (err) {
     console.error('FAQ create error:', err);

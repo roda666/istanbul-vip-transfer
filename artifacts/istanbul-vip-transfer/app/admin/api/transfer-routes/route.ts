@@ -3,6 +3,7 @@ import { requireAdminSession } from '@/lib/auth/session';
 import { db } from '@/db';
 import { locations, transferRoutes, transferRouteTranslations, vehicles } from '@/db/schema';
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { revalidateAllHomepages } from '@/lib/homepage-revalidation';
 
 export const dynamic = 'force-dynamic';
 const DISTANCE_SOURCES = new Set(['LEGACY_UNVERIFIED', 'COORDINATE_ESTIMATE', 'ADMIN_VERIFIED']);
@@ -206,6 +207,7 @@ export async function POST(req: NextRequest) {
       indexable: indexable !== false,
     }).returning();
 
+    revalidateAllHomepages();
     return NextResponse.json({ route: row }, { status: 201 });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

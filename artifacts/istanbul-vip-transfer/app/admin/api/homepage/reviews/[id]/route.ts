@@ -6,6 +6,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdminSession } from '@/lib/auth/session';
 import { ALL_LOCALE_CODES } from '@/lib/i18n/locale-registry';
+import { revalidateTag } from 'next/cache';
+import { PUBLIC_CHROME_TAG } from '@/lib/public-chrome-cache';
 
 const updateSchema = z.object({
   reviewerName:   z.string().min(1).max(120).optional(),
@@ -81,6 +83,7 @@ export async function PATCH(
       metadata: { fields: Object.keys(data) },
     });
 
+    revalidateTag(PUBLIC_CHROME_TAG);
     return NextResponse.json({ review: updated });
   } catch (err) {
     console.error('Review PATCH error:', err);
@@ -124,6 +127,7 @@ export async function DELETE(
       metadata: {},
     });
 
+    revalidateTag(PUBLIC_CHROME_TAG);
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('Review DELETE error:', err);

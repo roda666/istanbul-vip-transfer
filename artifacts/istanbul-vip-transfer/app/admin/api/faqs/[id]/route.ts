@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { revalidateHomepageLocale } from '@/lib/homepage-revalidation';
 
 const updateSchema = z.object({
   question: z.string().min(1).max(500).optional(),
@@ -34,6 +35,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
     if (!updated) return NextResponse.json({ error: 'Bulunamadı.' }, { status: 404 });
 
     await db.insert(auditLogs).values({ adminUserId: session.adminId, action: 'UPDATE', entityType: 'FAQ', entityId: id }).catch(() => {});
+    revalidateHomepageLocale('tr');
     return NextResponse.json({ item: updated });
   } catch (err) {
     console.error('FAQ update error:', err);
@@ -56,6 +58,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     if (!deleted) return NextResponse.json({ error: 'Bulunamadı.' }, { status: 404 });
 
     await db.insert(auditLogs).values({ adminUserId: session.adminId, action: 'DELETE', entityType: 'FAQ', entityId: id }).catch(() => {});
+    revalidateHomepageLocale('tr');
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error('FAQ delete error:', err);

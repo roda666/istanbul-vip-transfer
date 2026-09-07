@@ -14,6 +14,15 @@ export function revalidateHomepageLocale(locale: string): void {
   revalidateTag(PUBLIC_CHROME_TAG);
 }
 
+/** Flush the shared homepage payload and every localized homepage route. */
+export function revalidateAllHomepages(): void {
+  revalidatePath('/');
+  for (const locale of SUPPORTED_LANGS) {
+    revalidatePath(`/${locale}`);
+  }
+  revalidateTag(PUBLIC_CHROME_TAG);
+}
+
 /**
  * Service title, excerpt, ordering, active state and homepage visibility are
  * shared by every localized homepage service grid.

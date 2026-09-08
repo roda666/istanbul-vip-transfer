@@ -13,6 +13,16 @@ export interface RequestExportRow {
   adminNotes?: string | null;
 }
 
+export function parseRequestExportIds(searchParams: Pick<URLSearchParams, 'getAll'>): string[] {
+  return Array.from(new Set(
+    searchParams
+      .getAll('ids')
+      .flatMap(value => value.split(','))
+      .map(value => value.trim())
+      .filter(Boolean),
+  )).slice(0, 1000);
+}
+
 const headers = ['Referans', 'İsim', 'Telefon', 'E-posta', 'Dil', 'Kaynak', 'Hizmet', 'Talep', 'Durum', 'Kayıt Tarihi'];
 
 const SERVICE_LABELS: Record<string, string> = {

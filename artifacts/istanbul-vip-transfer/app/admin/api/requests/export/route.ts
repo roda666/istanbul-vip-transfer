@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requestsToExcel, requestsToPdf, requestExportFileName } from '@/lib/admin-request-export';
+import { parseRequestExportIds, requestsToExcel, requestsToPdf, requestExportFileName } from '@/lib/admin-request-export';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     const { and, eq, gte, ilike, inArray, isNull, lte, or, desc } = await import('drizzle-orm');
     const p = req.nextUrl.searchParams;
     const conditions = [isNull(reservationRequests.archivedAt)];
-    const ids = p.get('ids')?.split(',').map(value => value.trim()).filter(Boolean).slice(0, 1000) ?? [];
+    const ids = parseRequestExportIds(p);
     if (ids.length) conditions.push(inArray(reservationRequests.id, ids));
     const search = p.get('search')?.trim();
     const testData = p.get('test_data');
@@ -44,6 +44,7 @@ export async function GET(req: NextRequest) {
       'Content-Type': format === 'xls' ? 'application/vnd.ms-excel; charset=utf-8' : 'application/pdf',
       'Content-Disposition': `attachment; filename="${requestExportFileName(format)}"`,
       'Cache-Control': 'no-store',
+       'X-Export-Row-Count': String(rows.length),
     } });
   } catch (error) {
     console.error('[admin/requests/export] error:', (error as Error).message);

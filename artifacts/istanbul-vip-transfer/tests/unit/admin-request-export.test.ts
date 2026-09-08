@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { requestsToExcel, requestsToPdf } from '@/lib/admin-request-export';
+import { parseRequestExportIds, requestsToExcel, requestsToPdf } from '@/lib/admin-request-export';
 
 const row = { referenceNumber: 'IVT-1', name: 'Çağrı & Co', phone: '555', normalizedEmail: null, locale: 'tr', source: 'contact-form', serviceType: 'CONTACT_INQUIRY', intent: 'QUOTE', status: 'NEW', createdAt: '2025-01-01T10:00:00.000Z', requestData: { ucusNumarasi: 'TK123' } };
 
@@ -18,4 +18,11 @@ describe('admin request exports', () => {
     expect(output).toContain('TK123');
   });
   it('creates a PDF document', () => expect(requestsToPdf([row]).subarray(0, 8).toString()).toBe('%PDF-1.4'));
+  it('reads repeated selected IDs and keeps backwards compatibility with comma-separated IDs', () => {
+    const params = new URLSearchParams();
+    params.append('ids', 'request-1');
+    params.append('ids', 'request-2,request-3');
+    params.append('ids', 'request-2');
+    expect(parseRequestExportIds(params)).toEqual(['request-1', 'request-2', 'request-3']);
+  });
 });

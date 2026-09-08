@@ -123,6 +123,7 @@ function RequestCard({
   onArchive,
   onToggleTestData,
   onDelete,
+  onExport,
   selected,
   onSelect,
   canDelete,
@@ -134,6 +135,7 @@ function RequestCard({
   onArchive: (id: string) => void;
   onToggleTestData: (id: string, next: boolean) => void;
   onDelete: (id: string) => void;
+  onExport: (format: 'xls' | 'pdf', row: RequestRow) => void;
   selected: boolean;
   onSelect: (id: string, checked: boolean) => void;
   canDelete: boolean;
@@ -230,7 +232,7 @@ function RequestCard({
         <span style={{ fontSize: '12px', color: '#94A3B8', fontFamily: 'Inter, sans-serif' }}>
           {formatDate(row.createdAt)}
         </span>
-        <div style={{ display: 'flex', gap: '6px' }}>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <Link
             href={`/admin/talepler/${row.id}`}
             style={{ padding: '5px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, background: '#EFF6FF', color: '#2563EB', textDecoration: 'none' }}
@@ -254,6 +256,8 @@ function RequestCard({
             </button>
           )}
           {canDelete && <button onClick={() => onDelete(row.id)} disabled={!!updating} style={{ padding: '5px 10px', borderRadius: '6px', fontSize: '12px', background: '#FFF1F2', color: '#BE123C', border: 'none', cursor: 'pointer' }}>Sil</button>}
+          <button onClick={() => onExport('xls', row)} disabled={!!updating} aria-label={`${row.referenceNumber} talebini Excel indir`} style={{ padding: '5px 10px', borderRadius: '6px', fontSize: '12px', background: '#F0FDF4', color: '#15803D', border: 'none', cursor: 'pointer' }}>Excel</button>
+          <button onClick={() => onExport('pdf', row)} disabled={!!updating} aria-label={`${row.referenceNumber} talebini PDF indir`} style={{ padding: '5px 10px', borderRadius: '6px', fontSize: '12px', background: '#FFF7ED', color: '#C2410C', border: 'none', cursor: 'pointer' }}>PDF</button>
         </div>
       </div>
     </div>
@@ -373,6 +377,7 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
       if (checked) next.add(id); else next.delete(id);
       return next;
     });
+    if (checked) setExportScope('selected');
   }
 
   async function selectAllFiltered() {
@@ -422,18 +427,28 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
     return params;
   }
 
-  async function exportRequests(format: 'xls' | 'pdf') {
+  async function downloadExport(format: 'xls' | 'pdf', ids: string[] | null, fileBase: string) {
     setError('');
     const params = buildFilterParams();
     params.set('format', format);
-    if (exportScope === 'selected') {
-      if (!selectedIds.size) { setError('Dışa aktarmak için en az bir talep seçin.'); return; }
-      params.set('ids', [...selectedIds].join(','));
-    }
+    ids?.forEach(id => params.append('ids', id));
     const res = await fetch(`/admin/api/requests/export?${params}`);
     if (!res.ok) { setError('Dışa aktarma hazırlanamadı.'); return; }
     const url = URL.createObjectURL(await res.blob());
-    const link = document.createElement('a'); link.href = url; link.download = format === 'xls' ? 'talepler.xls' : 'talepler.pdf'; link.click(); URL.revokeObjectURL(url);
+    const link = document.createElement('a'); link.href = url; link.download = `${fileBase}.${format}`; link.click(); URL.revokeObjectURL(url);
+  }
+
+  async function exportRequests(format: 'xls' | 'pdf') {
+    const ids = exportScope === 'selected' ? [...selectedIds] : null;
+    if (exportScope === 'selected' && !ids?.length) {
+      setError('Dışa aktarmak için en az bir talep seçin.');
+      return;
+    }
+    await downloadExport(format, ids, 'talepler');
+  }
+
+  async function exportSingleRequest(format: 'xls' | 'pdf', row: RequestRow) {
+    await downloadExport(format, [row.id], `talep-${row.referenceNumber}`);
   }
 
   function formatDate(iso: string) {
@@ -628,6 +643,7 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
                   onArchive={archiveRequest}
                   onToggleTestData={toggleTestData}
                   onDelete={deleteRequest}
+                   onExport={exportSingleRequest}
                    selected={selectedIds.has(row.id)}
                    onSelect={toggleSelection}
                   canDelete={canDelete}
@@ -719,7 +735,7 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
                       </td>
                       <td style={{ ...td, fontSize: '12px', color: '#64748B', whiteSpace: 'nowrap' }}>{formatDate(row.createdAt)}</td>
                       <td style={td}>
-                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                         <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap', minWidth: 260 }}>
                           <Link href={`/admin/talepler/${row.id}`} style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#EFF6FF', color: '#2563EB', textDecoration: 'none' }}>
                             Detay
                           </Link>
@@ -729,6 +745,8 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
                             </button>
                           )}
                           {canDelete && <button onClick={() => deleteRequest(row.id)} disabled={!!updating} title="Kalıcı olarak sil" style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '11px', background: '#FFF1F2', color: '#BE123C', border: 'none', cursor: 'pointer', display: 'flex' }}><Trash2 size={11} /></button>}
+                           <button onClick={() => exportSingleRequest('xls', row)} disabled={!!updating} aria-label={`${row.referenceNumber} talebini Excel indir`} style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '11px', background: '#F0FDF4', color: '#15803D', border: 'none', cursor: 'pointer' }}>Excel</button>
+                           <button onClick={() => exportSingleRequest('pdf', row)} disabled={!!updating} aria-label={`${row.referenceNumber} talebini PDF indir`} style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '11px', background: '#FFF7ED', color: '#C2410C', border: 'none', cursor: 'pointer' }}>PDF</button>
                         </div>
                       </td>
                     </tr>

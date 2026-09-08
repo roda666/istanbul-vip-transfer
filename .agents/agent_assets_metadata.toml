@@ -84,3 +84,17 @@ mtime_ms = 1788902164007
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/28f1b2f6-72af-43b1-9092-9c9550878ffe/c32adae2-bc12-41e5-b7d7-712385f3c39e"
 storage_version_token = "1788902411930359"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "UP-5JeBbmix57TBDLBduQ"
+uri = "file://artifacts/istanbul-vip-transfer/screenshots/talepler-bulk-delete-selected-9450ab1d-82f.png"
+type = "image"
+title = "Toplu silme E2E — 3 test talebi seçili"
+description = "Geçici SUPER_ADMIN oturumunda, yalnız UUID etiketli isTestData kayıtları seçildikten ve silme işleminden hemen önce alınmıştır. Test sonunda kayıtlar, auditler ve geçici admin temizlenmiştir."
+logical_id = "173752f2-d332-443b-b553-039d92c5ec14"
+content_hash = "sha256:9117e534584c8910e22337f0bc2e110bf90b4d885121eafdf776261bb8383937"
+size = 1438715
+mtime_ms = 1788903200892
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/173752f2-d332-443b-b553-039d92c5ec14/27c59d6e-fa68-4d29-86b8-aa51ed8bc3f2"
+storage_version_token = "1788903747529814"
+content_type = "image/png"

@@ -235,6 +235,14 @@ const nextConfig: NextConfig = {
   //
   // The non-www→www catch-all stays LAST as a safety net for any URL (current
   // or future) not covered by a specific rule below.
+  async rewrites() {
+    return [
+      // Keep the stable quote URL on the same document without a second
+      // browser navigation; the page canonical remains the homepage.
+      { source: '/rezervasyon', destination: '/' },
+    ];
+  },
+
   async redirects() {
     const WWW = 'https://www.istanbulviptransfer.com';
     return [

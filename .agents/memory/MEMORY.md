@@ -111,3 +111,4 @@
 - [Reservation idempotency recovery](reservation-idempotency-recovery.md) — overlapping keepalive retries can create false failures after a successful commit; replay precedes rate limits and uses private storage fallback.
 - [Performance E2E environment](performance-e2e-environment.md) — run the full perf suite against a production build; Next dev cold compilation and concurrent builds create false timing and connection failures.
 - [Entrance animations and accessibility audits](entrance-animation-accessibility.md) — opacity-hidden content can mask contrast failures; recheck a11y whenever removing motion for performance.
+- [Vehicle toll-class ownership rule](vehicle-toll-class-ownership-rule.md) — owner requires type-based per-point class assignments despite physical axle caveats; flag exceptions instead of silently overriding.

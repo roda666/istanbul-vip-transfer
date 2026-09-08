@@ -5,12 +5,11 @@ import {
   EMPTY_BOOKING_FORM_BOOTSTRAP,
   EMPTY_BOOKING_FORM_OPTIONS,
   type BookingFormBootstrap,
-  type BookingFormInitialData,
   type BookingFormOptions,
 } from '@/lib/booking-form-types';
 
 interface BookingFormDataContextValue {
-  data: BookingFormInitialData;
+  data: BookingFormBootstrap;
   lang: string;
 }
 
@@ -37,6 +36,7 @@ async function requestBookingFormOptions(
 ): Promise<BookingFormOptions> {
   const response = await fetch(`/data/booking-form-options?lang=${encodeURIComponent(lang)}`, {
     cache: 'force-cache',
+    credentials: 'include',
   });
   if (response.ok) return response.json() as Promise<BookingFormOptions>;
 
@@ -80,20 +80,24 @@ export function BookingFormDataProvider({
   lang,
   children,
 }: {
-  data: BookingFormInitialData;
+  data: BookingFormBootstrap;
   lang: string;
   children: React.ReactNode;
 }) {
-  useEffect(() => {
-    void loadBookingFormOptions(lang).catch((error: unknown) => {
-      console.error('Booking form options could not be prefetched.', error);
-    });
-  }, [lang]);
-
   const value = useMemo<BookingFormDataContextValue>(
-    () => ({ data, lang }),
+    () => {
+      optionsCache.set(lang, {
+        data: { vehicles: data.vehicles, locations: data.locations },
+      });
+      return { data, lang };
+    },
     [data, lang],
   );
+
+  useEffect(() => {
+    document.documentElement.dataset.bookingOptionsReadyMs = '0';
+    window.dispatchEvent(new CustomEvent('ivt:booking-options-ready'));
+  }, [lang]);
 
   return (
     <BookingFormDataContext.Provider value={value}>

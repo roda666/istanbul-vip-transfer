@@ -60,7 +60,7 @@ describe('authoritative fleet catalog', () => {
       type: group.type,
       capacities: group.vehicles.map((vehicle) => vehicle.passengerCapacity),
     }))).toEqual([
-      { type: 'minivan', capacities: [4, 4, 6, 7, 7] },
+      { type: 'automobile', capacities: [4, 4, 6, 7, 7] },
       { type: 'minibus', capacities: [10, 13, 15, 19] },
       { type: 'midibus', capacities: [25] },
       { type: 'bus', capacities: [45] },

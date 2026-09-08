@@ -22,7 +22,7 @@ import LangProvider from './LangProvider';
 import CookieConsentBanner from './CookieConsentBanner';
 import CollapsibleBookingForm from './CollapsibleBookingForm';
 import { BookingFormDataProvider } from './BookingFormDataContext';
-import type { BookingFormInitialData } from '@/lib/booking-form-types';
+import type { BookingFormBootstrap } from '@/lib/booking-form-types';
 
 // WhatsApp stays available independently of chat. ChatWidget is deliberately
 // imported only by DeferredChatLauncher after a visitor clicks its launcher.
@@ -45,7 +45,7 @@ export default function PublicLayoutWrapper({
   /** Resolved by middleware so the shared public chrome hydrates consistently. */
   initialLang: string;
   /** Server-fetched catalogs, ready before any deferred booking form mounts. */
-  bookingFormData: BookingFormInitialData;
+  bookingFormData: BookingFormBootstrap;
   /** Read server-side so the banner never appears as a late LCP candidate. */
   hasCookieConsentDecision: boolean;
   /** Footer is the sole homepage-CMS field used by public chrome. */

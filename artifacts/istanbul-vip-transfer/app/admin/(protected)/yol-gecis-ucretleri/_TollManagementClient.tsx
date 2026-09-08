@@ -249,26 +249,43 @@ function DayNightHourFields({ dayStartHour, nightStartHour, onChange }: { daySta
   );
 }
 
+function AdvancedSection({ title, children }: { title: string, children: React.ReactNode }) {
+  return (
+    <details className="group rounded-xl border border-slate-200 bg-slate-50/70">
+      <summary className="flex min-h-[44px] cursor-pointer items-center justify-between gap-3 px-4 py-3 text-sm font-bold text-slate-700 marker:content-none">
+        <span>{title}</span>
+        <Settings2 size={17} className="shrink-0 text-slate-400 transition-transform group-open:rotate-90" />
+      </summary>
+      <div className="border-t border-slate-200 p-4">
+        {children}
+      </div>
+    </details>
+  );
+}
+
 // Tri-state banned-classes editor, shared by PointForm and PointDetail.
 // null = unconfirmed (ask owner); [] = confirmed no restriction; non-empty =
 // confirmed banned list — the latter two require a source URL.
 function BannedClassesEditor({
   classificationLabel, onClassificationLabelChange,
   bannedVehicleClasses, bannedSourceUrl, onChange,
+  showClassification = true, showEvidence = true,
 }: {
   classificationLabel: string;
   onClassificationLabelChange: (v: string) => void;
   bannedVehicleClasses: string[] | null;
   bannedSourceUrl: string;
   onChange: (bannedVehicleClasses: string[] | null, bannedSourceUrl: string) => void;
+  showClassification?: boolean;
+  showEvidence?: boolean;
 }) {
   const mode: 'unknown' | 'none' | 'list' = bannedVehicleClasses === null ? 'unknown' : bannedVehicleClasses.length === 0 ? 'none' : 'list';
   return (
     <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
-      <div>
+      {showClassification && <div>
         <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Sınıflandırma Sistemi (isteğe bağlı)</label>
         <input type="text" value={classificationLabel} onChange={e => onClassificationLabelChange(e.target.value)} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all" placeholder="Örn: KGM Resmî Sınıf 1-6 ile uyumlu (doğrulandı)" />
-      </div>
+      </div>}
       <div>
         <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Araç Sınıfı Yasağı</label>
         <select
@@ -305,7 +322,7 @@ function BannedClassesEditor({
           ))}
         </div>
       )}
-      {mode !== 'unknown' && (
+      {showEvidence && mode !== 'unknown' && (
         <div>
           <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kaynak URL <span className="text-red-600">*</span></label>
           <input type="url" value={bannedSourceUrl} onChange={e => onChange(bannedVehicleClasses, e.target.value)} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all" placeholder="https://..." />
@@ -322,10 +339,12 @@ function BannedClassesEditor({
 // Same null/[]/list semantics and source-URL requirement.
 function BannedTypesEditor({
   bannedVehicleTypes, bannedSourceUrl, onChange,
+  showEvidence = true,
 }: {
   bannedVehicleTypes: string[] | null;
   bannedSourceUrl: string;
   onChange: (bannedVehicleTypes: string[] | null, bannedSourceUrl: string) => void;
+  showEvidence?: boolean;
 }) {
   const mode: 'unknown' | 'none' | 'list' = bannedVehicleTypes === null ? 'unknown' : bannedVehicleTypes.length === 0 ? 'none' : 'list';
   return (
@@ -367,7 +386,7 @@ function BannedTypesEditor({
           ))}
         </div>
       )}
-      {mode !== 'unknown' && (
+      {showEvidence && mode !== 'unknown' && (
         <div>
           <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kaynak URL <span className="text-red-600">*</span></label>
           <input type="url" value={bannedSourceUrl} onChange={e => onChange(bannedVehicleTypes, e.target.value)} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all" placeholder="https://..." />
@@ -490,47 +509,45 @@ function PointForm({ onSave, onClose }: { onSave: (point: TollPoint) => void, on
 
   return (
     <div className="space-y-5">
-      <div>
-        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Nokta Adı</label>
-        <input type="text" value={formData.name} onChange={e => setFormData(f => ({...f, name: e.target.value}))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all" placeholder="Örn: 15 Temmuz Şehitler Köprüsü" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Nokta Adı</label>
+          <input type="text" value={formData.name} onChange={e => setFormData(f => ({...f, name: e.target.value}))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all" placeholder="Örn: 15 Temmuz Şehitler Köprüsü" />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Geçiş Tipi</label>
+          <select value={formData.type} onChange={e => setFormData(f => ({...f, type: e.target.value}))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all">
+             <option value="BRIDGE">Köprü</option><option value="TUNNEL">Tünel</option><option value="HIGHWAY">Otoyol</option>
+          </select>
+        </div>
       </div>
-      <div>
-        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Geçiş Tipi</label>
-        <select value={formData.type} onChange={e => setFormData(f => ({...f, type: e.target.value}))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all">
-           <option value="BRIDGE">Köprü</option>
-           <option value="TUNNEL">Tünel</option>
-           <option value="HIGHWAY">Otoyol</option>
-        </select>
-      </div>
-      <DayNightHourFields dayStartHour={formData.dayStartHour} nightStartHour={formData.nightStartHour} onChange={(day, night) => setFormData(f => ({...f, dayStartHour: day, nightStartHour: night}))} />
-      <div>
-        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Not / Kısıtlama (isteğe bağlı)</label>
-        <textarea value={formData.notes} onChange={e => setFormData(f => ({...f, notes: e.target.value}))} rows={2} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all" placeholder="Örn: Ağır araçlar (Sınıf 3/4/5) bu tünelden geçemez" />
-      </div>
+      <label className="flex items-center gap-3 cursor-pointer min-h-[44px] p-2 hover:bg-slate-50 rounded-lg transition-colors -ml-2">
+        <input type="checkbox" checked={formData.active} onChange={e => setFormData(f => ({...f, active: e.target.checked}))} className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+        <span className="font-bold text-sm text-slate-900">Sistemde Aktif</span>
+      </label>
       <BannedClassesEditor
         classificationLabel={formData.classificationLabel}
         onClassificationLabelChange={v => setFormData(f => ({ ...f, classificationLabel: v }))}
         bannedVehicleClasses={formData.bannedVehicleClasses}
         bannedSourceUrl={formData.bannedVehicleClassesSourceUrl}
         onChange={(banned, sourceUrl) => setFormData(f => ({ ...f, bannedVehicleClasses: banned, bannedVehicleClassesSourceUrl: sourceUrl }))}
+        showClassification={false}
+        showEvidence={false}
       />
-      <BannedTypesEditor
-        bannedVehicleTypes={formData.bannedVehicleTypes}
-        bannedSourceUrl={formData.bannedVehicleTypesSourceUrl}
-        onChange={(banned, sourceUrl) => setFormData(f => ({ ...f, bannedVehicleTypes: banned, bannedVehicleTypesSourceUrl: sourceUrl }))}
-      />
-      <DirectionEditor
-        pricingMode={formData.pricingMode}
-        onPricingModeChange={v => setFormData(f => ({ ...f, pricingMode: v }))}
-        tollDirection={formData.tollDirection}
-        tollDirectionSourceUrl={formData.tollDirectionSourceUrl}
-        tollDirectionNotes={formData.tollDirectionNotes}
-        onChange={(direction, sourceUrl, notes) => setFormData(f => ({ ...f, tollDirection: direction, tollDirectionSourceUrl: sourceUrl, tollDirectionNotes: notes }))}
-      />
-      <label className="flex items-center gap-3 cursor-pointer min-h-[44px] p-2 hover:bg-slate-50 rounded-lg transition-colors -ml-2">
-        <input type="checkbox" checked={formData.active} onChange={e => setFormData(f => ({...f, active: e.target.checked}))} className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-        <span className="font-bold text-sm text-slate-900">Sistemde Aktif</span>
-      </label>
+      <AdvancedSection title="Gelişmiş: kaynak kanıtı, kurallar ve zamanlama">
+        <div className="space-y-5">
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Sınıflandırma Sistemi (isteğe bağlı)</label>
+            <input type="text" value={formData.classificationLabel} onChange={e => setFormData(f => ({ ...f, classificationLabel: e.target.value }))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all" placeholder="Örn: KGM Resmî Sınıf 1-6 ile uyumlu" />
+          </div>
+          {formData.bannedVehicleClasses !== null && <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Sınıf Yasağı Kaynak URL <span className="text-red-600">*</span></label><input type="url" value={formData.bannedVehicleClassesSourceUrl} onChange={e => setFormData(f => ({ ...f, bannedVehicleClassesSourceUrl: e.target.value }))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900" placeholder="https://..." /></div>}
+          <BannedTypesEditor bannedVehicleTypes={formData.bannedVehicleTypes} bannedSourceUrl={formData.bannedVehicleTypesSourceUrl} onChange={(banned, sourceUrl) => setFormData(f => ({ ...f, bannedVehicleTypes: banned, bannedVehicleTypesSourceUrl: sourceUrl }))} showEvidence={false} />
+          {formData.bannedVehicleTypes !== null && <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Araç Tipi Yasağı Kaynak URL <span className="text-red-600">*</span></label><input type="url" value={formData.bannedVehicleTypesSourceUrl} onChange={e => setFormData(f => ({ ...f, bannedVehicleTypesSourceUrl: e.target.value }))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900" placeholder="https://..." /></div>}
+          <DirectionEditor pricingMode={formData.pricingMode} onPricingModeChange={v => setFormData(f => ({ ...f, pricingMode: v }))} tollDirection={formData.tollDirection} tollDirectionSourceUrl={formData.tollDirectionSourceUrl} tollDirectionNotes={formData.tollDirectionNotes} onChange={(direction, sourceUrl, notes) => setFormData(f => ({ ...f, tollDirection: direction, tollDirectionSourceUrl: sourceUrl, tollDirectionNotes: notes }))} />
+          <DayNightHourFields dayStartHour={formData.dayStartHour} nightStartHour={formData.nightStartHour} onChange={(day, night) => setFormData(f => ({...f, dayStartHour: day, nightStartHour: night}))} />
+          <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Not / Kısıtlama (isteğe bağlı)</label><textarea value={formData.notes} onChange={e => setFormData(f => ({...f, notes: e.target.value}))} rows={2} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500" placeholder="Örn: Ağır araçlar bu tünelden geçemez" /></div>
+        </div>
+      </AdvancedSection>
       <div className="flex gap-3 pt-4 border-t border-slate-100">
          <button onClick={onClose} className="flex-1 min-h-[44px] py-2 text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">İptal</button>
          <button onClick={handleSubmit} disabled={loading || !formData.name.trim()} className="flex-1 min-h-[44px] py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2">
@@ -623,10 +640,11 @@ function TariffForm({ point, vClass, initialData, onSave, onClose }: { point: To
          {TOLL_VEHICLE_CLASS_SELECTION_WARNING}
        </div>
 
-       {point.pricingMode === 'GATE_PAIR' && (
-         <div className="p-4 rounded-xl border border-purple-100 bg-purple-50/50 space-y-3">
-           <p className="text-xs font-bold text-purple-900">Bu nokta giriş/çıkış gişesi bazlı ücretlendiriliyor — bu tarife satırı yalnızca aşağıdaki gişe çiftine uygulanır.</p>
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {point.pricingMode === 'GATE_PAIR' && (
+          <AdvancedSection title="Gelişmiş: giriş / çıkış gişesi ayrıntıları">
+          <div className="space-y-3">
+            <p className="text-xs font-bold text-purple-900">Bu nokta giriş/çıkış gişesi bazlı ücretlendiriliyor — bu tarife satırı yalnızca aşağıdaki gişe çiftine uygulanır.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
              <div>
                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Giriş Gişesi <span className="text-red-600">*</span></label>
                <input type="text" value={formData.entryGateName} onChange={e => setFormData(f => ({...f, entryGateName: e.target.value}))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all" placeholder="Örn: Gebze Gişesi" />
@@ -645,8 +663,9 @@ function TariffForm({ point, vClass, initialData, onSave, onClose }: { point: To
                </select>
                <p className="text-[10px] font-medium text-slate-500 mt-1.5 leading-relaxed">Bu nokta yöne göre farklı tarifelendirildiği için gidiş ve dönüş tutarları ayrı satırlar olarak girilmelidir.</p>
              </div>
-           )}
-         </div>
+            )}
+          </div>
+          </AdvancedSection>
        )}
 
        <div>
@@ -673,8 +692,13 @@ function TariffForm({ point, vClass, initialData, onSave, onClose }: { point: To
            Değer girildiğinde otomatik fiyat kaynağı yoksayılır ve hesaplamalarda doğrudan bu tutar kullanılır.
          </p>
        </div>
+        <label className="flex items-center gap-3 cursor-pointer min-h-[44px] p-2 hover:bg-slate-50 rounded-lg transition-colors -ml-2">
+          <input type="checkbox" checked={formData.active} onChange={e => setFormData(f => ({...f, active: e.target.checked}))} className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+          <span className="font-bold text-sm text-slate-900">Aktif Tarife</span>
+        </label>
 
-       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <AdvancedSection title="Gelişmiş: kaynak kanıtı ve doğrulama">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
          <div>
            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kaynak Adı (Örn: KGM)</label>
            <input type="text" value={formData.sourceName} onChange={e => setFormData(f => ({...f, sourceName: e.target.value}))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-sm" placeholder="Belirtilmemiş" />
@@ -699,9 +723,11 @@ function TariffForm({ point, vClass, initialData, onSave, onClose }: { point: To
                  : 'Bu tutar yalnız KGM, Avrasya Tüneli veya 1915 Çanakkale Köprüsü resmî adresiyle kaydedilebilir; kaydetme reddedilecektir.'}
            </div>
          </div>
-       </div>
+        </div>
+        </AdvancedSection>
 
-       <div className="grid grid-cols-2 gap-4">
+        <AdvancedSection title="Gelişmiş: geçerlilik ve sorgulama tarihleri">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
          <div>
            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Geçerlilik Başlangıcı</label>
            <input type="date" value={formData.validFrom} onChange={e => setFormData(f => ({...f, validFrom: e.target.value}))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" />
@@ -726,11 +752,7 @@ function TariffForm({ point, vClass, initialData, onSave, onClose }: { point: To
            </p>
          </div>
        )}
-
-       <label className="flex items-center gap-3 cursor-pointer min-h-[44px] p-2 hover:bg-slate-50 rounded-lg transition-colors mt-2 -ml-2">
-         <input type="checkbox" checked={formData.active} onChange={e => setFormData(f => ({...f, active: e.target.checked}))} className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-         <span className="font-bold text-sm text-slate-900">Aktif Tarife</span>
-       </label>
+        </AdvancedSection>
 
        <div className="flex gap-3 pt-5 border-t border-slate-100 mt-5">
          <button onClick={onClose} className="flex-1 min-h-[44px] py-2 text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">İptal</button>
@@ -1124,15 +1146,10 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
            </div>
         </div>
 
-        <div className="mb-5">
-          <DayNightHourFields dayStartHour={formData.dayStartHour} nightStartHour={formData.nightStartHour} onChange={(day, night) => setFormData(f => ({...f, dayStartHour: day, nightStartHour: night}))} />
-        </div>
-
-        <div className="mb-5">
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Not / Kısıtlama (isteğe bağlı)</label>
-          <textarea value={formData.notes} onChange={e => setFormData(f => ({...f, notes: e.target.value}))} rows={2} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all" placeholder="Örn: Ağır araçlar (Sınıf 3/4/5) bu tünelden geçemez" />
-          <p className="text-[10px] font-medium text-slate-500 mt-1.5 leading-relaxed">Bu alan, gerçek bir iş kuralını (örn. araç geçiş yasağı) belirtir — bu sınıflar için tarife satırı hiç oluşturulmaz ve &quot;eksik veri&quot; olarak değil &quot;uygulanamaz&quot; olarak gösterilir.</p>
-        </div>
+        <label className="flex items-center gap-3 cursor-pointer min-h-[44px] hover:bg-slate-50 p-2 -ml-2 mb-5 rounded-lg transition-colors">
+          <input type="checkbox" checked={formData.active} onChange={e => setFormData(f => ({...f, active: e.target.checked}))} className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+          <span className="font-bold text-sm text-slate-900">Sistemde Kullanılabilir (Aktif)</span>
+        </label>
 
         <div className="mb-5">
           <BannedClassesEditor
@@ -1141,37 +1158,28 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
             bannedVehicleClasses={formData.bannedVehicleClasses}
             bannedSourceUrl={formData.bannedVehicleClassesSourceUrl}
             onChange={(banned, sourceUrl) => setFormData(f => ({ ...f, bannedVehicleClasses: banned, bannedVehicleClassesSourceUrl: sourceUrl }))}
+            showClassification={false}
+            showEvidence={false}
           />
           <p className="text-[10px] font-medium text-slate-500 mt-1.5 leading-relaxed">Yasaklı olarak işaretlenen bir sınıf, bu noktayı içeren hiçbir alternatifte bu araç için fiyatlandırılmaz — fiyat motoru bu alternatifi tamamen reddeder, &quot;eksik veri&quot; olarak göstermez.</p>
         </div>
 
-        <div className="mb-5">
-          <BannedTypesEditor
-            bannedVehicleTypes={formData.bannedVehicleTypes}
-            bannedSourceUrl={formData.bannedVehicleTypesSourceUrl}
-            onChange={(banned, sourceUrl) => setFormData(f => ({ ...f, bannedVehicleTypes: banned, bannedVehicleTypesSourceUrl: sourceUrl }))}
-          />
-          <p className="text-[10px] font-medium text-slate-500 mt-1.5 leading-relaxed">Sınıf yasağından bağımsız, kategorik bir yasaktır — örn. Avrasya Tüneli aks sayısına bakılmaksızın &quot;Otobüs&quot; tipini yasaklar.</p>
-        </div>
+        <AdvancedSection title="Gelişmiş: kaynak kanıtı, kurallar ve zamanlama">
+          <div className="space-y-5">
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Sınıflandırma Sistemi (isteğe bağlı)</label>
+              <input type="text" value={formData.classificationLabel} onChange={e => setFormData(f => ({ ...f, classificationLabel: e.target.value }))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-4 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm" placeholder="Örn: KGM Resmî Sınıf 1-6 ile uyumlu" />
+            </div>
+            {formData.bannedVehicleClasses !== null && <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Sınıf Yasağı Kaynak URL <span className="text-red-600">*</span></label><input type="url" value={formData.bannedVehicleClassesSourceUrl} onChange={e => setFormData(f => ({ ...f, bannedVehicleClassesSourceUrl: e.target.value }))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-4 py-2 text-sm font-medium text-slate-900" placeholder="https://..." /></div>}
+            <BannedTypesEditor bannedVehicleTypes={formData.bannedVehicleTypes} bannedSourceUrl={formData.bannedVehicleTypesSourceUrl} onChange={(banned, sourceUrl) => setFormData(f => ({ ...f, bannedVehicleTypes: banned, bannedVehicleTypesSourceUrl: sourceUrl }))} showEvidence={false} />
+            {formData.bannedVehicleTypes !== null && <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Araç Tipi Yasağı Kaynak URL <span className="text-red-600">*</span></label><input type="url" value={formData.bannedVehicleTypesSourceUrl} onChange={e => setFormData(f => ({ ...f, bannedVehicleTypesSourceUrl: e.target.value }))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-4 py-2 text-sm font-medium text-slate-900" placeholder="https://..." /></div>}
+            <DirectionEditor pricingMode={formData.pricingMode} onPricingModeChange={v => setFormData(f => ({ ...f, pricingMode: v }))} tollDirection={formData.tollDirection} tollDirectionSourceUrl={formData.tollDirectionSourceUrl} tollDirectionNotes={formData.tollDirectionNotes} onChange={(direction, sourceUrl, notes) => setFormData(f => ({ ...f, tollDirection: direction, tollDirectionSourceUrl: sourceUrl, tollDirectionNotes: notes }))} />
+            <DayNightHourFields dayStartHour={formData.dayStartHour} nightStartHour={formData.nightStartHour} onChange={(day, night) => setFormData(f => ({...f, dayStartHour: day, nightStartHour: night}))} />
+            <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Not / Kısıtlama (isteğe bağlı)</label><textarea value={formData.notes} onChange={e => setFormData(f => ({...f, notes: e.target.value}))} rows={2} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500" placeholder="Örn: Ağır araçlar bu tünelden geçemez" /></div>
+          </div>
+        </AdvancedSection>
 
-        <div className="mb-5">
-          <DirectionEditor
-            pricingMode={formData.pricingMode}
-            onPricingModeChange={v => setFormData(f => ({ ...f, pricingMode: v }))}
-            tollDirection={formData.tollDirection}
-            tollDirectionSourceUrl={formData.tollDirectionSourceUrl}
-            tollDirectionNotes={formData.tollDirectionNotes}
-            onChange={(direction, sourceUrl, notes) => setFormData(f => ({ ...f, tollDirection: direction, tollDirectionSourceUrl: sourceUrl, tollDirectionNotes: notes }))}
-          />
-          <p className="text-[10px] font-medium text-slate-500 mt-1.5 leading-relaxed">Gidiş-dönüş hesaplaması bu ayara göre yapılır: tek yönde bir kez, aynı tarifeyle çift yönde iki katı, veya yöne göre farklı tarifede gidiş+dönüş tarifelerinin toplamı.</p>
-        </div>
-
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-           <label className="flex items-center gap-3 cursor-pointer min-h-[44px] hover:bg-slate-50 p-2 -ml-2 rounded-lg transition-colors">
-             <input type="checkbox" checked={formData.active} onChange={e => setFormData(f => ({...f, active: e.target.checked}))} className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-             <span className="font-bold text-sm text-slate-900">Sistemde Kullanılabilir (Aktif)</span>
-           </label>
-           
+        <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-4 mt-5">
            <button onClick={handleSave} disabled={loading} className="min-h-[44px] px-6 py-2 bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm">
              {loading ? <Loader2 size={16} className="animate-spin" /> : saved ? <Check size={16} className="text-emerald-400" /> : <Save size={16} />}
              {saved ? 'Değişiklikler Kaydedildi' : 'Değişiklikleri Kaydet'}

@@ -7,6 +7,7 @@ uri = "file://Istanbul-Transfer-Pro-source.zip"
 type = "unspecified"
 title = "Istanbul-Transfer-Pro-source.zip"
 description = "Complete project source — 952 files, 5.1 MB. Excludes node_modules, .next, .git, cache, secrets and env files."
+logical_id = "59fa8559-3a5c-42d6-bd1d-3cba0d6cf964"
 
 [[outputs]]
 id = "IWUvMMJP-H759W7ud6n9i"
@@ -14,6 +15,7 @@ uri = "file://artifacts/istanbul-vip-transfer/public/images/istanbul-havalimani-
 type = "image"
 title = "İstanbul Havalimanı Hero — Yeni Alternatif"
 description = "AI ile üretilen özgün hero görseli. İstanbul Havalimanı kontrol kulesi, alacakaranlık gökyüzü, siyah Mercedes Vito ve takım elbiseli şoför."
+logical_id = "d232b5b6-65e6-4c04-a25e-7dc43eb603af"
 
 [[outputs]]
 id = "piZb2-dtjdX0qeuJvuiAu"
@@ -21,6 +23,7 @@ uri = "file://artifacts/istanbul-vip-transfer/public/logo.png"
 type = "image"
 title = "VIP Transfer Istanbul — renkli logo"
 description = "Şeffaf PNG, 3200×1240. Koyu zeminler için altın renkli Playfair Display wordmark."
+logical_id = "7d915fdc-5436-4244-9d21-98e007a09ffa"
 
 [[outputs]]
 id = "zxmKSUu5exPW1cColIpsw"
@@ -28,6 +31,7 @@ uri = "file://artifacts/istanbul-vip-transfer/public/logo-white.png"
 type = "image"
 title = "VIP Transfer Istanbul — beyaz logo"
 description = "Şeffaf PNG, 3200×1240. Görseller üzerindeki güvenli beyaz logo bindirmeleri için."
+logical_id = "be3bab9b-b871-40ca-9549-da6d5c8345ca"
 
 [[outputs]]
 id = "qfAgLZSy2IAq7KsY1XO2s"
@@ -35,6 +39,7 @@ uri = "file://artifacts/istanbul-vip-transfer/public/logo.svg"
 type = "image"
 title = "VIP Transfer Istanbul — path SVG logo"
 description = "Font bağımsız, Playfair Display harf konturları path olarak saklanan vektörel logo."
+logical_id = "e5d30f6c-151f-4ddd-b34c-de200e465827"
 
 [[outputs]]
 id = "9u38ie8DUnzXyYTxQGNQN"
@@ -42,6 +47,7 @@ uri = "file://screenshots/istanbul-vip-transfer-logo-desktop.jpg"
 type = "image"
 title = "Masaüstü logo doğrulaması"
 description = "Yeni header logosunun 1440×900 ana sayfa görünümü."
+logical_id = "b5c6a9f9-2f8d-469e-9801-becba3cc2a8a"
 
 [[outputs]]
 id = "yEaZTp1fpAAatHxbT6L9h"
@@ -49,3 +55,18 @@ uri = "file://screenshots/istanbul-vip-transfer-logo-mobile.jpg"
 type = "image"
 title = "Mobil logo doğrulaması"
 description = "Yeni header logosunun 390×844 mobil görünümü; taşma yok."
+logical_id = "7ae96f27-d428-4293-a4d6-408ef5ed707e"
+
+[[outputs]]
+id = "pjpZ7t-EmXgSE3HaY5gKy"
+uri = "file://artifacts/istanbul-vip-transfer/reports/vehicle-class-overwrite-2026-09-08.csv"
+type = "table"
+title = "Araç Sınıfı Değişiklik Denetimi"
+description = "11 gerçek araç için eski/yeni tip ve tüm toll-point sınıf atamalarını, ayrıca fiziksel aks şüphelerini gösteren CSV."
+logical_id = "df3857f3-5695-4e86-b37c-c6bbacf293de"
+content_hash = "sha256:5e1e2a8dd25f95f782add0f5f9d357056a5333eb58e784ea078c6fc18576c67a"
+size = 854
+mtime_ms = 1788893277617
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/df3857f3-5695-4e86-b37c-c6bbacf293de/1f02e3fe-1c53-4045-b099-f6d8be0ce582"
+storage_version_token = "1788895414424131"
+content_type = "text/csv"

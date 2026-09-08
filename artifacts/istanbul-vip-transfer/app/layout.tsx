@@ -10,8 +10,8 @@ import { SiteSettingsProvider } from '@/components/SiteSettingsContext';
 import { cookies, headers } from 'next/headers';
 import { getPublicLanguage } from '@/lib/i18n/active-locales';
 import { getPublicChrome, type PublicChromePayload } from '@/lib/public-chrome';
-import { getBookingFormInitialData } from '@/lib/booking-form-bootstrap';
-import { EMPTY_BOOKING_FORM_INITIAL_DATA } from '@/lib/booking-form-types';
+import { getBookingFormBootstrap } from '@/lib/booking-form-bootstrap';
+import { EMPTY_BOOKING_FORM_BOOTSTRAP } from '@/lib/booking-form-types';
 
 /**
  * Self-hosted via next/font — eliminates the external Google Fonts request
@@ -107,11 +107,11 @@ export default async function RootLayout({
   const [publicChrome, bookingFormData] = isPublicRequest
     ? await Promise.all([
         getPublicChrome(initialLang).catch((): PublicChromePayload => EMPTY_PUBLIC_CHROME),
-        getBookingFormInitialData(),
+        getBookingFormBootstrap(initialLang),
       ])
     : [
         { ...EMPTY_PUBLIC_CHROME, contactSettings: await getContactSettings() },
-        EMPTY_BOOKING_FORM_INITIAL_DATA,
+        EMPTY_BOOKING_FORM_BOOTSTRAP,
       ];
 
   return (
@@ -120,11 +120,11 @@ export default async function RootLayout({
       dir={initialDirection}
       className={`${playfairDisplay.variable} ${inter.variable} ${notoSansArabic.variable}`}
     >
-      {isHomepageRequest ? (
-        <head>
+      <head>
+        {isHomepageRequest ? (
           <meta name="description" content={HOMEPAGE_DESCRIPTION} />
-        </head>
-      ) : null}
+        ) : null}
+      </head>
       <body
         className="grain-overlay"
         style={{ backgroundColor: 'var(--pub-page-bg, #F7F5EF)', minHeight: '100dvh' }}

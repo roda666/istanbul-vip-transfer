@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
+import { resolveIntegrationSecret } from '@/lib/integration-secrets';
 import { requireSocialPlatformAdmin, socialAuthErrorResponse } from '@/lib/social-auth';
 import { db } from '@/db';
 import { socialPlatforms } from '@/db/schema';
@@ -32,8 +33,8 @@ export async function GET(req: NextRequest) {
   if (!code || state !== req.cookies.get('meta_oauth_state')?.value) return callbackResult('meta_invalid_state');
   if (!isEncryptionReady()) return callbackResult('encryption_key_missing');
 
-  const appId = process.env.META_APP_ID;
-  const appSecret = process.env.META_APP_SECRET;
+  const appId = await resolveIntegrationSecret('META_APP_ID');
+  const appSecret = await resolveIntegrationSecret('META_APP_SECRET');
   if (!appId || !appSecret) return callbackResult('meta_credentials_missing');
 
   try {

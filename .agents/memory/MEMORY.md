@@ -112,3 +112,4 @@
 - [Performance E2E environment](performance-e2e-environment.md) — run the full perf suite against a production build; Next dev cold compilation and concurrent builds create false timing and connection failures.
 - [Entrance animations and accessibility audits](entrance-animation-accessibility.md) — opacity-hidden content can mask contrast failures; recheck a11y whenever removing motion for performance.
 - [Vehicle toll-class ownership rule](vehicle-toll-class-ownership-rule.md) — owner requires type-based per-point class assignments despite physical axle caveats; flag exceptions instead of silently overriding.
+- [Central integration secret boundaries](central-integration-secret-boundaries.md) — API credentials may be DB-first; roots, OAuth tokens and trusted provider endpoints stay outside the editable store.

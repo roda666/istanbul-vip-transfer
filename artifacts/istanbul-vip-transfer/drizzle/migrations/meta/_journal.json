@@ -526,6 +526,13 @@
       "when": 1789000000017,
       "tag": "0074_optional_booking_field_service_types",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1789000000018,
+      "tag": "0075_integration_secrets",
+      "breakpoints": true
     }
   ]
 }

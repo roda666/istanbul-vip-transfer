@@ -8,6 +8,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'node:crypto';
+import { resolveIntegrationSecret } from '@/lib/integration-secrets';
 import { requireAdminSession } from '@/lib/auth/session';
 import { getPublicUrl } from '@/lib/social-public-url';
 
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
   try { await requireAdminSession(); }
   catch { return NextResponse.redirect(new URL('/admin/login', req.url)); }
 
-  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientId = await resolveIntegrationSecret('GOOGLE_CLIENT_ID');
   if (!clientId) {
     return NextResponse.redirect(
       new URL('/admin/ayarlar/icerik-entegrasyonlari?error=missing_client_id', req.url),

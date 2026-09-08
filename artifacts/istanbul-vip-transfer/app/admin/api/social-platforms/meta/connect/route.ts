@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { resolveIntegrationSecret } from '@/lib/integration-secrets';
 import { requireSocialPlatformAdmin, socialAuthErrorResponse } from '@/lib/social-auth';
 import { getSocialCallbackUrl, getSocialSettingsUrl } from '@/lib/social-public-url';
 
@@ -21,8 +22,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: response.error }, { status: response.status });
   }
 
-  const appId = process.env.META_APP_ID;
-  const appSecret = process.env.META_APP_SECRET;
+  const appId = await resolveIntegrationSecret('META_APP_ID');
+  const appSecret = await resolveIntegrationSecret('META_APP_SECRET');
   if (!appId || !appSecret) {
     return NextResponse.redirect(getSocialSettingsUrl(req, { social_error: 'meta_credentials_missing' }));
   }

@@ -9,6 +9,7 @@
  * Always saves result as DRAFT. Never publishes automatically.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { resolveIntegrationSecret } from '@/lib/integration-secrets';
 import { requireAdminSession } from '@/lib/auth/session';
 import { HOMEPAGE_SLUG } from '@/lib/homepage-cms';
 import { computeTranslatableHash, extractTranslatableFields, syncSharedFields, applyTranslatedFields, buildInitialTargetSections } from '@/lib/homepage-sync';
@@ -48,7 +49,7 @@ export async function POST(
       return NextResponse.json({ error: 'Bu dil etkin değil — önce Dil Yönetimi sayfasından etkinleştirin.' }, { status: 400 });
     }
 
-    if (!process.env.OPENAI_API_KEY) {
+    if (!await resolveIntegrationSecret('OPENAI_API_KEY')) {
       return NextResponse.json({ error: 'OpenAI çeviri servisi yapılandırılmamış.', code: 'AI_PROVIDER_NOT_CONFIGURED' }, { status: 503 });
     }
 

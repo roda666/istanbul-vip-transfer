@@ -93,7 +93,8 @@ export async function translateContent(
   targetLang: string,
   signal?: AbortSignal,
 ): Promise<TranslateResult> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const { resolveIntegrationSecret } = await import('@/lib/integration-secrets');
+  const apiKey = await resolveIntegrationSecret('OPENAI_API_KEY');
   if (!apiKey) {
     return { ok: false, reason: 'not_configured', message: 'OPENAI_API_KEY is not set' };
   }

@@ -6,6 +6,7 @@ import { db } from '@/db';
 import { socialPlatforms } from '@/db/schema';
 import { decrypt } from '@/lib/email-crypto';
 import { ensureSocialPlatforms } from '@/lib/social-platforms';
+import { resolveIntegrationSecret } from '@/lib/integration-secrets';
 
 const META_GRAPH_VERSION = 'v22.0';
 
@@ -147,8 +148,8 @@ export async function publishInstagramPost(input: { caption: string; imageUrl: s
 export async function publishXTweet(text: string) {
   if (!text.trim()) throw new Error('Tweet metni boş olamaz.');
   const platform = await getPlatform('x');
-  const consumerKey = process.env.X_CONSUMER_KEY;
-  const consumerSecret = process.env.X_CONSUMER_SECRET;
+  const consumerKey = await resolveIntegrationSecret('X_CONSUMER_KEY');
+  const consumerSecret = await resolveIntegrationSecret('X_CONSUMER_SECRET');
   const storedToken = platform.accessTokenEncrypted ? decrypt(platform.accessTokenEncrypted) : null;
   const storedTokenSecret = platform.accessTokenSecretEncrypted ? decrypt(platform.accessTokenSecretEncrypted) : null;
   const accessToken = storedToken ?? process.env.X_ACCESS_TOKEN;

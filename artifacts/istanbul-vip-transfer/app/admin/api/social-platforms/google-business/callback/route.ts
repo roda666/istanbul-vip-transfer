@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
+import { resolveIntegrationSecret } from '@/lib/integration-secrets';
 import { db } from '@/db';
 import { auditLogs, socialPlatforms } from '@/db/schema';
 import { encrypt, isEncryptionReady } from '@/lib/email-crypto';
@@ -37,8 +38,8 @@ export async function GET(req: NextRequest) {
   if (!code || !storedState || state !== storedState || !redirectUri) return callbackError(req, 'google_business_invalid_state');
   if (!isEncryptionReady()) return callbackError(req, 'encryption_key_missing');
 
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const clientId = await resolveIntegrationSecret('GOOGLE_CLIENT_ID');
+  const clientSecret = await resolveIntegrationSecret('GOOGLE_CLIENT_SECRET');
   if (!clientId || !clientSecret) return callbackError(req, 'google_business_credentials_missing');
 
   try {

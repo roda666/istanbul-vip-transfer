@@ -7,6 +7,7 @@
  * /admin/api/gsc/connect, allowing preview and production hosts.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { resolveIntegrationSecret } from '@/lib/integration-secrets';
 import { requireAdminSession } from '@/lib/auth/session';
 import { classifyGoogleOAuthProviderError } from '@/lib/google-oauth-feedback';
 import { getPublicUrl } from '@/lib/social-public-url';
@@ -91,8 +92,8 @@ export async function GET(req: NextRequest) {
     return errorRedirect('missing_code');
   }
 
-  const clientId     = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const clientId = await resolveIntegrationSecret('GOOGLE_CLIENT_ID');
+  const clientSecret = await resolveIntegrationSecret('GOOGLE_CLIENT_SECRET');
   if (!clientId || !clientSecret) return errorRedirect('missing_credentials');
 
   try {

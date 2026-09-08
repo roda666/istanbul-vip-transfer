@@ -200,7 +200,8 @@ export type AIResult<T> =
 // ── Shared OpenAI client factory ───────────────────────────────────────────────
 
 async function getClient() {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const { resolveIntegrationSecret } = await import('@/lib/integration-secrets');
+  const apiKey = await resolveIntegrationSecret('OPENAI_API_KEY');
   if (!apiKey) return null;
   const { OpenAI } = await import('openai');
   return new OpenAI({ apiKey });

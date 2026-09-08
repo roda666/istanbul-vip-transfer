@@ -5,6 +5,7 @@ import { db } from '@/db';
 import { googleReviews, socialPlatforms } from '@/db/schema';
 import { decrypt, encrypt, isEncryptionReady } from '@/lib/email-crypto';
 import { ensureSocialPlatforms } from '@/lib/social-platforms';
+import { resolveIntegrationSecret } from '@/lib/integration-secrets';
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const ACCOUNT_MANAGEMENT_URL = 'https://mybusinessaccountmanagement.googleapis.com/v1';
@@ -74,8 +75,8 @@ async function getValidAccessToken(platform: GoogleBusinessPlatform) {
   if (existing && !expiresSoon) return existing;
 
   const refreshToken = platform.accessTokenSecretEncrypted ? decrypt(platform.accessTokenSecretEncrypted) : null;
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const clientId = await resolveIntegrationSecret('GOOGLE_CLIENT_ID');
+  const clientSecret = await resolveIntegrationSecret('GOOGLE_CLIENT_SECRET');
   if (!refreshToken || !clientId || !clientSecret || !isEncryptionReady()) {
     throw new Error('Google Business Profile bağlantısı yenilenemedi. Lütfen yeniden bağlanın.');
   }

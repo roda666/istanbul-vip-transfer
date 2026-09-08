@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { TwitterApi } from 'twitter-api-v2';
+import { resolveIntegrationSecret } from '@/lib/integration-secrets';
 import { requireSocialPlatformAdmin, socialAuthErrorResponse } from '@/lib/social-auth';
 import { decrypt, encrypt } from '@/lib/email-crypto';
 import { db } from '@/db';
@@ -25,8 +26,8 @@ export async function GET(req: NextRequest) {
   const requestToken = req.cookies.get('x_oauth_request_token')?.value;
   const encryptedRequestSecret = req.cookies.get('x_oauth_request_secret')?.value;
   const requestSecret = encryptedRequestSecret ? decrypt(encryptedRequestSecret) : null;
-  const consumerKey = process.env.X_CONSUMER_KEY;
-  const consumerSecret = process.env.X_CONSUMER_SECRET;
+  const consumerKey = await resolveIntegrationSecret('X_CONSUMER_KEY');
+  const consumerSecret = await resolveIntegrationSecret('X_CONSUMER_SECRET');
   const callbackResult = (value: string) => {
     const fallback = getSocialSettingsUrl(req, { social_error: value });
     return socialOAuthCallbackResponse(req, { provider: 'x', success: false, error: value }, fallback);

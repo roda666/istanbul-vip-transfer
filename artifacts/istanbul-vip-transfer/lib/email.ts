@@ -151,6 +151,7 @@ export function validateSenderDomainCompatibility(input: {
  * silently fall back to environment values and make the admin test misleading.
  */
 async function getSmtpConfig(): Promise<SmtpConfigResolution> {
+  let storedPassword: string | null = null;
   // 1. Try DB settings
   try {
     const { db }           = await import('@/db');
@@ -195,6 +196,13 @@ async function getSmtpConfig(): Promise<SmtpConfigResolution> {
         },
       };
     }
+    if (row?.smtpPassEncrypted) {
+      const { decryptSmtpPassword } = await import('@/lib/email-settings-crypto');
+      storedPassword = await decryptSmtpPassword(row.smtpPassEncrypted);
+      if (!storedPassword) {
+        return configFailure('SMTP_PASSWORD_UNREADABLE', 'Kayıtlı SMTP parolası okunamadı. Parolayı panelden yeniden kaydedin.');
+      }
+    }
   } catch {
     // DB not available — fall through to env var fallback
   }
@@ -202,7 +210,7 @@ async function getSmtpConfig(): Promise<SmtpConfigResolution> {
   // 2. Env var fallback
   const host = process.env.SMTP_HOST;
   const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  const pass = storedPassword ?? process.env.SMTP_PASS;
   if (!host && !user && !pass) {
     return configFailure('SMTP_NOT_CONFIGURED', 'SMTP yapılandırması bulunamadı.');
   }

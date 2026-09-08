@@ -39,7 +39,8 @@ export async function GET() {
   catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
 
   const model = getOpenAiModel();
-  const openaiConfigured = Boolean(process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY);
+  const { resolveIntegrationSecret } = await import('@/lib/integration-secrets');
+  const openaiConfigured = Boolean(await resolveIntegrationSecret('AI_INTEGRATIONS_OPENAI_API_KEY') || await resolveIntegrationSecret('OPENAI_API_KEY'));
 
   let runtime: { db: typeof import('@/db').db; sql: typeof import('drizzle-orm').sql } | null = null;
   try {
@@ -90,7 +91,7 @@ export async function GET() {
 
   const scheduler = probeStudioScheduler({
     enabledFlag: process.env.STUDIO_SCHEDULER_ENABLED,
-    cronSecretConfigured: Boolean(process.env.CRON_SECRET),
+    cronSecretConfigured: Boolean(await resolveIntegrationSecret('CRON_SECRET')),
     migrations,
   });
 

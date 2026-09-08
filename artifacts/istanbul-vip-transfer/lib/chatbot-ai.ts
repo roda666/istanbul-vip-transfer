@@ -10,6 +10,7 @@ import { formatChatbotKnowledgeContext, getRelevantChatbotKnowledge } from '@/li
 import { formatChatbotFareRangeContext, getChatbotFareRangeMatches } from '@/lib/chatbot-pricing';
 import { resolveEmailLinkOrigin } from '@/lib/email-link-url';
 import { sanitizeChatbotReply } from '@/lib/chatbot-message-safety';
+import { resolveEnvironmentOnlyIntegrationConfig, resolveIntegrationSecret } from '@/lib/integration-secrets';
 
 /** Configurable via env var; defaults to gpt-5.4-mini. */
 export const CHATBOT_MODEL = process.env.OPENAI_CHATBOT_MODEL ?? 'gpt-5.4-mini';
@@ -19,9 +20,9 @@ export const CHATBOT_MODEL = process.env.OPENAI_CHATBOT_MODEL ?? 'gpt-5.4-mini';
  * Prefers the Replit AI Integrations proxy when configured, falls back to a
  * direct OPENAI_API_KEY.
  */
-export function getOpenAIChatbot(): OpenAI {
-  const apiKey  = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY || '';
-  const baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || undefined;
+export async function getOpenAIChatbot(): Promise<OpenAI> {
+  const apiKey = await resolveIntegrationSecret('AI_INTEGRATIONS_OPENAI_API_KEY') || await resolveIntegrationSecret('OPENAI_API_KEY') || '';
+  const baseURL = resolveEnvironmentOnlyIntegrationConfig('AI_INTEGRATIONS_OPENAI_BASE_URL');
   return new OpenAI({ apiKey, ...(baseURL ? { baseURL } : {}) });
 }
 
@@ -176,7 +177,7 @@ export async function generateAIReply(
 ): Promise<string | null> {
   try {
     const { messages, reservationFormUrl } = await buildChatbotAiContext(visitorLang, history, request);
-    const res = await getOpenAIChatbot().chat.completions.create({
+    const res = await (await getOpenAIChatbot()).chat.completions.create({
       model: CHATBOT_MODEL,
       max_completion_tokens: 512,
       messages,

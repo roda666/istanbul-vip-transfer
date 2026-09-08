@@ -13,6 +13,7 @@ import DisconnectGscButton from './DisconnectGscButton';
 import DisconnectGadsButton from './DisconnectGadsButton';
 import SocialPlatformsPanel from './SocialPlatformsPanel';
 import { getSocialOAuthMessage } from '@/lib/social-oauth-feedback';
+import { resolveIntegrationSecret } from '@/lib/integration-secrets';
 
 export const metadata: Metadata = { title: 'İçerik Entegrasyonları | Admin', robots: { index: false } };
 export const dynamic = 'force-dynamic';
@@ -70,8 +71,8 @@ async function getGoogleAdsStatus(): Promise<{
   hasDevToken: boolean;
   hasLoginCustomerId: boolean;
 }> {
-  const hasDevToken        = !!(process.env.GOOGLE_ADS_DEVELOPER_TOKEN);
-  const hasLoginCustomerId = !!(process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID);
+  const hasDevToken = !!(await resolveIntegrationSecret('GOOGLE_ADS_DEVELOPER_TOKEN'));
+  const hasLoginCustomerId = !!(await resolveIntegrationSecret('GOOGLE_ADS_LOGIN_CUSTOMER_ID'));
   try {
     const { getGoogleAdsConnection } = await import('@/lib/google-ads');
     const conn = await getGoogleAdsConnection();
@@ -188,9 +189,13 @@ export default async function IcerikEntegrasyonlariPage({
   const [gscStatus, gadsStatus] = await Promise.all([getGscStatus(), getGoogleAdsStatus()]);
   const opportunities = gscStatus.connected ? await getTopOpportunities() : null;
 
-  const hasGscCredentials = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
-  const openAiOk          = !!(process.env.OPENAI_API_KEY);
-  const cronSecretOk      = !!(process.env.CRON_SECRET);
+  const [googleClientId, googleClientSecret, openAiKey, cronSecret] = await Promise.all([
+    resolveIntegrationSecret('GOOGLE_CLIENT_ID'), resolveIntegrationSecret('GOOGLE_CLIENT_SECRET'),
+    resolveIntegrationSecret('OPENAI_API_KEY'), resolveIntegrationSecret('CRON_SECRET'),
+  ]);
+  const hasGscCredentials = !!(googleClientId && googleClientSecret);
+  const openAiOk = !!openAiKey;
+  const cronSecretOk = !!cronSecret;
 
   const ERROR_MSGS: Record<string, string> = {
     missing_client_id:         'GOOGLE_CLIENT_ID tanımlı değil. Aşağıdaki talimatları izleyin.',

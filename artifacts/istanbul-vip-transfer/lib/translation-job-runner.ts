@@ -50,7 +50,8 @@ export async function runTranslationTask(params: RunTaskParams): Promise<RunTask
   const { content, contentTranslations, auditLogs, faqs, vehicles, navigationItems } = schema;
 
   // ── Validate AI config ────────────────────────────────────────────────────
-  if (!process.env.OPENAI_API_KEY) {
+  const { resolveIntegrationSecret } = await import('@/lib/integration-secrets');
+  if (!await resolveIntegrationSecret('OPENAI_API_KEY')) {
     return {
       status: 'failed',
       error: 'OpenAI çeviri servisi yapılandırılmamış (OPENAI_API_KEY eksik).',

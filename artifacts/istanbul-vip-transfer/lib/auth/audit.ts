@@ -7,7 +7,7 @@ type AuditMetadata = Record<string, string | number | boolean | null | undefined
 const ADMIN_API_AUDIT_CATEGORIES = new Set([
   'ai-content', 'ai-suggestions', 'analytics', 'auth', 'blog', 'categories',
   'change-password', 'chatbot', 'content', 'cron', 'custom-fields',
-  'database-backup', 'email-settings', 'faqs', 'google-ads', 'gsc', 'homepage', 'languages',
+  'database-backup', 'email-settings', 'faqs', 'google-ads', 'gsc', 'homepage', 'integration-secrets', 'languages',
   'locations', 'login', 'logout', 'nav', 'newsletter', 'newsletter-export',
   'requests', 'reservation-settings', 'service-pages', 'service-types',
   'settings', 'social-platforms', 'staff', 'storage', 'studio',
@@ -17,7 +17,7 @@ const ADMIN_API_AUDIT_CATEGORIES = new Set([
 const ADMIN_PAGE_AUDIT_CATEGORIES = new Set([
   'ai-oneriler', 'ai-studio', 'araclar', 'ayarlar', 'blog',
   'bulten-aboneleri', 'ceviriler', 'dashboard', 'dil-ve-ceviri', 'diller',
-  'e-posta-ayarlari', 'erisim-reddedildi', 'gecmis', 'hesabim', 'hizmetler',
+  'api-anahtarlari', 'e-posta-ayarlari', 'erisim-reddedildi', 'gecmis', 'hesabim', 'hizmetler',
   'istatistikler', 'kategoriler', 'menu', 'personel',
   'rezervasyon-ayarlari', 'sayfalar', 'sohbet', 'sss', 'talepler',
   'transfer-rotalari',

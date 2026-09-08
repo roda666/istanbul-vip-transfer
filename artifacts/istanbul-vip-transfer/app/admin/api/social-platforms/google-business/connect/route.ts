@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
+import { resolveIntegrationSecret } from '@/lib/integration-secrets';
 import { requireSocialPlatformAdmin, socialAuthErrorResponse } from '@/lib/social-auth';
 import { getPublicUrl, getSocialSettingsUrl } from '@/lib/social-public-url';
 
@@ -14,8 +15,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: response.error }, { status: response.status });
   }
 
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const clientId = await resolveIntegrationSecret('GOOGLE_CLIENT_ID');
+  const clientSecret = await resolveIntegrationSecret('GOOGLE_CLIENT_SECRET');
   if (!clientId || !clientSecret) {
     return NextResponse.redirect(getSocialSettingsUrl(req, { social_error: 'google_business_credentials_missing' }));
   }

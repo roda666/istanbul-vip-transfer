@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TwitterApi } from 'twitter-api-v2';
+import { resolveIntegrationSecret } from '@/lib/integration-secrets';
 import { requireSocialPlatformAdmin } from '@/lib/social-auth';
 import { encrypt, isEncryptionReady } from '@/lib/email-crypto';
 import { getSocialCallbackUrl, getSocialSettingsUrl } from '@/lib/social-public-url';
@@ -17,8 +18,8 @@ export async function GET(req: NextRequest) {
   try { await requireSocialPlatformAdmin(); }
   catch { return errorResponse(req, 'x_unauthorized'); }
 
-  const consumerKey = process.env.X_CONSUMER_KEY;
-  const consumerSecret = process.env.X_CONSUMER_SECRET;
+  const consumerKey = await resolveIntegrationSecret('X_CONSUMER_KEY');
+  const consumerSecret = await resolveIntegrationSecret('X_CONSUMER_SECRET');
   if (!consumerKey || !consumerSecret || !isEncryptionReady()) {
     return errorResponse(req, 'x_credentials_missing');
   }

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { resolveIntegrationSecret } from '@/lib/integration-secrets';
 import { requireAdminSession } from '@/lib/auth/session';
 
 type QueuedTask = { jobId: string; taskId: string };
@@ -16,7 +17,7 @@ export async function POST() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!await resolveIntegrationSecret('OPENAI_API_KEY')) {
     return NextResponse.json({ error: 'OpenAI çeviri servisi yapılandırılmamış.' }, { status: 503 });
   }
 

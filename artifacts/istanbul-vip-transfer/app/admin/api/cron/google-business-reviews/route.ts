@@ -10,7 +10,8 @@ export const dynamic = 'force-dynamic';
  * OAuth refresh/sync flow and a separate bearer secret, never an admin cookie.
  */
 export async function POST(req: NextRequest) {
-  const secret = process.env.CRON_SECRET;
+  const { resolveIntegrationSecret } = await import('@/lib/integration-secrets');
+  const secret = await resolveIntegrationSecret('CRON_SECRET');
   if (!secret) return NextResponse.json({ error: 'CRON_SECRET not configured.' }, { status: 503 });
   if (req.headers.get('authorization') !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

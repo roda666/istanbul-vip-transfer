@@ -13,6 +13,7 @@
  */
 import 'server-only';
 import { sql } from 'drizzle-orm';
+import { resolveIntegrationSecret } from '@/lib/integration-secrets';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -115,12 +116,10 @@ export async function getGoogleAdsConnection(): Promise<{
 /** Safe operational state for admin UI. No token, account identifier, or raw provider error leaves the server. */
 export async function getGoogleAdsStatus(): Promise<{ connected: boolean; ready: boolean; label: string }> {
   const connection = await getGoogleAdsConnection();
-  const configured = Boolean(
-    process.env.GOOGLE_ADS_DEVELOPER_TOKEN &&
-    process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID &&
-    process.env.GOOGLE_CLIENT_ID &&
-    process.env.GOOGLE_CLIENT_SECRET,
-  );
+  const configured = Boolean(await resolveIntegrationSecret('GOOGLE_ADS_DEVELOPER_TOKEN') &&
+    await resolveIntegrationSecret('GOOGLE_ADS_LOGIN_CUSTOMER_ID') &&
+    await resolveIntegrationSecret('GOOGLE_CLIENT_ID') &&
+    await resolveIntegrationSecret('GOOGLE_CLIENT_SECRET'));
   const connected = Boolean(connection?.connected && connection.enabled);
   if (!configured) return { connected, ready: false, label: 'Google Ads Keyword Planner sunucu yapılandırması tamamlanmamış.' };
   if (!connected) return { connected: false, ready: false, label: 'Google Ads Keyword Planner hesabı bağlı değil veya bağlantı devre dışı.' };
@@ -133,8 +132,8 @@ async function getAccessToken(): Promise<string | null> {
   const conn = await getRawConnection();
   if (!conn || !conn.connected || !conn.enabled) return null;
 
-  const clientId     = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const clientId = await resolveIntegrationSecret('GOOGLE_CLIENT_ID');
+  const clientSecret = await resolveIntegrationSecret('GOOGLE_CLIENT_SECRET');
   if (!clientId || !clientSecret) return null;
 
   const now    = new Date();
@@ -189,8 +188,8 @@ export async function generateKeywordIdeas(
   limit = 20,
   includeZeroVolumes = false,
 ): Promise<KeywordIdea[]> {
-  const devToken      = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
-  const loginCustId   = process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID;
+  const devToken = await resolveIntegrationSecret('GOOGLE_ADS_DEVELOPER_TOKEN');
+  const loginCustId = await resolveIntegrationSecret('GOOGLE_ADS_LOGIN_CUSTOMER_ID');
   if (!devToken || !loginCustId) {
     throw new GoogleAdsUnavailableError();
   }

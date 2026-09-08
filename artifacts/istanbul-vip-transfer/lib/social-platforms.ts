@@ -93,13 +93,12 @@ export const SOCIAL_PLATFORM_CATALOG: SocialPlatformDefinition[] = [
   },
 ];
 
-function xEnvironmentReady() {
-  return Boolean(
-    process.env.X_CONSUMER_KEY &&
-    process.env.X_CONSUMER_SECRET &&
+async function xEnvironmentReady() {
+  const { resolveIntegrationSecret } = await import('@/lib/integration-secrets');
+  return Boolean(await resolveIntegrationSecret('X_CONSUMER_KEY') &&
+    await resolveIntegrationSecret('X_CONSUMER_SECRET') &&
     process.env.X_ACCESS_TOKEN &&
-    process.env.X_ACCESS_TOKEN_SECRET,
-  );
+    process.env.X_ACCESS_TOKEN_SECRET);
 }
 
 export async function ensureSocialPlatforms() {
@@ -114,7 +113,7 @@ export async function ensureSocialPlatforms() {
 
   // X may be configured through Replit Secrets before a browser OAuth flow is
   // used. Persist its connection state so toggles remain DB-backed.
-  if (xEnvironmentReady()) {
+  if (await xEnvironmentReady()) {
     const [xPlatform] = await db.select({
       lastError: socialPlatforms.lastError,
     }).from(socialPlatforms).where(eq(socialPlatforms.key, 'x')).limit(1);

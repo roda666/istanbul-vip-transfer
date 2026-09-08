@@ -1042,6 +1042,27 @@ export const turnstileEncryptionKeys = pgTable('turnstile_encryption_keys', {
 
 export type TurnstileEncryptionKey = typeof turnstileEncryptionKeys.$inferSelect;
 
+/**
+ * Centrally managed third-party credentials. Values are always AES-GCM
+ * ciphertext; `key` is deliberately an allowlisted environment-variable name.
+ */
+export const integrationSecrets = pgTable('integration_secrets', {
+  key: text('key').primaryKey(),
+  ciphertext: text('ciphertext').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+});
+
+/** Singleton envelope key, intentionally separate from SMTP and Turnstile keys. */
+export const integrationSecretsEncryptionKeys = pgTable('integration_secrets_encryption_keys', {
+  id: integer('id').primaryKey().default(1),
+  wrappedKey: text('wrapped_key').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type IntegrationSecret = typeof integrationSecrets.$inferSelect;
+
 // ── Translation Jobs ──────────────────────────────────────────────────────────
 
 /**

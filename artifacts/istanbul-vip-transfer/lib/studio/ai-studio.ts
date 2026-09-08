@@ -47,7 +47,8 @@ const AIRPORT_CODES = /\b(IST|SAW|LHR|CDG|JFK|AMS|FCO|SVO|DXB)\b/g;
 async function getClient() {
   // Replit AI Integrations is the preferred runtime when it is attached. Keep
   // the direct OpenAI secret as a supported existing deployment option.
-  const key = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+  const { resolveIntegrationSecret } = await import('@/lib/integration-secrets');
+  const key = await resolveIntegrationSecret('AI_INTEGRATIONS_OPENAI_API_KEY') || await resolveIntegrationSecret('OPENAI_API_KEY');
   if (!key) return null;
   try {
     const { OpenAI } = await import('openai');
@@ -790,7 +791,8 @@ export async function checkOpenAIConnectivity(): Promise<{
   chat: { ok: boolean; model: string | null; error?: string };
   image: { ok: boolean; model: string; error?: string };
 }> {
-  const key = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+  const { resolveIntegrationSecret } = await import('@/lib/integration-secrets');
+  const key = await resolveIntegrationSecret('AI_INTEGRATIONS_OPENAI_API_KEY') || await resolveIntegrationSecret('OPENAI_API_KEY');
   const imageModel = getImageModel();
   if (!key) {
     return {

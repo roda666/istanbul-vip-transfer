@@ -3,11 +3,12 @@
  * Uses the Replit AI Integrations OpenAI proxy (gpt-5.4-mini).
  */
 import OpenAI from 'openai';
+import { resolveEnvironmentOnlyIntegrationConfig, resolveIntegrationSecret } from '@/lib/integration-secrets';
 
-function getClient() {
+async function getClient() {
   return new OpenAI({
-    baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-    apiKey:  process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+    baseURL: resolveEnvironmentOnlyIntegrationConfig('AI_INTEGRATIONS_OPENAI_BASE_URL'),
+    apiKey: await resolveIntegrationSecret('AI_INTEGRATIONS_OPENAI_API_KEY') || await resolveIntegrationSecret('OPENAI_API_KEY'),
   });
 }
 
@@ -24,7 +25,7 @@ const LANG_NAMES: Record<string, string> = {
  */
 export async function translateToTurkish(text: string): Promise<string> {
   if (!text.trim()) return text;
-  const openai = getClient();
+  const openai = await getClient();
   const res = await openai.chat.completions.create({
     model: process.env.OPENAI_CHATBOT_MODEL ?? 'gpt-5.4-mini',
     max_completion_tokens: 400,
@@ -51,7 +52,7 @@ export async function translateToTurkish(text: string): Promise<string> {
 export async function translateFromTurkish(text: string, targetLang: string): Promise<string> {
   if (!text.trim()) return text;
   const targetName = LANG_NAMES[targetLang] ?? 'English';
-  const openai = getClient();
+  const openai = await getClient();
   const res = await openai.chat.completions.create({
     model: process.env.OPENAI_CHATBOT_MODEL ?? 'gpt-5.4-mini',
     max_completion_tokens: 400,

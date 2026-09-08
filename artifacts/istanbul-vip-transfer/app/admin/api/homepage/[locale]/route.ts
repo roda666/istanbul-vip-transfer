@@ -251,7 +251,8 @@ export async function PATCH(
     };
     const syncResults: Record<string, SyncResult> = {};
 
-    const hasOpenAI = !!process.env.OPENAI_API_KEY;
+    const { resolveIntegrationSecret } = await import('@/lib/integration-secrets');
+    const hasOpenAI = !!await resolveIntegrationSecret('OPENAI_API_KEY');
 
     for (const targetLocale of targetLocales) {
       let tx = txByLocale[targetLocale];

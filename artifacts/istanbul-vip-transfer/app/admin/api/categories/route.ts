@@ -98,7 +98,10 @@ export async function POST(request: NextRequest) {
 
   try {
     const OpenAI = (await import('openai')).default;
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const { resolveIntegrationSecret } = await import('@/lib/integration-secrets');
+    const apiKey = await resolveIntegrationSecret('OPENAI_API_KEY');
+    if (!apiKey) return NextResponse.json({ error: 'AI yapılandırılmamış.' }, { status: 503 });
+    const openai = new OpenAI({ apiKey });
 
     await Promise.allSettled(
       Object.entries(LANGS).map(async ([code, lang]) => {

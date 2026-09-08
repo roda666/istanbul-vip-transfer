@@ -16,6 +16,7 @@
  * Rate limit: 10 requests per minute per admin (in-memory, resets on server restart).
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { resolveIntegrationSecret } from '@/lib/integration-secrets';
 import { z } from 'zod';
 import { requireAdminSession } from '@/lib/auth/session';
 
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!await resolveIntegrationSecret('OPENAI_API_KEY')) {
     return NextResponse.json(
       { error: 'OpenAI çeviri servisi yapılandırılmamış. OPENAI_API_KEY gereklidir.' },
       { status: 503 },

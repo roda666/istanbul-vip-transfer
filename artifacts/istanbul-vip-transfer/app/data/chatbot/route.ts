@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
     // ── Stream AI response ─────────────────────────────────────────────────────
     const { messages: aiMessages, reservationFormUrl } =
       await buildChatbotAiContext(session.visitorLang, messages, request);
-    const aiStream = await getOpenAIChatbot().chat.completions.create({
+    const aiStream = await (await getOpenAIChatbot()).chat.completions.create({
       model:                 CHATBOT_MODEL,
       max_completion_tokens: 512,
       messages:              aiMessages,

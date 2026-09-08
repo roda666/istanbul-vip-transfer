@@ -127,6 +127,7 @@ export function getAdminApiPermission(pathname: string, method: string): AdminPe
   if (pathname.startsWith('/admin/api/staff')) return 'STAFF_MANAGE';
   if (pathname.startsWith('/admin/api/email-settings')) return 'SECURITY_SETTINGS_MANAGE';
   if (pathname.startsWith('/admin/api/turnstile-settings')) return 'SECURITY_SETTINGS_MANAGE';
+  if (pathname.startsWith('/admin/api/integration-secrets')) return 'INTEGRATIONS_MANAGE';
   if (pathname.startsWith('/admin/api/social-platforms') ||
       pathname.startsWith('/admin/api/google-ads') ||
       pathname.startsWith('/admin/api/gsc')) return 'INTEGRATIONS_MANAGE';
@@ -211,6 +212,7 @@ export function getAdminPagePermission(pathname: string): AdminPermission | unde
   if (pathname.startsWith('/admin/e-posta-ayarlari') || pathname.startsWith('/admin/diller')) {
     return 'SECURITY_SETTINGS_MANAGE';
   }
+  if (pathname.startsWith('/admin/ayarlar/api-anahtarlari')) return 'INTEGRATIONS_MANAGE';
   if (pathname.startsWith('/admin/ayarlar/guvenlik')) return 'SECURITY_SETTINGS_MANAGE';
   if (pathname.startsWith('/admin/veritabani-yedegi')) return 'DATABASE_BACKUP';
   if (pathname.startsWith('/admin/ayarlar') || pathname.startsWith('/admin/rezervasyon-ayarlari')) {

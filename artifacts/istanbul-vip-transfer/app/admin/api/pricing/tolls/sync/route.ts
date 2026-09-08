@@ -52,10 +52,10 @@ export async function POST(request: NextRequest) {
         queriedAt: synced.queriedAt.toISOString(),
         newAmountKurus: synced.amountKurus,
         requiresConfirmation: true,
-        previewToken: signTariffSyncPreview({ ...synced, tariffId: tariff.id }),
+        previewToken: await signTariffSyncPreview({ ...synced, tariffId: tariff.id }),
       });
     }
-    const synced = verifyTariffSyncPreview(payload.data.previewToken!, tariff.id);
+    const synced = await verifyTariffSyncPreview(payload.data.previewToken!, tariff.id);
     const fetchedAt = new Date(synced.fetchedAt);
     const queriedAt = new Date(synced.queriedAt);
     const [updated] = await db.update(tollTariffs).set({

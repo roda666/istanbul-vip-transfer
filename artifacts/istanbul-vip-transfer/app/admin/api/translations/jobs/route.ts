@@ -8,6 +8,7 @@
  * returns it instead of creating a duplicate.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { resolveIntegrationSecret } from '@/lib/integration-secrets';
 import { z } from 'zod';
 import { requireAdminSession } from '@/lib/auth/session';
 
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!await resolveIntegrationSecret('OPENAI_API_KEY')) {
     return NextResponse.json(
       { error: 'OpenAI çeviri servisi yapılandırılmamış (OPENAI_API_KEY eksik).' },
       { status: 503 },

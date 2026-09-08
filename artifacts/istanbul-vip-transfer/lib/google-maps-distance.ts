@@ -1,4 +1,5 @@
 import 'server-only';
+import { resolveIntegrationSecret } from './integration-secrets';
 
 type CoordinateLocation = {
   latitude: number | null;
@@ -14,7 +15,7 @@ export async function getGoogleMapsRoadDistance(
   origin: CoordinateLocation,
   destination: CoordinateLocation,
 ): Promise<number | null> {
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  const apiKey = await resolveIntegrationSecret('GOOGLE_MAPS_API_KEY');
   if (!apiKey
     || !Number.isFinite(origin.latitude) || !Number.isFinite(origin.longitude)
     || !Number.isFinite(destination.latitude) || !Number.isFinite(destination.longitude)) {

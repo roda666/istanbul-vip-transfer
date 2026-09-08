@@ -74,23 +74,26 @@ export async function fetchSupportedOfficialTariff(identity: TariffIdentity, fet
 
 type SignedPreview = SyncedTariff & { tariffId: string; expiresAt: number };
 
-function tokenSecret(): string | null {
-  return process.env.TOLL_SYNC_TOKEN_SECRET ?? process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? null;
+async function tokenSecret(): Promise<string | null> {
+  const { resolveIntegrationSecret } = await import('@/lib/integration-secrets');
+  // AUTH/NEXTAUTH are protected session roots and intentionally remain
+  // environment-only fallback roots for legacy signed previews.
+  return await resolveIntegrationSecret('TOLL_SYNC_TOKEN_SECRET') ?? process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? null;
 }
 function signature(payload: string, secret: string) {
   return createHmac('sha256', secret).update(payload).digest('base64url');
 }
 
 /** A short-lived signed preview prevents apply from accepting client-supplied money values. */
-export function signTariffSyncPreview(value: SyncedTariff & { tariffId: string }): string {
-  const secret = tokenSecret();
+export async function signTariffSyncPreview(value: SyncedTariff & { tariffId: string }): Promise<string> {
+  const secret = await tokenSecret();
   if (!secret) throw new Error('Tarife senkronizasyon onay anahtarı yapılandırılmamış.');
   const payload = Buffer.from(JSON.stringify({ ...value, fetchedAt: value.fetchedAt.toISOString(), queriedAt: value.queriedAt.toISOString(), expiresAt: Date.now() + TOKEN_TTL_MS })).toString('base64url');
   return `${payload}.${signature(payload, secret)}`;
 }
 
-export function verifyTariffSyncPreview(token: string, tariffId: string): SignedPreview {
-  const secret = tokenSecret();
+export async function verifyTariffSyncPreview(token: string, tariffId: string): Promise<SignedPreview> {
+  const secret = await tokenSecret();
   const [payload, received] = token.split('.');
   if (!secret || !payload || !received) throw new Error('Senkronizasyon önizleme onayı geçersiz veya süresi dolmuş.');
   const expected = signature(payload, secret);

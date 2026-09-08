@@ -7,6 +7,7 @@
  */
 import 'server-only';
 import { sql } from 'drizzle-orm';
+import { resolveIntegrationSecret } from '@/lib/integration-secrets';
 
 export interface GscConnection {
   siteUrl: string;
@@ -135,8 +136,8 @@ async function getAccessToken(): Promise<string | null> {
   const conn = await getRawConnection();
   if (!conn) return null;
 
-  const clientId     = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const clientId = await resolveIntegrationSecret('GOOGLE_CLIENT_ID');
+  const clientSecret = await resolveIntegrationSecret('GOOGLE_CLIENT_SECRET');
   if (!clientId || !clientSecret) return null;
 
   const now = new Date();

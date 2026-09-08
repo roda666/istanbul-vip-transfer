@@ -8,6 +8,7 @@ import type {
   TransferRoute,
   TransferRouteTranslation,
 } from '@/db/schema';
+import { AISeoGenerator } from '@/app/admin/_components/AISeoGenerator';
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 const BORDER = '#D8E1E9';
@@ -367,6 +368,8 @@ function RouteModal({ route, locationOptions, vehicleOptions, onSave, onClose, s
             <div><label style={labelStyle}>SEO Başlığı</label><input style={inputStyle} value={form.seoTitle ?? ''} onChange={e => set('seoTitle', e.target.value)} /></div>
             <div><label style={labelStyle}>İlgili Hizmet Slug&apos;ı</label><input style={inputStyle} placeholder="vip-transfer" value={form.relatedServiceSlug ?? ''} onChange={e => set('relatedServiceSlug', e.target.value)} /></div>
           </div>
+          <AISeoGenerator context="route" title={form.seoTitle ?? ''} description={form.seoDescription ?? ''}
+            onTitleChange={v => set('seoTitle', v)} onDescriptionChange={v => set('seoDescription', v)} />
           <div><label style={labelStyle}>SEO Açıklaması</label><textarea style={{ ...inputStyle, minHeight: '66px', resize: 'vertical' }} value={form.seoDescription ?? ''} onChange={e => set('seoDescription', e.target.value)} /></div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div><label style={labelStyle}>Open Graph Başlığı</label><input style={inputStyle} value={form.ogTitle ?? ''} onChange={e => set('ogTitle', e.target.value)} /></div>
@@ -424,6 +427,8 @@ function RouteModal({ route, locationOptions, vehicleOptions, onSave, onClose, s
               <div><label style={labelStyle}>SEO Başlığı</label><input style={inputStyle} value={translation?.seoTitle ?? ''} onChange={e => setTranslation('seoTitle', e.target.value)} /></div>
               <div><label style={labelStyle}>Yayın Durumu</label><select style={inputStyle} value={translation?.status ?? 'DRAFT'} onChange={e => setTranslation('status', e.target.value)}><option value="DRAFT">Taslak</option><option value="REVIEW">İncelemede</option><option value="APPROVED">Onaylandı</option><option value="PUBLISHED">Yayında</option><option value="OUTDATED">Güncellenecek</option></select></div>
             </div>
+            <AISeoGenerator context="route" language={activeLocale} title={translation?.seoTitle ?? ''} description={translation?.seoDescription ?? ''}
+              onTitleChange={v => setTranslation('seoTitle', v)} onDescriptionChange={v => setTranslation('seoDescription', v)} />
             <div><label style={labelStyle}>SEO Açıklaması</label><textarea style={{ ...inputStyle, minHeight: '66px', resize: 'vertical' }} value={translation?.seoDescription ?? ''} onChange={e => setTranslation('seoDescription', e.target.value)} /></div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div><label style={labelStyle}>Open Graph Başlığı</label><input style={inputStyle} value={translation?.ogTitle ?? ''} onChange={e => setTranslation('ogTitle', e.target.value)} /></div>

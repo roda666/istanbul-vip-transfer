@@ -36,6 +36,7 @@ import {
 } from '@/lib/whatsapp';
 import { SITE } from '@/lib/site-config';
 import { useBookingFormData } from './BookingFormDataContext';
+import { appliesToServiceType, type OptionalBookingField } from '@/lib/optional-booking-fields';
 import type {
   BookingCustomField as CustomField,
   BookingServiceTypeOption as ServiceTypeOption,
@@ -158,6 +159,8 @@ function buildSchema(b: import('@/lib/i18n/types').Dictionary['booking']) {
 
     // AIRPORT_TRANSFER + INTERCITY
     bagajSayisi: z.string().optional(),
+    childSeatCount: z.string().optional(),
+    additionalNotes: z.string().optional(),
     seyahatYonu: z.enum(['GIDIS', 'GIDIS_DONUS']).optional(),
 
     // INTERCITY
@@ -253,7 +256,6 @@ function buildWhatsAppMessage(
     lines.push(field(b.waDate, fmtDate), field(b.waTime, saat));
     if (data.seyahatYonu) lines.push(field(b.waTripDirection, data.seyahatYonu === 'GIDIS_DONUS' ? b.tripRoundTrip : b.tripOneWay));
     if (data.ucusNumarasi?.trim()) lines.push(field(b.waFlightNumber, data.ucusNumarasi));
-    if (data.bagajSayisi?.trim()) lines.push(field(b.waLuggageCount!, data.bagajSayisi));
 
   } else if (activeService === 'INTERCITY') {
     lines.push(field(b.waDepartureCity, locationLabel('kalkisIli')));
@@ -262,7 +264,6 @@ function buildWhatsAppMessage(
     if (data.varisAdres?.trim())  lines.push(field(b.waArrivalAddress, data.varisAdres));
     lines.push(field(b.waDate, fmtDate), field(b.waTime, saat));
     if (data.seyahatYonu) lines.push(field(b.waTripDirection, data.seyahatYonu === 'GIDIS_DONUS' ? b.tripRoundTrip : b.tripOneWay));
-    if (data.bagajSayisi?.trim()) lines.push(field(b.waLuggageCount!, data.bagajSayisi));
 
   } else if (activeService === 'ALLOCATION') {
     lines.push(field(b.waPickup, locationLabel('alisLokasyonu')));
@@ -292,9 +293,12 @@ function buildWhatsAppMessage(
     field(b.waFullName, data.adSoyad),
     field(b.waPhone, formatPhoneForWhatsAppMessage(data.telefon)),
   );
+  if (data.bagajSayisi?.trim()) lines.push(field(b.waLuggageCount!, data.bagajSayisi));
   if (data.email?.trim()) lines.push(field(b.waEmail, data.email.trim()));
   const selectedVehicle = vehicleOptions.find((vehicle) => vehicle.id === data.vehiclePreference);
   if (selectedVehicle) lines.push(field(b.waVehiclePreference!, selectedVehicle.displayName));
+  if (data.childSeatCount?.trim()) lines.push(field(b.childSeatCount!, data.childSeatCount));
+  if (data.additionalNotes?.trim()) lines.push(field(b.waAdditionalNotes!, data.additionalNotes));
   for (const field of customFieldAnswers) {
     if (field.value === true) {
       lines.push(`✓ ${formatWhatsAppLabel(field.label)}`);
@@ -392,6 +396,8 @@ export default function BookingForm({
   const publishedVehicles = bootstrap.vehicles;
   const [locationLabels, setLocationLabels] = useState<Record<string, string>>({});
   const formSettings = bootstrap.formSettings;
+  const showOptionalField = (field: OptionalBookingField) =>
+    formSettings[field] && appliesToServiceType(formSettings.optionalFieldServiceTypes, field, activeService);
   const [submissionNotice, setSubmissionNotice] = useState<{ kind: 'saved' | 'failed'; message: string } | null>(null);
   const [intercityPickupOption, setIntercityPickupOption] = useState<LocationOption | null>(null);
   const [intercityDropoffOption, setIntercityDropoffOption] = useState<LocationOption | null>(null);
@@ -540,6 +546,15 @@ export default function BookingForm({
     setSubmitting(true);
 
     const serviceLabel = ST_LABELS[activeService] ?? activeST?.label ?? activeService;
+    // Do not retain values from a field that was visible before the visitor
+    // changed service type; only fields applicable to the active service submit.
+    const activeFormData: FormData = {
+      ...data,
+      bagajSayisi: showOptionalField('showLuggageCount') ? data.bagajSayisi : undefined,
+      childSeatCount: showOptionalField('showChildSeatCount') ? data.childSeatCount : undefined,
+      vehiclePreference: showOptionalField('showVehiclePreference') ? data.vehiclePreference : undefined,
+      additionalNotes: showOptionalField('showAdditionalNotes') ? data.additionalNotes : undefined,
+    };
     const customFieldAnswers = customFields.flatMap((field): CustomFieldAnswer[] => {
       const value = customFieldValues[field.id];
       if (field.fieldType === 'checkbox') {
@@ -549,10 +564,10 @@ export default function BookingForm({
         ? [{ id: field.id, label: field.label, value: value.trim() }]
         : [];
     });
-    const submittedFormData = { ...data, customFields: customFieldAnswers };
+    const submittedFormData = { ...activeFormData, customFields: customFieldAnswers };
     const submissionId = crypto.randomUUID();
     const msg = buildWhatsAppMessage(
-      data,
+      activeFormData,
       serviceLabel,
       activeService,
       b,
@@ -825,11 +840,6 @@ export default function BookingForm({
                         placeholder={b.flightNumberPlaceholder} autoComplete="off" />
                     </div>
                     <div>
-                      <label htmlFor="bf-bagaj" style={labelStyle}><Briefcase size={12} aria-hidden="true" /> {b.luggageCount} {optionalBadge}</label>
-                      <input id="bf-bagaj" type="number" min="0" inputMode="numeric" {...register('bagajSayisi')} className="vip-input"
-                        placeholder={b.luggageCountPlaceholder} />
-                    </div>
-                    <div>
                       <label htmlFor="bf-seyahat-yonu" style={labelStyle}><ArrowRightLeft size={12} aria-hidden="true" /> {b.tripDirection} {optionalBadge}</label>
                       <select id="bf-seyahat-yonu" {...register('seyahatYonu')} className="vip-input vip-select">
                         <option value="GIDIS">{b.tripOneWay}</option>
@@ -875,11 +885,6 @@ export default function BookingForm({
                       <label htmlFor="bf-varis-adres" style={labelStyle}><Home size={12} aria-hidden="true" /> {b.arrivalAddress} {optionalBadge}</label>
                       <input id="bf-varis-adres" type="text" {...register('varisAdres')} className="vip-input"
                         placeholder={b.arrivalCityAddressPlaceholder} autoComplete="off" />
-                    </div>
-                    <div>
-                      <label htmlFor="bf-bagaj-ic" style={labelStyle}><Briefcase size={12} aria-hidden="true" /> {b.luggageCount} {optionalBadge}</label>
-                      <input id="bf-bagaj-ic" type="number" min="0" inputMode="numeric" {...register('bagajSayisi')} className="vip-input"
-                        placeholder={b.luggageCountPlaceholder} />
                     </div>
                     <div>
                       <label htmlFor="bf-seyahat-yonu-ic" style={labelStyle}><ArrowRightLeft size={12} aria-hidden="true" /> {b.tripDirection} {optionalBadge}</label>
@@ -1058,7 +1063,13 @@ export default function BookingForm({
                         : b.vehicleHint}
                     </p>
                   </div>
-                  {formSettings.showVehiclePreference && publishedVehicles.length > 0 && (
+                  {showOptionalField('showLuggageCount') && (
+                    <div data-testid="field-luggage-count">
+                      <label htmlFor="bf-bagaj" style={labelStyle}><Briefcase size={12} aria-hidden="true" /> {b.luggageCount} {optionalBadge}</label>
+                      <input id="bf-bagaj" type="number" min="0" inputMode="numeric" {...register('bagajSayisi')} className="vip-input" placeholder={b.luggageCountPlaceholder} />
+                    </div>
+                  )}
+                  {showOptionalField('showVehiclePreference') && publishedVehicles.length > 0 && (
                     <div data-testid="field-vehicle-preference">
                       <label htmlFor="bf-vehicle-preference" style={labelStyle}>
                         <Car size={12} aria-hidden="true" /> {b.vehiclePreference}
@@ -1077,6 +1088,18 @@ export default function BookingForm({
                           </option>
                         ))}
                       </select>
+                    </div>
+                  )}
+                  {showOptionalField('showChildSeatCount') && (
+                    <div data-testid="field-child-seat-count">
+                      <label htmlFor="bf-child-seat-count" style={labelStyle}>{b.childSeatCount} {optionalBadge}</label>
+                      <input id="bf-child-seat-count" type="number" min="0" inputMode="numeric" {...register('childSeatCount')} className="vip-input" placeholder={b.childSeatCountPlaceholder} />
+                    </div>
+                  )}
+                  {showOptionalField('showAdditionalNotes') && (
+                    <div className="md:col-span-2" data-testid="field-additional-notes">
+                      <label htmlFor="bf-additional-notes" style={labelStyle}>{b.additionalNotes} {optionalBadge}</label>
+                      <textarea id="bf-additional-notes" {...register('additionalNotes')} className="vip-input" placeholder={b.additionalNotesPlaceholder} rows={2} style={{ width: '100%', resize: 'vertical', minHeight: '72px' }} />
                     </div>
                   )}
 
@@ -1106,9 +1129,7 @@ export default function BookingForm({
                 </div>
               </div>
 
-              {/* Existing admin-defined custom fields remain available. The
-                  discontinued luggage/seat/vehicle/note controls are no longer
-                  rendered or included in the WhatsApp payload. */}
+              {/* Existing admin-defined custom fields remain available. */}
               {customFields.length > 0 && (
                 <div className={panelA} data-testid="optional-fields-panel">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">

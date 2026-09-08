@@ -13,7 +13,7 @@ import {
   vehicleTollPointClasses,
   vehicles,
 } from '@/db/schema';
-import { VEHICLE_TYPE_OPTIONS, VEHICLE_TYPE_VALUES, type VehicleType } from '@/lib/vehicle-options';
+import { VEHICLE_TYPE_OPTIONS, VEHICLE_TYPE_VALUES, isVehicleTypeBanned, type VehicleType } from '@/lib/vehicle-options';
 
 /**
  * Re-exported from the client-safe module so existing server-side importers
@@ -295,9 +295,10 @@ export function assertVerifiedSourceForBan(bannedVehicleClasses: string[] | null
  */
 export const TOLL_VEHICLE_TYPES = VEHICLE_TYPE_VALUES;
 export type TollVehicleType = VehicleType;
-export const TOLL_VEHICLE_TYPE_LABELS: Record<TollVehicleType, string> = Object.fromEntries(
-  VEHICLE_TYPE_OPTIONS.map((option) => [option.value, option.label]),
-) as Record<TollVehicleType, string>;
+export const TOLL_VEHICLE_TYPE_LABELS: Record<TollVehicleType, string> = {
+  ...Object.fromEntries(VEHICLE_TYPE_OPTIONS.map((option) => [option.value, option.label])),
+  minivan: 'Otomobil',
+} as Record<TollVehicleType, string>;
 
 /**
  * Same verification pattern as assertVerifiedSourceForBan, for the separate
@@ -472,7 +473,7 @@ export async function getRouteTollAlternatives(routeId: string, vehicleId?: stri
   if (!route) throw new Error('Güzergâh bulunamadı.');
 
   const [vehicle] = vehicleId
-    ? await db.select({ id: vehicles.id, pricingClass: vehicles.pricingClass }).from(vehicles).where(eq(vehicles.id, vehicleId)).limit(1)
+    ? await db.select({ id: vehicles.id, pricingClass: vehicles.pricingClass, vehicleType: vehicles.vehicleType }).from(vehicles).where(eq(vehicles.id, vehicleId)).limit(1)
     : [null];
   if (vehicleId && !vehicle) throw new Error('Araç bulunamadı.');
 
@@ -537,7 +538,7 @@ export async function getRouteTollAlternatives(routeId: string, vehicleId?: stri
         // is a separate, independent axis from the axle-based class ban
         // below — both must be checked, neither substitutes for the other.
         const bannedTypes = (point.bannedVehicleTypes ?? []) as string[];
-        if (vehicle.pricingClass && bannedTypes.includes(vehicle.pricingClass)) {
+        if (isVehicleTypeBanned(vehicle.vehicleType, bannedTypes) || isVehicleTypeBanned(vehicle.pricingClass, bannedTypes)) {
           bannedPointNames.push(point.name);
           continue;
         }

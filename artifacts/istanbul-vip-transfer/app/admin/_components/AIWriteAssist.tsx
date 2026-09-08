@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Check, Loader2, Sparkles, X } from 'lucide-react';
 
-export type AIWritingContext = 'blog' | 'service' | 'homepage' | 'chatbot' | 'faq';
+export type AIWritingContext = 'blog' | 'service' | 'homepage' | 'chatbot' | 'faq' | 'vehicle' | 'route';
 export type AIWritingField =
   | 'title'
   | 'body'

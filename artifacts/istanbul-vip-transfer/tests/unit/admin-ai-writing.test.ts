@@ -41,6 +41,20 @@ describe('admin AI field writing', () => {
     expect(prompt.userPrompt).toContain('şu anda boş');
   });
 
+  it('supports the non-persisting vehicle SEO generation context', async () => {
+    const { buildAdminFieldDraftPrompt } = await import('@/lib/studio/ai-studio');
+    const prompt = buildAdminFieldDraftPrompt({
+      ...sampleRequest,
+      context: 'vehicle',
+      field: 'seo_title',
+      fieldLabel: 'SEO Meta Başlık',
+      maxLength: 60,
+    });
+
+    expect(prompt.systemPrompt).toContain('Alan bağlamı: vehicle');
+    expect(prompt.systemPrompt).toContain('50-60 karakter');
+  });
+
   it('treats existing text as untrusted reference and never exposes provider errors', async () => {
     const { generateAdminFieldDraft } = await import('@/lib/studio/ai-studio');
     mocks.chatCreate.mockRejectedValueOnce(new Error('provider exploded with sk-should-not-appear'));

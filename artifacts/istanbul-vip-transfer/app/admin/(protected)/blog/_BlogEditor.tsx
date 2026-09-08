@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import type { BlogAdminRecord } from '@/lib/blog-cms';
 import { ImageUploadField } from '@/app/admin/_components/ImageUploadField';
 import { AIWriteAssist, type AIWritingField } from '@/app/admin/_components/AIWriteAssist';
+import { AISeoGenerator } from '@/app/admin/_components/AISeoGenerator';
 import FacebookShareButton from '@/app/admin/_components/FacebookShareButton';
 import XShareButton from '@/app/admin/_components/XShareButton';
 import LinkedInShareButton from '@/app/admin/_components/LinkedInShareButton';
@@ -634,6 +635,9 @@ export default function BlogEditor({ blogId, initial }: Props) {
           {/* SEO */}
           <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
             <p style={{ fontSize: '12px', fontWeight: 700, color: '#374151', marginBottom: '12px' }}>SEO & Open Graph</p>
+            <AISeoGenerator context="blog" title={seoTitle} description={seoDescription}
+              onTitleChange={v => { setSeoTitle(v); markDirty(); }}
+              onDescriptionChange={v => { setSeoDescription(v); markDirty(); }} />
             <Field label="SEO Başlığı" value={seoTitle} onChange={v => { setSeoTitle(v); markDirty(); }} maxLen={70} aiField="seo_title" />
             <Field label="SEO Açıklaması" value={seoDescription} onChange={v => { setSeoDescription(v); markDirty(); }} multiline rows={2} maxLen={160} aiField="seo_description" />
             <Field label="OG Başlığı" value={ogTitle} onChange={v => { setOgTitle(v); markDirty(); }} maxLen={100} aiField="seo_title" />

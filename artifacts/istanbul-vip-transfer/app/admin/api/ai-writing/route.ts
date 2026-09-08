@@ -9,7 +9,7 @@ import { generateAdminFieldDraft } from '@/lib/studio/ai-studio';
 export const dynamic = 'force-dynamic';
 
 const requestSchema = z.object({
-  context: z.enum(['blog', 'service', 'homepage', 'chatbot', 'faq']),
+  context: z.enum(['blog', 'service', 'homepage', 'chatbot', 'faq', 'vehicle', 'route']),
   field: z.enum(['title', 'body', 'description', 'short_text', 'cta', 'seo_title', 'seo_description', 'faq_question', 'faq_answer', 'chatbot_answer']),
   fieldLabel: z.string().trim().min(1).max(100),
   currentText: z.string().max(12_000).default(''),

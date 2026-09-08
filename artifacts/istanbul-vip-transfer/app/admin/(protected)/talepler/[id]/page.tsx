@@ -47,6 +47,19 @@ async function getAuditLog(entityId: string) {
   }
 }
 
+async function markRequestRead(id: string) {
+  try {
+    const { db } = await import('@/db');
+    const { reservationRequests } = await import('@/db/schema');
+    const { and, eq, isNull } = await import('drizzle-orm');
+    await db.update(reservationRequests)
+      .set({ readAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(reservationRequests.id, id), isNull(reservationRequests.readAt)));
+  } catch {
+    // The detail remains available if a database write transiently fails.
+  }
+}
+
 const SERVICE_LABELS: Record<string, string> = {
   AIRPORT_TRANSFER:  'Havalimanı / Şehir İçi Transfer',
   INTERCITY:         'Şehirler Arası Transfer',
@@ -142,6 +155,7 @@ export default async function TalepDetayPage({ params }: { params: Promise<{ id:
     import('@/lib/site-settings-server').then(m => m.getContactSettings()),
   ]);
   if (!req) notFound();
+  await markRequestRead(req.id);
 
   const formData = (req.requestData as Record<string, unknown>) ?? {};
   // Filter out empty values and internal fields

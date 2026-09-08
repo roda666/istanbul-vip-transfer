@@ -1,7 +1,7 @@
 /**
  * GET /data/form-settings
  * Public route — returns booking form field visibility settings.
- * No authentication required; fields are non-sensitive booleans.
+ * No authentication required; values are non-sensitive visibility settings.
  */
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +18,7 @@ export async function GET() {
         showChildSeatCount:   siteSettings.showChildSeatCount,
         showVehiclePreference: siteSettings.showVehiclePreference,
         showAdditionalNotes:  siteSettings.showAdditionalNotes,
+        optionalFieldServiceTypes: siteSettings.optionalFieldServiceTypes,
       })
       .from(siteSettings)
       .where(eq(siteSettings.id, 1))
@@ -28,6 +29,7 @@ export async function GET() {
       showChildSeatCount:   false,
       showVehiclePreference: false,
       showAdditionalNotes:  false,
+      optionalFieldServiceTypes: {},
     };
     return NextResponse.json(rows[0] ?? defaults, {
       headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
@@ -38,6 +40,7 @@ export async function GET() {
       showChildSeatCount:   false,
       showVehiclePreference: false,
       showAdditionalNotes:  false,
+      optionalFieldServiceTypes: {},
     });
   }
 }

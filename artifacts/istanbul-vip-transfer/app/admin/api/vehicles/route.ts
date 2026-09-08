@@ -16,7 +16,7 @@ const createSchema = z.object({
   luggageCapacity: z.number().int().min(0).max(99).optional().nullable(),
   vehicleType: z.enum(VEHICLE_TYPE_VALUES).optional().nullable(),
   priceCalculationEligible: z.boolean().default(false),
-  pricingClass: z.enum(['minivan', 'minibus', 'midibus', 'bus']).default('minivan'),
+  pricingClass: z.enum(['automobile', 'minivan', 'minibus', 'midibus', 'bus']).default('automobile'),
   // Official toll class is assigned per toll point (never a single global
   // value), since different operators can classify vehicles differently.
   // Never guessed by the system: omitted points stay "not yet assigned".

@@ -7,7 +7,8 @@ import type { ContentStatus } from '@/lib/workflow';
 import { STATUS_LABELS } from '@/lib/workflow';
 import StatusBadge from '../../_components/StatusBadge';
 import { ImageUploadField } from '../../_components/ImageUploadField';
-import { normalizeVehicleType, VEHICLE_TYPE_OPTIONS } from '@/lib/vehicle-options';
+import { AISeoGenerator } from '../../_components/AISeoGenerator';
+import { defaultTollVehicleClassForVehicle, isVehicleTypeBanned, normalizeVehicleType, VEHICLE_TYPE_OPTIONS } from '@/lib/vehicle-options';
 import { VEHICLE_FEATURE_CATALOG } from '@/lib/vehicle-feature-catalog';
 import { TOLL_VEHICLE_CLASSES, TOLL_VEHICLE_CLASS_DESCRIPTIONS, TOLL_VEHICLE_CLASS_LABELS, TOLL_VEHICLE_CLASS_SELECTION_WARNING } from '@/lib/toll-vehicle-classes';
 
@@ -17,6 +18,7 @@ export interface TollPointOption {
   name: string;
   classificationLabel: string | null;
   bannedVehicleClasses: string[] | null;
+  bannedVehicleTypes: string[] | null;
 }
 
 export interface TollPointClassAssignment {
@@ -115,7 +117,7 @@ const emptyForm: FormState = {
   fullDescription: '',
   vehicleType: '',
   priceCalculationEligible: false,
-  pricingClass: 'minivan',
+  pricingClass: 'automobile',
   tollPointClasses: {},
   isActive: true,
   passengerCapacity: '',
@@ -680,6 +682,24 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [], initia
     setForm((f) => ({ ...f, slug: val }));
   }
 
+  /**
+   * Fill only empty rows. Existing values are confirmed per-operator choices,
+   * so changing a fleet type must never overwrite them.
+   */
+  function handleVehicleTypeChange(vehicleType: string) {
+    const suggestedClass = defaultTollVehicleClassForVehicle(vehicleType, form.name);
+    setForm((current) => ({
+      ...current,
+      vehicleType,
+      tollPointClasses: suggestedClass
+        ? Object.fromEntries(tollPoints.map((point) => [
+          point.id,
+          current.tollPointClasses[point.id] || suggestedClass,
+        ]))
+        : current.tollPointClasses,
+    }));
+  }
+
   // Features helpers — a fixed catalog, not free text, so every checked code
   // has a real icon and translation in every public language. Leaving this
   // empty means the vehicle inherits the fleet-wide default list.
@@ -835,7 +855,7 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [], initia
 
       <div style={{ marginBottom: '16px' }}>
         <Label>Araç Tipi</Label>
-        <VehicleTypeSelect value={form.vehicleType} onChange={(v) => setForm((f) => ({ ...f, vehicleType: v }))} />
+        <VehicleTypeSelect value={form.vehicleType} onChange={handleVehicleTypeChange} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
@@ -916,7 +936,8 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [], initia
       <div style={{ marginBottom: '16px' }}>
         <Label>Geçiş Tarife Sınıfı</Label>
         <select value={form.pricingClass} onChange={(event) => setForm((current) => ({ ...current, pricingClass: event.target.value }))} style={{ width: '100%', background: BG2, border: `1px solid ${BORDER}`, borderRadius: '6px', color: '#172B3A', fontSize: '13px', fontFamily: 'Inter, sans-serif', padding: '8px 12px', outline: 'none', boxSizing: 'border-box' }}>
-          <option value="minivan">Minivan / otomobil</option>
+          <option value="automobile">Otomobil</option>
+          <option value="minivan">Otomobil (eski kayıt uyumluluğu)</option>
           <option value="minibus">Minibüs</option>
           <option value="midibus">Midibüs</option>
           <option value="bus">Otobüs</option>
@@ -926,7 +947,7 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [], initia
       <div style={{ marginBottom: '16px' }}>
         <Label>Köprü/Tünel Geçiş Sınıfı (geçiş noktası başına)</Label>
         <div style={{ color: MUTED, fontSize: '11px', marginBottom: '10px', lineHeight: 1.5 }}>
-          Her işletmecinin kendi sınıflandırması olabilir, bu yüzden bu araç her geçiş noktasında ayrı ayrı sınıflandırılır. Bir nokta boş bırakılırsa, o nokta için geçiş ücreti her zaman &quot;eksik veri&quot; olarak işaretlenir — sistem tahmin yapmaz.
+          Araç tipi seçildiğinde boş noktalar yalnızca başlangıç önerisiyle doldurulur (Otomobil/minivan: Sınıf 1; Vito/Sprinter/minibüs ve midibüs: Sınıf 2; otobüs: Sınıf 3). Her işletmecinin kendi sınıflandırması olabilir; mevcut nokta seçimleri asla değiştirilmez. Bir nokta boş bırakılırsa, o nokta için geçiş ücreti her zaman &quot;eksik veri&quot; olarak işaretlenir — sistem tahmin yapmaz.
         </div>
         <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px', color: '#92400E', fontSize: '11px', lineHeight: 1.6, fontWeight: 600 }}>
           {TOLL_VEHICLE_CLASS_SELECTION_WARNING}
@@ -940,6 +961,9 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [], initia
             {tollPoints.map((point) => {
               const assigned = form.tollPointClasses[point.id] ?? '';
               const bannedClasses = point.bannedVehicleClasses ?? [];
+              const typeBanned = isVehicleTypeBanned(form.vehicleType, point.bannedVehicleTypes ?? [])
+                || isVehicleTypeBanned(form.pricingClass, point.bannedVehicleTypes ?? []);
+              const classBanned = !!assigned && bannedClasses.includes(assigned);
               return (
                 <div key={point.id} style={{ background: '#F8FAFC', border: `1px solid ${BORDER}`, borderRadius: '8px', padding: '12px 14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
@@ -948,6 +972,11 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [], initia
                       {point.classificationLabel && (
                         <div style={{ color: MUTED, fontSize: '11px', marginTop: '2px' }}>{point.classificationLabel}</div>
                       )}
+                       {typeBanned && (
+                         <div style={{ color: '#D64545', fontSize: '11px', marginTop: '4px', fontWeight: 600 }}>
+                           Bu araç tipi bu geçiş noktasında yasaklıdır; bu noktayı içeren alternatifler fiyatlandırılamaz.
+                         </div>
+                       )}
                     </div>
                     <select
                       value={assigned}
@@ -962,10 +991,10 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [], initia
                       ))}
                     </select>
                   </div>
-                  {assigned && (
+                      {assigned && (
                     <div style={{ color: MUTED, fontSize: '11px', marginTop: '8px', lineHeight: 1.5 }}>
                       {TOLL_VEHICLE_CLASS_LABELS[assigned as keyof typeof TOLL_VEHICLE_CLASS_LABELS]}: {TOLL_VEHICLE_CLASS_DESCRIPTIONS[assigned as keyof typeof TOLL_VEHICLE_CLASS_DESCRIPTIONS]}
-                      {bannedClasses.includes(assigned) && (
+                       {classBanned && (
                         <div style={{ color: '#D64545', marginTop: '4px', fontWeight: 600 }}>
                           Bu sınıf bu geçiş noktasında yasaklı — bu araç bu noktadan geçemez, fiyat hesaplaması bu noktayı içeren alternatifleri reddedecektir.
                         </div>
@@ -983,6 +1012,11 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [], initia
       ) : (
         <div style={{ background: '#F8FAFC', border: `1px solid ${BORDER}`, borderRadius: '8px', padding: '12px', marginBottom: '16px', color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif', lineHeight: 1.5 }}>
           Araç kaydedildikten sonra bu ekranda kilometre ve saatlik fiyat profilini tanımlayabilirsiniz.
+        </div>
+      )}
+      {isEdit && (
+        <div style={{ marginTop: '14px', color: MUTED, fontSize: '11px', lineHeight: 1.5 }}>
+          Kalıcı silme, yalnızca hiç yayınlanmamış taslak araçlarda liste ekranından yapılabilir. Fiyat teklifi kaydı gibi bağımlılıklar varsa sunucu silmeyi güvenle reddeder.
         </div>
       )}
 
@@ -1144,6 +1178,13 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [], initia
 
       {/* ── SEO ─────────────────────────────────────────── */}
       <SectionTitle>SEO</SectionTitle>
+      <AISeoGenerator
+        context="vehicle"
+        title={form.metaTitle}
+        description={form.metaDescription}
+        onTitleChange={(metaTitle) => setForm((f) => ({ ...f, metaTitle }))}
+        onDescriptionChange={(metaDescription) => setForm((f) => ({ ...f, metaDescription }))}
+      />
 
       <div style={{ marginBottom: '16px' }}>
         <Label>

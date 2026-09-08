@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Search, ChevronLeft, ChevronRight, Archive, RefreshCw, Phone } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Archive, RefreshCw, Phone, Download, FileText, Trash2 } from 'lucide-react';
 import { SOURCE_FILTER_OPTIONS, formatRequestPage, formatSource } from '@/lib/source-labels';
 
 interface RequestRow {
@@ -20,6 +20,7 @@ interface RequestRow {
   createdAt: string;
   archivedAt: string | null;
   isTestData: boolean;
+  readAt: string | null;
 }
 
 interface PageResult {
@@ -123,6 +124,8 @@ function RequestCard({
   onStatusChange,
   onArchive,
   onToggleTestData,
+  onDelete,
+  canDelete,
   formatDate,
 }: {
   row: RequestRow;
@@ -130,6 +133,8 @@ function RequestCard({
   onStatusChange: (id: string, status: string) => void;
   onArchive: (id: string) => void;
   onToggleTestData: (id: string, next: boolean) => void;
+  onDelete: (id: string) => void;
+  canDelete: boolean;
   formatDate: (iso: string) => string;
 }) {
   const sc = STATUS_COLORS[row.status] ?? STATUS_COLORS.NEW;
@@ -137,8 +142,8 @@ function RequestCard({
 
   return (
     <div style={{
-      background: row.isTestData ? '#FFFBEB' : '#FFFFFF',
-      border: row.isTestData ? '1px solid #FDE68A' : '1px solid #E2E8F0',
+       background: row.source === 'contact-form' ? '#F0FDFA' : row.isTestData ? '#FFFBEB' : '#FFFFFF',
+       border: row.source === 'contact-form' ? '1px solid #99F6E4' : row.isTestData ? '1px solid #FDE68A' : '1px solid #E2E8F0',
       borderRadius: '12px',
       padding: '14px 16px',
       marginBottom: '10px',
@@ -183,7 +188,7 @@ function RequestCard({
       {/* Name + Phone */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', gap: '8px' }}>
         <span style={{ fontSize: '14px', fontWeight: 600, color: '#1E293B', fontFamily: 'Inter, sans-serif' }}>
-          {row.name}
+           <span style={{ fontWeight: row.readAt ? 400 : 700 }}>{row.name} {row.source === 'contact-form' && <span style={{ color: '#0F766E', fontSize: '11px' }}>İletişim Formu</span>}</span>
         </span>
         <a
           href={`tel:${row.phone.replace(/\s/g, '')}`}
@@ -246,6 +251,7 @@ function RequestCard({
               <Archive size={11} /> Arşivle
             </button>
           )}
+          {canDelete && <button onClick={() => onDelete(row.id)} disabled={!!updating} style={{ padding: '5px 10px', borderRadius: '6px', fontSize: '12px', background: '#FFF1F2', color: '#BE123C', border: 'none', cursor: 'pointer' }}>Sil</button>}
         </div>
       </div>
     </div>
@@ -253,11 +259,12 @@ function RequestCard({
 }
 
 /* ── Main component ─────────────────────────────────────── */
-export default function TaleplerClient() {
+export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
   const [data, setData]         = useState<PageResult | null>(null);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');
   const [page, setPage]         = useState(1);
+  const [limit, setLimit]       = useState(20);
   const [search, setSearch]     = useState('');
   const [status, setStatus]     = useState('');
   const [service, setService]   = useState('');
@@ -274,7 +281,7 @@ export default function TaleplerClient() {
     setLoading(true);
     setError('');
     try {
-      const params = new URLSearchParams({ page: String(page) });
+       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (search)   params.set('search',    search);
       if (status)   params.set('status',    status);
       if (service)  params.set('service',   service);
@@ -293,7 +300,7 @@ export default function TaleplerClient() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, status, service, intent, lang, source, pageSlug, dateFrom, dateTo, testData]);
+ }, [page, limit, search, status, service, intent, lang, source, pageSlug, dateFrom, dateTo, testData]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -343,6 +350,28 @@ export default function TaleplerClient() {
     }
   }
 
+  async function deleteRequest(id: string) {
+    if (!confirm('Bu talep kalıcı olarak silinecek. Bu işlem geri alınamaz. Devam etmek istiyor musunuz?')) return;
+    setUpdating(id);
+    try {
+      const res = await fetch(`/admin/api/requests/${id}`, { method: 'DELETE' });
+      if (res.ok) fetchData();
+      else setError((await res.json().catch(() => null))?.error ?? 'Talep silinemedi.');
+    } finally { setUpdating(null); }
+  }
+
+  async function exportRequests(format: 'xls' | 'pdf') {
+    setError('');
+    const params = new URLSearchParams({ format });
+    Object.entries({ search, status, service, intent, lang, source, pageSlug, dateFrom, dateTo, testData }).forEach(([key, value]) => {
+      if (value) params.set(key === 'pageSlug' ? 'page_slug' : key === 'dateFrom' ? 'date_from' : key === 'dateTo' ? 'date_to' : key === 'testData' ? 'test_data' : key, value);
+    });
+    const res = await fetch(`/admin/api/requests/export?${params}`);
+    if (!res.ok) { setError('Dışa aktarma hazırlanamadı.'); return; }
+    const url = URL.createObjectURL(await res.blob());
+    const link = document.createElement('a'); link.href = url; link.download = format === 'xls' ? 'talepler.xls' : 'talepler.pdf'; link.click(); URL.revokeObjectURL(url);
+  }
+
   function formatDate(iso: string) {
     return new Intl.DateTimeFormat('tr-TR', {
       timeZone: 'Europe/Istanbul',
@@ -370,7 +399,7 @@ export default function TaleplerClient() {
 
   const hasActiveFilters = search || status || service || intent || lang || source || pageSlug || dateFrom || dateTo || testData;
 
-  const pagination = data && data.totalPages > 1 && (
+  const pagination = data && (
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '12px 16px', borderTop: '1px solid #F1F5F9',
@@ -380,6 +409,9 @@ export default function TaleplerClient() {
         Toplam {data.total} kayıt
       </span>
       <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+        <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }} aria-label="Sayfa başına kayıt" style={{ padding: '6px', borderRadius: '6px', border: '1px solid #E2E8F0', fontSize: '12px' }}>
+          {[10, 20, 50, 100].map(value => <option key={value} value={value}>{value}/sayfa</option>)}
+        </select>
         <button
           onClick={() => setPage((p) => Math.max(1, p - 1))}
           disabled={page <= 1}
@@ -474,6 +506,8 @@ export default function TaleplerClient() {
         <button onClick={fetchData} style={{ ...inputStyle, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <RefreshCw size={13} /> Yenile
         </button>
+        <button onClick={() => exportRequests('xls')} style={{ ...inputStyle, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><Download size={13} /> Excel</button>
+        <button onClick={() => exportRequests('pdf')} style={{ ...inputStyle, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><FileText size={13} /> PDF</button>
       </div>
 
       {/* Loading / Error */}
@@ -517,6 +551,8 @@ export default function TaleplerClient() {
                   onStatusChange={updateStatus}
                   onArchive={archiveRequest}
                   onToggleTestData={toggleTestData}
+                  onDelete={deleteRequest}
+                  canDelete={canDelete}
                   formatDate={formatDate}
                 />
               ))}
@@ -558,7 +594,7 @@ export default function TaleplerClient() {
                   const sc = STATUS_COLORS[row.status] ?? STATUS_COLORS.NEW;
                   const isLegacyStatus = row.status === 'COMPLETED' || row.status === 'SPAM';
                   return (
-                    <tr key={row.id} style={{ opacity: row.archivedAt ? 0.55 : 1, background: row.isTestData ? '#FFFBEB' : undefined }}>
+                    <tr key={row.id} style={{ opacity: row.archivedAt ? 0.55 : 1, background: row.source === 'contact-form' ? '#F0FDFA' : row.isTestData ? '#FFFBEB' : undefined, fontWeight: row.readAt ? 400 : 700 }}>
                       <td style={td}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                           <Link href={`/admin/talepler/${row.id}`} style={{ color: '#2563EB', textDecoration: 'none', fontFamily: 'monospace', fontSize: '12px', fontWeight: 600 }}>
@@ -574,7 +610,7 @@ export default function TaleplerClient() {
                           {LOCALE_LABELS[row.locale] ?? row.locale.toUpperCase()}
                         </span>
                       </td>
-                      <td style={{ ...td, fontSize: '12px', color: '#64748B' }}>{formatSource(row.source)}</td>
+                       <td style={{ ...td, fontSize: '12px', color: row.source === 'contact-form' ? '#0F766E' : '#64748B', fontWeight: row.source === 'contact-form' ? 700 : undefined }}>{row.source === 'contact-form' ? '📩 İletişim Formu' : formatSource(row.source)}</td>
                        <td style={{ ...td, fontSize: '12px', color: '#64748B', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={formatRequestPage(row.pageSlug)}>{formatRequestPage(row.pageSlug)}</td>
                       <td style={{ ...td, fontSize: '12px' }}>{SERVICE_LABELS[row.serviceType] ?? row.serviceType}</td>
                       <td style={{ ...td, fontSize: '12px' }}>
@@ -619,6 +655,7 @@ export default function TaleplerClient() {
                           >
                             {row.isTestData ? 'Test✓' : 'Test?'}
                           </button>
+                          {canDelete && <button onClick={() => deleteRequest(row.id)} disabled={!!updating} title="Kalıcı olarak sil" style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '11px', background: '#FFF1F2', color: '#BE123C', border: 'none', cursor: 'pointer', display: 'flex' }}><Trash2 size={11} /></button>}
                         </div>
                       </td>
                     </tr>

@@ -51,7 +51,13 @@ const getCachedBookingFormInitialData = unstable_cache(
           quoteEnabled: serviceTypes.quoteEnabled,
           reservationEnabled: serviceTypes.reservationEnabled,
         }).from(serviceTypes).where(eq(serviceTypes.enabled, true)).orderBy(asc(serviceTypes.displayOrder)),
-        db.select({ showVehiclePreference: siteSettings.showVehiclePreference })
+        db.select({
+          showLuggageCount: siteSettings.showLuggageCount,
+          showChildSeatCount: siteSettings.showChildSeatCount,
+          showVehiclePreference: siteSettings.showVehiclePreference,
+          showAdditionalNotes: siteSettings.showAdditionalNotes,
+          optionalFieldServiceTypes: siteSettings.optionalFieldServiceTypes,
+        })
           .from(siteSettings).where(eq(siteSettings.id, 1)).limit(1),
         db.select().from(customReservationFields)
           .where(eq(customReservationFields.isActive, true))
@@ -61,7 +67,11 @@ const getCachedBookingFormInitialData = unstable_cache(
     return {
       serviceTypes: serviceRows.length ? serviceRows : FALLBACK_BOOKING_SERVICE_TYPES,
       formSettings: {
+        showLuggageCount: settingRows[0]?.showLuggageCount === true,
+        showChildSeatCount: settingRows[0]?.showChildSeatCount === true,
         showVehiclePreference: settingRows[0]?.showVehiclePreference === true,
+        showAdditionalNotes: settingRows[0]?.showAdditionalNotes === true,
+        optionalFieldServiceTypes: settingRows[0]?.optionalFieldServiceTypes ?? {},
       },
       customFields: customFieldRows.map((field) => ({
         id: field.id,

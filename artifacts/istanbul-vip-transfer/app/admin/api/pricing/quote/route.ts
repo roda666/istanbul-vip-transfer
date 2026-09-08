@@ -8,6 +8,8 @@ const quoteSchema = z.object({
   vehicleId: z.string().uuid().optional(),
   mode: z.enum(['DISTANCE', 'HOURLY']),
   requestedHours: z.number().int().min(1).max(720).optional(),
+  overageHours: z.number().int().min(0).max(720).optional(),
+  overageKm: z.number().int().min(0).max(10_000).optional(),
   tripType: z.enum(['ONE_WAY', 'ROUND_TRIP']),
   tollAlternativeId: z.string().uuid().optional(),
   serviceQuantities: z.array(z.object({ serviceId: z.string().uuid(), quantity: z.number().int().min(1).max(99) })).max(20).optional(),
@@ -17,10 +19,10 @@ const quoteSchema = z.object({
 }).superRefine((value, ctx) => {
   if (value.mode === 'HOURLY' && !value.requestedHours) ctx.addIssue({ code: 'custom', path: ['requestedHours'], message: 'Tahsis için süre gereklidir.' });
   if (value.tollAlternativeId && !value.routeId) ctx.addIssue({ code: 'custom', path: ['tollAlternativeId'], message: 'Geçiş seçimi için güzergâh gereklidir.' });
-  if (!value.routeId && (!value.originLocationId || !value.destinationLocationId)) {
+  if (value.mode === 'DISTANCE' && !value.routeId && (!value.originLocationId || !value.destinationLocationId)) {
     ctx.addIssue({ code: 'custom', path: ['originLocationId'], message: 'Fiyat için iki kayıtlı lokasyon seçilmelidir.' });
   }
-  if ((value.originLocationId == null) !== (value.destinationLocationId == null)) {
+  if (value.mode === 'DISTANCE' && (value.originLocationId == null) !== (value.destinationLocationId == null)) {
     ctx.addIssue({ code: 'custom', path: ['destinationLocationId'], message: 'Kalkış ve varış birlikte seçilmelidir.' });
   }
 });

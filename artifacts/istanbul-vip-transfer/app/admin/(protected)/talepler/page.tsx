@@ -9,14 +9,16 @@ export const metadata: Metadata = {
 
 export const dynamic = 'force-dynamic';
 
-export default function TaleplerPage() {
+export default async function TaleplerPage() {
+  const { requireAdminSession } = await import('@/lib/auth/session');
+  const session = await requireAdminSession();
   return (
     <div style={{ padding: '28px 24px' }}>
       <AdminPageHeader
         title="Talepler"
         description="Fiyat teklifi ve rezervasyon taleplerini yönetin"
       />
-      <TaleplerClient />
+      <TaleplerClient canDelete={session.role === 'SUPER_ADMIN'} />
     </div>
   );
 }

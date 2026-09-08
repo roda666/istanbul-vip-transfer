@@ -95,7 +95,7 @@ export function classifyOpenAiError(err: unknown): { ok: false; reason: 'not_con
 const classifyError = classifyOpenAiError;
 
 export type AdminFieldDraftRequest = {
-  context: 'blog' | 'service' | 'homepage' | 'chatbot' | 'faq';
+  context: 'blog' | 'service' | 'homepage' | 'chatbot' | 'faq' | 'vehicle' | 'route';
   field: 'title' | 'body' | 'description' | 'short_text' | 'cta' | 'seo_title' | 'seo_description' | 'faq_question' | 'faq_answer' | 'chatbot_answer';
   fieldLabel: string;
   currentText: string;

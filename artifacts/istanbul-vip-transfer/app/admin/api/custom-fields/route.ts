@@ -6,8 +6,8 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/session';
 import { db } from '@/db';
-import { customReservationFields } from '@/db/schema';
-import { asc } from 'drizzle-orm';
+import { content, customReservationFields } from '@/db/schema';
+import { asc, inArray } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +20,12 @@ export async function GET() {
     .from(customReservationFields)
     .orderBy(asc(customReservationFields.sortOrder), asc(customReservationFields.id));
 
-  return NextResponse.json({ fields: rows });
+  const pageOptions = await db.select({ slug: content.slug, label: content.title })
+    .from(content)
+    .where(inArray(content.contentType, ['SERVICE', 'PAGE']))
+    .orderBy(asc(content.title));
+
+  return NextResponse.json({ fields: rows, pageOptions });
 }
 
 export async function POST(req: Request) {

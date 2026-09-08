@@ -48,7 +48,13 @@ interface FormSettings {
   showChildSeatCount:    boolean;
   showVehiclePreference: boolean;
   showAdditionalNotes:   boolean;
+  optionalFieldServiceTypes: Partial<Record<OptionalFieldKey, string[]>>;
 }
+type OptionalFieldKey = 'showLuggageCount' | 'showChildSeatCount' | 'showVehiclePreference' | 'showAdditionalNotes';
+const OPTIONAL_FIELD_LABELS: Record<OptionalFieldKey, string> = {
+  showLuggageCount: 'Bagaj Sayısı', showChildSeatCount: 'Çocuk Koltuğu Sayısı',
+  showVehiclePreference: 'Araç Tercihi', showAdditionalNotes: 'Ek Notlar / Özel İstekler',
+};
 
 interface CustomField {
   id: number;
@@ -69,6 +75,7 @@ interface ServiceTypeItem {
   reservationEnabled: boolean;
   displayOrder: number;
 }
+interface PageOption { slug: string; label: string; }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const TYPE_LABELS: Record<LocationType, string> = {
@@ -431,17 +438,18 @@ export default function ReservasyonAyarlariClient() {
   const [stLoading, setStLoading] = useState(true);
 
   // ── Form Ayarları state ──
-  const [settings, setSettings] = useState<FormSettings>({ timeStepMinutes: 5, exactAddressRequired: false, locationSearchEnabled: true, roadDistanceMultiplier: 1.25, showLuggageCount: false, showChildSeatCount: false, showVehiclePreference: false, showAdditionalNotes: false });
+  const [settings, setSettings] = useState<FormSettings>({ timeStepMinutes: 5, exactAddressRequired: false, locationSearchEnabled: true, roadDistanceMultiplier: 1.25, showLuggageCount: false, showChildSeatCount: false, showVehiclePreference: false, showAdditionalNotes: false, optionalFieldServiceTypes: {} });
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsMsg, setSettingsMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // ── Özel Alanlar state ──
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [pageOptions, setPageOptions] = useState<PageOption[]>([]);
   const [cfLoading, setCfLoading] = useState(false);
   const [cfSaving, setCfSaving] = useState<number | 'new' | null>(null);
   const [cfMsg, setCfMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [cfForm, setCfForm] = useState<{ label: string; appliesToSlugs: string; fieldType: string } | null>(null);
+  const [cfForm, setCfForm] = useState<{ label: string; appliesToSlugs: string[]; fieldType: string } | null>(null);
   const [cfEditId, setCfEditId] = useState<number | 'new' | null>(null);
 
   const fetchLocations = useCallback(async () => {
@@ -493,6 +501,7 @@ export default function ReservasyonAyarlariClient() {
       const res = await fetch('/admin/api/custom-fields');
       const json = await res.json();
       if (Array.isArray(json.fields)) setCustomFields(json.fields);
+      if (Array.isArray(json.pageOptions)) setPageOptions(json.pageOptions);
     } catch { /* ignore */ }
     setCfLoading(false);
   }
@@ -507,7 +516,7 @@ export default function ReservasyonAyarlariClient() {
     try {
       const payload = {
         label: cfForm.label.trim(),
-        appliesToSlugs: cfForm.appliesToSlugs.split(',').map(s => s.trim()).filter(Boolean),
+        appliesToSlugs: cfForm.appliesToSlugs,
         fieldType: cfForm.fieldType,
         isActive: true,
       };
@@ -568,6 +577,14 @@ export default function ReservasyonAyarlariClient() {
       else { setSettingsMsg({ type: 'success', text: 'Ayarlar kaydedildi.' }); if (json.settings) setSettings(json.settings); }
     } catch { setSettingsMsg({ type: 'error', text: 'Bağlantı hatası.' }); }
     setSettingsSaving(false);
+  }
+
+  function toggleOptionalFieldService(field: OptionalFieldKey, serviceKey: string) {
+    setSettings((current) => {
+      const selected = current.optionalFieldServiceTypes[field] ?? serviceTypes.map((service) => service.key);
+      const next = selected.includes(serviceKey) ? selected.filter((key) => key !== serviceKey) : [...selected, serviceKey];
+      return { ...current, optionalFieldServiceTypes: { ...current.optionalFieldServiceTypes, [field]: next } };
+    });
   }
 
   const TABS = [
@@ -799,6 +816,23 @@ export default function ReservasyonAyarlariClient() {
                   onChange={v => setSettings(s => ({ ...s, showAdditionalNotes: v }))}
                   label="Ek Notlar / Özel İstekler Alanını Göster"
                 />
+                <div style={{ display: 'grid', gap: '12px', paddingTop: '4px' }}>
+                  <p style={{ color: MUTED, fontSize: '11px', fontFamily: 'Inter, sans-serif', margin: 0 }}>
+                    Her alanın gösterileceği hizmet türlerini seçin. Eski ayarlarda tüm hizmet türleri seçili kabul edilir.
+                  </p>
+                  {(Object.keys(OPTIONAL_FIELD_LABELS) as OptionalFieldKey[]).map((field) => {
+                    const selected = settings.optionalFieldServiceTypes[field] ?? serviceTypes.map((service) => service.key);
+                    return <fieldset key={field} style={{ border: `1px solid ${BORDER}`, borderRadius: '8px', padding: '8px 12px' }}>
+                      <legend style={{ color: NAVY, fontSize: '12px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>{OPTIONAL_FIELD_LABELS[field]}</legend>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 14px' }}>
+                        {serviceTypes.map((service) => <label key={service.key} style={{ display: 'flex', alignItems: 'center', gap: '5px', color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+                          <input type="checkbox" checked={selected.includes(service.key)} onChange={() => toggleOptionalFieldService(field, service.key)} />
+                          {service.label}
+                        </label>)}
+                      </div>
+                    </fieldset>;
+                  })}
+                </div>
 
                 {settingsMsg && (
                   <div style={{ background: settingsMsg.type === 'success' ? '#ECFDF5' : '#FEF2F2', border: `1px solid ${settingsMsg.type === 'success' ? '#86EFAC' : '#FECACA'}`, borderRadius: '8px', padding: '10px 14px', color: settingsMsg.type === 'success' ? '#065F46' : RED, fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>
@@ -824,7 +858,7 @@ export default function ReservasyonAyarlariClient() {
             <p style={{ color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif', margin: 0 }}>
               Rezervasyon formuna servis bazlı özel alanlar ekleyin. Boş &ldquo;Geçerli Hizmetler&rdquo; = tüm servislerde göster.
             </p>
-            <Btn variant="primary" small onClick={() => { setCfEditId('new'); setCfForm({ label: '', appliesToSlugs: '', fieldType: 'checkbox' }); setCfMsg(null); }}>
+            <Btn variant="primary" small onClick={() => { setCfEditId('new'); setCfForm({ label: '', appliesToSlugs: [], fieldType: 'checkbox' }); setCfMsg(null); }}>
               <Plus size={13} /> Yeni Alan
             </Btn>
           </div>
@@ -849,8 +883,18 @@ export default function ReservasyonAyarlariClient() {
                   </select>
                 </div>
                 <div>
-                  <Label>Geçerli Hizmetler (slug, virgülle ayır — boş = hepsi)</Label>
-                  <FieldInput value={cfForm.appliesToSlugs} onChange={v => setCfForm(f => f ? { ...f, appliesToSlugs: v } : f)} placeholder="örn: istanbul-havalimani-transfer,sabiha-gokcen-havalimani-transfer" />
+                  <Label>Geçerli Hizmetler / Sayfalar</Label>
+                  <div style={{ maxHeight: '160px', overflowY: 'auto', border: `1px solid ${BORDER}`, borderRadius: '6px', padding: '8px 10px', display: 'grid', gap: '7px' }}>
+                    {pageOptions.map((option) => <label key={option.slug} style={{ display: 'flex', alignItems: 'center', gap: '7px', color: NAVY, fontSize: '12px', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={cfForm.appliesToSlugs.includes(option.slug)} onChange={() => setCfForm((current) => current ? {
+                        ...current, appliesToSlugs: current.appliesToSlugs.includes(option.slug)
+                          ? current.appliesToSlugs.filter((slug) => slug !== option.slug)
+                          : [...current.appliesToSlugs, option.slug],
+                      } : current)} />
+                      {option.label} <span style={{ color: MUTED }}>({option.slug})</span>
+                    </label>)}
+                    {pageOptions.length === 0 && <span style={{ color: MUTED, fontSize: '12px' }}>Seçilebilecek hizmet veya sayfa bulunamadı.</span>}
+                  </div>
                   <p style={{ color: MUTED, fontSize: '11px', fontFamily: 'Inter, sans-serif', marginTop: '4px' }}>Boş bırakırsanız alan tüm rezervasyon formlarında görünür.</p>
                 </div>
                 {cfMsg && (
@@ -911,7 +955,7 @@ export default function ReservasyonAyarlariClient() {
                       </td>
                       <td style={{ padding: '10px 14px' }}>
                         <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-                          <button onClick={() => { setCfEditId(field.id); setCfForm({ label: field.label, appliesToSlugs: (field.appliesToSlugs ?? []).join(', '), fieldType: field.fieldType }); setCfMsg(null); }} title="Düzenle"
+                          <button onClick={() => { setCfEditId(field.id); setCfForm({ label: field.label, appliesToSlugs: field.appliesToSlugs ?? [], fieldType: field.fieldType }); setCfMsg(null); }} title="Düzenle"
                             style={{ background: '#EEF3F9', border: 'none', borderRadius: '6px', padding: '5px 8px', cursor: 'pointer', color: BLUE, display: 'flex', alignItems: 'center' }}>
                             <Pencil size={13} />
                           </button>

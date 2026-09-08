@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { OPTIONAL_BOOKING_FIELDS } from '@/lib/optional-booking-fields';
 
 const settingsSchema = z.object({
   timeStepMinutes: z.number().int().min(1).max(60).optional(),
@@ -11,6 +12,9 @@ const settingsSchema = z.object({
   showChildSeatCount:    z.boolean().optional(),
   showVehiclePreference: z.boolean().optional(),
   showAdditionalNotes:   z.boolean().optional(),
+  optionalFieldServiceTypes: z.object(
+    Object.fromEntries(OPTIONAL_BOOKING_FIELDS.map((field) => [field, z.array(z.string().min(1)).max(100)])),
+  ).partial().optional(),
 });
 
 const DEFAULTS = {
@@ -22,6 +26,7 @@ const DEFAULTS = {
   showChildSeatCount:    false,
   showVehiclePreference: false,
   showAdditionalNotes:   false,
+  optionalFieldServiceTypes: {},
 };
 
 /** GET /admin/api/reservation-settings */
@@ -47,6 +52,7 @@ export async function GET() {
         showChildSeatCount:    siteSettings.showChildSeatCount,
         showVehiclePreference: siteSettings.showVehiclePreference,
         showAdditionalNotes:   siteSettings.showAdditionalNotes,
+        optionalFieldServiceTypes: siteSettings.optionalFieldServiceTypes,
         updatedAt:             siteSettings.updatedAt,
       })
       .from(siteSettings)
@@ -106,6 +112,7 @@ export async function POST(request: NextRequest) {
         showChildSeatCount:    siteSettings.showChildSeatCount,
         showVehiclePreference: siteSettings.showVehiclePreference,
         showAdditionalNotes:   siteSettings.showAdditionalNotes,
+        optionalFieldServiceTypes: siteSettings.optionalFieldServiceTypes,
         updatedAt:             siteSettings.updatedAt,
       });
 

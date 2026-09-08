@@ -46,6 +46,18 @@ describe('admin pricing engine', () => {
     expect(result).toMatchObject({ state: 'AVAILABLE', effectiveHours: 5, includedKmAllowance: 50, netTryKurus: 10_000 });
   });
 
+  it('quotes an allocation without a destination and honours explicit overages', () => {
+    const result = calculateAdminQuote({
+      ...common,
+      profile: { mode: 'HOURLY', hourlyRateKurus: 2_000, minimumHours: 4, includedKmMode: 'PACKAGE', includedKm: 50, excessKmKurus: 100, excessHourKurus: 1_500 },
+      distanceKm: 0,
+      requestedHours: 4,
+      overageHours: 2,
+      overageKm: 12,
+    });
+    expect(result).toMatchObject({ state: 'AVAILABLE', netTryKurus: 12_200 });
+  });
+
   it('can quote distance and hourly pricing independently for one eligible vehicle', () => {
     const distanceQuote = calculateAdminQuote({ ...common, profile: distanceProfile, distanceKm: 20 });
     const hourlyQuote = calculateAdminQuote({

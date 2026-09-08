@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       destinationLocationId: transferRoutes.destinationLocationId, defaultVehicleId: transferRoutes.defaultVehicleId,
       distanceKm: transferRoutes.distanceKm, distanceSource: transferRoutes.distanceSource, active: transferRoutes.active,
     }).from(transferRoutes).where(eq(transferRoutes.active, true)).orderBy(asc(transferRoutes.name)),
-    db.select({ id: locations.id, name: locations.name, city: locations.city })
+    db.select({ id: locations.id, name: locations.name, city: locations.city, type: locations.type })
       .from(locations)
       .where(and(eq(locations.isActive, true), isNull(locations.archivedAt)))
       .orderBy(asc(locations.name)),
@@ -136,4 +136,37 @@ export async function PATCH(request: NextRequest) {
   });
   if (!item) return NextResponse.json({ error: 'Profil bulunamadı.' }, { status: 404 });
   return NextResponse.json({ item });
+}
+
+/** Permanently removes an unused formula version. Vehicle/quote history is not touched. */
+export async function DELETE(request: NextRequest) {
+  let session;
+  try {
+    session = await (await import('@/lib/auth/session')).requireAdminSession();
+  } catch {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const parsed = z.string().uuid().safeParse(new URL(request.url).searchParams.get('id'));
+  if (!parsed.success) return NextResponse.json({ error: 'Geçersiz formül kimliği.' }, { status: 422 });
+
+  const [{ db }, { auditLogs, vehiclePricingProfiles }, { eq }] = await Promise.all([
+    import('@/db'), import('@/db/schema'), import('drizzle-orm'),
+  ]);
+  try {
+    const [deleted] = await db.delete(vehiclePricingProfiles)
+      .where(eq(vehiclePricingProfiles.id, parsed.data))
+      .returning({ id: vehiclePricingProfiles.id, vehicleId: vehiclePricingProfiles.vehicleId, mode: vehiclePricingProfiles.mode });
+    if (!deleted) return NextResponse.json({ error: 'Formül bulunamadı.' }, { status: 404 });
+    await db.insert(auditLogs).values({
+      adminUserId: session.adminId,
+      action: 'DELETE',
+      entityType: 'VehiclePricingProfile',
+      entityId: deleted.id,
+      metadata: { vehicleId: deleted.vehicleId, mode: deleted.mode },
+    }).catch(() => {});
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Vehicle pricing profile delete error:', error);
+    return NextResponse.json({ error: 'Bu formül bağımlı bir kayıt nedeniyle silinemedi. Formülü pasife almayı deneyin.' }, { status: 409 });
+  }
 }

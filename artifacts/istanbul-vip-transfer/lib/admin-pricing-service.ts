@@ -31,6 +31,7 @@ import {
   getTollPricingSettings,
   resolveActiveTimeBandForPoint,
 } from '@/lib/toll-management';
+import { isVehicleTypeBanned } from '@/lib/vehicle-options';
 
 export function currentlyApplicable<T extends { validFrom: Date | null; validUntil: Date | null }>(rows: T[], at: Date): T | undefined {
   return rows
@@ -60,6 +61,8 @@ export async function createAdminQuote(input: {
   vehicleId?: string;
   mode: 'DISTANCE' | 'HOURLY';
   requestedHours?: number;
+  overageHours?: number;
+  overageKm?: number;
   tripType: 'ONE_WAY' | 'ROUND_TRIP';
   tollAlternativeId?: string;
   serviceQuantities?: Array<{ serviceId: string; quantity: number }>;
@@ -82,14 +85,16 @@ export async function createAdminQuote(input: {
 
   const originLocationId = route?.originLocationId ?? input.originLocationId;
   const destinationLocationId = route?.destinationLocationId ?? input.destinationLocationId;
-  if (!originLocationId || !destinationLocationId) {
+  if ((!originLocationId || !destinationLocationId) && input.mode === 'DISTANCE') {
     return {
       result: { state: 'UNAVAILABLE', reason: 'MISSING_DISTANCE' },
       distance: { state: 'UNAVAILABLE', reason: 'LOCATION_NOT_FOUND', calculatedAt: now.toISOString() },
     };
   }
-  const distance = await resolveLocationDistance({ originLocationId, destinationLocationId, at: now });
-  if (distance.state === 'UNAVAILABLE') {
+  const distance: LocationDistanceResult = originLocationId && destinationLocationId
+    ? await resolveLocationDistance({ originLocationId, destinationLocationId, at: now })
+    : { state: 'UNAVAILABLE', reason: 'LOCATION_NOT_FOUND', calculatedAt: now.toISOString() };
+  if (input.mode === 'DISTANCE' && distance.state === 'UNAVAILABLE') {
     return { result: { state: 'UNAVAILABLE', reason: 'MISSING_DISTANCE' }, distance };
   }
 
@@ -135,7 +140,7 @@ export async function createAdminQuote(input: {
     ? input.tollAlternativeId ?? routeDefaultTollAlternativeId
     : null;
   const tolls = input.routeId && effectiveTollAlternativeId
-    ? await resolveTolls(input.routeId, effectiveTollAlternativeId, vehicleId, vehicle.pricingClass, now, pickupAt, input.tripType)
+    ? await resolveTolls(input.routeId, effectiveTollAlternativeId, vehicleId, vehicle.pricingClass, vehicle.vehicleType, now, pickupAt, input.tripType)
     : [];
 
   const profile = profileRow ? ({
@@ -156,8 +161,10 @@ export async function createAdminQuote(input: {
     vehicleEligible: vehicle.priceCalculationEligible,
     profile,
     overrideKurus: override?.amountKurus,
-    distanceKm: distance.distanceKm,
+    distanceKm: distance.state === 'UNAVAILABLE' ? 0 : distance.distanceKm,
     requestedHours: input.requestedHours,
+    overageHours: input.overageHours,
+    overageKm: input.overageKm,
     tripType: input.tripType,
     tolls,
     services,
@@ -181,10 +188,10 @@ export async function createAdminQuote(input: {
       vehicleId,
       originLocationId,
       destinationLocationId,
-      distanceKm: distance.distanceKm,
+      distanceKm: distance.state === 'UNAVAILABLE' ? 0 : distance.distanceKm,
     },
     vehicle: { id: vehicle.id, name: vehicle.name, pricingClass: vehicle.pricingClass, priceCalculationEligible: vehicle.priceCalculationEligible },
-    route: route ? { id: route.id, name: route.name, distanceKm: distance.distanceKm } : null,
+    route: route ? { id: route.id, name: route.name, distanceKm: distance.state === 'UNAVAILABLE' ? 0 : distance.distanceKm } : null,
     distance,
     profile: profileRow ?? null,
     override: override ?? null,
@@ -270,7 +277,7 @@ async function resolveServices(
  * own day/night band independently, since cutover hours are configured per
  * toll point, not globally.
  */
-async function resolveTolls(routeId: string, alternativeId: string, vehicleId: string, vehiclePricingClass: string, now: Date, pickupAt: Date, tripType: 'ONE_WAY' | 'ROUND_TRIP') {
+async function resolveTolls(routeId: string, alternativeId: string, vehicleId: string, vehiclePricingClass: string, vehicleType: string | null, now: Date, pickupAt: Date, tripType: 'ONE_WAY' | 'ROUND_TRIP') {
   const [alternative] = await db.select().from(routeTollAlternatives).where(and(
     eq(routeTollAlternatives.id, alternativeId),
     eq(routeTollAlternatives.routeId, routeId),
@@ -315,8 +322,8 @@ async function resolveTolls(routeId: string, alternativeId: string, vehicleId: s
     // vehicle can be banned by type even before it has an assigned class at
     // this point, so this check runs first and unconditionally.
     const bannedTypes = (point.bannedVehicleTypes ?? []) as string[];
-    if (vehiclePricingClass && bannedTypes.includes(vehiclePricingClass)) {
-      throw new Error(`${point.name} bu araç tipi (${vehiclePricingClass}) için geçişe kapalıdır. Fiyat üretimi güvenle durduruldu — lütfen bu geçiş noktasını içermeyen başka bir alternatif seçin.`);
+    if (isVehicleTypeBanned(vehicleType, bannedTypes) || isVehicleTypeBanned(vehiclePricingClass, bannedTypes)) {
+      throw new Error(`${point.name} bu araç tipi (${vehicleType ?? vehiclePricingClass}) için geçişe kapalıdır. Fiyat üretimi güvenle durduruldu — lütfen bu geçiş noktasını içermeyen başka bir alternatif seçin.`);
     }
     const vehicleClassAtPoint = classByPointId.get(point.id) ?? null;
     const bannedClasses = (point.bannedVehicleClasses ?? []) as string[];

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { HomepageAdminRecord } from '@/lib/homepage-cms';
 import { ImageUploadField } from '@/app/admin/_components/ImageUploadField';
 import { AIWriteAssist, type AIWritingField } from '@/app/admin/_components/AIWriteAssist';
+import { AISeoGenerator } from '@/app/admin/_components/AISeoGenerator';
 import type {
   HomepageSections, HeroSection, HeroStat, ServicesSectionData,
   TrustSectionData, VehiclesSectionData, ReviewsSectionData,
@@ -391,6 +392,15 @@ function SeoEditor({ data, onChange, ro }: { data: HomepageSeoData; onChange: (d
   const set = (key: keyof HomepageSeoData, val: string | boolean) => onChange({ ...data, [key]: val });
   return (
     <div>
+      {!ro && (
+        <AISeoGenerator
+          context="homepage"
+          title={data.metaTitle}
+          description={data.metaDescription}
+          onTitleChange={v => set('metaTitle', v)}
+          onDescriptionChange={v => set('metaDescription', v)}
+        />
+      )}
       <Field name="Meta Başlık" value={data.metaTitle} onChange={v => set('metaTitle', v)} hint="Max 60 karakter" readOnly={ro} />
       <Field name="Meta Açıklama" value={data.metaDescription} onChange={v => set('metaDescription', v)} multiline hint="Max 160 karakter" readOnly={ro} />
       <hr style={{ border: 'none', borderTop: '1px solid #E2E8F0', margin: '16px 0' }} />

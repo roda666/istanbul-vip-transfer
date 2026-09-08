@@ -100,6 +100,9 @@ export function calculateAdminQuote(input: {
   overrideKurus?: number | null;
   distanceKm: number;
   requestedHours?: number;
+  /** Explicit simulator-only allocation overages, when known. */
+  overageHours?: number;
+  overageKm?: number;
   tripType: 'ONE_WAY' | 'ROUND_TRIP';
   tolls?: Array<{ id: string; name: string; amountKurus: number | null; missing?: boolean; stale?: boolean; directionUnconfirmed?: boolean }>;
   services?: PricingServiceInput[];
@@ -109,8 +112,9 @@ export function calculateAdminQuote(input: {
   rounding: { eurCents: number; usdCents: number; tryKurus: number };
 }): PricingQuoteResult {
   if (!input.vehicleEligible) return { state: 'ON_REQUEST', reason: 'VEHICLE_NOT_ELIGIBLE' };
-  if (!positiveInteger(input.distanceKm) || input.distanceKm < 1 || !input.profile) {
-    return { state: 'UNAVAILABLE', reason: input.profile ? 'INVALID_INPUT' : 'MISSING_PROFILE' };
+  if (!input.profile) return { state: 'UNAVAILABLE', reason: 'MISSING_PROFILE' };
+  if (!positiveInteger(input.distanceKm) || (input.profile.mode === 'DISTANCE' && input.distanceKm < 1)) {
+    return { state: 'UNAVAILABLE', reason: 'INVALID_INPUT' };
   }
   if (
     input.rates.eurTryMicros <= 0
@@ -163,8 +167,14 @@ export function calculateAdminQuote(input: {
     // A short allocation always bills the configured minimum. Beyond it, the
     // separate excess-hour rate applies; the two components never overlap.
     const baseHours = profile.minimumHours;
-    const excessHours = Math.max(0, requestedHours - profile.minimumHours);
-    const excessKm = Math.max(0, input.distanceKm - includedKmAllowance);
+    const calculatedExcessHours = Math.max(0, requestedHours - profile.minimumHours);
+    const calculatedExcessKm = Math.max(0, input.distanceKm - includedKmAllowance);
+    if ((input.overageHours != null && !positiveInteger(input.overageHours))
+      || (input.overageKm != null && !positiveInteger(input.overageKm))) {
+      return { state: 'UNAVAILABLE', reason: 'INVALID_INPUT' };
+    }
+    const excessHours = input.overageHours ?? calculatedExcessHours;
+    const excessKm = input.overageKm ?? calculatedExcessKm;
     baseKurus = (baseHours * profile.hourlyRateKurus
       + excessHours * profile.excessHourKurus
       + excessKm * profile.excessKmKurus) * tripMultiplier;

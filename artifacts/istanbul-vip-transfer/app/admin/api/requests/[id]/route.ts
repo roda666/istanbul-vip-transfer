@@ -107,3 +107,27 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'DB error' }, { status: 500 });
   }
 }
+
+/** Permanent removal is intentionally restricted to account owners. */
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { getSession } = await import('@/lib/auth/session');
+  const session = await getSession();
+  if (!session.isLoggedIn) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (session.role !== 'SUPER_ADMIN') return NextResponse.json({ error: 'Bu işlem yalnızca Süper Yönetici tarafından yapılabilir.' }, { status: 403 });
+  const { id } = await params;
+  if (!id) return NextResponse.json({ error: 'Geçersiz talep kimliği.' }, { status: 422 });
+  try {
+    const { db } = await import('@/db');
+    const { reservationRequests, auditLogs } = await import('@/db/schema');
+    const { eq } = await import('drizzle-orm');
+    const deleted = await db.delete(reservationRequests).where(eq(reservationRequests.id, id)).returning({ id: reservationRequests.id });
+    if (!deleted.length) return NextResponse.json({ error: 'Talep bulunamadı.' }, { status: 404 });
+    await db.insert(auditLogs).values({
+      adminUserId: session.adminId ?? null, action: 'DELETE', entityType: 'reservation_request', entityId: id, metadata: {},
+    });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error('[admin/requests/id] delete error:', (err as Error)?.message);
+    return NextResponse.json({ error: 'Talep silinemedi.' }, { status: 500 });
+  }
+}

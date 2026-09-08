@@ -12,6 +12,7 @@ import type {
 import { LOCALE_REGISTRY } from '@/lib/i18n/locale-registry';
 import { ImageUploadField } from '@/app/admin/_components/ImageUploadField';
 import { AIWriteAssist, type AIWritingField } from '@/app/admin/_components/AIWriteAssist';
+import { AISeoGenerator } from '@/app/admin/_components/AISeoGenerator';
 import FacebookShareButton from '@/app/admin/_components/FacebookShareButton';
 import XShareButton from '@/app/admin/_components/XShareButton';
 import { SITE } from '@/lib/site-config';
@@ -1119,6 +1120,8 @@ export default function ServicePageEditor({ initialRecord }: Props) {
 
           {/* SEO */}
           <SectionCard title="SEO">
+            <AISeoGenerator context="service" title={seoTitle} description={seoDesc}
+              onTitleChange={setSeoTitle} onDescriptionChange={setSeoDesc} />
             <Field name="OG Başlık (Sosyal Paylaşım)" value={body.seo.ogTitle}
               onChange={v => setSeo('ogTitle', v)} maxLen={60} aiField="seo_title" />
             <Field name="OG Açıklama" value={body.seo.ogDescription}

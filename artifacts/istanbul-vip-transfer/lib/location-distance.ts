@@ -6,6 +6,12 @@ import { locations, siteSettings, transferRoutes } from '@/db/schema';
 
 export type LocationDistanceResult =
   | {
+    state: 'GOOGLE_MAPS';
+    distanceKm: number;
+    source: 'google_maps';
+    calculatedAt: string;
+  }
+  | {
     state: 'DEFINED_ROUTE';
     distanceKm: number;
     source: 'defined_route';
@@ -136,6 +142,22 @@ export async function resolveLocationDistance(input: {
     .orderBy(desc(transferRoutes.updatedAt));
 
   const route = selectVerifiedRoute(activeRoutes, origin, destination);
+
+  // A configured key is deliberately tried before the legacy route record.
+  // Do not replace the record in the database here: a successful API response
+  // is useful for this quote, while changing an admin-verified route requires
+  // an explicit admin action. If Google is unavailable or rejects the key, the
+  // previously verified route remains the safe, deterministic fallback.
+  const { getGoogleMapsRoadDistance } = await import('@/lib/google-maps-distance');
+  const googleDistance = await getGoogleMapsRoadDistance(origin, destination);
+  if (googleDistance != null) {
+    return {
+      state: 'GOOGLE_MAPS',
+      distanceKm: googleDistance,
+      source: 'google_maps',
+      calculatedAt,
+    };
+  }
 
   if (route) {
     return {

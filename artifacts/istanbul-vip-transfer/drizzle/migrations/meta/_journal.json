@@ -512,6 +512,20 @@
       "when": 1789000000015,
       "tag": "0072_nervous_banshee",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1789000000016,
+      "tag": "0073_request_read_state",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1789000000017,
+      "tag": "0074_optional_booking_field_service_types",
+      "breakpoints": true
     }
   ]
 }

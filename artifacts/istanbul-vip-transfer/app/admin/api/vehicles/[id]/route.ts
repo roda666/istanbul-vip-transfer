@@ -17,7 +17,7 @@ const updateSchema = z.object({
   luggageCapacity: z.number().int().min(0).max(99).optional().nullable(),
   vehicleType: z.enum(VEHICLE_TYPE_VALUES).optional().nullable(),
   priceCalculationEligible: z.boolean().optional(),
-  pricingClass: z.enum(['minivan', 'minibus', 'midibus', 'bus']).optional(),
+  pricingClass: z.enum(['automobile', 'minivan', 'minibus', 'midibus', 'bus']).optional(),
   // Per-toll-point class assignment, manually admin-picked. Omitted entirely
   // means "leave assignments unchanged"; an explicit [] clears all of them
   // back to "not yet assigned" at every point.
@@ -182,19 +182,22 @@ export async function PUT(request: NextRequest, { params }: Params) {
     if (data.robotsIndex !== undefined) updateValues.robotsIndex = data.robotsIndex;
     if (data.robotsFollow !== undefined) updateValues.robotsFollow = data.robotsFollow;
 
-    const [updated] = await db
-      .update(vehicles)
-      .set(updateValues)
-      .where(eq(vehicles.id, id))
-      .returning();
-
-    if (data.tollPointClasses !== undefined) {
-      const { vehicleTollPointClasses } = await import('@/db/schema');
+    const { vehicleTollPointClasses } = await import('@/db/schema');
+    // Updating the vehicle and replacing its point classes must be atomic:
+    // otherwise a bad/stale point id leaves the vehicle changed but the
+    // operator sees only a generic edit failure.
+    const updated = await db.transaction(async (tx) => {
+      const [vehicle] = await tx
+        .update(vehicles)
+        .set(updateValues)
+        .where(eq(vehicles.id, id))
+        .returning();
+      if (data.tollPointClasses !== undefined) {
       // Replace-all semantics: the admin's submitted set is the full,
       // authoritative per-point assignment for this vehicle.
-      await db.delete(vehicleTollPointClasses).where(eq(vehicleTollPointClasses.vehicleId, id));
-      if (data.tollPointClasses.length) {
-        await db.insert(vehicleTollPointClasses).values(
+        await tx.delete(vehicleTollPointClasses).where(eq(vehicleTollPointClasses.vehicleId, id));
+        if (data.tollPointClasses.length) {
+          await tx.insert(vehicleTollPointClasses).values(
           data.tollPointClasses.map((entry) => ({
             vehicleId: id,
             tollPointId: entry.tollPointId,
@@ -202,9 +205,11 @@ export async function PUT(request: NextRequest, { params }: Params) {
             createdBy: session.adminId,
             updatedBy: session.adminId,
           })),
-        );
+          );
+        }
       }
-    }
+      return vehicle;
+    });
 
     await db
       .insert(auditLogs)
@@ -244,8 +249,8 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
 
   const { id } = await params;
   const { db } = await import('@/db');
-  const { vehicles, auditLogs } = await import('@/db/schema');
-  const { eq } = await import('drizzle-orm');
+  const { vehicles, auditLogs, priceQuoteSnapshots } = await import('@/db/schema');
+  const { count, eq } = await import('drizzle-orm');
 
   const [current] = await db
     .select({ id: vehicles.id, name: vehicles.name, status: vehicles.status, publishedAt: vehicles.publishedAt })
@@ -279,7 +284,29 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     );
   }
 
-  await db.delete(vehicles).where(eq(vehicles.id, id));
+  // Quote snapshots are immutable accounting/audit records and intentionally
+  // reference their vehicle with RESTRICT. Check before delete so an FK error
+  // never becomes an opaque 503 for the operator.
+  const [quoteDependency] = await db
+    .select({ count: count() })
+    .from(priceQuoteSnapshots)
+    .where(eq(priceQuoteSnapshots.vehicleId, id));
+  if ((quoteDependency?.count ?? 0) > 0) {
+    return NextResponse.json(
+      { error: 'Bu araç geçmiş fiyat teklifi kayıtlarında kullanılıyor ve güvenle silinemez. Aracı arşivleyin.' },
+      { status: 409 },
+    );
+  }
+
+  try {
+    await db.delete(vehicles).where(eq(vehicles.id, id));
+  } catch (error) {
+    console.error('Vehicle delete dependency error:', error);
+    return NextResponse.json(
+      { error: 'Bu araç başka kayıtlar tarafından kullanıldığı için silinemedi. Aracı arşivleyin.' },
+      { status: 409 },
+    );
+  }
 
   await db
     .insert(auditLogs)

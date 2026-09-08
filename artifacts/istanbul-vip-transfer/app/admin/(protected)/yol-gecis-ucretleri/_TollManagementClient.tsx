@@ -62,7 +62,7 @@ function vehicleClassLabel(vc: string) {
 // taxonomy, used ONLY as the value set for a toll point's separate,
 // categorical bannedVehicleTypes ban (distinct from bannedVehicleClasses above).
 const TOLL_VEHICLE_TYPE_LABELS: Record<string, string> = {
-  minivan: 'Minivan', minibus: 'Minibüs', midibus: 'Midibüs', bus: 'Otobüs',
+  automobile: 'Otomobil', minivan: 'Otomobil', minibus: 'Minibüs', midibus: 'Midibüs', bus: 'Otobüs',
 };
 function vehicleTypeLabel(vt: string) {
   return TOLL_VEHICLE_TYPE_LABELS[vt] ?? vt;
@@ -116,6 +116,10 @@ type SyncPreview = {
   newAmountKurus?: number | null;
   amountKurus?: number | null;
   requiresConfirmation?: boolean;
+  previewToken?: string;
+  sourceUrl?: string;
+  fetchedAt?: string;
+  queriedAt?: string;
 };
 
 type TollAlternative = {
@@ -775,7 +779,7 @@ function SyncModal({ tariff, onClose, onRefresh }: { tariff: TollTariff, onClose
       const res = await fetch('/admin/api/pricing/tolls/sync', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ action: 'apply', tollTariffId: tariff.id, confirmationText: confirmText })
+        body: JSON.stringify({ action: 'apply', tollTariffId: tariff.id, confirmationText: confirmText, previewToken: preview?.previewToken })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Uygulama başarısız');
@@ -842,7 +846,7 @@ function SyncModal({ tariff, onClose, onRefresh }: { tariff: TollTariff, onClose
               <button onClick={onClose} className="flex-1 min-h-[44px] py-2 text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">İptal</button>
               <button 
                 onClick={handleApply} 
-                disabled={loading || (preview.requiresConfirmation && confirmText !== 'TARİFEYİ UYGULA')} 
+                disabled={loading || !preview.previewToken || (preview.requiresConfirmation && confirmText !== 'TARİFEYİ UYGULA')}
                 className="flex-1 min-h-[44px] py-2 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:hover:bg-emerald-600 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm"
               >
                  {loading ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}

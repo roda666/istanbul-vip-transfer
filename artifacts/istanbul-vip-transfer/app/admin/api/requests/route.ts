@@ -13,7 +13,8 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = req.nextUrl;
   const page      = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10));
-  const limit     = 25;
+  const requestedLimit = parseInt(searchParams.get('limit') ?? '20', 10);
+  const limit = [10, 20, 50, 100].includes(requestedLimit) ? requestedLimit : 20;
   const offset    = (page - 1) * limit;
   const search    = searchParams.get('search')?.trim() ?? '';
   const status    = searchParams.get('status') ?? '';
@@ -72,6 +73,7 @@ export async function GET(req: NextRequest) {
         createdAt:       reservationRequests.createdAt,
         archivedAt:      reservationRequests.archivedAt,
         isTestData:      reservationRequests.isTestData,
+         readAt:          reservationRequests.readAt,
       }).from(reservationRequests).where(where).orderBy(desc(reservationRequests.createdAt)).limit(limit).offset(offset),
       db.select({ count: count() }).from(reservationRequests).where(where),
       db.select({
@@ -87,7 +89,7 @@ export async function GET(req: NextRequest) {
     ]);
 
     const total      = totals[0]?.count ?? 0;
-    const totalPages = Math.ceil(total / limit);
+    const totalPages = Math.max(1, Math.ceil(total / limit));
 
     const countBy = (key: 'source' | 'locale' | 'pageSlug') => {
       const counts = new Map<string, number>();
@@ -102,6 +104,7 @@ export async function GET(req: NextRequest) {
       rows,
       total,
       page,
+      limit,
       totalPages,
       summary: {
         bySource: countBy('source'),

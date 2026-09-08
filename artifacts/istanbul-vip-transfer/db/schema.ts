@@ -248,6 +248,11 @@ export const siteSettings = pgTable('site_settings', {
   showChildSeatCount: boolean('show_child_seat_count').default(false).notNull(),
   showVehiclePreference: boolean('show_vehicle_preference').default(false).notNull(),
   showAdditionalNotes: boolean('show_additional_notes').default(false).notNull(),
+  /** Selected service-type keys for each optional field. Missing keys retain legacy "all services" behavior. */
+  optionalFieldServiceTypes: jsonb('optional_field_service_types').$type<Partial<Record<
+    'showLuggageCount' | 'showChildSeatCount' | 'showVehiclePreference' | 'showAdditionalNotes',
+    string[]
+  >>>().default({}).notNull(),
   // Legal / trust fields (shown in footer and legal pages)
   companyLegalName: text('company_legal_name'),  // e.g. "Hevra Turizm"
   companyTradeName: text('company_trade_name'),  // e.g. "The History Travel"
@@ -455,7 +460,7 @@ export const vehicles = pgTable('vehicles', {
   vehicleType: text('vehicle_type'),
   /** Pricing eligibility is intentionally independent from public publishing. */
   priceCalculationEligible: boolean('price_calculation_eligible').default(false).notNull(),
-  /** Toll tariff class: minivan | minibus | midibus | bus. Unrelated to tollClass below — this drives base-fare pricing profiles only. */
+  /** Toll tariff class: automobile (legacy `minivan`) | minibus | midibus | bus. Unrelated to tollClass below — this drives base-fare pricing profiles only. */
   pricingClass: text('pricing_class').default('minivan').notNull(),
   /** Lets admins temporarily remove a published vehicle from public use without archiving it. */
   isActive: boolean('is_active').default(true).notNull(),
@@ -706,6 +711,8 @@ export const reservationRequests = pgTable('reservation_requests', {
   archivedAt:      timestamp('archived_at', { withTimezone: true }),
   /** True for rows identified as internal QA/dev submissions rather than genuine customer leads. Never auto-deleted; admin-reversible. */
   isTestData:      boolean('is_test_data').default(false).notNull(),
+  /** Null means the request has not yet been opened by an administrator. */
+  readAt:          timestamp('read_at', { withTimezone: true }),
 });
 
 /**

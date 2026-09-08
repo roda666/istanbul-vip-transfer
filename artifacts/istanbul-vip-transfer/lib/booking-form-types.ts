@@ -39,6 +39,10 @@ export interface BookingFormBootstrap {
   vehicles: BookingVehicleOption[];
   formSettings: {
     showVehiclePreference: boolean;
+    showLuggageCount: boolean;
+    showChildSeatCount: boolean;
+    showAdditionalNotes: boolean;
+    optionalFieldServiceTypes: import('@/lib/optional-booking-fields').OptionalFieldServiceTypeApplicability;
   };
   customFields: BookingCustomField[];
   locations: {
@@ -69,7 +73,7 @@ export const FALLBACK_BOOKING_SERVICE_TYPES: BookingServiceTypeOption[] = [
 export const EMPTY_BOOKING_FORM_BOOTSTRAP: BookingFormBootstrap = {
   serviceTypes: FALLBACK_BOOKING_SERVICE_TYPES,
   vehicles: [],
-  formSettings: { showVehiclePreference: false },
+  formSettings: { showVehiclePreference: false, showLuggageCount: false, showChildSeatCount: false, showAdditionalNotes: false, optionalFieldServiceTypes: {} },
   customFields: [],
   locations: {
     localPickup: [],
@@ -91,6 +95,6 @@ export const EMPTY_BOOKING_FORM_OPTIONS: BookingFormOptions = {
 
 export const EMPTY_BOOKING_FORM_INITIAL_DATA: BookingFormInitialData = {
   serviceTypes: FALLBACK_BOOKING_SERVICE_TYPES,
-  formSettings: { showVehiclePreference: false },
+  formSettings: { showVehiclePreference: false, showLuggageCount: false, showChildSeatCount: false, showAdditionalNotes: false, optionalFieldServiceTypes: {} },
   customFields: [],
 };

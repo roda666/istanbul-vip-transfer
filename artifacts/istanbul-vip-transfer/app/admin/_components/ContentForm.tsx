@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AlertTriangle, CheckCircle, Globe, Archive, Save, Loader2 } from 'lucide-react';
 import { STATUS_LABELS, type ContentStatus } from '@/lib/workflow';
 import { ImageUploadField } from './ImageUploadField';
+import { AISeoGenerator } from './AISeoGenerator';
 
 type ContentType = 'PAGE' | 'SERVICE' | 'BLOG_POST';
 
@@ -330,6 +331,13 @@ export default function ContentForm({ mode, contentType, initialData, backUrl }:
       {/* SEO */}
       <div style={sectionStyle}>
         <p style={sectionTitle}>SEO</p>
+        <AISeoGenerator
+          context={contentType === 'BLOG_POST' ? 'blog' : contentType === 'SERVICE' ? 'service' : 'homepage'}
+          title={seoTitle}
+          description={seoDescription}
+          onTitleChange={setSeoTitle}
+          onDescriptionChange={setSeoDescription}
+        />
         <div style={{ display: 'grid', gap: '14px' }}>
           <div>
             <label style={labelStyle} htmlFor="seoTitle">Meta Başlık</label>

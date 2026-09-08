@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { 
-  Calculator, RefreshCw, Plus, Check, X, Edit2, AlertCircle, TrendingUp, Loader2
+import {
+  Calculator, RefreshCw, Plus, Check, X, Edit2, AlertCircle, TrendingUp, Loader2, Trash2
 } from 'lucide-react';
 
 // --- Types ---
@@ -19,7 +19,7 @@ type PricingRoute = {
   distanceSource: 'LEGACY_UNVERIFIED' | 'COORDINATE_ESTIMATE' | 'ADMIN_VERIFIED';
   active: boolean;
 };
-type PricingLocation = { id: string; name: string; city: string };
+type PricingLocation = { id: string; name: string; city: string; type: 'AIRPORT' | 'DISTRICT' | 'REGION' | 'HOTEL_ZONE' | 'CUSTOM' | 'PROVINCE' };
 type TollAlternative = {
   id: string;
   name: string;
@@ -34,9 +34,9 @@ type TollAlternative = {
   bannedPointNames: string[];
 };
 type DistanceResult = {
-  state: 'DEFINED_ROUTE' | 'ESTIMATED' | 'UNAVAILABLE';
+  state: 'GOOGLE_MAPS' | 'DEFINED_ROUTE' | 'ESTIMATED' | 'UNAVAILABLE';
   distanceKm?: number;
-  source?: 'defined_route' | 'coordinate_estimate';
+  source?: 'google_maps' | 'defined_route' | 'coordinate_estimate';
   roadDistanceMultiplier?: number;
   reason?: string;
 };
@@ -196,6 +196,17 @@ const describeDistanceUnavailableReason = (reason?: string) => {
   }
 };
 
+function localDateTimeValue(date = new Date()): string {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+}
+
+function sortQuoteLocations(locations: PricingLocation[]): PricingLocation[] {
+  const collator = new Intl.Collator('tr-TR', { sensitivity: 'base' });
+  const priority = (location: PricingLocation) => location.type === 'AIRPORT' ? 0
+    : location.type === 'DISTRICT' && location.city === 'İstanbul' ? 1 : 2;
+  return [...locations].sort((a, b) => priority(a) - priority(b) || collator.compare(a.name, b.name));
+}
+
 // --- Reusable Components ---
 
 function AmountInput({ value, onChange, label, symbol = '', decimals = 2, min = 0 }: { value: number, onChange: (val: number) => void, label: string, symbol?: string, decimals?: number, min?: number }) {
@@ -276,7 +287,9 @@ function FastQuotePanel({
   const [destinationLocationId, setDestinationLocationId] = useState('');
   const [quoteHours, setQuoteHours] = useState(4);
   const [quoteTripType, setQuoteTripType] = useState<'ONE_WAY' | 'ROUND_TRIP'>('ONE_WAY');
-  const [quotePickupAt, setQuotePickupAt] = useState('');
+  const [quotePickupAt, setQuotePickupAt] = useState(() => localDateTimeValue());
+  const [quoteOverageHours, setQuoteOverageHours] = useState('');
+  const [quoteOverageKm, setQuoteOverageKm] = useState('');
   const [quoting, setQuoting] = useState(false);
   const [quoteResult, setQuoteResult] = useState<QuoteResult | null>(null);
   const [distance, setDistance] = useState<DistanceResult | null>(null);
@@ -295,7 +308,7 @@ function FastQuotePanel({
     : false;
 
   useEffect(() => {
-    if (!originLocationId || !destinationLocationId) {
+    if (!originLocationId || (quoteMode === 'DISTANCE' && !destinationLocationId)) {
       setDistance(null);
       setDistanceError('');
       return;
@@ -402,8 +415,10 @@ function FastQuotePanel({
         originLocationId,
         destinationLocationId,
         mode: quoteMode,
-        tripType: quoteTripType,
+        tripType: quoteMode === 'HOURLY' ? 'ONE_WAY' : quoteTripType,
         ...(quoteMode === 'HOURLY' ? { requestedHours: quoteHours } : {}),
+        ...(quoteMode === 'HOURLY' && quoteOverageHours.trim() ? { overageHours: Number(quoteOverageHours) } : {}),
+        ...(quoteMode === 'HOURLY' && quoteOverageKm.trim() ? { overageKm: Number(quoteOverageKm) } : {}),
         ...(quotePickupAt ? { pickupAt: new Date(quotePickupAt).toISOString() } : {})
       };
       const res = await fetch('/admin/api/pricing/quote', {
@@ -434,6 +449,8 @@ function FastQuotePanel({
       </div>
     );
   }
+
+  const quoteLocations = sortQuoteLocations(locations);
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-5 space-y-4">
@@ -529,19 +546,19 @@ function FastQuotePanel({
             <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kalkış</label>
             <select value={originLocationId} onChange={(event) => { setOriginLocationId(event.target.value); }} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm">
               <option value="">Seçin...</option>
-              {locations.map((location) => <option key={location.id} value={location.id}>{location.name} ({location.city})</option>)}
+              {quoteLocations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Varış</label>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Varış {quoteMode === 'HOURLY' ? '(isteğe bağlı)' : ''}</label>
             <select value={destinationLocationId} onChange={(event) => { setDestinationLocationId(event.target.value); }} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm">
-              <option value="">Seçin...</option>
-              {locations.map((location) => <option key={location.id} value={location.id}>{location.name} ({location.city})</option>)}
+              <option value="">{quoteMode === 'HOURLY' ? 'Belirtmeyin' : 'Seçin...'}</option>
+              {quoteLocations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
             </select>
           </div>
         </div>
         <div className={`rounded-lg border px-3 py-2 text-xs font-medium ${
-          distance?.state === 'DEFINED_ROUTE'
+          distance?.state === 'GOOGLE_MAPS' || distance?.state === 'DEFINED_ROUTE'
             ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
             : distance?.state === 'UNAVAILABLE'
               ? 'border-amber-200 bg-amber-50 text-amber-800'
@@ -549,7 +566,9 @@ function FastQuotePanel({
         }`}>
           {distanceLoading
             ? 'Mesafe koordinatlardan çözülüyor…'
-            : distance?.state === 'DEFINED_ROUTE'
+            : distance?.state === 'GOOGLE_MAPS'
+              ? `Google Maps yol mesafesi: ${distance.distanceKm} km`
+              : distance?.state === 'DEFINED_ROUTE'
               ? `Doğrulanmış rota: ${distance.distanceKm} km`
               : distance?.state === 'ESTIMATED'
                 ? `Koordinat tahmini: ${distance.distanceKm} km${distance.roadDistanceMultiplier ? ` (yol katsayısı ×${distance.roadDistanceMultiplier})` : ''}`
@@ -566,7 +585,7 @@ function FastQuotePanel({
                <option value="HOURLY">Saatlik Tahsis</option>
              </select>
            </div>
-           <div>
+            <div className={quoteMode === 'HOURLY' ? 'hidden' : ''}>
              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Yön</label>
              <select className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={quoteTripType} onChange={e => setQuoteTripType(e.target.value as 'ONE_WAY' | 'ROUND_TRIP')}>
                <option value="ONE_WAY">Tek Yön</option>
@@ -575,8 +594,16 @@ function FastQuotePanel({
            </div>
         </div>
         {quoteMode === 'HOURLY' && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <AmountInput label="Süre (Saat)" value={quoteHours} onChange={setQuoteHours} symbol="sa" decimals={0} min={1} />
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Saat aşımı (ops.)</label>
+              <input type="number" min="0" value={quoteOverageHours} onChange={e => setQuoteOverageHours(e.target.value)} placeholder="Otomatik" className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">KM aşımı (ops.)</label>
+              <input type="number" min="0" value={quoteOverageKm} onChange={e => setQuoteOverageKm(e.target.value)} placeholder="Otomatik" className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" />
+            </div>
           </div>
         )}
         <div>
@@ -588,7 +615,7 @@ function FastQuotePanel({
             Henüz hiçbir fiyat formülü yok. Araç seçimi korunur; otomatik fiyat için <a href="#pricing-profiles" className="font-bold underline">ilk formülü oluşturun</a>.
           </div>
         )}
-        <button onClick={handleQuote} disabled={!quoteVehicleId || !originLocationId || !destinationLocationId || distanceLoading || quoting || tollsLoading || (tollAlternatives.length > 0 && !tollAlternativeId) || Boolean(selectedTollAlternative && selectedVehicle && !selectedTollAlternative.isPricedForSelectedVehicle)} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center justify-center gap-2 mt-2">
+        <button onClick={handleQuote} disabled={!quoteVehicleId || !originLocationId || (quoteMode === 'DISTANCE' && !destinationLocationId) || distanceLoading || quoting || tollsLoading || (tollAlternatives.length > 0 && !tollAlternativeId) || Boolean(selectedTollAlternative && selectedVehicle && !selectedTollAlternative.isPricedForSelectedVehicle)} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center justify-center gap-2 mt-2">
           {quoting ? <Loader2 className="animate-spin" size={18} /> : 'Hesapla'}
         </button>
       </div>
@@ -723,14 +750,15 @@ function TcmbWidget({ settings, onApply }: { settings: Settings | null, onApply:
           <h2 className="text-base font-bold">Canlı TCMB Kurları</h2>
         </div>
         
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3">
            <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-center">
-             <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">EUR/TRY</div>
-             <div className="text-lg font-black text-slate-900">{settings?.latestTcmb ? formatMicros(settings.latestTcmb.eurTryMicros) : '---'}</div>
-           </div>
-           <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-center">
-             <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">EUR/USD</div>
-             <div className="text-lg font-black text-slate-900">{settings?.latestTcmb ? formatMicros(settings.latestTcmb.eurUsdMicros) : '---'}</div>
+             <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">USD/TRY — Yalnızca Panel Referansı</div>
+             <div className="text-lg font-black text-slate-900">
+               {settings?.latestTcmb
+                 ? formatMicros(Math.round(settings.latestTcmb.eurTryMicros / (settings.latestTcmb.eurUsdMicros / 1_000_000)))
+                 : '---'}
+             </div>
+             <p className="mt-1 text-[11px] text-slate-500">Müşteri EUR fiyatı ve geçiş ücreti TL→EUR çevrimi değişmez.</p>
            </div>
         </div>
         <div className="text-[10px] font-bold text-slate-400 text-center uppercase tracking-wider">
@@ -748,20 +776,12 @@ function TcmbWidget({ settings, onApply }: { settings: Settings | null, onApply:
             <h3 className="text-lg font-black text-slate-900 mb-5">Yeni Kur Onayı</h3>
             <div className="space-y-4 mb-6">
                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                 <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                    <div>
-                     <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">YENİ EUR/TRY</div>
-                     <div className="text-xl font-black text-slate-900">{formatMicros(previewData.candidate.eurTryMicros)}</div>
-                     {previewData.deviation && (
-                       <div className="text-xs font-bold text-blue-600 mt-1">Sapma: %{(previewData.deviation.eurTry / 100).toFixed(2)}</div>
-                     )}
-                   </div>
-                   <div>
-                     <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">YENİ EUR/USD</div>
-                     <div className="text-xl font-black text-slate-900">{formatMicros(previewData.candidate.eurUsdMicros)}</div>
-                     {previewData.deviation && (
-                       <div className="text-xs font-bold text-blue-600 mt-1">Sapma: %{(previewData.deviation.eurUsd / 100).toFixed(2)}</div>
-                     )}
+                      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">YENİ USD/TRY — PANEL REFERANSI</div>
+                      <div className="text-xl font-black text-slate-900">
+                        {formatMicros(Math.round(previewData.candidate.eurTryMicros / (previewData.candidate.eurUsdMicros / 1_000_000)))}
+                      </div>
                    </div>
                  </div>
                </div>
@@ -920,14 +940,32 @@ function SettingsPanel({ settings, onSave }: { settings: Settings | null, onSave
 function ProfilesPanel({ profiles, vehicles, onReload }: { profiles: Profile[], vehicles: Vehicle[], onReload: () => void }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [cloneData, setCloneData] = useState<Profile | null>(null);
+  const [actionError, setActionError] = useState('');
 
   const toggleActive = async (p: Profile) => {
     try {
-      await fetch('/admin/api/pricing/profiles', {
+      const response = await fetch('/admin/api/pricing/profiles', {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: p.id, active: !p.active })
       });
+      if (!response.ok) throw new Error((await response.json().catch(() => null))?.error ?? 'Formül güncellenemedi.');
+      setActionError('');
       onReload();
-    } catch {}
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Formül güncellenemedi.');
+    }
+  };
+
+  const deleteProfile = async (p: Profile) => {
+    if (!window.confirm('Bu formül sürümü kalıcı olarak silinecek. Araç ve geçmiş teklif kayıtları silinmez. Devam edilsin mi?')) return;
+    try {
+      const response = await fetch(`/admin/api/pricing/profiles?id=${encodeURIComponent(p.id)}`, { method: 'DELETE' });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(body?.error ?? 'Formül silinemedi.');
+      setActionError('');
+      onReload();
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Formül silinemedi.');
+    }
   };
 
   return (
@@ -941,6 +979,7 @@ function ProfilesPanel({ profiles, vehicles, onReload }: { profiles: Profile[], 
           <Plus size={16}/> Yeni Formül
         </button>
       </div>
+      {actionError && <div className="mx-5 mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{actionError}</div>}
 
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse min-w-[850px]">
@@ -994,6 +1033,9 @@ function ProfilesPanel({ profiles, vehicles, onReload }: { profiles: Profile[], 
                          <button onClick={() => toggleActive(p)} className={`p-2 rounded-lg transition-colors ${p.active ? 'text-slate-400 hover:text-red-600 hover:bg-red-50' : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'}`} title={p.active ? 'Pasife Al' : 'Aktifleştir'}>
                            {p.active ? <X size={16}/> : <Check size={16}/>}
                          </button>
+                          <button onClick={() => deleteProfile(p)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Formülü Kalıcı Sil">
+                            <Trash2 size={16}/>
+                          </button>
                       </div>
                     </td>
                   </tr>

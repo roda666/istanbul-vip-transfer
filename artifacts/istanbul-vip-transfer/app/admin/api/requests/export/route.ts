@@ -15,14 +15,16 @@ export async function GET(req: NextRequest) {
   try {
     const { db } = await import('@/db');
     const { reservationRequests } = await import('@/db/schema');
-    const { and, eq, gte, ilike, isNull, lte, or, desc } = await import('drizzle-orm');
+    const { and, eq, gte, ilike, inArray, isNull, lte, or, desc } = await import('drizzle-orm');
     const p = req.nextUrl.searchParams;
     const conditions = [isNull(reservationRequests.archivedAt)];
+    const ids = p.get('ids')?.split(',').map(value => value.trim()).filter(Boolean).slice(0, 1000) ?? [];
+    if (ids.length) conditions.push(inArray(reservationRequests.id, ids));
     const search = p.get('search')?.trim();
     const testData = p.get('test_data');
     if (testData === 'real') conditions.push(eq(reservationRequests.isTestData, false));
     if (testData === 'test') conditions.push(eq(reservationRequests.isTestData, true));
-    for (const [param, column] of [['status', reservationRequests.status], ['service', reservationRequests.serviceType], ['intent', reservationRequests.intent], ['lang', reservationRequests.locale], ['source', reservationRequests.source], ['page_slug', reservationRequests.pageSlug]] as const) {
+    for (const [param, column] of [['status', reservationRequests.status], ['service', reservationRequests.serviceType], ['intent', reservationRequests.intent], ['lang', reservationRequests.locale], ['source', reservationRequests.source]] as const) {
       const value = p.get(param);
       if (value) conditions.push(eq(column, value as never));
     }
@@ -32,10 +34,12 @@ export async function GET(req: NextRequest) {
     const rows = await db.select({
       referenceNumber: reservationRequests.referenceNumber, name: reservationRequests.name, phone: reservationRequests.phone,
       normalizedEmail: reservationRequests.normalizedEmail, locale: reservationRequests.locale, source: reservationRequests.source,
-      pageSlug: reservationRequests.pageSlug, serviceType: reservationRequests.serviceType, intent: reservationRequests.intent,
+      serviceType: reservationRequests.serviceType, intent: reservationRequests.intent,
       status: reservationRequests.status, createdAt: reservationRequests.createdAt,
+      requestData: reservationRequests.requestData, adminNotes: reservationRequests.adminNotes,
     }).from(reservationRequests).where(and(...conditions)).orderBy(desc(reservationRequests.createdAt));
-    const body = format === 'xls' ? requestsToExcel(rows) : requestsToPdf(rows);
+    const detailed = ids.length === 1;
+    const body = format === 'xls' ? requestsToExcel(rows, detailed) : requestsToPdf(rows, detailed);
     return new NextResponse(body, { headers: {
       'Content-Type': format === 'xls' ? 'application/vnd.ms-excel; charset=utf-8' : 'application/pdf',
       'Content-Disposition': `attachment; filename="${requestExportFileName(format)}"`,

@@ -70,3 +70,17 @@ mtime_ms = 1788893277617
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/df3857f3-5695-4e86-b37c-c6bbacf293de/1f02e3fe-1c53-4045-b099-f6d8be0ce582"
 storage_version_token = "1788895414424131"
 content_type = "text/csv"
+
+[[outputs]]
+id = "v4cQH1m5F073Vz5uyBsOb"
+uri = "file://screenshots/talepler-admin-validation.jpg"
+type = "image"
+title = "Talepler ekranı erişim doğrulaması"
+description = "Korumalı /admin/talepler yolunun anonim oturumu admin giriş ekranına yönlendirdiğini gösterir; gerçek talep verisi açılmadı."
+logical_id = "28f1b2f6-72af-43b1-9092-9c9550878ffe"
+content_hash = "sha256:7fb29f191b3a2691c7ec918facc22a0539a93593172dcf34f353b4d259714ff7"
+size = 30973
+mtime_ms = 1788902164007
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/28f1b2f6-72af-43b1-9092-9c9550878ffe/c32adae2-bc12-41e5-b7d7-712385f3c39e"
+storage_version_token = "1788902411930359"
+content_type = "image/jpeg"

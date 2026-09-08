@@ -5,14 +5,43 @@ export interface RequestExportRow {
   normalizedEmail: string | null;
   locale: string;
   source: string;
-  pageSlug: string;
   serviceType: string;
   intent: string;
   status: string;
   createdAt: Date | string;
+  requestData?: unknown;
+  adminNotes?: string | null;
 }
 
-const headers = ['Referans', 'İsim', 'Telefon', 'E-posta', 'Dil', 'Kaynak', 'Sayfa', 'Hizmet', 'Talep', 'Durum', 'Kayıt Tarihi'];
+const headers = ['Referans', 'İsim', 'Telefon', 'E-posta', 'Dil', 'Kaynak', 'Hizmet', 'Talep', 'Durum', 'Kayıt Tarihi'];
+
+const SERVICE_LABELS: Record<string, string> = {
+  AIRPORT_TRANSFER: 'Havalimanı / Şehir İçi Transfer',
+  INTERCITY: 'Şehirler Arası Transfer',
+  ALLOCATION: 'Araç Tahsisi',
+  TOUR: 'Özel Tur / Gezi',
+  CONTACT_INQUIRY: 'İletişim Talebi',
+};
+const INTENT_LABELS: Record<string, string> = { QUOTE: 'Fiyat Teklifi', RESERVATION: 'Rezervasyon' };
+const STATUS_LABELS: Record<string, string> = {
+  NEW: 'Yeni', CONTACTED: 'İletişimde', QUOTED: 'Teklife Gönderildi', CONFIRMED: 'Onaylandı',
+  COMPLETED: 'Tamamlandı', CANCELLED: 'İptal', SPAM: 'Spam', ARCHIVED: 'Arşivlendi',
+};
+const SOURCE_LABELS: Record<string, string> = {
+  'contact-form': 'İletişim Formu',
+  'booking-form': 'Rezervasyon Formu',
+  website: 'Web Sitesi',
+};
+const FIELD_LABELS: Record<string, string> = {
+  tarih: 'Tarih', saatSaat: 'Saat', saatDakika: 'Dakika', yolcuSayisi: 'Yolcu Sayısı',
+  adSoyad: 'Ad Soyad', telefon: 'Telefon', email: 'E-posta', alisLokasyonu: 'Alış Lokasyonu',
+  alisAdresi: 'Alış Adresi', varisLokasyonu: 'Varış Lokasyonu', varisAdresi: 'Varış Adresi',
+  ucusNumarasi: 'Uçuş Numarası', bagajSayisi: 'Bagaj Sayısı', seyahatYonu: 'Yön',
+  kalkisIli: 'Kalkış İli', kalkisAdres: 'Kalkış Adresi', varisIli: 'Varış İli',
+  tahsisSuresi: 'Tahsis Süresi', tahsisSuresiUnit: 'Süre Birimi', rotaAciklama: 'Rota Açıklaması',
+  talepsRota: 'Tur Rotası', talepsYerler: 'Ziyaret Yerleri', planlananSure: 'Planlanan Süre',
+  planlananSureUnit: 'Süre Birimi', vehiclePreference: 'Araç Tercihi',
+};
 
 function text(value: unknown) {
   return String(value ?? '').replace(/[\u0000-\u001F]/g, ' ').trim();
@@ -25,7 +54,34 @@ function date(value: Date | string) {
 }
 
 function values(row: RequestExportRow) {
-  return [row.referenceNumber, row.name, row.phone, row.normalizedEmail, row.locale, row.source, row.pageSlug, row.serviceType, row.intent, row.status, date(row.createdAt)].map(text);
+  return [
+    row.referenceNumber, row.name, row.phone, row.normalizedEmail || '—', row.locale.toUpperCase(),
+    SOURCE_LABELS[row.source] ?? row.source, SERVICE_LABELS[row.serviceType] ?? row.serviceType,
+    INTENT_LABELS[row.intent] ?? row.intent, STATUS_LABELS[row.status] ?? row.status, date(row.createdAt),
+  ].map(text);
+}
+
+function detailValues(row: RequestExportRow): Array<[string, string]> {
+  const base: Array<[string, string]> = [
+    ['Referans', row.referenceNumber],
+    ['Ad Soyad', row.name],
+    ['Telefon', row.phone],
+    ['E-posta', row.normalizedEmail || '—'],
+    ['Dil', row.locale.toUpperCase()],
+    ['Kaynak', SOURCE_LABELS[row.source] ?? row.source],
+    ['Hizmet', SERVICE_LABELS[row.serviceType] ?? row.serviceType],
+    ['Talep Türü', INTENT_LABELS[row.intent] ?? row.intent],
+    ['Durum', STATUS_LABELS[row.status] ?? row.status],
+    ['Kayıt Tarihi', date(row.createdAt)],
+  ];
+  const formData = row.requestData && typeof row.requestData === 'object' && !Array.isArray(row.requestData)
+    ? row.requestData as Record<string, unknown> : {};
+  const dynamic = Object.entries(formData)
+    .filter(([key, value]) => value !== null && value !== '' && value !== undefined
+      && !['_hp', 'emailNotification', 'vehiclePreferenceId'].includes(key))
+    .map(([key, value]) => [FIELD_LABELS[key] ?? key, text(value)] as [string, string]);
+  if (row.adminNotes) dynamic.push(['Yönetici Notları', row.adminNotes]);
+  return [...base, ...dynamic];
 }
 
 export function requestExportFileName(extension: 'xls' | 'pdf') {
@@ -33,25 +89,33 @@ export function requestExportFileName(extension: 'xls' | 'pdf') {
 }
 
 /** SpreadsheetML opens natively in Excel without requiring a server-side binary dependency. */
-export function requestsToExcel(rows: RequestExportRow[]) {
+export function requestsToExcel(rows: RequestExportRow[], detailed = rows.length === 1) {
   const escape = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const row = (cells: string[], header = false) => `<Row>${cells.map(cell => `<Cell${header ? ' ss:StyleID="Header"' : ''}><Data ss:Type="String">${escape(cell)}</Data></Cell>`).join('')}</Row>`;
+  const tableRows = detailed && rows[0]
+    ? detailValues(rows[0]).map(([label, value]) => row([label, value], label === 'Referans')).join('')
+    : `${row(headers, true)}${rows.map(item => row(values(item))).join('')}`;
   return `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?>
 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
-<Styles><Style ss:ID="Header"><Font ss:Bold="1"/></Style></Styles><Worksheet ss:Name="Talepler"><Table>${row(headers, true)}${rows.map(item => row(values(item))).join('')}</Table></Worksheet></Workbook>`;
+<Styles><Style ss:ID="Header"><Font ss:Bold="1"/></Style></Styles><Worksheet ss:Name="Talepler"><Table>${tableRows}</Table></Worksheet></Workbook>`;
 }
 
 /** A deliberately small, dependency-free PDF table. Turkish glyphs are transliterated for core PDF fonts. */
-export function requestsToPdf(rows: RequestExportRow[]) {
+export function requestsToPdf(rows: RequestExportRow[], detailed = rows.length === 1) {
   const ascii = (value: string) => text(value).replace(/İ/g, 'I').replace(/ı/g, 'i').replace(/Ş/g, 'S').replace(/ş/g, 's').replace(/Ğ/g, 'G').replace(/ğ/g, 'g').replace(/Ü/g, 'U').replace(/ü/g, 'u').replace(/Ö/g, 'O').replace(/ö/g, 'o').replace(/Ç/g, 'C').replace(/ç/g, 'c');
   const escape = (value: string) => ascii(value).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
-  const lines = [
+  const lines = detailed && rows[0] ? [
+    `Talep Detayi - ${rows[0].referenceNumber}`,
+    `Olusturulma: ${date(new Date())}`,
+    '',
+    ...detailValues(rows[0]).map(([label, value]) => `${label}: ${value}`),
+  ] : [
     'Talepler Raporu',
     `Olusturulma: ${date(new Date())}`,
     '',
-    ...rows.flatMap(row => [
-      `${row.referenceNumber} | ${row.name} | ${row.phone} | ${row.status}`,
-      `${row.serviceType} | ${row.intent} | ${date(row.createdAt)} | ${row.source}`,
+    ascii(headers.join(' | ')),
+    ...rows.flatMap(item => [
+      values(item).join(' | '),
     ]),
   ];
   const pages = Array.from({ length: Math.max(1, Math.ceil(lines.length / 48)) }, (_, index) => lines.slice(index * 48, (index + 1) * 48));

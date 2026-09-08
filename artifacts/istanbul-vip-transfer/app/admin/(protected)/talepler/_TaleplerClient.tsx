@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Search, ChevronLeft, ChevronRight, Archive, RefreshCw, Phone, Download, FileText, Trash2 } from 'lucide-react';
-import { SOURCE_FILTER_OPTIONS, formatRequestPage, formatSource } from '@/lib/source-labels';
+import { SOURCE_FILTER_OPTIONS, formatSource } from '@/lib/source-labels';
 
 interface RequestRow {
   id: string;
@@ -15,7 +15,6 @@ interface RequestRow {
   normalizedEmail: string | null;
   locale: string;
   source: string;
-  pageSlug: string;
   status: string;
   createdAt: string;
   archivedAt: string | null;
@@ -31,7 +30,6 @@ interface PageResult {
   summary: {
     bySource: Array<{ value: string; count: number }>;
     byLocale: Array<{ value: string; count: number }>;
-    byPage: Array<{ value: string; count: number }>;
   };
 }
 
@@ -125,6 +123,8 @@ function RequestCard({
   onArchive,
   onToggleTestData,
   onDelete,
+  selected,
+  onSelect,
   canDelete,
   formatDate,
 }: {
@@ -134,6 +134,8 @@ function RequestCard({
   onArchive: (id: string) => void;
   onToggleTestData: (id: string, next: boolean) => void;
   onDelete: (id: string) => void;
+  selected: boolean;
+  onSelect: (id: string, checked: boolean) => void;
   canDelete: boolean;
   formatDate: (iso: string) => string;
 }) {
@@ -142,8 +144,9 @@ function RequestCard({
 
   return (
     <div style={{
-       background: row.source === 'contact-form' ? '#F0FDFA' : row.isTestData ? '#FFFBEB' : '#FFFFFF',
-       border: row.source === 'contact-form' ? '1px solid #99F6E4' : row.isTestData ? '1px solid #FDE68A' : '1px solid #E2E8F0',
+       background: !row.readAt ? '#EAF3FF' : row.source === 'contact-form' ? '#F0FDFA' : row.isTestData ? '#FFFBEB' : '#FFFFFF',
+       border: !row.readAt ? '1px solid #93C5FD' : row.source === 'contact-form' ? '1px solid #99F6E4' : row.isTestData ? '1px solid #FDE68A' : '1px solid #E2E8F0',
+       borderLeft: !row.readAt ? '6px solid #2563EB' : undefined,
       borderRadius: '12px',
       padding: '14px 16px',
       marginBottom: '10px',
@@ -151,7 +154,8 @@ function RequestCard({
     }}>
       {/* Header row: ref + status */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', gap: '8px', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+           <input type="checkbox" checked={selected} onChange={(event) => onSelect(row.id, event.target.checked)} aria-label={`${row.referenceNumber} talebini seç`} style={{ width: 18, height: 18, accentColor: '#2563EB' }} />
           <Link
             href={`/admin/talepler/${row.id}`}
             style={{ fontFamily: 'monospace', fontSize: '13px', fontWeight: 700, color: '#2563EB', textDecoration: 'none' }}
@@ -159,6 +163,7 @@ function RequestCard({
             #{row.referenceNumber}
           </Link>
           {row.isTestData && <TestDataBadge />}
+           {!row.readAt && <span style={{ padding: '2px 8px', borderRadius: 999, background: '#2563EB', color: '#FFF', fontSize: 10, fontWeight: 800, letterSpacing: '.05em' }}>OKUNMADI</span>}
         </div>
         {isLegacy ? (
           <span style={{
@@ -218,9 +223,6 @@ function RequestCard({
         <span style={{ padding: '2px 8px', borderRadius: '999px', fontSize: '11px', color: '#64748B', background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
           {formatSource(row.source)}
         </span>
-        <span title={row.pageSlug} style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '2px 8px', borderRadius: '999px', fontSize: '11px', color: '#64748B', background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
-          {formatRequestPage(row.pageSlug)}
-        </span>
       </div>
 
       {/* Date + actions */}
@@ -271,11 +273,13 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
   const [intent, setIntent]     = useState('');
   const [lang, setLang]         = useState('');
   const [source, setSource]     = useState('');
-  const [pageSlug, setPageSlug] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo]     = useState('');
   const [testData, setTestData] = useState(''); // '' = all, 'real', 'test'
   const [updating, setUpdating] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectingAll, setSelectingAll] = useState(false);
+  const [exportScope, setExportScope] = useState<'selected' | 'all'>('all');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -288,7 +292,6 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
       if (intent)   params.set('intent',    intent);
       if (lang)     params.set('lang',      lang);
       if (source)   params.set('source',    source);
-      if (pageSlug) params.set('page_slug', pageSlug);
       if (dateFrom) params.set('date_from', dateFrom);
       if (dateTo)   params.set('date_to',   dateTo);
       if (testData) params.set('test_data', testData);
@@ -300,9 +303,13 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
     } finally {
       setLoading(false);
     }
- }, [page, limit, search, status, service, intent, lang, source, pageSlug, dateFrom, dateTo, testData]);
+  }, [page, limit, search, status, service, intent, lang, source, dateFrom, dateTo, testData]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    setSelectedIds(new Set());
+    setExportScope('all');
+  }, [search, status, service, intent, lang, source, dateFrom, dateTo, testData]);
 
   async function updateStatus(id: string, newStatus: string) {
     setUpdating(id);
@@ -360,12 +367,69 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
     } finally { setUpdating(null); }
   }
 
+  function toggleSelection(id: string, checked: boolean) {
+    setSelectedIds(current => {
+      const next = new Set(current);
+      if (checked) next.add(id); else next.delete(id);
+      return next;
+    });
+  }
+
+  async function selectAllFiltered() {
+    setSelectingAll(true);
+    setError('');
+    try {
+      const params = buildFilterParams();
+      params.set('all_ids', '1');
+      const res = await fetch(`/admin/api/requests?${params}`);
+      if (!res.ok) throw new Error();
+      const payload = await res.json() as { ids: string[] };
+      setSelectedIds(new Set(payload.ids));
+      setExportScope('selected');
+    } catch {
+      setError('Tüm talepler seçilemedi.');
+    } finally {
+      setSelectingAll(false);
+    }
+  }
+
+  async function deleteSelected() {
+    if (!selectedIds.size) return;
+    if (!confirm(`${selectedIds.size} talep kalıcı olarak silinecek. Bu işlem geri alınamaz. Devam etmek istiyor musunuz?`)) return;
+    setUpdating('bulk');
+    setError('');
+    try {
+      const res = await fetch('/admin/api/requests', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [...selectedIds] }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? 'Seçilen talepler silinemedi.');
+      setSelectedIds(new Set());
+      await fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Seçilen talepler silinemedi.');
+    } finally {
+      setUpdating(null);
+    }
+  }
+
+  function buildFilterParams() {
+    const params = new URLSearchParams();
+    Object.entries({ search, status, service, intent, lang, source, dateFrom, dateTo, testData }).forEach(([key, value]) => {
+      if (value) params.set(key === 'dateFrom' ? 'date_from' : key === 'dateTo' ? 'date_to' : key === 'testData' ? 'test_data' : key, value);
+    });
+    return params;
+  }
+
   async function exportRequests(format: 'xls' | 'pdf') {
     setError('');
-    const params = new URLSearchParams({ format });
-    Object.entries({ search, status, service, intent, lang, source, pageSlug, dateFrom, dateTo, testData }).forEach(([key, value]) => {
-      if (value) params.set(key === 'pageSlug' ? 'page_slug' : key === 'dateFrom' ? 'date_from' : key === 'dateTo' ? 'date_to' : key === 'testData' ? 'test_data' : key, value);
-    });
+    const params = buildFilterParams();
+    params.set('format', format);
+    if (exportScope === 'selected') {
+      if (!selectedIds.size) { setError('Dışa aktarmak için en az bir talep seçin.'); return; }
+      params.set('ids', [...selectedIds].join(','));
+    }
     const res = await fetch(`/admin/api/requests/export?${params}`);
     if (!res.ok) { setError('Dışa aktarma hazırlanamadı.'); return; }
     const url = URL.createObjectURL(await res.blob());
@@ -382,7 +446,7 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
 
   function resetFilters() {
     setSearch(''); setStatus(''); setService(''); setIntent('');
-    setLang(''); setSource(''); setPageSlug(''); setDateFrom(''); setDateTo('');
+    setLang(''); setSource(''); setDateFrom(''); setDateTo('');
     setTestData(''); setPage(1);
   }
 
@@ -397,7 +461,7 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
     outline: 'none',
   };
 
-  const hasActiveFilters = search || status || service || intent || lang || source || pageSlug || dateFrom || dateTo || testData;
+  const hasActiveFilters = search || status || service || intent || lang || source || dateFrom || dateTo || testData;
 
   const pagination = data && (
     <div style={{
@@ -475,12 +539,6 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
             <option key={value} value={value}>{label}</option>
           ))}
         </select>
-        <select value={pageSlug} onChange={(e) => { setPageSlug(e.target.value); setPage(1); }} style={{ ...inputStyle, flex: '1 1 160px' }}>
-          <option value="">Tüm Sayfalar</option>
-          {(data?.summary.byPage ?? []).map(({ value, count }) => (
-            <option key={value} value={value}>{formatRequestPage(value)} ({count})</option>
-          ))}
-        </select>
         <select value={testData} onChange={(e) => { setTestData(e.target.value); setPage(1); }} style={{ ...inputStyle, flex: '1 1 160px' }}>
           <option value="">Test + Gerçek (Hepsi)</option>
           <option value="real">Yalnızca Gerçek Talepler</option>
@@ -506,9 +564,28 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
         <button onClick={fetchData} style={{ ...inputStyle, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <RefreshCw size={13} /> Yenile
         </button>
-        <button onClick={() => exportRequests('xls')} style={{ ...inputStyle, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><Download size={13} /> Excel</button>
-        <button onClick={() => exportRequests('pdf')} style={{ ...inputStyle, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><FileText size={13} /> PDF</button>
+         <select value={exportScope} onChange={(e) => setExportScope(e.target.value as 'selected' | 'all')} style={inputStyle} aria-label="Dışa aktarma kapsamı">
+           <option value="all">Tüm filtrelenmiş liste</option>
+           <option value="selected">Seçilenler ({selectedIds.size})</option>
+         </select>
+         <button onClick={() => exportRequests('xls')} style={{ ...inputStyle, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><Download size={13} /> Excel&apos;e Aktar</button>
+         <button onClick={() => exportRequests('pdf')} style={{ ...inputStyle, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><FileText size={13} /> PDF&apos;e Aktar</button>
       </div>
+
+      {!loading && data && data.total > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 14, padding: '10px 12px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8 }}>
+          <button onClick={selectAllFiltered} disabled={selectingAll || !!updating} style={{ ...inputStyle, cursor: 'pointer', fontWeight: 700 }}>
+            {selectingAll ? 'Seçiliyor…' : `Tümünü seç (${data.total})`}
+          </button>
+          {selectedIds.size > 0 && <button onClick={() => setSelectedIds(new Set())} disabled={!!updating} style={{ ...inputStyle, cursor: 'pointer' }}>Seçimi kaldır</button>}
+          <span style={{ color: '#475569', fontSize: 12, fontWeight: 600 }}>{selectedIds.size} talep seçili</span>
+          {canDelete && (
+            <button onClick={deleteSelected} disabled={!selectedIds.size || !!updating} style={{ ...inputStyle, marginLeft: 'auto', cursor: selectedIds.size ? 'pointer' : 'not-allowed', color: '#BE123C', background: '#FFF1F2', borderColor: '#FECDD3', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Trash2 size={13} /> Seçilenleri sil
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Loading / Error */}
       {loading && (
@@ -530,7 +607,6 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
              <span><strong>{data.total}</strong> kayıt</span>
              <span>Kaynak: {data.summary.bySource.map((item) => `${formatSource(item.value)} (${item.count})`).join(' · ') || '—'}</span>
              <span>Dil: {data.summary.byLocale.map((item) => `${LOCALE_LABELS[item.value] ?? item.value.toUpperCase()} (${item.count})`).join(' · ') || '—'}</span>
-             <span>Sayfa: {data.summary.byPage.map((item) => `${formatRequestPage(item.value)} (${item.count})`).join(' · ') || '—'}</span>
            </div>
          </section>
        )}
@@ -552,6 +628,8 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
                   onArchive={archiveRequest}
                   onToggleTestData={toggleTestData}
                   onDelete={deleteRequest}
+                   selected={selectedIds.has(row.id)}
+                   onSelect={toggleSelection}
                   canDelete={canDelete}
                   formatDate={formatDate}
                 />
@@ -569,12 +647,12 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th style={th}>Referans</th>
+                   <th style={{ ...th, width: 42 }}><span className="sr-only">Seç</span></th>
+                   <th style={th}>Referans</th>
                   <th style={th}>İsim</th>
                   <th style={th}>Telefon</th>
                   <th style={th}>Dil</th>
                   <th style={th}>Kaynak</th>
-                   <th style={th}>Sayfa</th>
                   <th style={th}>Hizmet</th>
                   <th style={th}>Talep</th>
                   <th style={th}>Durum</th>
@@ -585,7 +663,7 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
               <tbody>
                 {data.rows.length === 0 && (
                   <tr>
-                    <td colSpan={11} style={{ ...td, textAlign: 'center', color: '#94A3B8', padding: '40px' }}>
+                     <td colSpan={11} style={{ ...td, textAlign: 'center', color: '#94A3B8', padding: '40px' }}>
                       Kayıt bulunamadı.
                     </td>
                   </tr>
@@ -594,13 +672,17 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
                   const sc = STATUS_COLORS[row.status] ?? STATUS_COLORS.NEW;
                   const isLegacyStatus = row.status === 'COMPLETED' || row.status === 'SPAM';
                   return (
-                    <tr key={row.id} style={{ opacity: row.archivedAt ? 0.55 : 1, background: row.source === 'contact-form' ? '#F0FDFA' : row.isTestData ? '#FFFBEB' : undefined, fontWeight: row.readAt ? 400 : 700 }}>
+                     <tr key={row.id} style={{ opacity: row.archivedAt ? 0.55 : 1, background: !row.readAt ? '#EAF3FF' : row.source === 'contact-form' ? '#F0FDFA' : row.isTestData ? '#FFFBEB' : undefined, fontWeight: row.readAt ? 400 : 700, boxShadow: !row.readAt ? 'inset 6px 0 #2563EB' : undefined }}>
+                       <td style={{ ...td, paddingLeft: 14 }}>
+                         <input type="checkbox" checked={selectedIds.has(row.id)} onChange={(event) => toggleSelection(row.id, event.target.checked)} aria-label={`${row.referenceNumber} talebini seç`} style={{ width: 17, height: 17, accentColor: '#2563EB' }} />
+                       </td>
                       <td style={td}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                           <Link href={`/admin/talepler/${row.id}`} style={{ color: '#2563EB', textDecoration: 'none', fontFamily: 'monospace', fontSize: '12px', fontWeight: 600 }}>
                             {row.referenceNumber}
                           </Link>
                           {row.isTestData && <TestDataBadge />}
+                           {!row.readAt && <span style={{ padding: '2px 7px', borderRadius: 999, background: '#2563EB', color: '#FFF', fontSize: 9, fontWeight: 800 }}>OKUNMADI</span>}
                         </div>
                       </td>
                       <td style={td}>{row.name}</td>
@@ -611,7 +693,6 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
                         </span>
                       </td>
                        <td style={{ ...td, fontSize: '12px', color: row.source === 'contact-form' ? '#0F766E' : '#64748B', fontWeight: row.source === 'contact-form' ? 700 : undefined }}>{row.source === 'contact-form' ? '📩 İletişim Formu' : formatSource(row.source)}</td>
-                       <td style={{ ...td, fontSize: '12px', color: '#64748B', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={formatRequestPage(row.pageSlug)}>{formatRequestPage(row.pageSlug)}</td>
                       <td style={{ ...td, fontSize: '12px' }}>{SERVICE_LABELS[row.serviceType] ?? row.serviceType}</td>
                       <td style={{ ...td, fontSize: '12px' }}>
                         <span style={{ padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, background: row.intent === 'QUOTE' ? '#EFF6FF' : '#F0FDF4', color: row.intent === 'QUOTE' ? '#1D4ED8' : '#15803D', border: `1px solid ${row.intent === 'QUOTE' ? '#BFDBFE' : '#BBF7D0'}` }}>
@@ -647,14 +728,6 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
                               <Archive size={11} /> Arşivle
                             </button>
                           )}
-                          <button
-                            onClick={() => toggleTestData(row.id, !row.isTestData)}
-                            disabled={!!updating}
-                            title={row.isTestData ? 'Test işaretini kaldır' : 'Test olarak işaretle'}
-                            style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '11px', background: row.isTestData ? '#FEF3C7' : '#F1F5F9', color: row.isTestData ? '#92400E' : '#64748B', border: 'none', cursor: 'pointer' }}
-                          >
-                            {row.isTestData ? 'Test✓' : 'Test?'}
-                          </button>
                           {canDelete && <button onClick={() => deleteRequest(row.id)} disabled={!!updating} title="Kalıcı olarak sil" style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '11px', background: '#FFF1F2', color: '#BE123C', border: 'none', cursor: 'pointer', display: 'flex' }}><Trash2 size={11} /></button>}
                         </div>
                       </td>

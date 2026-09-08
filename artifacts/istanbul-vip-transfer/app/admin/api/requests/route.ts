@@ -22,7 +22,6 @@ export async function GET(req: NextRequest) {
   const intent    = searchParams.get('intent') ?? '';
   const lang      = searchParams.get('lang') ?? '';
   const source    = searchParams.get('source') ?? '';
-  const pageSlug  = searchParams.get('page_slug') ?? '';
   const dateFrom  = searchParams.get('date_from') ?? '';
   const dateTo    = searchParams.get('date_to') ?? '';
   const testData  = searchParams.get('test_data') ?? ''; // 'real' | 'test' | '' (all)
@@ -40,7 +39,6 @@ export async function GET(req: NextRequest) {
     if (intent)  conditions.push(eq(reservationRequests.intent,      intent as never));
     if (lang)    conditions.push(eq(reservationRequests.locale,      lang));
     if (source)  conditions.push(eq(reservationRequests.source,      source));
-    if (pageSlug) conditions.push(eq(reservationRequests.pageSlug, pageSlug));
     if (dateFrom) conditions.push(gte(reservationRequests.createdAt, new Date(dateFrom)));
     if (dateTo) {
       // Include the entire end day
@@ -56,6 +54,13 @@ export async function GET(req: NextRequest) {
     )!);
 
     const where = and(...conditions);
+    if (searchParams.get('all_ids') === '1') {
+      const ids = await db.select({ id: reservationRequests.id })
+        .from(reservationRequests)
+        .where(where)
+        .orderBy(desc(reservationRequests.createdAt));
+      return NextResponse.json({ ids: ids.map(row => row.id) });
+    }
 
     const [rows, totals, summaryRows] = await Promise.all([
       db.select({
@@ -68,7 +73,6 @@ export async function GET(req: NextRequest) {
         normalizedEmail: reservationRequests.normalizedEmail,
         locale:          reservationRequests.locale,
         source:          reservationRequests.source,
-        pageSlug:        reservationRequests.pageSlug,
         status:          reservationRequests.status,
         createdAt:       reservationRequests.createdAt,
         archivedAt:      reservationRequests.archivedAt,
@@ -79,19 +83,17 @@ export async function GET(req: NextRequest) {
       db.select({
         source: reservationRequests.source,
         locale: reservationRequests.locale,
-        pageSlug: reservationRequests.pageSlug,
         count: count(),
       }).from(reservationRequests).where(where).groupBy(
         reservationRequests.source,
         reservationRequests.locale,
-        reservationRequests.pageSlug,
       ).orderBy(desc(count())).limit(100),
     ]);
 
     const total      = totals[0]?.count ?? 0;
     const totalPages = Math.max(1, Math.ceil(total / limit));
 
-    const countBy = (key: 'source' | 'locale' | 'pageSlug') => {
+    const countBy = (key: 'source' | 'locale') => {
       const counts = new Map<string, number>();
       for (const entry of summaryRows) {
         const value = entry[key] || '/';
@@ -109,11 +111,50 @@ export async function GET(req: NextRequest) {
       summary: {
         bySource: countBy('source'),
         byLocale: countBy('locale'),
-        byPage: countBy('pageSlug'),
       },
     });
   } catch (err) {
     console.error('[admin/requests] list error:', (err as Error)?.message);
     return NextResponse.json({ error: 'DB error' }, { status: 500 });
+  }
+}
+
+/** Permanently remove selected requests. Restricted to SUPER_ADMIN, matching single delete. */
+export async function DELETE(req: NextRequest) {
+  const { getSession } = await import('@/lib/auth/session');
+  const session = await getSession();
+  if (!session.isLoggedIn) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (session.role !== 'SUPER_ADMIN') {
+    return NextResponse.json({ error: 'Bu işlem yalnızca Süper Yönetici tarafından yapılabilir.' }, { status: 403 });
+  }
+  let body: { ids?: unknown };
+  try { body = await req.json(); } catch { return NextResponse.json({ error: 'Geçersiz istek.' }, { status: 400 }); }
+  const ids = Array.isArray(body.ids)
+    ? [...new Set(body.ids.filter((id): id is string => typeof id === 'string' && id.length > 0))].slice(0, 1000)
+    : [];
+  if (!ids.length) return NextResponse.json({ error: 'Silinecek talep seçilmedi.' }, { status: 422 });
+  try {
+    const { db } = await import('@/db');
+    const { reservationRequests, auditLogs } = await import('@/db/schema');
+    const { inArray } = await import('drizzle-orm');
+    const deleted = await db.transaction(async (tx) => {
+      const removed = await tx.delete(reservationRequests)
+        .where(inArray(reservationRequests.id, ids))
+        .returning({ id: reservationRequests.id });
+      if (removed.length) {
+        await tx.insert(auditLogs).values(removed.map(({ id }) => ({
+          adminUserId: session.adminId ?? null,
+          action: 'DELETE',
+          entityType: 'reservation_request',
+          entityId: id,
+          metadata: {},
+        })));
+      }
+      return removed;
+    });
+    return NextResponse.json({ ok: true, deletedCount: deleted.length });
+  } catch (err) {
+    console.error('[admin/requests] bulk delete error:', (err as Error)?.message);
+    return NextResponse.json({ error: 'Seçilen talepler silinemedi.' }, { status: 500 });
   }
 }

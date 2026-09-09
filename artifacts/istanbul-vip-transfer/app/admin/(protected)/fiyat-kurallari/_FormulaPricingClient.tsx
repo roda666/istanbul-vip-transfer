@@ -565,13 +565,13 @@ function FastQuotePanel({
               : 'border-blue-200 bg-blue-50 text-blue-800'
         }`}>
           {distanceLoading
-            ? 'Mesafe koordinatlardan çözülüyor…'
+            ? 'Google Maps yol mesafesi hesaplanıyor…'
             : distance?.state === 'GOOGLE_MAPS'
               ? `Google Maps yol mesafesi: ${distance.distanceKm} km`
               : distance?.state === 'DEFINED_ROUTE'
               ? `Doğrulanmış rota: ${distance.distanceKm} km`
               : distance?.state === 'ESTIMATED'
-                ? `Koordinat tahmini: ${distance.distanceKm} km${distance.roadDistanceMultiplier ? ` (yol katsayısı ×${distance.roadDistanceMultiplier})` : ''}`
+                ? `Google Maps kullanılamadı — dahili güvenlik tahmini: ${distance.distanceKm} km${distance.roadDistanceMultiplier ? ` (yol katsayısı ×${distance.roadDistanceMultiplier})` : ''}`
                 : distance?.state === 'UNAVAILABLE'
                   // Never show a guessed number — say plainly that it could not be calculated, with the reason.
                   ? `Hesaplanamadı${distance.reason ? ` (${describeDistanceUnavailableReason(distance.reason)})` : ''}`

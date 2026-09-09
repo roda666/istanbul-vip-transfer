@@ -214,7 +214,7 @@ function RouteModal({ route, locationOptions, vehicleOptions, onSave, onClose, s
     </div>
   );
 
-  const resolveDistance = async () => {
+  const resolveGoogleMapsDistance = async () => {
     if (!form.originLocationId || !form.destinationLocationId) {
       setDistanceMessage('Önce iki kayıtlı lokasyonu seçin.');
       return;
@@ -232,19 +232,25 @@ function RouteModal({ route, locationOptions, vehicleOptions, onSave, onClose, s
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.result || payload.result.state === 'UNAVAILABLE') {
-        setDistanceMessage(payload?.error ?? 'Mesafe koordinatlardan hesaplanamadı.');
+        setDistanceMessage(payload?.error ?? 'Google Maps yol mesafesi hesaplanamadı.');
         return;
       }
       const result = payload.result as { distanceKm: number; source: string; roadDistanceMultiplier?: number };
       setForm((current) => ({
         ...current,
         distanceKm: result.distanceKm,
-        distanceSource: result.source === 'defined_route' ? 'ADMIN_VERIFIED' : 'COORDINATE_ESTIMATE',
+        distanceSource: result.source === 'defined_route'
+          ? 'ADMIN_VERIFIED'
+          : result.source === 'coordinate_estimate'
+            ? 'COORDINATE_ESTIMATE'
+            : 'LEGACY_UNVERIFIED',
       }));
       setDistanceMessage(
-        result.source === 'defined_route'
-          ? `Bu konum çifti için doğrulanmış ${result.distanceKm} km rota bulundu.`
-          : `${result.distanceKm} km koordinat tahmini uygulandı${result.roadDistanceMultiplier ? ` (yol katsayısı ×${result.roadDistanceMultiplier})` : ''}.`,
+        result.source === 'google_maps'
+          ? `Google Maps Routes yol mesafesi: ${result.distanceKm} km. Kaydetmeden önce doğrulayabilirsiniz.`
+          : result.source === 'defined_route'
+            ? `Google Maps kullanılamadı; kayıtlı doğrulanmış ${result.distanceKm} km rota kullanıldı.`
+            : `Google Maps kullanılamadı; dahili güvenlik tahmini ${result.distanceKm} km${result.roadDistanceMultiplier ? ` (yol katsayısı ×${result.roadDistanceMultiplier})` : ''}.`,
       );
     } catch {
       setDistanceMessage('Mesafe servisine ulaşılamadı. Tekrar deneyin.');
@@ -316,7 +322,7 @@ function RouteModal({ route, locationOptions, vehicleOptions, onSave, onClose, s
               </select>
             </div>
             <p style={{ gridColumn: '1 / -1', color: MUTED, fontSize: '11px', fontFamily: 'Inter, sans-serif', lineHeight: 1.5, margin: 0 }}>
-              İki kayıtlı lokasyonu birlikte seçin. Koordinatlardan hesaplanan mesafeyi aşağıdaki düğmeyle getirin; yöneticinin onayladığı mesafe gelecekte bu çift için öncelik alır.
+              İki kayıtlı lokasyonu birlikte seçin. Yol mesafesi Google Maps Routes üzerinden alınır; Google kullanılamazsa kayıtlı doğrulanmış rota veya dahili güvenlik tahmini devreye girer.
             </p>
           </div>
 
@@ -334,9 +340,9 @@ function RouteModal({ route, locationOptions, vehicleOptions, onSave, onClose, s
             Rota yaka geçişi içeriyor
           </label>
           <div style={{ background: '#F8FAFC', border: `1px solid ${BORDER}`, borderRadius: '8px', padding: '12px', display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
-            <button type="button" onClick={resolveDistance} disabled={resolvingDistance || !form.originLocationId || !form.destinationLocationId} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '7px', color: '#1D4ED8', padding: '7px 10px', fontSize: '12px', fontWeight: 600, cursor: resolvingDistance ? 'wait' : 'pointer', opacity: !form.originLocationId || !form.destinationLocationId ? 0.55 : 1 }}>
+            <button type="button" onClick={resolveGoogleMapsDistance} disabled={resolvingDistance || !form.originLocationId || !form.destinationLocationId} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '7px', color: '#1D4ED8', padding: '7px 10px', fontSize: '12px', fontWeight: 600, cursor: resolvingDistance ? 'wait' : 'pointer', opacity: !form.originLocationId || !form.destinationLocationId ? 0.55 : 1 }}>
               {resolvingDistance ? <Loader2 size={14} className="animate-spin" /> : <MapPinned size={14} />}
-              Koordinatlardan Mesafeyi Getir
+              Google Maps Yol Mesafesini Getir
             </button>
             <label style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', color: TEXT, fontSize: '12px', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
               <input type="checkbox" checked={form.distanceSource === 'ADMIN_VERIFIED'} onChange={(event) => set('distanceSource', event.target.checked ? 'ADMIN_VERIFIED' : 'COORDINATE_ESTIMATE')} />

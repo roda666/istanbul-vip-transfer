@@ -98,3 +98,17 @@ mtime_ms = 1788903200892
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/173752f2-d332-443b-b553-039d92c5ec14/27c59d6e-fa68-4d29-86b8-aa51ed8bc3f2"
 storage_version_token = "1788903747529814"
 content_type = "image/png"
+
+[[outputs]]
+id = "3uwHpMH0cyPr4dQb0lapR"
+uri = "file://artifacts/istanbul-vip-transfer/reports/location-geocoding-audit-2026-09-09.csv"
+type = "table"
+title = "Lokasyon Geocoding Audit — 9 Eylül 2026"
+description = "134 gerçek lokasyonun eski/yeni koordinatları, Google sonuç türü, güven seviyesi ve güncelleme durumunu içeren tam denetim CSV’si."
+logical_id = "886c6471-4d1f-4906-8977-8e7b9802ab50"
+content_hash = "sha256:926c18a489476c3f74dd9d090b0271003ee9ceb869724adf284e4ef85a5bd19b"
+size = 29995
+mtime_ms = 1788957796369
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/886c6471-4d1f-4906-8977-8e7b9802ab50/9c226074-375c-482a-9b64-6cd825ea57a1"
+storage_version_token = "1788958270811779"
+content_type = "text/csv"

@@ -120,3 +120,4 @@
 - [Admin location geocoding](admin-location-geocoding.md) — geocoding is an explicit admin-only form-fill action; coordinates remain editable and persist only after normal save.
 - [Transfer-route Google metrics](transfer-route-google-metrics.md) — bulk route verification accepts only unambiguous endpoint matches and never changes pricing or manual traffic windows.
 - [Admin translation auto-fill](admin-translation-auto-fill.md) — Turkish saves fill only blank EN/DE/RU/AR/FR/ES/IT/NL fields; every existing value acts as a durable manual lock.
+- [Vehicle pricing mode persistence](vehicle-pricing-mode-persistence.md) — preserve each mode’s latest values independently while allowing only one active formula per vehicle.

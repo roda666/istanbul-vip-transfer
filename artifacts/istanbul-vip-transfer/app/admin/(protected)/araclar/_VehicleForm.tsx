@@ -10,6 +10,7 @@ import { ImageUploadField } from '../../_components/ImageUploadField';
 import { AISeoGenerator } from '../../_components/AISeoGenerator';
 import { normalizeVehicleType, VEHICLE_TYPE_OPTIONS } from '@/lib/vehicle-options';
 import { VEHICLE_FEATURE_CATALOG } from '@/lib/vehicle-feature-catalog';
+import { selectPricingProfilesForEditor } from '@/lib/vehicle-pricing-profile-selection';
 import { TOLL_VEHICLE_CLASSES, TOLL_VEHICLE_CLASS_DESCRIPTIONS, TOLL_VEHICLE_CLASS_LABELS, TOLL_VEHICLE_CLASS_SELECTION_WARNING } from '@/lib/toll-vehicle-classes';
 
 /** Active toll point, as needed for per-point class assignment. */
@@ -329,14 +330,24 @@ type VehiclePricingProfile = {
   notes: string | null;
 };
 
+const DEFAULT_DISTANCE_PROFILE = { opening: 0, first: 0, threshold: 100, second: 0 };
+const DEFAULT_HOURLY_PROFILE = {
+  rate: 0,
+  minimum: 4,
+  includedMode: 'PER_HOUR' as 'PER_HOUR' | 'PACKAGE',
+  includedKm: 10,
+  excessKm: 0,
+  excessHour: 0,
+};
+
 function VehiclePricingProfileEditor({ vehicleId, eligible }: { vehicleId: string; eligible: boolean }) {
   const [profile, setProfile] = useState<VehiclePricingProfile | null>(null);
   const [mode, setMode] = useState<'DISTANCE' | 'HOURLY'>('DISTANCE');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
-  const [distance, setDistance] = useState({ opening: 0, first: 0, threshold: 100, second: 0 });
-  const [hourly, setHourly] = useState({ rate: 0, minimum: 4, includedMode: 'PER_HOUR' as 'PER_HOUR' | 'PACKAGE', includedKm: 10, excessKm: 0, excessHour: 0 });
+  const [distance, setDistance] = useState(DEFAULT_DISTANCE_PROFILE);
+  const [hourly, setHourly] = useState(DEFAULT_HOURLY_PROFILE);
   const [moneyDrafts, setMoneyDrafts] = useState<Record<string, string>>({});
 
   const formatKurusDraft = (value: number, optional = false) => {
@@ -359,42 +370,40 @@ function VehiclePricingProfileEditor({ vehicleId, eligible }: { vehicleId: strin
       const response = await fetch(`/admin/api/pricing/profiles?vehicleId=${encodeURIComponent(vehicleId)}`);
       const payload = await response.json().catch(() => null);
       if (!response.ok || !Array.isArray(payload?.profiles)) throw new Error(payload?.error ?? 'Fiyat profili alınamadı.');
-      const active = payload.profiles.find((item: VehiclePricingProfile) => item.active) ?? null;
-      setProfile(active);
-      if (active) {
-        setMode(active.mode);
-        if (active.mode === 'DISTANCE') {
-          const nextDistance = {
-            opening: active.distanceOpeningKurus ?? 0,
-            first: active.distanceFirstKmKurus ?? 0,
-            threshold: active.distanceThresholdKm ?? 100,
-            second: active.distanceSecondKmKurus ?? 0,
-          };
-          setDistance(nextDistance);
-          setMoneyDrafts((current) => ({
-            ...current,
-            distanceOpening: formatKurusDraft(nextDistance.opening, true),
-            distanceFirst: formatKurusDraft(nextDistance.first),
-            distanceSecond: formatKurusDraft(nextDistance.second, true),
-          }));
-        } else {
-          const nextHourly = {
-            rate: active.hourlyRateKurus ?? 0,
-            minimum: active.minimumHours ?? 4,
-            includedMode: active.includedKmMode ?? 'PER_HOUR',
-            includedKm: active.includedKm ?? 10,
-            excessKm: active.excessKmKurus ?? 0,
-            excessHour: active.excessHourKurus ?? 0,
-          };
-          setHourly(nextHourly);
-          setMoneyDrafts((current) => ({
-            ...current,
-            hourlyRate: formatKurusDraft(nextHourly.rate),
-            hourlyExcessKm: formatKurusDraft(nextHourly.excessKm, true),
-            hourlyExcessHour: formatKurusDraft(nextHourly.excessHour, true),
-          }));
+      const { byMode, active, selectedMode } = selectPricingProfilesForEditor<VehiclePricingProfile>(payload.profiles);
+      const distanceProfile = byMode.DISTANCE;
+      const hourlyProfile = byMode.HOURLY;
+      const nextDistance = distanceProfile
+        ? {
+          opening: distanceProfile.distanceOpeningKurus ?? 0,
+          first: distanceProfile.distanceFirstKmKurus ?? 0,
+          threshold: distanceProfile.distanceThresholdKm ?? 100,
+          second: distanceProfile.distanceSecondKmKurus ?? 0,
         }
-      }
+        : DEFAULT_DISTANCE_PROFILE;
+      const nextHourly = hourlyProfile
+        ? {
+          rate: hourlyProfile.hourlyRateKurus ?? 0,
+          minimum: hourlyProfile.minimumHours ?? 4,
+          includedMode: hourlyProfile.includedKmMode ?? 'PER_HOUR',
+          includedKm: hourlyProfile.includedKm ?? 10,
+          excessKm: hourlyProfile.excessKmKurus ?? 0,
+          excessHour: hourlyProfile.excessHourKurus ?? 0,
+        }
+        : DEFAULT_HOURLY_PROFILE;
+
+      setProfile(active);
+      setMode(selectedMode);
+      setDistance(nextDistance);
+      setHourly(nextHourly);
+      setMoneyDrafts({
+        distanceOpening: formatKurusDraft(nextDistance.opening, true),
+        distanceFirst: formatKurusDraft(nextDistance.first),
+        distanceSecond: formatKurusDraft(nextDistance.second, true),
+        hourlyRate: formatKurusDraft(nextHourly.rate),
+        hourlyExcessKm: formatKurusDraft(nextHourly.excessKm, true),
+        hourlyExcessHour: formatKurusDraft(nextHourly.excessHour, true),
+      });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Fiyat profili alınamadı.');
     } finally {
@@ -497,7 +506,11 @@ function VehiclePricingProfileEditor({ vehicleId, eligible }: { vehicleId: strin
           <div style={{ color: TEXT, fontSize: '14px', fontWeight: 700, fontFamily: 'Inter, sans-serif' }}>Araç Fiyat Profili</div>
           <div style={{ color: MUTED, fontSize: '11px', fontFamily: 'Inter, sans-serif', marginTop: '3px' }}>Bu araç için TRY bazlı mesafe veya saatlik formül.</div>
         </div>
-        {profile && <span style={{ color: '#047857', fontSize: '10px', fontWeight: 700, fontFamily: 'Inter, sans-serif' }}>AKTİF FORMÜL</span>}
+        {profile && (
+          <span style={{ color: profile.mode === mode ? '#047857' : MUTED, fontSize: '10px', fontWeight: 700, fontFamily: 'Inter, sans-serif' }}>
+            {profile.mode === mode ? 'AKTİF FORMÜL' : 'KAYITLI · PASİF'}
+          </span>
+        )}
       </div>
       {!eligible && <div style={{ color: '#A16207', fontSize: '12px', lineHeight: 1.5, marginBottom: '12px' }}>Bu araç talep üzerine fiyatlandırılıyor. Profil kaydetmek için üstteki “otomatik fiyat hesaplamasına uygundur” seçeneğini etkinleştirip aracı kaydedin.</div>}
       {loading ? <div style={{ color: MUTED, fontSize: '12px' }}>Fiyat profili yükleniyor…</div> : (
@@ -511,7 +524,7 @@ function VehiclePricingProfileEditor({ vehicleId, eligible }: { vehicleId: strin
               </select>
             </div>
             <div style={{ alignSelf: 'end', color: MUTED, fontSize: '11px', lineHeight: 1.5 }}>
-              Yeni kayıt aynı moddaki eski aktif formülü arşivler; geçerlilik tarihi kullanılmaz.
+              Seçili mod aktif olur; diğer modun son kaydı silinmeden korunur.
             </div>
           </div>
           {mode === 'DISTANCE' ? (

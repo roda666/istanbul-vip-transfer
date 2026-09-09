@@ -75,15 +75,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Bu araç fiyat hesaplamasına dahil değil.' }, { status: 422 });
   }
   const [profile] = await db.transaction(async (tx) => {
-    // A new formula takes effect immediately. Prior versions remain auditable
-    // but become inactive, so no date window is needed to select one.
+    // A vehicle uses one selected formula mode at a time. Prior formulas from
+    // both modes remain stored and auditable, but only this new row stays active.
     await tx.update(vehiclePricingProfiles).set({
       active: false,
       updatedAt: new Date(),
       updatedBy: session.adminId,
     }).where(and(
       eq(vehiclePricingProfiles.vehicleId, data.data.vehicleId),
-      eq(vehiclePricingProfiles.mode, data.data.mode),
       eq(vehiclePricingProfiles.active, true),
     ));
     return tx.insert(vehiclePricingProfiles).values({
@@ -123,7 +122,6 @@ export async function PATCH(request: NextRequest) {
         updatedBy: session.adminId,
       }).where(and(
         eq(vehiclePricingProfiles.vehicleId, profile.vehicleId),
-        eq(vehiclePricingProfiles.mode, profile.mode),
         eq(vehiclePricingProfiles.active, true),
       ));
     }

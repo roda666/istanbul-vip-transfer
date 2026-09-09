@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
     // locations must lead the generic province list; for local, airports
     // lead districts lead landmark/region points.
     const collator = new Intl.Collator('tr-TR', { sensitivity: 'base' });
-    const categoryRank = (row: (typeof rows)[number]): number => {
+    const categoryRank = (row: Pick<(typeof rows)[number], 'type'>): number => {
       if (scopeParam === 'intercity') {
         return row.type === 'PROVINCE' ? 1 : 0;
       }

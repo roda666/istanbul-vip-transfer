@@ -67,13 +67,15 @@ export async function PATCH(
       `);
     } else if (action === 'rename' && names) {
       const { fillMissingTranslations } = await import('@/lib/ai/fill-missing-translations');
-      const sourceName = typeof names.tr === 'string' && names.tr.trim() ? names.tr.trim() : cat.nameTranslations?.tr;
+      const currentNames = (cat.nameTranslations ?? {}) as Record<string, string>;
+      const requestedNames = names as Record<string, string>;
+      const sourceName = typeof requestedNames.tr === 'string' && requestedNames.tr.trim() ? requestedNames.tr.trim() : currentNames.tr;
       if (!sourceName) return NextResponse.json({ error: 'Türkçe kategori adı zorunludur.' }, { status: 422 });
       const existingByLocale = Object.fromEntries(
-        Object.entries(names).filter(([locale]) => locale !== 'tr').map(([locale, value]) => [locale, { name: value }]),
+        Object.entries({ ...currentNames, ...requestedNames }).filter(([locale]) => locale !== 'tr').map(([locale, value]) => [locale, { name: value }]),
       );
       const translated = await fillMissingTranslations({ name: sourceName }, existingByLocale);
-      const completedNames = { ...names, tr: sourceName };
+      const completedNames: Record<string, string> = { ...currentNames, ...requestedNames, tr: sourceName };
       for (const [locale, fields] of Object.entries(translated)) {
         if (!completedNames[locale] && fields.name) completedNames[locale] = fields.name;
       }

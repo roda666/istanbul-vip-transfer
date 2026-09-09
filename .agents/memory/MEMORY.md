@@ -119,3 +119,4 @@
 - [WhatsApp link contract](whatsapp-link-contract.md) — callers pass plain text; one builder encodes once; wa.me paths are digits-only, displayed customer phones are +E.164, app choice belongs to the OS.
 - [Admin location geocoding](admin-location-geocoding.md) — geocoding is an explicit admin-only form-fill action; coordinates remain editable and persist only after normal save.
 - [Transfer-route Google metrics](transfer-route-google-metrics.md) — bulk route verification accepts only unambiguous endpoint matches and never changes pricing or manual traffic windows.
+- [Admin translation auto-fill](admin-translation-auto-fill.md) — Turkish saves fill only blank EN/DE/RU/AR/FR/ES/IT/NL fields; every existing value acts as a durable manual lock.

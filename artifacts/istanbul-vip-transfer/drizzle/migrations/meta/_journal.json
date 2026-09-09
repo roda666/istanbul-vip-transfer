@@ -547,6 +547,13 @@
       "when": 1789000000020,
       "tag": "0077_global_vehicle_toll_class",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1789000000021,
+      "tag": "0078_admin_entity_translations",
+      "breakpoints": true
     }
   ]
 }

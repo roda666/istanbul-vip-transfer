@@ -97,29 +97,11 @@ export async function POST(request: NextRequest) {
   const translations: Record<string, string> = { tr: nameTr.trim() };
 
   try {
-    const OpenAI = (await import('openai')).default;
-    const { resolveIntegrationSecret } = await import('@/lib/integration-secrets');
-    const apiKey = await resolveIntegrationSecret('OPENAI_API_KEY');
-    if (!apiKey) return NextResponse.json({ error: 'AI yapılandırılmamış.' }, { status: 503 });
-    const openai = new OpenAI({ apiKey });
-
-    await Promise.allSettled(
-      Object.entries(LANGS).map(async ([code, lang]) => {
-        const res = await openai.chat.completions.create({
-          model: 'gpt-4.1-mini',
-          messages: [
-            {
-              role: 'system',
-              content: `Translate this Turkish service category name to ${lang}. Return ONLY the translated name, nothing else. Keep it short (1-5 words). This is for a VIP airport transfer company.`,
-            },
-            { role: 'user', content: nameTr.trim() },
-          ],
-          temperature: 0.1,
-          max_tokens: 30,
-        });
-        translations[code] = res.choices[0]?.message?.content?.trim() ?? nameTr.trim();
-      })
-    );
+    const { fillMissingTranslations } = await import('@/lib/ai/fill-missing-translations');
+    const completed = await fillMissingTranslations({ name: nameTr.trim() });
+    for (const code of Object.keys(LANGS)) {
+      translations[code] = completed[code]?.name?.trim() ?? nameTr.trim();
+    }
   } catch (err) {
     console.warn('Auto-translation failed, using TR fallback:', err);
     for (const code of Object.keys(LANGS)) translations[code] = nameTr.trim();

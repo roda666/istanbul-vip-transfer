@@ -145,7 +145,10 @@ export default function VehicleFeatureDefaultsPanel() {
                 })}
               </div>
               <div style={{ marginTop: '18px' }}>
-                <div style={{ color: TEXT, fontWeight: 600, fontSize: '13px', marginBottom: '8px' }}>Özel özellikler (tüm diller zorunlu)</div>
+                <div style={{ color: TEXT, fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>Özel özellikler</div>
+                <div style={{ color: MUTED, fontSize: '12px', lineHeight: 1.5, marginBottom: '10px' }}>
+                  Yalnızca Türkçe zorunludur. Boş bırakılan diğer diller kaydederken AI ile otomatik çevrilir; oluşan metinleri daha sonra düzenleyebilirsiniz.
+                </div>
                 {customFeatures.map((feature, index) => (
                   <div key={feature.code} style={{ border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '10px', marginBottom: '8px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: MUTED, fontSize: '11px' }}>
@@ -154,9 +157,16 @@ export default function VehicleFeatureDefaultsPanel() {
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: '6px', marginTop: '6px' }}>
                       {PUBLIC_VEHICLE_LOCALES.map((locale) => (
-                        <label key={locale} style={{ fontSize: '11px', color: MUTED }}>
-                          {locale.toUpperCase()}
-                          <input value={feature.translations[locale] ?? ''} onChange={(event) => setCustomFeatures((prev) => prev.map((item, i) => i === index ? { ...item, translations: { ...item.translations, [locale]: event.target.value } } : item))} style={{ width: '100%', padding: '5px' }} />
+                        <label key={locale} style={{ display: 'grid', gap: '5px', fontSize: '11px', color: MUTED, fontWeight: 700 }}>
+                           <span>{locale.toUpperCase()}{locale === 'tr' ? ' · Zorunlu' : ' · AI otomatik'}</span>
+                           <input
+                             value={feature.translations[locale] ?? ''}
+                             placeholder={locale === 'tr' ? 'örn. Bebek koltuğu' : 'Kaydedince otomatik çevrilir'}
+                             onChange={(event) => setCustomFeatures((prev) => prev.map((item, i) => i === index ? { ...item, translations: { ...item.translations, [locale]: event.target.value } } : item))}
+                             style={{ width: '100%', minHeight: '42px', boxSizing: 'border-box', padding: '9px 10px', border: `1px solid ${BORDER}`, borderRadius: '7px', background: '#FFFFFF', color: TEXT, fontSize: '13px', fontFamily: 'Inter, sans-serif', outline: 'none', transition: 'border-color 120ms ease, box-shadow 120ms ease' }}
+                             onFocus={(event) => { event.currentTarget.style.borderColor = '#2563EB'; event.currentTarget.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.14)'; }}
+                             onBlur={(event) => { event.currentTarget.style.borderColor = BORDER; event.currentTarget.style.boxShadow = 'none'; }}
+                           />
                         </label>
                       ))}
                     </div>
@@ -181,7 +191,7 @@ export default function VehicleFeatureDefaultsPanel() {
                     opacity: saving ? 0.6 : 1,
                   }}
                 >
-                  {saving ? 'Kaydediliyor…' : 'Kaydet'}
+                  {saving ? 'Kaydediliyor ve çevriliyor…' : 'Kaydet ve Çevir'}
                 </button>
                 {savedAt && !error && (
                   <span style={{ color: '#16A34A', fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>

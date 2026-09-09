@@ -472,7 +472,7 @@ function VehiclePricingProfileEditor({ vehicleId, eligible }: { vehicleId: strin
               <div style={{ marginTop: '14px', borderTop: `1px solid ${BORDER}`, paddingTop: '12px' }}>
                 <div style={{ color: MUTED, fontWeight: 700, fontSize: '10px', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '8px' }}>Canlı Mesafe Örnekleri</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '6px' }}>
-                  {[20, 50, 100, 200, 500].map((km) => <div key={km} style={{ background: BG2, border: `1px solid ${BORDER}`, borderRadius: '6px', padding: '7px', textAlign: 'center' }}><div style={{ color: MUTED, fontSize: '10px' }}>{km} km</div><div style={{ color: TEXT, fontSize: '11px', fontWeight: 700 }}>{(preview(km) / 100).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</div></div>)}
+                  {[20, 50, 100, 200, 500].map((km) => <div key={km} style={{ background: BG2, border: `1px solid ${BORDER}`, borderRadius: '6px', padding: '7px', textAlign: 'center' }}><div style={{ color: MUTED, fontSize: '10px' }}>{km} km</div><div style={{ color: TEXT, fontSize: '11px', fontWeight: 700 }}>{preview(km) / 100} TL</div></div>)}
                 </div>
               </div>
             </>

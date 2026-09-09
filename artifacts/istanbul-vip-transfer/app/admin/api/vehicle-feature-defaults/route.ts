@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { VEHICLE_FEATURE_CODES } from '@/lib/vehicle-feature-catalog';
+import { PUBLIC_VEHICLE_LOCALES, VEHICLE_FEATURE_CODES, type PublicVehicleLocale } from '@/lib/vehicle-feature-catalog';
 
 const translationsSchema = z.object({
   tr: z.string().trim().min(1),
-  en: z.string().trim().min(1),
-  de: z.string().trim().min(1),
-  ru: z.string().trim().min(1),
-  ar: z.string().trim().min(1),
-  fr: z.string().trim().min(1),
-  es: z.string().trim().min(1),
-  it: z.string().trim().min(1),
-  nl: z.string().trim().min(1),
+  en: z.string().trim().default(''),
+  de: z.string().trim().default(''),
+  ru: z.string().trim().default(''),
+  ar: z.string().trim().default(''),
+  fr: z.string().trim().default(''),
+  es: z.string().trim().default(''),
+  it: z.string().trim().default(''),
+  nl: z.string().trim().default(''),
 });
 
 const settingsSchema = z.object({
@@ -66,14 +66,51 @@ export async function PUT(request: NextRequest) {
   const { db } = await import('@/db');
   const { vehicleFeatureDefaults } = await import('@/db/schema');
   const { invalidateVehicleFeatureDefaults } = await import('@/lib/vehicle-feature-defaults-server');
+  const { translateServicePageFields } = await import('@/lib/ai/translate-service-page');
   const now = new Date();
+  let customFeatures;
+  try {
+    customFeatures = await Promise.all(parsed.data.customFeatures.map(async (feature) => {
+      const translations = { ...feature.translations } as Record<PublicVehicleLocale, string>;
+      const missingLocales = PUBLIC_VEHICLE_LOCALES.filter(
+        (locale): locale is Exclude<PublicVehicleLocale, 'tr'> =>
+          locale !== 'tr' && !translations[locale]?.trim(),
+      );
+
+      const generated = await Promise.all(missingLocales.map(async (locale) => {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 45_000);
+        try {
+          const result = await translateServicePageFields(
+            { label: translations.tr.trim() },
+            locale,
+            controller.signal,
+          );
+          if (!result.ok || !result.translated.label?.trim()) {
+            throw new Error(`${locale.toUpperCase()} çevirisi üretilemedi.`);
+          }
+          return [locale, result.translated.label.trim()] as const;
+        } finally {
+          clearTimeout(timeout);
+        }
+      }));
+
+      for (const [locale, value] of generated) translations[locale] = value;
+      return { code: feature.code, translations };
+    }));
+  } catch (error: unknown) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Otomatik çeviri üretilemedi.' },
+      { status: 502 },
+    );
+  }
 
   const [row] = await db
     .insert(vehicleFeatureDefaults)
-    .values({ id: 1, codes: parsed.data.codes, customFeatures: parsed.data.customFeatures, updatedAt: now, updatedBy: session.adminId })
+    .values({ id: 1, codes: parsed.data.codes, customFeatures, updatedAt: now, updatedBy: session.adminId })
     .onConflictDoUpdate({
       target: vehicleFeatureDefaults.id,
-      set: { codes: parsed.data.codes, customFeatures: parsed.data.customFeatures, updatedAt: now, updatedBy: session.adminId },
+      set: { codes: parsed.data.codes, customFeatures, updatedAt: now, updatedBy: session.adminId },
     })
     .returning();
 

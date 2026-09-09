@@ -1,4 +1,5 @@
 import {
+  buildRequestListPresentation,
   buildRequestPresentation,
   type RequestPresentationInput,
   type RequestPresentationSection,
@@ -16,25 +17,6 @@ export function parseRequestExportIds(searchParams: Pick<URLSearchParams, 'getAl
   )).slice(0, 1000);
 }
 
-const headers = ['Referans', 'İsim', 'Telefon', 'E-posta', 'Dil', 'Kaynak', 'Hizmet', 'Talep', 'Durum', 'Kayıt Tarihi'];
-
-const SERVICE_LABELS: Record<string, string> = {
-  AIRPORT_TRANSFER: 'Havalimanı / Şehir İçi Transfer',
-  INTERCITY: 'Şehirler Arası Transfer',
-  ALLOCATION: 'Araç Tahsisi',
-  TOUR: 'Özel Tur / Gezi',
-  CONTACT_INQUIRY: 'İletişim Talebi',
-};
-const INTENT_LABELS: Record<string, string> = { QUOTE: 'Fiyat Teklifi', RESERVATION: 'Rezervasyon' };
-const STATUS_LABELS: Record<string, string> = {
-  NEW: 'Yeni', CONTACTED: 'İletişimde', QUOTED: 'Teklife Gönderildi', CONFIRMED: 'Onaylandı',
-  COMPLETED: 'Tamamlandı', CANCELLED: 'İptal', SPAM: 'Spam', ARCHIVED: 'Arşivlendi',
-};
-const SOURCE_LABELS: Record<string, string> = {
-  'contact-form': 'İletişim Formu',
-  'booking-form': 'Rezervasyon Formu',
-  website: 'Web Sitesi',
-};
 function text(value: unknown) {
   return String(value ?? '').replace(/[\u0000-\u001F]/g, ' ').trim();
 }
@@ -46,11 +28,14 @@ function date(value: Date | string) {
 }
 
 function values(row: RequestExportRow) {
-  return [
-    row.referenceNumber, row.name, row.phone, row.normalizedEmail || '—', row.locale.toUpperCase(),
-    SOURCE_LABELS[row.source] ?? row.source, SERVICE_LABELS[row.serviceType] ?? row.serviceType,
-    INTENT_LABELS[row.intent] ?? row.intent, STATUS_LABELS[row.status] ?? row.status, date(row.createdAt),
-  ].map(text);
+  return buildRequestListPresentation(row).values.map(text);
+}
+
+function headers(row?: RequestExportRow) {
+  return row ? buildRequestListPresentation(row).headers : buildRequestListPresentation({
+    referenceNumber: '', name: '', phone: '', normalizedEmail: null, locale: '',
+    source: '', serviceType: '', intent: '', status: '', createdAt: new Date(0),
+  }).headers;
 }
 
 function detailSections(row: RequestExportRow): RequestPresentationSection[] {
@@ -77,7 +62,7 @@ export function requestsToExcel(rows: RequestExportRow[], detailed = rows.length
           '<Row />',
         ]),
       ].join('')
-    : `${row(headers, 'Header')}${rows.map(item => row(values(item))).join('')}`;
+    : `${row(headers(rows[0]), 'Header')}${rows.map(item => row(values(item))).join('')}`;
   return `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?>
 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
  <Styles>
@@ -109,7 +94,7 @@ function wrap(value: string, max = 78): string[] {
 
 /** A dependency-free PDF reservation card. Turkish glyphs are transliterated for core PDF fonts. */
 export function requestsToPdf(rows: RequestExportRow[], detailed = rows.length === 1) {
-  const ascii = (value: string) => text(value).replace(/İ/g, 'I').replace(/ı/g, 'i').replace(/Ş/g, 'S').replace(/ş/g, 's').replace(/Ğ/g, 'G').replace(/ğ/g, 'g').replace(/Ü/g, 'U').replace(/ü/g, 'u').replace(/Ö/g, 'O').replace(/ö/g, 'o').replace(/Ç/g, 'C').replace(/ç/g, 'c');
+  const ascii = (value: string) => text(value).replace(/[–—]/g, '-').replace(/İ/g, 'I').replace(/ı/g, 'i').replace(/Ş/g, 'S').replace(/ş/g, 's').replace(/Ğ/g, 'G').replace(/ğ/g, 'g').replace(/Ü/g, 'U').replace(/ü/g, 'u').replace(/Ö/g, 'O').replace(/ö/g, 'o').replace(/Ç/g, 'C').replace(/ç/g, 'c');
   const escape = (value: string) => ascii(value).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
   if (detailed && rows[0]) {
     type Item = { kind: 'title' | 'subtitle' | 'section' | 'field'; label?: string; value: string };
@@ -178,22 +163,104 @@ export function requestsToPdf(rows: RequestExportRow[], detailed = rows.length =
     return Buffer.from(output, 'utf8');
   }
 
-  const lines = [
-    'Talepler Raporu',
-    `Olusturulma: ${date(new Date())}`,
-    '',
-    ascii(headers.join(' | ')),
-    ...rows.flatMap(item => [
-      values(item).join(' | '),
-    ]),
-  ];
-  const pages = Array.from({ length: Math.max(1, Math.ceil(lines.length / 48)) }, (_, index) => lines.slice(index * 48, (index + 1) * 48));
-  const objects: string[] = ['<< /Type /Catalog /Pages 2 0 R >>', `<< /Type /Pages /Kids [${pages.map((_, i) => `${3 + i * 2} 0 R`).join(' ')}] /Count ${pages.length} >>`];
-  pages.forEach((page, i) => {
+  const pageWidth = 842;
+  const pageHeight = 595;
+  const margin = 24;
+  const tableHeaders = headers(rows[0]).map(ascii);
+  const columnWidths = [78, 92, 74, 105, 30, 112, 98, 68, 60, 77];
+  const fontSize = 6.7;
+  const lineHeight = 8;
+  const headerHeight = 29;
+  const pageContents: string[][] = [];
+  let commands: string[] = [];
+  let y = 0;
+
+  const cellLines = (value: string, width: number) => {
+    const normalized = ascii(value) || '—';
+    const maxChars = Math.max(3, Math.floor((width - 8) / (fontSize * 0.52)));
+    const words = normalized.split(/\s+/).flatMap(word => {
+      if (word.length <= maxChars) return [word];
+      return Array.from({ length: Math.ceil(word.length / maxChars) }, (_, index) => word.slice(index * maxChars, (index + 1) * maxChars));
+    });
+    const lines: string[] = [];
+    let current = '';
+    for (const word of words) {
+      const candidate = `${current} ${word}`.trim();
+      if (candidate.length > maxChars && current) {
+        lines.push(current);
+        current = word;
+      } else {
+        current = candidate;
+      }
+    }
+    if (current) lines.push(current);
+    return lines.length ? lines : ['—'];
+  };
+
+  const drawCells = (lines: string[][], top: number, height: number, header: boolean, shaded = false) => {
+    if (header) commands.push(`q 0.122 0.365 0.561 rg ${margin} ${top - height} ${pageWidth - margin * 2} ${height} re f Q`);
+    else if (shaded) commands.push(`q 0.965 0.976 0.988 rg ${margin} ${top - height} ${pageWidth - margin * 2} ${height} re f Q`);
+    let x = margin;
+    lines.forEach((cell, columnIndex) => {
+      const width = columnWidths[columnIndex];
+      commands.push(`q 0.70 0.76 0.81 RG 0.5 w ${x} ${top - height} ${width} ${height} re S Q`);
+      cell.forEach((line, lineIndex) => {
+        commands.push(`BT /${header ? 'F2' : 'F1'} ${header ? 7 : fontSize} Tf ${header ? '1 1 1' : '0.12 0.16 0.21'} rg ${x + 4} ${top - 11 - lineIndex * lineHeight} Td (${escape(line)}) Tj ET`);
+      });
+      x += width;
+    });
+  };
+
+  const startPage = () => {
+    commands = [];
+    const continuation = pageContents.length ? ' (devam)' : '';
+    commands.push(`q 0.063 0.165 0.263 rg ${margin} ${pageHeight - 56} ${pageWidth - margin * 2} 34 re f Q`);
+    commands.push(`BT /F2 15 Tf 1 1 1 rg ${margin + 12} ${pageHeight - 35} Td (TALEPLER RAPORU${continuation}) Tj ET`);
+    commands.push(`BT /F1 8 Tf 0.32 0.41 0.48 rg ${margin} ${pageHeight - 70} Td (Olusturulma: ${escape(date(new Date()))}) Tj ET`);
+    const headerLines = tableHeaders.map((value, index) => cellLines(value, columnWidths[index]));
+    y = pageHeight - 82;
+    drawCells(headerLines, y, headerHeight, true);
+    y -= headerHeight;
+  };
+  const finishPage = () => {
+    pageContents.push(commands);
+  };
+
+  startPage();
+  rows.forEach((item, rowIndex) => {
+    const lines = values(item).map((value, index) => cellLines(value, columnWidths[index]));
+    const maxLines = Math.max(...lines.map(cell => cell.length));
+    let lineOffset = 0;
+    while (lineOffset < maxLines) {
+      const availableLines = Math.floor((y - margin - 8) / lineHeight);
+      if (availableLines < 1) {
+        finishPage();
+        startPage();
+        continue;
+      }
+      const segmentLineCount = Math.min(maxLines - lineOffset, availableLines);
+      const segment = lines.map(cell => cell.slice(lineOffset, lineOffset + segmentLineCount));
+      const rowHeight = 8 + segmentLineCount * lineHeight;
+      drawCells(segment, y, rowHeight, false, rowIndex % 2 === 1);
+      y -= rowHeight;
+      lineOffset += segmentLineCount;
+      if (lineOffset < maxLines) {
+        finishPage();
+        startPage();
+      }
+    }
+  });
+  finishPage();
+  pageContents.forEach((page, index) => {
+    page.push(`BT /F1 7 Tf 0.32 0.41 0.48 rg ${pageWidth - margin - 48} 12 Td (Sayfa ${index + 1}/${pageContents.length}) Tj ET`);
+  });
+
+  const objects: string[] = ['<< /Type /Catalog /Pages 2 0 R >>', `<< /Type /Pages /Kids [${pageContents.map((_, i) => `${3 + i * 2} 0 R`).join(' ')}] /Count ${pageContents.length} >>`];
+  pageContents.forEach((page, i) => {
     const pageId = 3 + i * 2;
     const contentId = pageId + 1;
-    const content = `BT /F1 10 Tf 45 800 Td 14 TL ${page.map((line, lineIndex) => `${lineIndex ? 'T* ' : ''}(${escape(line).slice(0, 170)}) Tj`).join('\n')} ET`;
-    objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> /Contents ${contentId} 0 R >>`);
+    const content = page.join('\n');
+    objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> >> >> /Contents ${contentId} 0 R >>`);
     objects.push(`<< /Length ${Buffer.byteLength(content, 'utf8')} >>\nstream\n${content}\nendstream`);
   });
   let output = '%PDF-1.4\n';

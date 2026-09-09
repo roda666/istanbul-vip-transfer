@@ -40,6 +40,23 @@ describe('admin request exports', () => {
     expect(output).toContain('Yeni');
     expect(output).not.toContain('AIRPORT_TRANSFER');
   });
+  it('renders multi-request PDFs as a landscape table with wrapped cells and repeated headers', () => {
+    const rows = Array.from({ length: 40 }, (_, index) => ({
+      ...row,
+      referenceNumber: `IVT-LIST-${index + 1}`,
+      name: `Uzun İsimli Test Yolcusu ${index + 1}`,
+      normalizedEmail: `uzun-adresli-yolcu-${index + 1}@example.test`,
+      source: 'booking-form:AIRPORT_TRANSFER',
+    }));
+    const output = requestsToPdf(rows).toString('utf8');
+    expect(output).toContain('/MediaBox [0 0 842 595]');
+    expect(output.match(/\(Referans\)/g)?.length).toBeGreaterThan(1);
+    expect(output).toContain('Rezervasyon Formu');
+    expect(output).toContain('Havalimani Transferi');
+    expect(output).not.toContain('booking-form:AIRPORT_TRANSFER');
+    expect(output).not.toContain(' | ');
+    expect(output).not.toContain('Hav...');
+  });
   it('exports all detail fields when one request is selected', () => {
     const output = requestsToExcel([row]);
     expect(output).toContain('Uçuş Numarası');

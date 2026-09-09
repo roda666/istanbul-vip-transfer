@@ -25,6 +25,11 @@ export interface RequestPresentationSection {
   fields: RequestPresentationField[];
 }
 
+export interface RequestListPresentation {
+  headers: string[];
+  values: string[];
+}
+
 const SERVICE_LABELS: Record<string, string> = {
   AIRPORT_TRANSFER: 'Havalimanı / Şehir İçi Transfer',
   INTERCITY: 'Şehirler Arası Transfer',
@@ -53,6 +58,14 @@ const SOURCE_LABELS: Record<string, string> = {
   'contact-form': 'İletişim Formu',
   'booking-form': 'Rezervasyon Formu',
   website: 'Web Sitesi',
+};
+
+const SOURCE_SERVICE_LABELS: Record<string, string> = {
+  AIRPORT_TRANSFER: 'Havalimanı Transferi',
+  INTERCITY: 'Şehirler Arası Transfer',
+  ALLOCATION: 'Araç Tahsisi',
+  TOUR: 'Özel Tur / Gezi',
+  CONTACT_INQUIRY: 'İletişim Talebi',
 };
 
 const VALUE_LABELS: Record<string, string> = {
@@ -100,6 +113,25 @@ function clean(value: unknown): string {
 function labelled(value: unknown): string {
   const normalized = clean(value);
   return VALUE_LABELS[normalized] ?? normalized;
+}
+
+function formatSource(source: string): string {
+  const [sourceKey, embeddedServiceType] = source.split(':', 2);
+  const sourceLabel = SOURCE_LABELS[sourceKey] ?? 'Diğer Kaynak';
+  const embeddedServiceLabel = embeddedServiceType ? SOURCE_SERVICE_LABELS[embeddedServiceType] : '';
+  return embeddedServiceLabel ? `${sourceLabel} – ${embeddedServiceLabel}` : sourceLabel;
+}
+
+function formatService(serviceType: string): string {
+  return SERVICE_LABELS[serviceType] ?? 'Diğer Hizmet';
+}
+
+function formatIntent(intent: string): string {
+  return INTENT_LABELS[intent] ?? 'Diğer';
+}
+
+function formatStatus(status: string): string {
+  return STATUS_LABELS[status] ?? 'Bilinmiyor';
 }
 
 function displayJourneyValue(key: string, value: unknown): unknown {
@@ -206,7 +238,7 @@ export function buildRequestPresentation(input: RequestPresentationInput): Reque
         field('phone', 'Telefon', input.phone),
         field('email', 'E-posta', input.normalizedEmail || '—'),
         field('locale', 'Dil', input.locale.toUpperCase()),
-        field('source', 'Kaynak', SOURCE_LABELS[input.source] ?? input.source),
+        field('source', 'Kaynak', formatSource(input.source)),
         ...communicationFields(data),
       ].filter((item): item is RequestPresentationField => item !== null),
     },
@@ -215,9 +247,9 @@ export function buildRequestPresentation(input: RequestPresentationInput): Reque
       title: 'Talep-Hizmet Bilgileri',
       fields: [
         field('reference', 'Referans', input.referenceNumber),
-        field('service', 'Hizmet', SERVICE_LABELS[input.serviceType] ?? input.serviceType),
-        field('intent', 'Talep Türü', INTENT_LABELS[input.intent] ?? input.intent),
-        field('status', 'Durum', STATUS_LABELS[input.status] ?? input.status),
+        field('service', 'Hizmet', formatService(input.serviceType)),
+        field('intent', 'Talep Türü', formatIntent(input.intent)),
+        field('status', 'Durum', formatStatus(input.status)),
         field('createdAt', 'Kayıt Tarihi', formatDate(input.createdAt)),
       ].filter((item): item is RequestPresentationField => item !== null),
     },
@@ -237,4 +269,19 @@ export function buildRequestPresentation(input: RequestPresentationInput): Reque
   }
 
   return sections;
+}
+
+const LIST_FIELD_KEYS = ['reference', 'name', 'phone', 'email', 'locale', 'source', 'service', 'intent', 'status', 'createdAt'];
+const LIST_HEADERS = ['Referans', 'İsim', 'Telefon', 'E-posta', 'Dil', 'Kaynak', 'Hizmet', 'Talep', 'Durum', 'Kayıt Tarihi'];
+
+export function buildRequestListPresentation(input: RequestPresentationInput): RequestListPresentation {
+  const fields = new Map(
+    buildRequestPresentation(input)
+      .flatMap(section => section.fields)
+      .map(item => [item.key, item.value]),
+  );
+  return {
+    headers: LIST_HEADERS,
+    values: LIST_FIELD_KEYS.map(key => fields.get(key) || '—'),
+  };
 }

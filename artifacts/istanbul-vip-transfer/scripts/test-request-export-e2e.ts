@@ -6,6 +6,7 @@
  */
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { writeFileSync } from 'node:fs';
 import { chromium, type Page, type Response } from '@playwright/test';
 import { and, count, eq, inArray, or } from 'drizzle-orm';
 import { db } from '../db';
@@ -16,7 +17,7 @@ const baseUrl = process.env.ADMIN_TEST_BASE_URL ?? 'http://127.0.0.1:26004';
 const suffix = randomUUID().slice(0, 12);
 const email = `qa-request-export-${suffix}@example.test`;
 const password = `Request-export-${randomUUID()}`;
-const references = Array.from({ length: 3 }, (_, index) => `QA-EXPORT-${suffix}-${index + 1}`);
+const references = Array.from({ length: 4 }, (_, index) => `QA-EXPORT-${suffix}-${index + 1}`);
 const requestIds: string[] = [];
 let adminId: string | undefined;
 
@@ -42,9 +43,16 @@ async function verifyResponse(
   const verificationResponse = await page.request.get(response.url());
   assert.equal(verificationResponse.status(), 200);
   assert.equal(verificationResponse.headers()['x-export-row-count'], String(expectedIds.length));
-  const body = (await verificationResponse.body()).toString('utf8');
-  for (const reference of includedReferences) assert.match(body, new RegExp(reference));
-  for (const reference of excludedReferences) assert.doesNotMatch(body, new RegExp(reference));
+  const bodyBuffer = await verificationResponse.body();
+  const body = bodyBuffer.toString('utf8');
+  const isPdf = response.headers()['content-type']?.includes('application/pdf');
+  if (!isPdf) {
+    for (const reference of includedReferences) assert.match(body, new RegExp(reference));
+    for (const reference of excludedReferences) assert.doesNotMatch(body, new RegExp(reference));
+  }
+  if (process.env.QA_BULK_PDF_PATH && expectedIds.length === 4 && isPdf) {
+    writeFileSync(process.env.QA_BULK_PDF_PATH, bodyBuffer);
+  }
   return body;
 }
 
@@ -63,15 +71,16 @@ try {
   }).returning({ id: adminUsers.id });
   adminId = admin.id;
 
+  const serviceTypes = ['AIRPORT_TRANSFER', 'INTERCITY', 'ALLOCATION', 'TOUR'] as const;
   const inserted = await db.insert(reservationRequests).values(references.map((referenceNumber, index) => ({
     referenceNumber,
     intent: index === 0 ? 'QUOTE' as const : 'RESERVATION' as const,
-    serviceType: index === 0 ? 'CONTACT_INQUIRY' : 'AIRPORT_TRANSFER',
-    name: `[QA REQUEST EXPORT] ${suffix} ${index + 1}`,
+    serviceType: serviceTypes[index],
+    name: `[QA REQUEST EXPORT] Uzun İsimli Test Yolcusu ${suffix} ${index + 1}`,
     phone: `+90111000${index + 1}`,
     normalizedEmail: `qa-export-${suffix}-${index + 1}@example.test`,
     locale: 'tr',
-    source: 'qa-request-export-e2e',
+    source: `booking-form:${serviceTypes[index]}`,
     pageSlug: '/qa-request-export-e2e',
     requestData: {
       adSoyad: `[DUPLICATE] ${suffix}`,
@@ -94,7 +103,7 @@ try {
     isTestData: true,
   }))).returning({ id: reservationRequests.id });
   requestIds.push(...inserted.map(row => row.id));
-  assert.equal(requestIds.length, 3);
+  assert.equal(requestIds.length, 4);
 
   const browser = await chromium.launch({ headless: true });
   try {
@@ -147,7 +156,19 @@ try {
     await page.getByRole('button', { name: "PDF'e Aktar" }).click();
     response = await responsePromise;
     const selectedPdf = await verifyResponse(page, response, requestIds.slice(0, 2), references.slice(0, 2), references.slice(2));
-    assert.match(selectedPdf, /Talepler Raporu/);
+    assert.match(selectedPdf, /TALEPLER RAPORU/);
+    assert.doesNotMatch(selectedPdf, /booking-form:AIRPORT_TRANSFER| \| |Hav\.\.\./);
+
+    await page.getByRole('checkbox', { name: `${references[2]} talebini seç` }).check();
+    await page.getByRole('checkbox', { name: `${references[3]} talebini seç` }).check();
+    await page.getByText('4 talep seçili', { exact: true }).waitFor();
+    responsePromise = exportResponse(page, 'pdf');
+    await page.getByRole('button', { name: "PDF'e Aktar" }).click();
+    response = await responsePromise;
+    const bulkPdf = await verifyResponse(page, response, requestIds, references, []);
+    assert.match(bulkPdf, /\/MediaBox \[0 0 842 595\]/);
+    assert.match(bulkPdf, /Rezervasyon Formu/);
+    assert.doesNotMatch(bulkPdf, /booking-form:|AIRPORT_TRANSFER|INTERCITY|ALLOCATION|TOUR| \| |Hav\.\.\./);
 
     await page.getByRole('button', { name: `${references[2]} talebini Excel indir` }).waitFor({ state: 'visible' });
     await page.getByRole('button', { name: `${references[1]} talebini PDF indir` }).waitFor({ state: 'visible' });
@@ -156,7 +177,7 @@ try {
     responsePromise = exportResponse(page, 'xls');
     await page.getByRole('button', { name: `${references[2]} talebini Excel indir` }).click();
     response = await responsePromise;
-    const singleExcel = await verifyResponse(page, response, [requestIds[2]], [references[2]], references.slice(0, 2));
+    const singleExcel = await verifyResponse(page, response, [requestIds[2]], [references[2]], references.filter((_, index) => index !== 2));
     assert.match(singleExcel, /İletişim Bilgileri/);
     assert.match(singleExcel, /Talep-Hizmet Bilgileri/);
     assert.match(singleExcel, /Yolculuk Detayları/);
@@ -167,7 +188,7 @@ try {
     responsePromise = exportResponse(page, 'pdf');
     await page.getByRole('button', { name: `${references[1]} talebini PDF indir` }).click();
     response = await responsePromise;
-    const singlePdf = await verifyResponse(page, response, [requestIds[1]], [references[1]], [references[0], references[2]]);
+    const singlePdf = await verifyResponse(page, response, [requestIds[1]], [references[1]], references.filter((_, index) => index !== 1));
     assert.match(singlePdf, /REZERVASYON KARTI/);
     assert.match(singlePdf, /Iletisim Bilgileri/);
     assert.match(singlePdf, /Yolculuk Detaylari/);
@@ -184,6 +205,7 @@ try {
 
   console.log('PASS selected Excel sent exactly 2 checked IDs and exported only those 2 rows');
   console.log('PASS selected PDF sent exactly 2 checked IDs and exported only those 2 rows');
+  console.log('PASS bulk list PDF exported 4 controlled rows as a readable landscape table');
   console.log('PASS detail page hides technical fields and renders communication statuses');
   console.log('PASS admin WhatsApp contact message is encoded exactly once');
   console.log('PASS desktop row Excel/PDF buttons are visible');

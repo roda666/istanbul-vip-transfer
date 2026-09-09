@@ -670,6 +670,15 @@ body {
   scroll-snap-align: start;
 }
 
+/* Dedicated fleet page: every row uses the tallest vehicle card's height, so
+   image, copy, features and CTA baselines stay aligned without grouping by type. */
+.ivt-vehicle-grid {
+  grid-auto-rows: 1fr;
+}
+.ivt-vehicle-grid > .ivt-vehicle-card {
+  height: 100%;
+}
+
 /* On phones the controls sit on top of the card instead of consuming a third
    of the row. The track therefore owns the full content width and one card
    fills it exactly; the translucent controls remain comfortable touch targets. */

@@ -10,7 +10,6 @@ import { resolveHomepageCtaAction } from '@/lib/homepage-cta-route';
 import { getPublicUiCopy } from '@/lib/i18n/public-ui';
 import { isolateLtrValues } from '@/lib/i18n/bidi';
 import type { Dictionary } from '@/lib/i18n/types';
-import { normalizeVehicleType } from '@/lib/vehicle-options';
 import { isSuccessfulVehicleResponse } from '@/lib/vehicle-api-contract';
 import CardCarouselStrip from '@/components/CardCarouselStrip';
 
@@ -39,7 +38,6 @@ interface DbVehicle {
   luggageCapacity: number;
   features: Array<{ icon: string; label: string } | string>;
   isFeatured: boolean;
-  vehicleType: string | null;
 }
 
 interface DisplayVehicle {
@@ -53,7 +51,6 @@ interface DisplayVehicle {
   description: string;
   features: Array<{ icon: React.ElementType; label: string }>;
   featured: boolean;
-  vehicleType: string | null;
 }
 
 function getFeatureParts(
@@ -108,12 +105,11 @@ function adaptDbVehicle(
       }))
       .filter(feature => feature.label.trim().length > 0),
     featured: vehicle.isFeatured,
-    vehicleType: normalizeVehicleType(vehicle.vehicleType),
   };
 }
 
 /** Shared vehicle card used by the homepage, service pages, and fleet grid. */
-function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage: lugLabel, lang, scrollToBooking, gridItem = false }: {
+function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage: lugLabel, lang, scrollToBooking, layout }: {
   vehicle: DisplayVehicle;
   i: number;
   cta: string;
@@ -122,13 +118,13 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
   luggage: string;
   lang: string;
   scrollToBooking: () => void;
-  gridItem?: boolean;
+  layout: 'grid' | 'carousel';
 }) {
   const [imageFailed, setImageFailed] = useState(!vehicle.image);
 
   return (
     <motion.div
-      className={`group relative flex h-full min-w-0 flex-col rounded-2xl overflow-hidden ${gridItem ? '' : 'ivt-card-strip-item'}`}
+      className={`ivt-vehicle-card group relative flex h-full min-w-0 flex-col overflow-hidden rounded-2xl ${layout === 'carousel' ? 'ivt-card-strip-item' : ''}`}
       style={{
         background: '#FFFFFF',
         border: vehicle.featured ? '1px solid rgba(199,154,53,0.5)' : '1px solid #D9E2EC',
@@ -287,7 +283,13 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
   );
 }
 
-export default function VehicleFleet({ homepageMode = false, grouped = !homepageMode }: { homepageMode?: boolean; grouped?: boolean }) {
+export default function VehicleFleet({
+  homepageMode = false,
+  layout = homepageMode ? 'carousel' : 'grid',
+}: {
+  homepageMode?: boolean;
+  layout?: 'grid' | 'carousel';
+}) {
   const { dict, lang } = useLang();
   const v = dict.vehicles;
   const cms = useHomepageCms();
@@ -379,10 +381,21 @@ export default function VehicleFleet({ homepageMode = false, grouped = !homepage
                fleet page is a comparison grid so every vehicle is visible
                without horizontal scrolling. */}
           {vehiclesLoading && (
-            <div role="status" aria-live="polite" aria-label={ui.location.loading} className="flex gap-6 overflow-hidden pb-3">
+            <div
+              role="status"
+              aria-live="polite"
+              aria-label={ui.location.loading}
+              className={layout === 'grid'
+                ? 'ivt-vehicle-grid grid grid-cols-1 items-stretch gap-6 md:grid-cols-2 xl:grid-cols-3'
+                : 'flex gap-6 overflow-hidden pb-3'}
+            >
               <span className="sr-only">{ui.location.loading}</span>
               {[0, 1, 2].map((index) => (
-                <div key={index} aria-hidden="true" className="h-[390px] min-w-[320px] animate-pulse rounded-2xl border border-[#D9E2EC] bg-white">
+                <div
+                  key={index}
+                  aria-hidden="true"
+                  className={`h-[390px] animate-pulse rounded-2xl border border-[#D9E2EC] bg-white ${layout === 'carousel' ? 'min-w-[320px]' : 'min-w-0'}`}
+                >
                   <div className="h-[200px] bg-[#EAF2F8]" />
                   <div className="space-y-4 p-6">
                     <div className="h-3 w-1/3 rounded bg-[#EAF2F8]" />
@@ -404,9 +417,9 @@ export default function VehicleFleet({ homepageMode = false, grouped = !homepage
               </button>
             </div>
           )}
-           {!vehiclesLoading && !vehiclesError && grouped && displayVehicles.length > 0 && (
+           {!vehiclesLoading && !vehiclesError && layout === 'grid' && displayVehicles.length > 0 && (
              <div
-               className="grid grid-cols-1 items-stretch gap-6 md:grid-cols-2 xl:grid-cols-3"
+               className="ivt-vehicle-grid grid grid-cols-1 items-stretch gap-6 md:grid-cols-2 xl:grid-cols-3"
                data-testid="vehicles-grid"
              >
                {displayVehicles.map((vehicle, i) => (
@@ -420,12 +433,12 @@ export default function VehicleFleet({ homepageMode = false, grouped = !homepage
                    luggage={v.luggage}
                    lang={lang}
                    scrollToBooking={scrollToBooking}
-                   gridItem
+                   layout="grid"
                  />
                ))}
             </div>
           )}
-          {!vehiclesLoading && !vehiclesError && !grouped && (
+          {!vehiclesLoading && !vehiclesError && layout === 'carousel' && (
             <CardCarouselStrip
               itemCount={displayVehicles.length}
               previousLabel={ui.vehicles.previous}
@@ -443,6 +456,7 @@ export default function VehicleFleet({ homepageMode = false, grouped = !homepage
                   luggage={v.luggage}
                   lang={lang}
                   scrollToBooking={scrollToBooking}
+                  layout="carousel"
                 />
               ))}
             </CardCarouselStrip>

@@ -408,7 +408,7 @@ export default async function ServicePageRenderer({ slug, lang, canonicalPath }:
         {/* Rich content sections */}
         <ContentSectionsBlock body={dbPage.body} dir={dir} lang={lang} />
 
-        <DeferredVehicleFleet grouped={false} />
+        <DeferredVehicleFleet layout="carousel" />
 
         {/* Service area */}
         <ServiceAreaBlock body={dbPage.body} dir={dir} lang={lang} />
@@ -435,7 +435,7 @@ export default async function ServicePageRenderer({ slug, lang, canonicalPath }:
           <TranslationNotice status="missing" lang={lang} />
         )}
         <PageHero pageKey={pageKey} />
-        <DeferredVehicleFleet grouped={false} />
+        <DeferredVehicleFleet layout="carousel" />
         {faqFallbackPage?.body?.faqs?.length ? (
           <FaqBlock body={faqFallbackPage.body} dir={dir} lang={lang} />
         ) : null}

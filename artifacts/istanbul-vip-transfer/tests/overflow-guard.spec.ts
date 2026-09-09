@@ -74,6 +74,19 @@ test.describe('Horizontal overflow guard', () => {
         await page.goto('/araclar');
         await page.waitForLoadState('networkidle');
         await assertNoHorizontalOverflow(page, 'vehicles page');
+
+        const grid = page.getByTestId('vehicles-grid');
+        await expect(grid).toBeVisible();
+        const cards = grid.locator('[data-testid^="vehicle-card-"]');
+        expect(await cards.count()).toBeGreaterThan(1);
+
+        const heights = await cards.evaluateAll((elements) =>
+          elements.map((element) => Math.round(element.getBoundingClientRect().height)),
+        );
+        expect(
+          Math.max(...heights) - Math.min(...heights),
+          `vehicles page: card heights differ (${heights.join(', ')})`,
+        ).toBeLessThanOrEqual(1);
       });
 
       test('a blog post never exceeds viewport width', async ({ page }) => {

@@ -220,9 +220,9 @@ export default async function VehiclesPageContent({ locale }: { locale: string }
           </div>
         </section>
       )}
-      {/* /araclar is the fleet's own dedicated page — grouping by class stays
-          meaningful here, unlike on service pages where it just adds scroll. */}
-      <VehicleFleet grouped />
+      {/* The dedicated fleet page shows every published vehicle together for
+          direct comparison; service and homepage placements remain carousels. */}
+      <VehicleFleet layout="grid" />
       <Contact />
       <script
         type="application/ld+json"

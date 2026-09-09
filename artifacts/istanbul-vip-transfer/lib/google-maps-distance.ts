@@ -6,15 +6,38 @@ type CoordinateLocation = {
   longitude: number | null;
 };
 
+export type GoogleMapsRouteMetrics = {
+  distanceKm: number;
+  durationMinutes: number;
+};
+
+export function parseGoogleRoutesMetrics(payload: unknown): GoogleMapsRouteMetrics | null {
+  const route = (payload as { routes?: Array<{ distanceMeters?: unknown; duration?: unknown }> } | null)?.routes?.[0];
+  const distanceMeters = route?.distanceMeters;
+  const durationMatch = typeof route?.duration === 'string' ? /^(\d+(?:\.\d+)?)s$/.exec(route.duration) : null;
+  const durationSeconds = durationMatch ? Number(durationMatch[1]) : NaN;
+  if (
+    typeof distanceMeters !== 'number'
+    || !Number.isFinite(distanceMeters)
+    || distanceMeters <= 0
+    || !Number.isFinite(durationSeconds)
+    || durationSeconds <= 0
+  ) return null;
+  return {
+    distanceKm: Math.ceil(distanceMeters / 1000),
+    durationMinutes: Math.ceil(durationSeconds / 60),
+  };
+}
+
 /**
- * Returns a real Google Routes API road distance when the deployment is
+ * Returns real Google Routes API road distance and duration when the deployment is
  * credentialed. Network and provider failures intentionally resolve to null:
  * callers then retain their existing verified-route/coordinate behaviour.
  */
-export async function getGoogleMapsRoadDistance(
+export async function getGoogleMapsRouteMetrics(
   origin: CoordinateLocation,
   destination: CoordinateLocation,
-): Promise<number | null> {
+): Promise<GoogleMapsRouteMetrics | null> {
   const apiKey = await resolveIntegrationSecret('GOOGLE_MAPS_API_KEY');
   if (!apiKey
     || !Number.isFinite(origin.latitude) || !Number.isFinite(origin.longitude)
@@ -28,7 +51,7 @@ export async function getGoogleMapsRoadDistance(
       headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': 'routes.distanceMeters',
+        'X-Goog-FieldMask': 'routes.distanceMeters,routes.duration',
       },
       body: JSON.stringify({
         origin: { location: { latLng: { latitude: origin.latitude, longitude: origin.longitude } } },
@@ -38,10 +61,15 @@ export async function getGoogleMapsRoadDistance(
       signal: AbortSignal.timeout(5_000),
     });
     if (!response.ok) return null;
-    const payload = await response.json() as { routes?: Array<{ distanceMeters?: number }> };
-    const metres = payload.routes?.[0]?.distanceMeters;
-    return Number.isFinite(metres) && metres! > 0 ? Math.ceil(metres! / 1000) : null;
+    return parseGoogleRoutesMetrics(await response.json());
   } catch {
     return null;
   }
+}
+
+export async function getGoogleMapsRoadDistance(
+  origin: CoordinateLocation,
+  destination: CoordinateLocation,
+): Promise<number | null> {
+  return (await getGoogleMapsRouteMetrics(origin, destination))?.distanceKm ?? null;
 }

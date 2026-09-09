@@ -8,6 +8,7 @@ export type LocationDistanceResult =
   | {
     state: 'GOOGLE_MAPS';
     distanceKm: number;
+    durationMinutes: number;
     source: 'google_maps';
     calculatedAt: string;
   }
@@ -148,12 +149,13 @@ export async function resolveLocationDistance(input: {
   // is useful for this quote, while changing an admin-verified route requires
   // an explicit admin action. If Google is unavailable or rejects the key, the
   // previously verified route remains the safe, deterministic fallback.
-  const { getGoogleMapsRoadDistance } = await import('@/lib/google-maps-distance');
-  const googleDistance = await getGoogleMapsRoadDistance(origin, destination);
-  if (googleDistance != null) {
+  const { getGoogleMapsRouteMetrics } = await import('@/lib/google-maps-distance');
+  const googleMetrics = await getGoogleMapsRouteMetrics(origin, destination);
+  if (googleMetrics != null) {
     return {
       state: 'GOOGLE_MAPS',
-      distanceKm: googleDistance,
+      distanceKm: googleMetrics.distanceKm,
+      durationMinutes: googleMetrics.durationMinutes,
       source: 'google_maps',
       calculatedAt,
     };

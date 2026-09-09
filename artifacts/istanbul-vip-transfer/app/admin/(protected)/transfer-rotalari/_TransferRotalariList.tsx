@@ -235,19 +235,22 @@ function RouteModal({ route, locationOptions, vehicleOptions, onSave, onClose, s
         setDistanceMessage(payload?.error ?? 'Google Maps yol mesafesi hesaplanamadı.');
         return;
       }
-      const result = payload.result as { distanceKm: number; source: string; roadDistanceMultiplier?: number };
+       const result = payload.result as { distanceKm: number; durationMinutes?: number; source: string; roadDistanceMultiplier?: number };
       setForm((current) => ({
         ...current,
         distanceKm: result.distanceKm,
+         ...(result.source === 'google_maps' && result.durationMinutes
+           ? { durationMinutes: result.durationMinutes }
+           : {}),
         distanceSource: result.source === 'defined_route'
           ? 'ADMIN_VERIFIED'
           : result.source === 'coordinate_estimate'
             ? 'COORDINATE_ESTIMATE'
-            : 'LEGACY_UNVERIFIED',
+             : 'ADMIN_VERIFIED',
       }));
       setDistanceMessage(
         result.source === 'google_maps'
-          ? `Google Maps Routes yol mesafesi: ${result.distanceKm} km. Kaydetmeden önce doğrulayabilirsiniz.`
+          ? `Google Maps Routes sonucu: ${result.distanceKm} km, ${result.durationMinutes} dakika. Mesafe ve süre forma dolduruldu.`
           : result.source === 'defined_route'
             ? `Google Maps kullanılamadı; kayıtlı doğrulanmış ${result.distanceKm} km rota kullanıldı.`
             : `Google Maps kullanılamadı; dahili güvenlik tahmini ${result.distanceKm} km${result.roadDistanceMultiplier ? ` (yol katsayısı ×${result.roadDistanceMultiplier})` : ''}.`,
@@ -344,13 +347,6 @@ function RouteModal({ route, locationOptions, vehicleOptions, onSave, onClose, s
               {resolvingDistance ? <Loader2 size={14} className="animate-spin" /> : <MapPinned size={14} />}
               Google Maps Yol Mesafesini Getir
             </button>
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', color: TEXT, fontSize: '12px', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
-              <input type="checkbox" checked={form.distanceSource === 'ADMIN_VERIFIED'} onChange={(event) => set('distanceSource', event.target.checked ? 'ADMIN_VERIFIED' : 'COORDINATE_ESTIMATE')} />
-              Girilen mesafeyi doğruluyorum
-            </label>
-            <span style={{ color: form.distanceSource === 'ADMIN_VERIFIED' ? '#047857' : MUTED, fontSize: '11px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>
-              {form.distanceSource === 'ADMIN_VERIFIED' ? 'DOĞRULANMIŞ ROTA' : form.distanceSource === 'COORDINATE_ESTIMATE' ? 'KOORDİNAT TAHMİNİ' : 'DOĞRULAMA BEKLİYOR'}
-            </span>
             {distanceMessage && <span style={{ width: '100%', color: MUTED, fontSize: '11px', fontFamily: 'Inter, sans-serif' }}>{distanceMessage}</span>}
           </div>
           <div>
@@ -614,7 +610,7 @@ export default function TransferRotalariList() {
                       <div>{r.distanceKm} km</div>
                       <div style={{ fontSize: '11px' }}>{formatDuration(r.durationMinutes)}</div>
                       <div style={{ marginTop: '3px', fontSize: '10px', fontWeight: 700, color: r.distanceSource === 'ADMIN_VERIFIED' ? '#047857' : r.distanceSource === 'COORDINATE_ESTIMATE' ? '#1D4ED8' : '#A16207' }}>
-                        {r.distanceSource === 'ADMIN_VERIFIED' ? 'Doğrulanmış' : r.distanceSource === 'COORDINATE_ESTIMATE' ? 'Koordinat tahmini' : 'Doğrulanmamış'}
+                        {r.distanceSource === 'ADMIN_VERIFIED' ? 'Doğrulanmış' : r.distanceSource === 'COORDINATE_ESTIMATE' ? 'Güvenlik tahmini' : 'Doğrulanmamış'}
                       </div>
                     </td>
 

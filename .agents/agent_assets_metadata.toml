@@ -112,3 +112,17 @@ mtime_ms = 1788957796369
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/886c6471-4d1f-4906-8977-8e7b9802ab50/9c226074-375c-482a-9b64-6cd825ea57a1"
 storage_version_token = "1788958270811779"
 content_type = "text/csv"
+
+[[outputs]]
+id = "4HUcEqIF0JcU-VTlA3-rY"
+uri = "file://artifacts/istanbul-vip-transfer/reports/transfer-route-google-metrics-audit-2026-09-09.csv"
+type = "table"
+title = "Transfer Rotaları Google Mesafe-Süre Audit — 9 Eylül 2026"
+description = "15 rotanın eski/yeni mesafe ve referans süreleri, eşleşen kalkış/varış lokasyonları, doğrulama durumu ve atlama nedenleri."
+logical_id = "46451876-5edd-4e50-91d4-591d43f68053"
+content_hash = "sha256:2dfacf3be9d0483345b30af35100c8e3a82a1672f9091b414d48ed60cdc0f627"
+size = 4796
+mtime_ms = 1788960438197
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/46451876-5edd-4e50-91d4-591d43f68053/1f6c312b-1b42-473b-a365-8fa0777bda36"
+storage_version_token = "1788960891744321"
+content_type = "text/csv"

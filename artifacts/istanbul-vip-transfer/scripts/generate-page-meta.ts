@@ -10,12 +10,16 @@
  *   pnpm --filter @workspace/istanbul-vip-transfer generate:page-meta -- --force
  *   pnpm --filter @workspace/istanbul-vip-transfer generate:page-meta -- --prune
  *   pnpm --filter @workspace/istanbul-vip-transfer generate:page-meta -- --prune --force
+ *   pnpm --filter @workspace/istanbul-vip-transfer generate:page-meta -- --dry-run
+ *   pnpm --filter @workspace/istanbul-vip-transfer generate:page-meta -- --dry-run --force
  *
  * Flags:
  *   --force   Re-translate all languages even if they appear up-to-date.
  *   --prune   Remove orphaned entries (slugs in page-meta.json that are no
  *             longer in PAGE_REGISTRY). Without this flag the script only
  *             warns about orphans; it never deletes anything.
+ *   --dry-run Preview pruning and generation exactly as they would run, but
+ *             do not write any changes to page-meta.json. Implies --prune.
  *
  * Workflow:
  *  1. Reads PAGE_REGISTRY from lib/page-registry.ts (single source of truth)
@@ -26,6 +30,7 @@
  *       treated as a rename: existing translations are carried forward so
  *       no API calls are wasted on content that is already translated.
  *     - With --prune, orphaned entries are removed from the output file.
+ *     - With --dry-run, the same removals are logged but no file is changed.
  *  4. For each registry slug:
  *     a. Computes a hash of the TR source (title + description)
  *     b. If the stored hash differs from the current hash (or --force is set),
@@ -185,12 +190,15 @@ function detectOrphans(
 // ── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
   const force = process.argv.includes('--force');
-  const prune = process.argv.includes('--prune');
+  const dryRun = process.argv.includes('--dry-run');
+  const prune = process.argv.includes('--prune') || dryRun;
 
   if (force) {
     console.log('⚡ --force mode: all translations will be regenerated.\n');
   }
-  if (prune) {
+  if (dryRun) {
+    console.log('🔍 --dry-run mode: previewing changes; page-meta.json will not be written.\n');
+  } else if (prune) {
     console.log('🗑  --prune mode: orphaned entries will be removed.\n');
   }
 
@@ -292,13 +300,19 @@ async function main() {
   if (prune && orphans.size > 0) {
     console.log('');
     for (const orphanSlug of orphans) {
-      delete meta[orphanSlug];
-      console.log(`🗑  Pruned orphan: "${orphanSlug}"`);
+      if (dryRun) {
+        console.log(`🗑  Would prune orphan: "${orphanSlug}"`);
+      } else {
+        delete meta[orphanSlug];
+        console.log(`🗑  Pruned orphan: "${orphanSlug}"`);
+      }
     }
   }
 
   // ── Step 4: write updated metadata ───────────────────────────────────────
-  fs.writeFileSync(PAGE_META_PATH, JSON.stringify(meta, null, 2) + '\n', 'utf8');
+  if (!dryRun) {
+    fs.writeFileSync(PAGE_META_PATH, JSON.stringify(meta, null, 2) + '\n', 'utf8');
+  }
 
   const summaryParts: string[] = [`Generated ${generated} translations`];
   if (staleDetected > 0) summaryParts.push(`re-translated ${staleDetected} stale slug(s)`);
@@ -310,7 +324,8 @@ async function main() {
         : `found ${orphans.size} orphan(s) — run with --prune to remove`,
     );
   }
-  console.log(`\nDone. ${summaryParts.join(', ')}.`);
+  const dryRunSummary = dryRun ? ' Dry run — no files changed.' : '';
+  console.log(`\nDone. ${summaryParts.join(', ')}.${dryRunSummary}`);
 }
 
 main().catch((err) => {

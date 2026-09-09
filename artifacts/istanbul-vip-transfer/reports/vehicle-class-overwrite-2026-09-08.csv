@@ -10,3 +10,15 @@ Mercedes Vito,minivan,minivan,UNASSIGNED,class_2,""
 Otobüs,bus,bus,UNASSIGNED,class_3,VERIFY_AXLES: bus physical axle count may differ from panel class_3 rule
 Volkswagen Transporter,minivan,minivan,UNASSIGNED,class_1,""
 Yarım otobüs,midibus,midibus,UNASSIGNED,class_2,VERIFY_AXLES: midibus may be 3+ axle
+name,old_vehicle_type,old_pricing_class,old_toll_classes,new_toll_class,physical_exception_note
+Mercedes E-Class,minivan,minivan,UNASSIGNED,class_1,""
+Mercedes S-Class,minivan,minivan,UNASSIGNED,class_1,""
+Mercedes Sprinter 10,minibus,minibus,UNASSIGNED,class_2,""
+Mercedes Sprinter 13,minibus,minibus,UNASSIGNED,class_2,""
+Mercedes Sprinter 15,minibus,minibus,UNASSIGNED,class_2,""
+Mercedes Sprinter 19,minibus,minibus,UNASSIGNED,class_2,VERIFY_AXLES: high-capacity Sprinter may be 3+ axle
+Mercedes V-Class,minivan,minivan,UNASSIGNED,class_1,""
+Mercedes Vito,minivan,minivan,UNASSIGNED,class_2,""
+Otobüs,bus,bus,UNASSIGNED,class_3,VERIFY_AXLES: bus physical axle count may differ from panel class_3 rule
+Volkswagen Transporter,minivan,minivan,UNASSIGNED,class_1,""
+Yarım otobüs,midibus,midibus,UNASSIGNED,class_2,VERIFY_AXLES: midibus may be 3+ axle

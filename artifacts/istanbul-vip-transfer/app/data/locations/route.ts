@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
   const forParam = searchParams.get('for'); // 'pickup' | 'dropoff' | null
   const scopeParam = searchParams.get('scope'); // 'local' | 'intercity' | null
   const query = searchParams.get('q')?.trim() ?? '';
+  const locale = searchParams.get('lang')?.trim().toLowerCase() ?? 'tr';
   const isBrowse = !query;
 
   try {
@@ -91,6 +92,7 @@ export async function GET(request: NextRequest) {
         scope: locations.scope,
         city: locations.city,
         district: locations.district,
+        translations: locations.translations,
       })
       .from(locations)
       .where(and(...conditions))
@@ -113,12 +115,22 @@ export async function GET(request: NextRequest) {
         default:         return 3;
       }
     };
-    rows.sort((a, b) => {
+    const localizedRows = rows.map((row) => {
+      const translated = locale === 'tr' ? null : row.translations?.[locale];
+      return {
+        ...row,
+        name: translated?.name?.trim() || row.name,
+        city: translated?.city?.trim() || row.city,
+        district: translated?.district?.trim() || row.district,
+        translations: undefined,
+      };
+    });
+    localizedRows.sort((a, b) => {
       const rankDiff = categoryRank(a) - categoryRank(b);
       return rankDiff !== 0 ? rankDiff : collator.compare(a.name, b.name);
     });
 
-    return NextResponse.json({ locations: rows, query, limit });
+    return NextResponse.json({ locations: localizedRows, query, limit });
   } catch (err) {
     console.error('Public locations error:', err);
     return NextResponse.json({ locations: [] }, { status: 200 });

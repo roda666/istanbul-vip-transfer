@@ -291,7 +291,7 @@ Generate a topic and keyword cluster. JSON output:`;
       ],
       response_format: { type: 'json_object' },
       temperature: 0.4,
-      max_tokens: 1000,
+      max_completion_tokens: 1000,
     });
 
     const raw = resp.choices[0]?.message?.content;
@@ -428,7 +428,7 @@ Generate the full article draft. JSON output:`;
       ],
       response_format: { type: 'json_object' },
       temperature: 0.5,
-       max_tokens: articleMaxOutputTokens(opts.wordCountTarget, lang),
+       max_completion_tokens: articleMaxOutputTokens(opts.wordCountTarget, lang),
     });
 
     const raw = resp.choices[0]?.message?.content;
@@ -537,7 +537,7 @@ Generate social media drafts. JSON output:`;
       ],
       response_format: { type: 'json_object' },
       temperature: 0.6,
-      max_tokens: 900,
+      max_completion_tokens: 900,
     });
 
     const raw = resp.choices[0]?.message?.content;

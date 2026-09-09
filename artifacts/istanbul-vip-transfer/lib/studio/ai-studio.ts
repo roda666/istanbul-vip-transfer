@@ -170,7 +170,7 @@ export async function generateAdminFieldDraft(
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.45,
-      max_tokens: Math.min(2_000, Math.max(120, Math.ceil(maxLength / 2))),
+      max_completion_tokens: Math.min(2_000, Math.max(120, Math.ceil(maxLength / 2))),
     }, { signal: AbortSignal.timeout(90_000) });
 
     const raw = response.choices[0]?.message?.content?.trim();
@@ -231,7 +231,7 @@ Bu iki alan için gözden geçirilebilir yeni öneriler üret.`;
       ],
       response_format: { type: 'json_object' },
       temperature: 0.45,
-      max_tokens: 300,
+      max_completion_tokens: 300,
     }, { signal: AbortSignal.timeout(90_000) });
 
     const raw = response.choices[0]?.message?.content?.trim();
@@ -349,7 +349,7 @@ Bu bilgilere dayanarak araştırma yap ve içerik özeti hazırla.`;
       messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
       response_format: { type: 'json_object' },
       temperature: 0.4,
-      max_tokens: 2000,
+      max_completion_tokens: 2000,
     }, { signal: AbortSignal.timeout(90_000) });
 
     const raw = resp.choices[0]?.message?.content;
@@ -458,7 +458,7 @@ Kaynaklara dayalı, uydurma iddia İÇERMEYEN, ${wordTarget} kelime Türkçe iç
       messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
       response_format: { type: 'json_object' },
       temperature: 0.5,
-      max_tokens: 4000,
+      max_completion_tokens: 4000,
     }, { signal: AbortSignal.timeout(90_000) });
 
     const raw = resp.choices[0]?.message?.content;
@@ -729,7 +729,7 @@ Return JSON with EXACTLY the same keys as the input object. All values must be i
       messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
       response_format: { type: 'json_object' },
       temperature: 0.3,
-      max_tokens: 4000,
+      max_completion_tokens: 4000,
     }, { signal: AbortSignal.timeout(90_000) });
 
     const raw = resp.choices[0]?.message?.content;
@@ -826,7 +826,7 @@ Note: This content may include manually entered keywords, not provider metrics. 
       messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
       response_format: { type: 'json_object' },
       temperature: 0.6,
-      max_tokens: 1000,
+      max_completion_tokens: 1000,
     }, { signal: AbortSignal.timeout(60_000) });
 
     const raw = resp.choices[0]?.message?.content;
@@ -889,7 +889,7 @@ export async function checkOpenAIConnectivity(): Promise<{
       client.chat.completions.create({
         model,
         messages: [{ role: 'user', content: 'ping' }],
-        max_tokens: 5,
+        max_completion_tokens: 5,
       }, { signal: AbortSignal.timeout(20_000) })
         .then((response) => ({ ok: Boolean(response.choices[0]), model }))
         .catch((error) => ({ ok: false, model, error: safeHealthError(error) })),

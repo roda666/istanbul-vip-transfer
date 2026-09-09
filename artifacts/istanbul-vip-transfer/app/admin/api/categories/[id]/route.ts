@@ -66,9 +66,20 @@ export async function PATCH(
         WHERE id IN (${catId}, ${swapCat.id})
       `);
     } else if (action === 'rename' && names) {
+      const { fillMissingTranslations } = await import('@/lib/ai/fill-missing-translations');
+      const sourceName = typeof names.tr === 'string' && names.tr.trim() ? names.tr.trim() : cat.nameTranslations?.tr;
+      if (!sourceName) return NextResponse.json({ error: 'Türkçe kategori adı zorunludur.' }, { status: 422 });
+      const existingByLocale = Object.fromEntries(
+        Object.entries(names).filter(([locale]) => locale !== 'tr').map(([locale, value]) => [locale, { name: value }]),
+      );
+      const translated = await fillMissingTranslations({ name: sourceName }, existingByLocale);
+      const completedNames = { ...names, tr: sourceName };
+      for (const [locale, fields] of Object.entries(translated)) {
+        if (!completedNames[locale] && fields.name) completedNames[locale] = fields.name;
+      }
       await db
         .update(serviceCategories)
-        .set({ nameTranslations: names, updatedAt: new Date() })
+        .set({ nameTranslations: completedNames, updatedAt: new Date() })
         .where(eq(serviceCategories.id, catId));
     } else {
       return NextResponse.json({ error: 'Geçersiz action.' }, { status: 422 });

@@ -31,7 +31,14 @@ export async function PUT(request: NextRequest, { params }: Params) {
     const { faqs, auditLogs } = await import('@/db/schema');
     const { eq } = await import('drizzle-orm');
 
-    const [updated] = await db.update(faqs).set({ ...parsed.data }).where(eq(faqs.id, id)).returning();
+    const [current] = await db.select().from(faqs).where(eq(faqs.id, id)).limit(1);
+    if (!current) return NextResponse.json({ error: 'Bulunamadı.' }, { status: 404 });
+    const { fillMissingTranslations } = await import('@/lib/ai/fill-missing-translations');
+    const translations = await fillMissingTranslations({
+      question: parsed.data.question ?? current.question,
+      answer: parsed.data.answer ?? current.answer,
+    }, current.translations ?? {});
+    const [updated] = await db.update(faqs).set({ ...parsed.data, translations }).where(eq(faqs.id, id)).returning();
     if (!updated) return NextResponse.json({ error: 'Bulunamadı.' }, { status: 404 });
 
     await db.insert(auditLogs).values({ adminUserId: session.adminId, action: 'UPDATE', entityType: 'FAQ', entityId: id }).catch(() => {});

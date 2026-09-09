@@ -115,14 +115,24 @@ export async function POST(request: NextRequest) {
   try {
     const { db } = await import('@/db');
     const { locations, auditLogs } = await import('@/db/schema');
+    const { fillMissingTranslations } = await import('@/lib/ai/fill-missing-translations');
+    const cleanName = sanitizeText(data.name);
+    const cleanCity = sanitizeText(data.city);
+    const cleanDistrict = data.district ? sanitizeText(data.district) : null;
+    const translations = await fillMissingTranslations({
+      name: cleanName,
+      city: cleanCity,
+      district: cleanDistrict,
+    });
 
     const [newItem] = await db
       .insert(locations)
       .values({
-        name: sanitizeText(data.name),
+        name: cleanName,
         slug: data.slug,
-        city: sanitizeText(data.city),
-        district: data.district ? sanitizeText(data.district) : null,
+        city: cleanCity,
+        district: cleanDistrict,
+        translations,
         latitude: data.latitude ?? null,
         longitude: data.longitude ?? null,
         coordinateSource: data.coordinateSource ? sanitizeText(data.coordinateSource) : null,

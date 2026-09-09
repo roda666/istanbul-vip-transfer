@@ -337,6 +337,20 @@ function VehiclePricingProfileEditor({ vehicleId, eligible }: { vehicleId: strin
   const [message, setMessage] = useState('');
   const [distance, setDistance] = useState({ opening: 0, first: 0, threshold: 100, second: 0 });
   const [hourly, setHourly] = useState({ rate: 0, minimum: 4, includedMode: 'PER_HOUR' as 'PER_HOUR' | 'PACKAGE', includedKm: 10, excessKm: 0, excessHour: 0 });
+  const [moneyDrafts, setMoneyDrafts] = useState<Record<string, string>>({});
+
+  const formatKurusDraft = (value: number, optional = false) => {
+    if (optional && value === 0) return '';
+    const amount = value / 100;
+    return Number.isInteger(amount) ? String(amount) : amount.toFixed(2).replace('.', ',').replace(/0+$/, '').replace(/,$/, '');
+  };
+
+  const parseMoneyDraft = (draft: string, fallback: number) => {
+    const normalized = draft.trim().replace(',', '.');
+    if (!normalized || normalized === '.') return 0;
+    const amount = Number(normalized);
+    return Number.isFinite(amount) && amount >= 0 ? Math.round(amount * 100) : fallback;
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -350,21 +364,35 @@ function VehiclePricingProfileEditor({ vehicleId, eligible }: { vehicleId: strin
       if (active) {
         setMode(active.mode);
         if (active.mode === 'DISTANCE') {
-          setDistance({
+          const nextDistance = {
             opening: active.distanceOpeningKurus ?? 0,
             first: active.distanceFirstKmKurus ?? 0,
             threshold: active.distanceThresholdKm ?? 100,
             second: active.distanceSecondKmKurus ?? 0,
-          });
+          };
+          setDistance(nextDistance);
+          setMoneyDrafts((current) => ({
+            ...current,
+            distanceOpening: formatKurusDraft(nextDistance.opening, true),
+            distanceFirst: formatKurusDraft(nextDistance.first),
+            distanceSecond: formatKurusDraft(nextDistance.second, true),
+          }));
         } else {
-          setHourly({
+          const nextHourly = {
             rate: active.hourlyRateKurus ?? 0,
             minimum: active.minimumHours ?? 4,
             includedMode: active.includedKmMode ?? 'PER_HOUR',
             includedKm: active.includedKm ?? 10,
             excessKm: active.excessKmKurus ?? 0,
             excessHour: active.excessHourKurus ?? 0,
-          });
+          };
+          setHourly(nextHourly);
+          setMoneyDrafts((current) => ({
+            ...current,
+            hourlyRate: formatKurusDraft(nextHourly.rate),
+            hourlyExcessKm: formatKurusDraft(nextHourly.excessKm, true),
+            hourlyExcessHour: formatKurusDraft(nextHourly.excessHour, true),
+          }));
         }
       }
     } catch (error) {
@@ -376,14 +404,27 @@ function VehiclePricingProfileEditor({ vehicleId, eligible }: { vehicleId: strin
 
   useEffect(() => { load(); }, [load]);
 
-  const moneyInput = (label: string, value: number, setValue: (value: number) => void, optional = false) => (
+  const moneyInput = (key: string, label: string, value: number, setValue: (value: number) => void, optional = false) => (
     <div>
       <Label>{label}</Label>
-      <Input
-        type="number"
-        value={optional && value === 0 ? '' : (value / 100).toFixed(2)}
-        onChange={(next) => setValue(next === '' ? 0 : Math.max(0, Math.round(Number(next.replace(',', '.')) * 100)))}
+      <input
+        type="text"
+        inputMode="decimal"
+        value={moneyDrafts[key] ?? formatKurusDraft(value, optional)}
+        onChange={(event) => {
+          const next = event.target.value;
+          if (/^\d*(?:[.,]\d*)?$/.test(next)) {
+            setMoneyDrafts((current) => ({ ...current, [key]: next }));
+          }
+        }}
+        onBlur={() => {
+          const draft = moneyDrafts[key] ?? formatKurusDraft(value, optional);
+          const parsed = parseMoneyDraft(draft, value);
+          setValue(parsed);
+          setMoneyDrafts((current) => ({ ...current, [key]: formatKurusDraft(parsed, optional) }));
+        }}
         placeholder={optional ? 'İsteğe bağlı' : '0,00'}
+        style={inputStyle}
       />
       <span style={{ color: MUTED, fontSize: '10px', fontFamily: 'Inter, sans-serif' }}>TRY</span>
     </div>
@@ -396,22 +437,34 @@ function VehiclePricingProfileEditor({ vehicleId, eligible }: { vehicleId: strin
     }
     setSaving(true);
     setMessage('');
+    const parsedDistance = {
+      ...distance,
+      opening: parseMoneyDraft(moneyDrafts.distanceOpening ?? formatKurusDraft(distance.opening, true), distance.opening),
+      first: parseMoneyDraft(moneyDrafts.distanceFirst ?? formatKurusDraft(distance.first), distance.first),
+      second: parseMoneyDraft(moneyDrafts.distanceSecond ?? formatKurusDraft(distance.second, true), distance.second),
+    };
+    const parsedHourly = {
+      ...hourly,
+      rate: parseMoneyDraft(moneyDrafts.hourlyRate ?? formatKurusDraft(hourly.rate), hourly.rate),
+      excessKm: parseMoneyDraft(moneyDrafts.hourlyExcessKm ?? formatKurusDraft(hourly.excessKm, true), hourly.excessKm),
+      excessHour: parseMoneyDraft(moneyDrafts.hourlyExcessHour ?? formatKurusDraft(hourly.excessHour, true), hourly.excessHour),
+    };
     const payload = mode === 'DISTANCE'
       ? {
         vehicleId, active: true, mode, notes: null,
-        distanceOpeningKurus: distance.opening,
-        distanceFirstKmKurus: distance.first,
-        distanceThresholdKm: distance.threshold,
-        distanceSecondKmKurus: distance.second,
+        distanceOpeningKurus: parsedDistance.opening,
+        distanceFirstKmKurus: parsedDistance.first,
+        distanceThresholdKm: parsedDistance.threshold,
+        distanceSecondKmKurus: parsedDistance.second,
       }
       : {
         vehicleId, active: true, mode, notes: null,
-        hourlyRateKurus: hourly.rate,
-        minimumHours: hourly.minimum,
-        includedKmMode: hourly.includedMode,
-        includedKm: hourly.includedKm,
-        excessKmKurus: hourly.excessKm,
-        excessHourKurus: hourly.excessHour,
+        hourlyRateKurus: parsedHourly.rate,
+        minimumHours: parsedHourly.minimum,
+        includedKmMode: parsedHourly.includedMode,
+        includedKm: parsedHourly.includedKm,
+        excessKmKurus: parsedHourly.excessKm,
+        excessHourKurus: parsedHourly.excessHour,
       };
     try {
       const response = await fetch('/admin/api/pricing/profiles', {
@@ -464,10 +517,10 @@ function VehiclePricingProfileEditor({ vehicleId, eligible }: { vehicleId: strin
           {mode === 'DISTANCE' ? (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                {moneyInput('Açılış Ücreti', distance.opening, (opening) => setDistance((current) => ({ ...current, opening })), true)}
+                {moneyInput('distanceOpening', 'Açılış Ücreti', distance.opening, (opening) => setDistance((current) => ({ ...current, opening })), true)}
                 <div><Label>Kademe Sınırı (km)</Label><Input type="number" value={String(distance.threshold)} onChange={(threshold) => setDistance((current) => ({ ...current, threshold: Math.max(1, Number(threshold) || 1) }))} /></div>
-                {moneyInput('Kilometre Fiyatı', distance.first, (first) => setDistance((current) => ({ ...current, first })))}
-                {moneyInput('İkinci Kademe (isteğe bağlı)', distance.second, (second) => setDistance((current) => ({ ...current, second })), true)}
+                {moneyInput('distanceFirst', 'Kilometre Fiyatı', distance.first, (first) => setDistance((current) => ({ ...current, first })))}
+                {moneyInput('distanceSecond', 'İkinci Kademe (isteğe bağlı)', distance.second, (second) => setDistance((current) => ({ ...current, second })), true)}
               </div>
               <div style={{ marginTop: '14px', borderTop: `1px solid ${BORDER}`, paddingTop: '12px' }}>
                 <div style={{ color: MUTED, fontWeight: 700, fontSize: '10px', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '8px' }}>Canlı Mesafe Örnekleri</div>
@@ -478,12 +531,12 @@ function VehiclePricingProfileEditor({ vehicleId, eligible }: { vehicleId: strin
             </>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              {moneyInput('Saatlik Tarife', hourly.rate, (rate) => setHourly((current) => ({ ...current, rate })))}
+              {moneyInput('hourlyRate', 'Saatlik Tarife', hourly.rate, (rate) => setHourly((current) => ({ ...current, rate })))}
               <div><Label>Minimum Saat</Label><Input type="number" value={String(hourly.minimum)} onChange={(minimum) => setHourly((current) => ({ ...current, minimum: Math.max(1, Number(minimum) || 1) }))} /></div>
               <div><Label>Dahil km tipi</Label><select value={hourly.includedMode} onChange={(event) => setHourly((current) => ({ ...current, includedMode: event.target.value as 'PER_HOUR' | 'PACKAGE' }))} style={inputStyle}><option value="PER_HOUR">Saat başına</option><option value="PACKAGE">Paket toplamı</option></select></div>
               <div><Label>Dahil km</Label><Input type="number" value={String(hourly.includedKm)} onChange={(includedKm) => setHourly((current) => ({ ...current, includedKm: Math.max(0, Number(includedKm) || 0) }))} /></div>
-              {moneyInput('Km Aşım Tarifesi', hourly.excessKm, (excessKm) => setHourly((current) => ({ ...current, excessKm })), true)}
-              {moneyInput('Saat Aşım Tarifesi', hourly.excessHour, (excessHour) => setHourly((current) => ({ ...current, excessHour })), true)}
+              {moneyInput('hourlyExcessKm', 'Km Aşım Tarifesi', hourly.excessKm, (excessKm) => setHourly((current) => ({ ...current, excessKm })), true)}
+              {moneyInput('hourlyExcessHour', 'Saat Aşım Tarifesi', hourly.excessHour, (excessHour) => setHourly((current) => ({ ...current, excessHour })), true)}
             </div>
           )}
           {message && <div style={{ marginTop: '12px', color: message.includes('kaydedildi') ? '#047857' : '#B91C1C', fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>{message}</div>}

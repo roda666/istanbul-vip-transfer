@@ -21,7 +21,8 @@ export async function translateServicePageFields(
   signal?: AbortSignal,
 ): Promise<ServicePageTranslateResult> {
   const { resolveIntegrationSecret } = await import('@/lib/integration-secrets');
-  const apiKey = await resolveIntegrationSecret('OPENAI_API_KEY');
+  const apiKey = await resolveIntegrationSecret('AI_INTEGRATIONS_OPENAI_API_KEY')
+    || await resolveIntegrationSecret('OPENAI_API_KEY');
   if (!apiKey) return { ok: false, reason: 'not_configured', message: 'OPENAI_API_KEY is not set' };
 
   const model = getOpenAiTranslationModel();
@@ -60,7 +61,8 @@ Return the translated JSON with identical keys.`;
 
   try {
     const { OpenAI } = await import('openai');
-    const client = new OpenAI({ apiKey });
+    const baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL?.trim();
+    const client = new OpenAI({ apiKey, ...(baseURL ? { baseURL } : {}) });
 
     const response = await client.chat.completions.create(
       {

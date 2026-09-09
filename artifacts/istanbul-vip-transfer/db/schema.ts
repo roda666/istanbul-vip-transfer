@@ -209,6 +209,7 @@ export const faqs = pgTable('faqs', {
     .references(() => content.id, { onDelete: 'cascade' }),
   question: text('question').notNull(),
   answer: text('answer').notNull(),
+  translations: jsonb('translations').$type<Record<string, { question?: string; answer?: string }>>().default({}).notNull(),
   sortOrder: integer('sort_order').default(0).notNull(),
 });
 
@@ -480,6 +481,7 @@ export const vehicles = pgTable('vehicles', {
   /** JSONB i18n: {"tr":"…","en":"…","de":"…","ru":"…","ar":"…","fr":"…","es":"…","it":"…","nl":"…"} */
   nameTranslations:      jsonb('name_translations').$type<Record<string, string>>(),
   shortDescTranslations: jsonb('short_desc_translations').$type<Record<string, string>>(),
+  fullDescTranslations:  jsonb('full_desc_translations').$type<Record<string, string>>(),
   taglineTranslations:   jsonb('tagline_translations').$type<Record<string, string>>(),
   metaTitle: text('meta_title'),
   metaDescription: text('meta_description'),
@@ -504,6 +506,7 @@ export const locations = pgTable('locations', {
   slug: text('slug').notNull().unique(),
   city: text('city').default('İstanbul').notNull(),
   district: text('district'),
+  translations: jsonb('translations').$type<Record<string, { name?: string; city?: string; district?: string | null }>>().default({}).notNull(),
   /** Optional WGS84 coordinates used for admin-only distance estimation. */
   latitude: doublePrecision('latitude'),
   longitude: doublePrecision('longitude'),

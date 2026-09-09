@@ -86,6 +86,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       dropoffEnabled: locations.dropoffEnabled,
       latitude: locations.latitude,
       longitude: locations.longitude,
+      name: locations.name,
+      city: locations.city,
+      district: locations.district,
+      translations: locations.translations,
     })
     .from(locations).where(eq(locations.id, id)).limit(1).catch(() => []);
   if (!current) return NextResponse.json({ error: 'Bulunamadı.' }, { status: 404 });
@@ -124,6 +128,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (data.dropoffEnabled !== undefined) updateValues.dropoffEnabled = data.dropoffEnabled;
   if (data.isActive !== undefined) updateValues.isActive = data.isActive;
   if (data.displayOrder !== undefined) updateValues.displayOrder = data.displayOrder;
+  const { fillMissingTranslations } = await import('@/lib/ai/fill-missing-translations');
+  updateValues.translations = await fillMissingTranslations({
+    name: data.name ?? current.name,
+    city: data.city ?? current.city,
+    district: data.district === undefined ? current.district : data.district,
+  }, current.translations ?? {});
 
   try {
     const [updated] = await db.update(locations).set(updateValues).where(eq(locations.id, id)).returning();

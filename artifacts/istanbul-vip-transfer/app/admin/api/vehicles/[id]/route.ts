@@ -108,7 +108,12 @@ export async function PUT(request: NextRequest, { params }: Params) {
   const { eq } = await import('drizzle-orm');
 
   const [current] = await db
-    .select({ id: vehicles.id, slug: vehicles.slug, status: vehicles.status })
+    .select({
+      id: vehicles.id, slug: vehicles.slug, status: vehicles.status,
+      name: vehicles.name, shortDescription: vehicles.shortDescription, fullDescription: vehicles.fullDescription,
+      nameTranslations: vehicles.nameTranslations, shortDescTranslations: vehicles.shortDescTranslations,
+      fullDescTranslations: vehicles.fullDescTranslations, taglineTranslations: vehicles.taglineTranslations,
+    })
     .from(vehicles)
     .where(eq(vehicles.id, id))
     .limit(1)
@@ -189,6 +194,25 @@ export async function PUT(request: NextRequest, { params }: Params) {
       updateValues.ogImage = data.ogImage ? sanitizeText(data.ogImage) : null;
     if (data.robotsIndex !== undefined) updateValues.robotsIndex = data.robotsIndex;
     if (data.robotsFollow !== undefined) updateValues.robotsFollow = data.robotsFollow;
+
+    const { fillMissingTranslations, localeFieldMap, fieldLocaleMaps } = await import('@/lib/ai/fill-missing-translations');
+    const existingMaps = {
+      name: current.nameTranslations,
+      shortDescription: current.shortDescTranslations,
+      fullDescription: current.fullDescTranslations,
+      tagline: current.taglineTranslations,
+    };
+    const translated = await fillMissingTranslations({
+      name: data.name ?? current.name,
+      shortDescription: data.shortDescription === undefined ? current.shortDescription : data.shortDescription,
+      fullDescription: data.fullDescription === undefined ? current.fullDescription : data.fullDescription,
+      tagline: current.taglineTranslations?.tr,
+    }, localeFieldMap(existingMaps));
+    const completedMaps = fieldLocaleMaps(translated, Object.keys(existingMaps), existingMaps);
+    updateValues.nameTranslations = { ...(current.nameTranslations ?? {}), tr: data.name ?? current.name, ...completedMaps.name };
+    updateValues.shortDescTranslations = { ...(current.shortDescTranslations ?? {}), tr: data.shortDescription ?? current.shortDescription ?? '', ...completedMaps.shortDescription };
+    updateValues.fullDescTranslations = { ...(current.fullDescTranslations ?? {}), tr: data.fullDescription ?? current.fullDescription ?? '', ...completedMaps.fullDescription };
+    updateValues.taglineTranslations = completedMaps.tagline;
 
     // Updating the vehicle and replacing its point classes must be atomic:
     // otherwise a bad/stale point id leaves the vehicle changed but the

@@ -237,6 +237,82 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         },
       });
     }
+
+    const { fillMissingTranslations, AUTO_TRANSLATION_LOCALES } = await import('@/lib/ai/fill-missing-translations');
+    const existingRows = await db.select().from(transferRouteTranslations)
+      .where(eq(transferRouteTranslations.routeId, row.id));
+    const existingMap = Object.fromEntries(existingRows.map((translation) => [
+      translation.languageCode,
+      translation.isManuallyLocked ? {
+        title: String(name), description: text(description) ?? String(name),
+        seoTitle: text(seoTitle) ?? '', seoDescription: text(seoDescription) ?? '',
+        ogTitle: text(ogTitle) ?? '', ogDescription: text(ogDescription) ?? '',
+        introParagraph: text(introParagraph) ?? '',
+        origin: String(origin), destination: String(destination),
+      } : {
+        title: translation.title,
+        description: translation.description,
+        seoTitle: translation.seoTitle,
+        seoDescription: translation.seoDescription,
+        ogTitle: translation.ogTitle,
+        ogDescription: translation.ogDescription,
+        introParagraph: translation.introParagraph,
+        origin: row.originTranslations?.[translation.languageCode],
+        destination: row.destinationTranslations?.[translation.languageCode],
+      },
+    ]));
+    const completed = await fillMissingTranslations({
+      title: String(name),
+      description: text(description) ?? String(name),
+      seoTitle: text(seoTitle),
+      seoDescription: text(seoDescription),
+      ogTitle: text(ogTitle),
+      ogDescription: text(ogDescription),
+      introParagraph: text(introParagraph),
+      origin: String(origin),
+      destination: String(destination),
+    }, existingMap);
+    const nameTranslations = { ...(row.nameTranslations ?? {}) };
+    const originTranslations = { ...(row.originTranslations ?? {}) };
+    const destinationTranslations = { ...(row.destinationTranslations ?? {}) };
+
+    for (const locale of AUTO_TRANSLATION_LOCALES) {
+      const current = existingRows.find((translation) => translation.languageCode === locale);
+      if (current?.isManuallyLocked) continue;
+      const fields = completed[locale];
+      if (!fields?.title || !fields.description) continue;
+      if (!nameTranslations[locale]) nameTranslations[locale] = fields.title;
+      if (!originTranslations[locale] && fields.origin) originTranslations[locale] = fields.origin;
+      if (!destinationTranslations[locale] && fields.destination) destinationTranslations[locale] = fields.destination;
+      const values = {
+        title: current?.title || fields.title,
+        description: current?.description || fields.description,
+        seoTitle: current?.seoTitle || fields.seoTitle || null,
+        seoDescription: current?.seoDescription || fields.seoDescription || null,
+        ogTitle: current?.ogTitle || fields.ogTitle || null,
+        ogDescription: current?.ogDescription || fields.ogDescription || null,
+        introParagraph: current?.introParagraph || fields.introParagraph || null,
+        updatedAt: new Date(),
+      };
+      if (current) {
+        await db.update(transferRouteTranslations).set(values).where(eq(transferRouteTranslations.id, current.id));
+      } else {
+        await db.insert(transferRouteTranslations).values({
+          routeId: row.id,
+          languageCode: locale,
+          status: 'DRAFT',
+          isManuallyLocked: false,
+          ...values,
+        });
+      }
+    }
+    await db.update(transferRoutes).set({
+      nameTranslations,
+      originTranslations,
+      destinationTranslations,
+      updatedAt: new Date(),
+    }).where(eq(transferRoutes.id, row.id));
+
     revalidatePath(`/guzergah/${row.slug}`);
     for (const locale of ['en', 'de', 'ru', 'ar', 'fr', 'es', 'it', 'nl']) {
       revalidatePath(`/${locale}/guzergah/${row.slug}`);

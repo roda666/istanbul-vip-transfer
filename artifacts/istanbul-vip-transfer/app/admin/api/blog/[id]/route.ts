@@ -334,6 +334,59 @@ export async function PUT(req: NextRequest, { params }: Params) {
         .set({ status: 'OUTDATED', updatedAt: now } as never)
         .where(inArray(contentTranslations.id, toOutdate));
     }
+
+    const { fillMissingTranslations, AUTO_TRANSLATION_LOCALES } = await import('@/lib/ai/fill-missing-translations');
+    const existingRows = await db
+      .select()
+      .from(contentTranslations)
+      .where(eq(contentTranslations.entityId, id));
+    const existingMap = Object.fromEntries(existingRows.map((tx) => [
+      tx.targetLanguageCode,
+      tx.isManuallyLocked ? {
+        title: data.title, excerpt: data.excerpt ?? '', body: data.body,
+        metaTitle: data.seoTitle ?? '', metaDescription: data.seoDescription ?? '',
+      } : {
+        title: tx.title, excerpt: tx.excerpt, body: tx.body,
+        metaTitle: tx.metaTitle, metaDescription: tx.metaDescription,
+      },
+    ]));
+    const completed = await fillMissingTranslations({
+      title: data.title,
+      excerpt: data.excerpt,
+      body: data.body,
+      metaTitle: data.seoTitle,
+      metaDescription: data.seoDescription,
+    }, existingMap);
+
+    for (const locale of AUTO_TRANSLATION_LOCALES) {
+      const current = existingRows.find((tx) => tx.targetLanguageCode === locale);
+      if (current?.isManuallyLocked) continue;
+      const fields = completed[locale];
+      if (!fields?.title || !fields.body) continue;
+      const values = {
+        title: fields.title,
+        excerpt: fields.excerpt || null,
+        body: fields.body,
+        metaTitle: fields.metaTitle || null,
+        metaDescription: fields.metaDescription || null,
+        sourceHash: srcHash,
+        isAiGenerated: current?.isAiGenerated ?? true,
+        aiPromptVersion: current?.aiPromptVersion ?? 'auto-fill-missing-v1',
+        updatedAt: now,
+      };
+      if (current) {
+        await db.update(contentTranslations).set(values as never).where(eq(contentTranslations.id, current.id));
+      } else {
+        await db.insert(contentTranslations).values({
+          entityType: BLOG_ENTITY_TYPE,
+          entityId: id,
+          targetLanguageCode: locale,
+          status: 'DRAFT',
+          ...values,
+          createdAt: now,
+        } as never);
+      }
+    }
   }
 
   // Save revision snapshot

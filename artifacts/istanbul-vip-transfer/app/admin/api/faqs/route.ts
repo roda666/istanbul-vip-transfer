@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     const { eq, asc } = await import('drizzle-orm');
 
     const rows = await db
-      .select({ id: faqs.id, question: faqs.question, answer: faqs.answer, sortOrder: faqs.sortOrder, contentId: faqs.contentId, contentTitle: content.title })
+      .select({ id: faqs.id, question: faqs.question, answer: faqs.answer, translations: faqs.translations, sortOrder: faqs.sortOrder, contentId: faqs.contentId, contentTitle: content.title })
       .from(faqs).leftJoin(content, eq(faqs.contentId, content.id))
       .where(contentId ? eq(faqs.contentId, contentId) : undefined)
       .orderBy(asc(faqs.sortOrder));
@@ -51,7 +51,12 @@ export async function POST(request: NextRequest) {
   try {
     const { db } = await import('@/db');
     const { faqs, auditLogs } = await import('@/db/schema');
-    const [newFaq] = await db.insert(faqs).values(parsed.data).returning();
+    const { fillMissingTranslations } = await import('@/lib/ai/fill-missing-translations');
+    const translations = await fillMissingTranslations({
+      question: parsed.data.question,
+      answer: parsed.data.answer,
+    });
+    const [newFaq] = await db.insert(faqs).values({ ...parsed.data, translations }).returning();
     await db.insert(auditLogs).values({ adminUserId: session.adminId, action: 'CREATE', entityType: 'FAQ', entityId: newFaq.id }).catch(() => {});
     revalidateHomepageLocale('tr');
     return NextResponse.json({ item: newFaq }, { status: 201 });

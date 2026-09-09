@@ -31,7 +31,14 @@ export async function fillMissingTranslations(
     if (!translated.ok) {
       throw new Error(`${locale.toUpperCase()} otomatik çevirisi üretilemedi: ${translated.message ?? translated.reason}`);
     }
-    result[locale] = { ...current, ...translated.translated };
+    // The model is instructed to return exactly the requested keys, but do not
+    // let an extra or hallucinated key bypass the missing-only contract.
+    const safeTranslated = Object.fromEntries(
+      Object.keys(missing)
+        .filter((key) => Object.prototype.hasOwnProperty.call(translated.translated, key))
+        .map((key) => [key, translated.translated[key]]),
+    );
+    result[locale] = { ...current, ...safeTranslated };
   }));
 
   return result;

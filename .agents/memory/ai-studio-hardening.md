@@ -43,6 +43,13 @@ description: Key decisions and constraints for the AI Content Studio — timeout
 
 **How to apply:** Keep image metadata optional, but enforce nonempty primary content fields. For any translation prompt carrying Markdown, explicitly supply its source internal URLs and require each to remain in the result.
 
+## GPT-5.4 token parameter compatibility
+- The configured OpenAI-compatible provider rejects `max_tokens` for `gpt-5.4-mini` with `unsupported_parameter`; it requires `max_completion_tokens`.
+
+**Why:** The admin SEO generator returned a generic HTTP 422 even though credentials and the proxy base URL were configured; a direct safe provider probe exposed the hidden HTTP 400 parameter error.
+
+**How to apply:** Use `max_completion_tokens` for GPT-5.4-family chat requests, or select a model that supports `max_tokens`. Preserve a sanitized provider classification in server logs/audit data so the UI error is actionable.
+
 ## DALL-E response_format (OpenAI SDK 6.x)
 - SDK 6.49.0: `response_format: 'b64_json'` throws `400 Unknown parameter: 'response_format'`
 - Fix: omit `response_format` entirely — defaults to URL; download from CDN URL then re-upload to storage

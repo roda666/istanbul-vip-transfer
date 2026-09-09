@@ -1,8 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Pencil, Archive, Trash2, Search, RefreshCw, Check, X, GripVertical } from 'lucide-react';
+import { Plus, Pencil, Archive, Trash2, Search, RefreshCw, Check, X, GripVertical, MapPin } from 'lucide-react';
 import AdminPageHeader from '../../_components/AdminPageHeader';
+import {
+  applyGeocodingResultToForm,
+  type LocationGeocodingResult,
+} from '@/lib/location-geocoding';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const GOLD = '#C99A32';
@@ -210,6 +214,8 @@ function LocationModal({ loc, onSave, onClose }: { loc?: Location; onSave: () =>
   const [form, setForm] = useState<LocationFormState>(loc ? locationToForm(loc) : EMPTY_FORM);
   const [slugManual, setSlugManual] = useState(isEdit);
   const [saving, setSaving] = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
+  const [geocodingResult, setGeocodingResult] = useState<LocationGeocodingResult | null>(null);
   const [error, setError] = useState('');
 
   function set<K extends keyof LocationFormState>(k: K, v: LocationFormState[K]) {
@@ -217,7 +223,43 @@ function LocationModal({ loc, onSave, onClose }: { loc?: Location; onSave: () =>
   }
 
   function handleNameChange(v: string) {
+    setGeocodingResult(null);
     setForm(f => ({ ...f, name: v, slug: slugManual ? f.slug : slugify(v) }));
+  }
+
+  async function handleGeocode() {
+    setError('');
+    setGeocodingResult(null);
+    if (form.name.trim().length < 2) {
+      setError('Google Maps’te aramak için lokasyon adı girin. Koordinatları elle de girebilirsiniz.');
+      return;
+    }
+    setGeocoding(true);
+    try {
+      const response = await fetch('/admin/api/locations/geocode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name.trim(),
+          city: form.city.trim() || undefined,
+          district: form.district.trim() || undefined,
+        }),
+      });
+      const payload = await response.json().catch(() => ({})) as {
+        result?: LocationGeocodingResult;
+        error?: string;
+      };
+      if (!response.ok || !payload.result) {
+        setError(payload.error || 'Google Maps’ten sonuç alınamadı. Koordinatları elle girebilirsiniz.');
+        return;
+      }
+      setForm(current => applyGeocodingResultToForm(current, payload.result!));
+      setGeocodingResult(payload.result);
+    } catch {
+      setError('Google Maps’ten sonuç alınamadı: Bağlantı hatası. Koordinatları elle girebilirsiniz.');
+    } finally {
+      setGeocoding(false);
+    }
   }
 
   async function handleSave() {
@@ -270,6 +312,15 @@ function LocationModal({ loc, onSave, onClose }: { loc?: Location; onSave: () =>
           <div style={{ gridColumn: '1 / -1' }}>
             <Label required>Lokasyon Adı</Label>
             <FieldInput value={form.name} onChange={handleNameChange} placeholder="ör. Kadıköy" />
+            <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <Btn variant="secondary" small loading={geocoding} disabled={saving || !form.name.trim()} onClick={handleGeocode}>
+                <MapPin size={14} />
+                {geocoding ? 'Google Maps’te Aranıyor…' : 'Google Maps’ten Bul'}
+              </Btn>
+              <span style={{ color: MUTED, fontSize: '11px', lineHeight: 1.4 }}>
+                Yalnızca butona bastığınızda arama yapılır; sonuç kaydedilmeden önce düzenlenebilir.
+              </span>
+            </div>
           </div>
           <div>
             <Label required>Slug</Label>
@@ -311,6 +362,19 @@ function LocationModal({ loc, onSave, onClose }: { loc?: Location; onSave: () =>
             <Label>Doğruluk (metre)</Label>
             <FieldInput value={form.coordinateAccuracyMeters} onChange={v => set('coordinateAccuracyMeters', v)} type="number" placeholder="örn. 50" />
           </div>
+          {geocodingResult && (
+            <div style={{ gridColumn: '1 / -1', border: '1px solid #A7D7B8', background: '#F0FDF4', borderRadius: '8px', padding: '12px 14px' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', color: '#166534', fontWeight: 700, fontSize: '12px', marginBottom: '6px' }}>
+                <Check size={15} /> Google Maps sonucu forma dolduruldu
+              </div>
+              <div style={{ color: NAVY, fontSize: '12px', lineHeight: 1.55, overflowWrap: 'anywhere' }}>
+                <strong>Bulunan adres:</strong> {geocodingResult.formattedAddress}<br />
+                <strong>Koordinat:</strong> {geocodingResult.latitude}, {geocodingResult.longitude}<br />
+                <strong>Sonuç türü:</strong> {geocodingResult.locationType}
+                {geocodingResult.partialMatch ? ' · Kısmi eşleşme — lütfen dikkatle kontrol edin.' : ''}
+              </div>
+            </div>
+          )}
           <div>
             <Label>Sıralama</Label>
             <FieldInput value={form.displayOrder} onChange={v => set('displayOrder', v)} type="number" placeholder="0" />

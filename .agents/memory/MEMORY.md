@@ -116,3 +116,4 @@
 - [Dashboard storage transport on Node 24](dashboard-storage-node24.md) — never list private recovery objects during dashboard SSR through Storage 7; its node-fetch 2 transport triggers DEP0169 and delays login.
 - [Admin request presentation safety](admin-request-presentation-safety.md) — detail/PDF/Excel use one grouped allowlist; never render raw requestData entries or unknown objects.
 - [WhatsApp link contract](whatsapp-link-contract.md) — callers pass plain text; one builder encodes once; wa.me paths are digits-only, displayed customer phones are +E.164, app choice belongs to the OS.
+- [Admin location geocoding](admin-location-geocoding.md) — geocoding is an explicit admin-only form-fill action; coordinates remain editable and persist only after normal save.

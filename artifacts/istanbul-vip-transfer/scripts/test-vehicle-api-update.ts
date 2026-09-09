@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { db } from '../db';
-import { adminUsers, auditLogs, tollPoints, vehicles, vehicleTollPointClasses } from '../db/schema';
+import { adminUsers, auditLogs, vehicles } from '../db/schema';
 import { hashPassword } from '../lib/auth/password';
 
 const baseUrl = process.env.BASE_URL?.replace(/\/$/, '');
@@ -50,17 +50,13 @@ try {
   assert.ok(setCookie, 'Login did not set an admin session cookie.');
   cookie = setCookie.split(';', 1)[0];
 
-  // Use an actual configured toll point, not a fabricated dependency.
-  const [tollPoint] = await db.select({ id: tollPoints.id }).from(tollPoints).where(eq(tollPoints.active, true)).limit(1);
-  assert.ok(tollPoint, 'This test requires at least one active toll point.');
-
   const created = await api('/admin/api/vehicles', {
     method: 'POST', headers: { origin: baseUrl!, 'content-type': 'application/json' },
     body: JSON.stringify({
       name, slug, vehicleType: 'automobile', passengerCapacity: 3, luggageCapacity: 2,
       priceCalculationEligible: false, pricingClass: 'automobile', isActive: true,
       features: [], gallery: [], displayOrder: 0, isFeatured: false, status: 'DRAFT',
-      tollPointClasses: [],
+       tollClass: 'class_1', tollClassEvidence: 'API test evidence',
     }),
   });
   assert.equal(created.status, 201, `Vehicle create failed: ${await created.clone().text()}`);
@@ -70,17 +66,14 @@ try {
 
   const updated = await api(`/admin/api/vehicles/${vehicleId}`, {
     method: 'PUT', headers: { origin: baseUrl!, 'content-type': 'application/json' },
-    body: JSON.stringify({ name: updatedName, tollPointClasses: [{ tollPointId: tollPoint.id, vehicleClass: 'class_1' }] }),
+    body: JSON.stringify({ name: updatedName, tollClass: 'class_2', tollClassEvidence: 'Updated API test evidence' }),
   });
   assert.equal(updated.status, 200, `Vehicle update failed: ${await updated.text()}`);
 
   const [dbVehicle] = await db.select().from(vehicles).where(eq(vehicles.id, vehicleId));
   assert.equal(dbVehicle?.name, updatedName, 'Vehicle name was not updated in the database.');
-  const [dbClass] = await db.select().from(vehicleTollPointClasses).where(
-    and(eq(vehicleTollPointClasses.vehicleId, vehicleId), eq(vehicleTollPointClasses.tollPointId, tollPoint.id)),
-  );
-  assert.equal(dbClass?.vehicleClass, 'class_1', 'tollPointClasses update was not persisted.');
-  console.log('Vehicle PUT returned 200 and updated the vehicle plus its per-toll-point class in DB.');
+  assert.equal(dbVehicle?.tollClass, 'class_2', 'global tollClass update was not persisted.');
+  console.log('Vehicle PUT returned 200 and updated the vehicle plus its global toll class in DB.');
 
   const deleted = await api(`/admin/api/vehicles/${vehicleId}`, {
     method: 'DELETE', headers: { origin: baseUrl! },
@@ -91,9 +84,6 @@ try {
   assert.equal(remaining.length, 0, 'Vehicle remains in the database after API deletion.');
   console.log('Vehicle API cleanup confirmed.');
 } finally {
-  // Emergency cleanup is limited to this unique test slug. Child class rows
-  // cascade on normal deletion, and are explicitly removed for partial runs.
-  if (vehicleId) await db.delete(vehicleTollPointClasses).where(eq(vehicleTollPointClasses.vehicleId, vehicleId)).catch(() => {});
   await db.delete(vehicles).where(eq(vehicles.slug, slug)).catch(() => {});
   if (adminId) {
     await db.delete(auditLogs).where(eq(auditLogs.adminUserId, adminId)).catch(() => {});

@@ -3,7 +3,7 @@
  * vehicle schema. Do not fall back to Turkish source fields for non-Turkish
  * visitors: incomplete cards are withheld until their translation is ready.
  */
-import { VEHICLE_FEATURE_CODES } from '@/lib/vehicle-feature-catalog';
+import { VEHICLE_FEATURE_CODES, type CustomVehicleFeature } from '@/lib/vehicle-feature-catalog';
 
 export const LOCALIZED_FEATURE_CODES = new Set<string>(VEHICLE_FEATURE_CODES);
 
@@ -44,10 +44,15 @@ export interface ResolvedPublicVehicle {
   displayTagline: string;
 }
 
+type FeatureDefaults = {
+  codes: string[];
+  customFeatures: CustomVehicleFeature[];
+} | string[];
+
 export function resolvePublishedVehicles<T extends LocalizableVehicle & { status?: string }>(
   vehicles: T[],
   locale: string,
-  defaultFeatureCodes: string[] = [],
+  defaultFeatureCodes: FeatureDefaults = [],
 ): ResolvedPublicVehicle[] {
   return vehicles.flatMap((vehicle) => {
     if (vehicle.status !== undefined && vehicle.status !== 'PUBLISHED') return [];
@@ -68,7 +73,7 @@ function featureCode(feature: Feature): string | null {
 export function resolvePublicVehicle(
   vehicle: LocalizableVehicle,
   locale: string,
-  defaultFeatureCodes: string[] = [],
+  defaultFeatureCodes: FeatureDefaults = [],
 ): ResolvedPublicVehicle | null {
   const isTurkish = locale === 'tr';
   const displayName = nonEmpty(
@@ -93,7 +98,14 @@ export function resolvePublicVehicle(
   // when nobody has configured anything for this vehicle does it inherit the
   // fleet-wide default list, so "no data" never reads as "this car has none".
   const ownFeatures = vehicle.features ?? [];
-  const effectiveFeatures = ownFeatures.length > 0 ? ownFeatures : defaultFeatureCodes;
+  const defaults = Array.isArray(defaultFeatureCodes)
+    ? { codes: defaultFeatureCodes, customFeatures: [] as CustomVehicleFeature[] }
+    : defaultFeatureCodes;
+  const inherited = ownFeatures.length === 0;
+  const effectiveFeatures = !inherited ? ownFeatures : [
+    ...defaults.codes,
+    ...defaults.customFeatures.map((feature) => ({ icon: feature.code, label: feature.translations[locale as keyof typeof feature.translations] })),
+  ];
 
   return {
     id: vehicle.id,
@@ -103,6 +115,7 @@ export function resolvePublicVehicle(
     vehicleType: vehicle.vehicleType,
     features: effectiveFeatures.filter((feature) => (
       isTurkish || LOCALIZED_FEATURE_CODES.has(featureCode(feature) ?? '')
+      || (inherited && !!featureCode(feature)?.startsWith('CUSTOM_') && typeof feature === 'object' && !!nonEmpty(feature.label))
     )),
     coverImage,
     // There is no localized alt-text field. The localized vehicle name is the

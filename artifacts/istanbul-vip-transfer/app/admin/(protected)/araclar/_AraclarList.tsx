@@ -321,7 +321,6 @@ export default function AraclarList() {
                 </thead>
                 <tbody>
                   {vehicles.map((v) => {
-                    const neverPublished = !v.publishedAt && ['DRAFT', 'RESEARCH', 'REVIEW'].includes(v.status);
                     return (
                       <tr key={v.id} style={{ borderBottom: '1px solid #EDF2F7' }}
                         onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = '#F8FAFC'; }}
@@ -450,7 +449,7 @@ export default function AraclarList() {
                               </button>
                             )}
 
-                            {neverPublished && (
+                            {(
                               <button
                                 onClick={() => confirmDelete(v)}
                                 style={{

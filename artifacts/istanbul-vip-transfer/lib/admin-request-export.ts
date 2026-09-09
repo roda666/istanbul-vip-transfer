@@ -5,7 +5,7 @@ import {
   type RequestPresentationSection,
 } from '@/lib/admin-request-presentation';
 
-export interface RequestExportRow extends RequestPresentationInput {}
+export type RequestExportRow = RequestPresentationInput;
 
 export function parseRequestExportIds(searchParams: Pick<URLSearchParams, 'getAll'>): string[] {
   return Array.from(new Set(

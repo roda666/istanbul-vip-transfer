@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { VEHICLE_FEATURE_CATALOG } from '@/lib/vehicle-feature-catalog';
+import { VEHICLE_FEATURE_CATALOG, PUBLIC_VEHICLE_LOCALES } from '@/lib/vehicle-feature-catalog';
 
 const GOLD = '#C9A84C';
 const BORDER = '#D8E1E9';
@@ -17,6 +17,7 @@ const MUTED = '#64748B';
  */
 export default function VehicleFeatureDefaultsPanel() {
   const [codes, setCodes] = useState<string[]>([]);
+  const [customFeatures, setCustomFeatures] = useState<Array<{ code: string; translations: Record<string, string> }>>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -29,7 +30,10 @@ export default function VehicleFeatureDefaultsPanel() {
       try {
         const res = await fetch('/admin/api/vehicle-feature-defaults');
         const data = await res.json();
-        if (!cancelled && res.ok) setCodes(data.codes ?? []);
+        if (!cancelled && res.ok) {
+          setCodes(data.codes ?? []);
+          setCustomFeatures(data.customFeatures ?? []);
+        }
       } catch {
         // Silent — panel simply shows the empty state; not fatal.
       } finally {
@@ -50,17 +54,26 @@ export default function VehicleFeatureDefaultsPanel() {
       const res = await fetch('/admin/api/vehicle-feature-defaults', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ codes }),
+         body: JSON.stringify({ codes, customFeatures }),
       });
-      const data = await res.json();
+       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Kaydedilemedi.');
-      setCodes(data.codes ?? codes);
+       setCodes(data.codes ?? codes);
+       setCustomFeatures(data.customFeatures ?? customFeatures);
       setSavedAt(Date.now());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Kaydedilemedi.');
     } finally {
       setSaving(false);
     }
+  }
+
+  function addCustomFeature() {
+    const code = `CUSTOM_${Date.now().toString(36)}`;
+    setCustomFeatures((prev) => [...prev, {
+      code,
+      translations: Object.fromEntries(PUBLIC_VEHICLE_LOCALES.map((locale) => [locale, ''])),
+    }]);
   }
 
   return (
@@ -100,7 +113,7 @@ export default function VehicleFeatureDefaultsPanel() {
       </button>
 
       {open && (
-        <div style={{ marginTop: '14px' }}>
+         <div style={{ marginTop: '14px' }}>
           {loading ? (
             <p style={{ color: MUTED, fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>Yükleniyor…</p>
           ) : (
@@ -130,6 +143,26 @@ export default function VehicleFeatureDefaultsPanel() {
                     </label>
                   );
                 })}
+              </div>
+              <div style={{ marginTop: '18px' }}>
+                <div style={{ color: TEXT, fontWeight: 600, fontSize: '13px', marginBottom: '8px' }}>Özel özellikler (tüm diller zorunlu)</div>
+                {customFeatures.map((feature, index) => (
+                  <div key={feature.code} style={{ border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '10px', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: MUTED, fontSize: '11px' }}>
+                      <span>{feature.code}</span>
+                      <button type="button" onClick={() => setCustomFeatures((prev) => prev.filter((_, i) => i !== index))}>Kaldır</button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: '6px', marginTop: '6px' }}>
+                      {PUBLIC_VEHICLE_LOCALES.map((locale) => (
+                        <label key={locale} style={{ fontSize: '11px', color: MUTED }}>
+                          {locale.toUpperCase()}
+                          <input value={feature.translations[locale] ?? ''} onChange={(event) => setCustomFeatures((prev) => prev.map((item, i) => i === index ? { ...item, translations: { ...item.translations, [locale]: event.target.value } } : item))} style={{ width: '100%', padding: '5px' }} />
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                <button type="button" onClick={addCustomFeature} style={{ border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '7px 12px', color: TEXT }}>+ Özel özellik ekle</button>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '14px' }}>
                 <button

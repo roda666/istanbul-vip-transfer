@@ -460,8 +460,14 @@ export const vehicles = pgTable('vehicles', {
   vehicleType: text('vehicle_type'),
   /** Pricing eligibility is intentionally independent from public publishing. */
   priceCalculationEligible: boolean('price_calculation_eligible').default(false).notNull(),
-  /** Toll tariff class: automobile (legacy `minivan`) | minibus | midibus | bus. Unrelated to tollClass below — this drives base-fare pricing profiles only. */
+  /** Base-fare profile category; unrelated to the official road-toll class. */
   pricingClass: text('pricing_class').default('minivan').notNull(),
+  /** Official global road-toll class. NULL means the vehicle has not been verified. */
+  tollClass: text('toll_class'),
+  tollClassSourceUrl: text('toll_class_source_url'),
+  tollClassEvidence: text('toll_class_evidence'),
+  tollClassVerifiedAt: timestamp('toll_class_verified_at', { withTimezone: true }),
+  tollClassVerifiedBy: uuid('toll_class_verified_by').references(() => adminUsers.id, { onDelete: 'set null' }),
   /** Lets admins temporarily remove a published vehicle from public use without archiving it. */
   isActive: boolean('is_active').default(true).notNull(),
   features: jsonb('features').$type<string[]>().default([]).notNull(),
@@ -1403,6 +1409,11 @@ export const priceCalculatorSettings = pgTable('price_calculator_settings', {
 export const vehicleFeatureDefaults = pgTable('vehicle_feature_defaults', {
   id:        integer('id').primaryKey().default(1),
   codes:     jsonb('codes').$type<string[]>().default([]).notNull(),
+  /** Fleet-wide admin-defined features. Every public locale translation is required before saving. */
+  customFeatures: jsonb('custom_features').$type<Array<{
+    code: string;
+    translations: Record<'tr' | 'en' | 'de' | 'ru' | 'ar' | 'fr' | 'es' | 'it' | 'nl', string>;
+  }>>().default([]).notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
 });

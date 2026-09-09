@@ -1,10 +1,10 @@
 ---
 name: Vehicle toll-class ownership rule
-description: Records the owner-approved mapping policy and how to handle physical axle-count uncertainty.
+description: Records the global official toll-class policy and how to handle physical axle-count uncertainty.
 ---
 
-Use the owner-approved operating rule for per-toll-point vehicle classes: automobiles default to class 1; Vito, Sprinter, minibuses and midibuses to class 2; buses to class 3.
+Use one global official toll class per vehicle. Vehicle type and base-fare pricing category must never infer or overwrite it; toll bans and tariffs use only the verified class.
 
-**Why:** The owner explicitly chose consistent type-based assignments for every existing vehicle and toll point, while acknowledging that long Sprinters, midibuses and buses may physically have axle configurations that differ from the panel rule.
+**Why:** Type-based defaults incorrectly proposed class 1 for Volkswagen Transporter and can hide wheelbase/axle differences. The owner explicitly confirmed Transporter class 2 must be preserved.
 
-**How to apply:** Preserve the type-based assignment unless the owner supplies verified vehicle-specific evidence. Surface 3+ axle uncertainty in audits and admin warnings rather than silently changing real assignments or tariff amounts.
+**How to apply:** Assign only from official vehicle evidence or a preserved owner-confirmed value. Leave uncertain vehicles unassigned/review-required; never change tariff amounts while classifying vehicles.

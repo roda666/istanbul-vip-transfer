@@ -1,0 +1,12 @@
+name,official_source_url,axle_count,wheelbase,variant,recommended_class,existing_migrated_class,decision,uncertainty_note
+Mercedes E-Class,,,,,class_1,class_1,migrated_consistent,"Exact model year and wheelbase variant require official document verification."
+Mercedes S-Class,,,,,class_1,class_1,migrated_consistent,"Exact model year and wheelbase variant require official document verification."
+Mercedes Sprinter 10,,,,,class_2,class_2,migrated_consistent,"Exact chassis, axle count and wheelbase require official document verification."
+Mercedes Sprinter 13,,,,,class_2,class_2,migrated_consistent,"Exact chassis, axle count and wheelbase require official document verification."
+Mercedes Sprinter 15,,,,,class_2,class_2,migrated_consistent,"Exact chassis, axle count and wheelbase require official document verification."
+Mercedes Sprinter 19,,,,,class_2,class_2,migrated_consistent,"Exact chassis, axle count and wheelbase require official document verification."
+Mercedes V-Class,,,,,class_1,class_1,migrated_consistent,"Exact model year and wheelbase variant require official document verification."
+Mercedes Vito,,,,,class_2,class_2,migrated_consistent,"Exact model year and wheelbase variant require official document verification."
+Otobüs,,,,,class_3,class_3,migrated_consistent,"Make, model, axle count and wheelbase are not recorded; manual review required."
+Volkswagen Transporter,,,,,class_2,class_2,preserved_manual_override,"Owner-confirmed manual class_2 was preserved; exact short/long-wheelbase variant still requires official document verification."
+Yarım otobüs,,,,,class_2,class_2,migrated_consistent,"Make, model, axle count and wheelbase are not recorded; manual review required."

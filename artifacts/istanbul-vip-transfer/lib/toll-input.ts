@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { assertTypeMatchesPricingMode, isOfficialTollSourceUrl, TOLL_DIRECTIONS, TOLL_PRICING_MODES, TOLL_TIME_BANDS, TOLL_VEHICLE_CLASSES, TOLL_VEHICLE_TYPES } from '@/lib/toll-management';
+import { assertTypeMatchesPricingMode, isOfficialTollSourceUrl, TOLL_DIRECTIONS, TOLL_PRICING_MODES, TOLL_TIME_BANDS, TOLL_VEHICLE_CLASSES } from '@/lib/toll-management';
 
 const nullableAmount = z.number().int().min(1).max(100_000_000).nullable().optional();
 const nullableText = z.string().trim().max(500).nullable().optional();
@@ -21,9 +21,6 @@ export const tollPointInputSchema = z.object({
   /** null = unconfirmed (ask owner), [] = confirmed nothing is banned, non-empty = confirmed banned list. Requires bannedVehicleClassesSourceUrl whenever non-null. */
   bannedVehicleClasses: z.array(z.enum(TOLL_VEHICLE_CLASSES)).max(6).nullable().optional(),
   bannedVehicleClassesSourceUrl: nullableText,
-  /** A separate ban axis (fleet vehicle TYPE, e.g. "Otobüs" categorically) — independent of bannedVehicleClasses. Same null/[]/non-empty semantics. Requires bannedVehicleTypesSourceUrl whenever non-null. */
-  bannedVehicleTypes: z.array(z.enum(TOLL_VEHICLE_TYPES)).max(4).nullable().optional(),
-  bannedVehicleTypesSourceUrl: nullableText,
   /** null = unconfirmed (never checked against an official source). Requires tollDirectionSourceUrl whenever non-null. */
   tollDirection: z.enum(TOLL_DIRECTIONS).nullable().optional(),
   tollDirectionSourceUrl: nullableText,
@@ -46,9 +43,6 @@ export const tollPointInputSchema = z.object({
   }
   // Same pattern again for the separate vehicle-TYPE ban axis (e.g. a
   // categorical "Otobüs" ban, independent of the axle-based class ban above).
-  if (value.bannedVehicleTypes !== undefined && value.bannedVehicleTypes !== null && !isOfficialTollSourceUrl(value.bannedVehicleTypesSourceUrl)) {
-    context.addIssue({ code: 'custom', path: ['bannedVehicleTypesSourceUrl'], message: 'Yasaklı araç tipleri listesi (boş liste dahil) yalnızca resmî bir kaynak adresiyle birlikte kaydedilebilir.' });
-  }
   // Same pattern again for the tolling-direction claim.
   if (value.tollDirection != null && !isOfficialTollSourceUrl(value.tollDirectionSourceUrl)) {
     context.addIssue({ code: 'custom', path: ['tollDirectionSourceUrl'], message: 'Geçiş yönü bilgisi yalnızca resmî bir kaynak adresiyle birlikte kaydedilebilir.' });

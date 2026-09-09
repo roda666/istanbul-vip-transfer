@@ -69,4 +69,30 @@ describe('resolvePublicVehicle', () => {
     ], 'de');
     expect(resolved.map((vehicle) => vehicle.id)).toEqual(['vehicle-1']);
   });
+
+  it('renders a fleet custom feature only from its requested locale translation', () => {
+    const vehicle = resolvePublicVehicle(
+      { ...baseVehicle, features: [] },
+      'de',
+      {
+        codes: [],
+        customFeatures: [{
+          code: 'CUSTOM_USB',
+          translations: {
+            tr: 'USB şarj',
+            en: 'USB charging',
+            de: 'USB-Laden',
+            ru: 'Зарядка USB',
+            ar: 'شحن USB',
+            fr: 'Recharge USB',
+            es: 'Carga USB',
+            it: 'Ricarica USB',
+            nl: 'USB-opladen',
+          },
+        }],
+      },
+    );
+
+    expect(vehicle?.features).toEqual([{ icon: 'CUSTOM_USB', label: 'USB-Laden' }]);
+  });
 });

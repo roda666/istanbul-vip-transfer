@@ -8,7 +8,7 @@ import { STATUS_LABELS } from '@/lib/workflow';
 import StatusBadge from '../../_components/StatusBadge';
 import { ImageUploadField } from '../../_components/ImageUploadField';
 import { AISeoGenerator } from '../../_components/AISeoGenerator';
-import { defaultTollVehicleClassForVehicle, isVehicleTypeBanned, normalizeVehicleType, VEHICLE_TYPE_OPTIONS } from '@/lib/vehicle-options';
+import { normalizeVehicleType, VEHICLE_TYPE_OPTIONS } from '@/lib/vehicle-options';
 import { VEHICLE_FEATURE_CATALOG } from '@/lib/vehicle-feature-catalog';
 import { TOLL_VEHICLE_CLASSES, TOLL_VEHICLE_CLASS_DESCRIPTIONS, TOLL_VEHICLE_CLASS_LABELS, TOLL_VEHICLE_CLASS_SELECTION_WARNING } from '@/lib/toll-vehicle-classes';
 
@@ -18,7 +18,6 @@ export interface TollPointOption {
   name: string;
   classificationLabel: string | null;
   bannedVehicleClasses: string[] | null;
-  bannedVehicleTypes: string[] | null;
 }
 
 export interface TollPointClassAssignment {
@@ -49,8 +48,9 @@ interface FormState {
   vehicleType: string;
   priceCalculationEligible: boolean;
   pricingClass: string;
-  /** Per-toll-point class assignment (class_1..class_6), keyed by tollPointId. Missing/'' entry = not yet assigned at that point. */
-  tollPointClasses: Record<string, string>;
+  tollClass: string;
+  tollClassSourceUrl: string;
+  tollClassEvidence: string;
   isActive: boolean;
   passengerCapacity: string;
   luggageCapacity: string;
@@ -79,7 +79,7 @@ function slugify(val: string) {
     .replace(/^-|-$/g, '');
 }
 
-function vehicleToForm(v: Vehicle, initialTollPointClasses: TollPointClassAssignment[]): FormState {
+function vehicleToForm(v: Vehicle, _initialTollPointClasses: TollPointClassAssignment[]): FormState {
   return {
     name: v.name,
     slug: v.slug,
@@ -88,7 +88,9 @@ function vehicleToForm(v: Vehicle, initialTollPointClasses: TollPointClassAssign
     vehicleType: normalizeVehicleType(v.vehicleType) ?? '',
     priceCalculationEligible: v.priceCalculationEligible,
     pricingClass: v.pricingClass,
-    tollPointClasses: Object.fromEntries(initialTollPointClasses.map((entry) => [entry.tollPointId, entry.vehicleClass])),
+    tollClass: v.tollClass ?? '',
+    tollClassSourceUrl: v.tollClassSourceUrl ?? '',
+    tollClassEvidence: v.tollClassEvidence ?? '',
     isActive: v.isActive,
     passengerCapacity: v.passengerCapacity != null ? String(v.passengerCapacity) : '',
     luggageCapacity: v.luggageCapacity != null ? String(v.luggageCapacity) : '',
@@ -118,7 +120,9 @@ const emptyForm: FormState = {
   vehicleType: '',
   priceCalculationEligible: false,
   pricingClass: 'automobile',
-  tollPointClasses: {},
+  tollClass: '',
+  tollClassSourceUrl: '',
+  tollClassEvidence: '',
   isActive: true,
   passengerCapacity: '',
   luggageCapacity: '',
@@ -687,17 +691,7 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [], initia
    * so changing a fleet type must never overwrite them.
    */
   function handleVehicleTypeChange(vehicleType: string) {
-    const suggestedClass = defaultTollVehicleClassForVehicle(vehicleType, form.name);
-    setForm((current) => ({
-      ...current,
-      vehicleType,
-      tollPointClasses: suggestedClass
-        ? Object.fromEntries(tollPoints.map((point) => [
-          point.id,
-          current.tollPointClasses[point.id] || suggestedClass,
-        ]))
-        : current.tollPointClasses,
-    }));
+    setForm((current) => ({ ...current, vehicleType }));
   }
 
   // Features helpers — a fixed catalog, not free text, so every checked code
@@ -738,9 +732,9 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [], initia
       vehicleType: form.vehicleType || null,
       priceCalculationEligible: form.priceCalculationEligible,
       pricingClass: form.pricingClass,
-      tollPointClasses: Object.entries(form.tollPointClasses)
-        .filter(([, vehicleClass]) => vehicleClass)
-        .map(([tollPointId, vehicleClass]) => ({ tollPointId, vehicleClass })),
+      tollClass: form.tollClass || null,
+      tollClassSourceUrl: form.tollClassSourceUrl || null,
+      tollClassEvidence: form.tollClassEvidence || null,
       isActive: form.isActive,
       features: form.features.filter(Boolean),
       coverImage: form.coverImage || null,
@@ -781,6 +775,25 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [], initia
     }
   }
 
+  async function handlePublish() {
+    if (!isEdit || !canPublish) return;
+    setError('');
+    setSaving(true);
+    try {
+      const saveRes = await fetch(`/admin/api/vehicles/${vehicle!.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...buildPayload(), status: 'DRAFT' }) });
+      const saveJson = await saveRes.json();
+      if (!saveRes.ok) throw new Error(saveJson.error ?? 'Değişiklikler kaydedilemedi.');
+      const publishRes = await fetch(`/admin/api/vehicles/${vehicle!.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'publish' }) });
+      const publishJson = await publishRes.json();
+      if (!publishRes.ok) throw new Error(publishJson.error ?? 'Yayınlama başarısız.');
+      savedRef.current = true;
+      router.push('/admin/araclar');
+      router.refresh();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Yayınlama başarısız.');
+    } finally { setSaving(false); }
+  }
+
   async function runAction(action: 'approve' | 'publish' | 'archive') {
     setError('');
     setActionLoading(action);
@@ -802,10 +815,23 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [], initia
     }
   }
 
+  async function deleteVehicle() {
+    if (!isEdit) return;
+    setActionLoading('delete');
+    try {
+      const res = await fetch(`/admin/api/vehicles/${vehicle!.id}`, { method: 'DELETE' });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? 'Silme başarısız.');
+      savedRef.current = true;
+      router.push('/admin/araclar');
+      router.refresh();
+    } catch (error) { setError(error instanceof Error ? error.message : 'Silme başarısız.'); }
+    finally { setActionLoading(null); }
+  }
+
   const currentStatus = vehicle?.status as ContentStatus | undefined;
   const canApprove = isEdit && (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN');
-  const showApproveBtn = canApprove && currentStatus === 'REVIEW';
-  const showPublishBtn = canApprove && currentStatus === 'APPROVED';
+  const canPublish = isEdit && (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN');
   const showArchiveBtn = isEdit && currentStatus !== 'ARCHIVED';
   const isApprovedOrPublished =
     currentStatus === 'APPROVED' || currentStatus === 'PUBLISHED' || currentStatus === 'SCHEDULED';
@@ -945,65 +971,29 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [], initia
         <div style={{ color: MUTED, fontSize: '11px', marginTop: '4px' }}>Bu alan yalnızca genel fiyat profilini belirler; köprü/tünel geçiş ücretlerini aşağıdaki resmî KGM sınıfı belirler.</div>
       </div>
       <div style={{ marginBottom: '16px' }}>
-        <Label>Köprü/Tünel Geçiş Sınıfı (geçiş noktası başına)</Label>
+        <Label>Resmî Global Geçiş Sınıfı</Label>
         <div style={{ color: MUTED, fontSize: '11px', marginBottom: '10px', lineHeight: 1.5 }}>
-          Araç tipi seçildiğinde boş noktalar yalnızca başlangıç önerisiyle doldurulur (Otomobil/minivan: Sınıf 1; Vito/Sprinter/minibüs ve midibüs: Sınıf 2; otobüs: Sınıf 3). Her işletmecinin kendi sınıflandırması olabilir; mevcut nokta seçimleri asla değiştirilmez. Bir nokta boş bırakılırsa, o nokta için geçiş ücreti her zaman &quot;eksik veri&quot; olarak işaretlenir — sistem tahmin yapmaz.
+          Bu seçim tüm geçiş noktalarında kullanılır. Araç tipi değiştirildiğinde sınıf otomatik olarak değiştirilmez; doğrulanmamış araçlarda tarife eksik kabul edilir.
         </div>
         <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px', color: '#92400E', fontSize: '11px', lineHeight: 1.6, fontWeight: 600 }}>
           {TOLL_VEHICLE_CLASS_SELECTION_WARNING}
         </div>
-        {tollPoints.length === 0 ? (
-          <div style={{ background: '#F8FAFC', border: `1px solid ${BORDER}`, borderRadius: '8px', padding: '12px', color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>
-            Aktif bir geçiş noktası tanımlı değil.
+        <select value={form.tollClass} onChange={(event) => setForm((current) => ({ ...current, tollClass: event.target.value }))} style={{ ...inputStyle, marginBottom: '10px' }}>
+          <option value="">— Henüz doğrulanmadı —</option>
+          {TOLL_VEHICLE_CLASSES.map((cls) => (
+            <option key={cls} value={cls}>{TOLL_VEHICLE_CLASS_LABELS[cls]}</option>
+          ))}
+        </select>
+        {form.tollClass && (
+          <div style={{ color: MUTED, fontSize: '11px', marginBottom: '10px' }}>
+            {TOLL_VEHICLE_CLASS_DESCRIPTIONS[form.tollClass as keyof typeof TOLL_VEHICLE_CLASS_DESCRIPTIONS]}
           </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {tollPoints.map((point) => {
-              const assigned = form.tollPointClasses[point.id] ?? '';
-              const bannedClasses = point.bannedVehicleClasses ?? [];
-              const typeBanned = isVehicleTypeBanned(form.vehicleType, point.bannedVehicleTypes ?? [])
-                || isVehicleTypeBanned(form.pricingClass, point.bannedVehicleTypes ?? []);
-              const classBanned = !!assigned && bannedClasses.includes(assigned);
-              return (
-                <div key={point.id} style={{ background: '#F8FAFC', border: `1px solid ${BORDER}`, borderRadius: '8px', padding: '12px 14px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-                    <div>
-                      <div style={{ color: TEXT, fontSize: '13px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>{point.name}</div>
-                      {point.classificationLabel && (
-                        <div style={{ color: MUTED, fontSize: '11px', marginTop: '2px' }}>{point.classificationLabel}</div>
-                      )}
-                       {typeBanned && (
-                         <div style={{ color: '#D64545', fontSize: '11px', marginTop: '4px', fontWeight: 600 }}>
-                           Bu araç tipi bu geçiş noktasında yasaklıdır; bu noktayı içeren alternatifler fiyatlandırılamaz.
-                         </div>
-                       )}
-                    </div>
-                    <select
-                      value={assigned}
-                      onChange={(event) => setForm((current) => ({ ...current, tollPointClasses: { ...current.tollPointClasses, [point.id]: event.target.value } }))}
-                      style={{ minWidth: '220px', background: BG2, border: `1px solid ${BORDER}`, borderRadius: '6px', color: '#172B3A', fontSize: '13px', fontFamily: 'Inter, sans-serif', padding: '8px 12px', outline: 'none', boxSizing: 'border-box' }}
-                    >
-                      <option value="">— Henüz seçilmedi —</option>
-                      {TOLL_VEHICLE_CLASSES.map((cls) => (
-                        <option key={cls} value={cls} disabled={bannedClasses.includes(cls)}>
-                          {TOLL_VEHICLE_CLASS_LABELS[cls]}{bannedClasses.includes(cls) ? ' (geçişe kapalı)' : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                      {assigned && (
-                    <div style={{ color: MUTED, fontSize: '11px', marginTop: '8px', lineHeight: 1.5 }}>
-                      {TOLL_VEHICLE_CLASS_LABELS[assigned as keyof typeof TOLL_VEHICLE_CLASS_LABELS]}: {TOLL_VEHICLE_CLASS_DESCRIPTIONS[assigned as keyof typeof TOLL_VEHICLE_CLASS_DESCRIPTIONS]}
-                       {classBanned && (
-                        <div style={{ color: '#D64545', marginTop: '4px', fontWeight: 600 }}>
-                          Bu sınıf bu geçiş noktasında yasaklı — bu araç bu noktadan geçemez, fiyat hesaplaması bu noktayı içeren alternatifleri reddedecektir.
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+        )}
+        <Input value={form.tollClassSourceUrl} onChange={(value) => setForm((current) => ({ ...current, tollClassSourceUrl: value }))} placeholder="Resmî kaynak URL (https://...)" />
+        <Textarea value={form.tollClassEvidence} onChange={(value) => setForm((current) => ({ ...current, tollClassEvidence: value }))} placeholder="Kanıt / doğrulama notu" rows={2} />
+        {form.tollClass && tollPoints.some((point) => (point.bannedVehicleClasses ?? []).includes(form.tollClass)) && (
+          <div style={{ color: '#D64545', fontSize: '11px', marginTop: '8px', fontWeight: 600 }}>
+            Seçilen sınıf bazı geçiş noktalarında yasaklıdır; bu noktaları içeren alternatifler fiyatlandırılamaz.
           </div>
         )}
       </div>
@@ -1291,7 +1281,7 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [], initia
         }}
       >
         <ActionButton variant="ghost" onClick={() => router.push('/admin/araclar')} disabled={saving}>
-          İptal
+          İptal Et
         </ActionButton>
 
         <ActionButton
@@ -1300,55 +1290,17 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [], initia
           loading={saving}
           disabled={!!actionLoading}
         >
-          {saving ? 'Kaydediliyor...' : 'Taslak Kaydet'}
+          {saving ? 'Kaydediliyor...' : 'Taslağa Kaydet'}
         </ActionButton>
 
         <ActionButton
           variant="primary"
-          onClick={() => handleSave('REVIEW')}
+          onClick={() => handlePublish()}
           loading={saving}
           disabled={!!actionLoading}
         >
-          {saving ? 'Kaydediliyor...' : 'İncelemeye Gönder'}
+          Yayınla
         </ActionButton>
-
-        {/* Approve */}
-        {showApproveBtn && (
-          <ActionButton
-            variant="primary"
-            onClick={() =>
-              setConfirm({
-                title: 'Aracı Onayla',
-                message: 'Bu araç onaylanacak ve yayınlamaya hazır hale gelecektir.',
-                confirmLabel: 'Onayla',
-                onConfirm: () => { setConfirm(null); runAction('approve'); },
-              })
-            }
-            loading={actionLoading === 'approve'}
-            disabled={saving}
-          >
-            Onayla
-          </ActionButton>
-        )}
-
-        {/* Publish */}
-        {showPublishBtn && (
-          <ActionButton
-            variant="primary"
-            onClick={() =>
-              setConfirm({
-                title: 'Aracı Yayınla',
-                message: 'Bu araç hemen yayınlanacaktır. Devam etmek istiyor musunuz?',
-                confirmLabel: 'Yayınla',
-                onConfirm: () => { setConfirm(null); runAction('publish'); },
-              })
-            }
-            loading={actionLoading === 'publish'}
-            disabled={saving}
-          >
-            Yayınla
-          </ActionButton>
-        )}
 
         {/* Archive */}
         {showArchiveBtn && (
@@ -1368,6 +1320,11 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [], initia
             disabled={saving}
           >
             Arşivle
+          </ActionButton>
+        )}
+        {isEdit && (
+          <ActionButton variant="danger" onClick={() => setConfirm({ title: 'Aracı Sil', message: 'Bu işlem geri alınamaz. Backend güvenlik kontrolleri uygulanacaktır.', confirmLabel: 'Sil', danger: true, onConfirm: () => { setConfirm(null); deleteVehicle(); } })} loading={actionLoading === 'delete'} disabled={saving}>
+            Sil
           </ActionButton>
         )}
       </div>

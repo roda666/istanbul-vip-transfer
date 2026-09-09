@@ -37,3 +37,18 @@ export function vehicleFeatureLabel(code: string): string {
 
 /** Sensible out-of-the-box default before an admin ever opens the settings panel. */
 export const DEFAULT_VEHICLE_FEATURE_CODES: VehicleFeatureCode[] = ['WIFI', 'CLIMATE', 'MEET_GREET'];
+
+export const PUBLIC_VEHICLE_LOCALES = ['tr', 'en', 'de', 'ru', 'ar', 'fr', 'es', 'it', 'nl'] as const;
+export type PublicVehicleLocale = (typeof PUBLIC_VEHICLE_LOCALES)[number];
+export type CustomVehicleFeature = {
+  code: `CUSTOM_${string}`;
+  translations: Record<PublicVehicleLocale, string>;
+};
+
+export function isCustomVehicleFeature(value: unknown): value is CustomVehicleFeature {
+  if (!value || typeof value !== 'object') return false;
+  const feature = value as Partial<CustomVehicleFeature>;
+  return typeof feature.code === 'string' && /^CUSTOM_[A-Za-z0-9_-]+$/.test(feature.code)
+    && !!feature.translations && PUBLIC_VEHICLE_LOCALES.every((locale) =>
+      typeof feature.translations?.[locale] === 'string' && feature.translations[locale].trim().length > 0);
+}

@@ -16,11 +16,15 @@ import 'server-only';
 import { eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { vehicleFeatureDefaults } from '@/db/schema';
-import { DEFAULT_VEHICLE_FEATURE_CODES, isVehicleFeatureCode } from './vehicle-feature-catalog';
+import { DEFAULT_VEHICLE_FEATURE_CODES, isVehicleFeatureCode, isCustomVehicleFeature, type CustomVehicleFeature } from './vehicle-feature-catalog';
 
 const CACHE_TTL_MS = 5 * 60 * 1_000; // 5 minutes
 
-let _cached: string[] | null = null;
+export interface VehicleFeatureDefaultsValue {
+  codes: string[];
+  customFeatures: CustomVehicleFeature[];
+}
+let _cached: VehicleFeatureDefaultsValue | null = null;
 let _cachedAt = 0;
 
 export function invalidateVehicleFeatureDefaults(): void {
@@ -28,7 +32,7 @@ export function invalidateVehicleFeatureDefaults(): void {
   _cachedAt = 0;
 }
 
-export async function getVehicleFeatureDefaults(): Promise<string[]> {
+export async function getVehicleFeatureDefaults(): Promise<VehicleFeatureDefaultsValue> {
   if (_cached && Date.now() - _cachedAt < CACHE_TTL_MS) {
     return _cached;
   }
@@ -43,14 +47,17 @@ export async function getVehicleFeatureDefaults(): Promise<string[]> {
     if (rows.length === 0) {
       // Not yet seeded — return sane defaults without caching so the very
       // next request picks up an admin's first save immediately.
-      return DEFAULT_VEHICLE_FEATURE_CODES;
+      return { codes: DEFAULT_VEHICLE_FEATURE_CODES, customFeatures: [] };
     }
 
     const codes = (rows[0].codes ?? []).filter(isVehicleFeatureCode);
-    _cached = codes;
+    const customFeatures = (rows[0].customFeatures ?? []).filter(isCustomVehicleFeatureFeature);
+    _cached = { codes, customFeatures };
     _cachedAt = Date.now();
     return _cached;
   } catch {
-    return DEFAULT_VEHICLE_FEATURE_CODES;
+    return { codes: DEFAULT_VEHICLE_FEATURE_CODES, customFeatures: [] };
   }
 }
+
+const isCustomVehicleFeatureFeature = isCustomVehicleFeature;

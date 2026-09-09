@@ -14,31 +14,45 @@ type Props = {
   disabled?: boolean;
 };
 
-type GenerateResponse = { text?: string; error?: string };
 const DEFAULT_ERROR = 'SEO önerisi oluşturulamadı. Lütfen tekrar deneyin.';
 
-async function generateField(
+type SeoPairResponse = { title?: string; description?: string; error?: string };
+
+function safeErrorMessage(value: unknown) {
+  return typeof value === 'string' && value.trim() ? value.trim() : DEFAULT_ERROR;
+}
+
+async function readJson<T extends object>(response: Response): Promise<T & { error?: string }> {
+  const raw = await response.text();
+  if (!raw.trim()) return { error: 'Sunucu boş yanıt döndürdü.' } as T & { error?: string };
+  try { return JSON.parse(raw) as T & { error?: string }; }
+  catch { return { error: 'Sunucu beklenmeyen bir yanıt döndürdü.' } as T & { error?: string }; }
+}
+
+async function generatePair(
   context: AIWritingContext,
-  field: 'seo_title' | 'seo_description',
-  currentText: string,
+  title: string,
+  description: string,
   language: string,
-  maxLength: number,
-): Promise<string> {
+  signal: AbortSignal,
+): Promise<{ title: string; description: string }> {
   const response = await fetch('/admin/api/ai-writing', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    signal,
     body: JSON.stringify({
       context,
-      field,
-      fieldLabel: field === 'seo_title' ? 'SEO Meta Başlık' : 'SEO Meta Açıklama',
-      currentText,
+      mode: 'seo_pair',
+      currentTitle: title,
+      currentDescription: description,
       language,
-      maxLength,
     }),
   });
-  const payload = await response.json().catch(() => ({})) as GenerateResponse;
-  if (!response.ok || !payload.text) throw new Error(payload.error || DEFAULT_ERROR);
-  return payload.text;
+  const payload = await readJson<SeoPairResponse>(response);
+  if (!response.ok || !payload.title || !payload.description) {
+    throw new Error(safeErrorMessage(payload.error));
+  }
+  return { title: payload.title, description: payload.description };
 }
 
 /**
@@ -62,15 +76,16 @@ export function AISeoGenerator({
     if (loading || disabled) return;
     setLoading(true);
     setError(null);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 100_000);
     try {
-      const [nextTitle, nextDescription] = await Promise.all([
-        generateField(context, 'seo_title', title, language, 60),
-        generateField(context, 'seo_description', description, language, 160),
-      ]);
-      setDraft({ title: nextTitle, description: nextDescription });
+      setDraft(await generatePair(context, title, description, language, controller.signal));
     } catch (cause) {
-      setError(cause instanceof Error && cause.message ? cause.message : DEFAULT_ERROR);
+      setError(cause instanceof DOMException && cause.name === 'AbortError'
+        ? 'AI isteği zaman aşımına uğradı. Lütfen tekrar deneyin.'
+        : cause instanceof Error ? safeErrorMessage(cause.message) : DEFAULT_ERROR);
     } finally {
+      window.clearTimeout(timeout);
       setLoading(false);
     }
   }

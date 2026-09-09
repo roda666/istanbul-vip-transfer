@@ -126,3 +126,17 @@ mtime_ms = 1788960438197
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/46451876-5edd-4e50-91d4-591d43f68053/1f6c312b-1b42-473b-a365-8fa0777bda36"
 storage_version_token = "1788960891744321"
 content_type = "text/csv"
+
+[[outputs]]
+id = "qpGbZRN_vhMngOnX2nmXg"
+uri = "file://artifacts/istanbul-vip-transfer/reports/vehicle-toll-class-audit-2026-09-09.csv"
+type = "table"
+title = "Araç geçiş sınıfı audit raporu"
+description = "11 araç için taşınan sınıf, karar durumu ve henüz resmî kanıt gerektiren belirsizlikleri gösterir."
+logical_id = "ca8c0305-c080-46db-af5d-f375112a1aa8"
+content_hash = "sha256:788e6ea34e505cf48956c363a40d9f99614842ebe6330cda4ed667d9e6439b03"
+size = 1708
+mtime_ms = 1788972004379
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/ca8c0305-c080-46db-af5d-f375112a1aa8/321b96a6-de27-46e5-bdb6-ba138f5d0837"
+storage_version_token = "1788972029836746"
+content_type = "text/csv"

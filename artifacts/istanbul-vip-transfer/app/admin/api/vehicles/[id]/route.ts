@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { VEHICLE_TYPE_VALUES } from '@/lib/vehicle-options';
-import { vehicleTollPointClassInputSchema } from '@/lib/toll-input';
 
 const updateSchema = z.object({
   name: z.string().min(1, 'Araç adı gereklidir').max(200).optional(),
@@ -18,10 +17,9 @@ const updateSchema = z.object({
   vehicleType: z.enum(VEHICLE_TYPE_VALUES).optional().nullable(),
   priceCalculationEligible: z.boolean().optional(),
   pricingClass: z.enum(['automobile', 'minivan', 'minibus', 'midibus', 'bus']).optional(),
-  // Per-toll-point class assignment, manually admin-picked. Omitted entirely
-  // means "leave assignments unchanged"; an explicit [] clears all of them
-  // back to "not yet assigned" at every point.
-  tollPointClasses: z.array(vehicleTollPointClassInputSchema).max(50).optional(),
+  tollClass: z.enum(['class_1','class_2','class_3','class_4','class_5','class_6']).nullable().optional(),
+  tollClassSourceUrl: z.string().url().max(500).nullable().optional(),
+  tollClassEvidence: z.string().max(2000).nullable().optional(),
   isActive: z.boolean().optional(),
   features: z.array(z.string().max(200)).optional(),
   coverImage: z.string().max(500).optional().nullable(),
@@ -154,6 +152,16 @@ export async function PUT(request: NextRequest, { params }: Params) {
       updateValues.vehicleType = data.vehicleType ? sanitizeText(data.vehicleType) : null;
     if (data.priceCalculationEligible !== undefined) updateValues.priceCalculationEligible = data.priceCalculationEligible;
     if (data.pricingClass !== undefined) updateValues.pricingClass = data.pricingClass;
+    if (data.tollClass !== undefined) {
+      updateValues.tollClass = data.tollClass;
+      updateValues.tollClassSourceUrl = data.tollClassSourceUrl ?? null;
+      updateValues.tollClassEvidence = data.tollClassEvidence ?? null;
+      updateValues.tollClassVerifiedAt = data.tollClass ? new Date() : null;
+      updateValues.tollClassVerifiedBy = data.tollClass ? session.adminId : null;
+    } else {
+      if (data.tollClassSourceUrl !== undefined) updateValues.tollClassSourceUrl = data.tollClassSourceUrl;
+      if (data.tollClassEvidence !== undefined) updateValues.tollClassEvidence = data.tollClassEvidence;
+    }
     if (data.isActive !== undefined) updateValues.isActive = data.isActive;
     if (data.features !== undefined)
       updateValues.features = data.features.map((f) => sanitizeText(f));
@@ -182,7 +190,6 @@ export async function PUT(request: NextRequest, { params }: Params) {
     if (data.robotsIndex !== undefined) updateValues.robotsIndex = data.robotsIndex;
     if (data.robotsFollow !== undefined) updateValues.robotsFollow = data.robotsFollow;
 
-    const { vehicleTollPointClasses } = await import('@/db/schema');
     // Updating the vehicle and replacing its point classes must be atomic:
     // otherwise a bad/stale point id leaves the vehicle changed but the
     // operator sees only a generic edit failure.
@@ -192,22 +199,6 @@ export async function PUT(request: NextRequest, { params }: Params) {
         .set(updateValues)
         .where(eq(vehicles.id, id))
         .returning();
-      if (data.tollPointClasses !== undefined) {
-      // Replace-all semantics: the admin's submitted set is the full,
-      // authoritative per-point assignment for this vehicle.
-        await tx.delete(vehicleTollPointClasses).where(eq(vehicleTollPointClasses.vehicleId, id));
-        if (data.tollPointClasses.length) {
-          await tx.insert(vehicleTollPointClasses).values(
-          data.tollPointClasses.map((entry) => ({
-            vehicleId: id,
-            tollPointId: entry.tollPointId,
-            vehicleClass: entry.vehicleClass,
-            createdBy: session.adminId,
-            updatedBy: session.adminId,
-          })),
-          );
-        }
-      }
       return vehicle;
     });
 
@@ -380,15 +371,12 @@ export async function POST(request: NextRequest, { params }: Params) {
       updatedBy: session.adminId,
     };
   } else if (action === 'publish') {
-    if (current.status !== 'APPROVED' && current.status !== 'SCHEDULED') {
-      return NextResponse.json(
-        { error: 'Yalnızca onaylanmış araçlar yayınlanabilir.' },
-        { status: 422 },
-      );
+    if (session.role === 'EDITOR') {
+      return NextResponse.json({ error: 'Yayınlama için ADMIN veya SUPER_ADMIN yetkisi gereklidir.' }, { status: 403 });
     }
-    if (!current.approvedAt || !current.approvedBy) {
+    if (current.status === 'ARCHIVED') {
       return NextResponse.json(
-        { error: 'Yayınlamak için önce onay gereklidir.' },
+        { error: 'Arşivlenmiş araçlar doğrudan yayınlanamaz.' },
         { status: 422 },
       );
     }

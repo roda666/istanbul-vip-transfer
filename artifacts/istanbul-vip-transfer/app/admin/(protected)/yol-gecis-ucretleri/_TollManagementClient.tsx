@@ -32,8 +32,6 @@ type TollPoint = {
   // categorically, regardless of axle-based class (e.g. Avrasya Tüneli bans
   // "Otobüs" outright even though a 2-axle bus would otherwise share
   // class_1/class_2 with an allowed car). Same null/[]/list semantics.
-  bannedVehicleTypes: string[] | null;
-  bannedVehicleTypesSourceUrl: string | null;
   // null = unconfirmed (a round trip here still uses the legacy "double the
   // forward tariff" behavior, flagged to the admin as unconfirmed).
   tollDirection: 'ONE_WAY' | 'TWO_WAY_SAME' | 'TWO_WAY_DIRECTIONAL' | null;
@@ -57,16 +55,6 @@ function vehicleClassLabel(vc: string) {
   return (TOLL_VEHICLE_CLASS_LABELS as Record<string, string>)[vc] ?? vc;
 }
 
-// Mirrors TOLL_VEHICLE_TYPES / TOLL_VEHICLE_TYPE_LABELS in lib/toll-management.ts
-// (itself re-exported from lib/vehicle-options.ts) — the fleet vehicle-TYPE
-// taxonomy, used ONLY as the value set for a toll point's separate,
-// categorical bannedVehicleTypes ban (distinct from bannedVehicleClasses above).
-const TOLL_VEHICLE_TYPE_LABELS: Record<string, string> = {
-  automobile: 'Otomobil', minivan: 'Otomobil', minibus: 'Minibüs', midibus: 'Midibüs', bus: 'Otobüs',
-};
-function vehicleTypeLabel(vt: string) {
-  return TOLL_VEHICLE_TYPE_LABELS[vt] ?? vt;
-}
 
 type TollTimeBand = 'ALL' | 'DAY' | 'NIGHT';
 
@@ -334,69 +322,6 @@ function BannedClassesEditor({
 }
 
 // Tri-state banned VEHICLE-TYPE editor — a separate, independent axis from
-// BannedClassesEditor above (axle-based class vs. categorical fleet type,
-// e.g. Avrasya Tüneli bans "Otobüs" outright regardless of axle count).
-// Same null/[]/list semantics and source-URL requirement.
-function BannedTypesEditor({
-  bannedVehicleTypes, bannedSourceUrl, onChange,
-  showEvidence = true,
-}: {
-  bannedVehicleTypes: string[] | null;
-  bannedSourceUrl: string;
-  onChange: (bannedVehicleTypes: string[] | null, bannedSourceUrl: string) => void;
-  showEvidence?: boolean;
-}) {
-  const mode: 'unknown' | 'none' | 'list' = bannedVehicleTypes === null ? 'unknown' : bannedVehicleTypes.length === 0 ? 'none' : 'list';
-  return (
-    <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
-      <div>
-        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Araç Tipi Yasağı (sınıf yasağından bağımsız)</label>
-        <select
-          value={mode}
-          onChange={e => {
-            const next = e.target.value;
-            if (next === 'unknown') onChange(null, '');
-            else if (next === 'none') onChange([], bannedSourceUrl);
-            else onChange(bannedVehicleTypes && bannedVehicleTypes.length ? bannedVehicleTypes : [], bannedSourceUrl);
-          }}
-          className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all"
-        >
-          <option value="unknown">Belirsiz — sahibine sorulmalı</option>
-          <option value="none">Onaylı — hiçbir araç tipi yasaklı değil</option>
-          <option value="list">Onaylı — belirli araç tipleri yasaklı</option>
-        </select>
-        <p className="text-[10px] font-medium text-slate-500 mt-1.5 leading-relaxed">Örn: Avrasya Tüneli, aks sayısına bakılmaksızın &quot;Otobüs&quot; tipini kategorik olarak yasaklar — bu, aşağıdaki Sınıf 1-6 yasağından tamamen ayrı bir kuraldır.</p>
-      </div>
-      {mode === 'list' && (
-        <div className="grid grid-cols-2 gap-2">
-          {Object.keys(TOLL_VEHICLE_TYPE_LABELS).map(vt => (
-            <label key={vt} className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-800">
-              <input
-                type="checkbox"
-                checked={(bannedVehicleTypes ?? []).includes(vt)}
-                onChange={e => {
-                  const current = bannedVehicleTypes ?? [];
-                  const next = e.target.checked ? [...current, vt] : current.filter(c => c !== vt);
-                  onChange(next, bannedSourceUrl);
-                }}
-                className="w-4 h-4 rounded border-slate-300 text-red-600 focus:ring-red-500"
-              />
-              {vehicleTypeLabel(vt)}
-            </label>
-          ))}
-        </div>
-      )}
-      {showEvidence && mode !== 'unknown' && (
-        <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kaynak URL <span className="text-red-600">*</span></label>
-          <input type="url" value={bannedSourceUrl} onChange={e => onChange(bannedVehicleTypes, e.target.value)} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all" placeholder="https://..." />
-          <p className="text-[10px] font-medium text-slate-500 mt-1">Bu bilginin doğrulandığı resmî sayfa veya belge bağlantısı zorunludur.</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // Tolling-direction editor, shared by PointForm and PointDetail. Mirrors the
 // tri-state pattern of BannedClassesEditor: null = unconfirmed (fiyat motoru
 // bunu bilgilendirici bir uyarıyla birlikte eski davranışa — gidiş tarifesini
@@ -466,16 +391,12 @@ function DirectionEditor({
 }
 
 function PointForm({ onSave, onClose }: { onSave: (point: TollPoint) => void, onClose: () => void }) {
-  const [formData, setFormData] = useState<{ name: string, type: string, active: boolean, dayStartHour: number | null, nightStartHour: number | null, notes: string, classificationLabel: string, bannedVehicleClasses: string[] | null, bannedVehicleClassesSourceUrl: string, bannedVehicleTypes: string[] | null, bannedVehicleTypesSourceUrl: string, tollDirection: TollPoint['tollDirection'], tollDirectionSourceUrl: string, tollDirectionNotes: string, pricingMode: TollPoint['pricingMode'] }>({ name: '', type: 'BRIDGE', active: true, dayStartHour: null, nightStartHour: null, notes: '', classificationLabel: '', bannedVehicleClasses: null, bannedVehicleClassesSourceUrl: '', bannedVehicleTypes: null, bannedVehicleTypesSourceUrl: '', tollDirection: null, tollDirectionSourceUrl: '', tollDirectionNotes: '', pricingMode: 'FLAT' });
+  const [formData, setFormData] = useState<{ name: string, type: string, active: boolean, dayStartHour: number | null, nightStartHour: number | null, notes: string, classificationLabel: string, bannedVehicleClasses: string[] | null, bannedVehicleClassesSourceUrl: string, tollDirection: TollPoint['tollDirection'], tollDirectionSourceUrl: string, tollDirectionNotes: string, pricingMode: TollPoint['pricingMode'] }>({ name: '', type: 'BRIDGE', active: true, dayStartHour: null, nightStartHour: null, notes: '', classificationLabel: '', bannedVehicleClasses: null, bannedVehicleClassesSourceUrl: '', tollDirection: null, tollDirectionSourceUrl: '', tollDirectionNotes: '', pricingMode: 'FLAT' });
   const [loading, setLoading] = useState(false);
   
   const handleSubmit = async () => {
     if (formData.bannedVehicleClasses !== null && !formData.bannedVehicleClassesSourceUrl.trim()) {
       alert('Araç sınıfı yasağı belirtildiğinde kaynak URL zorunludur.');
-      return;
-    }
-    if (formData.bannedVehicleTypes !== null && !formData.bannedVehicleTypesSourceUrl.trim()) {
-      alert('Araç tipi yasağı belirtildiğinde kaynak URL zorunludur.');
       return;
     }
     if (formData.tollDirection !== null && !formData.tollDirectionSourceUrl.trim()) {
@@ -492,7 +413,6 @@ function PointForm({ onSave, onClose }: { onSave: (point: TollPoint) => void, on
           notes: formData.notes || null,
           classificationLabel: formData.classificationLabel || null,
           bannedVehicleClassesSourceUrl: formData.bannedVehicleClasses !== null ? formData.bannedVehicleClassesSourceUrl : null,
-          bannedVehicleTypesSourceUrl: formData.bannedVehicleTypes !== null ? formData.bannedVehicleTypesSourceUrl : null,
           tollDirectionSourceUrl: formData.tollDirection !== null ? formData.tollDirectionSourceUrl : null,
           tollDirectionNotes: formData.tollDirectionNotes || null,
         })
@@ -541,8 +461,6 @@ function PointForm({ onSave, onClose }: { onSave: (point: TollPoint) => void, on
             <input type="text" value={formData.classificationLabel} onChange={e => setFormData(f => ({ ...f, classificationLabel: e.target.value }))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all" placeholder="Örn: KGM Resmî Sınıf 1-6 ile uyumlu" />
           </div>
           {formData.bannedVehicleClasses !== null && <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Sınıf Yasağı Kaynak URL <span className="text-red-600">*</span></label><input type="url" value={formData.bannedVehicleClassesSourceUrl} onChange={e => setFormData(f => ({ ...f, bannedVehicleClassesSourceUrl: e.target.value }))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900" placeholder="https://..." /></div>}
-          <BannedTypesEditor bannedVehicleTypes={formData.bannedVehicleTypes} bannedSourceUrl={formData.bannedVehicleTypesSourceUrl} onChange={(banned, sourceUrl) => setFormData(f => ({ ...f, bannedVehicleTypes: banned, bannedVehicleTypesSourceUrl: sourceUrl }))} showEvidence={false} />
-          {formData.bannedVehicleTypes !== null && <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Araç Tipi Yasağı Kaynak URL <span className="text-red-600">*</span></label><input type="url" value={formData.bannedVehicleTypesSourceUrl} onChange={e => setFormData(f => ({ ...f, bannedVehicleTypesSourceUrl: e.target.value }))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900" placeholder="https://..." /></div>}
           <DirectionEditor pricingMode={formData.pricingMode} onPricingModeChange={v => setFormData(f => ({ ...f, pricingMode: v }))} tollDirection={formData.tollDirection} tollDirectionSourceUrl={formData.tollDirectionSourceUrl} tollDirectionNotes={formData.tollDirectionNotes} onChange={(direction, sourceUrl, notes) => setFormData(f => ({ ...f, tollDirection: direction, tollDirectionSourceUrl: sourceUrl, tollDirectionNotes: notes }))} />
           <DayNightHourFields dayStartHour={formData.dayStartHour} nightStartHour={formData.nightStartHour} onChange={(day, night) => setFormData(f => ({...f, dayStartHour: day, nightStartHour: night}))} />
           <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Not / Kısıtlama (isteğe bağlı)</label><textarea value={formData.notes} onChange={e => setFormData(f => ({...f, notes: e.target.value}))} rows={2} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500" placeholder="Örn: Ağır araçlar bu tünelden geçemez" /></div>
@@ -1061,8 +979,6 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
     classificationLabel: point.classificationLabel ?? '',
     bannedVehicleClasses: point.bannedVehicleClasses,
     bannedVehicleClassesSourceUrl: point.bannedVehicleClassesSourceUrl ?? '',
-    bannedVehicleTypes: point.bannedVehicleTypes,
-    bannedVehicleTypesSourceUrl: point.bannedVehicleTypesSourceUrl ?? '',
     tollDirection: point.tollDirection,
     tollDirectionSourceUrl: point.tollDirectionSourceUrl ?? '',
     tollDirectionNotes: point.tollDirectionNotes ?? '',
@@ -1075,7 +991,6 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
     setFormData({
       name: point.name, type: point.type, active: point.active, dayStartHour: point.dayStartHour, nightStartHour: point.nightStartHour, notes: point.notes ?? '',
       classificationLabel: point.classificationLabel ?? '', bannedVehicleClasses: point.bannedVehicleClasses, bannedVehicleClassesSourceUrl: point.bannedVehicleClassesSourceUrl ?? '',
-      bannedVehicleTypes: point.bannedVehicleTypes, bannedVehicleTypesSourceUrl: point.bannedVehicleTypesSourceUrl ?? '',
       tollDirection: point.tollDirection, tollDirectionSourceUrl: point.tollDirectionSourceUrl ?? '', tollDirectionNotes: point.tollDirectionNotes ?? '', pricingMode: point.pricingMode,
     });
     setSaved(false);
@@ -1084,10 +999,6 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
   const handleSave = async () => {
     if (formData.bannedVehicleClasses !== null && !formData.bannedVehicleClassesSourceUrl.trim()) {
       alert('Araç sınıfı yasağı belirtildiğinde kaynak URL zorunludur.');
-      return;
-    }
-    if (formData.bannedVehicleTypes !== null && !formData.bannedVehicleTypesSourceUrl.trim()) {
-      alert('Araç tipi yasağı belirtildiğinde kaynak URL zorunludur.');
       return;
     }
     if (formData.tollDirection !== null && !formData.tollDirectionSourceUrl.trim()) {
@@ -1104,7 +1015,6 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
           notes: formData.notes || null,
           classificationLabel: formData.classificationLabel || null,
           bannedVehicleClassesSourceUrl: formData.bannedVehicleClasses !== null ? formData.bannedVehicleClassesSourceUrl : null,
-          bannedVehicleTypesSourceUrl: formData.bannedVehicleTypes !== null ? formData.bannedVehicleTypesSourceUrl : null,
           tollDirectionSourceUrl: formData.tollDirection !== null ? formData.tollDirectionSourceUrl : null,
           tollDirectionNotes: formData.tollDirectionNotes || null,
         })
@@ -1171,8 +1081,6 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
               <input type="text" value={formData.classificationLabel} onChange={e => setFormData(f => ({ ...f, classificationLabel: e.target.value }))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-4 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm" placeholder="Örn: KGM Resmî Sınıf 1-6 ile uyumlu" />
             </div>
             {formData.bannedVehicleClasses !== null && <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Sınıf Yasağı Kaynak URL <span className="text-red-600">*</span></label><input type="url" value={formData.bannedVehicleClassesSourceUrl} onChange={e => setFormData(f => ({ ...f, bannedVehicleClassesSourceUrl: e.target.value }))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-4 py-2 text-sm font-medium text-slate-900" placeholder="https://..." /></div>}
-            <BannedTypesEditor bannedVehicleTypes={formData.bannedVehicleTypes} bannedSourceUrl={formData.bannedVehicleTypesSourceUrl} onChange={(banned, sourceUrl) => setFormData(f => ({ ...f, bannedVehicleTypes: banned, bannedVehicleTypesSourceUrl: sourceUrl }))} showEvidence={false} />
-            {formData.bannedVehicleTypes !== null && <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Araç Tipi Yasağı Kaynak URL <span className="text-red-600">*</span></label><input type="url" value={formData.bannedVehicleTypesSourceUrl} onChange={e => setFormData(f => ({ ...f, bannedVehicleTypesSourceUrl: e.target.value }))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-4 py-2 text-sm font-medium text-slate-900" placeholder="https://..." /></div>}
             <DirectionEditor pricingMode={formData.pricingMode} onPricingModeChange={v => setFormData(f => ({ ...f, pricingMode: v }))} tollDirection={formData.tollDirection} tollDirectionSourceUrl={formData.tollDirectionSourceUrl} tollDirectionNotes={formData.tollDirectionNotes} onChange={(direction, sourceUrl, notes) => setFormData(f => ({ ...f, tollDirection: direction, tollDirectionSourceUrl: sourceUrl, tollDirectionNotes: notes }))} />
             <DayNightHourFields dayStartHour={formData.dayStartHour} nightStartHour={formData.nightStartHour} onChange={(day, night) => setFormData(f => ({...f, dayStartHour: day, nightStartHour: night}))} />
             <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Not / Kısıtlama (isteğe bağlı)</label><textarea value={formData.notes} onChange={e => setFormData(f => ({...f, notes: e.target.value}))} rows={2} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500" placeholder="Örn: Ağır araçlar bu tünelden geçemez" /></div>

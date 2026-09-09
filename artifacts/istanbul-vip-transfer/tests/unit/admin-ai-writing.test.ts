@@ -75,4 +75,42 @@ describe('admin AI field writing', () => {
     expect(mocks.chatCreate.mock.calls.at(-1)?.[0].messages[0].content).toContain('güvenilmeyen referans');
     expect(mocks.chatCreate.mock.calls.at(-1)?.[0].messages[1].content).toContain('referans olarak kullan');
   });
+
+  it('generates the SEO pair with one JSON request and safely rejects malformed output', async () => {
+    const { generateAdminSeoPairDraft } = await import('@/lib/studio/ai-studio');
+    mocks.chatCreate.mockResolvedValueOnce({
+      choices: [{
+        message: { content: '{"title":"Istanbul VIP Transfer","description":"Güvenli ve konforlu transfer seçeneklerini keşfedin."}' },
+        finish_reason: 'stop',
+      }],
+      usage: { total_tokens: 20 },
+    });
+
+    const result = await generateAdminSeoPairDraft({
+      context: 'service',
+      mode: 'seo_pair',
+      currentTitle: 'Eski başlık',
+      currentDescription: 'Eski açıklama',
+      language: 'tr',
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      data: { title: 'Istanbul VIP Transfer', description: 'Güvenli ve konforlu transfer seçeneklerini keşfedin.' },
+    });
+    expect(mocks.chatCreate).toHaveBeenCalledTimes(1);
+    expect(mocks.chatCreate.mock.calls[0]?.[0].response_format).toEqual({ type: 'json_object' });
+
+    mocks.chatCreate.mockResolvedValueOnce({
+      choices: [{ message: { content: 'not json' }, finish_reason: 'stop' }],
+    });
+    const malformed = await generateAdminSeoPairDraft({
+      context: 'service',
+      mode: 'seo_pair',
+      currentTitle: '',
+      currentDescription: '',
+      language: 'tr',
+    });
+    expect(malformed).toMatchObject({ ok: false, reason: 'parse_error' });
+  });
 });

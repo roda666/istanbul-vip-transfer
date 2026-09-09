@@ -4,18 +4,29 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdminSession } from '@/lib/auth/session';
 import { hasAdminPermission } from '@/lib/auth/authorization';
-import { generateAdminFieldDraft } from '@/lib/studio/ai-studio';
+import { generateAdminFieldDraft, generateAdminSeoPairDraft } from '@/lib/studio/ai-studio';
 
 export const dynamic = 'force-dynamic';
 
-const requestSchema = z.object({
+const commonRequestSchema = {
   context: z.enum(['blog', 'service', 'homepage', 'chatbot', 'faq', 'vehicle', 'route']),
-  field: z.enum(['title', 'body', 'description', 'short_text', 'cta', 'seo_title', 'seo_description', 'faq_question', 'faq_answer', 'chatbot_answer']),
-  fieldLabel: z.string().trim().min(1).max(100),
-  currentText: z.string().max(12_000).default(''),
   language: z.enum(['tr', 'en', 'de', 'ru', 'ar', 'fr', 'es', 'it', 'nl']).default('tr'),
-  maxLength: z.number().int().min(20).max(12_000).optional(),
-});
+};
+const requestSchema = z.union([
+  z.object({
+    ...commonRequestSchema,
+    mode: z.literal('seo_pair'),
+    currentTitle: z.string().max(500).default(''),
+    currentDescription: z.string().max(12_000).default(''),
+  }),
+  z.object({
+    ...commonRequestSchema,
+    field: z.enum(['title', 'body', 'description', 'short_text', 'cta', 'seo_title', 'seo_description', 'faq_question', 'faq_answer', 'chatbot_answer']),
+    fieldLabel: z.string().trim().min(1).max(100),
+    currentText: z.string().max(12_000).default(''),
+    maxLength: z.number().int().min(20).max(12_000).optional(),
+  }),
+]);
 
 const rateLimits = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT = 12;
@@ -53,11 +64,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Gönderilen alan bilgisi geçersiz.' }, { status: 400 });
   }
 
-  const result = await generateAdminFieldDraft(parsed.data);
+  const isSeoPair = 'mode' in parsed.data && parsed.data.mode === 'seo_pair';
+  const result = isSeoPair
+    ? await generateAdminSeoPairDraft(parsed.data as Parameters<typeof generateAdminSeoPairDraft>[0])
+    : await generateAdminFieldDraft(parsed.data as Parameters<typeof generateAdminFieldDraft>[0]);
   if (!result.ok) {
     const status = result.reason === 'not_configured' ? 503 : result.reason === 'rate_limited' ? 429 : 422;
     return NextResponse.json({ error: result.message }, { status });
   }
+
+  const sourceLength = 'mode' in parsed.data
+    ? parsed.data.currentTitle.length + parsed.data.currentDescription.length
+    : parsed.data.currentText.length;
 
   // Observability only: the draft text itself is intentionally never logged.
   try {
@@ -67,15 +85,20 @@ export async function POST(request: NextRequest) {
       action: 'AI_FIELD_GENERATE',
       entityType: parsed.data.context,
       metadata: {
-        field: parsed.data.field,
+         field: isSeoPair ? 'seo_pair' : ('field' in parsed.data ? parsed.data.field : 'seo_pair'),
         language: parsed.data.language,
-        sourceLength: parsed.data.currentText.length,
-        outputLength: result.data.text.length,
+         sourceLength,
+         outputLength: isSeoPair
+           ? (result.data as { title: string; description: string }).title.length
+             + (result.data as { title: string; description: string }).description.length
+           : (result.data as { text: string }).text.length,
       },
     } as never);
   } catch {
     // Audit availability must not block a safe, non-persisting draft.
   }
 
-  return NextResponse.json({ text: result.data.text });
+  return isSeoPair
+    ? NextResponse.json(result.data)
+    : NextResponse.json({ text: (result.data as { text: string }).text });
 }

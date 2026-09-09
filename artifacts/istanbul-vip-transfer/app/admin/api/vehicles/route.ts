@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { VEHICLE_TYPE_VALUES } from '@/lib/vehicle-options';
-import { vehicleTollPointClassInputSchema } from '@/lib/toll-input';
 
 const createSchema = z.object({
   name: z.string().min(1, 'Araç adı gereklidir').max(200),
@@ -17,10 +16,9 @@ const createSchema = z.object({
   vehicleType: z.enum(VEHICLE_TYPE_VALUES).optional().nullable(),
   priceCalculationEligible: z.boolean().default(false),
   pricingClass: z.enum(['automobile', 'minivan', 'minibus', 'midibus', 'bus']).default('automobile'),
-  // Official toll class is assigned per toll point (never a single global
-  // value), since different operators can classify vehicles differently.
-  // Never guessed by the system: omitted points stay "not yet assigned".
-  tollPointClasses: z.array(vehicleTollPointClassInputSchema).max(50).default([]),
+  tollClass: z.enum(['class_1','class_2','class_3','class_4','class_5','class_6']).nullable().optional(),
+  tollClassSourceUrl: z.string().url().max(500).nullable().optional(),
+  tollClassEvidence: z.string().max(2000).nullable().optional(),
   isActive: z.boolean().default(true),
   features: z.array(z.string().max(200)).default([]),
   coverImage: z.string().max(500).optional().nullable(),
@@ -153,6 +151,11 @@ export async function POST(request: NextRequest) {
         vehicleType: data.vehicleType ? sanitizeText(data.vehicleType) : null,
         priceCalculationEligible: data.priceCalculationEligible,
         pricingClass: data.pricingClass,
+        tollClass: data.tollClass ?? null,
+        tollClassSourceUrl: data.tollClassSourceUrl ?? null,
+        tollClassEvidence: data.tollClassEvidence ?? null,
+        tollClassVerifiedAt: data.tollClass ? new Date() : null,
+        tollClassVerifiedBy: data.tollClass ? session.adminId : null,
         isActive: data.isActive,
         features: data.features.map((f) => sanitizeText(f)),
         coverImage: data.coverImage ? sanitizeText(data.coverImage) : null,
@@ -174,19 +177,6 @@ export async function POST(request: NextRequest) {
         updatedBy: session.adminId,
       })
       .returning();
-
-    if (data.tollPointClasses.length) {
-      const { vehicleTollPointClasses } = await import('@/db/schema');
-      await db.insert(vehicleTollPointClasses).values(
-        data.tollPointClasses.map((entry) => ({
-          vehicleId: newItem.id,
-          tollPointId: entry.tollPointId,
-          vehicleClass: entry.vehicleClass,
-          createdBy: session.adminId,
-          updatedBy: session.adminId,
-        })),
-      );
-    }
 
     await db.insert(auditLogs).values({
       adminUserId: session.adminId,

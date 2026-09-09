@@ -81,6 +81,7 @@ function localizeFeatureLabel(
   // legacy Turkish labels stored with vehicles cannot leak into public pages.
   return localizedLabels[code]
     ?? SAFE_NEUTRAL_FEATURE_LABELS[code]
+    ?? (code.startsWith('CUSTOM_') ? storedLabel : undefined)
     // Stored feature labels are Turkish source content, so they may only be
     // used on the Turkish page. Other locales receive no unsafe fallback.
     ?? (lang === 'tr' ? storedLabel ?? code : '');

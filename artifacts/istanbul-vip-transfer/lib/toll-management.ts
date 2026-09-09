@@ -10,10 +10,8 @@ import {
   tollPricingSettings,
   tollTariffs,
   transferRoutes,
-  vehicleTollPointClasses,
   vehicles,
 } from '@/db/schema';
-import { VEHICLE_TYPE_OPTIONS, VEHICLE_TYPE_VALUES, isVehicleTypeBanned, type VehicleType } from '@/lib/vehicle-options';
 
 /**
  * Re-exported from the client-safe module so existing server-side importers
@@ -286,32 +284,6 @@ export function assertVerifiedSourceForBan(bannedVehicleClasses: string[] | null
 }
 
 /**
- * The fleet vehicle-TYPE taxonomy (minivan/minibus/midibus/bus, from
- * vehicles.pricingClass — see lib/vehicle-options.ts), reused here ONLY as
- * the value set for a toll point's bannedVehicleTypes field. This is a
- * categorical ban independent of TOLL_VEHICLE_CLASSES: an operator can ban
- * "Otobüs" outright even though a 2-axle bus would otherwise share
- * class_1/class_2 with an allowed car. Never derive one list from the other.
- */
-export const TOLL_VEHICLE_TYPES = VEHICLE_TYPE_VALUES;
-export type TollVehicleType = VehicleType;
-export const TOLL_VEHICLE_TYPE_LABELS: Record<TollVehicleType, string> = {
-  ...Object.fromEntries(VEHICLE_TYPE_OPTIONS.map((option) => [option.value, option.label])),
-  minivan: 'Otomobil',
-} as Record<TollVehicleType, string>;
-
-/**
- * Same verification pattern as assertVerifiedSourceForBan, for the separate
- * vehicle-TYPE ban axis (see bannedVehicleTypes on toll_points).
- */
-export function assertVerifiedSourceForVehicleTypeBan(bannedVehicleTypes: string[] | null, sourceUrl: string | null): void {
-  if (bannedVehicleTypes == null) return;
-  if (!isOfficialTollSourceUrl(sourceUrl)) {
-    throw new Error('Yasaklı araç tipleri listesi (boş liste dahil) yalnızca resmî bir kaynak adresiyle birlikte kaydedilebilir.');
-  }
-}
-
-/**
  * Mirrors assertPricingModeMatchesGatePair at the point level: the owner's
  * rule is that bridges/tunnels are always a flat per-crossing fee (open
  * system, summed across genuinely distinct crossings) while highway
@@ -473,7 +445,7 @@ export async function getRouteTollAlternatives(routeId: string, vehicleId?: stri
   if (!route) throw new Error('Güzergâh bulunamadı.');
 
   const [vehicle] = vehicleId
-    ? await db.select({ id: vehicles.id, pricingClass: vehicles.pricingClass, vehicleType: vehicles.vehicleType }).from(vehicles).where(eq(vehicles.id, vehicleId)).limit(1)
+    ? await db.select({ id: vehicles.id, tollClass: vehicles.tollClass }).from(vehicles).where(eq(vehicles.id, vehicleId)).limit(1)
     : [null];
   if (vehicleId && !vehicle) throw new Error('Araç bulunamadı.');
 
@@ -490,33 +462,23 @@ export async function getRouteTollAlternatives(routeId: string, vehicleId?: stri
   const points = pointIds.length
     ? await db.select().from(tollPoints).where(inArray(tollPoints.id, pointIds))
     : [];
-  // A vehicle's class is assigned per toll point (not globally), since
-  // different operators can classify vehicles differently.
-  const vehiclePointClasses = vehicle && pointIds.length
-    ? await db.select().from(vehicleTollPointClasses).where(and(
-      eq(vehicleTollPointClasses.vehicleId, vehicle.id),
-      inArray(vehicleTollPointClasses.tollPointId, pointIds),
-    ))
-    : [];
-  const classByPointId = new Map(vehiclePointClasses.map((row) => [row.tollPointId, row.vehicleClass]));
+  const vehicleClass = vehicle?.tollClass ?? null;
   const pointById = new Map(points.map((point) => [point.id, point]));
   // Each point may have its own day/night cutover, so the active band is
   // resolved per point rather than with one shared band filter.
   const pointBand = new Map(points.map((point) => [point.id, resolveActiveTimeBandForPoint(activeAt, point)]));
 
-  const assignedClasses = [...new Set(vehiclePointClasses.map((row) => row.vehicleClass))];
-  const allTariffs = assignedClasses.length && pointIds.length
+  const allTariffs = vehicleClass && pointIds.length
     ? await db.select().from(tollTariffs).where(and(
       inArray(tollTariffs.tollPointId, pointIds),
-      inArray(tollTariffs.vehicleClass, assignedClasses),
+      eq(tollTariffs.vehicleClass, vehicleClass as TollVehicleClass),
       eq(tollTariffs.active, true),
       or(isNull(tollTariffs.validFrom), lte(tollTariffs.validFrom, now)),
       or(isNull(tollTariffs.validUntil), gte(tollTariffs.validUntil, now)),
     ))
     : [];
   const tariffs = allTariffs.filter((tariff) => {
-    const vehicleClassAtPoint = classByPointId.get(tariff.tollPointId);
-    if (vehicleClassAtPoint !== tariff.vehicleClass) return false;
+    if (vehicleClass !== tariff.vehicleClass) return false;
     const band = pointBand.get(tariff.tollPointId) ?? 'DAY';
     return band === 'DAY' ? tariff.appliesDay : tariff.appliesNight;
   });
@@ -534,21 +496,12 @@ export async function getRouteTollAlternatives(routeId: string, vehicleId?: stri
         if (!point) { missingTariffPointNames.push('Bilinmeyen geçiş noktası'); hasPricedAmount = false; continue; }
         if (!point.active) { missingTariffPointNames.push(`${point.name} (pasif)`); hasPricedAmount = false; continue; }
         if (!vehicle) { hasPricedAmount = false; continue; }
-        // Vehicle-TYPE ban (e.g. Avrasya Tüneli categorically bans "Otobüs")
-        // is a separate, independent axis from the axle-based class ban
-        // below — both must be checked, neither substitutes for the other.
-        const bannedTypes = (point.bannedVehicleTypes ?? []) as string[];
-        if (isVehicleTypeBanned(vehicle.vehicleType, bannedTypes) || isVehicleTypeBanned(vehicle.pricingClass, bannedTypes)) {
-          bannedPointNames.push(point.name);
-          continue;
-        }
-        const vehicleClassAtPoint = classByPointId.get(point.id);
         const bannedClasses = (point.bannedVehicleClasses ?? []) as string[];
-        if (vehicleClassAtPoint && bannedClasses.includes(vehicleClassAtPoint)) {
+        if (vehicleClass && bannedClasses.includes(vehicleClass)) {
           bannedPointNames.push(point.name);
           continue;
         }
-        if (!vehicleClassAtPoint) { missingTariffPointNames.push(point.name); hasPricedAmount = false; continue; }
+        if (!vehicleClass) { missingTariffPointNames.push(point.name); hasPricedAmount = false; continue; }
         // A GATE_PAIR point (e.g. Osmangazi Köprüsü / O-5) has no single
         // "the" tariff for the point — a matching tariff must also carry the
         // exact entry/exit gate pair configured on this route item.

@@ -12,6 +12,7 @@
  * the next request reflects the updated values immediately.
  */
 import 'server-only';
+import { buildWhatsAppChatUrl, normalizeWhatsAppRecipient } from '@/lib/whatsapp';
 
 import { eq } from 'drizzle-orm';
 import { db } from '@/db';
@@ -105,8 +106,7 @@ function buildFromRow(row: typeof siteSettings.$inferSelect): ContactSettings {
   const email     = (row.email             ?? '').trim() || SITE.email;
   const gbUrl     = (row.googleBusinessUrl ?? '').trim() || SITE.googleBusinessUrl;
 
-  // Normalise phone to E.164 (strip leading + if already present for wa.me)
-  const waNum = whatsapp.replace(/^\+/, '');
+  const waNum = normalizeWhatsAppRecipient(whatsapp);
 
   return {
     businessName:      (row.businessName ?? '').trim() || SITE.businessName,
@@ -114,8 +114,8 @@ function buildFromRow(row: typeof siteSettings.$inferSelect): ContactSettings {
     phoneTel:         `tel:${phone}`,
     phoneE164:        phone,
     whatsappNumber:   waNum,
-    whatsappUrl:      `https://wa.me/${waNum}`,
-    whatsappFloatUrl: `https://wa.me/${waNum}?text=Merhaba%2C%20VIP%20transfer%20hakk%C4%B1nda%20bilgi%20almak%20istiyorum.`,
+    whatsappUrl:      buildWhatsAppChatUrl(waNum),
+    whatsappFloatUrl: buildWhatsAppChatUrl(waNum, 'Merhaba, VIP transfer hakkında bilgi almak istiyorum.'),
     email,
     emailMailto:      `mailto:${email}`,
     googleBusinessUrl: gbUrl,

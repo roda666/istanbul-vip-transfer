@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import AdminPageHeader from '../../../_components/AdminPageHeader';
 import TalepDetayClient from './_TalepDetayClient';
-import { formatSource } from '@/lib/source-labels';
+import { buildRequestPresentation } from '@/lib/admin-request-presentation';
 
 export const metadata: Metadata = {
   title: 'Talep Detayı | Admin',
@@ -68,36 +68,6 @@ const SERVICE_LABELS: Record<string, string> = {
   CONTACT_INQUIRY:   '📩 İletişim Talebi',
 };
 
-/** Maps raw JSON form keys to human-readable Turkish labels. */
-const FIELD_LABELS: Record<string, string> = {
-  tarih:             'Tarih',
-  saatSaat:          'Saat',
-  saatDakika:        'Dakika',
-  yolcuSayisi:       'Yolcu Sayısı',
-  adSoyad:           'Ad Soyad',
-  telefon:           'Telefon',
-  email:             'E-posta',
-  alisLokasyonu:     'Alış Lokasyonu',
-  alisAdresi:        'Alış Adresi',
-  varisLokasyonu:    'Varış Lokasyonu',
-  varisAdresi:       'Varış Adresi',
-  ucusNumarasi:      'Uçuş Numarası',
-  bagajSayisi:       'Bagaj Sayısı',
-  seyahatYonu:       'Yön',
-  kalkisIli:         'Kalkış İli',
-  kalkisAdres:       'Kalkış Adresi',
-  varisIli:          'Varış İli',
-  varisAdres:        'Varış Adresi',
-  tahsisSuresi:      'Tahsis Süresi',
-  tahsisSuresiUnit:  'Süre Birimi',
-  rotaAciklama:      'Rota Açıklaması',
-  talepsRota:        'Tur Rotası',
-  talepsYerler:      'Ziyaret Yerleri',
-  planlananSure:     'Planlanan Süre',
-  planlananSureUnit: 'Süre Birimi',
-  vehiclePreference: 'Araç Tercihi',
-};
-
 const AUDIT_ACTION_LABELS: Record<string, string> = {
   UPDATE:       'Durum Güncellendi',
   UPDATE_NOTES: 'Not Eklendi/Güncellendi',
@@ -157,28 +127,9 @@ export default async function TalepDetayPage({ params }: { params: Promise<{ id:
   if (!req) notFound();
   await markRequestRead(req.id);
 
-  const formData = (req.requestData as Record<string, unknown>) ?? {};
-  // Filter out empty values and internal fields
-  const displayFields = Object.entries(formData).filter(([k, v]) =>
-    v !== null && v !== '' && v !== undefined
-      && k !== '_hp' && k !== 'emailNotification' && k !== 'vehiclePreferenceId',
-  );
-  const emailNotification = (
-    typeof formData.emailNotification === 'object'
-    && formData.emailNotification !== null
-    && !Array.isArray(formData.emailNotification)
-  ) ? formData.emailNotification as Record<string, unknown> : null;
-  const emailNotificationLabel = emailNotification?.status === 'sent'
-    ? 'SMTP kabul edildi'
-    : emailNotification?.status === 'partial'
-      ? 'Kısmen kabul edildi'
-      : emailNotification?.status === 'not-configured'
-        ? 'SMTP / bildirim adresi yapılandırılmamış'
-        : emailNotification?.status === 'failed'
-          ? 'SMTP bildirimi başarısız'
-          : emailNotification?.status === 'pending'
-            ? 'Gönderim sonucu bekleniyor veya kaydedilemedi'
-          : 'Henüz kontrol edilmedi';
+  const presentation = buildRequestPresentation(req);
+  const contactSection = presentation.find(section => section.key === 'contact')!;
+  const detailSections = presentation.filter(section => section.key === 'request' || section.key === 'journey');
 
   return (
     <div style={{ padding: '28px 24px', maxWidth: '960px' }}>
@@ -199,27 +150,12 @@ export default async function TalepDetayPage({ params }: { params: Promise<{ id:
           <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#102A43', fontFamily: 'Inter, sans-serif', marginBottom: '12px' }}>
             İletişim Bilgileri
           </h3>
-          <div style={rowStyle}><span style={labelStyle}>Ad Soyad</span><span style={valueStyle}>{req.name}</span></div>
-          <div style={rowStyle}><span style={labelStyle}>Telefon</span><span style={valueStyle}>{req.phone}</span></div>
-          <div style={rowStyle}><span style={labelStyle}>E-posta</span><span style={valueStyle}>{req.normalizedEmail ?? '—'}</span></div>
-          <div style={rowStyle}><span style={labelStyle}>Dil</span><span style={valueStyle}>{req.locale?.toUpperCase() ?? 'TR'}</span></div>
-          <div style={rowStyle}><span style={labelStyle}>Kaynak</span><span style={valueStyle}>{formatSource(req.source)}</span></div>
-           {req.source === 'contact-form' && emailNotification && (
-             <div style={rowStyle}>
-               <span style={labelStyle}>E-posta Bildirimi</span>
-               <span style={{
-                 ...valueStyle,
-                 color: emailNotification.status === 'sent' ? '#168C5B' : '#B45309',
-                 fontWeight: 600,
-               }}>
-                 {emailNotificationLabel}
-                 {typeof emailNotification.acceptedCount === 'number' && typeof emailNotification.recipientCount === 'number'
-                   ? ` (${emailNotification.acceptedCount}/${emailNotification.recipientCount})`
-                   : ''}
-               </span>
-             </div>
-           )}
-          <div style={{ ...rowStyle, borderBottom: 'none' }}><span style={labelStyle}>Kayıt Tarihi</span><span style={valueStyle}>{formatDate(req.createdAt)}</span></div>
+          {contactSection.fields.map((item, index) => (
+            <div key={item.key} style={{ ...rowStyle, borderBottom: index === contactSection.fields.length - 1 ? 'none' : rowStyle.borderBottom }}>
+              <span style={labelStyle}>{item.label}</span>
+              <span style={valueStyle}>{item.value}</span>
+            </div>
+          ))}
         </div>
 
         {/* Status + actions */}
@@ -240,24 +176,25 @@ export default async function TalepDetayPage({ params }: { params: Promise<{ id:
           />
         </div>
 
-        {/* Service-specific data */}
-        <div style={{ background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0', padding: '20px', gridColumn: '1 / -1' }}>
-          <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#102A43', fontFamily: 'Inter, sans-serif', marginBottom: '12px' }}>
-            Talep Detayları
-          </h3>
-          {displayFields.length === 0 ? (
-            <p style={{ fontSize: '13px', color: '#94A3B8', fontFamily: 'Inter, sans-serif' }}>Detay verisi yok.</p>
-          ) : (
-            <div style={{ columns: 2, columnGap: '24px' }}>
-              {displayFields.map(([k, v]) => (
-                <div key={k} style={{ ...rowStyle, breakInside: 'avoid' }}>
-                  <span style={labelStyle}>{FIELD_LABELS[k] ?? k}</span>
-                  <span style={valueStyle}>{String(v)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        {detailSections.map(section => (
+          <div key={section.key} style={{ background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0', padding: '20px', gridColumn: '1 / -1' }}>
+            <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#102A43', fontFamily: 'Inter, sans-serif', marginBottom: '12px' }}>
+              {section.title}
+            </h3>
+            {section.fields.length === 0 ? (
+              <p style={{ fontSize: '13px', color: '#94A3B8', fontFamily: 'Inter, sans-serif' }}>Detay verisi yok.</p>
+            ) : (
+              <div style={{ columns: 2, columnGap: '24px' }}>
+                {section.fields.map(item => (
+                  <div key={item.key} style={{ ...rowStyle, breakInside: 'avoid' }}>
+                    <span style={labelStyle}>{item.label}</span>
+                    <span style={valueStyle}>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
 
         {/* Status history / Audit log */}
         <div style={{ background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0', padding: '20px', gridColumn: '1 / -1' }}>

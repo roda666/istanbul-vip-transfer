@@ -73,7 +73,22 @@ try {
     locale: 'tr',
     source: 'qa-request-export-e2e',
     pageSlug: '/qa-request-export-e2e',
-    requestData: { flightNumber: `QA${index + 1}`, qaMarker: suffix, sequence: index + 1 },
+    requestData: {
+      adSoyad: `[DUPLICATE] ${suffix}`,
+      telefon: '09000000000',
+      email: `duplicate-${suffix}@example.test`,
+      ucusNumarasi: `QA${index + 1}`,
+      alisLokasyonu: 'İstanbul Havalimanı (IST) (İstanbul)',
+      varisLokasyonu: 'Taksim (İstanbul)',
+      alisLokasyonuId: 'ec3d9952-340f-4f2d-b185-50800ae9f5d8',
+      varisLokasyonuId: 'f68a05cf-4ae4-40e7-88f8-f5eb1afca54d',
+      locationReferences: { alisLokasyonu: { id: 'hidden-location-reference' } },
+      communication: {
+        newsletterOptIn: { status: 'started' },
+        adminNotification: { status: 'sent', acceptedCount: 1, recipientCount: 1 },
+        customerConfirmation: { status: 'sent', acceptedCount: 1 },
+      },
+    },
     adminNotes: `QA export note ${suffix} ${index + 1}`,
     status: 'NEW' as const,
     isTestData: true,
@@ -89,6 +104,33 @@ try {
       headers: { 'content-type': 'application/json' },
     });
     assert.equal(login.status(), 200, `Temporary ADMIN login failed: ${await login.text()}`);
+
+    await page.goto(`${baseUrl}/admin/talepler/${requestIds[0]}`, { waitUntil: 'networkidle' });
+    const detailText = await page.locator('body').innerText();
+    assert.match(detailText, /İletişim Bilgileri/);
+    assert.match(detailText, /Talep-Hizmet Bilgileri/);
+    assert.match(detailText, /Yolculuk Detayları/);
+    assert.match(detailText, /YÖNETİCİ BİLDİRİMİ/);
+    assert.doesNotMatch(detailText, /alisLokasyonuId|varisLokasyonuId|locationReferences|\\[object Object\\]|ec3d9952/);
+    await page.evaluate(`
+      window.__qaOriginalAnchorClick = HTMLAnchorElement.prototype.click;
+      HTMLAnchorElement.prototype.click = function () {
+        if (this.href.startsWith('https://wa.me/')) {
+          window.__qaWhatsAppHref = this.href;
+          return;
+        }
+        window.__qaOriginalAnchorClick.call(this);
+      };
+    `);
+    await page.getByRole('button', { name: "WhatsApp'tan Ulaş" }).click();
+    const capturedWhatsAppHref = await page.evaluate(
+      () => (window as typeof window & { __qaWhatsAppHref?: string }).__qaWhatsAppHref ?? '',
+    );
+    const whatsappUrl = new URL(capturedWhatsAppHref);
+    assert.equal(whatsappUrl.hostname, 'wa.me');
+    assert.doesNotMatch(capturedWhatsAppHref, /%2520|%252C/);
+    assert.match(whatsappUrl.searchParams.get('text') ?? '', /^Merhaba \[QA REQUEST EXPORT\]/);
+    assert.doesNotMatch(whatsappUrl.searchParams.get('text') ?? '', /%20|%2C/);
 
     await page.goto(`${baseUrl}/admin/talepler`, { waitUntil: 'networkidle' });
     await page.getByRole('checkbox', { name: `${references[0]} talebini seç` }).check();
@@ -115,15 +157,22 @@ try {
     await page.getByRole('button', { name: `${references[2]} talebini Excel indir` }).click();
     response = await responsePromise;
     const singleExcel = await verifyResponse(page, response, [requestIds[2]], [references[2]], references.slice(0, 2));
+    assert.match(singleExcel, /İletişim Bilgileri/);
+    assert.match(singleExcel, /Talep-Hizmet Bilgileri/);
+    assert.match(singleExcel, /Yolculuk Detayları/);
     assert.match(singleExcel, /Yönetici Notları/);
     assert.match(singleExcel, new RegExp(`QA export note ${suffix} 3`));
+    assert.doesNotMatch(singleExcel, /alisLokasyonuId|varisLokasyonuId|locationReferences|\\[object Object\\]|ec3d9952|\\[DUPLICATE\\]/);
 
     responsePromise = exportResponse(page, 'pdf');
     await page.getByRole('button', { name: `${references[1]} talebini PDF indir` }).click();
     response = await responsePromise;
     const singlePdf = await verifyResponse(page, response, [requestIds[1]], [references[1]], [references[0], references[2]]);
-    assert.match(singlePdf, /Talep Detayi/);
+    assert.match(singlePdf, /REZERVASYON KARTI/);
+    assert.match(singlePdf, /Iletisim Bilgileri/);
+    assert.match(singlePdf, /Yolculuk Detaylari/);
     assert.match(singlePdf, new RegExp(`QA export note ${suffix} 2`));
+    assert.doesNotMatch(singlePdf, /alisLokasyonuId|varisLokasyonuId|locationReferences|\\[object Object\\]|ec3d9952|\\[DUPLICATE\\]/);
   } finally {
     await browser.close();
   }
@@ -135,6 +184,8 @@ try {
 
   console.log('PASS selected Excel sent exactly 2 checked IDs and exported only those 2 rows');
   console.log('PASS selected PDF sent exactly 2 checked IDs and exported only those 2 rows');
+  console.log('PASS detail page hides technical fields and renders communication statuses');
+  console.log('PASS admin WhatsApp contact message is encoded exactly once');
   console.log('PASS desktop row Excel/PDF buttons are visible');
   console.log('PASS mobile row Excel exported exactly the clicked request in detailed format');
   console.log('PASS mobile row PDF exported exactly the clicked request in detailed format');

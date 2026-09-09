@@ -313,14 +313,6 @@ async function getRecentErrors(): Promise<DashboardBlock<RecentError[]>> {
 }
 
 async function getReservationWriteAlert(): Promise<DashboardBlock<ReservationWriteAlert>> {
-  let storageItems: Awaited<ReturnType<typeof import('@/lib/reservation-recovery-storage')['listReservationRecoveryFallbacks']>> = [];
-  let storageError: string | null = null;
-  try {
-    const { listReservationRecoveryFallbacks } = await import('@/lib/reservation-recovery-storage');
-    storageItems = await listReservationRecoveryFallbacks();
-  } catch (error) {
-    storageError = error instanceof Error ? error.message : 'App Storage kurtarma kayıtları alınamadı.';
-  }
   try {
     const { db } = await import('@/db');
     const { reservationSubmissionFailures } = await import('@/db/schema');
@@ -339,36 +331,20 @@ async function getReservationWriteAlert(): Promise<DashboardBlock<ReservationWri
         .orderBy(desc(reservationSubmissionFailures.updatedAt))
         .limit(5),
     ]);
-    const dbSubmissionIds = new Set(items.map((item) => item.submissionId));
-    const uniqueStorageItems = storageItems.filter((item) => !dbSubmissionIds.has(item.submissionId));
-    const combinedItems = [
-      ...items,
-      ...uniqueStorageItems.map((item) => ({
-        id: item.id,
-        referenceNumber: item.referenceNumber,
-        lastError: `${item.lastError}; recovery=private_object_storage`,
-        updatedAt: item.updatedAt,
-      })),
-    ].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
     return {
       data: {
-        count: (totalRows[0]?.count ?? 0) + uniqueStorageItems.length,
-        items: combinedItems.slice(0, 5),
+        count: totalRows[0]?.count ?? 0,
+        items,
       },
-      error: storageError,
+      error: null,
     };
   } catch (error) {
     return {
       data: {
-        count: storageItems.length,
-        items: storageItems.slice(0, 5).map((item) => ({
-          id: item.id,
-          referenceNumber: item.referenceNumber,
-          lastError: `${item.lastError}; recovery=private_object_storage`,
-          updatedAt: item.updatedAt,
-        })),
+        count: 0,
+        items: [],
       },
-      error: [describeDashboardError(error), storageError].filter(Boolean).join(' '),
+      error: describeDashboardError(error),
     };
   }
 }

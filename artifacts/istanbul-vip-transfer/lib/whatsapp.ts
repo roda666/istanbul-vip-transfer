@@ -7,28 +7,29 @@ export function formatWhatsAppLabel(label: string): string {
   return `*${label.trim().replace(/^\*+|\*+$/g, '')}*`;
 }
 
-/**
- * Keeps an explicitly entered international "+" and restores it when a
- * Turkish country code (90 + 10 digits) was entered without the plus.
- * Local numbers are left as typed because guessing a country code is unsafe.
- */
 export function formatPhoneForWhatsAppMessage(phone: string): string {
   const trimmed = phone.trim();
   const digits = trimmed.replace(/\D/g, '');
   if (!digits) return trimmed;
+  if (trimmed.startsWith('00')) return `+${digits.slice(2)}`;
   if (trimmed.startsWith('+')) return `+${digits}`;
   if (/^90\d{10}$/.test(digits)) return `+${digits}`;
-  return trimmed;
+  if (/^0\d{10}$/.test(digits)) return `+90${digits.slice(1)}`;
+  if (/^\d{10}$/.test(digits)) return `+90${digits}`;
+  return `+${digits}`;
+}
+
+export function normalizeWhatsAppRecipient(phone: string): string {
+  return formatPhoneForWhatsAppMessage(phone).replace(/\D/g, '');
+}
+
+export function buildWhatsAppChatUrl(phone: string, message?: string): string {
+  const baseUrl = `https://wa.me/${normalizeWhatsAppRecipient(phone)}`;
+  return message === undefined ? baseUrl : `${baseUrl}?text=${encodeURIComponent(message)}`;
 }
 
 export function openWhatsAppChat(phone: string, message: string): void {
-  const digits = phone.replace(/\D/g, '');
-  // The message contains visitor-provided fields and can include spaces, line
-  // breaks, ampersands, or non-Latin text. Encode it once for both the web
-  // deep link and Android's WhatsApp Business intent so no field is truncated
-  // or interpreted as another query parameter.
-  const encodedMessage = encodeURIComponent(message);
-  const webUrl = `https://wa.me/${digits}?text=${encodedMessage}`;
+  const webUrl = buildWhatsAppChatUrl(phone, message);
 
   if (typeof window === 'undefined') return;
 

@@ -123,23 +123,15 @@ export default function TalepDetayClient({
   }
 
   function openWhatsApp() {
-    const phone   = customerPhone.replace(/\D/g, '');
-    const intlPhone = phone.startsWith('0') ? `90${phone.slice(1)}` : phone.startsWith('90') ? phone : `90${phone}`;
-    const message = encodeURIComponent(
-      `Merhaba ${customerName}, IVT referans numaranız: ${referenceNumber} hakkında size ulaşmak istedik.`
-    );
-    openWhatsAppChat(intlPhone, message);
+    const message = `Merhaba ${customerName}, IVT referans numaranız: ${referenceNumber} hakkında size ulaşmak istedik.`;
+    openWhatsAppChat(customerPhone, message);
   }
 
   /** Builds the WhatsApp review-request message and opens it */
   function openReviewWhatsApp() {
     if (!reviewLink) return;
-    const phone     = customerPhone.replace(/\D/g, '');
-    const intlPhone = phone.startsWith('0') ? `90${phone.slice(1)}` : phone.startsWith('90') ? phone : `90${phone}`;
-    const message = encodeURIComponent(
-      `Merhaba ${customerName} 😊\n\nTransfer hizmetimizden memnun kaldıysanız, Google'da kısa bir yorum bırakmanız bize çok yardımcı olur 🙏\n\n⭐ Yorum bağlantısı: ${reviewLink}\n\nTeşekkürler!\nİstanbul VIP Transfer`
-    );
-    openWhatsAppChat(intlPhone, message);
+    const message = `Merhaba ${customerName} 😊\n\nTransfer hizmetimizden memnun kaldıysanız, Google'da kısa bir yorum bırakmanız bize çok yardımcı olur 🙏\n\n⭐ Yorum bağlantısı: ${reviewLink}\n\nTeşekkürler!\nİstanbul VIP Transfer`;
+    openWhatsAppChat(customerPhone, message);
   }
 
   /** Copies the review message text to clipboard */

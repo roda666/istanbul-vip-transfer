@@ -1,17 +1,10 @@
-export interface RequestExportRow {
-  referenceNumber: string;
-  name: string;
-  phone: string;
-  normalizedEmail: string | null;
-  locale: string;
-  source: string;
-  serviceType: string;
-  intent: string;
-  status: string;
-  createdAt: Date | string;
-  requestData?: unknown;
-  adminNotes?: string | null;
-}
+import {
+  buildRequestPresentation,
+  type RequestPresentationInput,
+  type RequestPresentationSection,
+} from '@/lib/admin-request-presentation';
+
+export interface RequestExportRow extends RequestPresentationInput {}
 
 export function parseRequestExportIds(searchParams: Pick<URLSearchParams, 'getAll'>): string[] {
   return Array.from(new Set(
@@ -42,17 +35,6 @@ const SOURCE_LABELS: Record<string, string> = {
   'booking-form': 'Rezervasyon Formu',
   website: 'Web Sitesi',
 };
-const FIELD_LABELS: Record<string, string> = {
-  tarih: 'Tarih', saatSaat: 'Saat', saatDakika: 'Dakika', yolcuSayisi: 'Yolcu Sayısı',
-  adSoyad: 'Ad Soyad', telefon: 'Telefon', email: 'E-posta', alisLokasyonu: 'Alış Lokasyonu',
-  alisAdresi: 'Alış Adresi', varisLokasyonu: 'Varış Lokasyonu', varisAdresi: 'Varış Adresi',
-  ucusNumarasi: 'Uçuş Numarası', bagajSayisi: 'Bagaj Sayısı', seyahatYonu: 'Yön',
-  kalkisIli: 'Kalkış İli', kalkisAdres: 'Kalkış Adresi', varisIli: 'Varış İli',
-  tahsisSuresi: 'Tahsis Süresi', tahsisSuresiUnit: 'Süre Birimi', rotaAciklama: 'Rota Açıklaması',
-  talepsRota: 'Tur Rotası', talepsYerler: 'Ziyaret Yerleri', planlananSure: 'Planlanan Süre',
-  planlananSureUnit: 'Süre Birimi', vehiclePreference: 'Araç Tercihi',
-};
-
 function text(value: unknown) {
   return String(value ?? '').replace(/[\u0000-\u001F]/g, ' ').trim();
 }
@@ -71,27 +53,8 @@ function values(row: RequestExportRow) {
   ].map(text);
 }
 
-function detailValues(row: RequestExportRow): Array<[string, string]> {
-  const base: Array<[string, string]> = [
-    ['Referans', row.referenceNumber],
-    ['Ad Soyad', row.name],
-    ['Telefon', row.phone],
-    ['E-posta', row.normalizedEmail || '—'],
-    ['Dil', row.locale.toUpperCase()],
-    ['Kaynak', SOURCE_LABELS[row.source] ?? row.source],
-    ['Hizmet', SERVICE_LABELS[row.serviceType] ?? row.serviceType],
-    ['Talep Türü', INTENT_LABELS[row.intent] ?? row.intent],
-    ['Durum', STATUS_LABELS[row.status] ?? row.status],
-    ['Kayıt Tarihi', date(row.createdAt)],
-  ];
-  const formData = row.requestData && typeof row.requestData === 'object' && !Array.isArray(row.requestData)
-    ? row.requestData as Record<string, unknown> : {};
-  const dynamic = Object.entries(formData)
-    .filter(([key, value]) => value !== null && value !== '' && value !== undefined
-      && !['_hp', 'emailNotification', 'vehiclePreferenceId'].includes(key))
-    .map(([key, value]) => [FIELD_LABELS[key] ?? key, text(value)] as [string, string]);
-  if (row.adminNotes) dynamic.push(['Yönetici Notları', row.adminNotes]);
-  return [...base, ...dynamic];
+function detailSections(row: RequestExportRow): RequestPresentationSection[] {
+  return buildRequestPresentation(row).filter(section => section.fields.length > 0);
 }
 
 export function requestExportFileName(extension: 'xls' | 'pdf') {
@@ -101,25 +64,121 @@ export function requestExportFileName(extension: 'xls' | 'pdf') {
 /** SpreadsheetML opens natively in Excel without requiring a server-side binary dependency. */
 export function requestsToExcel(rows: RequestExportRow[], detailed = rows.length === 1) {
   const escape = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  const row = (cells: string[], header = false) => `<Row>${cells.map(cell => `<Cell${header ? ' ss:StyleID="Header"' : ''}><Data ss:Type="String">${escape(cell)}</Data></Cell>`).join('')}</Row>`;
+  const row = (cells: string[], style?: string) => `<Row>${cells.map(cell => `<Cell${style ? ` ss:StyleID="${style}"` : ''}><Data ss:Type="String">${escape(cell)}</Data></Cell>`).join('')}</Row>`;
+  const mergedRow = (value: string, style: string) => `<Row><Cell ss:MergeAcross="1" ss:StyleID="${style}"><Data ss:Type="String">${escape(value)}</Data></Cell></Row>`;
   const tableRows = detailed && rows[0]
-    ? detailValues(rows[0]).map(([label, value]) => row([label, value], label === 'Referans')).join('')
-    : `${row(headers, true)}${rows.map(item => row(values(item))).join('')}`;
+    ? [
+        mergedRow(`REZERVASYON KARTI · ${rows[0].referenceNumber}`, 'Title'),
+        mergedRow(`Oluşturulma: ${date(new Date())}`, 'Subtitle'),
+        '<Row />',
+        ...detailSections(rows[0]).flatMap(section => [
+          mergedRow(section.title, 'Section'),
+          ...section.fields.map(item => `<Row><Cell ss:StyleID="Label"><Data ss:Type="String">${escape(item.label)}</Data></Cell><Cell ss:StyleID="Value"><Data ss:Type="String">${escape(item.value)}</Data></Cell></Row>`),
+          '<Row />',
+        ]),
+      ].join('')
+    : `${row(headers, 'Header')}${rows.map(item => row(values(item))).join('')}`;
   return `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?>
 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
-<Styles><Style ss:ID="Header"><Font ss:Bold="1"/></Style></Styles><Worksheet ss:Name="Talepler"><Table>${tableRows}</Table></Worksheet></Workbook>`;
+ <Styles>
+  <Style ss:ID="Default" ss:Name="Normal"><Font ss:FontName="Arial" ss:Size="10"/><Alignment ss:Vertical="Top" ss:WrapText="1"/></Style>
+  <Style ss:ID="Title"><Font ss:Bold="1" ss:Size="16" ss:Color="#FFFFFF"/><Interior ss:Color="#102A43" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#102A43"/></Borders></Style>
+  <Style ss:ID="Subtitle"><Font ss:Italic="1" ss:Color="#52697A"/><Interior ss:Color="#F3F6FA" ss:Pattern="Solid"/></Style>
+  <Style ss:ID="Header"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#1F5D8F" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:WrapText="1"/></Style>
+  <Style ss:ID="Section"><Font ss:Bold="1" ss:Size="11" ss:Color="#102A43"/><Interior ss:Color="#DCEAF7" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#9FBAD0"/></Borders></Style>
+  <Style ss:ID="Label"><Font ss:Bold="1" ss:Color="#334E68"/><Interior ss:Color="#F3F6FA" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders></Style>
+  <Style ss:ID="Value"><Font ss:Color="#1E293B"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders></Style>
+ </Styles><Worksheet ss:Name="Talepler"><Table><Column ss:Width="145"/><Column ss:Width="360"/>${tableRows}</Table></Worksheet></Workbook>`;
 }
 
-/** A deliberately small, dependency-free PDF table. Turkish glyphs are transliterated for core PDF fonts. */
+function wrap(value: string, max = 78): string[] {
+  const words = value.split(/\s+/);
+  const lines: string[] = [];
+  let current = '';
+  for (const word of words) {
+    if (`${current} ${word}`.trim().length > max && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = `${current} ${word}`.trim();
+    }
+  }
+  if (current) lines.push(current);
+  return lines.length ? lines : ['—'];
+}
+
+/** A dependency-free PDF reservation card. Turkish glyphs are transliterated for core PDF fonts. */
 export function requestsToPdf(rows: RequestExportRow[], detailed = rows.length === 1) {
   const ascii = (value: string) => text(value).replace(/İ/g, 'I').replace(/ı/g, 'i').replace(/Ş/g, 'S').replace(/ş/g, 's').replace(/Ğ/g, 'G').replace(/ğ/g, 'g').replace(/Ü/g, 'U').replace(/ü/g, 'u').replace(/Ö/g, 'O').replace(/ö/g, 'o').replace(/Ç/g, 'C').replace(/ç/g, 'c');
   const escape = (value: string) => ascii(value).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
-  const lines = detailed && rows[0] ? [
-    `Talep Detayi - ${rows[0].referenceNumber}`,
-    `Olusturulma: ${date(new Date())}`,
-    '',
-    ...detailValues(rows[0]).map(([label, value]) => `${label}: ${value}`),
-  ] : [
+  if (detailed && rows[0]) {
+    type Item = { kind: 'title' | 'subtitle' | 'section' | 'field'; label?: string; value: string };
+    const items: Item[] = [
+      { kind: 'title', value: `REZERVASYON KARTI · ${rows[0].referenceNumber}` },
+      { kind: 'subtitle', value: `Olusturulma: ${date(new Date())}` },
+      ...detailSections(rows[0]).flatMap((section): Item[] => [
+        { kind: 'section', value: section.title },
+        ...section.fields.map(item => ({ kind: 'field' as const, label: item.label, value: item.value })),
+      ]),
+    ];
+    const pageContents: string[] = [];
+    let commands: string[] = [];
+    let y = 790;
+    const finishPage = () => {
+      pageContents.push(commands.join('\n'));
+      commands = [];
+      y = 790;
+    };
+    const itemHeight = (item: Item) => {
+      const valueLines = item.kind === 'field' ? wrap(ascii(item.value)) : [ascii(item.value)];
+      return item.kind === 'title' ? 52 : item.kind === 'section' ? 38 : item.kind === 'subtitle' ? 30 : 21 + Math.max(0, valueLines.length - 1) * 12;
+    };
+    for (let itemIndex = 0; itemIndex < items.length; itemIndex += 1) {
+      const item = items[itemIndex];
+      const valueLines = item.kind === 'field' ? wrap(ascii(item.value)) : [ascii(item.value)];
+      const needed = itemHeight(item);
+      const requiredSpace = item.kind === 'section' && items[itemIndex + 1]
+        ? needed + itemHeight(items[itemIndex + 1])
+        : needed;
+      if (y - requiredSpace < 48 && commands.length) finishPage();
+      if (item.kind === 'title') {
+        commands.push(`q 0.063 0.165 0.263 rg 35 ${y - 34} 525 42 re f Q`);
+        commands.push(`BT /F2 16 Tf 1 1 1 rg 50 ${y - 18} Td (${escape(item.value)}) Tj ET`);
+      } else if (item.kind === 'subtitle') {
+        commands.push(`BT /F1 9 Tf 0.32 0.41 0.48 rg 50 ${y - 12} Td (${escape(item.value)}) Tj ET`);
+      } else if (item.kind === 'section') {
+        commands.push(`q 0.863 0.918 0.969 rg 40 ${y - 27} 515 27 re f Q`);
+        commands.push(`BT /F2 11 Tf 0.063 0.165 0.263 rg 50 ${y - 18} Td (${escape(item.value)}) Tj ET`);
+      } else {
+        commands.push(`BT /F2 9 Tf 0.20 0.31 0.41 rg 50 ${y - 12} Td (${escape(item.label ?? '')}) Tj ET`);
+        valueLines.forEach((line, index) => {
+          commands.push(`BT /F1 9 Tf 0.12 0.16 0.21 rg 190 ${y - 12 - index * 12} Td (${escape(line)}) Tj ET`);
+        });
+        commands.push(`q 0.89 0.91 0.94 RG 50 ${y - needed + 5} m 545 ${y - needed + 5} l S Q`);
+      }
+      y -= needed;
+    }
+    if (commands.length || !pageContents.length) finishPage();
+
+    const objects: string[] = [
+      '<< /Type /Catalog /Pages 2 0 R >>',
+      `<< /Type /Pages /Kids [${pageContents.map((_, i) => `${3 + i * 2} 0 R`).join(' ')}] /Count ${pageContents.length} >>`,
+    ];
+    pageContents.forEach((content, i) => {
+      const pageId = 3 + i * 2;
+      const contentId = pageId + 1;
+      objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> >> >> /Contents ${contentId} 0 R >>`);
+      objects.push(`<< /Length ${Buffer.byteLength(content, 'utf8')} >>\nstream\n${content}\nendstream`);
+    });
+    let output = '%PDF-1.4\n';
+    const offsets = [0];
+    objects.forEach((object, index) => { offsets.push(Buffer.byteLength(output, 'utf8')); output += `${index + 1} 0 obj\n${object}\nendobj\n`; });
+    const xref = Buffer.byteLength(output, 'utf8');
+    output += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${offsets.slice(1).map(offset => `${String(offset).padStart(10, '0')} 00000 n \n`).join('')}trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+    return Buffer.from(output, 'utf8');
+  }
+
+  const lines = [
     'Talepler Raporu',
     `Olusturulma: ${date(new Date())}`,
     '',

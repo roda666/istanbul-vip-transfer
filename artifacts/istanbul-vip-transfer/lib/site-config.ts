@@ -3,6 +3,11 @@
  * All phone, WhatsApp, email and profile links are set here.
  * Import from this file everywhere — never hard-code contact info elsewhere.
  */
+import { buildWhatsAppChatUrl } from '@/lib/whatsapp';
+
+const DEFAULT_WHATSAPP_NUMBER = '905326600847';
+const DEFAULT_WHATSAPP_MESSAGE = 'Merhaba, VIP transfer hakkında bilgi almak istiyorum.';
+
 export const SITE = {
   /** Fallback public display name when the singleton site_settings row is absent. */
   businessName: 'Istanbul VIP Transfer',
@@ -14,12 +19,11 @@ export const SITE = {
   phoneE164: '+905326600847',
 
   /** wa.me number (no + or spaces) */
-  whatsappNumber: '905326600847',
+  whatsappNumber: DEFAULT_WHATSAPP_NUMBER,
   /** Base WhatsApp chat URL */
-  whatsappUrl: 'https://wa.me/905326600847',
+  whatsappUrl: buildWhatsAppChatUrl(DEFAULT_WHATSAPP_NUMBER),
   /** Pre-filled WhatsApp inquiry URL (URL-encoded message preserved) */
-  whatsappFloatUrl:
-    'https://wa.me/905326600847?text=Merhaba%2C%20VIP%20transfer%20hakk%C4%B1nda%20bilgi%20almak%20istiyorum.',
+  whatsappFloatUrl: buildWhatsAppChatUrl(DEFAULT_WHATSAPP_NUMBER, DEFAULT_WHATSAPP_MESSAGE),
 
   /** Public email address */
   email: 'info@istanbulviptransfer.com',

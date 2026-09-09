@@ -6,6 +6,8 @@
  * OR if any slug's stored _sourceHash is missing or out of date (meaning the
  * Turkish source changed but generate:page-meta was not re-run),
  * OR if any WebPage slug is missing a component entry in lib/static-page-slugs.ts.
+ * Metadata entries without a matching PAGE_REGISTRY slug are reported as
+ * non-blocking warnings so stale entries remain visible in every build log.
  *
  * Run via:  pnpm --filter @workspace/istanbul-vip-transfer check:page-meta
  * This is automatically called as the `prebuild` step.
@@ -50,6 +52,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 
 function main() {
   const errors: string[] = [];
+  const warnings: string[] = [];
 
   // ── Check 1: page-meta.json translation coverage ───────────────────────
   if (!fs.existsSync(PAGE_META_PATH)) {
@@ -71,6 +74,15 @@ function main() {
   }
   const meta = parsed as PageMeta;
   const registeredSlugs = Object.keys(PAGE_REGISTRY);
+  const registeredSlugSet = new Set(registeredSlugs);
+
+  for (const slug of Object.keys(meta)) {
+    if (!registeredSlugSet.has(slug)) {
+      warnings.push(
+        `[page-meta] orphan slug "${slug}" exists in page-meta.json but is absent from PAGE_REGISTRY`,
+      );
+    }
+  }
 
   for (const slug of registeredSlugs) {
     if (!isObject(meta[slug])) {
@@ -145,6 +157,16 @@ function main() {
   }
 
   // ── Report ─────────────────────────────────────────────────────────────
+  if (warnings.length > 0) {
+    console.warn('\n⚠  page-meta warnings (non-blocking):\n');
+    for (const warning of warnings) {
+      console.warn(`   • ${warning}`);
+    }
+    console.warn(
+      '\n   Run generate:page-meta --prune to remove orphaned metadata entries.\n',
+    );
+  }
+
   if (errors.length > 0) {
     console.error('\n✗  page checks FAILED:\n');
     for (const err of errors) {

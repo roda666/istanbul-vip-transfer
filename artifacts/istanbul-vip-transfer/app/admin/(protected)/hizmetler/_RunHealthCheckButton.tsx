@@ -17,7 +17,7 @@ export default function RunHealthCheckButton() {
     setMessage(null);
     try {
       const res = await fetch('/admin/api/service-pages/check', { method: 'POST' });
-      const body = await res.json().catch(() => ({})) as { message?: string; error?: string };
+       const body = await res.json().catch(() => ({})) as { message?: string; error?: string; emailDelivery?: string };
       if (res.ok) {
         setStatus('ok');
         setMessage(body.message ?? 'Kontrol tamamlandı.');
@@ -56,7 +56,7 @@ export default function RunHealthCheckButton() {
         {loading
           ? 'Kontrol ediliyor…'
           : status === 'ok'
-            ? '✓ Tamamlandı'
+            ? '✓ E-posta kabul edildi'
             : status === 'error'
               ? '✗ Kontrol edilemedi'
               : '▶ Şimdi kontrol et'}

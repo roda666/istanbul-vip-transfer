@@ -65,6 +65,31 @@ export interface SmtpConnectionResult {
   message: string;
 }
 
+const REQUIRED_SMTP_ENV_KEYS = [
+  'SMTP_HOST',
+  'SMTP_PORT',
+  'SMTP_USER',
+  'SMTP_PASS',
+  'SMTP_FROM',
+] as const;
+
+/**
+ * Performs a startup-safe environment check without connecting to SMTP or
+ * reading the database. DB-managed SMTP may still be used at runtime.
+ */
+export function validateSmtpEnvironmentOnStartup(): void {
+  const missing = REQUIRED_SMTP_ENV_KEYS.filter((key) => !process.env[key]?.trim());
+  if (missing.length === 0) {
+    console.info('[smtp] Environment configuration is complete.');
+    return;
+  }
+
+  console.warn(
+    `[smtp] Environment configuration is incomplete; missing ${missing.join(', ')}. ` +
+    'Health alert email delivery requires these Replit Secrets unless enabled SMTP settings are stored in the admin panel.',
+  );
+}
+
 interface ResolvedSmtpConfig {
   host: string;
   port: number;

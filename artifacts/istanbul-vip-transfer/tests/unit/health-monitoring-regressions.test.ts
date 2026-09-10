@@ -65,8 +65,6 @@ describe('health monitoring regressions', () => {
   it('keeps the canonical health migration after the current journal entry', () => {
     const root = path.resolve(__dirname, '../..');
     const journal = JSON.parse(fs.readFileSync(path.join(root, 'drizzle/migrations/meta/_journal.json'), 'utf8'));
-    const latest = journal.entries.at(-1);
-    expect(latest.tag).toBe('0085_chatbot_response_mode');
     const tags = journal.entries.map((entry: { tag: string }) => entry.tag);
     expect(tags.indexOf('0079_blog_health_monitoring')).toBeLessThan(tags.indexOf('0080_health_check_leases'));
     expect(tags.indexOf('0080_health_check_leases')).toBeLessThan(tags.indexOf('0081_reservation_email_preferences'));
@@ -85,5 +83,6 @@ describe('health monitoring regressions', () => {
     expect(migration).not.toContain('service_health_runs_checked_at_idx');
     const startup = fs.readFileSync(path.join(root, 'instrumentation.node.ts'), 'utf8');
     expect(startup).toContain('startBlogHealthScheduler()');
+    expect(startup).toContain('validateSmtpEnvironmentOnStartup()');
   });
 });

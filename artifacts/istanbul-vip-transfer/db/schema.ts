@@ -1756,6 +1756,44 @@ export const routeTollAlternativeItems = pgTable('route_toll_alternative_items',
   uniqueIndex('route_toll_alternative_item_unique').on(table.alternativeId, table.tollPointId),
 ]);
 
+/** Verified, directed intercity toll corridors from an Istanbul side to a province. */
+export const intercityTollCorridors = pgTable('intercity_toll_corridors', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  originSide: istanbulSideEnum('origin_side').notNull(),
+  destinationLocationId: uuid('destination_location_id').notNull().references(() => locations.id, { onDelete: 'cascade' }),
+  active: boolean('active').default(true).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex('intercity_toll_corridor_unique').on(table.originSide, table.destinationLocationId),
+]);
+
+export const intercityTollCorridorAlternatives = pgTable('intercity_toll_corridor_alternatives', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  corridorId: uuid('corridor_id').notNull().references(() => intercityTollCorridors.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  active: boolean('active').default(true).notNull(),
+  isDefault: boolean('is_default').default(false).notNull(),
+  displayOrder: integer('display_order').default(0).notNull(),
+  needsReview: boolean('needs_review').default(false).notNull(),
+  reviewNote: text('review_note'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex('intercity_toll_corridor_alternative_one_default_unique').on(table.corridorId).where(sql`${table.isDefault} = true`),
+]);
+
+export const intercityTollCorridorAlternativeItems = pgTable('intercity_toll_corridor_alternative_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  alternativeId: uuid('alternative_id').notNull().references(() => intercityTollCorridorAlternatives.id, { onDelete: 'cascade' }),
+  tollPointId: uuid('toll_point_id').notNull().references(() => tollPoints.id, { onDelete: 'restrict' }),
+  displayOrder: integer('display_order').default(0).notNull(),
+  entryGateName: text('entry_gate_name'),
+  exitGateName: text('exit_gate_name'),
+}, (table) => [
+  uniqueIndex('intercity_toll_corridor_alternative_item_unique').on(table.alternativeId, table.tollPointId),
+]);
+
 /** Singleton: staleness threshold only. Day/night cutover hours are per-toll-point (see toll_points), not global. */
 export const tollPricingSettings = pgTable('toll_pricing_settings', {
   id: integer('id').primaryKey().default(1),

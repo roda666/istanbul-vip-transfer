@@ -33,6 +33,7 @@ export default async function ProtectedAdminLayout({
     <div
       style={{
         display: 'flex',
+        height: '100dvh',
         minHeight: '100vh',
         minWidth: 0,
         maxWidth: '100%',
@@ -55,12 +56,15 @@ export default async function ProtectedAdminLayout({
           flexDirection: 'column',
           minWidth: 0,
           maxWidth: '100%',
+          height: '100%',
+          minHeight: 0,
           overflow: 'hidden',
         }}
       >
         <main
           style={{
-            flex: 1,
+          flex: 1,
+          minHeight: 0,
             minWidth: 0,
             maxWidth: '100%',
             overflowY: 'auto',

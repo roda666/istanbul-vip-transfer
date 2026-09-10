@@ -480,7 +480,7 @@ function FastQuotePanel({
       const payload = {
         ...(quoteVehicleId ? { vehicleId: quoteVehicleId } : {}),
         ...(selectedRoute ? { routeId: selectedRoute.id } : {}),
-        ...(selectedRoute && tollAlternativeId ? { tollAlternativeId } : {}),
+        ...(tollAlternativeId && (selectedRoute || !selectedTollAlternative?.tollPointId) ? { tollAlternativeId } : {}),
         ...(!selectedRoute && selectedTollAlternative?.tollPointId
           ? { bosphorusTollPointId: selectedTollAlternative.tollPointId }
           : {}),

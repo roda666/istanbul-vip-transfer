@@ -31,6 +31,7 @@ import {
   hasActiveRouteTollAlternatives,
   getTollPricingSettings,
   resolveBosphorusToll,
+  resolveIntercityCorridorToll,
   resolveActiveTimeBandForPoint,
   assertBosphorusSelectionRequirement,
 } from '@/lib/toll-management';
@@ -165,9 +166,10 @@ export async function createAdminQuote(input: {
   const effectiveTollAlternativeId = effectiveRouteId
     ? input.tollAlternativeId ?? routeDefaultTollAlternativeId
     : null;
-  const tolls = effectiveRouteId && effectiveTollAlternativeId
-     ? await resolveTolls(effectiveRouteId, effectiveTollAlternativeId, vehicleId, vehicle.tollClass, now, pickupAt, input.tripType)
-    : [];
+  const tolls: Array<any> = effectiveRouteId && effectiveTollAlternativeId
+     ? (await resolveTolls(effectiveRouteId, effectiveTollAlternativeId, vehicleId, vehicle.tollClass, now, pickupAt, input.tripType))
+       .map(toll => ({ ...toll, source: 'EXACT_ROUTE' as const }))
+     : [];
   const genericPair = !effectiveRouteId && originLocationId && destinationLocationId
     ? await getLocationPairTollAlternatives(originLocationId, destinationLocationId, vehicleId, pickupAt)
     : null;
@@ -175,7 +177,13 @@ export async function createAdminQuote(input: {
     hasExactOrSelectedRoute: Boolean(effectiveRouteId),
     crossingRequired: genericPair?.crossingRequired === true,
     bosphorusTollPointId: input.bosphorusTollPointId,
+    corridorAlternativeId: genericPair?.source === 'CORRIDOR' ? input.tollAlternativeId : undefined,
   });
+  if (!effectiveRouteId && input.tollAlternativeId && genericPair?.source === 'CORRIDOR') {
+    tolls.push(await resolveIntercityCorridorToll(
+      input.tollAlternativeId, originLocationId!, destinationLocationId!, vehicleId, pickupAt, input.tripType,
+    ));
+  }
   if (input.bosphorusTollPointId) {
     if (!originLocationId || !destinationLocationId) throw new Error('Boğaz geçişi için konum çifti gereklidir.');
     tolls.push(await resolveBosphorusToll(

@@ -51,6 +51,8 @@ interface NavItem {
   label: string;
   icon: React.ReactNode;
   badge?: string;
+  /** Gives important destinations a non-colour-only visual distinction. */
+  highlight?: boolean;
 }
 
 // ── Nav group definitions ─────────────────────────────────────────────────────
@@ -92,7 +94,7 @@ function getNavGroups(role: string, isSuperOrAdmin: boolean): NavGroup[] {
       items: [
         { href: '/admin/araclar',             label: 'Araçlar',             icon: <Car size={18} /> },
         { href: '/admin/transfer-rotalari',   label: 'Transfer Rotaları',   icon: <MapPin size={18} /> },
-        { href: '/admin/fiyat-kurallari',     label: 'Fiyat Kuralları',     icon: <Banknote size={18} /> },
+        { href: '/admin/fiyat-kurallari',     label: 'Fiyat Hesaplama',     icon: <Banknote size={18} />, highlight: true, badge: 'ÖZEL' },
         { href: '/admin/yol-gecis-ucretleri', label: 'Yol & Geçiş Ücretleri', icon: <MapPin size={18} /> },
         { href: '/admin/ek-hizmetler',        label: 'Ek Hizmetler',        icon: <PackagePlus size={18} /> },
         { href: '/admin/ucus-karsilama',      label: 'Uçuşla Karşılama',    icon: <Plane size={18} /> },
@@ -345,6 +347,7 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
   function renderNavItem(item: NavItem) {
     const active   = isActive(item.href);
     const hasBadge = !!item.badge;
+    const highlighted = item.highlight === true;
     const count    = item.href === '/admin/talepler'  ? newCount
                    : item.href === '/admin/sohbet'    ? chatCount
                    : item.href === '/admin/ai-studio' ? studioCount
@@ -365,12 +368,14 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
             padding: collapsed ? '11px' : '11px 12px',
             borderRadius: '8px',
             justifyContent: collapsed ? 'center' : 'flex-start',
-            background: active ? NAV_ACTIVE_BG : 'transparent',
-            transition: 'background 0.15s',
+             background: active ? NAV_ACTIVE_BG : highlighted ? 'rgba(201,154,50,0.09)' : 'transparent',
+             border: highlighted ? `1px solid ${active ? 'rgba(201,154,50,0.75)' : 'rgba(201,154,50,0.38)'}` : '1px solid transparent',
+             boxSizing: 'border-box',
+             transition: 'background 0.15s, border-color 0.15s',
             position: 'relative',
           }}
           onMouseEnter={e => { if (!active) e.currentTarget.style.background = NAV_HOVER_BG; }}
-          onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
+           onMouseLeave={e => { if (!active) e.currentTarget.style.background = highlighted ? 'rgba(201,154,50,0.09)' : 'transparent'; }}
         >
           <span style={{ color: active ? GOLD : NAV_TEXT, flexShrink: 0, position: 'relative' }}>
             {item.icon}
@@ -384,7 +389,7 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
                 {item.label}
               </span>
               {hasBadge && (
-                <span style={{ fontSize: '9px', fontFamily: 'Inter, sans-serif', fontWeight: 700, background: GOLD, color: '#fff', padding: '1px 5px', borderRadius: '4px', letterSpacing: '0.05em' }}>
+                <span style={{ fontSize: '9px', fontFamily: 'Inter, sans-serif', fontWeight: 700, background: highlighted ? '#fff' : '#C99A32', color: highlighted ? '#8A6416' : '#fff', padding: '2px 5px', borderRadius: '4px', letterSpacing: '0.05em', border: highlighted ? '1px solid rgba(201,154,50,0.55)' : 'none' }}>
                   {item.badge}
                 </span>
               )}
@@ -504,7 +509,7 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
           transition: 'width 0.2s',
           display: 'none',
         }}
-        className="admin-sidebar-desktop"
+        className={`admin-sidebar-desktop${collapsed ? ' is-collapsed' : ''}`}
       >
         {sidebarContent}
       </div>
@@ -689,6 +694,9 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
 
       <style>{`
         @media (min-width: 769px) { .admin-sidebar-desktop { display: block !important; } }
+        @media (min-width: 769px) and (max-width: 1023px) {
+          .admin-sidebar-desktop:not(.is-collapsed) { width: 248px !important; min-width: 248px !important; }
+        }
         @media (max-width: 768px) { .admin-sidebar-hamburger { display: flex !important; } }
       `}</style>
     </>

@@ -12,6 +12,9 @@ import {
   transferRoutes,
   vehicles,
   locations,
+  intercityTollCorridors,
+  intercityTollCorridorAlternatives,
+  intercityTollCorridorAlternativeItems,
 } from '@/db/schema';
 
 /**
@@ -86,15 +89,29 @@ export function isOppositeIstanbulSide(
     || (origin === 'ASIAN' && destination === 'EUROPEAN');
 }
 
+export function classifyLocationPairTollSource(input: {
+  originSide: 'EUROPEAN' | 'ASIAN' | 'NONE';
+  destinationSide: 'EUROPEAN' | 'ASIAN' | 'NONE';
+  destinationType: string;
+  hasRegisteredRoute?: boolean;
+  hasCorridor?: boolean;
+}): 'EXACT_ROUTE' | 'BOSPHORUS' | 'CORRIDOR' | 'NONE' {
+  if (input.hasRegisteredRoute) return 'EXACT_ROUTE';
+  if (isOppositeIstanbulSide(input.originSide, input.destinationSide)) return 'BOSPHORUS';
+  if (input.originSide === 'EUROPEAN' && input.destinationType === 'PROVINCE' && input.hasCorridor) return 'CORRIDOR';
+  return 'NONE';
+}
+
 export function assertBosphorusSelectionRequirement(input: {
   hasExactOrSelectedRoute: boolean;
   crossingRequired: boolean;
   bosphorusTollPointId?: string;
+  corridorAlternativeId?: string;
 }): void {
   if (input.hasExactOrSelectedRoute && input.bosphorusTollPointId) {
     throw new Error('Boğaz geçişi seçimi güzergâh ile birlikte kullanılamaz.');
   }
-  if (!input.hasExactOrSelectedRoute && input.crossingRequired && !input.bosphorusTollPointId) {
+  if (!input.hasExactOrSelectedRoute && input.crossingRequired && !input.bosphorusTollPointId && !input.corridorAlternativeId) {
     throw new Error('Bu karşı-yaka yolculuğu için bir Boğaz geçişi seçilmelidir.');
   }
 }
@@ -113,7 +130,10 @@ export async function getLocationPairTollAlternatives(
   ]);
   if (!origin[0] || !destination[0]) throw new Error('Konum bulunamadı.');
   if (!isOppositeIstanbulSide(origin[0].istanbulSide, destination[0].istanbulSide)) {
-    return { crossingRequired: false, alternatives: [], defaultAlternativeId: null };
+    if (origin[0].istanbulSide !== 'EUROPEAN' || destination[0].type !== 'PROVINCE') {
+      return { crossingRequired: false, alternatives: [], defaultAlternativeId: null, source: 'NONE' as const };
+    }
+    return getIntercityCorridorAlternatives(origin[0], destination[0], vehicleId, activeAt);
   }
   const vehicle = vehicleId
     ? (await db.select().from(vehicles).where(eq(vehicles.id, vehicleId)).limit(1))[0]
@@ -154,8 +174,68 @@ export async function getLocationPairTollAlternatives(
   });
   return {
     crossingRequired: true,
+    source: 'BOSPHORUS' as const,
     defaultAlternativeId: alternatives.find((a) => a.isDefault)?.id ?? null,
     alternatives,
+  };
+}
+
+async function getIntercityCorridorAlternatives(
+  origin: typeof locations.$inferSelect,
+  destination: typeof locations.$inferSelect,
+  vehicleId?: string,
+  activeAt = new Date(),
+) {
+  const [corridor] = await db.select().from(intercityTollCorridors).where(and(
+    eq(intercityTollCorridors.originSide, 'EUROPEAN'),
+    eq(intercityTollCorridors.destinationLocationId, destination.id),
+    eq(intercityTollCorridors.active, true),
+  )).limit(1);
+  if (!corridor) return { crossingRequired: false, alternatives: [], defaultAlternativeId: null, source: 'NONE' as const };
+  const vehicle = vehicleId ? (await db.select().from(vehicles).where(eq(vehicles.id, vehicleId)).limit(1))[0] : undefined;
+  if (vehicleId && !vehicle) throw new Error('Araç bulunamadı.');
+  const alternatives = await db.select().from(intercityTollCorridorAlternatives).where(and(
+    eq(intercityTollCorridorAlternatives.corridorId, corridor.id),
+    eq(intercityTollCorridorAlternatives.active, true),
+  )).orderBy(desc(intercityTollCorridorAlternatives.isDefault), asc(intercityTollCorridorAlternatives.displayOrder));
+  const items = alternatives.length ? await db.select().from(intercityTollCorridorAlternativeItems)
+    .where(inArray(intercityTollCorridorAlternativeItems.alternativeId, alternatives.map(a => a.id)))
+    .orderBy(asc(intercityTollCorridorAlternativeItems.displayOrder)) : [];
+  const pointIds = [...new Set(items.map(i => i.tollPointId))];
+  const points = pointIds.length ? await db.select().from(tollPoints).where(inArray(tollPoints.id, pointIds)) : [];
+  const pointById = new Map(points.map(p => [p.id, p]));
+  const vehicleClass = vehicle?.tollClass ?? null;
+  const now = new Date();
+  const tariffs = vehicleClass && pointIds.length ? await db.select().from(tollTariffs).where(and(
+    inArray(tollTariffs.tollPointId, pointIds), eq(tollTariffs.vehicleClass, vehicleClass as TollVehicleClass),
+    eq(tollTariffs.active, true), or(isNull(tollTariffs.validFrom), lte(tollTariffs.validFrom, now)),
+    or(isNull(tollTariffs.validUntil), gte(tollTariffs.validUntil, now)),
+  )) : [];
+  return {
+    crossingRequired: true, source: 'CORRIDOR' as const,
+    defaultAlternativeId: alternatives.find(a => a.isDefault)?.id ?? null,
+    alternatives: alternatives.map(a => {
+      const its = items.filter(i => i.alternativeId === a.id);
+      const missingTariffPointNames: string[] = [], bannedPointNames: string[] = [];
+      let totalKurus = 0, complete = true;
+      for (const item of its) {
+        const point = pointById.get(item.tollPointId);
+        if (!point || !vehicle) { complete = false; if (!point) missingTariffPointNames.push('Bilinmeyen geçiş noktası'); continue; }
+        if ((point.bannedVehicleClasses ?? []).includes(vehicleClass ?? '') || (point.bannedVehicleTypes ?? []).includes(vehicle.pricingClass)) {
+          bannedPointNames.push(point.name); continue;
+        }
+        const band = resolveActiveTimeBandForPoint(activeAt, point);
+        const matches = tariffs.filter(t => t.tollPointId === point.id && (band === 'DAY' ? t.appliesDay : t.appliesNight)
+          && (point.pricingMode !== 'GATE_PAIR' || (t.entryGateName === item.entryGateName && t.exitGateName === item.exitGateName)));
+        if (matches.length !== 1 || effectiveTollAmount(matches[0]) == null) { complete = false; missingTariffPointNames.push(point.name); continue; }
+        totalKurus += effectiveTollAmount(matches[0])!;
+      }
+      return { id: a.id, name: a.name, active: a.active, isDefault: a.isDefault, displayOrder: a.displayOrder,
+        needsReview: a.needsReview, reviewNote: a.reviewNote, pointIds: its.map(i => i.tollPointId),
+        pointNames: its.map(i => pointById.get(i.tollPointId)?.name ?? 'Bilinmeyen geçiş'),
+        isBannedForSelectedVehicle: bannedPointNames.length > 0, bannedPointNames, isPricedForSelectedVehicle: !vehicle || (complete && !bannedPointNames.length),
+        missingTariffPointNames, totalKurus: vehicle && complete && !bannedPointNames.length ? totalKurus : null };
+    }),
   };
 }
 
@@ -178,6 +258,69 @@ export async function resolveBosphorusToll(
   const amountKurus = tripType === 'ROUND_TRIP' && point?.tollDirection !== 'ONE_WAY'
     ? selected.totalKurus * 2 : selected.totalKurus;
   return { id: selected.id, name: selected.pointNames[0], amountKurus, missing: false, stale: false, directionUnconfirmed: point?.tollDirection == null };
+}
+
+export async function resolveIntercityCorridorToll(
+  alternativeId: string, originLocationId: string, destinationLocationId: string, vehicleId: string, pickupAt: Date, tripType: 'ONE_WAY' | 'ROUND_TRIP',
+) {
+  const result = await getLocationPairTollAlternatives(originLocationId, destinationLocationId, vehicleId, pickupAt);
+  const selected = result.source === 'CORRIDOR' ? result.alternatives.find(a => a.id === alternativeId) : undefined;
+  if (!selected) throw new Error('Seçilen intercity geçiş alternatifi bu konum çifti veya araç için geçerli değil.');
+  const items = await db.select().from(intercityTollCorridorAlternativeItems)
+    .where(eq(intercityTollCorridorAlternativeItems.alternativeId, alternativeId))
+    .orderBy(asc(intercityTollCorridorAlternativeItems.displayOrder));
+  const points = await db.select().from(tollPoints).where(inArray(tollPoints.id, items.map(item => item.tollPointId)));
+  const settings = await getTollPricingSettings();
+  const vehicle = (await db.select().from(vehicles).where(eq(vehicles.id, vehicleId)).limit(1))[0];
+  if (!vehicle?.tollClass) {
+    return { id: selected.id, name: selected.name, amountKurus: null, missing: true, stale: false, directionUnconfirmed: true, source: 'CORRIDOR' as const };
+  }
+  const now = new Date();
+  const tariffs = await db.select().from(tollTariffs).where(and(
+    inArray(tollTariffs.tollPointId, points.map(point => point.id)),
+    eq(tollTariffs.vehicleClass, vehicle.tollClass as TollVehicleClass),
+    eq(tollTariffs.active, true),
+    or(isNull(tollTariffs.validFrom), lte(tollTariffs.validFrom, now)),
+    or(isNull(tollTariffs.validUntil), gte(tollTariffs.validUntil, now)),
+  ));
+  let totalKurus = 0;
+  let stale = false;
+  let directionUnconfirmed = false;
+  for (const item of items) {
+    const point = points.find(candidate => candidate.id === item.tollPointId);
+    if (!point || !point.active || (point.bannedVehicleClasses ?? []).includes(vehicle.tollClass)) {
+      return { id: selected.id, name: selected.name, amountKurus: null, missing: true, stale, directionUnconfirmed, source: 'CORRIDOR' as const };
+    }
+    directionUnconfirmed ||= point.tollDirection == null;
+    const band = resolveActiveTimeBandForPoint(pickupAt, point);
+    const pointTariffs = tariffs.filter(tariff => tariff.tollPointId === point.id
+      && (band === 'DAY' ? tariff.appliesDay : tariff.appliesNight));
+    const forward = pointTariffs.filter(tariff => point.pricingMode === 'GATE_PAIR'
+      ? tariff.entryGateName === item.entryGateName && tariff.exitGateName === item.exitGateName
+      : point.tollDirection === 'TWO_WAY_DIRECTIONAL' ? tariff.direction === 'FORWARD' : true);
+    if (forward.length !== 1 || effectiveTollAmount(forward[0]) == null) {
+      return { id: selected.id, name: selected.name, amountKurus: null, missing: true, stale, directionUnconfirmed, source: 'CORRIDOR' as const };
+    }
+    const forwardTariff = forward[0];
+    totalKurus += effectiveTollAmount(forwardTariff)!;
+    stale ||= evaluateTollTariffStaleness(forwardTariff, settings, now).stale;
+    if (tripType === 'ONE_WAY' || point.tollDirection === 'ONE_WAY') continue;
+    const backward = pointTariffs.filter(tariff => point.pricingMode === 'GATE_PAIR'
+      ? tariff.entryGateName === item.exitGateName && tariff.exitGateName === item.entryGateName
+      : point.tollDirection === 'TWO_WAY_DIRECTIONAL' ? tariff.direction === 'BACKWARD' : true);
+    if (point.tollDirection === 'TWO_WAY_DIRECTIONAL' && backward.length !== 1) {
+      return { id: selected.id, name: selected.name, amountKurus: null, missing: true, stale, directionUnconfirmed: false, source: 'CORRIDOR' as const };
+    }
+    if (point.tollDirection !== 'TWO_WAY_DIRECTIONAL') {
+      totalKurus += effectiveTollAmount(forwardTariff)!;
+    } else if (effectiveTollAmount(backward[0]) == null) {
+      return { id: selected.id, name: selected.name, amountKurus: null, missing: true, stale, directionUnconfirmed: false, source: 'CORRIDOR' as const };
+    } else {
+      totalKurus += effectiveTollAmount(backward[0])!;
+      stale ||= evaluateTollTariffStaleness(backward[0], settings, now).stale;
+    }
+  }
+  return { id: selected.id, name: selected.name, amountKurus: totalKurus, missing: false, stale, directionUnconfirmed, source: 'CORRIDOR' as const };
 }
 
 /** ALL participates in both the day and night overlap checks; DAY/NIGHT participate only in their own. */

@@ -26,7 +26,7 @@ const quoteSchema = z.object({
   pickupAt: z.string().datetime().optional(),
 }).superRefine((value, ctx) => {
   if (value.mode === 'HOURLY' && !value.requestedHours) ctx.addIssue({ code: 'custom', path: ['requestedHours'], message: 'Tahsis için süre gereklidir.' });
-  if (value.tollAlternativeId && !value.routeId) ctx.addIssue({ code: 'custom', path: ['tollAlternativeId'], message: 'Geçiş seçimi için güzergâh gereklidir.' });
+  if (value.tollAlternativeId && !value.routeId && (!value.originLocationId || !value.destinationLocationId)) ctx.addIssue({ code: 'custom', path: ['tollAlternativeId'], message: 'Geçiş seçimi için konum çifti gereklidir.' });
   if (value.bosphorusTollPointId && value.routeId) ctx.addIssue({ code: 'custom', path: ['bosphorusTollPointId'], message: 'Boğaz geçişi seçimi güzergâh ile birlikte kullanılamaz.' });
   if (value.bosphorusTollPointId && (!value.originLocationId || !value.destinationLocationId)) {
     ctx.addIssue({ code: 'custom', path: ['bosphorusTollPointId'], message: 'Boğaz geçişi için konum çifti gereklidir.' });

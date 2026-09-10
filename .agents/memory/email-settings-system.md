@@ -26,3 +26,9 @@ description: AES-256-GCM SMTP password encryption, DB-driven email config, admin
 **Delivery evidence:** SMTP connection verification and server acceptance are distinct. A send is successful only when the recipient is explicitly accepted by the SMTP server; this proves handoff to SMTP, not mailbox delivery or an open/read receipt. Public form submissions persist independently of notification delivery, while admins can inspect the notification state.
 
 **How to apply:** Any future email-sending feature should call `sendEmail()` from `lib/email.ts` — no need to read SMTP env vars directly. Use the detailed result only in protected server flows and expose categorical, non-secret evidence rather than raw SMTP responses. Admin notification recipients: call `getAdminNotifyEmails()`.
+
+**Reservation email safety:** Admin new-request notifications and customer confirmations are separate switches and both default off until the owner verifies SMTP.
+
+**Why:** A partially configured SMTP account must not send unintended mail, and notification failure must never roll back a successfully stored reservation.
+
+**How to apply:** Keep database, API, runtime fallback, and admin-UI defaults fail-closed. Gate the two recipient flows independently and preserve reservation success when delivery is disabled or fails.

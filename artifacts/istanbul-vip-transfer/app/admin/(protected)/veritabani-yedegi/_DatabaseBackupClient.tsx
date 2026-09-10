@@ -5,6 +5,7 @@ import { CheckCircle2, DatabaseBackup, Download, Loader2 } from 'lucide-react';
 
 type BackupMetadata = {
   format: string;
+  schemaVersion: number;
   extension: string;
   checksumAlgorithm: string;
   verification: string;
@@ -29,6 +30,10 @@ export default function DatabaseBackupClient() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<{ checksum: string; fileName: string } | null>(null);
+  const [restoreFile, setRestoreFile] = useState<File | null>(null);
+  const [manifestFile, setManifestFile] = useState<File | null>(null);
+  const [restoreBusy, setRestoreBusy] = useState(false);
+  const [restoreMessage, setRestoreMessage] = useState('');
 
   async function downloadBackup() {
     setBusy(true);
@@ -48,13 +53,14 @@ export default function DatabaseBackupClient() {
       const checksum = toHex(await crypto.subtle.digest('SHA-256', buffer));
       const generatedAt = response.headers.get('X-Backup-Generated-At') ?? new Date().toISOString();
       const fileName = `istanbul-vip-transfer-${generatedAt.replace(/[:.]/g, '-')}${metadata.extension}`;
-      const manifest = [
-        `SHA256 (${fileName}) = ${checksum}`,
-        `format=${metadata.format}`,
-        `generatedAt=${generatedAt}`,
-        `verification=${metadata.verification}`,
-        '',
-      ].join('\n');
+       const manifest = JSON.stringify({
+         format: metadata.format,
+         schemaVersion: metadata.schemaVersion,
+         checksumAlgorithm: metadata.checksumAlgorithm,
+         checksum,
+         generatedAt,
+         verification: metadata.verification,
+       }, null, 2);
 
       downloadFile(buffer, fileName, 'application/octet-stream');
       downloadFile(manifest, `${fileName}.sha256.txt`, 'text/plain;charset=utf-8');
@@ -63,6 +69,28 @@ export default function DatabaseBackupClient() {
       setError('Yedek indirilemedi veya doğrulama bilgisi oluşturulamadı. Lütfen tekrar deneyin.');
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function validateBackup() {
+    if (!restoreFile || !manifestFile) {
+      setRestoreMessage('Yedek ve JSON SHA-256 manifesti seçin.');
+      return;
+    }
+    setRestoreBusy(true);
+    setRestoreMessage('');
+    try {
+      const body = new FormData();
+      body.set('file', restoreFile);
+      body.set('manifest', await manifestFile.text());
+      const response = await fetch('/admin/api/database-backup', { method: 'POST', body });
+      const data = await response.json() as { error?: string; message?: string };
+      if (!response.ok) throw new Error(data.error || 'Geri yükleme başarısız.');
+      setRestoreMessage(data.message || 'Yedek doğrulandı; değişiklik yapılmadı.');
+    } catch (error) {
+      setRestoreMessage(error instanceof Error ? error.message : 'Geri yükleme başarısız.');
+    } finally {
+      setRestoreBusy(false);
     }
   }
 
@@ -90,6 +118,18 @@ export default function DatabaseBackupClient() {
       <p style={{ display: 'flex', gap: '6px', alignItems: 'center', margin: '12px 0 0', color: '#52697A', fontSize: '12px', lineHeight: 1.5 }}>
         <Download size={14} /> Yedek ve SHA-256 manifesti yalnızca bu tarayıcıya indirilir; sunucuda saklanmaz.
       </p>
+      <div style={{ marginTop: 24, borderTop: '1px solid #D9E0E5', paddingTop: 18 }}>
+         <strong style={{ fontSize: 14 }}>Yedek doğrulama (dry-run)</strong>
+         <p style={{ color: '#52697A', fontSize: 12 }}>Bu panel yalnızca checksum, biçim ve eksiksiz uygulama şemasını doğrular. Canlı geri yükleme web üzerinden yapılamaz; yalnızca yetkili ekip tarafından offline bakım işlemi olarak çalıştırılır.</p>
+        <div style={{ display: 'grid', gap: 8, maxWidth: 480 }}>
+          <label style={{ fontSize: 12 }}>Yedek (.dump)<input type="file" accept=".dump,application/octet-stream" onChange={(event) => setRestoreFile(event.target.files?.[0] ?? null)} /></label>
+          <label style={{ fontSize: 12 }}>JSON manifest (.sha256.txt)<input type="file" accept=".txt,.json,application/json" onChange={(event) => setManifestFile(event.target.files?.[0] ?? null)} /></label>
+          <div style={{ display: 'flex', gap: 8 }}>
+             <button type="button" disabled={restoreBusy} onClick={validateBackup}>Dry-run doğrula</button>
+          </div>
+        </div>
+        {restoreMessage && <p role="status" style={{ fontSize: 12 }}>{restoreMessage}</p>}
+      </div>
     </>
   );
 }

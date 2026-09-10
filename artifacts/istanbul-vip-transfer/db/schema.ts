@@ -249,6 +249,9 @@ export const siteSettings = pgTable('site_settings', {
   showChildSeatCount: boolean('show_child_seat_count').default(false).notNull(),
   showVehiclePreference: boolean('show_vehicle_preference').default(false).notNull(),
   showAdditionalNotes: boolean('show_additional_notes').default(false).notNull(),
+  /** Transactional email switches. Both are deliberately opt-in and default off. */
+  adminNewReservationNotification: boolean('admin_new_reservation_notification').default(false).notNull(),
+  customerConfirmationEmail: boolean('customer_confirmation_email').default(false).notNull(),
   /** Selected service-type keys for each optional field. Missing keys retain legacy "all services" behavior. */
   optionalFieldServiceTypes: jsonb('optional_field_service_types').$type<Partial<Record<
     'showLuggageCount' | 'showChildSeatCount' | 'showVehiclePreference' | 'showAdditionalNotes',
@@ -902,11 +905,32 @@ export const chatbotSessions = pgTable('chatbot_sessions', {
 export const chatbotMessages = pgTable('chatbot_messages', {
   id:        uuid('id').primaryKey().defaultRandom(),
   sessionId: text('session_id').notNull().references(() => chatbotSessions.id, { onDelete: 'cascade' }),
+  /** Client-generated id reused for transport retries; nullable for legacy rows. */
+  clientMessageId: text('client_message_id'),
+  /** Assistant outcome for this client message; set only on the single AI winner. */
+  assistantForClientMessageId: text('assistant_for_client_message_id'),
+   /** Durable idempotency claim state. Failed claims may be retried; fresh claims are leased. */
+   processingStatus: text('processing_status').notNull().default('processing'),
+   processingToken: text('processing_token'),
+   processingLeaseUntil: timestamp('processing_lease_until', { withTimezone: true }),
+   /** Durable outcome mode for replaying a claimed visitor message. */
+   responseMode: text('response_mode'),
+  /** Safe, non-sensitive UI action replayed with an idempotent assistant outcome. */
+  action: jsonb('action').$type<{ type: 'whatsapp_booking'; url: string } | null>(),
   role:      text('role').notNull(),
   content:   text('content').notNull(),
   contentTr: text('content_tr'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
+}, (table) => ({
+  clientMessageUnique: uniqueIndex('chatbot_messages_session_client_message_unique').on(
+    table.sessionId,
+    table.clientMessageId,
+  ),
+  assistantOutcomeUnique: uniqueIndex('chatbot_messages_session_assistant_outcome_unique').on(
+    table.sessionId,
+    table.assistantForClientMessageId,
+  ),
+}));
 
 /**
  * Curated business facts available to the public chatbot.

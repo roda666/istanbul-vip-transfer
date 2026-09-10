@@ -6,6 +6,7 @@
  */
 
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { getDictionary, isValidLang } from '@/lib/i18n';
@@ -46,7 +47,7 @@ export default async function NotFound() {
           border: '1px solid rgba(201,154,50,0.3)',
           borderRadius: '999px',
         }}>
-          <span style={{ color: '#C99A32', fontSize: '0.9rem' }}>✦</span>
+           <Image src="/logo.png" alt="" width={28} height={28} style={{ objectFit: 'contain' }} />
           <span style={{ color: '#C99A32', fontWeight: 700, fontSize: '0.9rem', letterSpacing: '0.04em' }}>
             Istanbul VIP Transfer
           </span>

@@ -9,6 +9,7 @@
  */
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useLang } from '@/lib/i18n/context';
 import { getPublicUiCopy } from '@/lib/i18n/public-ui';
 import { localizedPublicPath } from '@/lib/localized-service-path';
@@ -47,7 +48,7 @@ export default function ErrorPage({
           background: '#102A43',
           borderRadius: '999px',
         }}>
-          <span style={{ fontSize: '1rem' }}>✦</span>
+          <Image src="/logo.png" alt="" width={28} height={28} style={{ objectFit: 'contain' }} />
           <span style={{ color: '#C99A32', fontWeight: 700, fontSize: '0.9rem', letterSpacing: '0.04em' }}>
             VIP Transfer
           </span>

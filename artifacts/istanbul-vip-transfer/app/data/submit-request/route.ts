@@ -475,6 +475,7 @@ export async function POST(req: NextRequest) {
       customReservationFields,
       locations,
       vehicles,
+      siteSettings,
     } = await import('@/db/schema');
     const { eq, and, inArray, isNull } = await import('drizzle-orm');
 
@@ -651,6 +652,21 @@ export async function POST(req: NextRequest) {
     await resolveReservationRecoveryFallback(submissionId);
 
     const communications: Record<string, unknown> = {};
+    // Transactional emails are explicit admin opt-ins. During a rolling
+    // deployment or unavailable settings row, both safely remain disabled.
+    let emailSettings = { adminNewReservationNotification: false, customerConfirmationEmail: false };
+    try {
+      const [configured] = await db.select({
+        adminNewReservationNotification: siteSettings.adminNewReservationNotification,
+        customerConfirmationEmail: siteSettings.customerConfirmationEmail,
+      }).from(siteSettings).where(eq(siteSettings.id, 1)).limit(1);
+      if (configured) emailSettings = {
+        adminNewReservationNotification: configured.adminNewReservationNotification === true,
+        customerConfirmationEmail: configured.customerConfirmationEmail === true,
+      };
+    } catch {
+      // Keep email disabled when the setting cannot be read.
+    }
     // Explicit consent starts double opt-in only. A newsletter-side failure
     // cannot turn an already durable reservation into a write incident.
     if (normalizedEmail && data.newsletterConsent) {
@@ -667,7 +683,7 @@ export async function POST(req: NextRequest) {
     // Booking is durable before mail is attempted. Store only sanitized,
     // non-PII delivery categories for the panel.
     try {
-      const customer = normalizedEmail ? await sendEmailDetailed({
+      const customer = emailSettings.customerConfirmationEmail && normalizedEmail ? await sendEmailDetailed({
         to: normalizedEmail, subject: `Talebiniz alındı — ${referenceNumber}`,
         text: `Talebiniz alındı. Referans numaranız: ${referenceNumber}`,
         html: `<p>Talebiniz alındı.</p><p><strong>Referans numaranız:</strong> ${escapeHtml(referenceNumber)}</p>`,
@@ -676,8 +692,8 @@ export async function POST(req: NextRequest) {
       }) : null;
       communications.customerConfirmation = customer
         ? deliverySummary(customer)
-        : { status: 'not-requested', code: 'NO_VALID_EMAIL', acceptedCount: 0, rejectedCount: 0 };
-      const admins = await getAdminNotifyEmails();
+        : { status: emailSettings.customerConfirmationEmail ? 'not-requested' : 'disabled', code: emailSettings.customerConfirmationEmail ? 'NO_VALID_EMAIL' : 'CUSTOMER_CONFIRMATION_DISABLED', acceptedCount: 0, rejectedCount: 0 };
+      const admins = emailSettings.adminNewReservationNotification ? await getAdminNotifyEmails() : [];
       const results = await Promise.all(admins.map((to) => sendEmailDetailed({
         to, subject: `Yeni transfer talebi — ${referenceNumber}`,
         text: `Referans: ${referenceNumber}\nAd Soyad: ${sanitizeText(data.adSoyad).slice(0, 120)}\nTelefon: ${sanitizeText(data.telefon).slice(0, 30)}\nE-posta: ${normalizedEmail ?? '—'}`,
@@ -686,7 +702,7 @@ export async function POST(req: NextRequest) {
         requestReference: referenceNumber,
       })));
       communications.adminNotification = {
-        status: admins.length === 0 ? 'not-configured' : results.every((r) => r.ok) ? 'sent' : results.some((r) => r.ok) ? 'partial' : 'failed',
+        status: !emailSettings.adminNewReservationNotification ? 'disabled' : admins.length === 0 ? 'not-configured' : results.every((r) => r.ok) ? 'sent' : results.some((r) => r.ok) ? 'partial' : 'failed',
         recipientCount: admins.length, acceptedCount: results.filter((r) => r.ok).length,
         failureCodes: [...new Set(results.filter((r) => !r.ok).map((r) => r.code))],
       };

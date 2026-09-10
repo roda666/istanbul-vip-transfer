@@ -71,6 +71,7 @@ export default function ChatWidget({
   const [streaming, setStreaming] = useState(false);
   const [adminMode, setAdminMode] = useState(false); // waiting for human admin reply
   const [error, setError]       = useState<string | null>(null);
+  const [retryText, setRetryText] = useState<string | null>(null);
   const [bookingAction, setBookingAction] = useState<ChatAction | null>(null);
 
   const sessionIdRef  = useRef<string | null>(null);
@@ -79,6 +80,10 @@ export default function ChatWidget({
   const dialogRef     = useRef<HTMLDivElement>(null);
   const launcherRef   = useRef<HTMLButtonElement>(null);
   const abortRef      = useRef<AbortController | null>(null);
+  // Keep the visitor message identity stable until its request succeeds. A
+  // retry must identify the same message even if the original request failed
+  // after the database write.
+  const retryMessageIdRef = useRef<string | null>(null);
   const pollTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastPollTime  = useRef<string>(new Date().toISOString());
   const formVisible   = useBookingFormVisible();
@@ -196,18 +201,22 @@ export default function ChatWidget({
   }, [open]); // reads sessionIdRef dynamically so a newly-created session is included
 
   // ── Send message ─────────────────────────────────────────────────────────
-  const sendMessage = useCallback(async () => {
-    const text = input.trim();
+  const sendMessage = useCallback(async (retry = false) => {
+    const text = (retry ? retryText ?? '' : input).trim();
     if (!text || streaming) return;
+    const messageId = retry
+      ? (retryMessageIdRef.current ?? crypto.randomUUID())
+      : crypto.randomUUID();
+    retryMessageIdRef.current = messageId;
 
-    setInput('');
+    if (!retry) setInput('');
     setError(null);
 
     const userMsg: Message = { role: 'user', content: text };
-    setMessages(prev => [...prev, userMsg]);
+    if (!retry) setMessages(prev => [...prev, userMsg]);
 
     // Build messages array for API (exclude pending/admin UI markers)
-    const apiMessages = [...messages, userMsg]
+    const apiMessages = (retry ? messages : [...messages, userMsg])
       .filter(m => !m.pending && (m.role === 'user' || m.role === 'assistant'))
       .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }));
 
@@ -224,29 +233,44 @@ export default function ChatWidget({
           sessionId: sessionIdRef.current,
           messages:  apiMessages,
           lang,
+          messageId,
         }),
         signal: controller.signal,
       });
 
-      if (!res.ok) throw new Error('request failed');
+       // 202 means another transport retry owns generation. It is a successful
+       // idempotency response, not a failed message submission.
+       if (!res.ok && res.status !== 202) throw new Error('request failed');
 
       const contentType = res.headers.get('content-type') ?? '';
+      setRetryText(null);
 
       // ── Admin mode: JSON response ────────────────────────────────────────
       if (contentType.includes('application/json')) {
-        const data = await res.json() as { mode?: string; sessionId?: string };
+         const data = await res.json() as { mode?: string; status?: string; sessionId?: string; retryable?: boolean };
         if (data.sessionId) {
           sessionIdRef.current = data.sessionId;
           sessionStorage.setItem(SESSION_KEY, data.sessionId);
         }
-        if (data.mode === 'admin') {
+         if (data.status === 'processing') {
+           setAdminMode(false);
+           setRetryText(text);
+           setError(cb.error);
+           setMessages(prev => prev.some(m => m.pending)
+             ? prev
+             : [...prev, { role: 'assistant', content: '', pending: true }]);
+         } else if (data.mode === 'admin') {
           setAdminMode(true);
           setMessages(prev => [...prev, {
+             id: messageId,
             role: 'assistant',
             content: '…',
             pending: true,
           }]);
         }
+         // A 202 means the server accepted this exact message ID and another
+         // request owns the lease. Keep it for the retry button/replay.
+         if (data.status !== 'processing') retryMessageIdRef.current = null;
         setStreaming(false);
         return;
       }
@@ -254,11 +278,13 @@ export default function ChatWidget({
       // ── AI streaming mode ────────────────────────────────────────────────
       if (!res.body) throw new Error('no body');
       setAdminMode(false);
-      setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+       setMessages(prev => [...prev, { id: messageId, role: 'assistant', content: '', pending: true }]);
 
       const reader  = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer    = '';
+      let completed = false;
+      let terminalError = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -273,22 +299,33 @@ export default function ChatWidget({
           try {
             const payload = JSON.parse(line.slice(6)) as {
               type?: string; sessionId?: string; content?: string; done?: boolean;
+              error?: boolean; retryable?: boolean;
               action?: ChatAction;
             };
 
             if (payload.type === 'session' && payload.sessionId) {
               sessionIdRef.current = payload.sessionId;
               sessionStorage.setItem(SESSION_KEY, payload.sessionId);
+            } else if (payload.error) {
+              terminalError = true;
+              break;
             } else if (payload.done) {
+              completed = true;
+              setMessages(prev => prev.map(msg =>
+                msg.id === messageId ? { ...msg, pending: false } : msg,
+              ));
               break;
             } else if (payload.action?.type === 'whatsapp_booking') {
               setBookingAction(payload.action);
             } else if (payload.content) {
               setMessages(prev => {
                 const updated = [...prev];
-                updated[updated.length - 1] = {
-                  ...updated[updated.length - 1],
-                  content: updated[updated.length - 1].content + payload.content,
+                const index = updated.findIndex(msg => msg.id === messageId);
+                if (index < 0) return prev;
+                updated[index] = {
+                  ...updated[index],
+                  content: updated[index].content + payload.content,
+                  pending: true,
                 };
                 return updated;
               });
@@ -298,20 +335,22 @@ export default function ChatWidget({
           }
         }
       }
+      // Only a terminal SSE outcome consumes the id. A transport ending
+      // without `done` remains retryable with the same server-side claim.
+      if (completed) retryMessageIdRef.current = null;
+      if (terminalError || !completed) {
+        throw new Error('chatbot_stream_incomplete');
+      }
     } catch (err: unknown) {
       if ((err as { name?: string }).name === 'AbortError') return;
       setError(cb.error);
-      setMessages(prev => {
-        const last = prev[prev.length - 1];
-        return last?.role === 'assistant' && (last.content === '' || last.pending)
-          ? prev.slice(0, -1)
-          : prev;
-      });
+      setRetryText(text);
+      setMessages(prev => prev.filter(msg => msg.id !== messageId));
     } finally {
       setStreaming(false);
       abortRef.current = null;
     }
-  }, [input, messages, streaming, lang, cb.error]);
+  }, [input, messages, streaming, lang, cb.error, retryText]);
 
   const handleKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
@@ -494,7 +533,15 @@ export default function ChatWidget({
             )}
 
             {error && (
-              <p style={{ fontSize:'0.8rem', color:'#c0392b', textAlign:'center' }}>{error}</p>
+              <div role="alert" style={{ fontSize:'0.8rem', color:'#c0392b', textAlign:'center' }}>
+                <p style={{ margin: '0 0 0.35rem' }}>{error}</p>
+                {retryText && (
+                  <button type="button" onClick={() => sendMessage(true)} disabled={streaming}
+                    style={{ color: '#102A43', background: 'transparent', border: '1px solid #C99A32', borderRadius: '0.35rem', padding: '0.25rem 0.55rem', cursor: streaming ? 'not-allowed' : 'pointer' }}>
+                    {({ tr: 'Tekrar dene', en: 'Try again', de: 'Erneut versuchen', fr: 'Réessayer', es: 'Reintentar', it: 'Riprova', nl: 'Opnieuw proberen', ru: 'Повторить', ar: 'حاول مرة أخرى' } as Record<string, string>)[lang] ?? 'Try again'}
+                  </button>
+                )}
+              </div>
             )}
             <div ref={bottomRef} />
           </div>
@@ -523,7 +570,7 @@ export default function ChatWidget({
               }}
             />
             <button
-              onClick={sendMessage}
+              onClick={() => sendMessage()}
               disabled={!input.trim() || streaming}
               aria-label={cb.send}
               className="ivt-chat-control"

@@ -18,6 +18,7 @@ import { getPublicServiceCatalog } from '@/lib/public-service-catalog';
 import { localizedServicePath } from '@/lib/localized-service-path';
 import { getPublicHomepageData } from '@/lib/homepage-public-data';
 import { serializeJsonLd } from '@/lib/json-ld';
+import { getFaqs } from '@/lib/faq-data';
 // Above-fold: static imports
 import BookingForm from '@/components/BookingForm';
 import Hero from '@/components/Hero';
@@ -25,6 +26,7 @@ import Hero from '@/components/Hero';
 const VehicleFleet         = lazyLoad(() => import('@/components/VehicleFleet'));
 const Services             = lazyLoad(() => import('@/components/Services'));
 const PopularRoutesSection = lazyLoad(() => import('@/components/PopularRoutesSection'));
+const PopularRegionsSection = lazyLoad(() => import('@/components/PopularRegionsSection'));
 const TrustSignals         = lazyLoad(() => import('@/components/TrustSignals'));
 const Reviews              = lazyLoad(() => import('@/components/Reviews'));
 const FAQ                  = lazyLoad(() => import('@/components/FAQ'));
@@ -49,8 +51,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     const { getPublishedServicePage } = await import('@/lib/service-page-cms');
     const page = await getPublishedServicePage(service.slug, 'tr');
-    const title = page?.seoTitle ?? page?.title ?? service.title;
-    const description = page?.seoDescription ?? service.excerpt ?? undefined;
+    const title = page?.seoTitle?.trim() || page?.title?.trim() || service.title;
+    const description = page?.seoDescription?.trim() || service.excerpt || undefined;
     const url = `${SITE.siteUrl}${localizedServicePath(service.slug, 'tr')}`;
 
     return {
@@ -180,6 +182,18 @@ export default async function TranslatedHomePage({ params }: Props) {
       sameAs: [cs.googleBusinessUrl],
     },
   };
+  const faqItems = homepageFaqs.length > 0
+    ? homepageFaqs
+    : getFaqs(lang).map((faq, index) => ({ ...faq, id: `static-${lang}-${index}` }));
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqItems.map((faq) => ({
+      '@type': 'Question',
+      name: faq.question,
+      acceptedAnswer: { '@type': 'Answer', text: faq.answer },
+    })),
+  };
 
   return (
     <HomepageCmsProvider data={cmsData}>
@@ -193,13 +207,16 @@ export default async function TranslatedHomePage({ params }: Props) {
         <PopularRoutesSection routes={transferRoutes} />
       </div>
       <div className="ivt-deferred-section">
+        <PopularRegionsSection routes={transferRoutes} />
+      </div>
+      <div className="ivt-deferred-section">
         <TrustSignals homepageMode />
       </div>
       <div className="ivt-deferred-section">
         <Reviews items={reviews} homepageMode />
       </div>
       <div className="ivt-deferred-section">
-        <FAQ items={homepageFaqs} />
+        <FAQ items={faqItems} />
       </div>
       <div className="ivt-deferred-section">
         <Contact homepageMode />
@@ -207,6 +224,10 @@ export default async function TranslatedHomePage({ params }: Props) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(webPageSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(faqSchema) }}
       />
     </HomepageCmsProvider>
   );

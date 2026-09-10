@@ -1,5 +1,5 @@
 /**
- * PATCH /admin/api/categories/[id] — rename or reorder a category
+ * PATCH /admin/api/categories/[id] — rename, reorder, or activate/deactivate
  * DELETE /admin/api/categories/[id] — delete (only if no services assigned)
  */
 import { NextRequest, NextResponse } from 'next/server';
@@ -29,7 +29,7 @@ export async function PATCH(
   catch { return NextResponse.json({ error: 'Geçersiz JSON.' }, { status: 400 }); }
 
   const { action, names } = body as {
-    action?: 'up' | 'down' | 'rename';
+     action?: 'up' | 'down' | 'rename' | 'toggle-active';
     names?: Record<string, string>;
   };
 
@@ -65,6 +65,45 @@ export async function PATCH(
         END
         WHERE id IN (${catId}, ${swapCat.id})
       `);
+    } else if (action === 'toggle-active') {
+      // Publication/assignment and deactivation use the same transaction-scoped
+      // advisory lock.  This makes the service count and category update one
+      // atomic operation: a concurrent publish either commits first (and is
+      // counted) or observes the category as inactive and is rejected.
+      const toggleResult = await db.transaction(async (tx) => {
+        await tx.execute(sql`
+          SELECT pg_advisory_xact_lock(hashtext(${cat.slug}))
+        `);
+
+        // Also lock the row so a concurrent category update cannot leave us
+        // toggling from a stale value read before acquiring the advisory lock.
+        const [lockedCategory] = await tx
+          .select({ isActive: serviceCategories.isActive })
+          .from(serviceCategories)
+          .where(eq(serviceCategories.id, catId))
+          .for('update');
+        if (!lockedCategory) return { count: 0, wasActive: false };
+
+        if (lockedCategory.isActive) {
+          const activeServices = await tx.execute(sql`
+            SELECT COUNT(*)::int AS cnt FROM content
+            WHERE content_type = 'SERVICE' AND category = ${cat.slug} AND is_active = true
+          `);
+          const count = Number((Array.from(activeServices)[0] as { cnt: number | string }).cnt ?? 0);
+          if (count > 0) return { count, wasActive: true };
+        }
+
+        await tx.update(serviceCategories)
+          .set({ isActive: !lockedCategory.isActive, updatedAt: new Date() })
+          .where(eq(serviceCategories.id, catId));
+        return { count: 0, wasActive: lockedCategory.isActive };
+      });
+
+      if (toggleResult.count > 0) {
+        return NextResponse.json({
+          error: `Bu kategori devre dışı bırakılamaz: ${toggleResult.count} aktif hizmet bağlı. Önce hizmetleri başka kategoriye taşıyın veya devre dışı bırakın.`,
+        }, { status: 409 });
+      }
     } else if (action === 'rename' && names) {
       const { fillMissingTranslations } = await import('@/lib/ai/fill-missing-translations');
       const currentNames = (cat.nameTranslations ?? {}) as Record<string, string>;

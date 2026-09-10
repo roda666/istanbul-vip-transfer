@@ -298,29 +298,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const { db }      = await import('@/db');
   const { content, serviceCategories } = await import('@/db/schema');
-  const { eq, and }      = await import('drizzle-orm');
+  const { eq, and, sql } = await import('drizzle-orm');
 
   // Categories define the public navigation/listing contract. A service may
   // never be published into an unknown or inactive category, otherwise it can
   // appear in cards/footer links without a valid navigation group or category
   // page. Pending drafts of an already-published page leave live data intact.
-  if (!savingDraftOfPublished) {
-    if (!data.saveAsDraft && !data.category) {
-      return NextResponse.json({ error: 'Yayınlamak için aktif bir hizmet kategorisi seçin.' }, { status: 422 });
-    }
-    if (data.category) {
-      const [activeCategory] = await db
-        .select({ slug: serviceCategories.slug })
-        .from(serviceCategories)
-        .where(and(
-          eq(serviceCategories.slug, data.category),
-          eq(serviceCategories.isActive, true),
-        ))
-        .limit(1);
-      if (!activeCategory) {
-        return NextResponse.json({ error: 'Seçilen hizmet kategorisi bulunamadı veya pasif.' }, { status: 422 });
-      }
-    }
+  if (!savingDraftOfPublished && !data.saveAsDraft && !data.category) {
+    return NextResponse.json({ error: 'Yayınlamak için aktif bir hizmet kategorisi seçin.' }, { status: 422 });
   }
 
   // Auto-generate canonical URL (Turkish pages use /tr/ prefix — that's where
@@ -368,8 +353,38 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         updatedAt:      new Date(),
       };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (db.update(content).set(updateFields as any).where(eq(content.id, id)));
+  // Match category deactivation's transaction-scoped advisory lock. Holding
+  // it through the active-category check and content update prevents a
+  // publish/assignment from slipping between the deactivation count and
+  // category update. Use the existing category when category was omitted,
+  // including service deactivation, so both directions are serialized.
+  const effectiveCategory = data.category ?? row.category;
+  const resultingActive = !savingDraftOfPublished && (data.isActive ?? true);
+  const categoryAccepted = await db.transaction(async (tx) => {
+    if (!savingDraftOfPublished && effectiveCategory) {
+      await tx.execute(sql`
+        SELECT pg_advisory_xact_lock(hashtext(${effectiveCategory}))
+      `);
+      if (resultingActive) {
+        const [activeCategory] = await tx
+          .select({ slug: serviceCategories.slug })
+          .from(serviceCategories)
+          .where(and(
+            eq(serviceCategories.slug, effectiveCategory),
+            eq(serviceCategories.isActive, true),
+          ))
+          .limit(1);
+        if (!activeCategory) return false;
+      }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await tx.update(content).set(updateFields as any).where(eq(content.id, id));
+    return true;
+  });
+  if (!categoryAccepted) {
+    return NextResponse.json({ error: 'Seçilen hizmet kategorisi bulunamadı veya pasif.' }, { status: 422 });
+  }
   if (!savingDraftOfPublished) {
     invalidateServiceCategories();
     revalidateAllHomepagesForServiceChange();
@@ -476,13 +491,35 @@ export async function POST(req: NextRequest, { params }: Params) {
     } catch (error) {
       return NextResponse.json({ error: error instanceof Error ? error.message : 'Görsel doğrulanamadı.' }, { status: 422 });
     }
-    await db.update(content)
-      .set({
-        status:      'PUBLISHED',
-        publishedAt: row.publishedAt ?? new Date(),
-        updatedAt:   new Date(),
-      } as never)
-      .where(eq(content.id, id));
+    const { serviceCategories } = await import('@/db/schema');
+    const { and, sql } = await import('drizzle-orm');
+    const categoryAccepted = await db.transaction(async (tx) => {
+      if (row.category && row.isActive) {
+        await tx.execute(sql`
+          SELECT pg_advisory_xact_lock(hashtext(${row.category}))
+        `);
+        const [activeCategory] = await tx
+          .select({ slug: serviceCategories.slug })
+          .from(serviceCategories)
+          .where(and(
+            eq(serviceCategories.slug, row.category),
+            eq(serviceCategories.isActive, true),
+          ))
+          .limit(1);
+        if (!activeCategory) return false;
+      }
+      await tx.update(content)
+        .set({
+          status:      'PUBLISHED',
+          publishedAt: row.publishedAt ?? new Date(),
+          updatedAt:   new Date(),
+        } as never)
+        .where(eq(content.id, id));
+      return true;
+    });
+    if (!categoryAccepted) {
+      return NextResponse.json({ error: 'Hizmet kategorisi bulunamadı veya pasif.' }, { status: 422 });
+    }
     await writeAuditLog({ contentId: id, action: 'publish_source', adminUserId });
     invalidateServiceCategories();
     revalidateAllHomepagesForServiceChange();

@@ -85,7 +85,7 @@ export default function TransferRouteDetail({ route, locale }: { route: PublicTr
             <p style={{ maxWidth: '760px', color: 'rgba(255,255,255,.86)', margin: '20px 0 0', lineHeight: 1.75, fontSize: '17px' }}>{intro}</p>
             <a href="#rezervasyon" style={{ display: 'inline-block', marginTop: '28px', borderRadius: '8px', padding: '13px 20px', background: '#C99A32', color: '#0C1B2A', textDecoration: 'none', fontWeight: 700 }}>{t.reserve}</a>
           </div>
-          {route.imagePath && <Image src={route.imagePath} alt={route.content.title} width={720} height={460} priority sizes="(max-width: 900px) 100vw, 38vw" style={{ width: '100%', height: 'auto', borderRadius: '16px', objectFit: 'cover', border: '1px solid rgba(232,184,75,.48)' }} />}
+          {route.imagePath && <Image src={route.imagePath} alt={route.content.title} width={720} height={460} priority fetchPriority="high" quality={60} sizes="(max-width: 900px) 100vw, 38vw" style={{ width: '100%', height: 'auto', borderRadius: '16px', objectFit: 'cover', border: '1px solid rgba(232,184,75,.48)' }} />}
         </div>
       </section>
 

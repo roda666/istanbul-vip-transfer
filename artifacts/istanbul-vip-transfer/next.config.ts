@@ -129,6 +129,10 @@ const nextConfig: NextConfig = {
           "default-src 'self'",
           // unsafe-eval: Next.js HMR + Replit bridge script need it in dev.
           "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://challenges.cloudflare.com",
+           // Inline event-handler attributes (onclick=…) are never needed;
+           // keeping this separate from script-src preserves Next's RSC
+           // bootstrap and the consent-gated GA component.
+           "script-src-attr 'none'",
           // fonts.googleapis.com removed: migrated to next/font (self-hosted).
           "style-src 'self' 'unsafe-inline'",
           // fonts.gstatic.com removed: same reason.
@@ -151,6 +155,10 @@ const nextConfig: NextConfig = {
           "default-src 'self'",
           // Google Analytics is only injected after an explicit visitor consent.
           "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://challenges.cloudflare.com",
+           // Blocks injected onclick/onerror/javascript attributes even though
+           // Next's server renderer still requires a narrowly scoped
+           // script-src unsafe-inline for its RSC bootstrap.
+           "script-src-attr 'none'",
           // fonts.googleapis.com removed: migrated to next/font (self-hosted).
           "style-src 'self' 'unsafe-inline'",
           // fonts.gstatic.com removed: same reason.

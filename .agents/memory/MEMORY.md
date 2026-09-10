@@ -38,6 +38,7 @@
 - [Service page retranslation pattern](service-page-retranslation.md) — server-only blocks tsx scripts; use a standalone .mjs with postgres + openai direct imports; extractFields/applyFields replicated inline; run langs in parallel per service with Promise.allSettled.
 - [Service FAQ translation fallback](service-faq-translation-fallback.md) — merge localized FAQ fields by stable CMS ID; source order wins and orphaned locale entries are excluded.
 - [Chatbot hybrid system](chatbot-hybrid-system.md) — humanTakenOver permanent flag + pendingAiAfter 2-min timer; shared AI logic in lib/chatbot-ai.ts; poll route handles AI fallback atomically; cookie-based session ownership.
+- [Database recovery boundary](database-recovery-boundary.md) — web admins may validate backups only; real restores are offline, size-bounded, exact-TOC checked, and target a separate empty database.
 - [Contact settings from DB](contact-settings-db.md) — getContactSettings() server-side (5-min cache) + SiteSettingsProvider/useSiteSettings() client-side; /admin/api/settings POST calls invalidateContactSettings(); site_settings seeded; ALL pages/components converted.
 - [Drizzle migration workflow](drizzle-migration-workflow.md) — drizzle.__drizzle_migrations now exists (drizzle-kit migrate ran); journal has 0000–0016; future changes: db:generate then db:migrate (not db:push).
 - [Drizzle migration reconciliation](drizzle-migration-reconciliation.md) — manually created schema objects and out-of-order journal timestamps must be reconciled before standard migrations can proceed.

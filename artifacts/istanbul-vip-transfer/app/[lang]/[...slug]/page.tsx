@@ -103,9 +103,16 @@ async function getDbMeta(slug: string, lang: string): Promise<{
     const { getPublishedServicePage } = await import('@/lib/service-page-cms');
     const page = await getPublishedServicePage(slug, lang);
     if (!page) return null;
+    const nonBlank = (value: string | null | undefined) => {
+      const trimmed = value?.trim();
+      return trimmed ? trimmed : undefined;
+    };
     return {
-      title:       page.seoTitle ?? page.title ?? undefined,
-      description: page.seoDescription ?? undefined,
+      // Empty CMS fields are treated as absent. This preserves every manual
+      // translation while allowing the caller to use a safe per-service
+      // default rather than emitting duplicate/empty metadata.
+      title:       nonBlank(page.seoTitle) ?? nonBlank(page.title),
+      description: nonBlank(page.seoDescription),
       // A social crawler must never be given an unavailable asset. Prefer the
       // explicit OG image, then the same service's verified cover image.
       // Unlike save-time validation, metadata generation probes own storage:
@@ -189,8 +196,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // Fall back to page-meta.json
   if (!title) {
     const meta = PAGE_META[pathKey]?.[lang];
-    title       = meta?.title ?? 'VIP Transfer Istanbul';
-    description = description ?? meta?.description;
+    title       = meta?.title?.trim() || PAGE_REGISTRY[pathKey]?.tr.title || `VIP Transfer Istanbul — ${pathKey}`;
+    description = description ?? meta?.description?.trim() ?? PAGE_REGISTRY[pathKey]?.tr.description;
   }
 
   // For service pages: only emit hreflang for languages with a published

@@ -2,9 +2,12 @@ import { translateToTurkish } from '@/lib/chatbot-translate';
 
 export type AssistantMessageForStorage = {
   sessionId: string;
+  clientMessageId?: string;
+  assistantForClientMessageId?: string;
   role: 'assistant';
   content: string;
   contentTr: string;
+  action?: { type: 'whatsapp_booking'; url: string } | null;
 };
 
 /**
@@ -16,6 +19,7 @@ export async function persistAssistantReplyForAdmin(
   content: string,
   persist: (message: AssistantMessageForStorage) => Promise<unknown>,
   translate: (text: string) => Promise<string> = translateToTurkish,
+  metadata: Pick<AssistantMessageForStorage, 'assistantForClientMessageId' | 'action'> = {},
 ): Promise<AssistantMessageForStorage> {
   let contentTr = content;
   try {
@@ -25,7 +29,7 @@ export async function persistAssistantReplyForAdmin(
     // The visitor reply remains available even if the admin translation provider fails.
   }
 
-  const message = { sessionId, role: 'assistant' as const, content, contentTr };
+  const message = { sessionId, role: 'assistant' as const, content, contentTr, ...metadata };
   await persist(message);
   return message;
 }

@@ -38,15 +38,7 @@ export async function POST(request: NextRequest) {
 
   const { db } = await import('@/db');
   const { content, serviceCategories, auditLogs } = await import('@/db/schema');
-  const { and, eq } = await import('drizzle-orm');
-  const [activeCategory] = await db
-    .select({ slug: serviceCategories.slug })
-    .from(serviceCategories)
-    .where(and(eq(serviceCategories.slug, category), eq(serviceCategories.isActive, true)))
-    .limit(1);
-  if (!activeCategory) {
-    return NextResponse.json({ error: 'Geçerli, aktif bir hizmet kategorisi seçin.' }, { status: 422 });
-  }
+  const { and, eq, sql } = await import('drizzle-orm');
 
   const body: ServicePageBody = {
     version: 2,
@@ -68,22 +60,41 @@ export async function POST(request: NextRequest) {
   };
 
   try {
-    const [created] = await db.insert(content).values({
-      contentType: 'SERVICE',
-      title,
-      slug,
-      body: JSON.stringify(body),
-      status: 'DRAFT',
-      canonicalUrl: `/${slug}`,
-      category,
-      isActive: true,
-      indexable: true,
-      showOnHomepage: true,
-      showInNav: true,
-      displayOrder: 0,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    } as never).returning({ id: content.id });
+    // Match category deactivation's transaction-scoped lock. Creation makes an
+    // active SERVICE assignment, so the category check and insert must be one
+    // atomic operation.
+    const created = await db.transaction(async (tx) => {
+      await tx.execute(sql`
+        SELECT pg_advisory_xact_lock(hashtext(${category}))
+      `);
+      const [activeCategory] = await tx
+        .select({ slug: serviceCategories.slug })
+        .from(serviceCategories)
+        .where(and(eq(serviceCategories.slug, category), eq(serviceCategories.isActive, true)))
+        .limit(1);
+      if (!activeCategory) return null;
+
+      const [inserted] = await tx.insert(content).values({
+        contentType: 'SERVICE',
+        title,
+        slug,
+        body: JSON.stringify(body),
+        status: 'DRAFT',
+        canonicalUrl: `/${slug}`,
+        category,
+        isActive: true,
+        indexable: true,
+        showOnHomepage: true,
+        showInNav: true,
+        displayOrder: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as never).returning({ id: content.id });
+      return inserted;
+    });
+    if (!created) {
+      return NextResponse.json({ error: 'Geçerli, aktif bir hizmet kategorisi seçin.' }, { status: 422 });
+    }
 
     await db.insert(auditLogs).values({
       adminUserId: session.adminId,

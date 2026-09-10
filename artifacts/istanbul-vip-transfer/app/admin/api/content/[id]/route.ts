@@ -242,8 +242,8 @@ export async function POST(request: NextRequest, { params }: Params) {
 
   const { action } = parsed.data;
   const { db } = await import('@/db');
-  const { content, auditLogs } = await import('@/db/schema');
-  const { eq } = await import('drizzle-orm');
+  const { content, auditLogs, serviceCategories } = await import('@/db/schema');
+  const { eq, and, sql } = await import('drizzle-orm');
 
   const [current] = await db.select().from(content).where(eq(content.id, id)).limit(1).catch(() => []);
   if (!current) return NextResponse.json({ error: 'Bulunamadı.' }, { status: 404 });
@@ -265,7 +265,29 @@ export async function POST(request: NextRequest, { params }: Params) {
   }
 
   try {
-    const [updated] = await db.update(content).set(updates).where(eq(content.id, id)).returning();
+    const updated = await db.transaction(async (tx) => {
+      // Legacy content actions can still reach SERVICE rows. Serialize
+      // publication of an active service with category deactivation.
+      if (action === 'publish' && current.contentType === 'SERVICE' && current.isActive && current.category) {
+        await tx.execute(sql`
+          SELECT pg_advisory_xact_lock(hashtext(${current.category}))
+        `);
+        const [activeCategory] = await tx
+          .select({ slug: serviceCategories.slug })
+          .from(serviceCategories)
+          .where(and(
+            eq(serviceCategories.slug, current.category),
+            eq(serviceCategories.isActive, true),
+          ))
+          .limit(1);
+        if (!activeCategory) return null;
+      }
+      const [row] = await tx.update(content).set(updates).where(eq(content.id, id)).returning();
+      return row;
+    });
+    if (!updated) {
+      return NextResponse.json({ error: 'Hizmet kategorisi bulunamadı veya pasif.' }, { status: 422 });
+    }
     await db.insert(auditLogs).values({
       adminUserId: session.adminId,
       action: action.toUpperCase(),

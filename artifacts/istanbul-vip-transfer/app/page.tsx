@@ -1,22 +1,25 @@
 import type { Metadata } from 'next';
-// Renamed to avoid conflict with Next.js's `export const dynamic` route segment config
-import lazyLoad from 'next/dynamic';
+import dynamic from 'next/dynamic';
 // Above-fold: static imports (always in initial bundle)
 import Hero from '@/components/Hero';
 import DeferredBookingForm from '@/components/DeferredBookingForm';
 import DeferredVehicleFleet from '@/components/DeferredVehicleFleet';
-// Below-fold: lazy-loaded client components (each gets its own JS chunk)
-const Services             = lazyLoad(() => import('@/components/Services'));
-const PopularRoutesSection = lazyLoad(() => import('@/components/PopularRoutesSection'));
-const TrustSignals         = lazyLoad(() => import('@/components/TrustSignals'));
-const Reviews              = lazyLoad(() => import('@/components/Reviews'));
-const FAQ                  = lazyLoad(() => import('@/components/FAQ'));
-const Contact              = lazyLoad(() => import('@/components/Contact'));
+import PopularRegionsSection from '@/components/PopularRegionsSection';
 import { getFaqs } from '@/lib/faq-data';
 import { SITE } from '@/lib/site-config';
 import { HomepageCmsProvider } from '@/lib/homepage-cms-context';
 import { getPublicHomepageData } from '@/lib/homepage-public-data';
 import { serializeJsonLd } from '@/lib/json-ld';
+
+// Below-fold sections remain server-rendered for crawlers and no-JS visitors.
+// Dynamic imports retain separate client chunks, avoiding unnecessary TBT while
+// avoiding the old ssr:false/empty IntersectionObserver placeholder.
+const Services = dynamic(() => import('@/components/Services'));
+const PopularRoutesSection = dynamic(() => import('@/components/PopularRoutesSection'));
+const TrustSignals = dynamic(() => import('@/components/TrustSignals'));
+const Reviews = dynamic(() => import('@/components/Reviews'));
+const FAQ = dynamic(() => import('@/components/FAQ'));
+const Contact = dynamic(() => import('@/components/Contact'));
 
 // ISR: serve pre-rendered HTML instantly; revalidate in background every 5 min.
 // Admin publish routes call revalidatePath() for on-demand invalidation,
@@ -71,7 +74,9 @@ export default async function HomePage() {
     homepageFaqs,
     serviceCopy,
   } = await getPublicHomepageData('tr');
-  const faqItems = homepageFaqs.length > 0 ? homepageFaqs : getFaqs('tr');
+  const faqItems = homepageFaqs.length > 0
+    ? homepageFaqs
+    : getFaqs('tr').map((faq, index) => ({ ...faq, id: `static-tr-${index}` }));
   const faqSchema = {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
@@ -141,13 +146,16 @@ export default async function HomePage() {
         <PopularRoutesSection routes={transferRoutes} />
       </div>
       <div className="ivt-deferred-section">
+        <PopularRegionsSection routes={transferRoutes} />
+      </div>
+      <div className="ivt-deferred-section">
         <TrustSignals homepageMode />
       </div>
       <div className="ivt-deferred-section">
         <Reviews items={reviews} homepageMode />
       </div>
       <div className="ivt-deferred-section">
-        <FAQ items={homepageFaqs} />
+        <FAQ items={faqItems} />
       </div>
       <div className="ivt-deferred-section">
         <Contact homepageMode />

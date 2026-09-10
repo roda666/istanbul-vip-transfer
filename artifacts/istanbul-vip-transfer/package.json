@@ -40,6 +40,7 @@
     "reset-admin-password": "tsx scripts/reset-admin-password.ts",
     "test:e2e": "playwright test",
     "test:unit": "vitest run",
+    "test:database-backup-roundtrip": "tsx scripts/test-database-backup-roundtrip.ts",
     "test:unit:watch": "vitest",
     "test:admin-auth": "tsx scripts/test-admin-authorization.ts",
     "test:admin-auth:e2e": "tsx scripts/test-admin-authorization-e2e.ts",

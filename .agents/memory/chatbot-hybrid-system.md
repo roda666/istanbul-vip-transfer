@@ -53,3 +53,11 @@ description: How the AI+admin hybrid live chat works — schema, routes, timing 
 - Message display: user messages show TR translation prominently + "Orijinal:" for non-TR; admin messages show typed TR + "Çeviri:" for visitor-lang
 
 **Why:** `humanTakenOver` permanent flag prevents AI from jumping back into an admin-managed conversation mid-thread. `pending_ai_after` gives admin a 2-minute grace window per message without making visitors wait forever.
+
+## Durable request idempotency
+
+Every visitor message keeps one stable client-generated ID across retries. Only the current database lease owner may call translation or AI providers. Assistant and admin outcomes are persisted before completion and replayed after lost responses; incomplete stream output remains pending and is removed before retry.
+
+**Why:** Deduplicating only the user row does not prevent duplicate model calls or duplicate replies. Lost admin responses and half-finished streams must also be recoverable.
+
+**How to apply:** Any new chatbot response path must participate in the same claim lifecycle, renew ownership during long work, complete outcome persistence atomically, and leave failed claims retryable without changing the message ID.

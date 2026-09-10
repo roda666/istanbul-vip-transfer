@@ -103,6 +103,23 @@ export default function KategorilerPage() {
     }
   }
 
+  async function toggleActive(cat: Category) {
+    setActionId(cat.id); setError('');
+    try {
+      const res = await fetch(`/admin/api/categories/${cat.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'toggle-active' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Durum değiştirilemedi.');
+      setCats((data.categories ?? []).map((c: Category) => ({
+        ...c, serviceCount: cats.find(x => x.id === c.id)?.serviceCount ?? 0,
+      })));
+    } catch (e: unknown) {
+      setError(String(e));
+    } finally { setActionId(null); }
+  }
+
   // ── Inline edit ───────────────────────────────────────────────────────────────
 
   function startEdit(cat: Category) {
@@ -225,6 +242,9 @@ export default function KategorilerPage() {
                     slug: {cat.slug}
                     {cat.nameTranslations['en'] && ` • EN: ${cat.nameTranslations['en']}`}
                   </p>
+                  <span style={{ display: 'inline-block', marginTop: '5px', padding: '2px 7px', borderRadius: '10px', fontSize: '10px', fontWeight: 700, color: cat.isActive ? '#166534' : '#B91C1C', background: cat.isActive ? '#DCFCE7' : '#FEE2E2' }}>
+                    {cat.isActive ? 'AKTİF' : 'DEVRE DIŞI'}
+                  </span>
                 </div>
 
                 {/* Service count */}
@@ -272,6 +292,11 @@ export default function KategorilerPage() {
                       <button onClick={() => startEdit(cat)} title="Düzenle"
                         style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 8px', background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', borderRadius: '6px', cursor: 'pointer' }}>
                         <Pencil size={12} />
+                      </button>
+                      <button onClick={() => toggleActive(cat)} disabled={actionId === cat.id}
+                        title={cat.isActive ? 'Kategoriyi devre dışı bırak' : 'Kategoriyi etkinleştir'}
+                        style={{ padding: '5px 8px', background: cat.isActive ? '#FFF7ED' : '#ECFDF5', color: cat.isActive ? '#B45309' : '#047857', border: '1px solid #D1D5DB', borderRadius: '6px', cursor: 'pointer', fontSize: '11px' }}>
+                        {cat.isActive ? 'Kapat' : 'Aç'}
                       </button>
                       <button
                         onClick={() => handleDelete(cat)}

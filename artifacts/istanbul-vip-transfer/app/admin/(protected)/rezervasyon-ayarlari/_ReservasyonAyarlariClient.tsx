@@ -52,6 +52,8 @@ interface FormSettings {
   showChildSeatCount:    boolean;
   showVehiclePreference: boolean;
   showAdditionalNotes:   boolean;
+  adminNewReservationNotification: boolean;
+  customerConfirmationEmail: boolean;
   optionalFieldServiceTypes: Partial<Record<OptionalFieldKey, string[]>>;
 }
 type OptionalFieldKey = 'showLuggageCount' | 'showChildSeatCount' | 'showVehiclePreference' | 'showAdditionalNotes';
@@ -502,7 +504,7 @@ export default function ReservasyonAyarlariClient() {
   const [stLoading, setStLoading] = useState(true);
 
   // ── Form Ayarları state ──
-  const [settings, setSettings] = useState<FormSettings>({ timeStepMinutes: 5, exactAddressRequired: false, locationSearchEnabled: true, roadDistanceMultiplier: 1.25, showLuggageCount: false, showChildSeatCount: false, showVehiclePreference: false, showAdditionalNotes: false, optionalFieldServiceTypes: {} });
+  const [settings, setSettings] = useState<FormSettings>({ timeStepMinutes: 5, exactAddressRequired: false, locationSearchEnabled: true, roadDistanceMultiplier: 1.25, showLuggageCount: false, showChildSeatCount: false, showVehiclePreference: false, showAdditionalNotes: false, adminNewReservationNotification: false, customerConfirmationEmail: false, optionalFieldServiceTypes: {} });
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsMsg, setSettingsMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -852,6 +854,12 @@ export default function ReservasyonAyarlariClient() {
                   onChange={v => setSettings(s => ({ ...s, exactAddressRequired: v }))}
                   label="Kesin Adres Zorunlu (Adres alanı zorunlu olsun)"
                 />
+                <div style={{ height: '1px', background: BORDER, margin: '8px 0' }} />
+                <p style={{ color: NAVY, fontSize: '12px', fontFamily: 'Inter, sans-serif', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>
+                  E-posta Bildirimleri
+                </p>
+                <Toggle checked={settings.adminNewReservationNotification} onChange={v => setSettings(s => ({ ...s, adminNewReservationNotification: v }))} label="Yeni rezervasyonda admin bildirimi gönder" />
+                <Toggle checked={settings.customerConfirmationEmail} onChange={v => setSettings(s => ({ ...s, customerConfirmationEmail: v }))} label="Müşteriye onay e-postası gönder" />
 
                 <div style={{ height: '1px', background: BORDER, margin: '8px 0' }} />
                 <p style={{ color: NAVY, fontSize: '12px', fontFamily: 'Inter, sans-serif', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 4px' }}>

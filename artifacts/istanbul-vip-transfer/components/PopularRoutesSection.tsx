@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { localizedPublicPath, localizedTransferRoutePath } from '@/lib/localized-service-path';
 import { getPublicUiCopy } from '@/lib/i18n/public-ui';
 import CardCarouselStrip from '@/components/CardCarouselStrip';
+import { buildWhatsAppChatUrl } from '@/lib/whatsapp';
 
 // ── Design tokens (matches site dark/gold aesthetic) ──────────────────────────
 const DARK_BG    = '#0C1B2A';
@@ -41,6 +42,22 @@ function RouteCard({ route, lang, t }: {
   const sprinterRange = `${route.priceSprinterMinEur}–${route.priceSprinterMaxEur} €`;
   const href = localizedTransferRoutePath(route.slug, lang);
   const bookingHref = localizedPublicPath('/?hizmet=havaalani#rezervasyon', lang);
+  const whatsappMessages: Record<string, string> = {
+    tr: 'Merhaba, bu transfer rotası için rezervasyon yapmak istiyorum.',
+    en: 'Hello, I would like to book this transfer route.',
+    de: 'Hallo, ich möchte diese Transferstrecke buchen.',
+    ru: 'Здравствуйте, я хочу забронировать этот трансфер.',
+    ar: 'مرحباً، أود حجز خدمة النقل هذه.',
+    es: 'Hola, me gustaría reservar este traslado.',
+    fr: 'Bonjour, je souhaite réserver ce transfert.',
+    it: 'Salve, vorrei prenotare questo trasferimento.',
+    nl: 'Hallo, ik wil deze transfer boeken.',
+  };
+  const whatsappLabels: Record<string, string> = {
+    tr: 'WhatsApp', en: 'WhatsApp', de: 'WhatsApp', ru: 'WhatsApp',
+    ar: 'واتساب', es: 'WhatsApp', fr: 'WhatsApp', it: 'WhatsApp', nl: 'WhatsApp',
+  };
+  const whatsappHref = buildWhatsAppChatUrl('905326600847', whatsappMessages[lang] ?? whatsappMessages.en);
 
   return (
     <article
@@ -120,24 +137,30 @@ function RouteCard({ route, lang, t }: {
         </div>
       </a>
       <div style={{ padding: '0 16px 16px' }}>
-        <a
-          href={bookingHref}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: '42px',
-            borderRadius: '9px',
-            background: GOLD,
-            color: DARK_BG,
-            textDecoration: 'none',
-            fontSize: '13px',
-            fontWeight: 700,
-            fontFamily: 'Inter, sans-serif',
-          }}
-        >
-          {t.bookBtn}
-        </a>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+          <a
+            href={bookingHref}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '42px',
+              borderRadius: '9px', background: GOLD, color: DARK_BG, textDecoration: 'none',
+              fontSize: '13px', fontWeight: 700, fontFamily: 'Inter, sans-serif',
+            }}
+          >
+            {t.bookBtn}
+          </a>
+          <a
+            href={whatsappHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '42px',
+              borderRadius: '9px', background: '#1FAF63', color: '#fff', textDecoration: 'none',
+              fontSize: '13px', fontWeight: 700, fontFamily: 'Inter, sans-serif',
+            }}
+          >
+            {whatsappLabels[lang] ?? whatsappLabels.en}
+          </a>
+        </div>
       </div>
     </article>
   );

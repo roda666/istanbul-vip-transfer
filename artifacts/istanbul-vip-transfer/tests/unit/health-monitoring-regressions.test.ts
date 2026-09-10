@@ -66,8 +66,14 @@ describe('health monitoring regressions', () => {
     const root = path.resolve(__dirname, '../..');
     const journal = JSON.parse(fs.readFileSync(path.join(root, 'drizzle/migrations/meta/_journal.json'), 'utf8'));
     const latest = journal.entries.at(-1);
-    expect(latest.tag).toBe('0080_health_check_leases');
-    expect(journal.entries.at(-2).tag).toBe('0079_blog_health_monitoring');
+    expect(latest.tag).toBe('0085_chatbot_response_mode');
+    const tags = journal.entries.map((entry: { tag: string }) => entry.tag);
+    expect(tags.indexOf('0079_blog_health_monitoring')).toBeLessThan(tags.indexOf('0080_health_check_leases'));
+    expect(tags.indexOf('0080_health_check_leases')).toBeLessThan(tags.indexOf('0081_reservation_email_preferences'));
+    expect(tags.indexOf('0081_reservation_email_preferences')).toBeLessThan(tags.indexOf('0082_chatbot_message_client_id'));
+    expect(tags.indexOf('0082_chatbot_message_client_id')).toBeLessThan(tags.indexOf('0083_chatbot_assistant_idempotency'));
+    expect(tags.indexOf('0083_chatbot_assistant_idempotency')).toBeLessThan(tags.indexOf('0084_chatbot_processing_leases'));
+    expect(tags.indexOf('0084_chatbot_processing_leases')).toBeLessThan(tags.indexOf('0085_chatbot_response_mode'));
     const leaseMigration = fs.readFileSync(path.join(root, 'drizzle/migrations/0080_health_check_leases.sql'), 'utf8');
     expect(leaseMigration).toContain('"lock_name" text PRIMARY KEY');
     expect(leaseMigration).toContain('"owner_token" text NOT NULL');

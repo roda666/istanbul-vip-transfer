@@ -12,6 +12,8 @@ const settingsSchema = z.object({
   showChildSeatCount:    z.boolean().optional(),
   showVehiclePreference: z.boolean().optional(),
   showAdditionalNotes:   z.boolean().optional(),
+  adminNewReservationNotification: z.boolean().optional(),
+  customerConfirmationEmail: z.boolean().optional(),
   optionalFieldServiceTypes: z.object(
     Object.fromEntries(OPTIONAL_BOOKING_FIELDS.map((field) => [field, z.array(z.string().min(1)).max(100)])),
   ).partial().optional(),
@@ -26,6 +28,8 @@ const DEFAULTS = {
   showChildSeatCount:    false,
   showVehiclePreference: false,
   showAdditionalNotes:   false,
+  adminNewReservationNotification: false,
+  customerConfirmationEmail: false,
   optionalFieldServiceTypes: {},
 };
 
@@ -52,6 +56,8 @@ export async function GET() {
         showChildSeatCount:    siteSettings.showChildSeatCount,
         showVehiclePreference: siteSettings.showVehiclePreference,
         showAdditionalNotes:   siteSettings.showAdditionalNotes,
+        adminNewReservationNotification: siteSettings.adminNewReservationNotification,
+        customerConfirmationEmail: siteSettings.customerConfirmationEmail,
         optionalFieldServiceTypes: siteSettings.optionalFieldServiceTypes,
         updatedAt:             siteSettings.updatedAt,
       })
@@ -112,6 +118,8 @@ export async function POST(request: NextRequest) {
         showChildSeatCount:    siteSettings.showChildSeatCount,
         showVehiclePreference: siteSettings.showVehiclePreference,
         showAdditionalNotes:   siteSettings.showAdditionalNotes,
+        adminNewReservationNotification: siteSettings.adminNewReservationNotification,
+        customerConfirmationEmail: siteSettings.customerConfirmationEmail,
         optionalFieldServiceTypes: siteSettings.optionalFieldServiceTypes,
         updatedAt:             siteSettings.updatedAt,
       });

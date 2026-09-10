@@ -91,6 +91,7 @@ export default function AdminChatOverlay() {
   const blinkTimer  = useRef<ReturnType<typeof setInterval> | null>(null);
   const origTitle   = useRef('');
   const bottomRef   = useRef<HTMLDivElement>(null);
+  const seededNotifications = useRef(false);
 
   // ── Title blink ────────────────────────────────────────────────────────────
   const startBlink = useCallback(() => {
@@ -144,8 +145,11 @@ export default function AdminChatOverlay() {
   }, []);
 
   useEffect(() => {
-    if (open && auth === 'unknown') checkAuth();
-  }, [open, auth, checkAuth]);
+    // Check credentials on mount as well as on open. This lets an already
+    // authenticated admin receive safe, content-free notifications while
+    // working elsewhere on the public site.
+    if (auth === 'unknown') checkAuth();
+  }, [auth, checkAuth]);
 
   // ── Session list polling (5s) ─────────────────────────────────────────────
   useEffect(() => {
@@ -167,6 +171,17 @@ export default function AdminChatOverlay() {
       const res = await fetch('/admin/api/chatbot/sessions').catch(() => null);
       if (!res?.ok) return;
       const data = await res.json() as { sessions: Session[] };
+      if (!seededNotifications.current) {
+        // Establish a baseline without notifying about messages that existed
+        // before this tab started watching.
+        data.sessions.forEach(s => {
+          if (s.lastMessageRole === 'user') {
+            knownMsgIds.current.add(`${s.id}:${s.lastMessageAt}`);
+          }
+        });
+        seededNotifications.current = true;
+        return;
+      }
 
       // For each session, check for new user messages we haven't seen
       for (const s of data.sessions) {
@@ -310,7 +325,7 @@ export default function AdminChatOverlay() {
       </button>
 
       {/* Panel */}
-      <div style={panel} role="dialog" aria-label="Admin Chat Paneli">
+      <div className="ivt-admin-chat-panel" style={panel} role="dialog" aria-label="Admin Chat Paneli">
 
         {/* Header */}
         <div style={{
@@ -382,10 +397,10 @@ export default function AdminChatOverlay() {
 
         {/* Sessions + chat */}
         {auth === 'in' && (
-          <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '220px 1fr', overflow: 'hidden' }}>
+          <div className="ivt-admin-chat-body" style={{ flex: 1, display: 'grid', gridTemplateColumns: 'minmax(150px, 220px) minmax(0, 1fr)', overflow: 'hidden' }}>
 
             {/* Session list */}
-            <div style={{ borderRight: '1px solid #D9E2EC', overflowY: 'auto', background: '#fff' }}>
+            <div className="ivt-admin-chat-sessions" style={{ borderRight: '1px solid #D9E2EC', overflowY: 'auto', background: '#fff' }}>
               <div style={{ padding: '0.5rem 0.75rem', fontSize: '0.72rem', color: '#50677A', fontWeight: 600, borderBottom: '1px solid #EEF3F9' }}>
                 OTURUMLAR ({sessions.length})
               </div>
@@ -514,6 +529,29 @@ export default function AdminChatOverlay() {
           </div>
         )}
       </div>
+      <style>{`
+        @media (max-width: 600px) {
+          .ivt-admin-chat-panel {
+            inset: 0;
+            width: 100vw !important;
+            height: 100dvh !important;
+            max-height: none !important;
+            border-radius: 0 !important;
+            bottom: auto !important;
+            right: auto !important;
+          }
+          .ivt-admin-chat-body {
+            display: flex !important;
+            flex-direction: column !important;
+          }
+          .ivt-admin-chat-sessions {
+            flex: 0 0 auto;
+            max-height: 34dvh;
+            border-right: 0 !important;
+            border-bottom: 1px solid #D9E2EC;
+          }
+        }
+      `}</style>
     </>
   );
 }

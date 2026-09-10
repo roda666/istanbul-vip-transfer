@@ -23,7 +23,7 @@ archive and its manifest together in restricted storage.
    objects are present. Record the verification outcome in the approved
    operations system, not in this repository.
 
-## Restore procedure
+## Restore procedure (offline only)
 
 Restores are an offline, authorized technical operation. Never restore through
 the public application or the admin panel.
@@ -38,7 +38,9 @@ the public application or the admin panel.
    version compatible with the dump:
 
    ```sh
-   pg_restore --clean --if-exists --no-owner --no-acl --dbname "$TARGET_DATABASE_URL" path/to/backup.dump
+   RESTORE_TARGET_DATABASE_URL='postgresql://...' \
+   RESTORE_MAINTENANCE_ACK='I_UNDERSTAND_MAINTENANCE_RESTORE' \
+   pnpm tsx scripts/restore-database.ts path/to/backup.dump path/to/backup.dump.sha256.txt
    ```
 
    For a recovery rehearsal, restore to an isolated database first. Do not use
@@ -48,6 +50,11 @@ the public application or the admin panel.
 6. Remove temporary archive copies according to retention policy and close the
    change record with the checksum and `pg_restore --list` verification result.
 
-`pg_restore` options and restore ownership requirements vary by hosting
+The helper reads both connection strings from environment variables (never
+from command arguments), refuses equality with `DATABASE_URL`, production-like
+deployment indicators without the explicit acknowledgement, populated targets,
+checksum or format mismatches, partial/dangerous TOC listings, and restores
+with one transaction and no owner/ACL. The target must be empty or a separately
+isolated approved database. `pg_restore` options and restore ownership requirements vary by hosting
 provider. Escalate to the database owner if the target requires additional
 roles, extensions, or provider-specific restore steps.

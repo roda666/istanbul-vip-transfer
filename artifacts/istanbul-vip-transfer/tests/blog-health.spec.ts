@@ -91,27 +91,23 @@ test.describe('computeBlogHealthIssues — fixture-based unit tests', () => {
     }
   });
 
-  test('flags translation_not_published when a translation exists but is DRAFT', () => {
+  test('does not flag translations intentionally waiting in the editorial workflow', () => {
     const src = sourceRow('slug-a');
-    const translations = [
-      ...CHECK_LOCALES.filter(l => l !== 'ru').map(l => translationRow(src.id, l)),
-      translationRow(src.id, 'ru', 'DRAFT'), // 'ru' not published
-    ];
+    const translations = CHECK_LOCALES.map((locale, index) =>
+      translationRow(src.id, locale, ['DRAFT', 'REVIEW', 'APPROVED', 'SCHEDULED'][index]),
+    );
 
     const result = computeBlogHealthIssues([], [src], translations, CHECK_LOCALES);
-    expect(result).toHaveLength(1);
-    expect(result[0].issues).toContain('translation_not_published');
-    expect(result[0].issues).not.toContain('missing_translation');
-    expect(result[0].translationDetails).toContainEqual({ locale: 'ru', problem: 'not_published' });
+    expect(result).toHaveLength(0);
   });
 
-  test('flags both missing_translation and translation_not_published when both problems exist', () => {
+  test('flags both missing_translation and translation_not_published for an actionable stale status', () => {
     const src = sourceRow('slug-a');
     const translations = [
       // 'en' published (healthy)
       translationRow(src.id, 'en', 'PUBLISHED'),
-      // 'de' not published (translation_not_published)
-      translationRow(src.id, 'de', 'DRAFT'),
+      // 'de' is stale and no longer in the normal review workflow
+      translationRow(src.id, 'de', 'OUTDATED'),
       // 'ru' and 'ar' missing (missing_translation)
     ];
 

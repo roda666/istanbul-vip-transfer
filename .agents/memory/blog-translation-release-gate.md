@@ -17,3 +17,9 @@ Only records that pass every check may move through the editorial lifecycle in o
 **Why:** A completed AI translation can still silently omit images, retain a Turkish URL, or carry disallowed operational route copy. Status changes alone are not a visitor-readiness signal.
 
 **How to apply:** Treat the checks as a release gate for every future blog translation batch. Exclude failed language/article records from publication, report the exact reason, and re-run the scoped checks after repairs before changing their status.
+
+Health monitoring must distinguish editorial workflow from operational failure. `QUEUED`, `TRANSLATING`, `DRAFT`, `REVIEW`, `APPROVED`, `SCHEDULED`, and `PUBLISHED` are expected states and must not send health alerts. Missing rows plus `NOT_STARTED`, `FAILED`, `OUTDATED`, `ARCHIVED`, or unknown states remain actionable.
+
+**Why:** Alerting on deliberate drafts trains admins to ignore health email, while suppressing `OUTDATED` or `FAILED` would hide localized pages that need real repair.
+
+**How to apply:** Keep publication approval separate from health. A completed AI job should end in `DRAFT`; health becomes quiet while editorial review continues, but stale/failed records still alert.

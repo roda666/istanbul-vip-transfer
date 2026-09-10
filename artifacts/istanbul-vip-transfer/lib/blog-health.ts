@@ -15,14 +15,17 @@
  *
  * The localized routes (/en/blog/…, /de/blog/…, etc.) read from the
  * contentTranslations table and return 404 when a translation row is absent
- * or its status is not 'PUBLISHED'. The source content row's is_active /
+ * or it has never reached a usable workflow state. Deliberate review/publish
+ * workflow states are not operational failures and must not trigger alerts.
+ * The source content row's is_active /
  * status columns are NOT consulted by that route.
  *
  * Therefore the health check targets translation completeness, not source flags:
  *   - missing_source_record     → no BLOG_POST row in content table; translations
  *                                  cannot be linked without an entity_id reference
  *   - missing_translation       → one or more non-TR locales have no translation row
- *   - translation_not_published → a translation row exists but status != 'PUBLISHED'
+ *   - translation_not_published → a translation row exists in an actionable
+ *                                  failure/stale state (for example FAILED or OUTDATED)
  */
 import { SUPPORTED_LANGS } from './i18n';
 
@@ -78,6 +81,21 @@ export interface BlogTranslationRow {
   status: string;
 }
 
+/**
+ * These statuses mean the translation exists and is moving through the normal
+ * editorial workflow. An admin intentionally keeping a translation in one of
+ * these states is not a health incident.
+ */
+const EXPECTED_TRANSLATION_STATUSES = new Set([
+  'QUEUED',
+  'TRANSLATING',
+  'DRAFT',
+  'REVIEW',
+  'APPROVED',
+  'SCHEDULED',
+  'PUBLISHED',
+]);
+
 // ── Known blog slugs ──────────────────────────────────────────────────────────
 
 /**
@@ -111,10 +129,12 @@ export function getTranslationLocales(): string[] {
  *  - `missing_source_record`    — slug in blog-data.ts but no BLOG_POST DB row
  *  - `missing_translation`      — one or more locales in checkLocales have no
  *                                  contentTranslations row for this entity
- *  - `translation_not_published`— translation row exists but status != 'PUBLISHED'
+ *  - `translation_not_published`— translation row exists in a stale, failed,
+ *                                  not-started, archived, or unknown state
  *
- * Healthy slugs (source present + all locales have PUBLISHED translations) are
- * omitted from the result, so an empty array means all good.
+ * Slugs whose translations are published or intentionally moving through the
+ * editorial workflow are omitted, so an empty array means there is no
+ * actionable operational failure.
  *
  * @param knownSlugs    - Slugs from blog-data.ts (source of truth)
  * @param sourceRows    - All BLOG_POST rows from the content table
@@ -171,7 +191,7 @@ export function computeBlogHealthIssues(
       const status = localeMap.get(locale);
       if (status === undefined) {
         details.push({ locale, problem: 'missing' });
-      } else if (status !== 'PUBLISHED') {
+      } else if (!EXPECTED_TRANSLATION_STATUSES.has(status)) {
         details.push({ locale, problem: 'not_published' });
       }
     }

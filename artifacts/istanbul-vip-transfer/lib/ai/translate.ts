@@ -63,6 +63,26 @@ export const TranslationOutputSchema = z.object({
 
 export type TranslationOutput = z.infer<typeof TranslationOutputSchema>;
 
+/**
+ * Models occasionally return blank SEO fields even when the translated title
+ * and excerpt are present. Reuse those translated values instead of failing an
+ * otherwise complete translation or falling back to Turkish source text.
+ */
+export function normalizeRequiredTranslationFields(value: unknown): unknown {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  const normalized = { ...(value as Record<string, unknown>) };
+  const nonEmpty = (field: unknown): field is string =>
+    typeof field === 'string' && field.trim().length > 0;
+
+  if (!nonEmpty(normalized.metaTitle) && nonEmpty(normalized.title)) {
+    normalized.metaTitle = normalized.title;
+  }
+  if (!nonEmpty(normalized.metaDescription) && nonEmpty(normalized.excerpt)) {
+    normalized.metaDescription = normalized.excerpt;
+  }
+  return normalized;
+}
+
 export interface TranslationInput {
   title: string;
   slug: string;
@@ -181,7 +201,7 @@ ${requiredInternalLinks.length > 0 ? requiredInternalLinks.map((href) => `- ${hr
       return { ok: false, reason: 'parse_error', message: 'Failed to parse JSON response' };
     }
 
-    const result = TranslationOutputSchema.safeParse(parsed);
+    const result = TranslationOutputSchema.safeParse(normalizeRequiredTranslationFields(parsed));
     if (!result.success) {
       return {
         ok: false,

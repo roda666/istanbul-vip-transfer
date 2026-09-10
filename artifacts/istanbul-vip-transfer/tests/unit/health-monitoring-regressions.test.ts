@@ -52,7 +52,7 @@ describe('health monitoring regressions', () => {
     const issues = computeBlogHealthIssues(
       [],
       [{ id: 'post-1', slug: 'istanbul-guide', title: 'Guide' }],
-      [{ entityId: 'post-1', targetLanguageCode: 'en', status: 'DRAFT' }],
+      [{ entityId: 'post-1', targetLanguageCode: 'en', status: 'OUTDATED' }],
       ['en', 'de'],
     );
     expect(issues[0].issues).toEqual(['missing_translation', 'translation_not_published']);

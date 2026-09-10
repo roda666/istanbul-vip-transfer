@@ -36,6 +36,10 @@ import {
   assertBosphorusSelectionRequirement,
 } from '@/lib/toll-management';
 
+type ResolvedQuoteToll = NonNullable<Parameters<typeof calculateAdminQuote>[0]['tolls']>[number] & {
+  source?: 'EXACT_ROUTE' | 'CORRIDOR';
+};
+
 export function currentlyApplicable<T extends { validFrom: Date | null; validUntil: Date | null }>(rows: T[], at: Date): T | undefined {
   return rows
     .filter((row) => (!row.validFrom || row.validFrom <= at) && (!row.validUntil || row.validUntil >= at))
@@ -166,7 +170,7 @@ export async function createAdminQuote(input: {
   const effectiveTollAlternativeId = effectiveRouteId
     ? input.tollAlternativeId ?? routeDefaultTollAlternativeId
     : null;
-  const tolls: Array<any> = effectiveRouteId && effectiveTollAlternativeId
+  const tolls: ResolvedQuoteToll[] = effectiveRouteId && effectiveTollAlternativeId
      ? (await resolveTolls(effectiveRouteId, effectiveTollAlternativeId, vehicleId, vehicle.tollClass, now, pickupAt, input.tripType))
        .map(toll => ({ ...toll, source: 'EXACT_ROUTE' as const }))
      : [];

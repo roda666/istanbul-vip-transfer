@@ -1,10 +1,10 @@
 ---
-name: Admin fast-quote custom points
-description: Safety boundary between custom coordinates, catalog locations, and protected toll-route selection.
+name: Admin fast-quote endpoint rules
+description: Owner-approved input and toll-alternative behavior for the admin quick quote simulator.
 ---
 
-Open-address and map-pin inputs may be used directly for admin-only distance pricing. They must not create or guess a toll scenario by themselves. Toll alternatives become eligible only when each endpoint safely matches a nearby active catalog location and that ordered pair exactly matches an active stored route. Keep the user's manual saved-route selection separate from the effective route derived from exact endpoints: automatic matching must not mutate the saved-route selector. Review-only routes still require an explicit alternative selection.
+The admin quick quote simulator uses only the Kalkış and Varış catalog dropdowns. Do not restore free-text hotel/address inputs or the map-pin picker unless the owner explicitly reverses this decision. An exact active directed endpoint pair automatically resolves the effective stored route without changing the optional saved-route selector. Render its Yol & Geçiş Alternatifi panel directly below the two dropdowns so the result is visible where the selection occurred. Review-only routes still require an explicit alternative selection.
 
-**Why:** A free-form address or approximate map point can be close to several dense-city locations. Treating it as a route endpoint without a strict catalog boundary could silently apply the wrong real tariff.
+**Why:** The owner explicitly removed custom inputs, and repeatedly reported the alternatives as missing when the panel rendered above the dropdowns and outside the current scroll position. Catalog-only exact matching is safer and the adjacent panel makes the result discoverable.
 
-**How to apply:** Preserve coordinate-first distance calculation, a narrow proximity threshold for catalog matching, exact directed route matching, and the existing review/default rules. Address autocomplete must use server-side provider calls and accept only a selected, coordinate-backed suggestion; unselected text is not a quote endpoint. Show the resolved coordinates and catalog match outside optional map controls. When invalidating an in-flight JSON POST in this UI, ignore its stale result rather than aborting the body mid-request, which can create a misleading 422 parse response. Keep every coordinate and toll detail inside protected admin APIs and UI.
+**How to apply:** Match only active routes whose origin and destination location IDs equal the selected dropdown IDs in the same direction. Keep manual-route selection independent. Preserve the existing default/review and vehicle/tariff safety rules. Maintain a browser regression that selects endpoints without selecting a saved route and verifies the alternatives panel and expected option names.

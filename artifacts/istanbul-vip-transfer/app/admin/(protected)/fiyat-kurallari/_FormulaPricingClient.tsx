@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
-  Calculator, RefreshCw, Plus, Check, X, Edit2, AlertCircle, TrendingUp, Loader2, Trash2, MapPin, Search, ChevronDown
+  Calculator, RefreshCw, Plus, Check, X, Edit2, AlertCircle, TrendingUp, Loader2, Trash2, ChevronDown
 } from 'lucide-react';
-import { findNearestFastQuoteLocation, resolveEffectiveFastQuoteRoute, sortFastQuoteTollAlternatives } from '@/lib/admin-fast-quote';
+import { resolveEffectiveFastQuoteRoute, sortFastQuoteTollAlternatives } from '@/lib/admin-fast-quote';
 import { TOLL_VEHICLE_CLASS_LABELS, type TollVehicleClass } from '@/lib/toll-vehicle-classes';
 
 // --- Types ---
@@ -26,8 +26,6 @@ type PricingLocation = {
   type: 'AIRPORT' | 'DISTRICT' | 'REGION' | 'HOTEL_ZONE' | 'CUSTOM' | 'PROVINCE';
   latitude: number | null; longitude: number | null;
 };
-type QuotePoint = { latitude: number; longitude: number };
-type AddressSuggestion = QuotePoint & { formattedAddress: string; placeId: string };
 type TollAlternative = {
   id: string;
   name: string;
@@ -218,129 +216,15 @@ function sortQuoteLocations(locations: PricingLocation[]): PricingLocation[] {
   return [...locations].sort((a, b) => priority(a) - priority(b) || collator.compare(a.name, b.name));
 }
 
-const MAP_ZOOM = 10;
-const MAP_CENTER = { latitude: 41.055, longitude: 28.98 };
-const MAP_WIDTH = 512;
-const MAP_HEIGHT = 220;
-
-function worldPoint(point: QuotePoint, zoom = MAP_ZOOM) {
-  const scale = 256 * 2 ** zoom;
-  const sin = Math.sin(point.latitude * Math.PI / 180);
-  return {
-    x: (point.longitude + 180) / 360 * scale,
-    y: (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * scale,
-  };
-}
-
-function coordinatePoint(x: number, y: number, zoom = MAP_ZOOM): QuotePoint {
-  const scale = 256 * 2 ** zoom;
-  return {
-    longitude: x / scale * 360 - 180,
-    latitude: Math.atan(Math.sinh(Math.PI * (1 - 2 * y / scale))) * 180 / Math.PI,
-  };
-}
-
-function QuoteMapPicker({ point, onChange }: { point: QuotePoint | null; onChange: (point: QuotePoint) => void }) {
-  const center = worldPoint(MAP_CENTER);
-  const topLeft = { x: center.x - MAP_WIDTH / 2, y: center.y - MAP_HEIGHT / 2 };
-  const minTileX = Math.floor(topLeft.x / 256);
-  const maxTileX = Math.floor((topLeft.x + MAP_WIDTH) / 256);
-  const minTileY = Math.floor(topLeft.y / 256);
-  const maxTileY = Math.floor((topLeft.y + MAP_HEIGHT) / 256);
-  const tiles = [];
-  for (let x = minTileX; x <= maxTileX; x += 1) {
-    for (let y = minTileY; y <= maxTileY; y += 1) tiles.push({ x, y });
-  }
-  const marker = point ? worldPoint(point) : null;
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      aria-label="Haritadan konum seç"
-      className="relative mt-2 h-[220px] w-full cursor-crosshair overflow-hidden rounded-lg border border-slate-300 bg-slate-100"
-      onClick={(event) => {
-        const rect = event.currentTarget.getBoundingClientRect();
-        onChange(coordinatePoint(topLeft.x + event.clientX - rect.left, topLeft.y + event.clientY - rect.top));
-      }}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') onChange(MAP_CENTER);
-      }}
-    >
-      {tiles.map(tile => (
-        <img
-          key={`${tile.x}-${tile.y}`}
-          src={`https://tile.openstreetmap.org/${MAP_ZOOM}/${tile.x}/${tile.y}.png`}
-          alt=""
-          draggable={false}
-          className="pointer-events-none absolute h-64 w-64 max-w-none select-none"
-          style={{ left: tile.x * 256 - topLeft.x, top: tile.y * 256 - topLeft.y }}
-        />
-      ))}
-      {marker && (
-        <MapPin
-          size={28}
-          className="pointer-events-none absolute -translate-x-1/2 -translate-y-full fill-blue-600 text-white drop-shadow"
-          style={{ left: marker.x - topLeft.x, top: marker.y - topLeft.y }}
-        />
-      )}
-      <span className="absolute bottom-1 right-1 rounded bg-white/90 px-1.5 py-0.5 text-[9px] text-slate-500">© OpenStreetMap</span>
-    </div>
-  );
-}
-
 function QuoteLocationInput({
-  label, optional, locations, value, address, point, onSelect, onAddress, onSuggestion, onPoint,
+  label, optional, locations, value, onSelect,
 }: {
-  label: string; optional?: boolean; locations: PricingLocation[]; value: string; address: string;
-  point: QuotePoint | null;
-  onSelect: (value: string) => void; onAddress: (value: string) => void;
-  onSuggestion: (suggestion: AddressSuggestion) => void; onPoint: (point: QuotePoint) => void;
+  label: string;
+  optional?: boolean;
+  locations: PricingLocation[];
+  value: string;
+  onSelect: (value: string) => void;
 }) {
-  const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [searchError, setSearchError] = useState('');
-  const matched = point && value ? locations.find(location => location.id === value) : null;
-  useEffect(() => {
-    const query = address.trim();
-    if (query.length < 3 || point) {
-      setSuggestions([]);
-      setSearching(false);
-      setSearchError('');
-      return;
-    }
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => {
-      setSearching(true);
-      setSearchError('');
-      fetch('/admin/api/locations/geocode', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: query, suggestions: true }),
-        signal: controller.signal,
-      })
-        .then(async response => {
-          const payload = await response.json().catch(() => null);
-          if (!response.ok || !Array.isArray(payload?.suggestions)) {
-            throw new Error(payload?.error ?? 'Adres önerileri alınamadı.');
-          }
-          setSuggestions(payload.suggestions as AddressSuggestion[]);
-          if (payload.suggestions.length === 0) setSearchError('Eşleşen adres bulunamadı.');
-        })
-        .catch((error: unknown) => {
-          if (error instanceof DOMException && error.name === 'AbortError') return;
-          setSuggestions([]);
-          setSearchError(error instanceof Error ? error.message : 'Adres önerileri alınamadı.');
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) setSearching(false);
-        });
-    }, 350);
-    return () => {
-      window.clearTimeout(timeout);
-      controller.abort();
-    };
-  }, [address, point]);
-
   return (
     <div className="min-w-0">
       <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
@@ -355,65 +239,6 @@ function QuoteLocationInput({
         <option value="">{optional ? 'Belirtmeyin' : 'Kayıtlı nokta seçin...'}</option>
         {locations.map(location => <option key={location.id} value={location.id}>{location.name}</option>)}
       </select>
-      <div className="relative mt-3">
-        <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
-          {label} Adresi / Otel (opsiyonel)
-        </label>
-        <div className="relative">
-          <input
-            data-testid={`quote-address-${label === 'Kalkış' ? 'origin' : 'destination'}`}
-            value={address}
-            onChange={(event) => onAddress(event.target.value)}
-            placeholder="Otel veya kesin adres"
-            autoComplete="off"
-            className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-3 pr-9 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none"
-          />
-          {searching
-            ? <Loader2 size={14} className="absolute right-3 top-2.5 animate-spin text-blue-600" />
-            : <Search size={14} className="pointer-events-none absolute right-3 top-2.5 text-slate-400" />}
-        </div>
-        {suggestions.length > 0 && (
-          <div data-testid={`quote-address-suggestions-${label === 'Kalkış' ? 'origin' : 'destination'}`} className="absolute z-30 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-xl">
-            {suggestions.map(suggestion => (
-              <button
-                key={suggestion.placeId}
-                type="button"
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => {
-                  setSuggestions([]);
-                  onSuggestion(suggestion);
-                }}
-                className="flex w-full items-start gap-2 px-3 py-2 text-left text-xs text-slate-700 hover:bg-blue-50"
-              >
-                <MapPin size={13} className="mt-0.5 shrink-0 text-blue-600" />
-                <span>{suggestion.formattedAddress}</span>
-              </button>
-            ))}
-          </div>
-        )}
-        {address.trim().length >= 3 && !point && (
-          <p className={`mt-1.5 text-[10px] ${searchError ? 'text-amber-700' : 'text-slate-500'}`}>
-            {searchError || 'Koordinatı doğrulamak için önerilerden bir adres seçin.'}
-          </p>
-        )}
-        {point && (
-          <div
-            data-testid={`quote-coordinate-status-${label === 'Kalkış' ? 'origin' : 'destination'}`}
-            className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-slate-600"
-          >
-            <span>{point.latitude.toFixed(5)}, {point.longitude.toFixed(5)}</span>
-            {matched && <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-bold text-emerald-800">Kayıtlı noktayla eşleşti: {matched.name}</span>}
-          </div>
-        )}
-      </div>
-      <details className="mt-2 rounded-lg border border-slate-200 bg-slate-50">
-        <summary className="cursor-pointer list-none px-3 py-2 text-xs font-bold text-blue-700">
-          Haritadan nokta seç (opsiyonel)
-        </summary>
-        <div className="border-t border-slate-200 p-3">
-          <QuoteMapPicker point={point} onChange={onPoint} />
-        </div>
-      </details>
     </div>
   );
 }
@@ -511,51 +336,20 @@ function FastQuotePanel({
   const [tollsLoading, setTollsLoading] = useState(false);
   const [tollsError, setTollsError] = useState('');
   const [tollPanelOpen, setTollPanelOpen] = useState(false);
-  const [originAddress, setOriginAddress] = useState('');
-  const [destinationAddress, setDestinationAddress] = useState('');
-  const [originPoint, setOriginPoint] = useState<QuotePoint | null>(null);
-  const [destinationPoint, setDestinationPoint] = useState<QuotePoint | null>(null);
 
   const selectedVehicle = vehicles.find((vehicle) => vehicle.id === quoteVehicleId);
   const selectedTollAlternative = tollAlternatives.find((alternative) => alternative.id === tollAlternativeId);
   const hasFormula = selectedVehicle
     ? profiles.some((profile) => profile.vehicleId === selectedVehicle.id && profile.mode === quoteMode && profile.active)
     : false;
-  const originLocation = locations.find(location => location.id === originLocationId);
-  const destinationLocation = locations.find(location => location.id === destinationLocationId);
   const effectiveQuoteRouteId = useMemo(
     () => resolveEffectiveFastQuoteRoute(quoteRouteId, routes, originLocationId, destinationLocationId) ?? '',
     [destinationLocationId, originLocationId, quoteRouteId, routes],
   );
   const selectedRoute = routes.find((route) => route.id === effectiveQuoteRouteId);
   const manuallySelectedRoute = routes.find((route) => route.id === quoteRouteId);
-  const originCoordinates = useMemo(() => originPoint ?? (
-    originLocation?.latitude != null && originLocation.longitude != null
-      ? { latitude: originLocation.latitude, longitude: originLocation.longitude } : null
-  ), [originLocation?.latitude, originLocation?.longitude, originPoint]);
-  const destinationCoordinates = useMemo(() => destinationPoint ?? (
-    destinationLocation?.latitude != null && destinationLocation.longitude != null
-      ? { latitude: destinationLocation.latitude, longitude: destinationLocation.longitude } : null
-  ), [destinationLocation?.latitude, destinationLocation?.longitude, destinationPoint]);
-  const hasOriginInput = Boolean(originLocationId || originPoint);
-  const hasDestinationInput = Boolean(destinationLocationId || destinationPoint);
-
-  const setCustomPoint = (side: 'origin' | 'destination', point: QuotePoint) => {
-    const matchedId = findNearestFastQuoteLocation(locations, point);
-    if (side === 'origin') {
-      setOriginPoint(point);
-      setOriginLocationId(matchedId ?? '');
-    } else {
-      setDestinationPoint(point);
-      setDestinationLocationId(matchedId ?? '');
-    }
-  };
-
-  const selectAddressSuggestion = (side: 'origin' | 'destination', suggestion: AddressSuggestion) => {
-    setCustomPoint(side, { latitude: suggestion.latitude, longitude: suggestion.longitude });
-    if (side === 'origin') setOriginAddress(suggestion.formattedAddress);
-    else setDestinationAddress(suggestion.formattedAddress);
-  };
+  const hasOriginInput = Boolean(originLocationId);
+  const hasDestinationInput = Boolean(destinationLocationId);
 
   useEffect(() => {
     if (!hasOriginInput || (quoteMode === 'DISTANCE' && !hasDestinationInput)) {
@@ -569,11 +363,7 @@ function FastQuotePanel({
     fetch('/admin/api/location-distance', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-       body: JSON.stringify(
-         (originPoint || destinationPoint) && originCoordinates && destinationCoordinates
-           ? { originCoordinates, destinationCoordinates }
-           : { originLocationId, destinationLocationId },
-       ),
+       body: JSON.stringify({ originLocationId, destinationLocationId }),
     })
       .then(async (response) => {
         const payload = await response.json().catch(() => null);
@@ -593,7 +383,7 @@ function FastQuotePanel({
     return () => {
       cancelled = true;
     };
-  }, [destinationCoordinates, destinationLocationId, destinationPoint, hasDestinationInput, hasOriginInput, originCoordinates, originLocationId, originPoint, quoteMode]);
+  }, [destinationLocationId, hasDestinationInput, hasOriginInput, originLocationId, quoteMode]);
 
   useEffect(() => {
     if (!effectiveQuoteRouteId) {
@@ -678,12 +468,6 @@ function FastQuotePanel({
         ...(selectedRoute && tollAlternativeId ? { tollAlternativeId } : {}),
         ...(originLocationId ? { originLocationId } : {}),
         ...(destinationLocationId ? { destinationLocationId } : {}),
-        ...((originPoint || destinationPoint) && originCoordinates && destinationCoordinates
-          ? {
-              originCoordinates: { ...originCoordinates, address: originAddress || undefined },
-              destinationCoordinates: { ...destinationCoordinates, address: destinationAddress || undefined },
-            }
-          : {}),
         mode: quoteMode,
         tripType: quoteMode === 'HOURLY' ? 'ONE_WAY' : quoteTripType,
         ...(quoteMode === 'HOURLY' ? { requestedHours: quoteHours } : {}),
@@ -751,7 +535,7 @@ function FastQuotePanel({
         </div>
         <div>
           <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kayıtlı Rota ve Geçiş Senaryosu (isteğe bağlı)</label>
-          <select className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={quoteRouteId} onChange={(event) => chooseRoute(event.target.value)}>
+          <select data-testid="quote-route" className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={quoteRouteId} onChange={(event) => chooseRoute(event.target.value)}>
             <option value="">Rota seçmeyin — yalnız konumlarla hesaplayın</option>
             {routes.filter((route) => route.active).map((route) => (
               <option key={route.id} value={route.id}>
@@ -762,6 +546,21 @@ function FastQuotePanel({
           {selectedRoute && (!selectedRoute.originLocationId || !selectedRoute.destinationLocationId) && (
             <p className="mt-2 text-xs text-amber-700">Bu rotanın konum eşleşmesi eksik. Mesafe için aşağıdan kalkış ve varış seçin; seçili rota yine de geçiş maliyetini belirler.</p>
           )}
+        </div>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <QuoteLocationInput
+            label="Kalkış"
+            locations={quoteLocations}
+            value={originLocationId}
+            onSelect={setOriginLocationId}
+          />
+          <QuoteLocationInput
+            label="Varış"
+            optional={quoteMode === 'HOURLY'}
+            locations={quoteLocations}
+            value={destinationLocationId}
+            onSelect={setDestinationLocationId}
+          />
         </div>
         {selectedRoute && (
           <div data-testid="quote-toll-panel" className="overflow-hidden rounded-lg border border-slate-200 bg-white" aria-live="polite">
@@ -802,7 +601,7 @@ function FastQuotePanel({
                   <ChevronDown size={18} className={`shrink-0 text-slate-400 transition-transform ${tollPanelOpen ? 'rotate-180' : ''}`} />
                 </button>
                 {tollPanelOpen && (
-                  <div className="max-h-64 divide-y divide-slate-100 overflow-y-auto border-t border-slate-200">
+                  <div data-testid="quote-toll-options" className="max-h-64 divide-y divide-slate-100 overflow-y-auto border-t border-slate-200">
                     {tollAlternatives.map((alternative) => {
                       const selected = alternative.id === tollAlternativeId;
                       const unavailable = Boolean(selectedVehicle && !alternative.isPricedForSelectedVehicle);
@@ -853,31 +652,6 @@ function FastQuotePanel({
             )}
           </div>
         )}
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          <QuoteLocationInput
-            label="Kalkış"
-            locations={quoteLocations}
-            value={originLocationId}
-            address={originAddress}
-            point={originPoint}
-            onSelect={(value) => { setOriginLocationId(value); setOriginPoint(null); setOriginAddress(''); }}
-            onAddress={(value) => { setOriginAddress(value); setOriginLocationId(''); setOriginPoint(null); }}
-             onSuggestion={(suggestion) => selectAddressSuggestion('origin', suggestion)}
-            onPoint={(point) => setCustomPoint('origin', point)}
-          />
-          <QuoteLocationInput
-            label="Varış"
-            optional={quoteMode === 'HOURLY'}
-            locations={quoteLocations}
-            value={destinationLocationId}
-            address={destinationAddress}
-            point={destinationPoint}
-            onSelect={(value) => { setDestinationLocationId(value); setDestinationPoint(null); setDestinationAddress(''); }}
-            onAddress={(value) => { setDestinationAddress(value); setDestinationLocationId(''); setDestinationPoint(null); }}
-             onSuggestion={(suggestion) => selectAddressSuggestion('destination', suggestion)}
-            onPoint={(point) => setCustomPoint('destination', point)}
-          />
-        </div>
         <div className={`rounded-lg border px-3 py-2 text-xs font-medium ${
           distance?.state === 'GOOGLE_MAPS' || distance?.state === 'DEFINED_ROUTE'
             ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
@@ -1552,7 +1326,13 @@ function ProfileModal({ isOpen, cloneData, vehicles, onClose, onSaved }: {
 
 // --- Main Page Component ---
 
-export default function FormulaPricingClient() {
+export type FormulaPricingView = 'engine' | 'policy' | 'formulas';
+
+type FormulaPricingClientProps = {
+  view?: FormulaPricingView;
+};
+
+export default function FormulaPricingClient({ view = 'engine' }: FormulaPricingClientProps) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [routes, setRoutes] = useState<PricingRoute[]>([]);
@@ -1629,12 +1409,14 @@ export default function FormulaPricingClient() {
   return (
     <div className="space-y-6">
       
-      <div className="flex justify-between items-center bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Fiyatlandırma Motoru</h1>
-          <p className="text-slate-500 text-sm mt-1 font-medium">Araç sınıfları için formül ve kur parametrelerini yönetin.</p>
+      {view === 'engine' && (
+        <div className="flex justify-between items-center bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+          <div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Fiyatlandırma Motoru</h1>
+            <p className="text-slate-500 text-sm mt-1 font-medium">Araç sınıfları için formül ve kur parametrelerini yönetin.</p>
+          </div>
         </div>
-      </div>
+      )}
       {(profilesError || settingsError) && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <div className="font-bold">Bazı fiyatlandırma verileri yüklenemedi</div>
@@ -1644,17 +1426,16 @@ export default function FormulaPricingClient() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        <div className="lg:col-span-4 xl:col-span-3 space-y-6">
-          <FastQuotePanel vehicles={vehicles} profiles={profiles} routes={routes} locations={locations} />
-          <TcmbWidget settings={settings} onApply={loadData} />
+      {view === 'engine' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div className="lg:col-span-4 xl:col-span-3 space-y-6">
+            <FastQuotePanel vehicles={vehicles} profiles={profiles} routes={routes} locations={locations} />
+            <TcmbWidget settings={settings} onApply={loadData} />
+          </div>
         </div>
-        
-        <div className="lg:col-span-8 xl:col-span-9 space-y-6">
-          <SettingsPanel settings={settings} onSave={loadData} />
-          <ProfilesPanel profiles={profiles} vehicles={vehicles} onReload={loadData} />
-        </div>
-      </div>
+      )}
+      {view === 'policy' && <SettingsPanel settings={settings} onSave={loadData} />}
+      {view === 'formulas' && <ProfilesPanel profiles={profiles} vehicles={vehicles} onReload={loadData} />}
 
     </div>
   );

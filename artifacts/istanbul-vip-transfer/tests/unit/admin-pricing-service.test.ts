@@ -1,6 +1,41 @@
 import { describe, expect, it } from 'vitest';
 import { currentlyApplicable } from '@/lib/admin-pricing-service';
-import { chooseDefaultRouteTollAlternative } from '@/lib/toll-management';
+import {
+  assertBosphorusSelectionRequirement,
+  chooseDefaultRouteTollAlternative,
+  isOppositeIstanbulSide,
+} from '@/lib/toll-management';
+
+describe('Istanbul cross-side eligibility', () => {
+  it('accepts only European-to-Asian or Asian-to-European pairs', () => {
+    expect(isOppositeIstanbulSide('EUROPEAN', 'ASIAN')).toBe(true);
+    expect(isOppositeIstanbulSide('ASIAN', 'EUROPEAN')).toBe(true);
+    expect(isOppositeIstanbulSide('EUROPEAN', 'EUROPEAN')).toBe(false);
+    expect(isOppositeIstanbulSide('NONE', 'ASIAN')).toBe(false);
+  });
+
+  it('requires a selected crossing for an unregistered opposite-side pair', () => {
+    expect(() => assertBosphorusSelectionRequirement({
+      hasExactOrSelectedRoute: false,
+      crossingRequired: true,
+    })).toThrow('bir Boğaz geçişi seçilmelidir');
+  });
+
+  it('rejects a generic crossing when an exact or selected route exists', () => {
+    expect(() => assertBosphorusSelectionRequirement({
+      hasExactOrSelectedRoute: true,
+      crossingRequired: false,
+      bosphorusTollPointId: 'crossing-id',
+    })).toThrow('güzergâh ile birlikte kullanılamaz');
+  });
+
+  it('does not require a crossing for same-side or unclassified pairs', () => {
+    expect(() => assertBosphorusSelectionRequirement({
+      hasExactOrSelectedRoute: false,
+      crossingRequired: false,
+    })).not.toThrow();
+  });
+});
 
 describe('fixed price override validity selection', () => {
   const now = new Date('2026-08-24T12:00:00.000Z');

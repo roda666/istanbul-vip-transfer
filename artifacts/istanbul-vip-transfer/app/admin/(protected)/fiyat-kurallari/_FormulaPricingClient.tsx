@@ -24,10 +24,12 @@ type PricingRoute = {
 type PricingLocation = {
   id: string; name: string; city: string;
   type: 'AIRPORT' | 'DISTRICT' | 'REGION' | 'HOTEL_ZONE' | 'CUSTOM' | 'PROVINCE';
+  istanbulSide: 'EUROPEAN' | 'ASIAN' | 'NONE';
   latitude: number | null; longitude: number | null;
 };
 type TollAlternative = {
   id: string;
+  tollPointId?: string;
   name: string;
   active: boolean;
   isDefault: boolean;
@@ -234,7 +236,7 @@ function QuoteLocationInput({
         data-testid={`quote-location-${label === 'Kalkış' ? 'origin' : 'destination'}`}
         value={value}
         onChange={(event) => onSelect(event.target.value)}
-        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none"
+        className="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none"
       >
         <option value="">{optional ? 'Belirtmeyin' : 'Kayıtlı nokta seçin...'}</option>
         {locations.map(location => <option key={location.id} value={location.id}>{location.name}</option>)}
@@ -336,6 +338,7 @@ function FastQuotePanel({
   const [tollsLoading, setTollsLoading] = useState(false);
   const [tollsError, setTollsError] = useState('');
   const [tollPanelOpen, setTollPanelOpen] = useState(false);
+  const [tollPanelApplicable, setTollPanelApplicable] = useState(false);
 
   const selectedVehicle = vehicles.find((vehicle) => vehicle.id === quoteVehicleId);
   const selectedTollAlternative = tollAlternatives.find((alternative) => alternative.id === tollAlternativeId);
@@ -386,9 +389,11 @@ function FastQuotePanel({
   }, [destinationLocationId, hasDestinationInput, hasOriginInput, originLocationId, quoteMode]);
 
   useEffect(() => {
-    if (!effectiveQuoteRouteId) {
+    const hasLocationPair = Boolean(originLocationId && destinationLocationId);
+    if (!effectiveQuoteRouteId && !hasLocationPair) {
       setTollAlternatives([]);
       setTollAlternativeId('');
+      setTollPanelApplicable(false);
       setTollsLoading(false);
       setTollsError('');
       return;
@@ -400,8 +405,16 @@ function FastQuotePanel({
     const params = new URLSearchParams();
     if (quoteVehicleId) params.set('vehicleId', quoteVehicleId);
     if (quotePickupAt) params.set('pickupAt', new Date(quotePickupAt).toISOString());
-    const query = params.size ? `?${params.toString()}` : '';
-    fetch(`/admin/api/pricing/tolls/route-alternatives/${effectiveQuoteRouteId}${query}`, { signal: controller.signal })
+    let endpoint: string;
+    if (effectiveQuoteRouteId) {
+      const query = params.size ? `?${params.toString()}` : '';
+      endpoint = `/admin/api/pricing/tolls/route-alternatives/${effectiveQuoteRouteId}${query}`;
+    } else {
+      params.set('originLocationId', originLocationId);
+      params.set('destinationLocationId', destinationLocationId);
+      endpoint = `/admin/api/pricing/tolls/location-pair-alternatives?${params.toString()}`;
+    }
+    fetch(endpoint, { signal: controller.signal })
       .then(async (response) => {
         const payload = await response.json().catch(() => null);
         if (!response.ok || !Array.isArray(payload?.alternatives)) {
@@ -409,6 +422,7 @@ function FastQuotePanel({
         }
         if (cancelled) return;
         const alternatives = sortFastQuoteTollAlternatives(payload.alternatives as TollAlternative[]);
+        setTollPanelApplicable(effectiveQuoteRouteId ? true : payload.crossingRequired === true);
         setTollAlternatives(alternatives);
         setTollAlternativeId((current) => {
           if (alternatives.some((alternative) => alternative.id === current)) return current;
@@ -419,6 +433,7 @@ function FastQuotePanel({
         if (cancelled || (error instanceof DOMException && error.name === 'AbortError')) return;
         setTollAlternatives([]);
         setTollAlternativeId('');
+        setTollPanelApplicable(false);
         setTollsError(error instanceof Error ? error.message : 'Geçiş alternatifleri alınamadı.');
       })
       .finally(() => {
@@ -428,7 +443,7 @@ function FastQuotePanel({
       cancelled = true;
       controller.abort();
     };
-  }, [effectiveQuoteRouteId, quoteVehicleId, quotePickupAt]);
+  }, [destinationLocationId, effectiveQuoteRouteId, originLocationId, quoteVehicleId, quotePickupAt]);
 
   useEffect(() => {
     if (!quoteRouteId || !originLocationId || !destinationLocationId) return;
@@ -466,6 +481,9 @@ function FastQuotePanel({
         ...(quoteVehicleId ? { vehicleId: quoteVehicleId } : {}),
         ...(selectedRoute ? { routeId: selectedRoute.id } : {}),
         ...(selectedRoute && tollAlternativeId ? { tollAlternativeId } : {}),
+        ...(!selectedRoute && selectedTollAlternative?.tollPointId
+          ? { bosphorusTollPointId: selectedTollAlternative.tollPointId }
+          : {}),
         ...(originLocationId ? { originLocationId } : {}),
         ...(destinationLocationId ? { destinationLocationId } : {}),
         mode: quoteMode,
@@ -516,7 +534,7 @@ function FastQuotePanel({
       <div className="space-y-4">
         <div>
           <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Araç</label>
-          <select data-testid="quote-vehicle" className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={quoteVehicleId} onChange={e => setQuoteVehicleId(e.target.value)}>
+          <select data-testid="quote-vehicle" className="min-h-11 w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={quoteVehicleId} onChange={e => setQuoteVehicleId(e.target.value)}>
             <option value="">Araç Seçin...</option>
             {vehicles.map((vehicle) => {
               const distanceProfile = profiles.some((profile) => profile.vehicleId === vehicle.id && profile.mode === quoteMode && profile.active);
@@ -535,7 +553,7 @@ function FastQuotePanel({
         </div>
         <div>
           <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kayıtlı Rota ve Geçiş Senaryosu (isteğe bağlı)</label>
-          <select data-testid="quote-route" className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={quoteRouteId} onChange={(event) => chooseRoute(event.target.value)}>
+          <select data-testid="quote-route" className="min-h-11 w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={quoteRouteId} onChange={(event) => chooseRoute(event.target.value)}>
             <option value="">Rota seçmeyin — yalnız konumlarla hesaplayın</option>
             {routes.filter((route) => route.active).map((route) => (
               <option key={route.id} value={route.id}>
@@ -562,7 +580,7 @@ function FastQuotePanel({
             onSelect={setDestinationLocationId}
           />
         </div>
-        {selectedRoute && (
+        {tollPanelApplicable && (
           <div data-testid="quote-toll-panel" className="overflow-hidden rounded-lg border border-slate-200 bg-white" aria-live="polite">
             {tollsLoading ? (
               <div className="flex items-center gap-2 px-3 py-3 text-xs font-medium text-slate-600">
@@ -574,7 +592,7 @@ function FastQuotePanel({
                   type="button"
                   aria-expanded={tollPanelOpen}
                   onClick={() => setTollPanelOpen(open => !open)}
-                  className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left hover:bg-slate-50"
+                  className="flex min-h-11 w-full items-center justify-between gap-3 px-3 py-3 text-left hover:bg-slate-50"
                 >
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
@@ -612,7 +630,7 @@ function FastQuotePanel({
                           aria-pressed={selected}
                           disabled={unavailable}
                           onClick={() => { setTollAlternativeId(alternative.id); setTollPanelOpen(false); }}
-                          className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs ${
+                          className={`flex min-h-11 w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs ${
                             selected ? 'bg-blue-50 text-blue-950' : unavailable ? 'cursor-not-allowed bg-slate-50 opacity-55' : 'hover:bg-slate-50'
                           }`}
                         >
@@ -672,24 +690,24 @@ function FastQuotePanel({
                   ? `Hesaplanamadı${distance.reason ? ` (${describeDistanceUnavailableReason(distance.reason)})` : ''}`
                   : distanceError || 'İki kayıtlı konum seçildiğinde mesafe otomatik gelir.'}
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Hesaplama</label>
-             <select className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={quoteMode} onChange={e => setQuoteMode(e.target.value as 'DISTANCE' | 'HOURLY')}>
+             <select className="min-h-11 w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={quoteMode} onChange={e => setQuoteMode(e.target.value as 'DISTANCE' | 'HOURLY')}>
                <option value="DISTANCE">Mesafe</option>
                <option value="HOURLY">Saatlik Tahsis</option>
              </select>
            </div>
             <div className={quoteMode === 'HOURLY' ? 'hidden' : ''}>
              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Yön</label>
-             <select className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={quoteTripType} onChange={e => setQuoteTripType(e.target.value as 'ONE_WAY' | 'ROUND_TRIP')}>
+              <select className="min-h-11 w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={quoteTripType} onChange={e => setQuoteTripType(e.target.value as 'ONE_WAY' | 'ROUND_TRIP')}>
                <option value="ONE_WAY">Tek Yön</option>
                <option value="ROUND_TRIP">Çift Yön</option>
              </select>
            </div>
         </div>
         {quoteMode === 'HOURLY' && (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <AmountInput label="Süre (Saat)" value={quoteHours} onChange={setQuoteHours} symbol="sa" decimals={0} min={1} />
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Saat aşımı (ops.)</label>
@@ -710,7 +728,7 @@ function FastQuotePanel({
             Henüz hiçbir fiyat formülü yok. Araç seçimi korunur; otomatik fiyat için <a href="#pricing-profiles" className="font-bold underline">ilk formülü oluşturun</a>.
           </div>
         )}
-        <button onClick={handleQuote} disabled={!quoteVehicleId || !hasOriginInput || (quoteMode === 'DISTANCE' && !hasDestinationInput) || distanceLoading || quoting || tollsLoading || (tollAlternatives.length > 0 && !tollAlternativeId) || Boolean(selectedTollAlternative && selectedVehicle && !selectedTollAlternative.isPricedForSelectedVehicle)} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center justify-center gap-2 mt-2">
+        <button onClick={handleQuote} disabled={!quoteVehicleId || !hasOriginInput || (quoteMode === 'DISTANCE' && !hasDestinationInput) || distanceLoading || quoting || tollsLoading || (tollAlternatives.length > 0 && !tollAlternativeId) || Boolean(selectedTollAlternative && selectedVehicle && !selectedTollAlternative.isPricedForSelectedVehicle)} className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50">
           {quoting ? <Loader2 className="animate-spin" size={18} /> : 'Hesapla'}
         </button>
       </div>
@@ -743,12 +761,15 @@ function FastQuotePanel({
               )}
               <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl flex flex-col items-center text-center">
                 <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1">MÜŞTERİ FİYATI</span>
-                <span className="text-3xl font-black text-emerald-900">{formatMoneyCents(quoteResult.quotedEurCents || 0, 'EUR')}</span>
-                <div className="flex gap-3 mt-3 text-xs font-bold text-slate-600 bg-white px-3 py-1.5 rounded-lg border border-emerald-100/50">
-                  <span>{formatMoneyCents(quoteResult.quotedUsdCents || 0, 'USD')}</span>
-                  <span className="text-slate-300">|</span>
-                  <span>{formatMoneyCents(quoteResult.quotedTryKurus || 0, 'TRY')}</span>
+                <div className="mt-2 grid w-full grid-cols-1 gap-2 sm:grid-cols-2">
+                  <span data-testid="customer-price-eur" className="rounded-lg border border-emerald-200 bg-white px-3 py-3 text-2xl font-black text-emerald-900 sm:text-3xl">
+                    {formatMoneyCents(quoteResult.quotedEurCents || 0, 'EUR')}
+                  </span>
+                  <span data-testid="customer-price-usd" className="rounded-lg border border-emerald-200 bg-white px-3 py-3 text-2xl font-black text-emerald-900 sm:text-3xl">
+                    {formatMoneyCents(quoteResult.quotedUsdCents || 0, 'USD')}
+                  </span>
                 </div>
+                <span data-testid="customer-price-try" className="mt-2 text-xs font-bold text-slate-600">{formatMoneyCents(quoteResult.quotedTryKurus || 0, 'TRY')}</span>
               </div>
               
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2.5 text-sm">
@@ -1428,8 +1449,10 @@ export default function FormulaPricingClient({ view = 'engine' }: FormulaPricing
 
       {view === 'engine' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-4 xl:col-span-3 space-y-6">
+          <div className="lg:col-span-8 xl:col-span-9">
             <FastQuotePanel vehicles={vehicles} profiles={profiles} routes={routes} locations={locations} />
+          </div>
+          <div className="lg:col-span-4 xl:col-span-3">
             <TcmbWidget settings={settings} onApply={loadData} />
           </div>
         </div>

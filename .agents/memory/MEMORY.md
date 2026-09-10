@@ -126,6 +126,7 @@
 - [Cross-instance health scheduler leases](health-scheduler-leases.md) — automatic health jobs require an expiring DB lease; process-local flags cannot prevent duplicate runs.
 - [Manual toll tariff maintenance](manual-toll-tariff-maintenance.md) — toll updates are PDF/Excel or explicit manual entry only; never add live/automatic tariff fetching.
 - [Review-only toll alternatives](review-only-toll-alternatives.md) — all-review routes may have zero defaults; explicit admin selection is required before any quote can be priced.
-- [Admin fast-quote endpoint rules](admin-fast-quote-custom-points.md) — simulator uses catalog dropdowns only; exact directed pairs reveal toll alternatives directly below the selectors.
+- [Admin fast-quote endpoint rules](admin-fast-quote-custom-points.md) — exact routes win; otherwise opposite Istanbul sides use active classified Bosphorus crossings.
+- [Responsive change validation](responsive-change-validation.md) — every UI change must be checked at mobile and tablet widths for page overflow, stacking, and 44px touch targets.
 - [Structural reference translation sync](structural-reference-translation-sync.md) — changed location/vehicle reference fields replace all 8 live locale values; blog translations remain draft-gated.
 - [Temporary ESM script imports](temporary-esm-script-imports.md) — scripts run from /tmp cannot use artifact-relative package imports; resolve through verified artifact node_modules symlinks.

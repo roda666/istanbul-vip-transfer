@@ -19,6 +19,7 @@ const quoteSchema = z.object({
   overageKm: z.number().int().min(0).max(10_000).optional(),
   tripType: z.enum(['ONE_WAY', 'ROUND_TRIP']),
   tollAlternativeId: z.string().uuid().optional(),
+  bosphorusTollPointId: z.string().uuid().optional(),
   serviceQuantities: z.array(z.object({ serviceId: z.string().uuid(), quantity: z.number().int().min(1).max(99) })).max(20).optional(),
   reservationRequestId: z.string().uuid().optional(),
   /** Trip pickup instant (ISO string), used only to pick the DAY/NIGHT toll tariff band. Defaults to now. */
@@ -26,6 +27,10 @@ const quoteSchema = z.object({
 }).superRefine((value, ctx) => {
   if (value.mode === 'HOURLY' && !value.requestedHours) ctx.addIssue({ code: 'custom', path: ['requestedHours'], message: 'Tahsis için süre gereklidir.' });
   if (value.tollAlternativeId && !value.routeId) ctx.addIssue({ code: 'custom', path: ['tollAlternativeId'], message: 'Geçiş seçimi için güzergâh gereklidir.' });
+  if (value.bosphorusTollPointId && value.routeId) ctx.addIssue({ code: 'custom', path: ['bosphorusTollPointId'], message: 'Boğaz geçişi seçimi güzergâh ile birlikte kullanılamaz.' });
+  if (value.bosphorusTollPointId && (!value.originLocationId || !value.destinationLocationId)) {
+    ctx.addIssue({ code: 'custom', path: ['bosphorusTollPointId'], message: 'Boğaz geçişi için konum çifti gereklidir.' });
+  }
   const hasLocationPair = Boolean(value.originLocationId && value.destinationLocationId);
   const hasCoordinatePair = Boolean(value.originCoordinates && value.destinationCoordinates);
   if (value.mode === 'DISTANCE' && !hasLocationPair && !hasCoordinatePair) {

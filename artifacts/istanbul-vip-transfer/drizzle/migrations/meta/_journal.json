@@ -603,6 +603,13 @@
       "when": 1789000000028,
       "tag": "0085_chatbot_response_mode",
       "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1789067559942,
+      "tag": "0086_fancy_bullseye",
+      "breakpoints": true
     }
   ]
 }

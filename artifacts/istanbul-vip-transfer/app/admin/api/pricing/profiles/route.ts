@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     }).from(transferRoutes).where(eq(transferRoutes.active, true)).orderBy(asc(transferRoutes.name)),
     db.select({
       id: locations.id, name: locations.name, city: locations.city, type: locations.type,
-      latitude: locations.latitude, longitude: locations.longitude,
+      latitude: locations.latitude, longitude: locations.longitude, istanbulSide: locations.istanbulSide,
     })
       .from(locations)
       .where(and(eq(locations.isActive, true), isNull(locations.archivedAt)))

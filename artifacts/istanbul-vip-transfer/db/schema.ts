@@ -69,6 +69,7 @@ export const locationTypeEnum = pgEnum('location_type', [
 
 /** LOCAL = only in local (Istanbul) transfer form, INTERCITY = only in intercity form, BOTH = appears in both. */
 export const locationScopeEnum = pgEnum('location_scope', ['LOCAL', 'INTERCITY', 'BOTH']);
+export const istanbulSideEnum = pgEnum('istanbul_side', ['EUROPEAN', 'ASIAN', 'NONE']);
 
 export const pricingModeEnum = pgEnum('pricing_mode', ['DISTANCE', 'HOURLY']);
 export const includedKmModeEnum = pgEnum('included_km_mode', ['PER_HOUR', 'PACKAGE']);
@@ -518,6 +519,8 @@ export const locations = pgTable('locations', {
   type: locationTypeEnum('type').default('DISTRICT').notNull(),
   /** LOCAL = only local transfer form; INTERCITY = only intercity form; BOTH = both forms. */
   scope: locationScopeEnum('scope').default('LOCAL').notNull(),
+  /** Istanbul-side classification used only by the protected admin toll selector. */
+  istanbulSide: istanbulSideEnum('istanbul_side').default('NONE').notNull(),
   pickupEnabled: boolean('pickup_enabled').default(true).notNull(),
   dropoffEnabled: boolean('dropoff_enabled').default(true).notNull(),
   isActive: boolean('is_active').default(true).notNull(),
@@ -1558,6 +1561,10 @@ export const tollPoints = pgTable('toll_points', {
   name: text('name').notNull(),
   type: tollPointTypeEnum('type').notNull(),
   active: boolean('active').default(true).notNull(),
+  /** Marks an active bridge/tunnel as a generic Bosphorus crossing option for cross-side Istanbul trips. */
+  isBosphorusCrossing: boolean('is_bosphorus_crossing').default(false).notNull(),
+  bosphorusCrossingOrder: integer('bosphorus_crossing_order').default(0).notNull(),
+  isDefaultBosphorusCrossing: boolean('is_default_bosphorus_crossing').default(false).notNull(),
   /**
    * Per-point day/night cutover hours (0-23). Only meaningful for points that
    * actually have DAY/NIGHT-banded tariffs (e.g. Avrasya Tüneli); null means

@@ -27,9 +27,12 @@ import {
 import {
   evaluateTollTariffStaleness,
   getDefaultRouteTollAlternative,
+  getLocationPairTollAlternatives,
   hasActiveRouteTollAlternatives,
   getTollPricingSettings,
+  resolveBosphorusToll,
   resolveActiveTimeBandForPoint,
+  assertBosphorusSelectionRequirement,
 } from '@/lib/toll-management';
 
 export function currentlyApplicable<T extends { validFrom: Date | null; validUntil: Date | null }>(rows: T[], at: Date): T | undefined {
@@ -66,6 +69,7 @@ export async function createAdminQuote(input: {
   overageKm?: number;
   tripType: 'ONE_WAY' | 'ROUND_TRIP';
   tollAlternativeId?: string;
+  bosphorusTollPointId?: string;
   serviceQuantities?: Array<{ serviceId: string; quantity: number }>;
   reservationRequestId?: string;
   /** Trip pickup instant used only to pick the DAY/NIGHT toll tariff band; defaults to now. */
@@ -82,6 +86,12 @@ export async function createAdminQuote(input: {
       eq(transferRoutes.active, true),
     )).limit(1);
     if (!route) throw new Error('Güzergâh bulunamadı.');
+  } else if (input.originLocationId && input.destinationLocationId) {
+    [route] = await db.select().from(transferRoutes).where(and(
+      eq(transferRoutes.originLocationId, input.originLocationId),
+      eq(transferRoutes.destinationLocationId, input.destinationLocationId),
+      eq(transferRoutes.active, true),
+    )).limit(1);
   }
 
   const originLocationId = route?.originLocationId ?? input.originLocationId;
@@ -140,23 +150,38 @@ export async function createAdminQuote(input: {
   // Always validate the route's default invariant, including when an admin
   // explicitly chooses an alternative. An explicit id may choose between
   // valid alternatives; it must never bypass a malformed route configuration.
-  const routeDefaultTollAlternativeId = input.routeId
-    ? await getDefaultRouteTollAlternative(input.routeId)
+  const effectiveRouteId = route?.id ?? null;
+  const routeDefaultTollAlternativeId = effectiveRouteId
+    ? await getDefaultRouteTollAlternative(effectiveRouteId)
     : null;
   if (
-    input.routeId
+    effectiveRouteId
     && !input.tollAlternativeId
     && routeDefaultTollAlternativeId == null
-    && await hasActiveRouteTollAlternatives(input.routeId)
+    && await hasActiveRouteTollAlternatives(effectiveRouteId)
   ) {
     throw new Error('Bu rota için varsayılan geçiş seçilmedi. Rezervasyona uygun yol ve geçiş alternatifini admin seçmelidir.');
   }
-  const effectiveTollAlternativeId = input.routeId
+  const effectiveTollAlternativeId = effectiveRouteId
     ? input.tollAlternativeId ?? routeDefaultTollAlternativeId
     : null;
-  const tolls = input.routeId && effectiveTollAlternativeId
-     ? await resolveTolls(input.routeId, effectiveTollAlternativeId, vehicleId, vehicle.tollClass, now, pickupAt, input.tripType)
+  const tolls = effectiveRouteId && effectiveTollAlternativeId
+     ? await resolveTolls(effectiveRouteId, effectiveTollAlternativeId, vehicleId, vehicle.tollClass, now, pickupAt, input.tripType)
     : [];
+  const genericPair = !effectiveRouteId && originLocationId && destinationLocationId
+    ? await getLocationPairTollAlternatives(originLocationId, destinationLocationId, vehicleId, pickupAt)
+    : null;
+  assertBosphorusSelectionRequirement({
+    hasExactOrSelectedRoute: Boolean(effectiveRouteId),
+    crossingRequired: genericPair?.crossingRequired === true,
+    bosphorusTollPointId: input.bosphorusTollPointId,
+  });
+  if (input.bosphorusTollPointId) {
+    if (!originLocationId || !destinationLocationId) throw new Error('Boğaz geçişi için konum çifti gereklidir.');
+    tolls.push(await resolveBosphorusToll(
+      input.bosphorusTollPointId, originLocationId, destinationLocationId, vehicleId, pickupAt, input.tripType,
+    ));
+  }
 
   const profile = profileRow ? ({
     mode: profileRow.mode,

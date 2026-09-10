@@ -11,6 +11,7 @@ import {
   tollTariffs,
   transferRoutes,
   vehicles,
+  locations,
 } from '@/db/schema';
 
 /**
@@ -74,6 +75,109 @@ export type TollTimeBand = (typeof TOLL_TIME_BANDS)[number];
 
 export function isTollTimeBand(value: string): value is TollTimeBand {
   return (TOLL_TIME_BANDS as readonly string[]).includes(value);
+}
+
+/** True only when both classified sides form a genuine Istanbul cross-side trip. */
+export function isOppositeIstanbulSide(
+  origin: string | null | undefined,
+  destination: string | null | undefined,
+): boolean {
+  return (origin === 'EUROPEAN' && destination === 'ASIAN')
+    || (origin === 'ASIAN' && destination === 'EUROPEAN');
+}
+
+export function assertBosphorusSelectionRequirement(input: {
+  hasExactOrSelectedRoute: boolean;
+  crossingRequired: boolean;
+  bosphorusTollPointId?: string;
+}): void {
+  if (input.hasExactOrSelectedRoute && input.bosphorusTollPointId) {
+    throw new Error('Boğaz geçişi seçimi güzergâh ile birlikte kullanılamaz.');
+  }
+  if (!input.hasExactOrSelectedRoute && input.crossingRequired && !input.bosphorusTollPointId) {
+    throw new Error('Bu karşı-yaka yolculuğu için bir Boğaz geçişi seçilmelidir.');
+  }
+}
+
+export async function getLocationPairTollAlternatives(
+  originLocationId: string,
+  destinationLocationId: string,
+  vehicleId?: string,
+  pickupAt?: Date,
+) {
+  const now = new Date();
+  const activeAt = pickupAt ?? now;
+  const [origin, destination] = await Promise.all([
+    db.select().from(locations).where(and(eq(locations.id, originLocationId), eq(locations.isActive, true), isNull(locations.archivedAt))).limit(1),
+    db.select().from(locations).where(and(eq(locations.id, destinationLocationId), eq(locations.isActive, true), isNull(locations.archivedAt))).limit(1),
+  ]);
+  if (!origin[0] || !destination[0]) throw new Error('Konum bulunamadı.');
+  if (!isOppositeIstanbulSide(origin[0].istanbulSide, destination[0].istanbulSide)) {
+    return { crossingRequired: false, alternatives: [], defaultAlternativeId: null };
+  }
+  const vehicle = vehicleId
+    ? (await db.select().from(vehicles).where(eq(vehicles.id, vehicleId)).limit(1))[0]
+    : undefined;
+  if (vehicleId && !vehicle) throw new Error('Araç bulunamadı.');
+  const points = await db.select().from(tollPoints).where(and(
+    eq(tollPoints.active, true), eq(tollPoints.isBosphorusCrossing, true),
+  )).orderBy(asc(tollPoints.bosphorusCrossingOrder), asc(tollPoints.name));
+  const eligible = points.filter((point) => {
+    if (!vehicle) return true;
+    return !(vehicle.tollClass && ((point.bannedVehicleClasses ?? []) as string[]).includes(vehicle.tollClass))
+      && !((point.bannedVehicleTypes ?? []) as string[]).includes(vehicle.pricingClass);
+  });
+  const classCode = vehicle?.tollClass;
+  const pointBand = new Map(eligible.map((p) => [p.id, resolveActiveTimeBandForPoint(activeAt, p)]));
+  const tariffRows = classCode && eligible.length ? await db.select().from(tollTariffs).where(and(
+    inArray(tollTariffs.tollPointId, eligible.map((p) => p.id)),
+    eq(tollTariffs.vehicleClass, classCode as TollVehicleClass),
+    eq(tollTariffs.active, true),
+    or(isNull(tollTariffs.validFrom), lte(tollTariffs.validFrom, now)),
+    or(isNull(tollTariffs.validUntil), gte(tollTariffs.validUntil, now)),
+  )) : [];
+  const alternatives = eligible.map((point) => {
+    const band = pointBand.get(point.id) ?? 'DAY';
+    const tariffs = tariffRows.filter((t) => t.tollPointId === point.id && (band === 'DAY' ? t.appliesDay : t.appliesNight));
+    const matching = tariffs.length === 1 ? tariffs[0] : undefined;
+    const amount = matching ? effectiveTollAmount(matching) : null;
+    return {
+      id: point.id, tollPointId: point.id, name: `${point.name} üzerinden`,
+      active: true, isDefault: point.isDefaultBosphorusCrossing,
+      displayOrder: point.bosphorusCrossingOrder, pointIds: [point.id], pointNames: [point.name],
+      needsReview: false, reviewNote: null, isBannedForSelectedVehicle: false, bannedPointNames: [],
+      isPricedForSelectedVehicle: Boolean(vehicle && amount != null),
+      missingTariffPointNames: vehicle && amount == null ? [point.name] : [],
+      totalKurus: vehicle && amount != null ? amount : null,
+      tariffCoverage: vehicle && amount != null ? 'FULL' : 'MISSING',
+    };
+  });
+  return {
+    crossingRequired: true,
+    defaultAlternativeId: alternatives.find((a) => a.isDefault)?.id ?? null,
+    alternatives,
+  };
+}
+
+/** Resolves the selected generic crossing through the same active tariff rules as the selector. */
+export async function resolveBosphorusToll(
+  pointId: string,
+  originLocationId: string,
+  destinationLocationId: string,
+  vehicleId: string,
+  pickupAt: Date,
+  tripType: 'ONE_WAY' | 'ROUND_TRIP',
+) {
+  const result = await getLocationPairTollAlternatives(originLocationId, destinationLocationId, vehicleId, pickupAt);
+  const selected = result.alternatives.find((alternative) => alternative.id === pointId);
+  if (!selected) throw new Error('Seçilen Boğaz geçişi bu konum çifti veya araç için geçerli değil.');
+  if (selected.totalKurus == null) {
+    return { id: selected.id, name: selected.pointNames[0], amountKurus: null, missing: true, stale: false, directionUnconfirmed: true };
+  }
+  const [point] = await db.select().from(tollPoints).where(eq(tollPoints.id, pointId)).limit(1);
+  const amountKurus = tripType === 'ROUND_TRIP' && point?.tollDirection !== 'ONE_WAY'
+    ? selected.totalKurus * 2 : selected.totalKurus;
+  return { id: selected.id, name: selected.pointNames[0], amountKurus, missing: false, stale: false, directionUnconfirmed: point?.tollDirection == null };
 }
 
 /** ALL participates in both the day and night overlap checks; DAY/NIGHT participate only in their own. */

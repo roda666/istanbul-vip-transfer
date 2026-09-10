@@ -22,6 +22,7 @@ import {
 } from '@/lib/i18n/seo';
 import { SITE } from '@/lib/site-config';
 import { getReachableServiceImageUrl } from '@/lib/service-image-assets';
+import { getServiceOgImageUrl } from '@/lib/service-og-images';
 import { getContactSettings } from '@/lib/site-settings-server';
 import rawPageMeta from '@/lib/page-meta.json';
 import { PAGE_REGISTRY } from '@/lib/page-registry';
@@ -107,7 +108,12 @@ async function getDbMeta(slug: string, lang: string): Promise<{
       description: page.seoDescription ?? undefined,
       // A social crawler must never be given an unavailable asset. Prefer the
       // explicit OG image, then the same service's verified cover image.
-      socialImage: await getReachableServiceImageUrl(page.ogImage ?? page.heroImage),
+      // Unlike save-time validation, metadata generation probes own storage:
+      // an object can be deleted after upload and must then fall back safely.
+      socialImage: await getReachableServiceImageUrl(
+        page.ogImage ?? page.heroImage,
+        { probeOwnStorage: true },
+      ),
     };
   } catch {
     return null;
@@ -166,9 +172,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
     title       = dbMeta.title;
     description = dbMeta.description;
-    ogImages = dbMeta.socialImage
-      ? [{ url: dbMeta.socialImage, width: 1200, height: 630 }]
-      : undefined;
+    // A deleted CMS asset must never become an unreachable og:image. Use the
+    // checked CMS value when available, otherwise the service-specific static
+    // card (never the generic site card).
+    const fallback = (() => {
+      try {
+        return getServiceOgImageUrl(pathKey, SITE.siteUrl);
+      } catch {
+        // Admin-created service slugs may not have a generated card yet.
+        return SITE.ogImage.url;
+      }
+    })();
+    ogImages = [{ url: dbMeta.socialImage ?? fallback, width: 1200, height: 630 }];
   }
 
   // Fall back to page-meta.json

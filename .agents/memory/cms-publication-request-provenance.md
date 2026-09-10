@@ -3,7 +3,7 @@ name: CMS publication and request provenance
 description: Durable safety rules for service publication, social images, request-source reporting, and backup verification.
 ---
 
-Service publication must invalidate every relevant localized detail route and the shared sitemap/chrome metadata surface. Social metadata may use only a verified, topic-specific reachable image; if verification fails, omit the image rather than substituting a shared/default asset.
+Service publication must require the explicit content-publish permission, invalidate every relevant localized detail route, and clear the shared sitemap/chrome metadata surface. Social metadata may use only a verified, topic-specific reachable image; if verification fails, omit the image rather than substituting a shared/default asset.
 
 **Why:** A newly published page must not serve stale search metadata, and a broken share image is worse than no image. Generic imagery weakens service relevance and creates inconsistent social previews.
 

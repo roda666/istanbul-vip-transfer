@@ -166,6 +166,9 @@ export function getAdminApiPermission(pathname: string, method: string): AdminPe
     return 'SECURITY_SETTINGS_MANAGE';
   }
 
+  // Publishing translations changes public content; keep this exact route
+  // ahead of the broader translation-management mapping.
+  if (pathname === '/admin/api/translations/bulk-publish') return 'CONTENT_PUBLISH';
   if (pathname.startsWith('/admin/api/translations')) return 'TRANSLATIONS_MANAGE';
   if (pathname.startsWith('/admin/api/studio')) return studioPermission(pathname, method);
   if (pathname.startsWith('/admin/api/ai-content')) return 'AI_USE';

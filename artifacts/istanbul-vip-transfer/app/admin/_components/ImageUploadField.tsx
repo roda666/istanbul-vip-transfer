@@ -20,7 +20,7 @@
  *   />
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 
 interface ImageUploadFieldProps {
@@ -84,7 +84,9 @@ export function ImageUploadField({
 }: ImageUploadFieldProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  useEffect(() => setPreviewError(false), [value]);
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -238,8 +240,14 @@ export function ImageUploadField({
             sizes="180px"
             style={{ objectFit: 'cover' }}
             unoptimized
+            onError={() => setPreviewError(true)}
           />
         </div>
+      )}
+      {previewError && value && !readOnly && (
+        <p role="alert" style={{ fontSize: '11px', color: '#B45309', marginTop: '5px', fontFamily: 'Inter, sans-serif' }}>
+          ⚠ Kayıtlı görsele şu anda ulaşılamıyor. Düzenlemeyi kaydetmeniz engellenmez; görseli değiştirin veya kaldırın.
+        </p>
       )}
       {value && !readOnly && (
         <p style={{ fontSize: '11px', color: '#64748B', marginTop: '5px', fontFamily: 'Inter, sans-serif' }}>

@@ -198,6 +198,7 @@ export default function CevirilerClient({
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkMsg, setBulkMsg] = useState<string | null>(null);
   const [overwriteConfirm, setOverwriteConfirm] = useState<{ codes: string[]; pendingLangs: string[] } | null>(null);
+  const [publishBusy, setPublishBusy] = useState(false);
 
   const langNameByCode = Object.fromEntries(langs.map((l) => [l.code, l.turkishName ?? l.name]));
   const translatableLangs = langs.filter((l) => l.code !== 'tr' && l.providerSupported);
@@ -275,6 +276,22 @@ export default function CevirilerClient({
       setError(String(e));
     } finally {
       setLoading(null);
+    }
+  }
+
+  async function publishServiceTranslations() {
+    setPublishBusy(true);
+    setError(null);
+    try {
+      const res = await fetch('/admin/api/translations/bulk-publish', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      const data = await res.json() as { published?: string[]; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Toplu yayın başarısız');
+      setBulkMsg(`${data.published?.length ?? 0} hizmet çevirisi yayınlandı.`);
+      window.location.reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPublishBusy(false);
     }
   }
 
@@ -427,6 +444,12 @@ export default function CevirilerClient({
           Tüm Etkin Dillere Çevir ({enabledLangCodes.length})
         </button>
         {bulkBusy && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite', color: '#2563EB' }} />}
+        {entityTypeFilter === 'service_page' && (
+          <button type="button" disabled={publishBusy || bulkBusy} onClick={() => void publishServiceTranslations()}
+            style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #16A36A', background: '#ECFDF5', color: '#166534', fontSize: '12px', fontWeight: 600, cursor: 'pointer', opacity: publishBusy ? 0.6 : 1 }}>
+            {publishBusy ? 'Yayınlanıyor…' : 'Uygun hizmet çevirilerini yayınla'}
+          </button>
+        )}
       </div>
       {bulkMsg && (
         <p style={{ fontSize: '12px', color: '#50677A', marginTop: '10px', marginBottom: 0 }}>{bulkMsg}</p>

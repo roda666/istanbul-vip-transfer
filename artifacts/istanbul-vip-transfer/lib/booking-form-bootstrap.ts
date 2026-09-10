@@ -15,7 +15,6 @@ import { resolvePublishedVehicles } from '@/lib/vehicle-localization';
 import {
   EMPTY_BOOKING_FORM_INITIAL_DATA,
   EMPTY_BOOKING_FORM_OPTIONS,
-  EMPTY_BOOKING_FORM_BOOTSTRAP,
   FALLBACK_BOOKING_SERVICE_TYPES,
   type BookingFormBootstrap,
   type BookingFormInitialData,
@@ -134,11 +133,12 @@ const getCachedBookingFormOptions = unstable_cache(
     const intercityRows = locationRows.filter((row) =>
       (row.scope === 'INTERCITY' || row.scope === 'BOTH')
       && (row.type === 'PROVINCE' || row.city === 'İstanbul'));
-    const toPublicLocation = ({
-      pickupEnabled: _pickupEnabled,
-      dropoffEnabled: _dropoffEnabled,
-      ...row
-    }: (typeof locationRows)[number]): BookingLocationOption => row;
+    const toPublicLocation = (location: (typeof locationRows)[number]): BookingLocationOption => {
+      const { pickupEnabled: _pickupEnabled, dropoffEnabled: _dropoffEnabled, ...row } = location;
+      void _pickupEnabled;
+      void _dropoffEnabled;
+      return row;
+    };
 
     const resolvedVehicles = resolvePublishedVehicles(vehicleRows, lang, defaultFeatureCodes);
 

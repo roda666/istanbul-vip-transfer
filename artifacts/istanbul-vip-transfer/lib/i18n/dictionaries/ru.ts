@@ -401,6 +401,7 @@ const ru: Dictionary = {
     close: 'Закрыть чат',
     typing: 'Печатает…',
     error: 'Произошла ошибка. Пожалуйста, попробуйте снова.',
+    whatsappCta: 'Забронировать через WhatsApp',
   },
   contactForm: {
     sectionLabel: 'Напишите нам',

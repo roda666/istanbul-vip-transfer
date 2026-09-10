@@ -121,3 +121,5 @@
 - [Transfer-route Google metrics](transfer-route-google-metrics.md) — bulk route verification accepts only unambiguous endpoint matches and never changes pricing or manual traffic windows.
 - [Admin translation auto-fill](admin-translation-auto-fill.md) — Turkish saves fill only blank EN/DE/RU/AR/FR/ES/IT/NL fields; every existing value acts as a durable manual lock.
 - [Vehicle pricing mode persistence](vehicle-pricing-mode-persistence.md) — preserve each mode’s latest values independently while allowing only one active formula per vehicle.
+- [Server-side image probe safety](server-side-image-probe-safety.md) — admin-stored image URLs may be probed only on approved HTTPS hosts, with redirects and IP literals rejected.
+- [Cross-instance health scheduler leases](health-scheduler-leases.md) — automatic health jobs require an expiring DB lease; process-local flags cannot prevent duplicate runs.

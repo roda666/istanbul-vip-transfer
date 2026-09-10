@@ -34,7 +34,7 @@ export async function GET() {
   try {
     const { db }                          = await import('@/db');
     const { content, contentTranslations } = await import('@/db/schema');
-    const { eq, inArray }                  = await import('drizzle-orm');
+    const { eq, inArray, and }              = await import('drizzle-orm');
 
     // Fetch all BLOG_POST source records
     const rawSources = await db
@@ -58,7 +58,10 @@ export async function GET() {
             status:             contentTranslations.status,
           })
           .from(contentTranslations)
-          .where(inArray(contentTranslations.entityId, entityIds))
+      .where(and(
+        eq(contentTranslations.entityType, 'content'),
+        inArray(contentTranslations.entityId, entityIds),
+      ))
       : [];
 
     const translationRows: BlogTranslationRow[] = rawTranslations.map(r => ({

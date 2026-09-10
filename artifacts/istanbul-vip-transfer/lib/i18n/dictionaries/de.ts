@@ -401,6 +401,7 @@ const de: Dictionary = {
     close: 'Chat schließen',
     typing: 'Schreibt…',
     error: 'Ein Fehler ist aufgetreten. Bitte erneut versuchen.',
+    whatsappCta: 'Per WhatsApp buchen',
   },
   contactForm: {
     sectionLabel: 'Schreiben Sie uns',

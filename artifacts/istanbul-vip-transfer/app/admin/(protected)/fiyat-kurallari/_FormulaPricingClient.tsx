@@ -342,7 +342,7 @@ function FastQuotePanel({
       cancelled = true;
       controller.abort();
     };
-  }, [originLocationId, destinationLocationId]);
+  }, [originLocationId, destinationLocationId, quoteMode]);
 
   useEffect(() => {
     if (!quoteRouteId) {

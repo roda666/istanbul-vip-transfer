@@ -401,6 +401,7 @@ const nl: Dictionary = {
       close: 'Chat sluiten',
       typing: 'Aan het typen…',
       error: 'Er is iets misgegaan. Probeer het opnieuw.',
+    whatsappCta: 'Boek via WhatsApp',
     },
 
     contactForm: {

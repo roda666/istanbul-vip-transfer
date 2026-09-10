@@ -1,12 +1,15 @@
 import 'server-only';
 
 import { SITE } from '@/lib/site-config';
+import { isIP } from 'node:net';
 
 const GENERIC_SERVICE_IMAGES = new Set([
   SITE.ogImage.url,
   '/images/istanbul-vip-transfer-hero.webp',
   `${SITE.siteUrl}/images/istanbul-vip-transfer-hero.webp`,
 ]);
+const REACHABILITY_CACHE_TTL_MS = 60_000;
+const reachabilityCache = new Map<string, { expiresAt: number; value: string | null }>();
 
 function absoluteImageUrl(value: string): string | null {
   try {
@@ -18,6 +21,18 @@ function absoluteImageUrl(value: string): string | null {
   } catch {
     return null;
   }
+}
+
+function isApprovedProbeHost(url: URL): boolean {
+  if (url.protocol !== 'https:') return false;
+  const siteHost = new URL(SITE.siteUrl).hostname.toLowerCase();
+  const host = url.hostname.toLowerCase().replace(/\.$/, '');
+  // Hostname allowlisting is deliberately done before any request. This also
+  // rejects private/metadata IP literals, even when a caller controls DNS.
+  if (isIP(host)) return false;
+  return host === siteHost
+    || host === 'storage.googleapis.com'
+    || host.endsWith('.replit.dev');
 }
 
 /**
@@ -42,18 +57,32 @@ function isOwnObjectStoragePath(value: string): boolean {
 }
 
 /** Returns an absolute, public image URL only when it can actually be fetched. */
-export async function getReachableServiceImageUrl(value: string | null | undefined): Promise<string | null> {
+export async function getReachableServiceImageUrl(
+  value: string | null | undefined,
+  options: { probeOwnStorage?: boolean } = {},
+): Promise<string | null> {
   if (!value?.trim() || GENERIC_SERVICE_IMAGES.has(value.trim())) return null;
   const url = absoluteImageUrl(value.trim());
   if (!url) return null;
+  const cacheKey = `${url}|${options.probeOwnStorage ? 'probe' : 'trusted'}`;
+  const cached = reachabilityCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
 
   // Trust our own object storage without an outbound reachability fetch.
-  if (isOwnObjectStoragePath(value.trim())) return url;
+  if (isOwnObjectStoragePath(value.trim()) && !options.probeOwnStorage) {
+    reachabilityCache.set(cacheKey, { value: url, expiresAt: Date.now() + REACHABILITY_CACHE_TTL_MS });
+    return url;
+  }
+  // Every outbound image probe, including save-time validation, is subject to
+  // the same allowlist. The trusted own-storage branch above intentionally
+  // returns before this check because it does not make a request.
+  if (!isApprovedProbeHost(new URL(url))) return null;
 
   const request = async (method: 'HEAD' | 'GET') => fetch(url, {
     method,
     headers: method === 'GET' ? { Range: 'bytes=0-0' } : undefined,
-    redirect: 'follow',
+    // Do not let a trusted host redirect the server to an unchecked target.
+    redirect: 'error',
     signal: AbortSignal.timeout(5_000),
     cache: 'no-store',
   });
@@ -62,9 +91,12 @@ export async function getReachableServiceImageUrl(value: string | null | undefin
     // Some object stores do not implement HEAD; a one-byte GET still verifies
     // both public availability and image content type.
     if (response.status === 405 || response.status === 403) response = await request('GET');
-    if (!response.ok) return null;
-    return response.headers.get('content-type')?.toLowerCase().startsWith('image/') ? url : null;
+    const result = response.ok && response.headers.get('content-type')?.toLowerCase().startsWith('image/')
+      ? url : null;
+    reachabilityCache.set(cacheKey, { value: result, expiresAt: Date.now() + REACHABILITY_CACHE_TTL_MS });
+    return result;
   } catch {
+    reachabilityCache.set(cacheKey, { value: null, expiresAt: Date.now() + REACHABILITY_CACHE_TTL_MS });
     return null;
   }
 }

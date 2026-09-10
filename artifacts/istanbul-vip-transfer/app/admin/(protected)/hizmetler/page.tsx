@@ -15,6 +15,7 @@ import RunHealthCheckButton from './_RunHealthCheckButton';
 import BulkRetranslateButton from './_BulkRetranslateButton';
 import HizmetlerList, { type ServiceListItem } from './_HizmetlerList';
 import { getServiceStartingPriceEur } from '@/lib/service-starting-price';
+import { buildHealthHistoryViewModel } from '@/lib/health-history';
 
 export const metadata: Metadata = { title: 'Hizmetler | Admin', robots: { index: false } };
 export const dynamic = 'force-dynamic';
@@ -32,6 +33,8 @@ export default async function HizmetlerPage() {
   let dbError                      = false;
   let healthIssues: ServiceHealthItem[] = [];
   let lastCheckedAt: Date | null   = null;
+  let healthHistory: Array<{ checkedAt: Date; unhealthyCount: number; slugs: string[] }> = [];
+  let healthHistoryError = false;
 
   try {
     // ── 1. Fetch all SERVICE rows ─────────────────────────────────────────────
@@ -137,14 +140,24 @@ export default async function HizmetlerPage() {
       }));
     items = [...missingItems, ...items];
 
-    const lastRun = await db
-      .select({ checkedAt: serviceHealthRuns.checkedAt })
-      .from(serviceHealthRuns)
-      .orderBy(desc(serviceHealthRuns.checkedAt))
-      .limit(1);
-    lastCheckedAt = lastRun[0]?.checkedAt ?? null;
   } catch {
     dbError = true;
+  }
+
+  // History is optional observability data: an unapplied health migration must
+  // never prevent the service list itself from rendering.
+  if (!dbError) {
+    try {
+      const recentRuns = await db.select({
+        checkedAt: serviceHealthRuns.checkedAt,
+        unhealthyCount: serviceHealthRuns.unhealthyCount,
+        result: serviceHealthRuns.result,
+      }).from(serviceHealthRuns).orderBy(desc(serviceHealthRuns.checkedAt)).limit(12);
+      healthHistory = buildHealthHistoryViewModel(recentRuns);
+      lastCheckedAt = healthHistory[0]?.checkedAt ?? null;
+    } catch {
+      healthHistoryError = true;
+    }
   }
 
   return (
@@ -211,6 +224,56 @@ export default async function HizmetlerPage() {
           + Yeni Hizmet
         </Link>
       </div>
+
+      {healthHistory.length > 0 && (
+        <div style={{ marginBottom: '20px', padding: '16px', background: '#fff',
+          border: '1px solid #E2E8F0', borderRadius: '10px', fontFamily: 'Inter, sans-serif' }}>
+          <p style={{ margin: '0 0 12px', fontSize: '13px', fontWeight: 700, color: '#1E293B' }}>
+            Son sağlık kontrolleri
+          </p>
+          <div style={{ display: 'flex', alignItems: 'end', gap: '6px', height: '90px' }}>
+            {[...healthHistory].reverse().map((run, index) => (
+              <div key={`${run.checkedAt.toISOString()}-${index}`} title={`${run.unhealthyCount} sorun: ${run.slugs.join(', ') || 'yok'}`}
+                style={{ flex: 1, minWidth: '12px', height: `${Math.max(8, Math.min(100, run.unhealthyCount * 18 + 8))}%`,
+                  background: run.unhealthyCount ? '#F59E0B' : '#22C55E', borderRadius: '3px 3px 0 0' }} />
+            ))}
+          </div>
+          <p style={{ margin: '8px 0 0', fontSize: '11px', color: '#64748B' }}>
+            Yeşil sağlıklı, turuncu sorunlu çalışmayı gösterir. Çubuk üzerine gelerek etkilenen slug’ları görebilirsiniz.
+          </p>
+          {(() => {
+            const counts = new Map<string, number>();
+            healthHistory.forEach(run => run.slugs.forEach(slug => counts.set(slug, (counts.get(slug) ?? 0) + 1)));
+            const recurring = [...counts.entries()].filter(([, count]) => count > 1).sort((a, b) => b[1] - a[1]);
+            return recurring.length > 0 ? (
+              <p style={{ margin: '8px 0 0', fontSize: '11px', color: '#92400E' }}>
+                Tekrarlayan sorunlar: {recurring.map(([slug, count]) => `${slug} (${count})`).join(', ')}
+              </p>
+            ) : null;
+          })()}
+          <table style={{ width: '100%', marginTop: '12px', borderCollapse: 'collapse', fontSize: '11px', color: '#475569' }}>
+            <thead><tr><th style={{ textAlign: 'left', padding: '5px' }}>Kontrol</th>
+              <th style={{ textAlign: 'left', padding: '5px' }}>Sorun</th><th style={{ textAlign: 'left', padding: '5px' }}>Etkilenen slug</th></tr></thead>
+            <tbody>{healthHistory.slice(0, 6).map((run, index) => (
+              <tr key={`history-${run.checkedAt.toISOString()}-${index}`}>
+                <td style={{ padding: '5px', borderTop: '1px solid #F1F5F9' }}>
+                  {new Intl.DateTimeFormat('tr-TR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Istanbul' }).format(run.checkedAt)}
+                </td>
+                <td style={{ padding: '5px', borderTop: '1px solid #F1F5F9' }}>{run.unhealthyCount}</td>
+                <td style={{ padding: '5px', borderTop: '1px solid #F1F5F9' }}>{run.slugs.join(', ') || '—'}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      )}
+
+      {healthHistoryError && (
+        <p style={{ margin: '0 0 16px', padding: '10px 14px', background: '#FFF7ED',
+          border: '1px solid #FBBF24', borderRadius: '8px', color: '#92400E',
+          fontFamily: 'Inter, sans-serif', fontSize: '12px' }}>
+          Sağlık geçmişi tablosu kullanılamıyor. Veritabanı migrasyonlarını uygulayın; hizmet listesi çalışmaya devam ediyor.
+        </p>
+      )}
 
       {dbError ? (
         <p style={{ color: '#f87171', fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>

@@ -401,6 +401,7 @@ const ar: Dictionary = {
     close: 'إغلاق الدردشة',
     typing: 'يكتب…',
     error: 'حدث خطأ. يرجى المحاولة مرة أخرى.',
+    whatsappCta: 'الحجز عبر واتساب',
   },
   contactForm: {
     sectionLabel: 'راسلنا',

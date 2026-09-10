@@ -37,11 +37,7 @@ import {
 import { SITE } from '@/lib/site-config';
 import { useBookingFormData } from './BookingFormDataContext';
 import { appliesToServiceType, type OptionalBookingField } from '@/lib/optional-booking-fields';
-import type {
-  BookingCustomField as CustomField,
-  BookingServiceTypeOption as ServiceTypeOption,
-  BookingVehicleOption as PublishedVehicleOption,
-} from '@/lib/booking-form-types';
+import type { BookingVehicleOption as PublishedVehicleOption } from '@/lib/booking-form-types';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 

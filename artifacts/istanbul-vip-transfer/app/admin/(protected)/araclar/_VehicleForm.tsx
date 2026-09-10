@@ -80,7 +80,7 @@ function slugify(val: string) {
     .replace(/^-|-$/g, '');
 }
 
-function vehicleToForm(v: Vehicle, _initialTollPointClasses: TollPointClassAssignment[]): FormState {
+function vehicleToForm(v: Vehicle): FormState {
   return {
     name: v.name,
     slug: v.slug,
@@ -701,13 +701,12 @@ interface Props {
   vehicle?: Vehicle;
   userRole: string;
   tollPoints?: TollPointOption[];
-  initialTollPointClasses?: TollPointClassAssignment[];
 }
 
-export default function VehicleForm({ vehicle, userRole, tollPoints = [], initialTollPointClasses = [] }: Props) {
+export default function VehicleForm({ vehicle, userRole, tollPoints = [] }: Props) {
   const router = useRouter();
   const isEdit = !!vehicle;
-  const [form, setForm] = useState<FormState>(vehicle ? vehicleToForm(vehicle, initialTollPointClasses) : emptyForm);
+  const [form, setForm] = useState<FormState>(vehicle ? vehicleToForm(vehicle) : emptyForm);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(isEdit);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -896,7 +895,6 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [], initia
   }
 
   const currentStatus = vehicle?.status as ContentStatus | undefined;
-  const canApprove = isEdit && (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN');
   const canPublish = isEdit && (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN');
   const showArchiveBtn = isEdit && currentStatus !== 'ARCHIVED';
   const isApprovedOrPublished =

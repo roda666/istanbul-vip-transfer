@@ -449,6 +449,8 @@ export interface Dictionary {
     typing: string;
     /** Error message when request fails */
     error: string;
+    /** Booking handoff CTA */
+    whatsappCta: string;
   };
   /** General contact enquiry form on the İletişim page (not the booking/quote form). */
   contactForm: {

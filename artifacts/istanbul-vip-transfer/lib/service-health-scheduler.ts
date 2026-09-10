@@ -23,6 +23,16 @@ const CHECK_INTERVAL_MS = 60 * 60 * 1_000; // 1 hour
 /** Minimum time between alert emails for the same slug (ms). */
 const ALERT_COOLDOWN_MS = 6 * 60 * 60 * 1_000; // 6 hours
 
+/** True when an alert is absent or its persisted cooldown has expired. */
+export function shouldSendServiceHealthAlert(lastAlertAt: Date | null, now = Date.now()): boolean {
+  return !lastAlertAt || now - lastAlertAt.getTime() >= ALERT_COOLDOWN_MS;
+}
+
+/** Delivery failures must never consume the persisted cooldown window. */
+export function shouldRecordServiceHealthAlert(delivered: boolean): boolean {
+  return delivered;
+}
+
 const ISSUE_LABELS: Record<string, string> = {
   missing_record:      'No database record found',
   inactive:            'Page is inactive (is_active = false)',
@@ -186,7 +196,7 @@ export async function runServiceHealthCheck(): Promise<ServiceHealthCheckResult>
     // 2. Persist this run
     await db.insert(serviceHealthRuns).values({
       unhealthyCount: unhealthy.length,
-      result:         unhealthy as unknown as Record<string, unknown>[],
+      result:         unhealthy as unknown as Array<{ slug: string; title?: string | null; issues: string[] }>,
     });
 
     if (unhealthy.length === 0) {
@@ -209,7 +219,7 @@ export async function runServiceHealthCheck(): Promise<ServiceHealthCheckResult>
     const now     = Date.now();
     const toAlert = unhealthy.filter(item => {
       const last = lastAlertMap.get(item.slug);
-      return !last || (now - last.getTime()) >= ALERT_COOLDOWN_MS;
+      return shouldSendServiceHealthAlert(last ?? null, now);
     });
 
     if (toAlert.length === 0) {
@@ -236,7 +246,7 @@ export async function runServiceHealthCheck(): Promise<ServiceHealthCheckResult>
       text,
     });
 
-    if (!delivered) {
+    if (!shouldRecordServiceHealthAlert(delivered)) {
       // Transport error or SMTP not configured: the admin was NOT notified.
       // Do NOT advance cooldown so the next run will retry immediately.
       console.warn('[health-check] Email not delivered — cooldown NOT recorded; will retry next run.');

@@ -401,6 +401,7 @@ const es: Dictionary = {
       close: 'Cerrar chat',
       typing: 'Escribiendo…',
       error: 'Algo ha salido mal. Inténtelo de nuevo.',
+      whatsappCta: 'Reservar por WhatsApp',
     },
 
     contactForm: {

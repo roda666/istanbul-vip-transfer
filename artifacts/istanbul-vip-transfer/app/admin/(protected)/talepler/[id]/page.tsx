@@ -75,14 +75,6 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   CREATE:       'Oluşturuldu',
 };
 
-function formatDate(d: Date | string) {
-  return new Intl.DateTimeFormat('tr-TR', {
-    timeZone: 'Europe/Istanbul',
-    day: '2-digit', month: 'long', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  }).format(new Date(d));
-}
-
 function formatShort(d: Date | string) {
   return new Intl.DateTimeFormat('tr-TR', {
     timeZone: 'Europe/Istanbul',

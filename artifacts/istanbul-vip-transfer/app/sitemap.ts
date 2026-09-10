@@ -129,7 +129,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const { db }                             = await import('@/db');
     const { content, contentTranslations }   = await import('@/db/schema');
-    const { eq, and, inArray }               = await import('drizzle-orm');
+    const { eq, and }               = await import('drizzle-orm');
 
     const rows = await db
       .select({ id: content.id, slug: content.slug, displayOrder: content.displayOrder, updatedAt: content.updatedAt })

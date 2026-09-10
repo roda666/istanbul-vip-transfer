@@ -401,6 +401,7 @@ const tr: Dictionary = {
     close: 'Sohbeti kapat',
     typing: 'Yazıyor…',
     error: 'Bir hata oluştu. Lütfen tekrar deneyin.',
+    whatsappCta: 'WhatsApp ile rezervasyon yap',
   },
   contactForm: {
     sectionLabel: 'Bize Yazın',

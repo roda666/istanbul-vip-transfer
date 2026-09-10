@@ -38,3 +38,19 @@ export const TWO_CRUMB_SLUGS = new Set([
   'vip-transfer',
   'sehirler-arasi-transfer',
 ]);
+
+/**
+ * Startup invariant for breadcrumbs: every explicitly shortened breadcrumb
+ * must also be a configured service slug. Keeping this check beside the slug
+ * registry prevents a typo in a route/config file from silently changing the
+ * breadcrumb shape.
+ */
+export function assertServiceSlugConsistency(): void {
+  const configured = new Set(Object.keys(SLUG_TO_PAGE_KEY));
+  const unknownTwoCrumb = [...TWO_CRUMB_SLUGS].filter(slug => !configured.has(slug));
+  if (unknownTwoCrumb.length > 0) {
+    throw new Error(`TWO_CRUMB_SLUGS contains unknown service slug(s): ${unknownTwoCrumb.join(', ')}`);
+  }
+}
+
+assertServiceSlugConsistency();

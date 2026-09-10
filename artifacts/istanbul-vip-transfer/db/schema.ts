@@ -828,7 +828,28 @@ export const serviceHealthRuns = pgTable('service_health_runs', {
   checkedAt:      timestamp('checked_at', { withTimezone: true }).defaultNow().notNull(),
   unhealthyCount: integer('unhealthy_count').notNull().default(0),
   /** Full JSON report from computeServiceHealthIssues — kept for audit trail. */
-  result:         jsonb('result'),
+  result:         jsonb('result').$type<Array<{ slug: string; title?: string | null; issues: string[] }>>(),
+});
+
+/** Automated blog translation health history and per-slug alert cooldowns. */
+export const blogHealthRuns = pgTable('blog_health_runs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  checkedAt: timestamp('checked_at', { withTimezone: true }).defaultNow().notNull(),
+  unhealthyCount: integer('unhealthy_count').notNull().default(0),
+  result: jsonb('result'),
+}, (table) => [index('blog_health_runs_checked_at_idx').on(table.checkedAt)]);
+
+export const blogHealthAlerts = pgTable('blog_health_alerts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  slug: text('slug').notNull().unique(),
+  lastAlertAt: timestamp('last_alert_at', { withTimezone: true }).defaultNow().notNull(),
+  issues: jsonb('issues').$type<string[]>().notNull(),
+});
+
+export const healthCheckLeases = pgTable('health_check_leases', {
+  lockName: text('lock_name').primaryKey(),
+  ownerToken: text('owner_token').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
 });
 
 /**

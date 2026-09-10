@@ -23,6 +23,7 @@ interface Message {
   content: string;
   pending?: boolean;
 }
+type ChatAction = { type: 'whatsapp_booking'; url: string };
 
 const SESSION_KEY = 'ivt_chat_sid';
 const ADMIN_POLL_INTERVAL = 3000; // ms
@@ -69,6 +70,7 @@ export default function ChatWidget({
   const [streaming, setStreaming] = useState(false);
   const [adminMode, setAdminMode] = useState(false); // waiting for human admin reply
   const [error, setError]       = useState<string | null>(null);
+  const [bookingAction, setBookingAction] = useState<ChatAction | null>(null);
 
   const sessionIdRef  = useRef<string | null>(null);
   const bottomRef     = useRef<HTMLDivElement>(null);
@@ -270,6 +272,7 @@ export default function ChatWidget({
           try {
             const payload = JSON.parse(line.slice(6)) as {
               type?: string; sessionId?: string; content?: string; done?: boolean;
+              action?: ChatAction;
             };
 
             if (payload.type === 'session' && payload.sessionId) {
@@ -277,6 +280,8 @@ export default function ChatWidget({
               sessionStorage.setItem(SESSION_KEY, payload.sessionId);
             } else if (payload.done) {
               break;
+            } else if (payload.action?.type === 'whatsapp_booking') {
+              setBookingAction(payload.action);
             } else if (payload.content) {
               setMessages(prev => {
                 const updated = [...prev];
@@ -476,6 +481,12 @@ export default function ChatWidget({
                 </div>
               </div>
             ))}
+            {bookingAction && (
+              <a href={bookingAction.url} target="_blank" rel="noopener noreferrer"
+                style={{ alignSelf: 'flex-start', background: '#16A36A', color: '#fff', borderRadius: '0.5rem', padding: '0.6rem 0.8rem', textDecoration: 'none', fontWeight: 600, fontSize: '0.8rem' }}>
+                {cb.whatsappCta}
+              </a>
+            )}
 
             {error && (
               <p style={{ fontSize:'0.8rem', color:'#c0392b', textAlign:'center' }}>{error}</p>

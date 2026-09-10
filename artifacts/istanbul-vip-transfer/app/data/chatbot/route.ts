@@ -3,6 +3,9 @@ import { translateToTurkish } from '@/lib/chatbot-translate';
 import { getOpenAIChatbot, buildChatbotAiContext, CHATBOT_MODEL } from '@/lib/chatbot-ai';
 import { sanitizeChatbotReply } from '@/lib/chatbot-message-safety';
 import { persistAssistantReplyForAdmin } from '@/lib/chatbot-response-storage';
+import { detectBookingIntent, formatBookingWhatsAppMessage } from '@/lib/chatbot-booking-intent';
+import { buildWhatsAppChatUrl } from '@/lib/whatsapp';
+import { getContactSettings } from '@/lib/site-settings-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -203,6 +206,13 @@ export async function POST(request: NextRequest) {
             controller.enqueue(
               encoder.encode(`data: ${JSON.stringify({ content: safeResponse })}\n\n`),
             );
+            const intent = detectBookingIntent(messages);
+            if (intent.ready) {
+              const contact = await getContactSettings();
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                action: { type: 'whatsapp_booking', url: buildWhatsAppChatUrl(contact.whatsappNumber, formatBookingWhatsAppMessage(intent.details, session.visitorLang)) },
+              })}\n\n`));
+            }
           }
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
         } finally {

@@ -6,7 +6,9 @@
 import { startServiceHealthScheduler } from '@/lib/service-health-scheduler';
 import { startPasswordResetTokenCleanup } from '@/lib/auth/password-reset-token-cleanup';
 import { startGoogleBusinessReviewScheduler } from '@/lib/google-business-review-scheduler';
+import { startBlogHealthScheduler } from '@/lib/blog-health-scheduler';
 
 startServiceHealthScheduler();
 startPasswordResetTokenCleanup();
 startGoogleBusinessReviewScheduler();
+startBlogHealthScheduler();

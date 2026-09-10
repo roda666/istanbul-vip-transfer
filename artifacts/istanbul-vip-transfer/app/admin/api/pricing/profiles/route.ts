@@ -36,7 +36,14 @@ export async function GET(request: NextRequest) {
   const vehicleId = new URL(request.url).searchParams.get('vehicleId');
   const [profiles, vehicleRows, routeRows, locationRows] = await Promise.all([
     db.select().from(vehiclePricingProfiles).orderBy(desc(vehiclePricingProfiles.updatedAt)),
-    db.select({ id: vehicles.id, name: vehicles.name, pricingClass: vehicles.pricingClass, priceCalculationEligible: vehicles.priceCalculationEligible, status: vehicles.status }).from(vehicles).orderBy(asc(vehicles.name)),
+    db.select({
+      id: vehicles.id,
+      name: vehicles.name,
+      pricingClass: vehicles.pricingClass,
+      tollClass: vehicles.tollClass,
+      priceCalculationEligible: vehicles.priceCalculationEligible,
+      status: vehicles.status,
+    }).from(vehicles).orderBy(asc(vehicles.name)),
     db.select({
       id: transferRoutes.id, name: transferRoutes.name, originLocationId: transferRoutes.originLocationId,
       destinationLocationId: transferRoutes.destinationLocationId, defaultVehicleId: transferRoutes.defaultVehicleId,

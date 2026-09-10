@@ -5,10 +5,12 @@ import Link from 'next/link';
 import {
   Calculator, RefreshCw, Plus, Check, X, Edit2, AlertCircle, TrendingUp, Loader2, Trash2
 } from 'lucide-react';
+import { findExactFastQuoteRoute, sortFastQuoteTollAlternatives } from '@/lib/admin-fast-quote';
+import { TOLL_VEHICLE_CLASS_LABELS, type TollVehicleClass } from '@/lib/toll-vehicle-classes';
 
 // --- Types ---
 
-type Vehicle = { id: string; name: string; pricingClass: string; priceCalculationEligible: boolean; status: string };
+type Vehicle = { id: string; name: string; pricingClass: string; tollClass: TollVehicleClass | null; priceCalculationEligible: boolean; status: string };
 type PricingRoute = {
   id: string;
   name: string;
@@ -26,12 +28,15 @@ type TollAlternative = {
   active: boolean;
   isDefault: boolean;
   displayOrder: number;
+  needsReview: boolean;
+  reviewNote: string | null;
   pointIds: string[];
   pointNames: string[];
   isPricedForSelectedVehicle: boolean;
   missingTariffPointNames: string[];
   isBannedForSelectedVehicle: boolean;
   bannedPointNames: string[];
+  totalKurus: number | null;
 };
 type DistanceResult = {
   state: 'GOOGLE_MAPS' | 'DEFINED_ROUTE' | 'ESTIMATED' | 'UNAVAILABLE';
@@ -356,15 +361,18 @@ function FastQuotePanel({
     const controller = new AbortController();
     setTollsLoading(true);
     setTollsError('');
-    const params = quoteVehicleId ? `?vehicleId=${encodeURIComponent(quoteVehicleId)}` : '';
-    fetch(`/admin/api/pricing/tolls/route-alternatives/${quoteRouteId}${params}`, { signal: controller.signal })
+    const params = new URLSearchParams();
+    if (quoteVehicleId) params.set('vehicleId', quoteVehicleId);
+    if (quotePickupAt) params.set('pickupAt', new Date(quotePickupAt).toISOString());
+    const query = params.size ? `?${params.toString()}` : '';
+    fetch(`/admin/api/pricing/tolls/route-alternatives/${quoteRouteId}${query}`, { signal: controller.signal })
       .then(async (response) => {
         const payload = await response.json().catch(() => null);
         if (!response.ok || !Array.isArray(payload?.alternatives)) {
           throw new Error(payload?.error ?? 'Geçiş alternatifleri alınamadı.');
         }
         if (cancelled) return;
-        const alternatives = payload.alternatives as TollAlternative[];
+        const alternatives = sortFastQuoteTollAlternatives(payload.alternatives as TollAlternative[]);
         setTollAlternatives(alternatives);
         setTollAlternativeId((current) => {
           if (alternatives.some((alternative) => alternative.id === current)) return current;
@@ -384,7 +392,23 @@ function FastQuotePanel({
       cancelled = true;
       controller.abort();
     };
-  }, [quoteRouteId, quoteVehicleId]);
+  }, [quoteRouteId, quoteVehicleId, quotePickupAt]);
+
+  useEffect(() => {
+    if (!originLocationId || !destinationLocationId) return;
+    const matchingRouteId = findExactFastQuoteRoute(routes, originLocationId, destinationLocationId);
+    if (matchingRouteId && matchingRouteId !== quoteRouteId) {
+      setQuoteRouteId(matchingRouteId);
+      setTollAlternativeId('');
+      return;
+    }
+    // Clear only a mapped route that no longer matches the chosen endpoints.
+    // Manually selected legacy routes with missing endpoint mappings stay selected.
+    if (!matchingRouteId && selectedRoute?.originLocationId && selectedRoute.destinationLocationId) {
+      setQuoteRouteId('');
+      setTollAlternativeId('');
+    }
+  }, [destinationLocationId, originLocationId, quoteRouteId, routes, selectedRoute]);
 
   const chooseRoute = (routeId: string) => {
     setQuoteRouteId(routeId);
@@ -478,6 +502,19 @@ function FastQuotePanel({
           {selectedVehicle?.priceCalculationEligible && !hasFormula && (
             <p className="mt-2 text-xs font-medium text-amber-700">Bu mod için henüz fiyat formülü tanımlanmamış. <a href="#pricing-profiles" className="font-bold underline">Formül oluşturun</a>.</p>
           )}
+          {selectedVehicle && (
+            <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+              <span className="font-bold">Geçiş ücreti sınıfı: </span>
+              {selectedVehicle.tollClass
+                ? TOLL_VEHICLE_CLASS_LABELS[selectedVehicle.tollClass]
+                : 'Atanmamış — geçiş ücreti hesaplanamaz'}
+              {selectedTollAlternative?.totalKurus != null && (
+                <span className="ml-2 font-black text-slate-900">
+                  · Geçiş ücreti: {formatMoneyCents(selectedTollAlternative.totalKurus, 'TRY')}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <div>
           <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kayıtlı Rota ve Geçiş Senaryosu (isteğe bağlı)</label>
@@ -498,22 +535,60 @@ function FastQuotePanel({
             <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5" htmlFor="quote-toll-alternative">
               Yol &amp; Geçiş Alternatifi
             </label>
-            <select
-              id="quote-toll-alternative"
-              className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm disabled:opacity-60"
-              value={tollAlternativeId}
-              disabled={tollsLoading || tollAlternatives.length === 0}
-              onChange={(event) => setTollAlternativeId(event.target.value)}
-            >
-              {tollsLoading && <option>Alternatifler yükleniyor…</option>}
-              {!tollsLoading && tollAlternatives.length === 0 && <option value="">Geçiş alternatifi yok</option>}
-              {!tollsLoading && tollAlternatives.length > 0 && !tollAlternativeId && <option value="">Geçiş alternatifi seçin…</option>}
-              {tollAlternatives.map((alternative) => (
-                <option key={alternative.id} value={alternative.id}>
-                  {alternative.isDefault ? 'Varsayılan — ' : ''}{alternative.name}
-                </option>
-              ))}
-            </select>
+            {tollsLoading ? (
+              <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-3 text-xs font-medium text-slate-600">
+                <Loader2 className="animate-spin" size={14} /> Alternatifler yükleniyor…
+              </div>
+            ) : tollAlternatives.length > 0 ? (
+              <div id="quote-toll-alternative" className="max-h-80 space-y-2 overflow-y-auto pr-1">
+                {tollAlternatives.map((alternative) => {
+                  const selected = alternative.id === tollAlternativeId;
+                  const unavailable = Boolean(selectedVehicle && !alternative.isPricedForSelectedVehicle);
+                  return (
+                    <button
+                      key={alternative.id}
+                      type="button"
+                      aria-pressed={selected}
+                      disabled={unavailable}
+                      onClick={() => setTollAlternativeId(alternative.id)}
+                      className={`w-full rounded-lg border p-3 text-left transition-colors ${
+                        selected
+                          ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
+                          : unavailable
+                            ? 'cursor-not-allowed border-slate-200 bg-slate-100 opacity-65'
+                            : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/40'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {alternative.isDefault && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-800">Varsayılan</span>}
+                            {alternative.needsReview && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-black uppercase text-amber-800">İnceleme bekliyor</span>}
+                          </div>
+                          <div className="mt-1 text-xs font-bold text-slate-900">{alternative.name}</div>
+                          <div className="mt-1 text-[10px] leading-4 text-slate-500">
+                            {alternative.pointNames.length ? alternative.pointNames.join(' → ') : 'Ücretli geçiş yok'}
+                          </div>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <div className="text-[9px] font-bold uppercase tracking-wide text-slate-400">Geçiş ücreti</div>
+                          <div className={`mt-0.5 text-sm font-black ${alternative.totalKurus != null ? 'text-slate-900' : 'text-red-700'}`}>
+                            {alternative.totalKurus != null
+                              ? formatMoneyCents(alternative.totalKurus, 'TRY')
+                              : selectedVehicle ? 'Hesaplanamadı' : 'Araç seçin'}
+                          </div>
+                        </div>
+                      </div>
+                      {alternative.reviewNote && alternative.needsReview && (
+                        <p className="mt-2 border-t border-amber-200/70 pt-2 text-[10px] leading-4 text-amber-800">{alternative.reviewNote}</p>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-slate-200 bg-white px-3 py-3 text-xs text-slate-600">Geçiş alternatifi yok</div>
+            )}
             {tollsError ? (
               <p className="mt-2 text-xs font-medium text-red-700">{tollsError}</p>
             ) : tollAlternatives.length === 0 && !tollsLoading ? (

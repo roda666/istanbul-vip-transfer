@@ -59,6 +59,7 @@
 - [Logout endpoint mismatch](logout-endpoint-mismatch.md) — AdminSidebar must call POST /admin/api/logout (not /admin/api/auth/logout); route file is at app/admin/api/logout/route.ts.
 - [GSC OAuth routing fix](gsc-oauth-routing.md) — api-server artifact owns paths=["/api"], so Next.js app/api/* routes are unreachable; GSC connect+callback moved to /admin/api/gsc/connect and /admin/api/gsc/callback; Google Cloud Console redirect URI must be https://www.istanbulviptransfer.com/admin/api/gsc/callback.
 - [Google credential persistence](google-credential-persistence.md) — OAuth tokens must always use bound ORM/SQL values; GSC is the canonical source for existing search opportunities and page analytics.
+- [Google Routes tolls in Turkey](google-routes-tolls-turkey.md) — Turkey routes may label steps as toll roads while structured TOLLS/tollInfo remains empty; never infer exact points or gates from it.
 - [Google Ads Keyword Planner integration](google-ads-kp.md) — lib/google-ads.ts uses Ads REST API v18; DB table google_ads_connections (migration 0027 applied manually); data priority: GSC > Google Ads > AI fallback; callback URI must be registered in Google Cloud Console.
 - [Social OAuth public origin](social-oauth-public-origin.md) — build callbacks and error redirects from forwarded public host with forced HTTPS.
 - [OAuth public origin allowlist](oauth-public-origin-allowlist.md) — OAuth callbacks must accept only configured public origins, never arbitrary forwarded hosts.

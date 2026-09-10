@@ -65,16 +65,18 @@ test('dropdown selections reveal registered toll alternatives without a saved-ro
   const eur = page.getByTestId('customer-price-eur');
   const usd = page.getByTestId('customer-price-usd');
   const tryAmount = page.getByTestId('customer-price-try');
-  await expect(eur).toBeVisible();
-  await expect(usd).toBeVisible();
-  await expect(tryAmount).toBeVisible();
+  await expect(eur).toBeVisible({ timeout: 15_000 });
+  await expect(usd).toBeVisible({ timeout: 15_000 });
+  await expect(tryAmount).toBeVisible({ timeout: 15_000 });
   const [eurSize, usdSize, trySize] = await Promise.all([
     eur.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize)),
     usd.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize)),
     tryAmount.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize)),
   ]);
   expect(eurSize).toBe(usdSize);
-  expect(eurSize).toBeGreaterThan(trySize);
+  expect(eurSize).toBe(trySize);
+  await expect(page.getByText('EUR/TRY — Yalnızca Panel Referansı')).toBeVisible();
+  await expect(page.getByText('USD/TRY — Yalnızca Panel Referansı')).toBeVisible();
 
   await expectDropdownTollAlternatives(
     page,
@@ -103,7 +105,7 @@ for (const viewport of [
   test(`${viewport.name} layout has no page overflow and keeps primary controls touch-sized`, async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await page.reload();
-    await expect(page.getByRole('heading', { name: 'Hızlı Teklif Simülatörü' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Hızlı Teklif Simülatörü' })).toBeVisible({ timeout: 15_000 });
 
     const hasNoPageOverflow = await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,

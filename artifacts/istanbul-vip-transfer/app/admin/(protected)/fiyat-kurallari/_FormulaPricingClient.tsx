@@ -761,15 +761,17 @@ function FastQuotePanel({
               )}
               <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl flex flex-col items-center text-center">
                 <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1">MÜŞTERİ FİYATI</span>
-                <div className="mt-2 grid w-full grid-cols-1 gap-2 sm:grid-cols-2">
-                  <span data-testid="customer-price-eur" className="rounded-lg border border-emerald-200 bg-white px-3 py-3 text-2xl font-black text-emerald-900 sm:text-3xl">
+                <div className="mt-2 grid w-full grid-cols-3 gap-2">
+                  <span data-testid="customer-price-eur" className="flex min-w-0 items-center justify-center rounded-lg border border-emerald-200 bg-white px-2 py-3 text-xl font-black text-emerald-900 sm:text-2xl">
                     {formatMoneyCents(quoteResult.quotedEurCents || 0, 'EUR')}
                   </span>
-                  <span data-testid="customer-price-usd" className="rounded-lg border border-emerald-200 bg-white px-3 py-3 text-2xl font-black text-emerald-900 sm:text-3xl">
+                  <span data-testid="customer-price-usd" className="flex min-w-0 items-center justify-center rounded-lg border border-emerald-200 bg-white px-2 py-3 text-xl font-black text-emerald-900 sm:text-2xl">
                     {formatMoneyCents(quoteResult.quotedUsdCents || 0, 'USD')}
                   </span>
+                  <span data-testid="customer-price-try" className="flex min-w-0 items-center justify-center rounded-lg border border-emerald-200 bg-white px-2 py-3 text-xl font-black text-emerald-900 sm:text-2xl">
+                    {formatMoneyCents(quoteResult.quotedTryKurus || 0, 'TRY')}
+                  </span>
                 </div>
-                <span data-testid="customer-price-try" className="mt-2 text-xs font-bold text-slate-600">{formatMoneyCents(quoteResult.quotedTryKurus || 0, 'TRY')}</span>
               </div>
               
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2.5 text-sm">
@@ -866,7 +868,14 @@ function TcmbWidget({ settings, onApply }: { settings: Settings | null, onApply:
           <h2 className="text-base font-bold">Canlı TCMB Kurları</h2>
         </div>
         
-        <div className="grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+           <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-center">
+             <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">EUR/TRY — Yalnızca Panel Referansı</div>
+             <div className="text-lg font-black text-slate-900">
+               {settings?.latestTcmb ? formatMicros(settings.latestTcmb.eurTryMicros) : '---'}
+             </div>
+             <p className="mt-1 text-[11px] text-slate-500">Müşteri EUR fiyatı ve geçiş ücreti TL→EUR çevrimi değişmez.</p>
+           </div>
            <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-center">
              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">USD/TRY — Yalnızca Panel Referansı</div>
              <div className="text-lg font-black text-slate-900">
@@ -892,7 +901,13 @@ function TcmbWidget({ settings, onApply }: { settings: Settings | null, onApply:
             <h3 className="text-lg font-black text-slate-900 mb-5">Yeni Kur Onayı</h3>
             <div className="space-y-4 mb-6">
                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                  <div className="grid grid-cols-1 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                       <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">YENİ EUR/TRY — PANEL REFERANSI</div>
+                       <div className="text-xl font-black text-slate-900">
+                         {formatMicros(previewData.candidate.eurTryMicros)}
+                       </div>
+                    </div>
                    <div>
                       <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">YENİ USD/TRY — PANEL REFERANSI</div>
                       <div className="text-xl font-black text-slate-900">

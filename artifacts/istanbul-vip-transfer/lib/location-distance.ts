@@ -33,6 +33,11 @@ export type LocationDistanceResult =
     calculatedAt: string;
   };
 
+export type CoordinatePoint = {
+  latitude: number;
+  longitude: number;
+};
+
 type ResolvableLocation = {
   id: string;
   name: string;
@@ -89,6 +94,45 @@ function haversineKm(origin: ResolvableLocation & { latitude: number; longitude:
       * Math.cos(toRadians(destination.latitude))
       * Math.sin(longitudeDelta / 2) ** 2;
   return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+export async function resolveCoordinateDistance(input: {
+  origin: CoordinatePoint;
+  destination: CoordinatePoint;
+  at?: Date;
+}): Promise<LocationDistanceResult> {
+  const calculatedAt = (input.at ?? new Date()).toISOString();
+  const origin = { id: 'custom-origin', name: 'Özel kalkış', city: '', ...input.origin };
+  const destination = { id: 'custom-destination', name: 'Özel varış', city: '', ...input.destination };
+  const straightLineKm = haversineKm(origin, destination);
+  if (!Number.isFinite(straightLineKm) || straightLineKm <= 0.01) {
+    return { state: 'UNAVAILABLE', reason: 'COINCIDENT_COORDINATES', calculatedAt };
+  }
+  const { getGoogleMapsRouteMetrics } = await import('@/lib/google-maps-distance');
+  const googleMetrics = await getGoogleMapsRouteMetrics(origin, destination);
+  if (googleMetrics) {
+    return {
+      state: 'GOOGLE_MAPS',
+      distanceKm: googleMetrics.distanceKm,
+      durationMinutes: googleMetrics.durationMinutes,
+      source: 'google_maps',
+      calculatedAt,
+    };
+  }
+  const settings = await db
+    .select({ roadDistanceMultiplier: siteSettings.roadDistanceMultiplier })
+    .from(siteSettings)
+    .where(eq(siteSettings.id, 1))
+    .limit(1);
+  const storedMultiplier = settings[0]?.roadDistanceMultiplier ?? 1.25;
+  const roadDistanceMultiplier = storedMultiplier >= 1 && storedMultiplier <= 3 ? storedMultiplier : 1.25;
+  return {
+    state: 'ESTIMATED',
+    distanceKm: Math.ceil(straightLineKm * roadDistanceMultiplier),
+    source: 'coordinate_estimate',
+    roadDistanceMultiplier,
+    calculatedAt,
+  };
 }
 
 /**

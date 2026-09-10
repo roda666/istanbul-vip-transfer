@@ -195,23 +195,38 @@ export async function PUT(request: NextRequest, { params }: Params) {
     if (data.robotsIndex !== undefined) updateValues.robotsIndex = data.robotsIndex;
     if (data.robotsFollow !== undefined) updateValues.robotsFollow = data.robotsFollow;
 
-    const { fillMissingTranslations, localeFieldMap, fieldLocaleMaps } = await import('@/lib/ai/fill-missing-translations');
+    const { syncStructuralTranslations, localeFieldMap, overwriteFieldLocaleMaps } = await import('@/lib/ai/fill-missing-translations');
     const existingMaps = {
       name: current.nameTranslations,
       shortDescription: current.shortDescTranslations,
       fullDescription: current.fullDescTranslations,
       tagline: current.taglineTranslations,
     };
-    const translated = await fillMissingTranslations({
+    const changedTranslationFields = [
+      ...(data.name !== undefined ? ['name'] : []),
+      ...(data.shortDescription !== undefined ? ['shortDescription'] : []),
+      ...(data.fullDescription !== undefined ? ['fullDescription'] : []),
+    ];
+    const translated = changedTranslationFields.length === 0
+      ? localeFieldMap(existingMaps)
+      : await syncStructuralTranslations({
       name: data.name ?? current.name,
       shortDescription: data.shortDescription === undefined ? current.shortDescription : data.shortDescription,
       fullDescription: data.fullDescription === undefined ? current.fullDescription : data.fullDescription,
       tagline: current.taglineTranslations?.tr,
-    }, localeFieldMap(existingMaps));
-    const completedMaps = fieldLocaleMaps(translated, Object.keys(existingMaps), existingMaps);
+    }, localeFieldMap(existingMaps), changedTranslationFields);
+    const completedMaps = overwriteFieldLocaleMaps(translated, Object.keys(existingMaps), existingMaps);
     updateValues.nameTranslations = { ...(current.nameTranslations ?? {}), tr: data.name ?? current.name, ...completedMaps.name };
-    updateValues.shortDescTranslations = { ...(current.shortDescTranslations ?? {}), tr: data.shortDescription ?? current.shortDescription ?? '', ...completedMaps.shortDescription };
-    updateValues.fullDescTranslations = { ...(current.fullDescTranslations ?? {}), tr: data.fullDescription ?? current.fullDescription ?? '', ...completedMaps.fullDescription };
+    updateValues.shortDescTranslations = {
+      ...(current.shortDescTranslations ?? {}),
+      tr: data.shortDescription !== undefined ? data.shortDescription ?? '' : current.shortDescription ?? '',
+      ...completedMaps.shortDescription,
+    };
+    updateValues.fullDescTranslations = {
+      ...(current.fullDescTranslations ?? {}),
+      tr: data.fullDescription !== undefined ? data.fullDescription ?? '' : current.fullDescription ?? '',
+      ...completedMaps.fullDescription,
+    };
     updateValues.taglineTranslations = completedMaps.tagline;
 
     // Updating the vehicle and replacing its point classes must be atomic:

@@ -5,6 +5,8 @@ import {
   fieldLocaleMaps,
   fillMissingTranslations,
   localeFieldMap,
+  overwriteFieldLocaleMaps,
+  syncStructuralTranslations,
 } from '../../lib/ai/fill-missing-translations';
 
 const { translateServicePageFields } = vi.hoisted(() => ({
@@ -83,6 +85,35 @@ describe('fillMissingTranslations', () => {
     for (const locale of AUTO_TRANSLATION_LOCALES.filter((locale) => locale !== 'en')) {
       expect(result[locale]).toEqual({ heading: `${locale}:Türkçe başlık` });
     }
+  });
+});
+
+describe('syncStructuralTranslations', () => {
+  it('overwrites changed structural fields and preserves unrelated locale values', async () => {
+    const existing = Object.fromEntries(
+      AUTO_TRANSLATION_LOCALES.map(locale => [locale, { name: `old-${locale}`, city: `city-${locale}`, note: `keep-${locale}` }]),
+    );
+    const result = await syncStructuralTranslations(
+      { name: 'Yeni ad', city: 'İstanbul' },
+      existing,
+      ['name'],
+    );
+    for (const locale of AUTO_TRANSLATION_LOCALES) {
+      expect(result[locale]).toEqual({
+        name: `${locale}:Yeni ad`,
+        city: `city-${locale}`,
+        note: `keep-${locale}`,
+      });
+    }
+  });
+
+  it('maps synchronized per-locale values back to vehicle field maps', () => {
+    const translations = Object.fromEntries(
+      AUTO_TRANSLATION_LOCALES.map(locale => [locale, { name: `new-${locale}` }]),
+    );
+    const maps = overwriteFieldLocaleMaps(translations, ['name'], { name: { en: 'old-en' } });
+    expect(maps.name.en).toBe('new-en');
+    expect(maps.name.ar).toBe('new-ar');
   });
 });
 

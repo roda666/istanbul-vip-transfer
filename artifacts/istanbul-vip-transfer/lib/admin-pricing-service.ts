@@ -17,7 +17,7 @@ import {
   vehiclePricingProfiles,
   vehicles,
 } from '@/db/schema';
-import { resolveLocationDistance, type LocationDistanceResult } from '@/lib/location-distance';
+import { resolveCoordinateDistance, resolveLocationDistance, type CoordinatePoint, type LocationDistanceResult } from '@/lib/location-distance';
 import {
   calculateAdminQuote,
   type PricingProfileInput,
@@ -57,6 +57,8 @@ export async function createAdminQuote(input: {
   routeId?: string;
   originLocationId?: string;
   destinationLocationId?: string;
+  originCoordinates?: CoordinatePoint & { address?: string };
+  destinationCoordinates?: CoordinatePoint & { address?: string };
   vehicleId?: string;
   mode: 'DISTANCE' | 'HOURLY';
   requestedHours?: number;
@@ -84,15 +86,21 @@ export async function createAdminQuote(input: {
 
   const originLocationId = route?.originLocationId ?? input.originLocationId;
   const destinationLocationId = route?.destinationLocationId ?? input.destinationLocationId;
-  if ((!originLocationId || !destinationLocationId) && input.mode === 'DISTANCE') {
+  if (
+    (!originLocationId || !destinationLocationId)
+    && (!input.originCoordinates || !input.destinationCoordinates)
+    && input.mode === 'DISTANCE'
+  ) {
     return {
       result: { state: 'UNAVAILABLE', reason: 'MISSING_DISTANCE' },
       distance: { state: 'UNAVAILABLE', reason: 'LOCATION_NOT_FOUND', calculatedAt: now.toISOString() },
     };
   }
-  const distance: LocationDistanceResult = originLocationId && destinationLocationId
-    ? await resolveLocationDistance({ originLocationId, destinationLocationId, at: now })
-    : { state: 'UNAVAILABLE', reason: 'LOCATION_NOT_FOUND', calculatedAt: now.toISOString() };
+  const distance: LocationDistanceResult = input.originCoordinates && input.destinationCoordinates
+    ? await resolveCoordinateDistance({ origin: input.originCoordinates, destination: input.destinationCoordinates, at: now })
+    : originLocationId && destinationLocationId
+      ? await resolveLocationDistance({ originLocationId, destinationLocationId, at: now })
+      : { state: 'UNAVAILABLE', reason: 'LOCATION_NOT_FOUND', calculatedAt: now.toISOString() };
   if (input.mode === 'DISTANCE' && distance.state === 'UNAVAILABLE') {
     return { result: { state: 'UNAVAILABLE', reason: 'MISSING_DISTANCE' }, distance };
   }

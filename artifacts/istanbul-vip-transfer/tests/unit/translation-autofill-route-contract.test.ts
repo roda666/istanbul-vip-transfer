@@ -10,9 +10,6 @@ const missingOnlyRoutes = [
   'app/admin/api/categories/[id]/route.ts',
   'app/admin/api/faqs/route.ts',
   'app/admin/api/faqs/[id]/route.ts',
-  'app/admin/api/locations/route.ts',
-  'app/admin/api/locations/[id]/route.ts',
-  'app/admin/api/vehicles/[id]/route.ts',
   'app/admin/api/transfer-routes/[id]/route.ts',
   'app/admin/api/blog/[id]/route.ts',
 ];
@@ -31,6 +28,17 @@ describe('translation autofill route contract', () => {
     );
 
     expect(source).toContain('localeFieldMap');
-    expect(source).toContain('fieldLocaleMaps');
+    expect(source).toContain('overwriteFieldLocaleMaps');
+  });
+
+  it.each([
+    'app/admin/api/locations/route.ts',
+    'app/admin/api/locations/[id]/route.ts',
+    'app/admin/api/vehicles/route.ts',
+    'app/admin/api/vehicles/[id]/route.ts',
+  ])('%s immediately synchronizes changed structural fields', (relativePath) => {
+    const source = readFileSync(resolve(appRoot, relativePath), 'utf8');
+    expect(source).toContain('syncStructuralTranslations');
+    expect(source).not.toContain('contentTranslations');
   });
 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Plus, Pencil, Trash2, X, Check, Loader2, MapPinned } from 'lucide-react';
 import type {
   RouteFaqItem,
@@ -9,6 +9,7 @@ import type {
   TransferRouteTranslation,
 } from '@/db/schema';
 import { AISeoGenerator } from '@/app/admin/_components/AISeoGenerator';
+import { groupManagedLocationOptions, type ManagedLocationOption } from '@/lib/admin-location-options';
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 const BORDER = '#D8E1E9';
@@ -47,11 +48,7 @@ type RouteTranslationDraft = Pick<TransferRouteTranslation,
   'introParagraph' | 'transportOptions' | 'routeNotes' | 'faqItems' | 'status' | 'isManuallyLocked'>;
 type AdminRoute = TransferRoute & { translations: RouteTranslationDraft[] };
 type RouteDraft = Partial<TransferRoute> & { translations?: RouteTranslationDraft[] };
-type ManagedLocation = {
-  id: string;
-  name: string;
-  city: string;
-};
+type ManagedLocation = ManagedLocationOption;
 type ManagedVehicle = { id: string; name: string; priceCalculationEligible: boolean };
 
 const LOCALES = [
@@ -174,6 +171,7 @@ function RouteModal({ route, locationOptions, vehicleOptions, onSave, onClose, s
   const [activeLocale, setActiveLocale] = useState<string>('tr');
   const [resolvingDistance, setResolvingDistance] = useState(false);
   const [distanceMessage, setDistanceMessage] = useState('');
+  const groupedLocations = useMemo(() => groupManagedLocationOptions(locationOptions), [locationOptions]);
   const set = (key: keyof TransferRoute, val: unknown) => setForm(f => ({ ...f, [key]: val }));
   const translation = form.translations?.find((item) => item.languageCode === activeLocale);
   const setTranslation = (key: keyof RouteTranslationDraft, value: unknown) => {
@@ -314,14 +312,22 @@ function RouteModal({ route, locationOptions, vehicleOptions, onSave, onClose, s
               <label style={labelStyle}>Doğrulanmış Kalkış Lokasyonu</label>
               <select style={inputStyle} value={form.originLocationId ?? ''} onChange={e => set('originLocationId', e.target.value || null)}>
                 <option value="">Seçiniz</option>
-                {locationOptions.map((location) => <option key={location.id} value={location.id}>{location.name} ({location.city})</option>)}
+                {groupedLocations.map(group => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.items.map(location => <option key={location.id} value={location.id}>{location.name} ({location.city})</option>)}
+                  </optgroup>
+                ))}
               </select>
             </div>
             <div>
               <label style={labelStyle}>Doğrulanmış Varış Lokasyonu</label>
               <select style={inputStyle} value={form.destinationLocationId ?? ''} onChange={e => set('destinationLocationId', e.target.value || null)}>
                 <option value="">Seçiniz</option>
-                {locationOptions.map((location) => <option key={location.id} value={location.id}>{location.name} ({location.city})</option>)}
+                {groupedLocations.map(group => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.items.map(location => <option key={location.id} value={location.id}>{location.name} ({location.city})</option>)}
+                  </optgroup>
+                ))}
               </select>
             </div>
             <p style={{ gridColumn: '1 / -1', color: MUTED, fontSize: '11px', fontFamily: 'Inter, sans-serif', lineHeight: 1.5, margin: 0 }}>

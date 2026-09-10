@@ -13,8 +13,8 @@ const createSchema = z.object({
     .regex(/^[a-z0-9-]+$/, 'Slug yalnızca küçük harf, rakam ve tire içerebilir'),
   city: z.string().max(100).default('İstanbul'),
   district: z.string().max(200).optional().nullable(),
-  latitude: z.number().finite().min(-90).max(90).optional().nullable(),
-  longitude: z.number().finite().min(-180).max(180).optional().nullable(),
+  latitude: z.number().finite().min(-90).max(90),
+  longitude: z.number().finite().min(-180).max(180),
   coordinateSource: z.string().max(100).optional().nullable(),
   coordinateAccuracyMeters: z.number().int().min(0).max(100_000).optional().nullable(),
   type: z.enum(LOCATION_TYPES).default('DISTRICT'),
@@ -115,11 +115,11 @@ export async function POST(request: NextRequest) {
   try {
     const { db } = await import('@/db');
     const { locations, auditLogs } = await import('@/db/schema');
-    const { fillMissingTranslations } = await import('@/lib/ai/fill-missing-translations');
+    const { syncStructuralTranslations } = await import('@/lib/ai/fill-missing-translations');
     const cleanName = sanitizeText(data.name);
     const cleanCity = sanitizeText(data.city);
     const cleanDistrict = data.district ? sanitizeText(data.district) : null;
-    const translations = await fillMissingTranslations({
+    const translations = await syncStructuralTranslations({
       name: cleanName,
       city: cleanCity,
       district: cleanDistrict,
@@ -133,8 +133,8 @@ export async function POST(request: NextRequest) {
         city: cleanCity,
         district: cleanDistrict,
         translations,
-        latitude: data.latitude ?? null,
-        longitude: data.longitude ?? null,
+        latitude: data.latitude,
+        longitude: data.longitude,
         coordinateSource: data.coordinateSource ? sanitizeText(data.coordinateSource) : null,
         coordinateAccuracyMeters: data.coordinateAccuracyMeters ?? null,
         type: data.type,

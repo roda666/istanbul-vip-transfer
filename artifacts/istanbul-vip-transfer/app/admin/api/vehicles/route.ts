@@ -138,14 +138,27 @@ export async function POST(request: NextRequest) {
   try {
     const { db } = await import('@/db');
     const { vehicles, auditLogs } = await import('@/db/schema');
+    const { syncStructuralTranslations, overwriteFieldLocaleMaps } = await import('@/lib/ai/fill-missing-translations');
+    const cleanName = sanitizeText(data.name);
+    const cleanShortDescription = data.shortDescription ? sanitizeText(data.shortDescription) : null;
+    const cleanFullDescription = data.fullDescription ? sanitizeHtml(data.fullDescription) : null;
+    const translated = await syncStructuralTranslations({
+      name: cleanName,
+      shortDescription: cleanShortDescription,
+      fullDescription: cleanFullDescription,
+    });
+    const completedMaps = overwriteFieldLocaleMaps(
+      translated,
+      ['name', 'shortDescription', 'fullDescription'],
+    );
 
     const [newItem] = await db
       .insert(vehicles)
       .values({
-        name: sanitizeText(data.name),
+        name: cleanName,
         slug: data.slug,
-        shortDescription: data.shortDescription ? sanitizeText(data.shortDescription) : null,
-        fullDescription: data.fullDescription ? sanitizeHtml(data.fullDescription) : null,
+        shortDescription: cleanShortDescription,
+        fullDescription: cleanFullDescription,
         passengerCapacity: data.passengerCapacity ?? null,
         luggageCapacity: data.luggageCapacity ?? null,
         vehicleType: data.vehicleType ? sanitizeText(data.vehicleType) : null,
@@ -167,6 +180,9 @@ export async function POST(request: NextRequest) {
         displayOrder: data.displayOrder,
         isFeatured: data.isFeatured,
         status: data.status,
+        nameTranslations: { tr: cleanName, ...completedMaps.name },
+        shortDescTranslations: { tr: cleanShortDescription ?? '', ...completedMaps.shortDescription },
+        fullDescTranslations: { tr: cleanFullDescription ?? '', ...completedMaps.fullDescription },
         metaTitle: data.metaTitle ? sanitizeText(data.metaTitle) : null,
         metaDescription: data.metaDescription ? sanitizeText(data.metaDescription) : null,
         canonicalUrl: data.canonicalUrl ? sanitizeText(data.canonicalUrl) : null,

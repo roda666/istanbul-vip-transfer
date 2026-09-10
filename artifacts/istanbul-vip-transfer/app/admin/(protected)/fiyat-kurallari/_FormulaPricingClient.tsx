@@ -1,11 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
-  Calculator, RefreshCw, Plus, Check, X, Edit2, AlertCircle, TrendingUp, Loader2, Trash2
+  Calculator, RefreshCw, Plus, Check, X, Edit2, AlertCircle, TrendingUp, Loader2, Trash2, MapPin, Search, ChevronDown
 } from 'lucide-react';
-import { findExactFastQuoteRoute, sortFastQuoteTollAlternatives } from '@/lib/admin-fast-quote';
+import { findExactFastQuoteRoute, findNearestFastQuoteLocation, sortFastQuoteTollAlternatives } from '@/lib/admin-fast-quote';
 import { TOLL_VEHICLE_CLASS_LABELS, type TollVehicleClass } from '@/lib/toll-vehicle-classes';
 
 // --- Types ---
@@ -21,7 +21,12 @@ type PricingRoute = {
   distanceSource: 'LEGACY_UNVERIFIED' | 'COORDINATE_ESTIMATE' | 'ADMIN_VERIFIED';
   active: boolean;
 };
-type PricingLocation = { id: string; name: string; city: string; type: 'AIRPORT' | 'DISTRICT' | 'REGION' | 'HOTEL_ZONE' | 'CUSTOM' | 'PROVINCE' };
+type PricingLocation = {
+  id: string; name: string; city: string;
+  type: 'AIRPORT' | 'DISTRICT' | 'REGION' | 'HOTEL_ZONE' | 'CUSTOM' | 'PROVINCE';
+  latitude: number | null; longitude: number | null;
+};
+type QuotePoint = { latitude: number; longitude: number };
 type TollAlternative = {
   id: string;
   name: string;
@@ -212,6 +217,134 @@ function sortQuoteLocations(locations: PricingLocation[]): PricingLocation[] {
   return [...locations].sort((a, b) => priority(a) - priority(b) || collator.compare(a.name, b.name));
 }
 
+const MAP_ZOOM = 10;
+const MAP_CENTER = { latitude: 41.055, longitude: 28.98 };
+const MAP_WIDTH = 512;
+const MAP_HEIGHT = 220;
+
+function worldPoint(point: QuotePoint, zoom = MAP_ZOOM) {
+  const scale = 256 * 2 ** zoom;
+  const sin = Math.sin(point.latitude * Math.PI / 180);
+  return {
+    x: (point.longitude + 180) / 360 * scale,
+    y: (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * scale,
+  };
+}
+
+function coordinatePoint(x: number, y: number, zoom = MAP_ZOOM): QuotePoint {
+  const scale = 256 * 2 ** zoom;
+  return {
+    longitude: x / scale * 360 - 180,
+    latitude: Math.atan(Math.sinh(Math.PI * (1 - 2 * y / scale))) * 180 / Math.PI,
+  };
+}
+
+function QuoteMapPicker({ point, onChange }: { point: QuotePoint | null; onChange: (point: QuotePoint) => void }) {
+  const center = worldPoint(MAP_CENTER);
+  const topLeft = { x: center.x - MAP_WIDTH / 2, y: center.y - MAP_HEIGHT / 2 };
+  const minTileX = Math.floor(topLeft.x / 256);
+  const maxTileX = Math.floor((topLeft.x + MAP_WIDTH) / 256);
+  const minTileY = Math.floor(topLeft.y / 256);
+  const maxTileY = Math.floor((topLeft.y + MAP_HEIGHT) / 256);
+  const tiles = [];
+  for (let x = minTileX; x <= maxTileX; x += 1) {
+    for (let y = minTileY; y <= maxTileY; y += 1) tiles.push({ x, y });
+  }
+  const marker = point ? worldPoint(point) : null;
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label="Haritadan konum seç"
+      className="relative mt-2 h-[220px] w-full cursor-crosshair overflow-hidden rounded-lg border border-slate-300 bg-slate-100"
+      onClick={(event) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        onChange(coordinatePoint(topLeft.x + event.clientX - rect.left, topLeft.y + event.clientY - rect.top));
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') onChange(MAP_CENTER);
+      }}
+    >
+      {tiles.map(tile => (
+        <img
+          key={`${tile.x}-${tile.y}`}
+          src={`https://tile.openstreetmap.org/${MAP_ZOOM}/${tile.x}/${tile.y}.png`}
+          alt=""
+          draggable={false}
+          className="pointer-events-none absolute h-64 w-64 max-w-none select-none"
+          style={{ left: tile.x * 256 - topLeft.x, top: tile.y * 256 - topLeft.y }}
+        />
+      ))}
+      {marker && (
+        <MapPin
+          size={28}
+          className="pointer-events-none absolute -translate-x-1/2 -translate-y-full fill-blue-600 text-white drop-shadow"
+          style={{ left: marker.x - topLeft.x, top: marker.y - topLeft.y }}
+        />
+      )}
+      <span className="absolute bottom-1 right-1 rounded bg-white/90 px-1.5 py-0.5 text-[9px] text-slate-500">© OpenStreetMap</span>
+    </div>
+  );
+}
+
+function QuoteLocationInput({
+  label, optional, locations, value, address, point, geocoding, onSelect, onAddress, onGeocode, onPoint,
+}: {
+  label: string; optional?: boolean; locations: PricingLocation[]; value: string; address: string;
+  point: QuotePoint | null; geocoding: boolean;
+  onSelect: (value: string) => void; onAddress: (value: string) => void;
+  onGeocode: () => void; onPoint: (point: QuotePoint) => void;
+}) {
+  const matched = point && value ? locations.find(location => location.id === value) : null;
+  return (
+    <div className="min-w-0">
+      <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+        {label} {optional ? '(isteğe bağlı)' : ''}
+      </label>
+      <select
+        data-testid={`quote-location-${label === 'Kalkış' ? 'origin' : 'destination'}`}
+        value={value}
+        onChange={(event) => onSelect(event.target.value)}
+        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none"
+      >
+        <option value="">{optional ? 'Belirtmeyin' : 'Kayıtlı nokta seçin...'}</option>
+        {locations.map(location => <option key={location.id} value={location.id}>{location.name}</option>)}
+      </select>
+      <details className="mt-2 rounded-lg border border-slate-200 bg-slate-50">
+        <summary className="cursor-pointer list-none px-3 py-2 text-xs font-bold text-blue-700">
+          Açık adres veya haritadan seç
+        </summary>
+        <div className="border-t border-slate-200 p-3">
+          <div className="flex gap-2">
+            <input
+              value={address}
+              onChange={(event) => onAddress(event.target.value)}
+              placeholder="Açık adres yazın..."
+              className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={onGeocode}
+              disabled={geocoding || address.trim().length < 3}
+              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 disabled:opacity-50"
+            >
+              {geocoding ? <Loader2 size={13} className="animate-spin" /> : <Search size={13} />} Bul
+            </button>
+          </div>
+          <p className="mt-1.5 text-[10px] leading-4 text-slate-500">Adresi “Bul” ile koordinata dönüştürün veya haritada doğrudan bir noktaya tıklayın.</p>
+          <QuoteMapPicker point={point} onChange={onPoint} />
+          {point && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-slate-600">
+              <span>{point.latitude.toFixed(5)}, {point.longitude.toFixed(5)}</span>
+              {matched && <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-bold text-emerald-800">Kayıtlı noktayla eşleşti: {matched.name}</span>}
+            </div>
+          )}
+        </div>
+      </details>
+    </div>
+  );
+}
+
 // --- Reusable Components ---
 
 function AmountInput({ value, onChange, label, symbol = '', decimals = 2, min = 0 }: { value: number, onChange: (val: number) => void, label: string, symbol?: string, decimals?: number, min?: number }) {
@@ -304,6 +437,12 @@ function FastQuotePanel({
   const [tollAlternativeId, setTollAlternativeId] = useState('');
   const [tollsLoading, setTollsLoading] = useState(false);
   const [tollsError, setTollsError] = useState('');
+  const [tollPanelOpen, setTollPanelOpen] = useState(false);
+  const [originAddress, setOriginAddress] = useState('');
+  const [destinationAddress, setDestinationAddress] = useState('');
+  const [originPoint, setOriginPoint] = useState<QuotePoint | null>(null);
+  const [destinationPoint, setDestinationPoint] = useState<QuotePoint | null>(null);
+  const [geocodingSide, setGeocodingSide] = useState<'origin' | 'destination' | null>(null);
 
   const selectedVehicle = vehicles.find((vehicle) => vehicle.id === quoteVehicleId);
   const selectedRoute = routes.find((route) => route.id === quoteRouteId);
@@ -311,9 +450,56 @@ function FastQuotePanel({
   const hasFormula = selectedVehicle
     ? profiles.some((profile) => profile.vehicleId === selectedVehicle.id && profile.mode === quoteMode && profile.active)
     : false;
+  const originLocation = locations.find(location => location.id === originLocationId);
+  const destinationLocation = locations.find(location => location.id === destinationLocationId);
+  const originCoordinates = useMemo(() => originPoint ?? (
+    originLocation?.latitude != null && originLocation.longitude != null
+      ? { latitude: originLocation.latitude, longitude: originLocation.longitude } : null
+  ), [originLocation?.latitude, originLocation?.longitude, originPoint]);
+  const destinationCoordinates = useMemo(() => destinationPoint ?? (
+    destinationLocation?.latitude != null && destinationLocation.longitude != null
+      ? { latitude: destinationLocation.latitude, longitude: destinationLocation.longitude } : null
+  ), [destinationLocation?.latitude, destinationLocation?.longitude, destinationPoint]);
+  const hasOriginInput = Boolean(originLocationId || originPoint);
+  const hasDestinationInput = Boolean(destinationLocationId || destinationPoint);
+
+  const setCustomPoint = (side: 'origin' | 'destination', point: QuotePoint) => {
+    const matchedId = findNearestFastQuoteLocation(locations, point);
+    if (side === 'origin') {
+      setOriginPoint(point);
+      setOriginLocationId(matchedId ?? '');
+    } else {
+      setDestinationPoint(point);
+      setDestinationLocationId(matchedId ?? '');
+    }
+  };
+
+  const geocodeAddress = async (side: 'origin' | 'destination') => {
+    const address = side === 'origin' ? originAddress : destinationAddress;
+    if (address.trim().length < 3) return;
+    setGeocodingSide(side);
+    setDistanceError('');
+    try {
+      const response = await fetch('/admin/api/locations/geocode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: address.trim() }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.result) throw new Error(payload?.error ?? 'Adres bulunamadı.');
+      const point = { latitude: Number(payload.result.latitude), longitude: Number(payload.result.longitude) };
+      setCustomPoint(side, point);
+      if (side === 'origin') setOriginAddress(payload.result.formattedAddress ?? address);
+      else setDestinationAddress(payload.result.formattedAddress ?? address);
+    } catch (error) {
+      setDistanceError(error instanceof Error ? error.message : 'Adres bulunamadı.');
+    } finally {
+      setGeocodingSide(null);
+    }
+  };
 
   useEffect(() => {
-    if (!originLocationId || (quoteMode === 'DISTANCE' && !destinationLocationId)) {
+    if (!hasOriginInput || (quoteMode === 'DISTANCE' && !hasDestinationInput)) {
       setDistance(null);
       setDistanceError('');
       return;
@@ -325,7 +511,11 @@ function FastQuotePanel({
     fetch('/admin/api/location-distance', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ originLocationId, destinationLocationId }),
+       body: JSON.stringify(
+         (originPoint || destinationPoint) && originCoordinates && destinationCoordinates
+           ? { originCoordinates, destinationCoordinates }
+           : { originLocationId, destinationLocationId },
+       ),
       signal: controller.signal,
     })
       .then(async (response) => {
@@ -347,7 +537,7 @@ function FastQuotePanel({
       cancelled = true;
       controller.abort();
     };
-  }, [originLocationId, destinationLocationId, quoteMode]);
+  }, [destinationCoordinates, destinationLocationId, destinationPoint, hasDestinationInput, hasOriginInput, originCoordinates, originLocationId, originPoint, quoteMode]);
 
   useEffect(() => {
     if (!quoteRouteId) {
@@ -425,7 +615,7 @@ function FastQuotePanel({
   };
 
   const handleQuote = async () => {
-    if (!originLocationId || !destinationLocationId) {
+    if (!hasOriginInput || (quoteMode === 'DISTANCE' && !hasDestinationInput)) {
       setQuoteResult({ state: 'UNAVAILABLE', reason: 'MISSING_DISTANCE' });
       return;
     }
@@ -436,8 +626,14 @@ function FastQuotePanel({
         ...(quoteVehicleId ? { vehicleId: quoteVehicleId } : {}),
         ...(selectedRoute ? { routeId: selectedRoute.id } : {}),
         ...(selectedRoute && tollAlternativeId ? { tollAlternativeId } : {}),
-        originLocationId,
-        destinationLocationId,
+        ...(originLocationId ? { originLocationId } : {}),
+        ...(destinationLocationId ? { destinationLocationId } : {}),
+        ...((originPoint || destinationPoint) && originCoordinates && destinationCoordinates
+          ? {
+              originCoordinates: { ...originCoordinates, address: originAddress || undefined },
+              destinationCoordinates: { ...destinationCoordinates, address: destinationAddress || undefined },
+            }
+          : {}),
         mode: quoteMode,
         tripType: quoteMode === 'HOURLY' ? 'ONE_WAY' : quoteTripType,
         ...(quoteMode === 'HOURLY' ? { requestedHours: quoteHours } : {}),
@@ -486,7 +682,7 @@ function FastQuotePanel({
       <div className="space-y-4">
         <div>
           <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Araç</label>
-          <select className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={quoteVehicleId} onChange={e => setQuoteVehicleId(e.target.value)}>
+          <select data-testid="quote-vehicle" className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={quoteVehicleId} onChange={e => setQuoteVehicleId(e.target.value)}>
             <option value="">Araç Seçin...</option>
             {vehicles.map((vehicle) => {
               const distanceProfile = profiles.some((profile) => profile.vehicleId === vehicle.id && profile.mode === quoteMode && profile.active);
@@ -501,19 +697,6 @@ function FastQuotePanel({
           )}
           {selectedVehicle?.priceCalculationEligible && !hasFormula && (
             <p className="mt-2 text-xs font-medium text-amber-700">Bu mod için henüz fiyat formülü tanımlanmamış. <a href="#pricing-profiles" className="font-bold underline">Formül oluşturun</a>.</p>
-          )}
-          {selectedVehicle && (
-            <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-              <span className="font-bold">Geçiş ücreti sınıfı: </span>
-              {selectedVehicle.tollClass
-                ? TOLL_VEHICLE_CLASS_LABELS[selectedVehicle.tollClass]
-                : 'Atanmamış — geçiş ücreti hesaplanamaz'}
-              {selectedTollAlternative?.totalKurus != null && (
-                <span className="ml-2 font-black text-slate-900">
-                  · Geçiş ücreti: {formatMoneyCents(selectedTollAlternative.totalKurus, 'TRY')}
-                </span>
-              )}
-            </div>
           )}
         </div>
         <div>
@@ -531,106 +714,121 @@ function FastQuotePanel({
           )}
         </div>
         {selectedRoute && (
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3" aria-live="polite">
-            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5" htmlFor="quote-toll-alternative">
-              Yol &amp; Geçiş Alternatifi
-            </label>
+          <div data-testid="quote-toll-panel" className="overflow-hidden rounded-lg border border-slate-200 bg-white" aria-live="polite">
             {tollsLoading ? (
-              <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-3 text-xs font-medium text-slate-600">
+              <div className="flex items-center gap-2 px-3 py-3 text-xs font-medium text-slate-600">
                 <Loader2 className="animate-spin" size={14} /> Alternatifler yükleniyor…
               </div>
             ) : tollAlternatives.length > 0 ? (
-              <div id="quote-toll-alternative" className="max-h-80 space-y-2 overflow-y-auto pr-1">
-                {tollAlternatives.map((alternative) => {
-                  const selected = alternative.id === tollAlternativeId;
-                  const unavailable = Boolean(selectedVehicle && !alternative.isPricedForSelectedVehicle);
-                  return (
-                    <button
-                      key={alternative.id}
-                      type="button"
-                      aria-pressed={selected}
-                      disabled={unavailable}
-                      onClick={() => setTollAlternativeId(alternative.id)}
-                      className={`w-full rounded-lg border p-3 text-left transition-colors ${
-                        selected
-                          ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
-                          : unavailable
-                            ? 'cursor-not-allowed border-slate-200 bg-slate-100 opacity-65'
-                            : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/40'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            {alternative.isDefault && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-800">Varsayılan</span>}
-                            {alternative.needsReview && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-black uppercase text-amber-800">İnceleme bekliyor</span>}
-                          </div>
-                          <div className="mt-1 text-xs font-bold text-slate-900">{alternative.name}</div>
-                          <div className="mt-1 text-[10px] leading-4 text-slate-500">
-                            {alternative.pointNames.length ? alternative.pointNames.join(' → ') : 'Ücretli geçiş yok'}
-                          </div>
-                        </div>
-                        <div className="shrink-0 text-right">
-                          <div className="text-[9px] font-bold uppercase tracking-wide text-slate-400">Geçiş ücreti</div>
-                          <div className={`mt-0.5 text-sm font-black ${alternative.totalKurus != null ? 'text-slate-900' : 'text-red-700'}`}>
-                            {alternative.totalKurus != null
-                              ? formatMoneyCents(alternative.totalKurus, 'TRY')
-                              : selectedVehicle ? 'Hesaplanamadı' : 'Araç seçin'}
-                          </div>
-                        </div>
-                      </div>
-                      {alternative.reviewNote && alternative.needsReview && (
-                        <p className="mt-2 border-t border-amber-200/70 pt-2 text-[10px] leading-4 text-amber-800">{alternative.reviewNote}</p>
+              <div id="quote-toll-alternative">
+                <button
+                  type="button"
+                  aria-expanded={tollPanelOpen}
+                  onClick={() => setTollPanelOpen(open => !open)}
+                  className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left hover:bg-slate-50"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Yol &amp; Geçiş Alternatifi
+                      {selectedVehicle?.tollClass && (
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 normal-case tracking-normal text-slate-600">
+                          {TOLL_VEHICLE_CLASS_LABELS[selectedVehicle.tollClass]}
+                        </span>
                       )}
-                    </button>
-                  );
-                })}
+                    </div>
+                    <div className="mt-1 truncate text-sm font-bold text-slate-900">
+                      {selectedTollAlternative
+                        ? `${selectedTollAlternative.isDefault ? 'Varsayılan: ' : 'Seçili: '}${selectedTollAlternative.name} · ${
+                            selectedTollAlternative.totalKurus != null
+                              ? formatMoneyCents(selectedTollAlternative.totalKurus, 'TRY')
+                              : selectedVehicle ? 'Hesaplanamadı' : 'Araç seçin'
+                          }`
+                        : 'Alternatif seçin'}
+                    </div>
+                    <div className="mt-0.5 text-[10px] text-blue-700">
+                      {tollPanelOpen ? 'Alternatifleri kapat' : `${tollAlternatives.length - 1} diğer alternatifi göster`}
+                    </div>
+                  </div>
+                  <ChevronDown size={18} className={`shrink-0 text-slate-400 transition-transform ${tollPanelOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {tollPanelOpen && (
+                  <div className="max-h-64 divide-y divide-slate-100 overflow-y-auto border-t border-slate-200">
+                    {tollAlternatives.map((alternative) => {
+                      const selected = alternative.id === tollAlternativeId;
+                      const unavailable = Boolean(selectedVehicle && !alternative.isPricedForSelectedVehicle);
+                      return (
+                        <button
+                          key={alternative.id}
+                          type="button"
+                          aria-pressed={selected}
+                          disabled={unavailable}
+                          onClick={() => { setTollAlternativeId(alternative.id); setTollPanelOpen(false); }}
+                          className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs ${
+                            selected ? 'bg-blue-50 text-blue-950' : unavailable ? 'cursor-not-allowed bg-slate-50 opacity-55' : 'hover:bg-slate-50'
+                          }`}
+                        >
+                          <span className="flex min-w-0 items-center gap-2">
+                            <span className="truncate font-bold">{alternative.name}</span>
+                            {alternative.needsReview && <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-black text-amber-800">Review bekliyor</span>}
+                          </span>
+                          <span className="shrink-0 font-black">
+                            {alternative.totalKurus != null ? formatMoneyCents(alternative.totalKurus, 'TRY') : selectedVehicle ? 'Hesaplanamadı' : 'Araç seçin'}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="rounded-lg border border-slate-200 bg-white px-3 py-3 text-xs text-slate-600">Geçiş alternatifi yok</div>
+              <div className="px-3 py-3 text-xs text-slate-600">Bu rota için geçiş alternatifi yok.</div>
             )}
             {tollsError ? (
-              <p className="mt-2 text-xs font-medium text-red-700">{tollsError}</p>
-            ) : tollAlternatives.length === 0 && !tollsLoading ? (
-              <p className="mt-2 text-xs text-slate-600">Bu rota için geçiş maliyeti tanımlanmamış.</p>
+              <p className="border-t border-slate-100 px-3 py-2 text-xs font-medium text-red-700">{tollsError}</p>
             ) : selectedTollAlternative ? (
-              <>
-                <p className="mt-2 text-xs text-slate-600">
-                  {selectedTollAlternative.pointNames.length
-                    ? selectedTollAlternative.pointNames.join(' → ')
-                    : 'Bu alternatifte ücretli geçiş bulunmuyor.'}
-                </p>
+              <div className="border-t border-slate-100 px-3 py-2">
                 {selectedVehicle && selectedTollAlternative.isBannedForSelectedVehicle && (
-                  <p className="mt-2 text-xs font-bold text-red-700">
+                  <p className="text-xs font-bold text-red-700">
                     Bu araç şu geçiş noktalarından geçemez (yasaklı sınıf): {selectedTollAlternative.bannedPointNames.join(', ')}. Lütfen bu noktaları içermeyen başka bir alternatif seçin.
                   </p>
                 )}
                 {selectedVehicle && !selectedTollAlternative.isBannedForSelectedVehicle && selectedTollAlternative.missingTariffPointNames.length > 0 && (
-                  <p className="mt-2 text-xs font-bold text-red-700">
+                  <p className="text-xs font-bold text-red-700">
                     Aktif/geçerli tarife eksik: {selectedTollAlternative.missingTariffPointNames.join(', ')}. Yanlış fiyat üretilmeyecek.
                   </p>
                 )}
-              </>
+              </div>
             ) : (
-              <p className="mt-2 text-xs font-medium text-amber-700">Fiyat hesabına geçmeden önce bu rota için bir geçiş alternatifi seçin.</p>
+              tollAlternatives.length > 0 && <p className="border-t border-slate-100 px-3 py-2 text-xs font-medium text-amber-700">Fiyat hesabına geçmeden önce bir geçiş alternatifi seçin.</p>
             )}
           </div>
         )}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kalkış</label>
-            <select value={originLocationId} onChange={(event) => { setOriginLocationId(event.target.value); }} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm">
-              <option value="">Seçin...</option>
-              {quoteLocations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Varış {quoteMode === 'HOURLY' ? '(isteğe bağlı)' : ''}</label>
-            <select value={destinationLocationId} onChange={(event) => { setDestinationLocationId(event.target.value); }} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm">
-              <option value="">{quoteMode === 'HOURLY' ? 'Belirtmeyin' : 'Seçin...'}</option>
-              {quoteLocations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
-            </select>
-          </div>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <QuoteLocationInput
+            label="Kalkış"
+            locations={quoteLocations}
+            value={originLocationId}
+            address={originAddress}
+            point={originPoint}
+            geocoding={geocodingSide === 'origin'}
+            onSelect={(value) => { setOriginLocationId(value); setOriginPoint(null); setOriginAddress(''); }}
+            onAddress={(value) => { setOriginAddress(value); setOriginLocationId(''); setOriginPoint(null); }}
+            onGeocode={() => geocodeAddress('origin')}
+            onPoint={(point) => setCustomPoint('origin', point)}
+          />
+          <QuoteLocationInput
+            label="Varış"
+            optional={quoteMode === 'HOURLY'}
+            locations={quoteLocations}
+            value={destinationLocationId}
+            address={destinationAddress}
+            point={destinationPoint}
+            geocoding={geocodingSide === 'destination'}
+            onSelect={(value) => { setDestinationLocationId(value); setDestinationPoint(null); setDestinationAddress(''); }}
+            onAddress={(value) => { setDestinationAddress(value); setDestinationLocationId(''); setDestinationPoint(null); }}
+            onGeocode={() => geocodeAddress('destination')}
+            onPoint={(point) => setCustomPoint('destination', point)}
+          />
         </div>
         <div className={`rounded-lg border px-3 py-2 text-xs font-medium ${
           distance?.state === 'GOOGLE_MAPS' || distance?.state === 'DEFINED_ROUTE'
@@ -690,7 +888,7 @@ function FastQuotePanel({
             Henüz hiçbir fiyat formülü yok. Araç seçimi korunur; otomatik fiyat için <a href="#pricing-profiles" className="font-bold underline">ilk formülü oluşturun</a>.
           </div>
         )}
-        <button onClick={handleQuote} disabled={!quoteVehicleId || !originLocationId || (quoteMode === 'DISTANCE' && !destinationLocationId) || distanceLoading || quoting || tollsLoading || (tollAlternatives.length > 0 && !tollAlternativeId) || Boolean(selectedTollAlternative && selectedVehicle && !selectedTollAlternative.isPricedForSelectedVehicle)} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center justify-center gap-2 mt-2">
+        <button onClick={handleQuote} disabled={!quoteVehicleId || !hasOriginInput || (quoteMode === 'DISTANCE' && !hasDestinationInput) || distanceLoading || quoting || tollsLoading || (tollAlternatives.length > 0 && !tollAlternativeId) || Boolean(selectedTollAlternative && selectedVehicle && !selectedTollAlternative.isPricedForSelectedVehicle)} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center justify-center gap-2 mt-2">
           {quoting ? <Loader2 className="animate-spin" size={18} /> : 'Hesapla'}
         </button>
       </div>

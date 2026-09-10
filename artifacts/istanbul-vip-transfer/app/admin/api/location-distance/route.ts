@@ -3,10 +3,14 @@ import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 
-const requestSchema = z.object({
-  originLocationId: z.string().uuid(),
-  destinationLocationId: z.string().uuid(),
+const pointSchema = z.object({
+  latitude: z.number().finite().min(-90).max(90),
+  longitude: z.number().finite().min(-180).max(180),
 });
+const requestSchema = z.union([
+  z.object({ originLocationId: z.string().uuid(), destinationLocationId: z.string().uuid() }),
+  z.object({ originCoordinates: pointSchema, destinationCoordinates: pointSchema }),
+]);
 
 /** Admin-only distance contract for the future fast quote flow. */
 export async function POST(request: NextRequest) {
@@ -33,7 +37,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Geçersiz lokasyon seçimi.' }, { status: 422 });
   }
 
-  const { resolveLocationDistance } = await import('@/lib/location-distance');
-  const result = await resolveLocationDistance(parsed.data);
+  const { resolveCoordinateDistance, resolveLocationDistance } = await import('@/lib/location-distance');
+  const result = 'originCoordinates' in parsed.data
+    ? await resolveCoordinateDistance({ origin: parsed.data.originCoordinates, destination: parsed.data.destinationCoordinates })
+    : await resolveLocationDistance(parsed.data);
   return NextResponse.json({ result }, { status: result.state === 'UNAVAILABLE' ? 422 : 200 });
 }

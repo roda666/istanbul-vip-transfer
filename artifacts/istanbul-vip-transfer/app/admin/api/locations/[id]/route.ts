@@ -13,8 +13,8 @@ const updateSchema = z.object({
     .optional(),
   city: z.string().max(100).optional(),
   district: z.string().max(200).optional().nullable(),
-  latitude: z.number().finite().min(-90).max(90).optional().nullable(),
-  longitude: z.number().finite().min(-180).max(180).optional().nullable(),
+  latitude: z.number().finite().min(-90).max(90).optional(),
+  longitude: z.number().finite().min(-180).max(180).optional(),
   coordinateSource: z.string().max(100).optional().nullable(),
   coordinateAccuracyMeters: z.number().int().min(0).max(100_000).optional().nullable(),
   type: z.enum(LOCATION_TYPES).optional(),
@@ -128,12 +128,19 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (data.dropoffEnabled !== undefined) updateValues.dropoffEnabled = data.dropoffEnabled;
   if (data.isActive !== undefined) updateValues.isActive = data.isActive;
   if (data.displayOrder !== undefined) updateValues.displayOrder = data.displayOrder;
-  const { fillMissingTranslations } = await import('@/lib/ai/fill-missing-translations');
-  updateValues.translations = await fillMissingTranslations({
+  const changedTranslationFields = [
+    ...(data.name !== undefined ? ['name'] : []),
+    ...(data.city !== undefined ? ['city'] : []),
+    ...(data.district !== undefined ? ['district'] : []),
+  ];
+  const { syncStructuralTranslations } = await import('@/lib/ai/fill-missing-translations');
+  updateValues.translations = changedTranslationFields.length === 0
+    ? current.translations
+    : await syncStructuralTranslations({
     name: data.name ?? current.name,
     city: data.city ?? current.city,
     district: data.district === undefined ? current.district : data.district,
-  }, current.translations ?? {});
+  }, current.translations ?? {}, changedTranslationFields);
 
   try {
     const [updated] = await db.update(locations).set(updateValues).where(eq(locations.id, id)).returning();

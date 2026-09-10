@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findExactFastQuoteRoute, sortFastQuoteTollAlternatives } from '@/lib/admin-fast-quote';
+import { findExactFastQuoteRoute, findNearestFastQuoteLocation, sortFastQuoteTollAlternatives } from '@/lib/admin-fast-quote';
 
 describe('fast quote route matching', () => {
   const routes = [
@@ -11,6 +11,18 @@ describe('fast quote route matching', () => {
     expect(findExactFastQuoteRoute(routes, 'istanbul', 'antalya')).toBe('active-forward');
     expect(findExactFastQuoteRoute(routes, 'antalya', 'istanbul')).toBeNull();
     expect(findExactFastQuoteRoute(routes, 'istanbul', 'bursa')).toBeNull();
+  });
+});
+
+describe('fast quote map location matching', () => {
+  const locations = [
+    { id: 'airport', latitude: 41.2753, longitude: 28.7519 },
+    { id: 'taksim', latitude: 41.0369, longitude: 28.9850 },
+  ];
+
+  it('matches a nearby map pin but never invents a distant catalogue location', () => {
+    expect(findNearestFastQuoteLocation(locations, { latitude: 41.274, longitude: 28.754 })).toBe('airport');
+    expect(findNearestFastQuoteLocation(locations, { latitude: 40.2, longitude: 29.1 })).toBeNull();
   });
 });
 

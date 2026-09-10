@@ -13,8 +13,8 @@
  *     given crossing point is a per-(vehicle, toll point) admin assignment (see
  *     the vehicle_toll_point_classes table) — never a single global vehicle field,
  *     because an operator's own classification can diverge from KGM's per point.
- *   - Every priced row's amount comes from the operator's own official page,
- *     fetched live on 2026-08-26:
+ *   - Tariffs are maintained from owner-supplied PDFs/Excel files or explicit
+ *     manual entry. This script never fetches current prices from the network.
  *       - 15 Temmuz Şehitler Köprüsü + Fatih Sultan Mehmet Köprüsü: one shared
  *         KGM PDF tariff table, effective 01/01/2026.
  *       - Yavuz Sultan Selim Köprüsü, Osmangazi Köprüsü, 1915 Çanakkale Köprüsü:
@@ -47,18 +47,10 @@
  *     own official PDF tariffs price all six classes with no exclusion), so
  *     bannedVehicleClasses is seeded as [] (confirmed-none) there, sourced to
  *     the same official PDF used for their tariffs.
- *   - The 6 named highway/otoyol points (İstanbul–İzmir otoyol ilave kesim and
- *     the 5 "Güzergah" placeholders for Bursa/Sapanca/Ankara/Antalya/Bodrum) are
- *     scaffolded with a full class_1..class_6 row set per point, but every row
- *     is left with a NULL amount and NULL source on purpose: Turkish otoyol
- *     segments beyond the named bridges/tunnel are either currently toll-free
- *     or charge distance-based OGS/HGS fees that this point-based, flat
- *     per-class model cannot represent without a specific entry/exit pair and
- *     per-route km input (out of this task's scope). Scaffolding the rows (vs.
- *     leaving zero rows) makes each corridor's incompleteness explicit and
- *     immediately editable by an admin who sources a specific number later.
- *     Their vehicle-class ban status is left unconfirmed (bannedVehicleClasses
- *     = null) for the same reason.
+ *   - Owner-supplied 2026 KGM PDFs provide specific gate-pair tariffs for the
+ *     Sapanca, İzmir and Bodrum mappings. Antalya remains intentionally blank.
+ *     The Bursa placeholder is inactive because the standalone Osmangazi
+ *     Gebze→Bursa Batı amount already covers the complete Bursa charge.
  *   - Route → toll-alternative mappings are this agent's own geographic
  *     inference from each route's origin/destination (which side of the
  *     Bosphorus each is on), not sourced from any operator. Admins can
@@ -143,20 +135,20 @@ const POINTS = [
   {
     key: 'İZMİR OTOBAN', name: 'İstanbul–İzmir Otoyolu (Gebze-Orhangazi-İzmir, ilave kesim)', type: 'HIGHWAY',
     dayStartHour: null, nightStartHour: null,
-    notes: 'OTOYOL A.Ş.\'nin işlettiği Osmangazi Köprüsü + O-5 koridoru; sabit tek tutar yok, giriş/çıkış gişe çiftine göre ücretlendirilir (operatörün "Geçiş Ücreti Hesaplama" aracı: https://isletme.otoyolas.com.tr/gecis-ucreti-hesapla/). Bu aracın gerçek fiyat API\'si (mobil.otoyolas.com.tr/WS_Restful/calculatePrice2) bu ortamdan erişilemediği için (curl zaman aşımı, fetch AbortError, webFetch 500 — üç ayrı yöntemle doğrulandı) gişe çifti bazlı tarife satırları kasıtlı olarak boş bırakılmıştır; admin ilgili gişe çiftleri için doğrulanmış tutarları elle girmelidir. UYARI — OLASI ÇİFT SAYMA RİSKİ (2026-08-26\'da not edildi): bu notun kendisi "Osmangazi Köprüsü + O-5 koridoru" ifadesini kullanıyor — yani bu GATE_PAIR noktasının gişe çifti tutarı Osmangazi Köprüsü ücretini ZATEN içerebilir (1915 Çanakkale Otoyolu\'nun IncludingBridge=true yapısıyla aynı desen). İstanbul→İzmir rota alternatifi bu noktayı AYRICA ayrı bir "Osmangazi Köprüsü" (FLAT) satırıyla birlikte kullanıyor. Bir admin bu gişe çiftleri için gerçek tutar girmeden önce OTOYOL A.Ş.\'nin aracından bu tutarın Osmangazi\'yi içerip içermediğini teyit etmeli; emin olunamıyorsa ikisini birden eklemek yerine "çift sayma riski, sahibi doğrulasın" olarak bırakılmalıdır.',
-    classificationLabel: null, bannedVehicleClasses: null, bannedVehicleClassesSourceUrl: null,
+    notes: 'KGM 01/07/2026 PDF tarifesindeki Gebze → İzmir toplamı Osmangazi Köprüsü geçişini zaten içerir. Bu nokta kullanılan rota alternatifine ayrıca bağımsız Osmangazi Köprüsü kalemi eklenmemelidir.',
+    classificationLabel: KGM_CLASSIFICATION_LABEL, bannedVehicleClasses: null, bannedVehicleClassesSourceUrl: null,
     pricingMode: 'GATE_PAIR',
     // The calculator page's own text describes gate-based collection that
     // differs by direction (entry/exit gates are not symmetric), so this is
     // modeled as directional rather than assumed to double like a bridge.
     tollDirection: 'TWO_WAY_DIRECTIONAL',
-    tollDirectionSourceUrl: 'https://isletme.otoyolas.com.tr/gecis-ucreti-hesapla/',
-    tollDirectionNotes: 'OTOYOL A.Ş. hesaplama aracı giriş ve çıkış gişesini ayrı ayrı seçtirir; yön bazında farklı gişe/ücret uygulanabilir.',
+    tollDirectionSourceUrl: 'https://www.kgm.gov.tr/SiteCollectionDocuments/KGMdocuments/Otoyollar/OtoyolKopruUcret/2026Gecis_Ucret/12-Gebze-Orhangazi-Izmir.pdf',
+    tollDirectionNotes: 'Kaydedilen manuel PDF tutarı GEBZE → İZMİR yönü içindir; ters yön ayrıca doğrulanmadan varsayılmaz.',
   },
   {
     key: 'İstanbul–Bursa Otoyolu Güzergahı', name: 'İstanbul–Bursa Otoyolu Güzergahı (doğrulanmamış ilave ücret)', type: 'HIGHWAY',
     dayStartHour: null, nightStartHour: null,
-    notes: 'Distance-based OGS/HGS ücretlendirmesi kullanılır; belirli bir giriş/çıkış çifti olmadan resmî bir tutar üretilemez (kapsam dışı). Tüm sınıflar kasıtlı olarak boş bırakılmıştır.',
+    notes: 'N/A — Osmangazi Köprüsü kalemi Gebze → Bursa Batı için köprü ve Bursa çıkışını birlikte tam kapsar. Bu ilave kesim noktası kullanılmaz ve hiçbir rota alternatifine bağlanmamalıdır.',
     classificationLabel: null, bannedVehicleClasses: null, bannedVehicleClassesSourceUrl: null,
     // 2026-08-26 correction: a highway/otoyol segment is priced by entry+exit
     // gate pair, never a single flat amount — see the sahibi's explicit rule
@@ -164,6 +156,7 @@ const POINTS = [
     // gate-pair data yet, but its pricingMode must still reflect the correct
     // model so a future amount is never entered as a flat single price.
     pricingMode: 'GATE_PAIR',
+    active: false,
   },
   {
     // Superseded 2026-08-26 by the dedicated 'KUZEY MARMARA OTOYOLU' point
@@ -190,23 +183,26 @@ const POINTS = [
   {
     key: 'KUZEY MARMARA OTOYOLU', name: 'Kuzey Marmara Otoyolu (O-7, YSS Köprüsü hariç ilave kesim)', type: 'HIGHWAY',
     dayStartHour: null, nightStartHour: null,
-    notes: 'YSS Köprüsü ve Kuzey Marmara Otoyolu\'nun işletmecisinin kendi "Ücret Hesaplama" aracı (https://www.ysskoprusuveotoyolu.com.tr/ucret-hesaplama) 2026-08-26\'da bu kesimin tarife kaynağı olarak kaydedildi — KGM\'nin YSS PDF/aspx sayfaları yalnızca köprünün kendisini kapsar, bu otoyol kesimini kapsamaz. Sabit tek tutar yok, giriş/çıkış noktası seçilerek hesaplanıyor. Sayfanın giriş/çıkış <select> kutuları JavaScript ile dolduruluyor (statik HTML\'de boş/disabled) ve bu ortamdan erişilebilen bir API uç noktası bulunamadı (2026-08-26, curl + doğrudan JS bundle taraması ile denendi) — bu yüzden gişe çifti bazlı tarife satırları kasıtlı olarak boş bırakılmıştır. Admin gerçek tutarları bu araçtan elle sorgulayıp girmeli ve sayfa yürürlük tarihi belirtmediği için her satıra sorgulama tarihini (queriedAt) eklemelidir.',
-    classificationLabel: 'OTOYOL A.Ş. ile aynı ortak ulusal sınıflandırma (aks aralığı/aks sayısına göre) — bu operatörün sayfasında da doğrulandı.',
+    notes: 'KGM 01/07/2026 PDF tarifesi: KURNAKÖY 2 → ADAPAZARI-1 Sapanca için varsayılan doğrulanmış gişe çiftidir; ADAPAZARI-2 ayrıca alternatif tarife olarak kayıtlıdır. Bu ücret YSS Köprüsü ücretine ek ayrı otoyol ücretidir. İstanbul–Ankara ve diğer rotalar aynı noktayı kullanıyorsa gerçek çıkış gişesi ayrıca doğrulanmadan bu çift uygulanmamalıdır.',
+    classificationLabel: KGM_CLASSIFICATION_LABEL,
     bannedVehicleClasses: null, bannedVehicleClassesSourceUrl: null,
     pricingMode: 'GATE_PAIR',
     // Same reasoning as İZMİR OTOBAN below: the calculator's own separate
     // "Giriş Noktası" / "Çıkış Noktası" selectors are the evidence that fees
     // differ by direction, not an assumption.
     tollDirection: 'TWO_WAY_DIRECTIONAL',
-    tollDirectionSourceUrl: 'https://www.ysskoprusuveotoyolu.com.tr/ucret-hesaplama',
-    tollDirectionNotes: 'İşletmecinin "Ücret Hesaplama" aracı giriş ve çıkış noktasını ayrı ayrı seçtirir; yön bazında farklı gişe/ücret uygulanabilir.',
+    tollDirectionSourceUrl: 'https://www.kgm.gov.tr/SiteCollectionDocuments/KGMdocuments/Otoyollar/OtoyolKopruUcret/2026Gecis_Ucret/15-KMOAnadoluKurtkoy-Akyazi.pdf',
+    tollDirectionNotes: 'PDF tablosu Kurnaköy 2 → Adapazarı yönündeki gişe çiftlerini fiyatlandırır; ters yön tutarı ayrıca doğrulanmadan varsayılmaz.',
   },
   {
     key: 'İstanbul–Antalya Otoyolu Güzergahı', name: 'İstanbul–Antalya Otoyolu Güzergahı (doğrulanmamış ilave ücret)', type: 'HIGHWAY',
     dayStartHour: null, nightStartHour: null,
-    notes: 'Distance-based OGS/HGS ücretlendirmesi kullanılır; belirli bir giriş/çıkış çifti olmadan resmî bir tutar üretilemez (kapsam dışı). Tüm sınıflar kasıtlı olarak boş bırakılmıştır. AYRICA KAPSAM UYARISI (2026-08-26): rota alternatifleri "Osmangazi Köprüsü" (FLAT) noktasını bu yer tutucuyla birlikte kullanıyor — bu tutar bir gün girilirse, Osmangazi\'yi zaten içerip içermediği ayrıca doğrulanmalı (bkz. İZMİR OTOBAN notundaki aynı desen); emin olunamıyorsa ikisi birden eklenmemeli.',
-    classificationLabel: null, bannedVehicleClasses: null, bannedVehicleClassesSourceUrl: null,
+    notes: 'Manuel birleşik tutar: KGM 01/07/2026 Gebze → İzmir tarifesi (Osmangazi Köprüsü dahil) + KGM 01/01/2026 Işıkkent → Aydın Batı tarifesi. Rota alternatifine ayrıca bağımsız Osmangazi Köprüsü kalemi eklenmemelidir.',
+    classificationLabel: KGM_CLASSIFICATION_LABEL, bannedVehicleClasses: null, bannedVehicleClassesSourceUrl: null,
     pricingMode: 'GATE_PAIR',
+    tollDirection: 'TWO_WAY_DIRECTIONAL',
+    tollDirectionSourceUrl: 'https://www.kgm.gov.tr/SiteCollectionDocuments/KGMdocuments/Otoyollar/OtoyolKopruUcret/2026Gecis_Ucret/12-Gebze-Orhangazi-Izmir.pdf',
+    tollDirectionNotes: 'Kaydedilen birleşik tutar İstanbul/Bodrum gidiş yönü içindir; ters yön ayrıca doğrulanmadan varsayılmaz.',
   },
   {
     key: 'İstanbul–Bodrum Otoyolu Güzergahı', name: 'İstanbul–Bodrum Otoyolu Güzergahı (doğrulanmamış ilave ücret)', type: 'HIGHWAY',
@@ -246,6 +242,7 @@ const TARIFFS = [
     sourceName: 'KGM — Yavuz Sultan Selim Köprüsü Geçiş Ücretleri Tarifesi',
     sourceUrl: 'https://www.kgm.gov.tr/SiteCollectionDocuments/KGMdocuments/Otoyollar/OtoyolKopruUcret/2026Gecis_Ucret/3-YSSKoprusu.pdf',
     effectiveFrom: '2026-07-01',
+    manualSource: true,
     rows: [{ classes: { class_1: 11000, class_2: 14500, class_3: 27000, class_4: 69000, class_5: 86000, class_6: 7500 }, timeBand: 'ALL' }],
   },
   {
@@ -253,7 +250,48 @@ const TARIFFS = [
     sourceName: 'KGM — Osmangazi Köprüsü Geçiş Ücretleri Tarifesi',
     sourceUrl: 'https://www.kgm.gov.tr/SiteCollectionDocuments/KGMdocuments/Otoyollar/OtoyolKopruUcret/2026Gecis_Ucret/2-Osmangazi.pdf',
     effectiveFrom: '2026-07-01',
+    manualSource: true,
     rows: [{ classes: { class_1: 117000, class_2: 187000, class_3: 222500, class_4: 295000, class_5: 372000, class_6: 82000 }, timeBand: 'ALL' }],
+  },
+  {
+    pointKey: 'KUZEY MARMARA OTOYOLU',
+    sourceName: 'KGM PDF — KMO Anadolu, Kurnaköy 2 → Adapazarı-1',
+    sourceUrl: 'https://www.kgm.gov.tr/SiteCollectionDocuments/KGMdocuments/Otoyollar/OtoyolKopruUcret/2026Gecis_Ucret/15-KMOAnadoluKurtkoy-Akyazi.pdf',
+    effectiveFrom: '2026-07-01',
+    manualSource: true,
+    entryGateName: 'KURNAKÖY 2',
+    exitGateName: 'ADAPAZARI-1',
+    rows: [{ classes: { class_1: 48000, class_2: 72500, class_3: 84500, class_4: 111000, class_5: 142000, class_6: 31000 }, timeBand: 'ALL' }],
+  },
+  {
+    pointKey: 'KUZEY MARMARA OTOYOLU',
+    sourceName: 'KGM PDF — KMO Anadolu, Kurnaköy 2 → Adapazarı-2',
+    sourceUrl: 'https://www.kgm.gov.tr/SiteCollectionDocuments/KGMdocuments/Otoyollar/OtoyolKopruUcret/2026Gecis_Ucret/15-KMOAnadoluKurtkoy-Akyazi.pdf',
+    effectiveFrom: '2026-07-01',
+    manualSource: true,
+    entryGateName: 'KURNAKÖY 2',
+    exitGateName: 'ADAPAZARI-2',
+    rows: [{ classes: { class_1: 49000, class_2: 78500, class_3: 93500, class_4: 124000, class_5: 155000, class_6: 34500 }, timeBand: 'ALL' }],
+  },
+  {
+    pointKey: 'İZMİR OTOBAN',
+    sourceName: 'KGM PDF — Gebze → İzmir, Osmangazi Köprüsü dahil toplam',
+    sourceUrl: 'https://www.kgm.gov.tr/SiteCollectionDocuments/KGMdocuments/Otoyollar/OtoyolKopruUcret/2026Gecis_Ucret/12-Gebze-Orhangazi-Izmir.pdf',
+    effectiveFrom: '2026-07-01',
+    manualSource: true,
+    entryGateName: 'GEBZE',
+    exitGateName: 'İZMİR',
+    rows: [{ classes: { class_1: 135500, class_2: 217000, class_3: 258000, class_4: 341000, class_5: 427500, class_6: 97500 }, timeBand: 'ALL' }],
+  },
+  {
+    pointKey: 'İstanbul–Bodrum Otoyolu Güzergahı',
+    sourceName: 'KGM PDF toplamı — Gebze → İzmir (Osmangazi dahil) + Işıkkent → Aydın Batı',
+    sourceUrl: 'https://www.kgm.gov.tr/SiteCollectionDocuments/KGMdocuments/Otoyollar/OtoyolKopruUcret/2026Gecis_Ucret/12-Gebze-Orhangazi-Izmir.pdf | https://www.kgm.gov.tr/SiteCollectionDocuments/KGMdocuments/Otoyollar/OtoyolKopruUcret/2026Gecis_Ucret/7-Izmir-Aydin.pdf',
+    effectiveFrom: '2026-07-01',
+    manualSource: true,
+    entryGateName: 'GEBZE',
+    exitGateName: 'AYDIN BATI',
+    rows: [{ classes: { class_1: 142800, class_2: 225200, class_3: 269500, class_4: 355800, class_5: 444300, class_6: 100800 }, timeBand: 'ALL' }],
   },
   {
     pointKey: 'ÇANAKKALE KÖPRÜSÜ',
@@ -366,41 +404,41 @@ const ROUTE_ALTERNATIVES = [
   {
     routeSlug: 'istanbul-sapanca',
     alternatives: [
-      { name: 'YSS Köprüsü üzerinden', isDefault: true, pointKeys: ['YSK', 'KUZEY MARMARA OTOYOLU'] },
-      { name: 'FSM Köprüsü üzerinden', isDefault: false, pointKeys: ['FSM', 'KUZEY MARMARA OTOYOLU'] },
-      { name: 'Avrasya Tüneli üzerinden', isDefault: false, pointKeys: ['AVRASYA', 'KUZEY MARMARA OTOYOLU'] },
+      { name: 'YSS Köprüsü üzerinden', isDefault: true, pointKeys: ['YSK', 'KUZEY MARMARA OTOYOLU'], gatePairs: { 'KUZEY MARMARA OTOYOLU': ['KURNAKÖY 2', 'ADAPAZARI-1'] } },
+      { name: 'FSM Köprüsü üzerinden', isDefault: false, pointKeys: ['FSM', 'KUZEY MARMARA OTOYOLU'], gatePairs: { 'KUZEY MARMARA OTOYOLU': ['KURNAKÖY 2', 'ADAPAZARI-1'] } },
+      { name: 'Avrasya Tüneli üzerinden', isDefault: false, pointKeys: ['AVRASYA'] },
     ],
   },
   {
     routeSlug: 'istanbul-ankara',
     alternatives: [
-      { name: 'YSS Köprüsü üzerinden', isDefault: true, pointKeys: ['YSK', 'KUZEY MARMARA OTOYOLU'] },
-      { name: 'FSM Köprüsü üzerinden', isDefault: false, pointKeys: ['FSM', 'KUZEY MARMARA OTOYOLU'] },
-      { name: 'Avrasya Tüneli üzerinden', isDefault: false, pointKeys: ['AVRASYA', 'KUZEY MARMARA OTOYOLU'] },
+      { name: 'YSS Köprüsü üzerinden', isDefault: true, pointKeys: ['YSK', 'KUZEY MARMARA OTOYOLU'], needsReview: true, reviewNote: 'Bu rota için Kuzey Marmara/O-7 çıkış gişesi ayrıca doğrulanmalıdır; Sapanca KURNAKÖY 2 → ADAPAZARI-1 tarifesi burada varsayılmaz.' },
+      { name: 'FSM Köprüsü üzerinden', isDefault: false, pointKeys: ['FSM', 'KUZEY MARMARA OTOYOLU'], needsReview: true, reviewNote: 'Bu rota için Kuzey Marmara/O-7 çıkış gişesi ayrıca doğrulanmalıdır; Sapanca KURNAKÖY 2 → ADAPAZARI-1 tarifesi burada varsayılmaz.' },
+      { name: 'Avrasya Tüneli üzerinden', isDefault: false, pointKeys: ['AVRASYA', 'KUZEY MARMARA OTOYOLU'], needsReview: true, reviewNote: 'Bu rota için Kuzey Marmara/O-7 çıkış gişesi ayrıca doğrulanmalıdır; Sapanca KURNAKÖY 2 → ADAPAZARI-1 tarifesi burada varsayılmaz.' },
     ],
   },
   {
     routeSlug: 'istanbul-izmir',
     alternatives: [
-      { name: 'YSS Köprüsü + Osmangazi Köprüsü + İzmir Otoyolu', isDefault: true, pointKeys: ['YSK', 'OSMANGAZİ KÖPRÜSÜ', 'İZMİR OTOBAN'] },
-      { name: 'FSM Köprüsü + Osmangazi Köprüsü + İzmir Otoyolu', isDefault: false, pointKeys: ['FSM', 'OSMANGAZİ KÖPRÜSÜ', 'İZMİR OTOBAN'] },
-      { name: 'Avrasya Tüneli + Osmangazi Köprüsü + İzmir Otoyolu', isDefault: false, pointKeys: ['AVRASYA', 'OSMANGAZİ KÖPRÜSÜ', 'İZMİR OTOBAN'] },
+      { name: 'YSS Köprüsü + İzmir Otoyolu (Osmangazi dahil)', isDefault: true, pointKeys: ['YSK', 'İZMİR OTOBAN'], gatePairs: { 'İZMİR OTOBAN': ['GEBZE', 'İZMİR'] } },
+      { name: 'FSM Köprüsü + İzmir Otoyolu (Osmangazi dahil)', isDefault: false, pointKeys: ['FSM', 'İZMİR OTOBAN'], gatePairs: { 'İZMİR OTOBAN': ['GEBZE', 'İZMİR'] } },
+      { name: 'Avrasya Tüneli + İzmir Otoyolu (Osmangazi dahil)', isDefault: false, pointKeys: ['AVRASYA', 'İZMİR OTOBAN'], gatePairs: { 'İZMİR OTOBAN': ['GEBZE', 'İZMİR'] } },
     ],
   },
   {
     routeSlug: 'istanbul-antalya',
     alternatives: [
-      { name: 'YSS Köprüsü + Osmangazi Köprüsü', isDefault: true, pointKeys: ['YSK', 'OSMANGAZİ KÖPRÜSÜ', 'İstanbul–Antalya Otoyolu Güzergahı'] },
-      { name: 'FSM Köprüsü + Osmangazi Köprüsü', isDefault: false, pointKeys: ['FSM', 'OSMANGAZİ KÖPRÜSÜ', 'İstanbul–Antalya Otoyolu Güzergahı'] },
-      { name: 'Avrasya Tüneli + Osmangazi Köprüsü', isDefault: false, pointKeys: ['AVRASYA', 'OSMANGAZİ KÖPRÜSÜ', 'İstanbul–Antalya Otoyolu Güzergahı'] },
+      { name: 'YSS Köprüsü + Osmangazi Köprüsü', isDefault: true, pointKeys: ['YSK', 'OSMANGAZİ KÖPRÜSÜ', 'İstanbul–Antalya Otoyolu Güzergahı'], needsReview: true, reviewNote: 'Antalya sürücüsünün gerçek otoyol güzergâhı ve giriş/çıkış gişeleri doğrulanmadı. Tarife boş bırakılır; tahminle fiyat üretilmez.' },
+      { name: 'FSM Köprüsü + Osmangazi Köprüsü', isDefault: false, pointKeys: ['FSM', 'OSMANGAZİ KÖPRÜSÜ', 'İstanbul–Antalya Otoyolu Güzergahı'], needsReview: true, reviewNote: 'Antalya sürücüsünün gerçek otoyol güzergâhı ve giriş/çıkış gişeleri doğrulanmadı. Tarife boş bırakılır; tahminle fiyat üretilmez.' },
+      { name: 'Avrasya Tüneli + Osmangazi Köprüsü', isDefault: false, pointKeys: ['AVRASYA', 'OSMANGAZİ KÖPRÜSÜ', 'İstanbul–Antalya Otoyolu Güzergahı'], needsReview: true, reviewNote: 'Antalya sürücüsünün gerçek otoyol güzergâhı ve giriş/çıkış gişeleri doğrulanmadı. Tarife boş bırakılır; tahminle fiyat üretilmez.' },
     ],
   },
   {
     routeSlug: 'istanbul-bodrum',
     alternatives: [
-      { name: 'YSS Köprüsü + Osmangazi Köprüsü', isDefault: true, pointKeys: ['YSK', 'OSMANGAZİ KÖPRÜSÜ', 'İstanbul–Bodrum Otoyolu Güzergahı'] },
-      { name: 'FSM Köprüsü + Osmangazi Köprüsü', isDefault: false, pointKeys: ['FSM', 'OSMANGAZİ KÖPRÜSÜ', 'İstanbul–Bodrum Otoyolu Güzergahı'] },
-      { name: 'Avrasya Tüneli + Osmangazi Köprüsü', isDefault: false, pointKeys: ['AVRASYA', 'OSMANGAZİ KÖPRÜSÜ', 'İstanbul–Bodrum Otoyolu Güzergahı'] },
+      { name: 'YSS Köprüsü + Bodrum Otoyolu (Osmangazi dahil)', isDefault: true, pointKeys: ['YSK', 'İstanbul–Bodrum Otoyolu Güzergahı'], gatePairs: { 'İstanbul–Bodrum Otoyolu Güzergahı': ['GEBZE', 'AYDIN BATI'] } },
+      { name: 'FSM Köprüsü + Bodrum Otoyolu (Osmangazi dahil)', isDefault: false, pointKeys: ['FSM', 'İstanbul–Bodrum Otoyolu Güzergahı'], gatePairs: { 'İstanbul–Bodrum Otoyolu Güzergahı': ['GEBZE', 'AYDIN BATI'] } },
+      { name: 'Avrasya Tüneli + Bodrum Otoyolu (Osmangazi dahil)', isDefault: false, pointKeys: ['AVRASYA', 'İstanbul–Bodrum Otoyolu Güzergahı'], gatePairs: { 'İstanbul–Bodrum Otoyolu Güzergahı': ['GEBZE', 'AYDIN BATI'] } },
     ],
   },
 ];
@@ -454,6 +492,7 @@ async function main() {
     // reason. Sources with a real stated effective date (effectiveFrom) do
     // not need this; the two are mutually exclusive per row in this script.
     const queriedAt = t.queriedAt ?? null;
+    const manualSource = t.manualSource ?? false;
     for (const row of t.rows) {
       const appliesDay = row.timeBand === 'ALL' || row.timeBand === 'DAY';
       const appliesNight = row.timeBand === 'ALL' || row.timeBand === 'NIGHT';
@@ -467,12 +506,13 @@ async function main() {
           await sql`
             UPDATE toll_tariffs SET
               amount_kurus = ${amountKurus},
-              automatic_amount_kurus = ${amountKurus},
-              manual_amount_kurus = NULL,
+              automatic_amount_kurus = ${manualSource ? null : amountKurus},
+              manual_amount_kurus = ${manualSource ? amountKurus : null},
               source_name = ${t.sourceName},
               source_url = ${t.sourceUrl},
               source_verified = true,
-              source_fetched_at = now(),
+              source_fetched_at = CASE WHEN ${manualSource} THEN NULL ELSE now() END,
+              manual_updated_at = CASE WHEN ${manualSource} THEN now() ELSE NULL END,
               valid_from = ${t.effectiveFrom ?? null},
               queried_at = ${queriedAt},
               entry_gate_name = ${entryGateName}, exit_gate_name = ${exitGateName}, direction = ${direction},
@@ -482,12 +522,12 @@ async function main() {
           await sql`
             INSERT INTO toll_tariffs (
               toll_point_id, vehicle_class, amount_kurus, automatic_amount_kurus,
-              source_name, source_url, source_verified, source_fetched_at,
+              manual_amount_kurus, source_name, source_url, source_verified, source_fetched_at, manual_updated_at,
               time_band, applies_day, applies_night, valid_from, queried_at, active,
               entry_gate_name, exit_gate_name, direction
             ) VALUES (
-              ${pointId}, ${vehicleClass}, ${amountKurus}, ${amountKurus},
-              ${t.sourceName}, ${t.sourceUrl}, true, now(),
+              ${pointId}, ${vehicleClass}, ${amountKurus}, ${manualSource ? null : amountKurus},
+              ${manualSource ? amountKurus : null}, ${t.sourceName}, ${t.sourceUrl}, true, CASE WHEN ${manualSource} THEN NULL ELSE now() END, CASE WHEN ${manualSource} THEN now() ELSE NULL END,
               ${row.timeBand}, ${appliesDay}, ${appliesNight}, ${t.effectiveFrom ?? null}, ${queriedAt}, true,
               ${entryGateName}, ${exitGateName}, ${direction}
             )`;
@@ -541,15 +581,16 @@ async function main() {
     for (let i = 0; i < r.alternatives.length; i++) {
       const alt = r.alternatives[i];
       const [altRow] = await sql`
-        INSERT INTO route_toll_alternatives (route_id, name, is_default, display_order)
-        VALUES (${route.id}, ${alt.name}, ${alt.isDefault}, ${i})
+        INSERT INTO route_toll_alternatives (route_id, name, is_default, display_order, needs_review, review_note)
+        VALUES (${route.id}, ${alt.name}, ${alt.isDefault}, ${i}, ${alt.needsReview ?? false}, ${alt.reviewNote ?? null})
         RETURNING id`;
       for (let j = 0; j < alt.pointKeys.length; j++) {
         const pointId = pointIdByKey[alt.pointKeys[j]];
         if (!pointId) { console.log(`  WARN unknown point key: ${alt.pointKeys[j]}`); continue; }
+        const gatePair = alt.gatePairs?.[alt.pointKeys[j]] ?? [null, null];
         await sql`
-          INSERT INTO route_toll_alternative_items (alternative_id, toll_point_id, display_order)
-          VALUES (${altRow.id}, ${pointId}, ${j})`;
+          INSERT INTO route_toll_alternative_items (alternative_id, toll_point_id, display_order, entry_gate_name, exit_gate_name)
+          VALUES (${altRow.id}, ${pointId}, ${j}, ${gatePair[0]}, ${gatePair[1]})`;
       }
     }
     console.log(`  mapped: ${r.routeSlug} (${r.alternatives.length} alternatives)`);

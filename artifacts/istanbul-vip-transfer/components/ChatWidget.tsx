@@ -16,6 +16,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLang } from '@/lib/i18n/context';
 import { useBookingFormVisible } from '@/lib/hooks/useBookingFormVisible';
+import { trackEvent } from '@/lib/analytics';
 
 interface Message {
   id?: string;
@@ -483,6 +484,10 @@ export default function ChatWidget({
             ))}
             {bookingAction && (
               <a href={bookingAction.url} target="_blank" rel="noopener noreferrer"
+                onClick={() => trackEvent('chatbot_whatsapp_click', {
+                  source: 'chatbot',
+                  language: lang,
+                })}
                 style={{ alignSelf: 'flex-start', background: '#16A36A', color: '#fff', borderRadius: '0.5rem', padding: '0.6rem 0.8rem', textDecoration: 'none', fontWeight: 600, fontSize: '0.8rem' }}>
                 {cb.whatsappCta}
               </a>

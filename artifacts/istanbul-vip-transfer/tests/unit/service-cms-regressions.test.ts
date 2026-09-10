@@ -54,6 +54,19 @@ describe('service CMS regression contracts', () => {
     }
   });
 
+  it('#75 rejects an unknown slug in the two-crumb registry', () => {
+    const typoSlug = 'istanbul-havalimani-tranfer';
+    TWO_CRUMB_SLUGS.add(typoSlug);
+
+    try {
+      expect(() => assertServiceSlugConsistency()).toThrow(
+        `TWO_CRUMB_SLUGS contains unknown service slug(s): ${typoSlug}`,
+      );
+    } finally {
+      TWO_CRUMB_SLUGS.delete(typoSlug);
+    }
+  });
+
   it('#81 treats an empty submitted hero value as explicit removal', async () => {
     const result = await resolveImageField('', '/api/storage/objects/service/hero.webp', 'Hero görseli');
     expect(result).toEqual({ value: null, warning: null });

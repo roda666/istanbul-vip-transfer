@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Vehicle } from '@/db/schema';
 import type { ContentStatus } from '@/lib/workflow';
@@ -10,7 +11,6 @@ import { ImageUploadField } from '../../_components/ImageUploadField';
 import { AISeoGenerator } from '../../_components/AISeoGenerator';
 import { normalizeVehicleType, VEHICLE_TYPE_OPTIONS } from '@/lib/vehicle-options';
 import { VEHICLE_FEATURE_CATALOG } from '@/lib/vehicle-feature-catalog';
-import { selectPricingProfilesForEditor } from '@/lib/vehicle-pricing-profile-selection';
 import { TOLL_VEHICLE_CLASSES, TOLL_VEHICLE_CLASS_DESCRIPTIONS, TOLL_VEHICLE_CLASS_LABELS, TOLL_VEHICLE_CLASS_SELECTION_WARNING } from '@/lib/toll-vehicle-classes';
 
 /** Active toll point, as needed for per-point class assignment. */
@@ -308,256 +308,6 @@ function ErrorBanner({ msg }: { msg: string }) {
       }}
     >
       {msg}
-    </div>
-  );
-}
-
-type VehiclePricingProfile = {
-  id: string;
-  vehicleId: string;
-  mode: 'DISTANCE' | 'HOURLY';
-  active: boolean;
-  distanceOpeningKurus: number | null;
-  distanceFirstKmKurus: number | null;
-  distanceThresholdKm: number | null;
-  distanceSecondKmKurus: number | null;
-  hourlyRateKurus: number | null;
-  minimumHours: number | null;
-  includedKmMode: 'PER_HOUR' | 'PACKAGE' | null;
-  includedKm: number | null;
-  excessKmKurus: number | null;
-  excessHourKurus: number | null;
-  notes: string | null;
-};
-
-const DEFAULT_DISTANCE_PROFILE = { opening: 0, first: 0, threshold: 100, second: 0 };
-const DEFAULT_HOURLY_PROFILE = {
-  rate: 0,
-  minimum: 4,
-  includedMode: 'PER_HOUR' as 'PER_HOUR' | 'PACKAGE',
-  includedKm: 10,
-  excessKm: 0,
-  excessHour: 0,
-};
-
-function VehiclePricingProfileEditor({ vehicleId, eligible }: { vehicleId: string; eligible: boolean }) {
-  const [profile, setProfile] = useState<VehiclePricingProfile | null>(null);
-  const [mode, setMode] = useState<'DISTANCE' | 'HOURLY'>('DISTANCE');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
-  const [distance, setDistance] = useState(DEFAULT_DISTANCE_PROFILE);
-  const [hourly, setHourly] = useState(DEFAULT_HOURLY_PROFILE);
-  const [moneyDrafts, setMoneyDrafts] = useState<Record<string, string>>({});
-
-  const formatKurusDraft = (value: number, optional = false) => {
-    if (optional && value === 0) return '';
-    const amount = value / 100;
-    return Number.isInteger(amount) ? String(amount) : amount.toFixed(2).replace('.', ',').replace(/0+$/, '').replace(/,$/, '');
-  };
-
-  const parseMoneyDraft = (draft: string, fallback: number) => {
-    const normalized = draft.trim().replace(',', '.');
-    if (!normalized || normalized === '.') return 0;
-    const amount = Number(normalized);
-    return Number.isFinite(amount) && amount >= 0 ? Math.round(amount * 100) : fallback;
-  };
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setMessage('');
-    try {
-      const response = await fetch(`/admin/api/pricing/profiles?vehicleId=${encodeURIComponent(vehicleId)}`);
-      const payload = await response.json().catch(() => null);
-      if (!response.ok || !Array.isArray(payload?.profiles)) throw new Error(payload?.error ?? 'Fiyat profili alınamadı.');
-      const { byMode, active, selectedMode } = selectPricingProfilesForEditor<VehiclePricingProfile>(payload.profiles);
-      const distanceProfile = byMode.DISTANCE;
-      const hourlyProfile = byMode.HOURLY;
-      const nextDistance = distanceProfile
-        ? {
-          opening: distanceProfile.distanceOpeningKurus ?? 0,
-          first: distanceProfile.distanceFirstKmKurus ?? 0,
-          threshold: distanceProfile.distanceThresholdKm ?? 100,
-          second: distanceProfile.distanceSecondKmKurus ?? 0,
-        }
-        : DEFAULT_DISTANCE_PROFILE;
-      const nextHourly = hourlyProfile
-        ? {
-          rate: hourlyProfile.hourlyRateKurus ?? 0,
-          minimum: hourlyProfile.minimumHours ?? 4,
-          includedMode: hourlyProfile.includedKmMode ?? 'PER_HOUR',
-          includedKm: hourlyProfile.includedKm ?? 10,
-          excessKm: hourlyProfile.excessKmKurus ?? 0,
-          excessHour: hourlyProfile.excessHourKurus ?? 0,
-        }
-        : DEFAULT_HOURLY_PROFILE;
-
-      setProfile(active);
-      setMode(selectedMode);
-      setDistance(nextDistance);
-      setHourly(nextHourly);
-      setMoneyDrafts({
-        distanceOpening: formatKurusDraft(nextDistance.opening, true),
-        distanceFirst: formatKurusDraft(nextDistance.first),
-        distanceSecond: formatKurusDraft(nextDistance.second, true),
-        hourlyRate: formatKurusDraft(nextHourly.rate),
-        hourlyExcessKm: formatKurusDraft(nextHourly.excessKm, true),
-        hourlyExcessHour: formatKurusDraft(nextHourly.excessHour, true),
-      });
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Fiyat profili alınamadı.');
-    } finally {
-      setLoading(false);
-    }
-  }, [vehicleId]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const moneyInput = (key: string, label: string, value: number, setValue: (value: number) => void, optional = false) => (
-    <div>
-      <Label>{label}</Label>
-      <input
-        type="text"
-        inputMode="decimal"
-        value={moneyDrafts[key] ?? formatKurusDraft(value, optional)}
-        onChange={(event) => {
-          const next = event.target.value;
-          if (/^\d*(?:[.,]\d*)?$/.test(next)) {
-            setMoneyDrafts((current) => ({ ...current, [key]: next }));
-          }
-        }}
-        onBlur={() => {
-          const draft = moneyDrafts[key] ?? formatKurusDraft(value, optional);
-          const parsed = parseMoneyDraft(draft, value);
-          setValue(parsed);
-          setMoneyDrafts((current) => ({ ...current, [key]: formatKurusDraft(parsed, optional) }));
-        }}
-        placeholder={optional ? 'İsteğe bağlı' : '0,00'}
-        style={inputStyle}
-      />
-      <span style={{ color: MUTED, fontSize: '10px', fontFamily: 'Inter, sans-serif' }}>TRY</span>
-    </div>
-  );
-
-  const save = async () => {
-    if (!eligible) {
-      setMessage('Önce bu aracı otomatik fiyat hesaplamasına uygun olarak kaydedin.');
-      return;
-    }
-    setSaving(true);
-    setMessage('');
-    const parsedDistance = {
-      ...distance,
-      opening: parseMoneyDraft(moneyDrafts.distanceOpening ?? formatKurusDraft(distance.opening, true), distance.opening),
-      first: parseMoneyDraft(moneyDrafts.distanceFirst ?? formatKurusDraft(distance.first), distance.first),
-      second: parseMoneyDraft(moneyDrafts.distanceSecond ?? formatKurusDraft(distance.second, true), distance.second),
-    };
-    const parsedHourly = {
-      ...hourly,
-      rate: parseMoneyDraft(moneyDrafts.hourlyRate ?? formatKurusDraft(hourly.rate), hourly.rate),
-      excessKm: parseMoneyDraft(moneyDrafts.hourlyExcessKm ?? formatKurusDraft(hourly.excessKm, true), hourly.excessKm),
-      excessHour: parseMoneyDraft(moneyDrafts.hourlyExcessHour ?? formatKurusDraft(hourly.excessHour, true), hourly.excessHour),
-    };
-    const payload = mode === 'DISTANCE'
-      ? {
-        vehicleId, active: true, mode, notes: null,
-        distanceOpeningKurus: parsedDistance.opening,
-        distanceFirstKmKurus: parsedDistance.first,
-        distanceThresholdKm: parsedDistance.threshold,
-        distanceSecondKmKurus: parsedDistance.second,
-      }
-      : {
-        vehicleId, active: true, mode, notes: null,
-        hourlyRateKurus: parsedHourly.rate,
-        minimumHours: parsedHourly.minimum,
-        includedKmMode: parsedHourly.includedMode,
-        includedKm: parsedHourly.includedKm,
-        excessKmKurus: parsedHourly.excessKm,
-        excessHourKurus: parsedHourly.excessHour,
-      };
-    try {
-      const response = await fetch('/admin/api/pricing/profiles', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const responseBody = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(responseBody?.error ?? 'Fiyat profili kaydedilemedi.');
-      setMessage('Fiyat profili kaydedildi.');
-      await load();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Fiyat profili kaydedilemedi.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const preview = (km: number) => {
-    const firstKm = Math.min(km, distance.threshold);
-    const nextKm = Math.max(0, km - distance.threshold);
-    const secondRate = distance.second > 0 ? distance.second : distance.first;
-    return distance.opening + firstKm * distance.first + nextKm * secondRate;
-  };
-
-  return (
-    <div style={{ background: '#F8FAFC', border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '16px', marginBottom: '16px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '14px' }}>
-        <div>
-          <div style={{ color: TEXT, fontSize: '14px', fontWeight: 700, fontFamily: 'Inter, sans-serif' }}>Araç Fiyat Profili</div>
-          <div style={{ color: MUTED, fontSize: '11px', fontFamily: 'Inter, sans-serif', marginTop: '3px' }}>Bu araç için TRY bazlı mesafe veya saatlik formül.</div>
-        </div>
-        {profile && (
-          <span style={{ color: profile.mode === mode ? '#047857' : MUTED, fontSize: '10px', fontWeight: 700, fontFamily: 'Inter, sans-serif' }}>
-            {profile.mode === mode ? 'AKTİF FORMÜL' : 'KAYITLI · PASİF'}
-          </span>
-        )}
-      </div>
-      {!eligible && <div style={{ color: '#A16207', fontSize: '12px', lineHeight: 1.5, marginBottom: '12px' }}>Bu araç talep üzerine fiyatlandırılıyor. Profil kaydetmek için üstteki “otomatik fiyat hesaplamasına uygundur” seçeneğini etkinleştirip aracı kaydedin.</div>}
-      {loading ? <div style={{ color: MUTED, fontSize: '12px' }}>Fiyat profili yükleniyor…</div> : (
-        <>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
-            <div>
-              <Label>Hesaplama Modu</Label>
-              <select value={mode} onChange={(event) => setMode(event.target.value as 'DISTANCE' | 'HOURLY')} style={inputStyle}>
-                <option value="DISTANCE">Mesafe bazlı</option>
-                <option value="HOURLY">Saatlik tahsis</option>
-              </select>
-            </div>
-            <div style={{ alignSelf: 'end', color: MUTED, fontSize: '11px', lineHeight: 1.5 }}>
-              Seçili mod aktif olur; diğer modun son kaydı silinmeden korunur.
-            </div>
-          </div>
-          {mode === 'DISTANCE' ? (
-            <>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                {moneyInput('distanceOpening', 'Açılış Ücreti', distance.opening, (opening) => setDistance((current) => ({ ...current, opening })), true)}
-                <div><Label>Kademe Sınırı (km)</Label><Input type="number" value={String(distance.threshold)} onChange={(threshold) => setDistance((current) => ({ ...current, threshold: Math.max(1, Number(threshold) || 1) }))} /></div>
-                {moneyInput('distanceFirst', 'Kilometre Fiyatı', distance.first, (first) => setDistance((current) => ({ ...current, first })))}
-                {moneyInput('distanceSecond', 'İkinci Kademe (isteğe bağlı)', distance.second, (second) => setDistance((current) => ({ ...current, second })), true)}
-              </div>
-              <div style={{ marginTop: '14px', borderTop: `1px solid ${BORDER}`, paddingTop: '12px' }}>
-                <div style={{ color: MUTED, fontWeight: 700, fontSize: '10px', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '8px' }}>Canlı Mesafe Örnekleri</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '6px' }}>
-                  {[20, 50, 100, 200, 500].map((km) => <div key={km} style={{ background: BG2, border: `1px solid ${BORDER}`, borderRadius: '6px', padding: '7px', textAlign: 'center' }}><div style={{ color: MUTED, fontSize: '10px' }}>{km} km</div><div style={{ color: TEXT, fontSize: '11px', fontWeight: 700 }}>{preview(km) / 100} TL</div></div>)}
-                </div>
-              </div>
-            </>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              {moneyInput('hourlyRate', 'Saatlik Tarife', hourly.rate, (rate) => setHourly((current) => ({ ...current, rate })))}
-              <div><Label>Minimum Saat</Label><Input type="number" value={String(hourly.minimum)} onChange={(minimum) => setHourly((current) => ({ ...current, minimum: Math.max(1, Number(minimum) || 1) }))} /></div>
-              <div><Label>Dahil km tipi</Label><select value={hourly.includedMode} onChange={(event) => setHourly((current) => ({ ...current, includedMode: event.target.value as 'PER_HOUR' | 'PACKAGE' }))} style={inputStyle}><option value="PER_HOUR">Saat başına</option><option value="PACKAGE">Paket toplamı</option></select></div>
-              <div><Label>Dahil km</Label><Input type="number" value={String(hourly.includedKm)} onChange={(includedKm) => setHourly((current) => ({ ...current, includedKm: Math.max(0, Number(includedKm) || 0) }))} /></div>
-              {moneyInput('hourlyExcessKm', 'Km Aşım Tarifesi', hourly.excessKm, (excessKm) => setHourly((current) => ({ ...current, excessKm })), true)}
-              {moneyInput('hourlyExcessHour', 'Saat Aşım Tarifesi', hourly.excessHour, (excessHour) => setHourly((current) => ({ ...current, excessHour })), true)}
-            </div>
-          )}
-          {message && <div style={{ marginTop: '12px', color: message.includes('kaydedildi') ? '#047857' : '#B91C1C', fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>{message}</div>}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '14px' }}>
-            <ActionButton variant="secondary" onClick={save} loading={saving} disabled={!eligible}>{saving ? 'Kaydediliyor…' : 'Fiyat Profilini Kaydet'}</ActionButton>
-          </div>
-        </>
-      )}
     </div>
   );
 }
@@ -1061,13 +811,13 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [] }: Prop
           </div>
         )}
       </div>
-      {isEdit ? (
-        <VehiclePricingProfileEditor vehicleId={vehicle!.id} eligible={form.priceCalculationEligible} />
-      ) : (
-        <div style={{ background: '#F8FAFC', border: `1px solid ${BORDER}`, borderRadius: '8px', padding: '12px', marginBottom: '16px', color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif', lineHeight: 1.5 }}>
-          Araç kaydedildikten sonra bu ekranda kilometre ve saatlik fiyat profilini tanımlayabilirsiniz.
-        </div>
-      )}
+      <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '8px', padding: '12px 14px', marginBottom: '16px', color: '#1E3A8A', fontSize: '12px', fontFamily: 'Inter, sans-serif', lineHeight: 1.6 }}>
+        Mesafe ve saatlik tahsis formülleri tek merkezden yönetilir. Bu aracın formülünü görmek veya değiştirmek için{' '}
+        <Link href="/admin/fiyat-kurallari#pricing-profiles" style={{ color: '#1D4ED8', fontWeight: 700, textDecoration: 'underline' }}>
+          Fiyat Kuralları → Hesaplama Formülleri
+        </Link>{' '}
+        bölümünü kullanın.
+      </div>
       {isEdit && (
         <div style={{ marginTop: '14px', color: MUTED, fontSize: '11px', lineHeight: 1.5 }}>
           Kalıcı silme, yalnızca hiç yayınlanmamış taslak araçlarda liste ekranından yapılabilir. Fiyat teklifi kaydı gibi bağımlılıklar varsa sunucu silmeyi güvenle reddeder.

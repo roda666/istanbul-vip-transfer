@@ -8,13 +8,13 @@ import { computeBlogHealthIssues } from '@/lib/blog-health';
 
 describe('health monitoring regressions', () => {
   it('keeps a bounded history model and exposes recurring outage slugs', () => {
-    const runs = Array.from({ length: 14 }, (_, i) => ({
+    const runs = Array.from({ length: 32 }, (_, i) => ({
       checkedAt: new Date(1_700_000_000_000 + i),
       unhealthyCount: i % 2,
       result: i === 0 ? [{ slug: 'airport-transfer' }] : [],
     }));
     const model = buildHealthHistoryViewModel(runs);
-    expect(model).toHaveLength(12);
+    expect(model).toHaveLength(30);
     expect(model[0].slugs).toEqual(['airport-transfer']);
     expect(buildHealthHistoryViewModel([{
       checkedAt: new Date(), unhealthyCount: 2,

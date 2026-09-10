@@ -4,9 +4,11 @@ export interface HealthHistoryRun {
   result: unknown;
 }
 
+export const HEALTH_HISTORY_LIMIT = 30;
+
 /** Stable, presentation-ready history model used by the admin chart/table. */
 export function buildHealthHistoryViewModel(runs: HealthHistoryRun[]) {
-  return runs.slice(0, 12).map((run) => ({
+  return runs.slice(0, HEALTH_HISTORY_LIMIT).map((run) => ({
     checkedAt: run.checkedAt,
     unhealthyCount: run.unhealthyCount,
     slugs: Array.isArray(run.result)

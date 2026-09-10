@@ -15,7 +15,7 @@ import RunHealthCheckButton from './_RunHealthCheckButton';
 import BulkRetranslateButton from './_BulkRetranslateButton';
 import HizmetlerList, { type ServiceListItem } from './_HizmetlerList';
 import { getServiceStartingPriceEur } from '@/lib/service-starting-price';
-import { buildHealthHistoryViewModel } from '@/lib/health-history';
+import { buildHealthHistoryViewModel, HEALTH_HISTORY_LIMIT } from '@/lib/health-history';
 
 export const metadata: Metadata = { title: 'Hizmetler | Admin', robots: { index: false } };
 export const dynamic = 'force-dynamic';
@@ -152,7 +152,7 @@ export default async function HizmetlerPage() {
         checkedAt: serviceHealthRuns.checkedAt,
         unhealthyCount: serviceHealthRuns.unhealthyCount,
         result: serviceHealthRuns.result,
-      }).from(serviceHealthRuns).orderBy(desc(serviceHealthRuns.checkedAt)).limit(12);
+      }).from(serviceHealthRuns).orderBy(desc(serviceHealthRuns.checkedAt)).limit(HEALTH_HISTORY_LIMIT);
       healthHistory = buildHealthHistoryViewModel(recentRuns);
       lastCheckedAt = healthHistory[0]?.checkedAt ?? null;
     } catch {
@@ -228,9 +228,29 @@ export default async function HizmetlerPage() {
       {healthHistory.length > 0 && (
         <div style={{ marginBottom: '20px', padding: '16px', background: '#fff',
           border: '1px solid #E2E8F0', borderRadius: '10px', fontFamily: 'Inter, sans-serif' }}>
-          <p style={{ margin: '0 0 12px', fontSize: '13px', fontWeight: 700, color: '#1E293B' }}>
-            Son sağlık kontrolleri
-          </p>
+          <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center',
+            justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+            <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: '#1E293B' }}>
+              Son {healthHistory.length} sağlık kontrolü
+            </p>
+            {(() => {
+              const recent = healthHistory.slice(0, 5);
+              const allHealthy = recent.every(run => run.unhealthyCount === 0);
+              return (
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', minHeight: '28px',
+                  padding: '4px 9px', borderRadius: '999px', fontSize: '11px', fontWeight: 700,
+                  color: allHealthy ? '#166534' : '#92400E',
+                  background: allHealthy ? '#DCFCE7' : '#FEF3C7',
+                  border: `1px solid ${allHealthy ? '#86EFAC' : '#FCD34D'}`,
+                }}>
+                  {allHealthy
+                    ? `Son ${recent.length} kontrol sağlıklı`
+                    : `Son ${recent.length} kontrolde sorun var`}
+                </span>
+              );
+            })()}
+          </div>
           <div style={{ display: 'flex', alignItems: 'end', gap: '6px', height: '90px' }}>
             {[...healthHistory].reverse().map((run, index) => (
               <div key={`${run.checkedAt.toISOString()}-${index}`} title={`${run.unhealthyCount} sorun: ${run.slugs.join(', ') || 'yok'}`}
@@ -251,19 +271,21 @@ export default async function HizmetlerPage() {
               </p>
             ) : null;
           })()}
-          <table style={{ width: '100%', marginTop: '12px', borderCollapse: 'collapse', fontSize: '11px', color: '#475569' }}>
-            <thead><tr><th style={{ textAlign: 'left', padding: '5px' }}>Kontrol</th>
-              <th style={{ textAlign: 'left', padding: '5px' }}>Sorun</th><th style={{ textAlign: 'left', padding: '5px' }}>Etkilenen slug</th></tr></thead>
-            <tbody>{healthHistory.slice(0, 6).map((run, index) => (
-              <tr key={`history-${run.checkedAt.toISOString()}-${index}`}>
-                <td style={{ padding: '5px', borderTop: '1px solid #F1F5F9' }}>
-                  {new Intl.DateTimeFormat('tr-TR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Istanbul' }).format(run.checkedAt)}
-                </td>
-                <td style={{ padding: '5px', borderTop: '1px solid #F1F5F9' }}>{run.unhealthyCount}</td>
-                <td style={{ padding: '5px', borderTop: '1px solid #F1F5F9' }}>{run.slugs.join(', ') || '—'}</td>
-              </tr>
-            ))}</tbody>
-          </table>
+          <div style={{ marginTop: '12px', overflowX: 'auto' }}>
+            <table style={{ width: '100%', minWidth: '520px', borderCollapse: 'collapse', fontSize: '11px', color: '#475569' }}>
+              <thead><tr><th style={{ textAlign: 'left', padding: '7px 5px' }}>Kontrol</th>
+                <th style={{ textAlign: 'left', padding: '7px 5px' }}>Sorun</th><th style={{ textAlign: 'left', padding: '7px 5px' }}>Etkilenen slug</th></tr></thead>
+              <tbody>{healthHistory.map((run, index) => (
+                <tr key={`history-${run.checkedAt.toISOString()}-${index}`}>
+                  <td style={{ padding: '7px 5px', borderTop: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>
+                    {new Intl.DateTimeFormat('tr-TR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Istanbul' }).format(run.checkedAt)}
+                  </td>
+                  <td style={{ padding: '7px 5px', borderTop: '1px solid #F1F5F9' }}>{run.unhealthyCount}</td>
+                  <td style={{ padding: '7px 5px', borderTop: '1px solid #F1F5F9' }}>{run.slugs.join(', ') || '—'}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
         </div>
       )}
 

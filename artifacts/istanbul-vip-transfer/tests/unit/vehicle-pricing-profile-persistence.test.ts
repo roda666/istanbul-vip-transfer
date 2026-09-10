@@ -26,7 +26,7 @@ describe('vehicle pricing profile persistence', () => {
     expect(selectPricingProfilesForEditor([latestHourly]).selectedMode).toBe('HOURLY');
   });
 
-  it('deactivates active formulas for the whole vehicle, not only the selected mode', () => {
+  it('deactivates only active formulas in the same vehicle and mode when creating a version', () => {
     const source = readFileSync(
       resolve(__dirname, '../../app/admin/api/pricing/profiles/route.ts'),
       'utf8',
@@ -36,7 +36,23 @@ describe('vehicle pricing profile persistence', () => {
     );
 
     expect(postDeactivation?.[1]).toContain('vehiclePricingProfiles.vehicleId');
+    expect(postDeactivation?.[1]).toContain('vehiclePricingProfiles.mode');
+    expect(postDeactivation?.[1]).toContain('data.data.mode');
     expect(postDeactivation?.[1]).toContain('vehiclePricingProfiles.active');
-    expect(postDeactivation?.[1]).not.toContain('vehiclePricingProfiles.mode');
+  });
+
+  it('deactivates only active formulas in the same vehicle and mode when reactivating a version', () => {
+    const source = readFileSync(
+      resolve(__dirname, '../../app/admin/api/pricing/profiles/route.ts'),
+      'utf8',
+    );
+    const patchDeactivation = source.match(
+      /if \(payload\.data\.active\) \{[\s\S]*?await tx\.update\(vehiclePricingProfiles\)\.set\(\{[\s\S]*?\}\)\.where\(and\(([\s\S]*?)\)\);\s*\}/,
+    );
+
+    expect(patchDeactivation?.[1]).toContain('vehiclePricingProfiles.vehicleId');
+    expect(patchDeactivation?.[1]).toContain('vehiclePricingProfiles.mode');
+    expect(patchDeactivation?.[1]).toContain('profile.mode');
+    expect(patchDeactivation?.[1]).toContain('vehiclePricingProfiles.active');
   });
 });

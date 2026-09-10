@@ -5,7 +5,7 @@ import Link from 'next/link';
 import {
   Calculator, RefreshCw, Plus, Check, X, Edit2, AlertCircle, TrendingUp, Loader2, Trash2, MapPin, Search, ChevronDown
 } from 'lucide-react';
-import { findExactFastQuoteRoute, findNearestFastQuoteLocation, sortFastQuoteTollAlternatives } from '@/lib/admin-fast-quote';
+import { findNearestFastQuoteLocation, resolveEffectiveFastQuoteRoute, sortFastQuoteTollAlternatives } from '@/lib/admin-fast-quote';
 import { TOLL_VEHICLE_CLASS_LABELS, type TollVehicleClass } from '@/lib/toll-vehicle-classes';
 
 // --- Types ---
@@ -27,6 +27,7 @@ type PricingLocation = {
   latitude: number | null; longitude: number | null;
 };
 type QuotePoint = { latitude: number; longitude: number };
+type AddressSuggestion = QuotePoint & { formattedAddress: string; placeId: string };
 type TollAlternative = {
   id: string;
   name: string;
@@ -288,14 +289,58 @@ function QuoteMapPicker({ point, onChange }: { point: QuotePoint | null; onChang
 }
 
 function QuoteLocationInput({
-  label, optional, locations, value, address, point, geocoding, onSelect, onAddress, onGeocode, onPoint,
+  label, optional, locations, value, address, point, onSelect, onAddress, onSuggestion, onPoint,
 }: {
   label: string; optional?: boolean; locations: PricingLocation[]; value: string; address: string;
-  point: QuotePoint | null; geocoding: boolean;
+  point: QuotePoint | null;
   onSelect: (value: string) => void; onAddress: (value: string) => void;
-  onGeocode: () => void; onPoint: (point: QuotePoint) => void;
+  onSuggestion: (suggestion: AddressSuggestion) => void; onPoint: (point: QuotePoint) => void;
 }) {
+  const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
   const matched = point && value ? locations.find(location => location.id === value) : null;
+  useEffect(() => {
+    const query = address.trim();
+    if (query.length < 3 || point) {
+      setSuggestions([]);
+      setSearching(false);
+      setSearchError('');
+      return;
+    }
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => {
+      setSearching(true);
+      setSearchError('');
+      fetch('/admin/api/locations/geocode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: query, suggestions: true }),
+        signal: controller.signal,
+      })
+        .then(async response => {
+          const payload = await response.json().catch(() => null);
+          if (!response.ok || !Array.isArray(payload?.suggestions)) {
+            throw new Error(payload?.error ?? 'Adres önerileri alınamadı.');
+          }
+          setSuggestions(payload.suggestions as AddressSuggestion[]);
+          if (payload.suggestions.length === 0) setSearchError('Eşleşen adres bulunamadı.');
+        })
+        .catch((error: unknown) => {
+          if (error instanceof DOMException && error.name === 'AbortError') return;
+          setSuggestions([]);
+          setSearchError(error instanceof Error ? error.message : 'Adres önerileri alınamadı.');
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setSearching(false);
+        });
+    }, 350);
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [address, point]);
+
   return (
     <div className="min-w-0">
       <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
@@ -310,35 +355,63 @@ function QuoteLocationInput({
         <option value="">{optional ? 'Belirtmeyin' : 'Kayıtlı nokta seçin...'}</option>
         {locations.map(location => <option key={location.id} value={location.id}>{location.name}</option>)}
       </select>
+      <div className="relative mt-3">
+        <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+          {label} Adresi / Otel (opsiyonel)
+        </label>
+        <div className="relative">
+          <input
+            data-testid={`quote-address-${label === 'Kalkış' ? 'origin' : 'destination'}`}
+            value={address}
+            onChange={(event) => onAddress(event.target.value)}
+            placeholder="Otel veya kesin adres"
+            autoComplete="off"
+            className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-3 pr-9 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none"
+          />
+          {searching
+            ? <Loader2 size={14} className="absolute right-3 top-2.5 animate-spin text-blue-600" />
+            : <Search size={14} className="pointer-events-none absolute right-3 top-2.5 text-slate-400" />}
+        </div>
+        {suggestions.length > 0 && (
+          <div data-testid={`quote-address-suggestions-${label === 'Kalkış' ? 'origin' : 'destination'}`} className="absolute z-30 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-xl">
+            {suggestions.map(suggestion => (
+              <button
+                key={suggestion.placeId}
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  setSuggestions([]);
+                  onSuggestion(suggestion);
+                }}
+                className="flex w-full items-start gap-2 px-3 py-2 text-left text-xs text-slate-700 hover:bg-blue-50"
+              >
+                <MapPin size={13} className="mt-0.5 shrink-0 text-blue-600" />
+                <span>{suggestion.formattedAddress}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {address.trim().length >= 3 && !point && (
+          <p className={`mt-1.5 text-[10px] ${searchError ? 'text-amber-700' : 'text-slate-500'}`}>
+            {searchError || 'Koordinatı doğrulamak için önerilerden bir adres seçin.'}
+          </p>
+        )}
+        {point && (
+          <div
+            data-testid={`quote-coordinate-status-${label === 'Kalkış' ? 'origin' : 'destination'}`}
+            className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-slate-600"
+          >
+            <span>{point.latitude.toFixed(5)}, {point.longitude.toFixed(5)}</span>
+            {matched && <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-bold text-emerald-800">Kayıtlı noktayla eşleşti: {matched.name}</span>}
+          </div>
+        )}
+      </div>
       <details className="mt-2 rounded-lg border border-slate-200 bg-slate-50">
         <summary className="cursor-pointer list-none px-3 py-2 text-xs font-bold text-blue-700">
-          Açık adres veya haritadan seç
+          Haritadan nokta seç (opsiyonel)
         </summary>
         <div className="border-t border-slate-200 p-3">
-          <div className="flex gap-2">
-            <input
-              value={address}
-              onChange={(event) => onAddress(event.target.value)}
-              placeholder="Açık adres yazın..."
-              className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
-            />
-            <button
-              type="button"
-              onClick={onGeocode}
-              disabled={geocoding || address.trim().length < 3}
-              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 disabled:opacity-50"
-            >
-              {geocoding ? <Loader2 size={13} className="animate-spin" /> : <Search size={13} />} Bul
-            </button>
-          </div>
-          <p className="mt-1.5 text-[10px] leading-4 text-slate-500">Adresi “Bul” ile koordinata dönüştürün veya haritada doğrudan bir noktaya tıklayın.</p>
           <QuoteMapPicker point={point} onChange={onPoint} />
-          {point && (
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-slate-600">
-              <span>{point.latitude.toFixed(5)}, {point.longitude.toFixed(5)}</span>
-              {matched && <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-bold text-emerald-800">Kayıtlı noktayla eşleşti: {matched.name}</span>}
-            </div>
-          )}
         </div>
       </details>
     </div>
@@ -442,16 +515,20 @@ function FastQuotePanel({
   const [destinationAddress, setDestinationAddress] = useState('');
   const [originPoint, setOriginPoint] = useState<QuotePoint | null>(null);
   const [destinationPoint, setDestinationPoint] = useState<QuotePoint | null>(null);
-  const [geocodingSide, setGeocodingSide] = useState<'origin' | 'destination' | null>(null);
 
   const selectedVehicle = vehicles.find((vehicle) => vehicle.id === quoteVehicleId);
-  const selectedRoute = routes.find((route) => route.id === quoteRouteId);
   const selectedTollAlternative = tollAlternatives.find((alternative) => alternative.id === tollAlternativeId);
   const hasFormula = selectedVehicle
     ? profiles.some((profile) => profile.vehicleId === selectedVehicle.id && profile.mode === quoteMode && profile.active)
     : false;
   const originLocation = locations.find(location => location.id === originLocationId);
   const destinationLocation = locations.find(location => location.id === destinationLocationId);
+  const effectiveQuoteRouteId = useMemo(
+    () => resolveEffectiveFastQuoteRoute(quoteRouteId, routes, originLocationId, destinationLocationId) ?? '',
+    [destinationLocationId, originLocationId, quoteRouteId, routes],
+  );
+  const selectedRoute = routes.find((route) => route.id === effectiveQuoteRouteId);
+  const manuallySelectedRoute = routes.find((route) => route.id === quoteRouteId);
   const originCoordinates = useMemo(() => originPoint ?? (
     originLocation?.latitude != null && originLocation.longitude != null
       ? { latitude: originLocation.latitude, longitude: originLocation.longitude } : null
@@ -474,28 +551,10 @@ function FastQuotePanel({
     }
   };
 
-  const geocodeAddress = async (side: 'origin' | 'destination') => {
-    const address = side === 'origin' ? originAddress : destinationAddress;
-    if (address.trim().length < 3) return;
-    setGeocodingSide(side);
-    setDistanceError('');
-    try {
-      const response = await fetch('/admin/api/locations/geocode', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: address.trim() }),
-      });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok || !payload?.result) throw new Error(payload?.error ?? 'Adres bulunamadı.');
-      const point = { latitude: Number(payload.result.latitude), longitude: Number(payload.result.longitude) };
-      setCustomPoint(side, point);
-      if (side === 'origin') setOriginAddress(payload.result.formattedAddress ?? address);
-      else setDestinationAddress(payload.result.formattedAddress ?? address);
-    } catch (error) {
-      setDistanceError(error instanceof Error ? error.message : 'Adres bulunamadı.');
-    } finally {
-      setGeocodingSide(null);
-    }
+  const selectAddressSuggestion = (side: 'origin' | 'destination', suggestion: AddressSuggestion) => {
+    setCustomPoint(side, { latitude: suggestion.latitude, longitude: suggestion.longitude });
+    if (side === 'origin') setOriginAddress(suggestion.formattedAddress);
+    else setDestinationAddress(suggestion.formattedAddress);
   };
 
   useEffect(() => {
@@ -505,7 +564,6 @@ function FastQuotePanel({
       return;
     }
     let cancelled = false;
-    const controller = new AbortController();
     setDistanceLoading(true);
     setDistanceError('');
     fetch('/admin/api/location-distance', {
@@ -516,7 +574,6 @@ function FastQuotePanel({
            ? { originCoordinates, destinationCoordinates }
            : { originLocationId, destinationLocationId },
        ),
-      signal: controller.signal,
     })
       .then(async (response) => {
         const payload = await response.json().catch(() => null);
@@ -535,12 +592,11 @@ function FastQuotePanel({
       });
     return () => {
       cancelled = true;
-      controller.abort();
     };
   }, [destinationCoordinates, destinationLocationId, destinationPoint, hasDestinationInput, hasOriginInput, originCoordinates, originLocationId, originPoint, quoteMode]);
 
   useEffect(() => {
-    if (!quoteRouteId) {
+    if (!effectiveQuoteRouteId) {
       setTollAlternatives([]);
       setTollAlternativeId('');
       setTollsLoading(false);
@@ -555,7 +611,7 @@ function FastQuotePanel({
     if (quoteVehicleId) params.set('vehicleId', quoteVehicleId);
     if (quotePickupAt) params.set('pickupAt', new Date(quotePickupAt).toISOString());
     const query = params.size ? `?${params.toString()}` : '';
-    fetch(`/admin/api/pricing/tolls/route-alternatives/${quoteRouteId}${query}`, { signal: controller.signal })
+    fetch(`/admin/api/pricing/tolls/route-alternatives/${effectiveQuoteRouteId}${query}`, { signal: controller.signal })
       .then(async (response) => {
         const payload = await response.json().catch(() => null);
         if (!response.ok || !Array.isArray(payload?.alternatives)) {
@@ -582,23 +638,17 @@ function FastQuotePanel({
       cancelled = true;
       controller.abort();
     };
-  }, [quoteRouteId, quoteVehicleId, quotePickupAt]);
+  }, [effectiveQuoteRouteId, quoteVehicleId, quotePickupAt]);
 
   useEffect(() => {
-    if (!originLocationId || !destinationLocationId) return;
-    const matchingRouteId = findExactFastQuoteRoute(routes, originLocationId, destinationLocationId);
-    if (matchingRouteId && matchingRouteId !== quoteRouteId) {
-      setQuoteRouteId(matchingRouteId);
-      setTollAlternativeId('');
-      return;
-    }
-    // Clear only a mapped route that no longer matches the chosen endpoints.
-    // Manually selected legacy routes with missing endpoint mappings stay selected.
-    if (!matchingRouteId && selectedRoute?.originLocationId && selectedRoute.destinationLocationId) {
+    if (!quoteRouteId || !originLocationId || !destinationLocationId) return;
+    if (manuallySelectedRoute?.originLocationId && manuallySelectedRoute.destinationLocationId
+        && (manuallySelectedRoute.originLocationId !== originLocationId
+          || manuallySelectedRoute.destinationLocationId !== destinationLocationId)) {
       setQuoteRouteId('');
       setTollAlternativeId('');
     }
-  }, [destinationLocationId, originLocationId, quoteRouteId, routes, selectedRoute]);
+  }, [destinationLocationId, manuallySelectedRoute, originLocationId, quoteRouteId]);
 
   const chooseRoute = (routeId: string) => {
     setQuoteRouteId(routeId);
@@ -810,10 +860,9 @@ function FastQuotePanel({
             value={originLocationId}
             address={originAddress}
             point={originPoint}
-            geocoding={geocodingSide === 'origin'}
             onSelect={(value) => { setOriginLocationId(value); setOriginPoint(null); setOriginAddress(''); }}
             onAddress={(value) => { setOriginAddress(value); setOriginLocationId(''); setOriginPoint(null); }}
-            onGeocode={() => geocodeAddress('origin')}
+             onSuggestion={(suggestion) => selectAddressSuggestion('origin', suggestion)}
             onPoint={(point) => setCustomPoint('origin', point)}
           />
           <QuoteLocationInput
@@ -823,10 +872,9 @@ function FastQuotePanel({
             value={destinationLocationId}
             address={destinationAddress}
             point={destinationPoint}
-            geocoding={geocodingSide === 'destination'}
             onSelect={(value) => { setDestinationLocationId(value); setDestinationPoint(null); setDestinationAddress(''); }}
             onAddress={(value) => { setDestinationAddress(value); setDestinationLocationId(''); setDestinationPoint(null); }}
-            onGeocode={() => geocodeAddress('destination')}
+             onSuggestion={(suggestion) => selectAddressSuggestion('destination', suggestion)}
             onPoint={(point) => setCustomPoint('destination', point)}
           />
         </div>

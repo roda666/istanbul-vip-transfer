@@ -7,6 +7,7 @@ const requestSchema = z.object({
   name: z.string().trim().min(2).max(200),
   city: z.string().trim().max(100).optional(),
   district: z.string().trim().max(200).optional(),
+  suggestions: z.boolean().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -42,7 +43,11 @@ export async function POST(request: NextRequest) {
   ].filter((value): value is string => Boolean(value?.trim())))).join(', ');
 
   try {
-    const { geocodeLocationAddress } = await import('@/lib/google-maps-geocoding');
+    const { geocodeLocationAddress, searchLocationAddresses } = await import('@/lib/google-maps-geocoding');
+    if (parsed.data.suggestions) {
+      const suggestions = await searchLocationAddresses(query);
+      return NextResponse.json({ suggestions });
+    }
     const result = await geocodeLocationAddress(query);
     return NextResponse.json({ result });
   } catch (error) {

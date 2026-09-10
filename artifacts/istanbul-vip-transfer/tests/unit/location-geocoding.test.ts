@@ -3,6 +3,7 @@ import {
   applyGeocodingResultToForm,
   googleGeocodingErrorMessage,
   parseGoogleGeocodingPayload,
+  parseGoogleGeocodingResults,
 } from '@/lib/location-geocoding';
 
 const successfulPayload = {
@@ -47,6 +48,23 @@ describe('location geocoding presentation', () => {
 
   it('rejects incomplete OK responses instead of filling invalid coordinates', () => {
     expect(parseGoogleGeocodingPayload({ status: 'OK', results: [{}] })).toBeNull();
+  });
+
+  it('returns only coordinate-backed autocomplete suggestions and respects the limit', () => {
+    const results = parseGoogleGeocodingResults({
+      status: 'OK',
+      results: [
+        successfulPayload.results[0],
+        { formatted_address: 'Koordinatsız sonuç', place_id: 'invalid' },
+        {
+          formatted_address: 'Taksim, İstanbul, Türkiye',
+          place_id: 'taksim',
+          geometry: { location: { lat: 41.0369, lng: 28.985 }, location_type: 'GEOMETRIC_CENTER' },
+        },
+      ],
+    }, 2);
+    expect(results.map(result => result.placeId)).toEqual(['test-place-id', 'taksim']);
+    expect(results.every(result => Number.isFinite(result.latitude) && Number.isFinite(result.longitude))).toBe(true);
   });
 
   it.each([

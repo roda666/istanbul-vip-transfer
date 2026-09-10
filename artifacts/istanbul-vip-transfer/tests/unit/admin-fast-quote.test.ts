@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { findExactFastQuoteRoute, findNearestFastQuoteLocation, sortFastQuoteTollAlternatives } from '@/lib/admin-fast-quote';
+import {
+  findExactFastQuoteRoute,
+  findNearestFastQuoteLocation,
+  resolveEffectiveFastQuoteRoute,
+  sortFastQuoteTollAlternatives,
+} from '@/lib/admin-fast-quote';
 
 describe('fast quote route matching', () => {
   const routes = [
@@ -11,6 +16,18 @@ describe('fast quote route matching', () => {
     expect(findExactFastQuoteRoute(routes, 'istanbul', 'antalya')).toBe('active-forward');
     expect(findExactFastQuoteRoute(routes, 'antalya', 'istanbul')).toBeNull();
     expect(findExactFastQuoteRoute(routes, 'istanbul', 'bursa')).toBeNull();
+  });
+
+  it('activates an exact endpoint route while the saved-route select remains empty', () => {
+    const sawToTaksim = {
+      id: 'saw-taksim',
+      originLocationId: 'saw',
+      destinationLocationId: 'taksim',
+      active: true,
+    };
+    expect(resolveEffectiveFastQuoteRoute('', [sawToTaksim], 'saw', 'taksim')).toBe('saw-taksim');
+    expect(resolveEffectiveFastQuoteRoute('', [sawToTaksim], 'ist', 'saw')).toBeNull();
+    expect(resolveEffectiveFastQuoteRoute('manual-route', [sawToTaksim], 'saw', 'taksim')).toBe('manual-route');
   });
 });
 

@@ -32,6 +32,16 @@ export function findExactFastQuoteRoute(
   )?.id ?? null;
 }
 
+/** Manual selection wins; otherwise exact endpoint matching activates the route without mutating the route select. */
+export function resolveEffectiveFastQuoteRoute(
+  manualRouteId: string,
+  routes: FastQuoteRouteMatch[],
+  originLocationId: string,
+  destinationLocationId: string,
+): string | null {
+  return manualRouteId || findExactFastQuoteRoute(routes, originLocationId, destinationLocationId);
+}
+
 export function sortFastQuoteTollAlternatives<T extends FastQuoteTollAlternativeOrder>(alternatives: T[]): T[] {
   const collator = new Intl.Collator('tr-TR', { sensitivity: 'base' });
   return [...alternatives].sort((left, right) =>

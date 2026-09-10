@@ -22,19 +22,30 @@ interface GoogleGeocodingPayload {
 }
 
 export function parseGoogleGeocodingPayload(payload: GoogleGeocodingPayload): LocationGeocodingResult | null {
-  if (payload.status !== 'OK') return null;
-  const first = payload.results?.[0];
-  const latitude = first?.geometry?.location?.lat;
-  const longitude = first?.geometry?.location?.lng;
-  if (!first?.formatted_address || !first.place_id || !Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
-  return {
-    formattedAddress: first.formatted_address,
-    placeId: first.place_id,
-    latitude: latitude!,
-    longitude: longitude!,
-    locationType: first.geometry?.location_type || 'UNKNOWN',
-    partialMatch: first.partial_match === true,
-  };
+  return parseGoogleGeocodingResults(payload, 1)[0] ?? null;
+}
+
+export function parseGoogleGeocodingResults(
+  payload: GoogleGeocodingPayload,
+  limit = 5,
+): LocationGeocodingResult[] {
+  if (payload.status !== 'OK') return [];
+  const results: LocationGeocodingResult[] = [];
+  for (const item of payload.results ?? []) {
+    const latitude = item.geometry?.location?.lat;
+    const longitude = item.geometry?.location?.lng;
+    if (!item.formatted_address || !item.place_id || !Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
+    results.push({
+      formattedAddress: item.formatted_address,
+      placeId: item.place_id,
+      latitude: latitude!,
+      longitude: longitude!,
+      locationType: item.geometry?.location_type || 'UNKNOWN',
+      partialMatch: item.partial_match === true,
+    });
+    if (results.length >= limit) break;
+  }
+  return results;
 }
 
 export function googleGeocodingErrorMessage(status: string | undefined): string {

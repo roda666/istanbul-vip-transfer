@@ -108,11 +108,10 @@ async function getDbMeta(slug: string, lang: string): Promise<{
       return trimmed ? trimmed : undefined;
     };
     return {
-      // Empty CMS fields are treated as absent. This preserves every manual
-      // translation while allowing the caller to use a safe per-service
-      // default rather than emitting duplicate/empty metadata.
-      title:       nonBlank(page.seoTitle) ?? nonBlank(page.title),
-      description: nonBlank(page.seoDescription),
+      // Locale service pages use the translated CMS page copy for metadata.
+      // Empty values remain absent so the caller can use its existing fallback.
+      title:       nonBlank(page.title),
+      description: nonBlank(page.excerpt),
       // A social crawler must never be given an unavailable asset. Prefer the
       // explicit OG image, then the same service's verified cover image.
       // Unlike save-time validation, metadata generation probes own storage:
@@ -172,25 +171,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description = `${category.label} — ${copy.intro}`;
   } else if (isService) {
     const dbMeta = await getDbMeta(pathKey, lang);
-    if (!dbMeta) {
-      // No published translation for this service page in this locale —
-      // return noindex so Google doesn't index fallback/missing content.
-      return { robots: { index: false, follow: false } };
+    if (dbMeta) {
+      title       = dbMeta.title;
+      description = dbMeta.description;
+      // A deleted CMS asset must never become an unreachable og:image. Use the
+      // checked CMS value when available, otherwise the service-specific static
+      // card (never the generic site card).
+      const fallback = (() => {
+        try {
+          return getServiceOgImageUrl(pathKey, SITE.siteUrl);
+        } catch {
+          // Admin-created service slugs may not have a generated card yet.
+          return SITE.ogImage.url;
+        }
+      })();
+      ogImages = [{ url: dbMeta.socialImage ?? fallback, width: 1200, height: 630 }];
     }
-    title       = dbMeta.title;
-    description = dbMeta.description;
-    // A deleted CMS asset must never become an unreachable og:image. Use the
-    // checked CMS value when available, otherwise the service-specific static
-    // card (never the generic site card).
-    const fallback = (() => {
-      try {
-        return getServiceOgImageUrl(pathKey, SITE.siteUrl);
-      } catch {
-        // Admin-created service slugs may not have a generated card yet.
-        return SITE.ogImage.url;
-      }
-    })();
-    ogImages = [{ url: dbMeta.socialImage ?? fallback, width: 1200, height: 630 }];
   }
 
   // Fall back to page-meta.json

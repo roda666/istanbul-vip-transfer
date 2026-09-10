@@ -128,3 +128,4 @@
 - [Review-only toll alternatives](review-only-toll-alternatives.md) — all-review routes may have zero defaults; explicit admin selection is required before any quote can be priced.
 - [Admin fast-quote custom points](admin-fast-quote-custom-points.md) — address/map points may price distance directly; toll scenarios require a safe catalog match plus an exact active route.
 - [Structural reference translation sync](structural-reference-translation-sync.md) — changed location/vehicle reference fields replace all 8 live locale values; blog translations remain draft-gated.
+- [Temporary ESM script imports](temporary-esm-script-imports.md) — scripts run from /tmp cannot use artifact-relative package imports; resolve through verified artifact node_modules symlinks.

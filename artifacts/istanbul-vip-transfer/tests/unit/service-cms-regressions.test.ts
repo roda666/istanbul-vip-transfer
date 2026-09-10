@@ -33,6 +33,18 @@ describe('service CMS regression contracts', () => {
       expect(revalidatePath).toHaveBeenCalledWith(localizedServicePath('vip-transfer', locale));
     }
     expect(revalidatePath).toHaveBeenCalledWith('/sitemap.xml');
+
+    const publishRoute = source('app/admin/api/service-pages/[id]/route.ts');
+    const sourcePublishBranch = publishRoute.slice(
+      publishRoute.indexOf("if (action === 'publishSource')"),
+      publishRoute.indexOf("if (action === 'unpublishSource')"),
+    );
+    const translationPublishBranch = publishRoute.slice(
+      publishRoute.indexOf("} else if (action === 'publish')"),
+      publishRoute.indexOf("} else if (action === 'unpublish')"),
+    );
+    expect(sourcePublishBranch).toContain('revalidatePublicServiceDetail(row.slug)');
+    expect(translationPublishBranch).toContain('revalidatePublicServiceDetail(row.slug, [locale])');
   });
 
   it('#75 keeps the central two-crumb registry internally consistent', () => {

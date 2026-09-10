@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { currentlyApplicable } from '@/lib/admin-pricing-service';
+import { chooseDefaultRouteTollAlternative } from '@/lib/toll-management';
 
 describe('fixed price override validity selection', () => {
   const now = new Date('2026-08-24T12:00:00.000Z');
@@ -30,5 +31,28 @@ describe('fixed price override validity selection', () => {
       validUntil: null,
     };
     expect(currentlyApplicable([older, current], now)?.id).toBe('current');
+  });
+});
+
+describe('route toll alternative default selection', () => {
+  it('allows all-review routes to remain intentionally without a default', () => {
+    expect(chooseDefaultRouteTollAlternative([
+      { id: 'review-a', isDefault: false, needsReview: true },
+      { id: 'review-b', isDefault: false, needsReview: true },
+    ])).toBeNull();
+  });
+
+  it('still rejects a missing default once any active option is operational', () => {
+    expect(() => chooseDefaultRouteTollAlternative([
+      { id: 'review-a', isDefault: false, needsReview: true },
+      { id: 'ready-b', isDefault: false, needsReview: false },
+    ])).toThrow('tek bir varsayılan alternatif');
+  });
+
+  it('returns the one configured default', () => {
+    expect(chooseDefaultRouteTollAlternative([
+      { id: 'default-a', isDefault: true, needsReview: false },
+      { id: 'other-b', isDefault: false, needsReview: true },
+    ])).toBe('default-a');
   });
 });

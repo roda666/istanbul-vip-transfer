@@ -71,7 +71,7 @@ timeoutMs = 120000
 
 [nix]
 channel = "stable-25_05"
-packages = ["glib", "nspr", "nss", "atk", "at-spi2-atk", "dbus", "xorg.libX11", "xorg.libXcomposite", "xorg.libXdamage", "xorg.libXext", "xorg.libXfixes", "xorg.libXrandr", "mesa", "xorg.libxcb", "libxkbcommon", "alsa-lib", "at-spi2-core", "libgbm", "chromium", "cups", "cairo", "pango", "imagemagick"]
+packages = ["alsa-lib", "at-spi2-atk", "at-spi2-core", "atk", "cairo", "chromium", "cups", "dbus", "freetype", "glib", "gumbo", "harfbuzz", "imagemagick", "jbig2dec", "libgbm", "libjpeg_turbo", "libxkbcommon", "mesa", "mupdf", "nspr", "nss", "openjpeg", "pango", "swig", "xcbuild", "xorg.libX11", "xorg.libXcomposite", "xorg.libXdamage", "xorg.libXext", "xorg.libXfixes", "xorg.libXrandr", "xorg.libxcb"]
 
 [objectStorage]
 defaultBucketID = "replit-objstore-256c4b02-b655-41f8-bd7d-03afce0d36cb"

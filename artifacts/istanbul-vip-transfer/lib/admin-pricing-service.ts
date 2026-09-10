@@ -27,6 +27,7 @@ import {
 import {
   evaluateTollTariffStaleness,
   getDefaultRouteTollAlternative,
+  hasActiveRouteTollAlternatives,
   getTollPricingSettings,
   resolveActiveTimeBandForPoint,
 } from '@/lib/toll-management';
@@ -134,6 +135,14 @@ export async function createAdminQuote(input: {
   const routeDefaultTollAlternativeId = input.routeId
     ? await getDefaultRouteTollAlternative(input.routeId)
     : null;
+  if (
+    input.routeId
+    && !input.tollAlternativeId
+    && routeDefaultTollAlternativeId == null
+    && await hasActiveRouteTollAlternatives(input.routeId)
+  ) {
+    throw new Error('Bu rota için varsayılan geçiş seçilmedi. Rezervasyona uygun yol ve geçiş alternatifini admin seçmelidir.');
+  }
   const effectiveTollAlternativeId = input.routeId
     ? input.tollAlternativeId ?? routeDefaultTollAlternativeId
     : null;

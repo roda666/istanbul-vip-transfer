@@ -550,18 +550,42 @@ export async function getRouteTollAlternatives(routeId: string, vehicleId?: stri
   };
 }
 
+export function chooseDefaultRouteTollAlternative(
+  alternatives: Array<{ id: string; isDefault: boolean; needsReview: boolean }>,
+): string | null {
+  if (!alternatives.length) return null;
+  const defaults = alternatives.filter((alternative) => alternative.isDefault);
+  if (defaults.length === 0 && alternatives.every((alternative) => alternative.needsReview)) {
+    return null;
+  }
+  if (defaults.length !== 1) {
+    throw new Error('Bu rota için aktif geçiş alternatifleri var ancak tek bir varsayılan alternatif tanımlı değil. Fiyat üretimi güvenle durduruldu.');
+  }
+  return defaults[0].id;
+}
+
 export async function getDefaultRouteTollAlternative(routeId: string): Promise<string | null> {
-  const alternatives = await db.select({ id: routeTollAlternatives.id, isDefault: routeTollAlternatives.isDefault })
+  const alternatives = await db.select({
+    id: routeTollAlternatives.id,
+    isDefault: routeTollAlternatives.isDefault,
+    needsReview: routeTollAlternatives.needsReview,
+  })
     .from(routeTollAlternatives)
     .where(and(
       eq(routeTollAlternatives.routeId, routeId),
       eq(routeTollAlternatives.active, true),
     ))
     .orderBy(desc(routeTollAlternatives.isDefault), asc(routeTollAlternatives.displayOrder));
-  if (!alternatives.length) return null;
-  const defaults = alternatives.filter((alternative) => alternative.isDefault);
-  if (defaults.length !== 1) {
-    throw new Error('Bu rota için aktif geçiş alternatifleri var ancak tek bir varsayılan alternatif tanımlı değil. Fiyat üretimi güvenle durduruldu.');
-  }
-  return defaults[0].id;
+  return chooseDefaultRouteTollAlternative(alternatives);
+}
+
+export async function hasActiveRouteTollAlternatives(routeId: string): Promise<boolean> {
+  const [alternative] = await db.select({ id: routeTollAlternatives.id })
+    .from(routeTollAlternatives)
+    .where(and(
+      eq(routeTollAlternatives.routeId, routeId),
+      eq(routeTollAlternatives.active, true),
+    ))
+    .limit(1);
+  return Boolean(alternative);
 }

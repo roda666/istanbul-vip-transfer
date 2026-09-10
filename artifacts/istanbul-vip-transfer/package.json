@@ -26,6 +26,7 @@
     "check:message-templates": "node scripts/check-customer-message-templates.mjs",
     "seed:toll-pricing-data": "node scripts/seed-toll-pricing-data.mjs",
     "apply:tolls:2026-kgm-pdf": "node scripts/apply-2026-kgm-pdf-tolls.mjs",
+    "apply:tolls:2026-antalya-o5": "node scripts/apply-2026-antalya-o5-options.mjs",
     "complete:bursa-blog-media": "node scripts/complete-bursa-blog-media-and-queue.mjs",
     "generate:page-meta": "tsx scripts/generate-page-meta.ts",
     "test:admin-route-map": "tsx scripts/test-admin-route-map.ts",

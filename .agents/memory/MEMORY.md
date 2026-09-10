@@ -125,3 +125,4 @@
 - [Server-side image probe safety](server-side-image-probe-safety.md) — admin-stored image URLs may be probed only on approved HTTPS hosts, with redirects and IP literals rejected.
 - [Cross-instance health scheduler leases](health-scheduler-leases.md) — automatic health jobs require an expiring DB lease; process-local flags cannot prevent duplicate runs.
 - [Manual toll tariff maintenance](manual-toll-tariff-maintenance.md) — toll updates are PDF/Excel or explicit manual entry only; never add live/automatic tariff fetching.
+- [Review-only toll alternatives](review-only-toll-alternatives.md) — all-review routes may have zero defaults; explicit admin selection is required before any quote can be priced.

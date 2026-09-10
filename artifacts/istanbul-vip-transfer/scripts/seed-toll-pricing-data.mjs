@@ -48,7 +48,7 @@
  *     bannedVehicleClasses is seeded as [] (confirmed-none) there, sourced to
  *     the same official PDF used for their tariffs.
  *   - Owner-supplied 2026 KGM PDFs provide specific gate-pair tariffs for the
- *     Sapanca, İzmir and Bodrum mappings. Antalya remains intentionally blank.
+ *     Sapanca, İzmir, Bodrum and review-only Antalya exit mappings.
  *     The Bursa placeholder is inactive because the standalone Osmangazi
  *     Gebze→Bursa Batı amount already covers the complete Bursa charge.
  *   - Route → toll-alternative mappings are this agent's own geographic
@@ -197,12 +197,12 @@ const POINTS = [
   {
     key: 'İstanbul–Antalya Otoyolu Güzergahı', name: 'İstanbul–Antalya Otoyolu Güzergahı (doğrulanmamış ilave ücret)', type: 'HIGHWAY',
     dayStartHour: null, nightStartHour: null,
-    notes: 'Manuel birleşik tutar: KGM 01/07/2026 Gebze → İzmir tarifesi (Osmangazi Köprüsü dahil) + KGM 01/01/2026 Işıkkent → Aydın Batı tarifesi. Rota alternatifine ayrıca bağımsız Osmangazi Köprüsü kalemi eklenmemelidir.',
+    notes: 'Antalya’ya doğrudan ücretli otoyol yoktur. Sürücü O-5’ten farklı noktalarda ücretsiz D-yoluna geçebilir. KGM 01/07/2026 PDF’sinde görsel olarak doğrulanan yedi çıkış seçeneği kayıtlıdır; PDF hücreleri tek bir yön matrisinden gelmediği için hiçbir seçenek varsayılan değildir ve tamamı admin incelemesi bekler. Bu nokta Osmangazi/İstanbul yönü başlangıçlı birleşik seçenek olarak ele alındığından rota alternatifine ayrıca bağımsız Osmangazi kalemi eklenmez.',
     classificationLabel: KGM_CLASSIFICATION_LABEL, bannedVehicleClasses: null, bannedVehicleClassesSourceUrl: null,
     pricingMode: 'GATE_PAIR',
     tollDirection: 'TWO_WAY_DIRECTIONAL',
     tollDirectionSourceUrl: 'https://www.kgm.gov.tr/SiteCollectionDocuments/KGMdocuments/Otoyollar/OtoyolKopruUcret/2026Gecis_Ucret/12-Gebze-Orhangazi-Izmir.pdf',
-    tollDirectionNotes: 'Kaydedilen birleşik tutar İstanbul/Bodrum gidiş yönü içindir; ters yön ayrıca doğrulanmadan varsayılmaz.',
+    tollDirectionNotes: 'Yalnız İstanbul’dan Antalya yönüne gidiş seçenekleri kayıtlıdır; ters yön ayrıca doğrulanmadan varsayılmaz.',
   },
   {
     key: 'İstanbul–Bodrum Otoyolu Güzergahı', name: 'İstanbul–Bodrum Otoyolu Güzergahı (doğrulanmamış ilave ücret)', type: 'HIGHWAY',
@@ -222,6 +222,17 @@ const HIGHWAY_KEYS = new Set([
 ]);
 
 // ── 2. Officially-sourced tariffs, keyed by class_1..class_6 ────────────────
+const ANTALYA_O5_SOURCE = 'https://www.kgm.gov.tr/SiteCollectionDocuments/KGMdocuments/Otoyollar/OtoyolKopruUcret/2026Gecis_Ucret/12-Gebze-Orhangazi-Izmir.pdf';
+const ANTALYA_O5_ENTRY = 'OSMANGAZİ KÖPRÜSÜ (İSTANBUL YÖNÜ)';
+const ANTALYA_EXIT_OPTIONS = [
+  { exit: 'SUSURLUK', label: 'Susurluk', amounts: [370, 600, 725, 935, 1185, 295] },
+  { exit: 'BALIKESİR KUZEY', label: 'Balıkesir Kuzey', amounts: [490, 785, 935, 1240, 1550, 345] },
+  { exit: 'SAVAŞTEPE', label: 'Savaştepe', amounts: [745, 1185, 1420, 1905, 2360, 530] },
+  { exit: 'ORHANGAZİ', label: 'Orhangazi', amounts: [1335, 2165, 2535, 3360, 4210, 940] },
+  { exit: 'GEMLİK', label: 'Gemlik', amounts: [1395, 2215, 2635, 3480, 4395, 985] },
+  { exit: 'BURSA SERBEST BÖLGE', label: 'Bursa Serbest Bölge', amounts: [1430, 2280, 2705, 3580, 4505, 1015] },
+  { exit: 'BURSA KUZEY', label: 'Bursa Kuzey', amounts: [1540, 2500, 2950, 3925, 4930, 1115] },
+];
 const TARIFFS = [
   {
     pointKey: '15 temmuz köprüsü',
@@ -293,6 +304,19 @@ const TARIFFS = [
     exitGateName: 'AYDIN BATI',
     rows: [{ classes: { class_1: 142800, class_2: 225200, class_3: 269500, class_4: 355800, class_5: 444300, class_6: 100800 }, timeBand: 'ALL' }],
   },
+  ...ANTALYA_EXIT_OPTIONS.map((option) => ({
+    pointKey: 'İstanbul–Antalya Otoyolu Güzergahı',
+    sourceName: `KGM PDF — Antalya review seçeneği, Osmangazi/İstanbul yönü → ${option.label}; rakam görsel olarak doğrulandı, rota anlamı admin teyidi bekliyor`,
+    sourceUrl: ANTALYA_O5_SOURCE,
+    effectiveFrom: '2026-07-01',
+    manualSource: true,
+    entryGateName: ANTALYA_O5_ENTRY,
+    exitGateName: option.exit,
+    rows: [{
+      classes: Object.fromEntries(ALL_CLASSES.map((vehicleClass, index) => [vehicleClass, Math.round(option.amounts[index] * 100)])),
+      timeBand: 'ALL',
+    }],
+  })),
   {
     pointKey: 'ÇANAKKALE KÖPRÜSÜ',
     sourceName: 'KGM — 1915 Çanakkale Köprüsü Geçiş Ücretleri Tarifesi',
@@ -428,9 +452,18 @@ const ROUTE_ALTERNATIVES = [
   {
     routeSlug: 'istanbul-antalya',
     alternatives: [
-      { name: 'YSS Köprüsü + Osmangazi Köprüsü', isDefault: true, pointKeys: ['YSK', 'OSMANGAZİ KÖPRÜSÜ', 'İstanbul–Antalya Otoyolu Güzergahı'], needsReview: true, reviewNote: 'Antalya sürücüsünün gerçek otoyol güzergâhı ve giriş/çıkış gişeleri doğrulanmadı. Tarife boş bırakılır; tahminle fiyat üretilmez.' },
-      { name: 'FSM Köprüsü + Osmangazi Köprüsü', isDefault: false, pointKeys: ['FSM', 'OSMANGAZİ KÖPRÜSÜ', 'İstanbul–Antalya Otoyolu Güzergahı'], needsReview: true, reviewNote: 'Antalya sürücüsünün gerçek otoyol güzergâhı ve giriş/çıkış gişeleri doğrulanmadı. Tarife boş bırakılır; tahminle fiyat üretilmez.' },
-      { name: 'Avrasya Tüneli + Osmangazi Köprüsü', isDefault: false, pointKeys: ['AVRASYA', 'OSMANGAZİ KÖPRÜSÜ', 'İstanbul–Antalya Otoyolu Güzergahı'], needsReview: true, reviewNote: 'Antalya sürücüsünün gerçek otoyol güzergâhı ve giriş/çıkış gişeleri doğrulanmadı. Tarife boş bırakılır; tahminle fiyat üretilmez.' },
+      ...[
+        { key: 'YSK', label: 'YSS Köprüsü' },
+        { key: 'FSM', label: 'FSM Köprüsü' },
+        { key: 'AVRASYA', label: 'Avrasya Tüneli' },
+      ].flatMap((bridge) => ANTALYA_EXIT_OPTIONS.map((option) => ({
+        name: `${bridge.label} + O-5 ${option.label} çıkışı (inceleme bekliyor)`,
+        isDefault: false,
+        pointKeys: [bridge.key, 'İstanbul–Antalya Otoyolu Güzergahı'],
+        gatePairs: { 'İstanbul–Antalya Otoyolu Güzergahı': [ANTALYA_O5_ENTRY, option.exit] },
+        needsReview: true,
+        reviewNote: 'Varsayılan seçilmedi, admin rezervasyon bazında seçmeli. PDF rakamı görsel olarak doğrulandı; Susurluk/Balıkesir Kuzey/Savaştepe hücreleri Bursa Batı satırında, Orhangazi/Gemlik/Bursa hücreleri Osmangazi Köprüsü (İstanbul Yönü) sütununda olduğundan güzergâh anlamı operasyonel teyit bekliyor. Müşteriye gösterilmez.',
+      }))),
     ],
   },
   {

@@ -300,12 +300,9 @@ async function main() {
         updated_at = now()
       WHERE route_id = (SELECT id FROM transfer_routes WHERE slug = 'istanbul-antalya')`;
 
-    const antalyaPriced = await tx`
-      SELECT count(*)::int AS count
-      FROM toll_tariffs
-      WHERE toll_point_id = ${pointByName.get(POINT.ANTALYA).id}
-        AND amount_kurus IS NOT NULL`;
-    if (antalyaPriced[0].count !== 0) throw new Error('Antalya tarifesi beklenmedik biçimde dolu; transaction iptal edildi.');
+    // Antalya now has a separate, review-only seven-exit data-entry script.
+    // Do not assert that it is empty: re-running this older base import must
+    // preserve those manually reviewed gate-pair rows and their route choices.
   });
 
   console.log('Manual KGM PDF tariffs and route mappings applied successfully.');

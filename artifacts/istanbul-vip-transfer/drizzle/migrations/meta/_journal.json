@@ -624,6 +624,13 @@
       "when": 1789075149105,
       "tag": "0088_fix_canakkale_corridor_gate",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1789076697829,
+      "tag": "0089_heavy_prism",
+      "breakpoints": true
     }
   ]
 }

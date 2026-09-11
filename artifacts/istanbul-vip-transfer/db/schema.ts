@@ -865,7 +865,10 @@ export const healthCheckLeases = pgTable('health_check_leases', {
 export const serviceHealthAlerts = pgTable('service_health_alerts', {
   id:          uuid('id').primaryKey().defaultRandom(),
   slug:        text('slug').notNull().unique(),
-  lastAlertAt: timestamp('last_alert_at', { withTimezone: true }).defaultNow().notNull(),
+  /** Null until an alert email has actually been delivered for this slug. */
+  lastAlertAt: timestamp('last_alert_at', { withTimezone: true }),
+  /** Start of the current unhealthy streak; cleared when the slug recovers. */
+  firstSeenAt: timestamp('first_seen_at', { withTimezone: true }),
   issues:      jsonb('issues').$type<string[]>().notNull(),
 });
 

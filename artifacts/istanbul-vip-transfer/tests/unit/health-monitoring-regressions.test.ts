@@ -84,5 +84,14 @@ describe('health monitoring regressions', () => {
     const startup = fs.readFileSync(path.join(root, 'instrumentation.node.ts'), 'utf8');
     expect(startup).toContain('startBlogHealthScheduler()');
     expect(startup).toContain('validateSmtpEnvironmentOnStartup()');
+
+    const scheduler = fs.readFileSync(path.join(root, 'lib/service-health-scheduler.ts'), 'utf8');
+    expect(scheduler).toContain('firstSeenAt: sql`coalesce(');
+    expect(scheduler).toContain('set:    { lastAlertAt: nowDate, issues: item.issues }');
+    expect(scheduler).toContain('Unhealthy since');
+    const streakMigration = fs.readFileSync(path.join(root, 'drizzle/migrations/0089_heavy_prism.sql'), 'utf8');
+    expect(streakMigration).toContain('ADD COLUMN "first_seen_at"');
+    expect(streakMigration).toContain('SET "first_seen_at" = "last_alert_at"');
+    expect(streakMigration).not.toContain('CREATE TABLE');
   });
 });

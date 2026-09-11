@@ -53,7 +53,12 @@ function esc(str: string): string {
     .replace(/'/g, '&#39;');
 }
 
-function buildAlertEmail(items: Array<{ slug: string; title: string | null; issues: string[] }>) {
+function buildAlertEmail(items: Array<{
+  slug: string;
+  title: string | null;
+  issues: string[];
+  firstSeenAt: Date;
+}>) {
   const rows = items
     .map(item => {
       const safeTitle = esc(item.title ?? item.slug);
@@ -71,6 +76,9 @@ function buildAlertEmail(items: Array<{ slug: string; title: string | null; issu
           </td>
           <td style="padding:10px 14px;border-bottom:1px solid #E2E8F0;">
             <ul style="margin:0;padding-left:18px;color:#B45309;">${issueList}</ul>
+            <div style="margin-top:6px;color:#64748B;font-size:11px;">
+              Unhealthy since ${esc(item.firstSeenAt.toUTCString())}
+            </div>
           </td>
         </tr>`;
     })
@@ -126,6 +134,7 @@ function buildAlertEmail(items: Array<{ slug: string; title: string | null; issu
     ...items.map(item => [
       `• ${item.title ?? item.slug} (/${item.slug})`,
       ...item.issues.map((c: string) => `  - ${ISSUE_LABELS[c] ?? c}`),
+      `  Unhealthy since: ${item.firstSeenAt.toUTCString()}`,
     ].join('\n')),
     '',
     'Please log in to the admin panel to restore the affected pages.',
@@ -166,7 +175,7 @@ export async function runServiceHealthCheck(): Promise<ServiceHealthCheckResult>
     const [
       { db },
       { content, serviceHealthRuns, serviceHealthAlerts },
-      { eq, inArray },
+      { eq, isNotNull, notInArray, sql },
       { computeServiceHealthIssues, getRegisteredServiceSlugs },
       { sendEmail },
     ] = await Promise.all([
@@ -199,6 +208,43 @@ export async function runServiceHealthCheck(): Promise<ServiceHealthCheckResult>
       result:         unhealthy as unknown as Array<{ slug: string; title?: string | null; issues: string[] }>,
     });
 
+    const nowDate = new Date();
+    const slugs = unhealthy.map(i => i.slug);
+    const existingAlerts = await db.select().from(serviceHealthAlerts);
+
+    // Close recovered streaks without changing their last delivered-alert time.
+    if (slugs.length === 0) {
+      await db
+        .update(serviceHealthAlerts)
+        .set({ firstSeenAt: null })
+        .where(isNotNull(serviceHealthAlerts.firstSeenAt));
+    } else {
+      await db
+        .update(serviceHealthAlerts)
+        .set({ firstSeenAt: null })
+        .where(notInArray(serviceHealthAlerts.slug, slugs));
+
+      // Record every active unhealthy streak before deciding whether an email
+      // is due. On conflict, preserve its original start and the cooldown.
+      for (const item of unhealthy) {
+        await db
+          .insert(serviceHealthAlerts)
+          .values({
+            slug: item.slug,
+            lastAlertAt: null,
+            firstSeenAt: nowDate,
+            issues: item.issues,
+          })
+          .onConflictDoUpdate({
+            target: serviceHealthAlerts.slug,
+            set: {
+              firstSeenAt: sql`coalesce(${serviceHealthAlerts.firstSeenAt}, ${nowDate})`,
+              issues: item.issues,
+            },
+          });
+      }
+    }
+
     if (unhealthy.length === 0) {
       console.info('[health-check] All service pages healthy ✓');
       return { status: 'complete', unhealthyCount: 0 };
@@ -206,17 +252,19 @@ export async function runServiceHealthCheck(): Promise<ServiceHealthCheckResult>
 
     console.warn('[health-check]', unhealthy.length, 'unhealthy service page(s):', unhealthy.map(i => i.slug));
 
-    // 3. Rate-limit: look up last alert per slug
-    const slugs          = unhealthy.map(i => i.slug);
-    const existingAlerts = slugs.length > 0
-      ? await db.select().from(serviceHealthAlerts).where(inArray(serviceHealthAlerts.slug, slugs))
-      : [];
-
-    const lastAlertMap = new Map<string, Date>(
-      existingAlerts.map(a => [a.slug, new Date(a.lastAlertAt)]),
+    // 3. Rate-limit using only the last confirmed email delivery timestamp.
+    const existingForUnhealthy = existingAlerts.filter(a => slugs.includes(a.slug));
+    const lastAlertMap = new Map<string, Date | null>(
+      existingForUnhealthy.map(a => [a.slug, a.lastAlertAt ? new Date(a.lastAlertAt) : null]),
+    );
+    const firstSeenMap = new Map<string, Date>(
+      existingForUnhealthy.map(a => [
+        a.slug,
+        a.firstSeenAt ? new Date(a.firstSeenAt) : nowDate,
+      ]),
     );
 
-    const now     = Date.now();
+    const now     = nowDate.getTime();
     const toAlert = unhealthy.filter(item => {
       const last = lastAlertMap.get(item.slug);
       return shouldSendServiceHealthAlert(last ?? null, now);
@@ -238,7 +286,11 @@ export async function runServiceHealthCheck(): Promise<ServiceHealthCheckResult>
       return { status: 'complete', unhealthyCount: unhealthy.length };
     }
 
-    const { html, text } = buildAlertEmail(toAlert);
+    const alertItems = toAlert.map(item => ({
+      ...item,
+      firstSeenAt: firstSeenMap.get(item.slug) ?? nowDate,
+    }));
+    const { html, text } = buildAlertEmail(alertItems);
     const delivered = await sendEmail({
       to:      adminEmails.join(', '),
       subject: `⚠️ ${toAlert.length} Service Page${toAlert.length > 1 ? 's' : ''} Offline — Action Required`,
@@ -257,10 +309,15 @@ export async function runServiceHealthCheck(): Promise<ServiceHealthCheckResult>
     for (const item of toAlert) {
       await db
         .insert(serviceHealthAlerts)
-        .values({ slug: item.slug, lastAlertAt: new Date(), issues: item.issues })
+        .values({
+          slug: item.slug,
+          lastAlertAt: nowDate,
+          firstSeenAt: firstSeenMap.get(item.slug) ?? nowDate,
+          issues: item.issues,
+        })
         .onConflictDoUpdate({
           target: serviceHealthAlerts.slug,
-          set:    { lastAlertAt: new Date(), issues: item.issues },
+          set:    { lastAlertAt: nowDate, issues: item.issues },
         });
     }
     return { status: 'complete', unhealthyCount: unhealthy.length };

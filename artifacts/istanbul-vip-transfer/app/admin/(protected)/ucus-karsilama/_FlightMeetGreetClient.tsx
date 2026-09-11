@@ -79,7 +79,7 @@ export default function FlightMeetGreetClient() {
           type="button"
           onClick={() => void load()}
           disabled={loading}
-          style={{ marginTop: '22px', display: 'inline-flex', alignItems: 'center', gap: '7px', border: '1px solid #C8D4DE', background: '#FFFFFF', color: '#172B3A', borderRadius: '7px', padding: '8px 11px', fontSize: '13px', cursor: loading ? 'wait' : 'pointer' }}
+          style={{ minHeight: '44px', marginTop: '22px', display: 'inline-flex', alignItems: 'center', gap: '7px', border: '1px solid #C8D4DE', background: '#FFFFFF', color: '#172B3A', borderRadius: '7px', padding: '8px 11px', fontSize: '13px', cursor: loading ? 'wait' : 'pointer' }}
         >
           <RefreshCw size={15} /> Durumu yenile
         </button>

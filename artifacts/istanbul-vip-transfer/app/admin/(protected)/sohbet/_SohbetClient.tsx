@@ -376,7 +376,7 @@ export default function SohbetClient() {
                 <button
                   onClick={() => setShowArchived(false)}
                   style={{
-                    flex: 1, padding: '0.3rem 0', fontSize: '0.75rem', borderRadius: '0.4rem',
+                    flex: 1, minHeight: 44, padding: '0.3rem 0', fontSize: '0.75rem', borderRadius: '0.4rem',
                     border: '1px solid',
                     borderColor: !showArchived ? '#C99A32' : '#D9E2EC',
                     background: !showArchived ? '#C99A32' : '#fff',
@@ -389,7 +389,7 @@ export default function SohbetClient() {
                 <button
                   onClick={() => setShowArchived(true)}
                   style={{
-                    flex: 1, padding: '0.3rem 0', fontSize: '0.75rem', borderRadius: '0.4rem',
+                    flex: 1, minHeight: 44, padding: '0.3rem 0', fontSize: '0.75rem', borderRadius: '0.4rem',
                     border: '1px solid',
                     borderColor: showArchived ? '#C99A32' : '#D9E2EC',
                     background: showArchived ? '#C99A32' : '#fff',

@@ -228,7 +228,7 @@ export default function AyarlarPage() {
           </div>
         </div>
 
-        <button type="submit" disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '10px 20px', borderRadius: '8px', background: saving ? '#93C5FD' : '#2563EB', color: '#FFFFFF', fontWeight: 700, fontSize: '13px', fontFamily: 'Inter, sans-serif', border: 'none', cursor: saving ? 'not-allowed' : 'pointer' }}>
+        <button type="submit" disabled={saving} style={{ minHeight: '44px', display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '10px 20px', borderRadius: '8px', background: saving ? '#93C5FD' : '#2563EB', color: '#FFFFFF', fontWeight: 700, fontSize: '13px', fontFamily: 'Inter, sans-serif', border: 'none', cursor: saving ? 'not-allowed' : 'pointer' }}>
           {saving ? <Loader2 size={14} /> : <Save size={14} />} {saving ? 'Kaydediliyor...' : 'Kaydet'}
         </button>
       </form>

@@ -165,8 +165,8 @@ function ActionButtons({
 
   return (
     <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-      <button aria-label="Yukarı" title="Yukarı" onClick={() => onMove(item, 'up')} disabled={!canMoveUp || !!actionLoading} style={{ minWidth: '44px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '5px', background: '#F8FAFC', color: '#52697A', border: '1px solid #D1D5DB', cursor: canMoveUp ? 'pointer' : 'not-allowed', opacity: canMoveUp ? 1 : .4 }}><ArrowUp size={14} /></button>
-      <button aria-label="Aşağı" title="Aşağı" onClick={() => onMove(item, 'down')} disabled={!canMoveDown || !!actionLoading} style={{ minWidth: '44px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '5px', background: '#F8FAFC', color: '#52697A', border: '1px solid #D1D5DB', cursor: canMoveDown ? 'pointer' : 'not-allowed', opacity: canMoveDown ? 1 : .4 }}><ArrowDown size={14} /></button>
+      <button data-testid="service-move-up" aria-label="Yukarı" title="Yukarı" onClick={() => onMove(item, 'up')} disabled={!canMoveUp || !!actionLoading} style={{ minWidth: '44px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '5px', background: '#F8FAFC', color: '#52697A', border: '1px solid #D1D5DB', cursor: canMoveUp ? 'pointer' : 'not-allowed', opacity: canMoveUp ? 1 : .4 }}><ArrowUp size={14} /></button>
+      <button data-testid="service-move-down" aria-label="Aşağı" title="Aşağı" onClick={() => onMove(item, 'down')} disabled={!canMoveDown || !!actionLoading} style={{ minWidth: '44px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '5px', background: '#F8FAFC', color: '#52697A', border: '1px solid #D1D5DB', cursor: canMoveDown ? 'pointer' : 'not-allowed', opacity: canMoveDown ? 1 : .4 }}><ArrowDown size={14} /></button>
       <a href={`/admin/hizmetler/${item.id}`} style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px',
         fontSize: '11px', fontWeight: 600, color: '#C9A84C',
@@ -478,7 +478,7 @@ export default function HizmetlerList({ items }: Props) {
           const catLabel = item.category ? (catMap[item.category] ?? item.category) : '—';
 
           return (
-            <div key={item.id} className="hl-table-row" style={{
+            <div data-testid="service-row" data-service-id={item.id} key={item.id} className="hl-table-row" style={{
               gridTemplateColumns: '36px 52px 1fr 110px 1fr 90px 60px 50px 140px',
               gap: '8px', padding: '12px 18px',
               borderBottom: '1px solid #F1F5F9', alignItems: 'center',
@@ -559,7 +559,7 @@ export default function HizmetlerList({ items }: Props) {
           const catLabel = item.category ? (catMap[item.category] ?? item.category) : null;
 
           return (
-            <div key={item.id} className="hl-card"
+            <div data-testid="service-row" data-service-id={item.id} key={item.id} className="hl-card"
               style={{
                 opacity: actionLoading?.endsWith(item.id) ? 0.6 : 1,
                 ...(item.missingRecord ? { background: '#FFFBFA', borderColor: '#FDA29B' } : {}),

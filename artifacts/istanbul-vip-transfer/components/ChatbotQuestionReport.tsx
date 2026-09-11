@@ -60,7 +60,7 @@ export default function ChatbotQuestionReport() {
           onClick={() => void loadReport()}
           disabled={loading}
           style={{
-            minHeight: 40, padding: '0.45rem 0.75rem', borderRadius: '0.5rem',
+            minHeight: 44, padding: '0.45rem 0.75rem', borderRadius: '0.5rem',
             border: '1px solid #D9E2EC', background: '#F8FAFC', color: '#263F55',
             cursor: loading ? 'wait' : 'pointer', fontSize: '0.78rem', fontWeight: 600,
           }}

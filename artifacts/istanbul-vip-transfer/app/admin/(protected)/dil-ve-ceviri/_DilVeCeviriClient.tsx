@@ -114,6 +114,7 @@ export default function DilVeCeviriClient({
             key={t.key}
             style={{
               ...tabBtnStyle(tab === t.key),
+              minHeight: '44px',
               borderRadius: '8px 8px 0 0',
               borderBottom: tab === t.key ? '2px solid #3B82F6' : '2px solid transparent',
               marginBottom: '-2px',

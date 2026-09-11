@@ -100,7 +100,7 @@ export default function DatabaseBackupClient() {
         type="button"
         onClick={downloadBackup}
         disabled={busy}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: busy ? '#93C5FD' : '#2563EB', color: '#FFFFFF', border: 0, textDecoration: 'none', borderRadius: '8px', padding: '10px 16px', fontSize: '13px', fontWeight: 700, cursor: busy ? 'wait' : 'pointer' }}
+        style={{ minHeight: '44px', display: 'inline-flex', alignItems: 'center', gap: '8px', background: busy ? '#93C5FD' : '#2563EB', color: '#FFFFFF', border: 0, textDecoration: 'none', borderRadius: '8px', padding: '10px 16px', fontSize: '13px', fontWeight: 700, cursor: busy ? 'wait' : 'pointer' }}
       >
         {busy ? <Loader2 size={16} /> : <DatabaseBackup size={16} />}
         {busy ? 'Yedek hazırlanıyor…' : 'Yedeği indir ve doğrula'}
@@ -125,7 +125,7 @@ export default function DatabaseBackupClient() {
           <label style={{ fontSize: 12 }}>Yedek (.dump)<input type="file" accept=".dump,application/octet-stream" onChange={(event) => setRestoreFile(event.target.files?.[0] ?? null)} /></label>
           <label style={{ fontSize: 12 }}>JSON manifest (.sha256.txt)<input type="file" accept=".txt,.json,application/json" onChange={(event) => setManifestFile(event.target.files?.[0] ?? null)} /></label>
           <div style={{ display: 'flex', gap: 8 }}>
-             <button type="button" disabled={restoreBusy} onClick={validateBackup}>Dry-run doğrula</button>
+             <button type="button" disabled={restoreBusy} onClick={validateBackup} style={{ minHeight: '44px', padding: '8px 14px' }}>Dry-run doğrula</button>
           </div>
         </div>
         {restoreMessage && <p role="status" style={{ fontSize: 12 }}>{restoreMessage}</p>}

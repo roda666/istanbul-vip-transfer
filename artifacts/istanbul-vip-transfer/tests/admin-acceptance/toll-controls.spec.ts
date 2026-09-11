@@ -12,10 +12,23 @@ const viewports = [
   { name: 'tablet', width: 768, height: 1024 },
 ] as const;
 
-const pointNames = ['Ankara', 'Antalya', 'Bodrum'];
+const pointStates = [
+  { name: 'Ankara', active: true },
+  { name: 'Antalya', active: false },
+  { name: 'Bodrum', active: true },
+] as const;
 
-type TollPoint = { id: string; name: string; displayOrder: number };
+type TollPoint = {
+  id: string;
+  name: string;
+  displayOrder: number;
+  active?: boolean;
+  verificationLocked?: boolean;
+  verification_locked?: boolean;
+};
 type TollPayload = { points: TollPoint[] };
+
+const customerLeakPattern = /toll|tariff|toll[_-]?point|verification[_-]?lock|source[_-]?verified|geçiş[\s_-]?ücret|gecis[\s_-]?ucret/i;
 
 async function tollPoints(page: import('@playwright/test').Page) {
   const response = await page.request.get('/admin/api/pricing/tolls');
@@ -23,8 +36,40 @@ async function tollPoints(page: import('@playwright/test').Page) {
   return (await response.json()) as TollPayload;
 }
 
+function findCustomerLeaks(value: unknown, path: string[] = []): string[] {
+  if (value == null) return [];
+  if (typeof value === 'string') {
+    return customerLeakPattern.test(value) ? [`${path.join('.')}: ${value}`] : [];
+  }
+  if (Array.isArray(value)) return value.flatMap((item, index) => findCustomerLeaks(item, [...path, `[${index}]`]));
+  if (typeof value === 'object') {
+    return Object.entries(value).flatMap(([key, item]) => [
+      ...(customerLeakPattern.test(key) ? [`${[...path, key].join('.')}: <internal key>`] : []),
+      ...findCustomerLeaks(item, [...path, key]),
+    ]);
+  }
+  return [];
+}
+
 function sequence(points: TollPoint[]) {
   return points.map(({ id, name, displayOrder }) => ({ id, name, displayOrder }));
+}
+
+function businessFields(points: TollPoint[]) {
+  return points.map((point) => {
+    const {
+      displayOrder: _displayOrder,
+      updatedAt: _updatedAt,
+      updatedBy: _updatedBy,
+      updatedByName: _updatedByName,
+      ...business
+    } = point as TollPoint & {
+      updatedAt?: string;
+      updatedBy?: string | null;
+      updatedByName?: string | null;
+    };
+    return business;
+  });
 }
 
 async function assertPointCardsDoNotOverlap(page: import('@playwright/test').Page) {
@@ -78,7 +123,12 @@ for (const viewport of viewports) {
     await assertPointControlsAreEnabledAndSized(adminPage);
     await assertTouchTargets(adminPage, 44);
 
-    for (const pointName of pointNames) {
+    const apiPoints = await tollPoints(adminPage);
+    for (const { name: pointName, active } of pointStates) {
+      const apiPoint = apiPoints.points.find(({ name }) => name.toLocaleLowerCase('tr-TR').includes(pointName.toLocaleLowerCase('tr-TR')));
+      expect(apiPoint, `${pointName} must be present in the admin API`).toBeDefined();
+      expect(apiPoint?.active, `${pointName} active state must be preserved`).toBe(active);
+      expect(apiPoint?.verificationLocked ?? apiPoint?.verification_locked, `${pointName} must not be verification locked`).not.toBe(true);
       const pointButton = adminPage.getByRole('button', { name: new RegExp(pointName, 'i') }).first();
       await expect(pointButton, `${pointName} toll point should be visible`).toBeVisible();
       const card = pointButton.locator('xpath=..');
@@ -86,10 +136,40 @@ for (const viewport of viewports) {
       await expect(card.locator('button:disabled')).toHaveCount(0);
       await expect(card).not.toContainText(/doğrulama gerekli|kilitli|kilitlendi/i);
     }
-    await expect(adminPage.locator('main')).not.toContainText(/doğrulama gerekli|verification required|kilitli/i);
+    await expect(adminPage.locator('main')).not.toContainText(
+      /doğrulama gerekli|verification required|verification[_ -]?lock|kilitli|disabled/i,
+    );
     await screenshotEvidence(adminPage, `toll-controls-${viewport.name}`);
   });
 }
+
+test('customer quote, reservation, public APIs, and UI never expose toll internals', async ({ adminPage }) => {
+  const publicEndpoints = [
+    '/data/vehicles?lang=tr',
+    '/data/transfer-routes',
+    '/data/service-types',
+    '/data/locations?for=pickup&scope=local&q=ist',
+    '/data/booking-form-options?lang=tr',
+    '/data/optional-services?locale=tr&serviceType=TRANSFER',
+    '/data/price-estimate',
+  ];
+
+  for (const endpoint of publicEndpoints) {
+    const response = endpoint === '/data/price-estimate'
+      ? await adminPage.request.post(endpoint, { data: {} })
+      : await adminPage.request.get(endpoint);
+    const contentType = response.headers()['content-type'] ?? '';
+    if (!contentType.includes('json')) continue;
+    const leaks = findCustomerLeaks(await response.json());
+    expect(leaks, `${endpoint} leaked toll internals`).toEqual([]);
+  }
+
+  await adminPage.goto('/');
+  await waitForSettledAdminPage(adminPage);
+  await expect(adminPage.locator('body')).not.toContainText(customerLeakPattern);
+  await expect(adminPage.locator('[id="rezervasyon"], [data-testid*="reservation"]').first())
+    .toBeVisible({ timeout: 15_000 });
+});
 
 test('one adjacent toll point reorder is reversible without changing toll data', async ({ adminPage }) => {
   await adminPage.setViewportSize({ width: 390, height: 844 });
@@ -129,6 +209,9 @@ test('one adjacent toll point reorder is reversible without changing toll data',
 
   const after = await tollPoints(adminPage);
   expect(sequence(after.points), 'Final API toll point sequence must be restored exactly').toEqual(originalSequence);
+  expect(businessFields(after.points), 'Reordering must not mutate toll point business fields').toEqual(
+    businessFields(before.points),
+  );
   await adminPage.reload();
   await waitForSettledAdminPage(adminPage);
   await expect(adminPage.getByRole('button', { name: new RegExp(`${movedName} aşağı taşı`, 'i') })).toBeVisible();

@@ -236,14 +236,14 @@ function RequestCard({
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <Link
             href={`/admin/talepler/${row.id}`}
-            style={{ padding: '5px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, background: '#EFF6FF', color: '#2563EB', textDecoration: 'none' }}
+            style={{ minHeight: '44px', padding: '5px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, background: '#EFF6FF', color: '#2563EB', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
           >
             Detay
           </Link>
           <button
             onClick={() => onToggleTestData(row.id, !row.isTestData)}
             disabled={!!updating}
-            style={{ padding: '5px 10px', borderRadius: '6px', fontSize: '12px', background: row.isTestData ? '#FEF3C7' : '#F1F5F9', color: row.isTestData ? '#92400E' : '#64748B', border: 'none', cursor: 'pointer' }}
+            style={{ minHeight: '44px', padding: '5px 10px', borderRadius: '6px', fontSize: '12px', background: row.isTestData ? '#FEF3C7' : '#F1F5F9', color: row.isTestData ? '#92400E' : '#64748B', border: 'none', cursor: 'pointer' }}
           >
             {row.isTestData ? 'Test İşaretini Kaldır' : 'Test Olarak İşaretle'}
           </button>
@@ -251,14 +251,14 @@ function RequestCard({
             <button
               onClick={() => onArchive(row.id)}
               disabled={!!updating}
-              style={{ padding: '5px 10px', borderRadius: '6px', fontSize: '12px', background: '#F1F5F9', color: '#64748B', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+              style={{ minHeight: '44px', padding: '5px 10px', borderRadius: '6px', fontSize: '12px', background: '#F1F5F9', color: '#64748B', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
             >
               <Archive size={11} /> Arşivle
             </button>
           )}
-          {canDelete && <button onClick={() => onDelete(row.id)} disabled={!!updating} style={{ padding: '5px 10px', borderRadius: '6px', fontSize: '12px', background: '#FFF1F2', color: '#BE123C', border: 'none', cursor: 'pointer' }}>Sil</button>}
-          <button onClick={() => onExport('xls', row)} disabled={!!updating} aria-label={`${row.referenceNumber} talebini Excel indir`} style={{ padding: '5px 10px', borderRadius: '6px', fontSize: '12px', background: '#F0FDF4', color: '#15803D', border: 'none', cursor: 'pointer' }}>Excel</button>
-          <button onClick={() => onExport('pdf', row)} disabled={!!updating} aria-label={`${row.referenceNumber} talebini PDF indir`} style={{ padding: '5px 10px', borderRadius: '6px', fontSize: '12px', background: '#FFF7ED', color: '#C2410C', border: 'none', cursor: 'pointer' }}>PDF</button>
+          {canDelete && <button onClick={() => onDelete(row.id)} disabled={!!updating} style={{ minWidth: '44px', minHeight: '44px', padding: '5px 10px', borderRadius: '6px', fontSize: '12px', background: '#FFF1F2', color: '#BE123C', border: 'none', cursor: 'pointer' }}>Sil</button>}
+          <button onClick={() => onExport('xls', row)} disabled={!!updating} aria-label={`${row.referenceNumber} talebini Excel indir`} style={{ minWidth: '44px', minHeight: '44px', padding: '5px 10px', borderRadius: '6px', fontSize: '12px', background: '#F0FDF4', color: '#15803D', border: 'none', cursor: 'pointer' }}>Excel</button>
+          <button onClick={() => onExport('pdf', row)} disabled={!!updating} aria-label={`${row.referenceNumber} talebini PDF indir`} style={{ minWidth: '44px', minHeight: '44px', padding: '5px 10px', borderRadius: '6px', fontSize: '12px', background: '#FFF7ED', color: '#C2410C', border: 'none', cursor: 'pointer' }}>PDF</button>
         </div>
       </div>
     </div>
@@ -500,6 +500,7 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
   }
 
   const inputStyle: React.CSSProperties = {
+    minHeight: '44px',
     padding: '8px 12px',
     borderRadius: '8px',
     border: '1px solid #D1D5DB',
@@ -526,9 +527,10 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
           {[10, 20, 50, 100].map(value => <option key={value} value={value}>{value}/sayfa</option>)}
         </select>
         <button
+          aria-label="Önceki sayfa"
           onClick={() => setPage((p) => Math.max(1, p - 1))}
           disabled={page <= 1}
-          style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', cursor: page > 1 ? 'pointer' : 'not-allowed', opacity: page <= 1 ? 0.4 : 1 }}
+          style={{ minWidth: '44px', minHeight: '44px', padding: '6px 10px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', cursor: page > 1 ? 'pointer' : 'not-allowed', opacity: page <= 1 ? 0.4 : 1 }}
         >
           <ChevronLeft size={14} />
         </button>
@@ -536,9 +538,10 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
           {page} / {data.totalPages}
         </span>
         <button
+          aria-label="Sonraki sayfa"
           onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}
           disabled={page >= data.totalPages}
-          style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', cursor: page < data.totalPages ? 'pointer' : 'not-allowed', opacity: page >= data.totalPages ? 0.4 : 1 }}
+          style={{ minWidth: '44px', minHeight: '44px', padding: '6px 10px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', cursor: page < data.totalPages ? 'pointer' : 'not-allowed', opacity: page >= data.totalPages ? 0.4 : 1 }}
         >
           <ChevronRight size={14} />
         </button>

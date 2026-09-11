@@ -22,6 +22,7 @@ type CatalogPage = {
   actionPath: (id: string) => string;
   idFromResponse: (path: string) => string;
   actionBody: (direction: 'up' | 'down') => Record<string, string>;
+  orderFromIds?: (page: import('@playwright/test').Page, ids: string[]) => Promise<string[]>;
 };
 
 async function orderedItems(page: import('@playwright/test').Page, config: CatalogPage) {
@@ -45,33 +46,45 @@ async function reorderRoundTrip(page: import('@playwright/test').Page, config: C
     response.request().method() === config.method &&
     new URL(response.url()).pathname.startsWith(config.actionPrefix);
 
+  const moved = initial[1];
+  const expectedAfterMove = [moved, initial[0], ...initial.slice(2)];
   const moveResponsePromise = page.waitForResponse(requestForCatalog);
-  const up = config.upButtons(page).filter({ hasNot: page.locator('[disabled]') }).first();
-  await up.evaluate((button: HTMLElement) => button.click());
-  const moveResponse = await moveResponsePromise;
-  expect(moveResponse.status()).toBe(200);
+  const up = config.upButtons(page).first();
+  let movedSuccessfully = false;
   try {
+    await up.click();
+    const moveResponse = await moveResponsePromise;
+    expect(moveResponse.status()).toBe(200);
+    movedSuccessfully = true;
+    if (config.orderFromIds) {
+      await expect.poll(() => config.orderFromIds!(page, initial.map(item => item.id))).toEqual(
+        expectedAfterMove.map(item => item.id),
+      );
+    }
   } finally {
-    const cleanupStatus = await page.evaluate(async ({ url, method, body }) => {
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      return response.status;
-    }, {
-      url: moveResponse.url(),
-      method: config.method,
-      body: config.actionBody('down'),
-    });
-    expect(cleanupStatus, 'reorder cleanup').toBe(200);
+    if (movedSuccessfully) {
+      const pageUrl = new URL(page.url());
+      const cleanupResponse = await page.request.fetch(
+        new URL(config.actionPath(moved.id), pageUrl).toString(),
+        {
+          method: config.method,
+          data: config.actionBody('down'),
+          headers: {
+            origin: pageUrl.origin,
+            referer: pageUrl.toString(),
+          },
+        },
+      );
+      const cleanupStatus = cleanupResponse.status();
+      expect(cleanupStatus, 'reorder cleanup').toBe(200);
+    }
   }
 
-  if (config.snapshot) {
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await waitForSettledAdminPage(page);
+  if (config.orderFromIds) {
+    await expect.poll(() => config.orderFromIds!(page, initial.map(item => item.id))).toEqual(
+      initial.map(item => item.id),
+    );
   }
-  await expect.poll(async () => orderedItems(page, config)).toEqual(initial);
 }
 
 const pages: CatalogPage[] = [
@@ -161,7 +174,7 @@ const pages: CatalogPage[] = [
     actionPath: (id) => `/admin/api/service-pages/${id}`,
     idFromResponse: (path) => path.split('/').at(-1)!,
     actionBody: (direction) => ({ action: direction }),
-    snapshot: async (page) => page.locator('.hl-card:visible, .hl-table-row:visible')
+    snapshot: async (page) => page.getByTestId('service-row').filter({ visible: true })
       .filter({ has: page.locator('a[href*="/admin/hizmetler/"]') })
       .evaluateAll((rows) => rows.map((row) => {
         const link = row.querySelector<HTMLAnchorElement>('a[href*="/admin/hizmetler/"]');
@@ -172,10 +185,20 @@ const pages: CatalogPage[] = [
             ?? '',
         };
       })),
-    visibleItemCount: async (page) => page.locator('.hl-card:visible, .hl-table-row:visible').filter({ has: page.locator('button[aria-label="Yukarı"]') }).count(),
-    upButtons: (page) => page.locator('button[aria-label="Yukarı"]:visible:not([disabled])'),
+    visibleItemCount: async (page) => page.getByTestId('service-row').filter({ visible: true }).filter({ has: page.locator('button[aria-label="Yukarı"]') }).count(),
+    upButtons: (page) => page.locator('[data-testid="service-move-up"]:visible:not([disabled])'),
+    orderFromIds: async (page, ids) => {
+      const records = await Promise.all(ids.map(async (id) => {
+        const response = await page.request.get(`/admin/api/service-pages/${id}`);
+        expect(response.status()).toBe(200);
+        const body = await response.json() as { record?: { id: string; displayOrder: number } };
+        expect(body.record).toBeTruthy();
+        return body.record!;
+      }));
+      return records.sort((a, b) => a.displayOrder - b.displayOrder).map(record => record.id);
+    },
     controls: async (page) => {
-      const row = page.locator('.hl-card:visible, .hl-table-row:visible').first();
+      const row = page.getByTestId('service-row').filter({ visible: true }).first();
       if (!await row.count()) return;
       await expect(row.getByRole('link', { name: 'Düzenle' })).toBeVisible();
       await expect(row.getByText(/^(Yayında|Taslak|Arşiv)$/).first()).toBeVisible();

@@ -160,6 +160,7 @@ export default function AbonelerClient() {
   }
 
   const inputStyle: React.CSSProperties = {
+    minHeight: '44px',
     padding: '8px 12px', borderRadius: '8px', border: '1px solid #D1D5DB',
     fontSize: '13px', fontFamily: 'Inter, sans-serif', background: '#FFFFFF', color: '#1E293B',
   };
@@ -285,6 +286,7 @@ export default function AbonelerClient() {
                               onClick={() => unsubscribe(sub.id)}
                               disabled={!!updating}
                               style={{
+                                minHeight: '44px',
                                 padding: '4px 10px', borderRadius: '6px', border: '1px solid #FECDD3',
                                 background: '#FFF1F2', color: '#BE123C', fontSize: '11px', fontWeight: 600,
                                 cursor: 'pointer', fontFamily: 'Inter, sans-serif',
@@ -304,9 +306,9 @@ export default function AbonelerClient() {
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', borderTop: '1px solid #F1F5F9' }}>
                 <span style={{ fontSize: '12px', color: '#64748B', fontFamily: 'Inter, sans-serif' }}>Toplam {data.total} abone</span>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <button onClick={() => setPage((p) => p - 1)} disabled={page <= 1} style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid #E2E8F0', cursor: 'pointer' }}>←</button>
+                  <button aria-label="Önceki sayfa" onClick={() => setPage((p) => p - 1)} disabled={page <= 1} style={{ minWidth: '44px', minHeight: '44px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #E2E8F0', cursor: 'pointer' }}>←</button>
                   <span style={{ fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>{page} / {data.totalPages}</span>
-                  <button onClick={() => setPage((p) => p + 1)} disabled={page >= data.totalPages} style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid #E2E8F0', cursor: 'pointer' }}>→</button>
+                  <button aria-label="Sonraki sayfa" onClick={() => setPage((p) => p + 1)} disabled={page >= data.totalPages} style={{ minWidth: '44px', minHeight: '44px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #E2E8F0', cursor: 'pointer' }}>→</button>
                 </div>
               </div>
             )}

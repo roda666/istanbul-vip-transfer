@@ -208,7 +208,7 @@ export default function IstatistiklerClient() {
         </span>
         <button
           onClick={fetchData}
-          style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#F8FAFC', fontSize: '12px', color: '#475569', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
+          style={{ minHeight: '44px', display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#F8FAFC', fontSize: '12px', color: '#475569', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
         >
           <RefreshCw size={12} /> Yenile
         </button>

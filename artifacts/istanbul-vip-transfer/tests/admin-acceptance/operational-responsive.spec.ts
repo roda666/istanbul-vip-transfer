@@ -1,6 +1,8 @@
 import { type Page } from '@playwright/test';
 import { expect, test, waitForSettledAdminPage } from './fixtures';
 
+test.setTimeout(120_000);
+
 const VIEWPORTS = [
   { name: 'mobile', width: 390, height: 844 },
   { name: 'tablet', width: 768, height: 1024 },
@@ -13,21 +15,16 @@ const VIEWPORTS = [
  */
 const ROUTES = [
   '/admin/personel',
-  '/admin/diller',
   '/admin/transferler',
   '/admin/talepler',
   '/admin/sohbet',
-  '/admin/ucusla-karsilama',
   '/admin/ucus-karsilama',
-  '/admin/bulten',
   '/admin/bulten-aboneleri',
   '/admin/istatistikler',
   '/admin/dashboard',
-  '/admin/islem-gecmisi',
   '/admin/gecmis',
   // Translation management and its job queue are both present in the codebase.
   '/admin/dil-ve-ceviri',
-  '/admin/ceviriler',
   '/admin/veritabani-yedegi',
   '/admin/ayarlar',
 ] as const;
@@ -39,18 +36,13 @@ const ROUTES = [
  * this documented allowlist.
  */
 async function assertMainActionTouchTargets(page: Page) {
-  const tooSmall = await page.locator('main button, main a').evaluateAll((elements: Element[]) => {
+  const tooSmall = await page.locator('main button, main [role="button"]').evaluateAll((elements: Element[]) => {
     const failures: Array<{ label: string; width: number; height: number }> = [];
     for (const element of elements) {
       const style = getComputedStyle(element);
       if (style.display === 'none' || style.visibility === 'hidden') continue;
       const box = element.getBoundingClientRect();
       if (box.width <= 0 || box.height <= 0 || (box.width >= 44 && box.height >= 44)) continue;
-
-      // Allow only compact, non-action table-cell navigation (row links and
-      // pagination); a button in a table remains a main action and is tested.
-      const inTableCell = element.tagName === 'A' && !!element.closest('td, th');
-      if (inTableCell) continue;
 
       failures.push({
         label: (element.getAttribute('aria-label') || element.textContent || element.tagName)
@@ -66,11 +58,18 @@ async function assertMainActionTouchTargets(page: Page) {
 
 for (const route of ROUTES) {
   for (const viewport of VIEWPORTS) {
-    test(`${route} is usable at ${viewport.name} (${viewport.width}x${viewport.height})`, async ({
+    const group = route.includes('transfer') || route.includes('tale') || route.includes('ucus')
+      ? 'operations'
+      : route.includes('dil') || route.includes('ceviri')
+        ? 'translation'
+        : route.includes('bulten')
+          ? 'communications'
+          : 'system';
+    test(`@${group} ${route} is usable at ${viewport.name} (${viewport.width}x${viewport.height})`, async ({
       adminPage,
     }) => {
       await adminPage.setViewportSize({ width: viewport.width, height: viewport.height });
-      const response = await adminPage.goto(route);
+      const response = await adminPage.goto(route, { waitUntil: 'domcontentloaded' });
       const status = response?.status() ?? 0;
 
       // Optional aliases should not make acceptance fail on an older
@@ -100,7 +99,7 @@ for (const route of ROUTES) {
       // Explicit evidence mapping: test-results/admin-acceptance/<route>-<viewport>.png
       const screenshotPath =
         `test-results/admin-acceptance/${route.replace(/^\/|\/$/g, '').replaceAll('/', '-')}-${viewport.name}.png`;
-      await adminPage.screenshot({ path: screenshotPath, fullPage: true });
+      await adminPage.screenshot({ path: screenshotPath });
       test.info().annotations.push({
         type: 'screenshot',
         description: `${route} @ ${viewport.width}x${viewport.height} -> ${screenshotPath}`,

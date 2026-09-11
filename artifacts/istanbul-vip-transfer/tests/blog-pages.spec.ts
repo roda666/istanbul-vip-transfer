@@ -4,23 +4,18 @@
  * Verifies that:
  *  1. All Turkish (root) blog posts return HTTP 200 and contain a non-empty
  *     <h1> element in the server-rendered HTML.
- *  2. For any localized blog URL that returns 200, it also contains a non-empty
- *     <h1> — so a broken translation cannot slip through as a blank page.
+ *  2. Every published translation for each supported locale discovered in the database
+ *     returns HTTP 200 and contains a non-empty <h1>.
  *
  * Turkish source routes (/blog/[slug]) are served from static blog-data.ts and
  * cannot silently go offline; they are tested exhaustively.
  *
- * Localized routes (/en/blog/…, /de/blog/…, etc.) depend on contentTranslations
- * DB records. A 404 on a localized route means "no translation published yet"
- * which may be acceptable on a fresh install, but a 200 with no H1 or a 5xx
- * always indicates a problem. These tests catch both scenarios:
- *   - 200 without H1 → assertion failure (broken render)
- *   - 5xx           → assertion failure (server error)
- *   - 404           → allowed (translation not yet created)
- *
- * The health-check unit tests (blog-health.spec.ts) independently verify that
- * the server's health logic correctly identifies missing or unpublished
- * translations, providing full coverage of the detection path.
+ * Localized routes depend on contentTranslations DB records. The tests first
+ * start from published translation rows and retain broken source relationships,
+ * then require every discovered URL to remain online. A broken source record or
+ * route regression therefore fails instead of disappearing through an inner
+ * join or silently tolerating a 404. Health-check unit tests cover translations
+ * that are entirely missing or have not reached a published state.
  *
  * Uses Playwright's `request` fixture (pure HTTP — no browser required).
  * Next.js server-renders the H1, so it is always present in the raw HTML.
@@ -29,6 +24,7 @@
  *   pnpm --filter @workspace/istanbul-vip-transfer run test:e2e
  */
 import { test, expect } from '@playwright/test';
+import postgres from 'postgres';
 import { getAllSlugs } from '../lib/blog-data';
 import { SUPPORTED_LANGS } from '../lib/i18n';
 
@@ -39,6 +35,51 @@ function extractH1(html: string): string | null {
   const match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
   if (!match) return null;
   return match[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+}
+
+interface PublishedTranslatedBlogRoute {
+  locale: string;
+  slug: string;
+}
+
+/**
+ * Read published BLOG_POST translations without letting an invalid source
+ * relationship disappear through an inner join. A source-less translation is
+ * retained because its original content type can no longer be determined and
+ * any published orphan is an invalid public-content record worth failing on.
+ */
+async function getPublishedTranslatedBlogRoutes(
+  locale: string,
+): Promise<PublishedTranslatedBlogRoute[]> {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    throw new Error('DATABASE_URL is required to verify translated blog routes');
+  }
+
+  const sql = postgres(databaseUrl, { max: 1 });
+  try {
+    const rows = await sql<{ slug: string | null }[]>`
+      SELECT COALESCE(NULLIF(BTRIM(ct.slug), ''), c.slug) AS slug
+      FROM content_translations ct
+      LEFT JOIN content c ON ct.entity_id::uuid = c.id
+      WHERE ct.entity_type = 'content'
+        AND ct.target_language_code = ${locale}
+        AND ct.status = 'PUBLISHED'
+        AND (c.content_type = 'BLOG_POST' OR c.id IS NULL)
+      ORDER BY COALESCE(NULLIF(BTRIM(ct.slug), ''), c.slug)
+    `;
+
+    return rows.map(({ slug }, index) => {
+      if (!slug) {
+        throw new Error(
+          `Published ${locale.toUpperCase()} content translation ${index + 1} has no source record or usable slug`,
+        );
+      }
+      return { locale, slug };
+    });
+  } finally {
+    await sql.end();
+  }
 }
 
 // ── Blog post slugs (derived from the static source of truth) ────────────────
@@ -64,32 +105,29 @@ test.describe('TR blog posts — root paths', () => {
   }
 });
 
-// ── Localized blog routes — translation render integrity ──────────────────────
-//
-// For each locale × slug combination: if the server returns 200, it MUST also
-// render a non-empty <h1>. A 404 (no translation yet) is tolerated; a 5xx or a
-// 200 with no H1 is always a failure.
+// ── Localized blog routes — published translations must stay online ──────────
 
-test.describe('Localized blog posts — render integrity when translations exist', () => {
+test.describe('Published localized blog posts', () => {
   for (const locale of SUPPORTED_LANGS) {
-    for (const slug of BLOG_SLUGS) {
-      test(`/${locale}/blog/${slug} — if 200, must render an H1`, async ({ request }) => {
-        const path     = `/${locale}/blog/${slug}`;
+    test(`${locale.toUpperCase()} published translations return 200 and render an H1`, async ({ request }) => {
+      const routes = await getPublishedTranslatedBlogRoutes(locale);
+
+      expect(
+        routes.length,
+        `No published ${locale.toUpperCase()} blog translations were found in the database`,
+      ).toBeGreaterThan(0);
+
+      for (const { slug } of routes) {
+        const path     = `/${locale}/blog/${encodeURIComponent(slug)}`;
         const response = await request.get(path);
-        const status   = response.status();
-
-        // 404 = no translation published yet — acceptable on a fresh install
-        if (status === 404) return;
-
-        // Any status other than 200 or 404 is a server error
-        expect(status, `Unexpected status ${status} for ${path}`).toBe(200);
+        expect(response.status(), `Expected published translation ${path} to return 200`).toBe(200);
 
         const html = await response.text();
         const h1   = extractH1(html);
 
-        expect(h1, `No <h1> found on ${path} (translation exists but renders without H1)`).not.toBeNull();
+        expect(h1, `No <h1> found on published translation ${path}`).not.toBeNull();
         expect(h1!.length, `<h1> is empty on ${path}`).toBeGreaterThan(0);
-      });
-    }
+      }
+    });
   }
 });

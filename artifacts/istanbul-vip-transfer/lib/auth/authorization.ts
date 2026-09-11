@@ -151,6 +151,8 @@ export function getAdminApiPermission(pathname: string, method: string): AdminPe
   if (pathname.startsWith('/admin/api/competitors')) return 'AI_USE';
 
   if (pathname.startsWith('/admin/api/vehicles') ||
+      pathname.startsWith('/admin/api/drivers') ||
+      pathname.startsWith('/admin/api/transfers') ||
       pathname.startsWith('/admin/api/vehicle-feature-defaults') ||
       pathname.startsWith('/admin/api/locations') ||
       pathname.startsWith('/admin/api/transfer-routes') ||
@@ -226,6 +228,7 @@ export function getAdminPagePermission(pathname: string): AdminPermission | unde
   if (pathname.startsWith('/admin/talepler')) return 'RESERVATIONS_READ';
   if (pathname.startsWith('/admin/bulten-aboneleri')) return 'NEWSLETTER_READ';
   if (pathname.startsWith('/admin/araclar') || pathname.startsWith('/admin/transfer-rotalari') || pathname.startsWith('/admin/fiyat-kurallari') || pathname.startsWith('/admin/yol-gecis-ucretleri')) return 'FLEET_MANAGE';
+  if (pathname.startsWith('/admin/transferler') || pathname.startsWith('/admin/soforler')) return 'FLEET_MANAGE';
   if (pathname.startsWith('/admin/ai-studio') || pathname.startsWith('/admin/ai-oneriler')) return 'AI_USE';
   if (pathname.startsWith('/admin/rakipler')) return 'AI_USE';
   if (pathname.startsWith('/admin/ceviriler') || pathname.startsWith('/admin/dil-ve-ceviri')) return 'TRANSLATIONS_MANAGE';

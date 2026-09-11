@@ -131,3 +131,4 @@
 - [Responsive change validation](responsive-change-validation.md) — every UI change must be checked at mobile and tablet widths for page overflow, stacking, and 44px touch targets.
 - [Structural reference translation sync](structural-reference-translation-sync.md) — changed location/vehicle reference fields replace all 8 live locale values; blog translations remain draft-gated.
 - [Temporary ESM script imports](temporary-esm-script-imports.md) — scripts run from /tmp cannot use artifact-relative package imports; resolve through verified artifact node_modules symlinks.
+- [Legacy optional-service safety](legacy-optional-service-safety.md) — preserve legacy prices; enforce new writes, quarantine invalid rows at runtime, and dedupe semantic aliases without silent data rewrites.

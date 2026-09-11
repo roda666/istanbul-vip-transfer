@@ -325,7 +325,9 @@ function FastQuotePanel({
   const [destinationLocationId, setDestinationLocationId] = useState('');
   const [quoteHours, setQuoteHours] = useState(4);
   const [quoteTripType, setQuoteTripType] = useState<'ONE_WAY' | 'ROUND_TRIP'>('ONE_WAY');
+  const [quoteServiceType, setQuoteServiceType] = useState<'AIRPORT_TRANSFER' | 'INTERCITY' | 'ALLOCATION' | 'TOUR'>('AIRPORT_TRANSFER');
   const [quotePickupAt, setQuotePickupAt] = useState(() => localDateTimeValue());
+  const [reservationRequestId, setReservationRequestId] = useState('');
   const [quoteOverageHours, setQuoteOverageHours] = useState('');
   const [quoteOverageKm, setQuoteOverageKm] = useState('');
   const [quoting, setQuoting] = useState(false);
@@ -339,6 +341,12 @@ function FastQuotePanel({
   const [tollsError, setTollsError] = useState('');
   const [tollPanelOpen, setTollPanelOpen] = useState(false);
   const [tollPanelApplicable, setTollPanelApplicable] = useState(false);
+  const [optionalServices, setOptionalServices] = useState<Array<{
+    id: string; name: string; unitAmount: number; currency: string;
+    chargeType: string; maximumQuantity: number; includedInTransfer: boolean; active: boolean;
+    serviceTypeScope?: unknown; automaticServiceTypes?: unknown;
+  }>>([]);
+  const [selectedServiceQuantities, setSelectedServiceQuantities] = useState<Record<string, number>>({});
 
   const selectedVehicle = vehicles.find((vehicle) => vehicle.id === quoteVehicleId);
   const selectedTollAlternative = tollAlternatives.find((alternative) => alternative.id === tollAlternativeId);
@@ -353,6 +361,29 @@ function FastQuotePanel({
   const manuallySelectedRoute = routes.find((route) => route.id === quoteRouteId);
   const hasOriginInput = Boolean(originLocationId);
   const hasDestinationInput = Boolean(destinationLocationId);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/admin/api/ek-hizmetler', { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload: { services?: typeof optionalServices } | null) => {
+        if (cancelled) return;
+        const services = (payload?.services ?? []).filter((service) => {
+          const scope = (service.serviceTypeScope ?? []) as string[];
+          const automaticScope = (service.automaticServiceTypes ?? []) as string[];
+          return service.active
+            && (scope.length === 0 || scope.includes(quoteServiceType))
+            && (!service.includedInTransfer || automaticScope.includes(quoteServiceType));
+        });
+        setOptionalServices(services);
+        const available = new Set(services.filter((service) => !service.includedInTransfer).map((service) => service.id));
+        setSelectedServiceQuantities((current) => Object.fromEntries(
+          Object.entries(current).filter(([id]) => available.has(id)),
+        ));
+      })
+      .catch(() => { if (!cancelled) setOptionalServices([]); });
+    return () => { cancelled = true; };
+  }, [quoteServiceType]);
 
   useEffect(() => {
     if (!hasOriginInput || (quoteMode === 'DISTANCE' && !hasDestinationInput)) {
@@ -487,6 +518,13 @@ function FastQuotePanel({
         ...(originLocationId ? { originLocationId } : {}),
         ...(destinationLocationId ? { destinationLocationId } : {}),
         mode: quoteMode,
+        serviceType: quoteServiceType,
+        ...(reservationRequestId.trim() ? { reservationRequestId: reservationRequestId.trim() } : {}),
+        ...(Object.entries(selectedServiceQuantities).filter(([, quantity]) => quantity > 0).length
+          ? { serviceQuantities: Object.entries(selectedServiceQuantities)
+            .filter(([, quantity]) => quantity > 0)
+            .map(([serviceId, quantity]) => ({ serviceId, quantity })) }
+          : {}),
         tripType: quoteMode === 'HOURLY' ? 'ONE_WAY' : quoteTripType,
         ...(quoteMode === 'HOURLY' ? { requestedHours: quoteHours } : {}),
         ...(quoteMode === 'HOURLY' && quoteOverageHours.trim() ? { overageHours: Number(quoteOverageHours) } : {}),
@@ -532,6 +570,15 @@ function FastQuotePanel({
       </div>
 
       <div className="space-y-4">
+        <div>
+          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Hizmet türü</label>
+          <select data-testid="quote-service-type" className="min-h-11 w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={quoteServiceType} onChange={(event) => setQuoteServiceType(event.target.value as typeof quoteServiceType)}>
+            <option value="AIRPORT_TRANSFER">Havalimanı transferi</option>
+            <option value="INTERCITY">Şehirler arası</option>
+            <option value="ALLOCATION">Araç tahsisi</option>
+            <option value="TOUR">Tur</option>
+          </select>
+        </div>
         <div>
           <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Araç</label>
           <select data-testid="quote-vehicle" className="min-h-11 w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={quoteVehicleId} onChange={e => setQuoteVehicleId(e.target.value)}>
@@ -723,9 +770,47 @@ function FastQuotePanel({
           <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Alış Tarihi/Saati (isteğe bağlı — gündüz/gece geçiş tarifesini belirler)</label>
           <input type="datetime-local" className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm" value={quotePickupAt} onChange={e => setQuotePickupAt(e.target.value)} />
         </div>
+        <div>
+          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Talebe kilitli teklif (isteğe bağlı)</label>
+          <input type="text" placeholder="Rezervasyon talebi UUID" value={reservationRequestId}
+            onChange={(event) => setReservationRequestId(event.target.value)}
+            className="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900" />
+          <p className="mt-1 text-[11px] text-slate-500">UUID girilirse hesaplanan teklif talebe immutable snapshot olarak bağlanır.</p>
+        </div>
         {profiles.length === 0 && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800">
             Henüz hiçbir fiyat formülü yok. Araç seçimi korunur; otomatik fiyat için <a href="#pricing-profiles" className="font-bold underline">ilk formülü oluşturun</a>.
+          </div>
+        )}
+        {optionalServices.length > 0 && (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">Ek hizmetler</div>
+            <div className="space-y-2">
+              {optionalServices.map((service) => {
+                const quantity = selectedServiceQuantities[service.id] ?? 0;
+                const included = service.includedInTransfer;
+                return (
+                  <label key={service.id} className="flex items-center justify-between gap-3 text-xs text-slate-700">
+                    <span>
+                      {!included && (
+                        <input type="checkbox" checked={quantity > 0}
+                          onChange={(event) => setSelectedServiceQuantities((current) => ({ ...current, [service.id]: event.target.checked ? 1 : 0 }))}
+                          className="mr-2" />
+                      )}
+                      {service.name} {included ? '(Dahil)' : ''}
+                    </span>
+                    {!included && quantity > 0 && service.chargeType !== 'PER_BOOKING' && (
+                      <input type="number" min={1} max={service.maximumQuantity} value={quantity}
+                        onChange={(event) => setSelectedServiceQuantities((current) => ({
+                          ...current, [service.id]: Math.max(1, Math.min(service.maximumQuantity, Number(event.target.value) || 1)),
+                        }))}
+                        className="w-16 rounded border border-slate-300 px-2 py-1" />
+                    )}
+                  </label>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-[11px] text-slate-500">Dahil hizmetler otomatik maliyet olarak, seçilenler ayrı satır olarak hesaplanır.</p>
           </div>
         )}
         <button onClick={handleQuote} disabled={!quoteVehicleId || !hasOriginInput || (quoteMode === 'DISTANCE' && !hasDestinationInput) || distanceLoading || quoting || tollsLoading || (tollAlternatives.length > 0 && !tollAlternativeId) || Boolean(selectedTollAlternative && selectedVehicle && !selectedTollAlternative.isPricedForSelectedVehicle)} className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50">
@@ -776,12 +861,25 @@ function FastQuotePanel({
               
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2.5 text-sm">
                 <div className="font-bold text-slate-900 text-[10px] uppercase tracking-wider mb-2">Formül Çıktısı ({quoteResult.formulaKind})</div>
+                 <div className="text-[10px] font-bold uppercase tracking-wider text-blue-700">Seçilen ek hizmetler</div>
                 {quoteResult.lines?.map((line, i) => (
+                   (!line.key.startsWith('service:')
+                     || !optionalServices.find((service) => `service:${service.id}` === line.key)?.includedInTransfer) ? (
                    <div key={i} className="flex justify-between items-center text-slate-600">
                      <span>{line.label}</span>
                      <span className="font-medium text-slate-900">{formatMoneyCents(line.amountKurus, 'TRY')}</span>
                    </div>
+                   ) : null
                 ))}
+                 <div className="mt-2 border-t border-slate-200 pt-2 text-[10px] font-bold uppercase tracking-wider text-amber-700">Dahil hizmet maliyetleri</div>
+                 {quoteResult.lines?.map((line, i) => (
+                   line.key.startsWith('service:')
+                   && optionalServices.find((service) => `service:${service.id}` === line.key)?.includedInTransfer ? (
+                     <div key={`included-${i}`} className="flex justify-between items-center text-slate-600">
+                       <span>{line.label}</span><span className="font-medium text-slate-900">{formatMoneyCents(line.amountKurus, 'TRY')}</span>
+                     </div>
+                   ) : null
+                 ))}
                 <div className="border-t border-slate-200 pt-2.5 mt-2.5 flex justify-between font-bold text-slate-900">
                   <span>Net Toplam</span>
                   <span>{formatMoneyCents(quoteResult.netTryKurus || 0, 'TRY')}</span>

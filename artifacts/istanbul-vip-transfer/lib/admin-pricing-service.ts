@@ -35,6 +35,9 @@ import {
   resolveActiveTimeBandForPoint,
   assertBosphorusSelectionRequirement,
 } from '@/lib/toll-management';
+import { assertOptionalServiceRuntimeValid } from '@/lib/optional-service-validity';
+import { dedupeOptionalServices } from '@/lib/optional-service-selection';
+import { normalizeFlightMeetGreetKey } from '@/lib/flight-meet-greet-contract';
 
 type ResolvedQuoteToll = NonNullable<Parameters<typeof calculateAdminQuote>[0]['tolls']>[number] & {
   source?: 'EXACT_ROUTE' | 'CORRIDOR';
@@ -76,6 +79,7 @@ export async function createAdminQuote(input: {
   tollAlternativeId?: string;
   bosphorusTollPointId?: string;
   serviceQuantities?: Array<{ serviceId: string; quantity: number }>;
+  serviceType?: string;
   reservationRequestId?: string;
   /** Trip pickup instant used only to pick the DAY/NIGHT toll tariff band; defaults to now. */
   pickupAt?: Date;
@@ -148,7 +152,7 @@ export async function createAdminQuote(input: {
 
   const [policy] = await db.select().from(priceCalculatorSettings).where(eq(priceCalculatorSettings.id, 1)).limit(1);
   const rates = await getCurrentExchangeRates();
-  const services = await resolveServices(input.serviceQuantities ?? [], rates);
+  const services = await resolveServices(input.serviceQuantities ?? [], input.serviceType, rates);
   // The server, rather than the browser, resolves a route's chosen default.
   // This keeps calculations deterministic for reservation snapshots and avoids
   // silently omitting tolls if an older UI does not submit the optional field.
@@ -281,21 +285,50 @@ export async function createAdminQuote(input: {
 
 async function resolveServices(
   selections: Array<{ serviceId: string; quantity: number }>,
+  serviceType: string | undefined,
   rates: Awaited<ReturnType<typeof getCurrentExchangeRates>>,
 ): Promise<PricingServiceInput[]> {
-  if (!selections.length) return [];
-  const ids = [...new Set(selections.map((item) => item.serviceId))];
-   const rows = await db.select().from(optionalServices).where(and(
-     inArray(optionalServices.id, ids),
-     eq(optionalServices.active, true),
-     isNull(optionalServices.archivedAt),
-   ));
-  if (rows.length !== ids.length) throw new Error('Seçilen ek hizmetlerden biri geçerli değil.');
-  return selections.map((selection) => {
-    const service = rows.find((row) => row.id === selection.serviceId)!;
-    if (!Number.isInteger(selection.quantity) || selection.quantity < 1 || selection.quantity > service.maximumQuantity) throw new Error('Ek hizmet adedi geçersiz.');
+  const duplicateIds = selections.map((item) => item.serviceId);
+  if (new Set(duplicateIds).size !== duplicateIds.length) {
+    throw new Error('Aynı ek hizmet birden fazla satırda seçilemez; adedi tek satırda belirtin.');
+  }
+  const rawRows = await db.select().from(optionalServices).where(and(
+    eq(optionalServices.active, true), isNull(optionalServices.archivedAt),
+  ));
+  const requestedRawRows = selections.map((selection) => rawRows.find((row) => row.id === selection.serviceId));
+  if (requestedRawRows.some((row) => !row)) throw new Error('Seçilen ek hizmetlerden biri geçerli değil.');
+  const requestedSemanticKeys = new Set<string>();
+  for (const service of requestedRawRows) {
+    const semanticKey = normalizeFlightMeetGreetKey(service!.key);
+    if (requestedSemanticKeys.has(semanticKey)) {
+      throw new Error('Aynı ek hizmetin farklı katalog kayıtları birlikte seçilemez.');
+    }
+    requestedSemanticKeys.add(semanticKey);
+  }
+  const automaticRaw = serviceType
+    ? rawRows.filter((row) => (
+      row.includedInTransfer
+      && (row.automaticServiceTypes as string[]).includes(serviceType)
+    ))
+    : [];
+  requestedRawRows.forEach((service) => assertOptionalServiceRuntimeValid(service!));
+  automaticRaw.forEach((service) => assertOptionalServiceRuntimeValid(service));
+  const rows = dedupeOptionalServices(rawRows);
+  if (!rows.length) return [];
+  const winnerBySemanticKey = new Map(rows.map((row) => [normalizeFlightMeetGreetKey(row.key), row]));
+  const automaticRows = dedupeOptionalServices(automaticRaw);
+   const resolved: PricingServiceInput[] = selections.map((selection) => {
+     const raw = rawRows.find((row) => row.id === selection.serviceId)!;
+     const service = winnerBySemanticKey.get(normalizeFlightMeetGreetKey(raw.key))!;
+      assertOptionalServiceRuntimeValid(service);
+     const scope = (service.serviceTypeScope ?? []) as string[];
+     if (service.includedInTransfer || (serviceType && !scope.includes(serviceType))) {
+       throw new Error('Seçilen ek hizmet bu hizmet türü için geçerli değil.');
+     }
+     if (!Number.isInteger(selection.quantity) || selection.quantity < 1 || selection.quantity > service.maximumQuantity
+       || (service.chargeType === 'PER_BOOKING' && selection.quantity !== 1)) throw new Error('Ek hizmet adedi geçersiz.');
     if (service.currency !== 'TRY' && !rates) throw new Error('Ek hizmet için güvenilir kur bulunamadı.');
-    return {
+     return {
       id: service.id,
       name: service.name,
       quantity: selection.quantity,
@@ -304,6 +337,15 @@ async function resolveServices(
       includedInTransfer: service.includedInTransfer,
     };
   });
+    for (const service of automaticRows) {
+      assertOptionalServiceRuntimeValid(service);
+     if (serviceType && !(service.automaticServiceTypes as string[]).includes(serviceType)) continue;
+     resolved.push({
+       id: service.id, name: service.name, quantity: 1, unitAmount: service.unitAmount,
+       currency: service.currency as 'TRY' | 'EUR' | 'USD', includedInTransfer: true,
+     });
+   }
+   return resolved;
 }
 
 /**

@@ -10,6 +10,7 @@ export interface RequestPresentationInput {
   status: string;
   createdAt: Date | string;
   requestData?: unknown;
+  optionalServicesSnapshot?: Array<{ id: string; name: string; quantity: number; unitAmount: number; currency: string; includedInTransfer: boolean }>;
   adminNotes?: string | null;
 }
 
@@ -20,7 +21,7 @@ export interface RequestPresentationField {
 }
 
 export interface RequestPresentationSection {
-  key: 'contact' | 'request' | 'journey' | 'notes';
+  key: 'contact' | 'request' | 'journey' | 'notes' | 'optional-services';
   title: string;
   fields: RequestPresentationField[];
 }
@@ -265,6 +266,17 @@ export function buildRequestPresentation(input: RequestPresentationInput): Reque
       key: 'notes',
       title: 'Yönetici Notları',
       fields: [{ key: 'adminNotes', label: 'Not', value: clean(input.adminNotes) }],
+    });
+  }
+  if (input.optionalServicesSnapshot?.length) {
+    sections.push({
+      key: 'optional-services',
+      title: 'Ek hizmet anlık görüntüsü',
+      fields: input.optionalServicesSnapshot.map((service) => ({
+        key: `optional-service-${service.id}`,
+        label: service.name,
+        value: `${service.quantity} adet · ${service.unitAmount / 100} ${service.currency} · ${service.includedInTransfer ? 'Dahil' : 'Ayrı ücretli'}`,
+      })),
     });
   }
 

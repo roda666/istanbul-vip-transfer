@@ -83,6 +83,7 @@ function getNavGroups(role: string, isSuperOrAdmin: boolean): NavGroup[] {
       icon: <ClipboardList size={16} />,
       items: [
         { href: '/admin/talepler',             label: 'Talepler',            icon: <ClipboardList size={18} /> },
+        { href: '/admin/transferler',          label: 'Transfer Operasyonları', icon: <CalendarClock size={18} /> },
         { href: '/admin/istatistikler',       label: 'İstatistikler',        icon: <BarChart2 size={18} /> },
         { href: '/admin/rezervasyon-ayarlari', label: 'Rezervasyon Ayarları', icon: <CalendarClock size={18} /> },
       ],
@@ -93,6 +94,7 @@ function getNavGroups(role: string, isSuperOrAdmin: boolean): NavGroup[] {
       icon: <Car size={16} />,
       items: [
         { href: '/admin/araclar',             label: 'Araçlar',             icon: <Car size={18} /> },
+        { href: '/admin/soforler',             label: 'Sürücüler',           icon: <Users size={18} /> },
         { href: '/admin/transfer-rotalari',   label: 'Transfer Rotaları',   icon: <MapPin size={18} /> },
         { href: '/admin/fiyat-kurallari',     label: 'Fiyat Hesaplama',     icon: <Banknote size={18} />, highlight: true, badge: 'ÖZEL' },
         { href: '/admin/yol-gecis-ucretleri', label: 'Yol & Geçiş Ücretleri', icon: <MapPin size={18} /> },
@@ -491,6 +493,11 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
           <LogOut size={16} />
           {!collapsed && <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>{loggingOut ? 'Çıkılıyor…' : 'Çıkış Yap'}</span>}
         </button>
+        {!collapsed && (
+          <p style={{ margin: '10px 0 0', color: 'rgba(255,255,255,0.35)', fontSize: '10px', textAlign: 'center' }}>
+            © {new Date().getFullYear()} VIP Transfer
+          </p>
+        )}
       </div>
     </div>
   );

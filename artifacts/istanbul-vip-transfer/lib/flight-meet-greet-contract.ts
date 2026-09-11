@@ -1,6 +1,16 @@
 import { z } from 'zod';
 
 export const FLIGHT_PROVIDER_NONE = 'NONE';
+/** The sole catalog key used to bind the operational feature to the service. */
+export const FLIGHT_MEET_GREET_KEY = 'flight-meet-greet';
+
+/** Normalize historical spellings at read/validation boundaries only. */
+export function normalizeFlightMeetGreetKey(value: string | null | undefined): string {
+  const normalized = (value ?? '').trim().toLowerCase().replace(/[_\s]+/g, '-');
+  return normalized === 'flight-meet-and-greet' || normalized === 'flight-meet-greet'
+    ? FLIGHT_MEET_GREET_KEY
+    : normalized;
+}
 
 export type FlightLookupInput = {
   flightNumber: string;

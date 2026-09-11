@@ -1,19 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 import { z } from 'zod';
 import { requireAdminSession } from '@/lib/auth/session';
 import { db } from '@/db';
-import { auditLogs, optionalServices } from '@/db/schema';
+import { auditLogs, contentTranslations, languages, optionalServices } from '@/db/schema';
 import { sanitizeText } from '@/lib/sanitize';
+import { FLIGHT_MEET_GREET_KEY, normalizeFlightMeetGreetKey } from '@/lib/flight-meet-greet-contract';
 
 const updateSchema = z.object({
-  key: z.string().trim().min(2).max(80).regex(/^[A-Z0-9_]+$/, 'Anahtar yalnızca büyük harf, rakam ve alt çizgi içerebilir.').optional(),
+  key: z.string().trim().min(2).max(80).refine((key) => normalizeFlightMeetGreetKey(key) === FLIGHT_MEET_GREET_KEY || /^[A-Z0-9_]+$/.test(key), 'Geçersiz hizmet anahtarı.').optional(),
   name: z.string().trim().min(1, 'Hizmet adı gereklidir.').max(200).optional(),
+  shortDescription: z.string().trim().max(500).nullable().optional(),
   currency: z.enum(['TRY', 'EUR', 'USD']).optional(),
-  unitAmount: z.number().int().min(0, 'Tutar negatif olamaz.').max(100_000_000).optional(),
+  unitAmount: z.number().int().positive('Tutar sıfırdan büyük olmalıdır.').max(100_000_000).optional(),
   chargeType: z.enum(['PER_BOOKING', 'PER_PERSON']).optional(),
   maximumQuantity: z.number().int().min(1, 'Azami adet en az 1 olmalıdır.').max(100).optional(),
   includedInTransfer: z.boolean().optional(),
+  serviceTypeScope: z.array(z.string().min(1).max(80)).max(20).optional(),
+  automaticServiceTypes: z.array(z.string().min(1).max(80)).max(20).optional(),
+  customerVisible: z.boolean().optional(),
   active: z.boolean().optional(),
   displayOrder: z.number().int().min(0).max(10_000).optional(),
 }).refine((data) => Object.keys(data).length > 0, 'Güncellenecek bir alan gönderin.');
@@ -32,17 +37,39 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const { id } = await params;
   try {
     const data = parsed.data;
+    let translationJob: unknown = null;
+    const normalizedData = {
+      ...(normalizeFlightMeetGreetKey(data.key) === FLIGHT_MEET_GREET_KEY ? { ...data, key: FLIGHT_MEET_GREET_KEY } : data),
+      ...(data.chargeType === 'PER_BOOKING' ? { maximumQuantity: 1 } : {}),
+    };
     const [item] = await db.update(optionalServices).set({
-      ...data,
-      ...(data.name !== undefined ? { name: sanitizeText(data.name) } : {}),
+      ...normalizedData,
+      ...(normalizedData.name !== undefined ? { name: sanitizeText(normalizedData.name) } : {}),
       updatedAt: new Date(), updatedBy: session.adminId,
     }).where(eq(optionalServices.id, id)).returning();
     if (!item) return NextResponse.json({ error: 'Hizmet bulunamadı.' }, { status: 404 });
+    if (normalizedData.name !== undefined || normalizedData.shortDescription !== undefined) {
+      const targets = await db.select({ code: languages.code }).from(languages)
+        .where(and(eq(languages.isEnabled, true), ne(languages.code, 'tr')));
+      await Promise.all(targets.map(async ({ code }) => {
+        await db.insert(contentTranslations).values({
+          entityType: 'optional_service', entityId: id, sourceLanguageCode: 'tr',
+          targetLanguageCode: code, status: 'QUEUED', queuedAt: new Date(),
+          serviceName: item.name, serviceShortDescription: item.shortDescription,
+          updatedAt: new Date(), updatedBy: session.adminId,
+        }).onConflictDoUpdate({
+          target: [contentTranslations.entityType, contentTranslations.entityId, contentTranslations.targetLanguageCode],
+          set: { status: 'QUEUED', queuedAt: new Date(), serviceName: item.name, serviceShortDescription: item.shortDescription, updatedAt: new Date(), updatedBy: session.adminId },
+        });
+      }));
+      const { queueOptionalServiceTranslations } = await import('@/lib/optional-service-translations');
+      translationJob = await queueOptionalServiceTranslations(id, session.adminId);
+    }
     await db.insert(auditLogs).values({
       adminUserId: session.adminId, action: 'UPDATE', entityType: 'OptionalService', entityId: id,
       metadata: { key: item.key, name: item.name },
     }).catch(() => {});
-    return NextResponse.json({ item });
+    return NextResponse.json({ item, translationJob: translationJob ?? null });
   } catch (error) {
     const message = error instanceof Error ? error.message : '';
     if (message.includes('unique') || message.includes('duplicate')) return NextResponse.json({ error: 'Bu hizmet anahtarı zaten kullanılıyor.' }, { status: 409 });

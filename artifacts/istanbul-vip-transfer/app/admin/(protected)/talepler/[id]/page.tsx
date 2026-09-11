@@ -188,6 +188,20 @@ export default async function TalepDetayPage({ params }: { params: Promise<{ id:
           </div>
         ))}
 
+        {req.optionalServicesSnapshot.length > 0 && (
+          <div style={{ background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0', padding: '20px', gridColumn: '1 / -1' }}>
+            <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#102A43', fontFamily: 'Inter, sans-serif', marginBottom: '12px' }}>
+              Ek Hizmet Seçimleri (değişmez anlık görüntü)
+            </h3>
+            {req.optionalServicesSnapshot.map((service) => (
+              <div key={`${service.id}-${service.quantity}`} style={rowStyle}>
+                <span style={labelStyle}>{service.name}</span>
+                <span style={valueStyle}>{service.quantity} adet · {service.unitAmount / 100} {service.currency} · {service.includedInTransfer ? 'Transfer fiyatına dahil' : 'Ayrı ücretli'}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Status history / Audit log */}
         <div style={{ background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0', padding: '20px', gridColumn: '1 / -1' }}>
           <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#102A43', fontFamily: 'Inter, sans-serif', marginBottom: '16px' }}>

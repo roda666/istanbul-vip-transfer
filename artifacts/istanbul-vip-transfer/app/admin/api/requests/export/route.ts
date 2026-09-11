@@ -36,7 +36,8 @@ export async function GET(req: NextRequest) {
       normalizedEmail: reservationRequests.normalizedEmail, locale: reservationRequests.locale, source: reservationRequests.source,
       serviceType: reservationRequests.serviceType, intent: reservationRequests.intent,
       status: reservationRequests.status, createdAt: reservationRequests.createdAt,
-      requestData: reservationRequests.requestData, adminNotes: reservationRequests.adminNotes,
+       requestData: reservationRequests.requestData,
+       optionalServicesSnapshot: reservationRequests.optionalServicesSnapshot, adminNotes: reservationRequests.adminNotes,
     }).from(reservationRequests).where(and(...conditions)).orderBy(desc(reservationRequests.createdAt));
     const detailed = ids.length === 1;
     const body = format === 'xls' ? requestsToExcel(rows, detailed) : requestsToPdf(rows, detailed);

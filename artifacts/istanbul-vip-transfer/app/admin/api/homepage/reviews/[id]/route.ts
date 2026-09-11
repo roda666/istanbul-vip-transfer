@@ -17,6 +17,8 @@ const updateSchema = z.object({
   reviewDate:     z.string().datetime().optional().nullable(),
   isVisible:      z.boolean().optional(),
   sortOrder:      z.number().int().optional(),
+  /** Explicit moderation action; visibility is intentionally independent. */
+  markReviewed:   z.boolean().optional(),
 });
 
 export async function PATCH(
@@ -40,7 +42,7 @@ export async function PATCH(
     return NextResponse.json({ error: parsed.error.errors[0]?.message ?? 'Validation error' }, { status: 422 });
   }
 
-  const data = parsed.data;
+  const { markReviewed, ...reviewFields } = parsed.data;
   try {
     const { db } = await import('@/db');
     const { googleReviews, auditLogs } = await import('@/db/schema');
@@ -51,11 +53,11 @@ export async function PATCH(
     if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     const changesGoogleSourceText = [
-      data.reviewerName,
-      data.reviewText,
-      data.rating,
-      data.reviewLanguage,
-      data.reviewDate,
+      reviewFields.reviewerName,
+      reviewFields.reviewText,
+      reviewFields.rating,
+      reviewFields.reviewLanguage,
+      reviewFields.reviewDate,
     ].some((value) => value !== undefined);
     if (existing.source === 'google_business' && changesGoogleSourceText) {
       return NextResponse.json({
@@ -66,8 +68,10 @@ export async function PATCH(
     const [updated] = await db
       .update(googleReviews)
       .set({
-        ...data,
-        reviewDate: data.reviewDate ? new Date(data.reviewDate) : (data.reviewDate === null ? null : undefined),
+        ...reviewFields,
+        reviewDate: reviewFields.reviewDate ? new Date(reviewFields.reviewDate) : (reviewFields.reviewDate === null ? null : undefined),
+        reviewedAt: markReviewed === true ? new Date() : (markReviewed === false ? null : undefined),
+        reviewedBy: markReviewed === true ? session.adminId : (markReviewed === false ? null : undefined),
         updatedAt: new Date(),
       })
       .where(eq(googleReviews.id, id))
@@ -80,7 +84,7 @@ export async function PATCH(
       action: 'REVIEW_UPDATE',
       entityType: 'google_review',
       entityId: id,
-      metadata: { fields: Object.keys(data) },
+      metadata: { fields: Object.keys(reviewFields), ...(markReviewed !== undefined ? { markReviewed } : {}) },
     });
 
     revalidateTag(PUBLIC_CHROME_TAG);

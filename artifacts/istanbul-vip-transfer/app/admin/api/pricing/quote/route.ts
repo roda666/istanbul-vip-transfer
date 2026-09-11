@@ -20,6 +20,7 @@ const quoteSchema = z.object({
   tripType: z.enum(['ONE_WAY', 'ROUND_TRIP']),
   tollAlternativeId: z.string().uuid().optional(),
   bosphorusTollPointId: z.string().uuid().optional(),
+  serviceType: z.enum(['AIRPORT_TRANSFER', 'INTERCITY', 'ALLOCATION', 'TOUR']),
   serviceQuantities: z.array(z.object({ serviceId: z.string().uuid(), quantity: z.number().int().min(1).max(99) })).max(20).optional(),
   reservationRequestId: z.string().uuid().optional(),
   /** Trip pickup instant (ISO string), used only to pick the DAY/NIGHT toll tariff band. Defaults to now. */

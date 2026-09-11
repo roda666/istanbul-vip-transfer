@@ -21,6 +21,8 @@ import { startNewsletterOptIn } from '@/lib/newsletter';
 import { getRequestPageSlug } from '@/lib/request-origin';
 import { getTrustedClientIp } from '@/lib/request-client-ip';
 import { verifyFormGuardToken } from '@/lib/form-guard';
+import { FLIGHT_MEET_GREET_KEY, normalizeFlightMeetGreetKey } from '@/lib/flight-meet-greet-contract';
+import { isOptionalServiceRuntimeValid } from '@/lib/optional-service-validity';
 import { recordBotProtectionBlock } from '@/lib/bot-protection-metrics';
 import {
   persistReservationRecoveryFallback,
@@ -475,6 +477,9 @@ export async function POST(req: NextRequest) {
       customReservationFields,
       locations,
       vehicles,
+      optionalServices,
+      contentTranslations,
+      flightMeetGreetSettings,
       siteSettings,
     } = await import('@/db/schema');
     const { eq, and, inArray, isNull } = await import('drizzle-orm');
@@ -546,6 +551,78 @@ export async function POST(req: NextRequest) {
       delete safeFormData.vehiclePreference;
     }
 
+    // Resolve optional services entirely from the catalog. Prices, labels,
+    // limits, and inclusion mode submitted by a browser are never trusted.
+    const submittedServicesRaw = Array.isArray(data.formData.optionalServices)
+      ? data.formData.optionalServices.slice(0, 20).flatMap((value) => {
+        if (!value || typeof value !== 'object') return [];
+        const row = value as Record<string, unknown>;
+        return typeof row.serviceId === 'string' && Number.isInteger(row.quantity)
+          ? [{ serviceId: row.serviceId, quantity: row.quantity as number }] : [];
+      }) : [];
+    // Aggregate repeated IDs before resolving the catalog. This prevents a
+    // caller bypassing a per-service maximum by sending duplicate rows.
+    const submittedServices = [...submittedServicesRaw.reduce((map, item) => {
+      map.set(item.serviceId, (map.get(item.serviceId) ?? 0) + item.quantity);
+      return map;
+    }, new Map<string, number>())].map(([serviceId, quantity]) => ({ serviceId, quantity }));
+    const serviceIds = [...new Set(submittedServices.map((item) => item.serviceId))];
+    if (serviceIds.length > 0) {
+      const [meetGreet] = await db.select({ enabled: flightMeetGreetSettings.enabled })
+        .from(flightMeetGreetSettings).where(eq(flightMeetGreetSettings.id, 1)).limit(1);
+      const catalog = await db.select().from(optionalServices).where(and(
+        inArray(optionalServices.id, serviceIds), eq(optionalServices.active, true), isNull(optionalServices.archivedAt),
+      ));
+      if (catalog.length !== serviceIds.length) return NextResponse.json({ error: 'Seçilen ek hizmet artık kullanılamıyor.' }, { status: 422 });
+      const semanticIds = new Set<string>();
+      for (const serviceId of serviceIds) {
+        const service = catalog.find((item) => item.id === serviceId)!;
+        const semanticKey = normalizeFlightMeetGreetKey(service.key);
+        if (semanticIds.has(semanticKey)) {
+          return NextResponse.json({ error: 'Aynı ek hizmetin farklı katalog kayıtları birlikte seçilemez.' }, { status: 422 });
+        }
+        semanticIds.add(semanticKey);
+      }
+      const translations = data.locale === 'tr' ? [] : await db.select({
+        entityId: contentTranslations.entityId,
+        status: contentTranslations.status,
+      }).from(contentTranslations).where(and(
+        eq(contentTranslations.entityType, 'optional_service'),
+        eq(contentTranslations.targetLanguageCode, data.locale),
+        inArray(contentTranslations.entityId, serviceIds),
+      ));
+      const publishedTranslationIds = new Set(
+        translations.filter((translation) => translation.status === 'PUBLISHED').map((translation) => translation.entityId),
+      );
+      const invalidSelection = submittedServices.find((selection) => {
+        const service = catalog.find((item) => item.id === selection.serviceId)!;
+        const scope = (service.serviceTypeScope ?? []) as string[];
+        return !isOptionalServiceRuntimeValid(service)
+          || !scope.includes(data.serviceType) || service.includedInTransfer || !service.customerVisible
+          || selection.quantity < 1 || selection.quantity > service.maximumQuantity
+          || (service.chargeType === 'PER_BOOKING' && selection.quantity !== 1)
+          || (data.locale !== 'tr' && !publishedTranslationIds.has(service.id))
+          || (normalizeFlightMeetGreetKey(service.key) === FLIGHT_MEET_GREET_KEY && meetGreet?.enabled !== true);
+      });
+      if (invalidSelection) {
+        return NextResponse.json({ error: 'Seçilen ek hizmet bu talep için geçerli değil.' }, { status: 422 });
+      }
+      const snapshots = submittedServices.map((selection) => {
+        const service = catalog.find((item) => item.id === selection.serviceId)!;
+        return {
+          id: service.id, key: service.key, name: service.name,
+          shortDescription: service.shortDescription, quantity: selection.quantity,
+          unitAmount: service.unitAmount, currency: service.currency,
+          includedInTransfer: service.includedInTransfer,
+        };
+      });
+      safeFormData.optionalServices = snapshots;
+      safeFormData.optionalServiceIds = snapshots.map((item) => item.id);
+    } else {
+      delete safeFormData.optionalServices;
+      delete safeFormData.optionalServiceIds;
+    }
+
     // Location controls submit stable IDs. Resolve every selected ID on the
     // server, so a stale/disabled location cannot be persisted and human-facing
     // output never has to trust a client-provided label. The name fallback keeps
@@ -613,6 +690,11 @@ export async function POST(req: NextRequest) {
           source:          `booking-form:${data.serviceType}`,
           pageSlug:        getRequestPageSlug(req, '/bilinmiyor'),
           requestData:     safeFormData,
+           optionalServicesSnapshot: Array.isArray(safeFormData.optionalServices)
+             ? safeFormData.optionalServices as Array<{
+               id: string; key: string; name: string; shortDescription: string | null;
+               quantity: number; unitAmount: number; currency: string; includedInTransfer: boolean;
+             }> : [],
           status:          'NEW',
         }).onConflictDoNothing({
           target: reservationRequests.submissionId,

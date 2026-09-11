@@ -343,8 +343,42 @@ function ReviewsSectionEditor({ data, onChange, dir, ro }: { data: ReviewsSectio
       <Field name="Bölüm Başlığı" value={data.heading} onChange={v => set('heading', v)} dir={dir} readOnly={ro} />
       <Field name="Tüm Yorumlar Buton Metni" value={data.viewAllText} onChange={v => set('viewAllText', v)} dir={dir} readOnly={ro} />
       {!ro && <Checkbox name="Bölüm Etkin" checked={data.enabled} onChange={v => set('enabled', v)} />}
+      <ReviewModerationList />
     </div>
   );
+}
+
+function ReviewModerationList() {
+  const [reviews, setReviews] = useState<Array<{ id: string; reviewerName: string; reviewText: string; reviewedAt: string | null }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const response = await fetch('/admin/api/homepage/reviews', { cache: 'no-store' });
+      const payload = await response.json() as { reviews?: typeof reviews; error?: string };
+      if (!response.ok) throw new Error(payload.error ?? 'Yorumlar yüklenemedi.');
+      setReviews(payload.reviews ?? []);
+    } catch (caught) { setError(caught instanceof Error ? caught.message : 'Yorumlar yüklenemedi.'); }
+    finally { setLoading(false); }
+  }, []);
+  useEffect(() => { void load(); }, [load]);
+  async function mark(review: typeof reviews[number]) {
+    setBusy(review.id); setError('');
+    try {
+      const response = await fetch(`/admin/api/homepage/reviews/${review.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ markReviewed: !review.reviewedAt }) });
+      const payload = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(payload.error ?? 'Yorum durumu güncellenemedi.');
+      await load();
+    } catch (caught) { setError(caught instanceof Error ? caught.message : 'Yorum durumu güncellenemedi.'); }
+    finally { setBusy(null); }
+  }
+  return <section aria-label="Google yorum moderasyonu" style={{ marginTop: 18, borderTop: '1px solid #E2E8F0', paddingTop: 14 }}>
+    <h3 style={{ fontSize: 13 }}>Google yorumları</h3>
+    {error && <p role="alert" style={{ color: '#B91C1C' }}>{error} <button type="button" onClick={() => void load()}>Yeniden dene</button></p>}
+    {loading ? <p aria-busy="true">Yorumlar yükleniyor…</p> : reviews.length === 0 ? <p>Henüz senkronlanmış yorum yok.</p> : reviews.map(review => <div key={review.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #F1F5F9' }}><span style={{ flex: 1 }}><strong>{review.reviewerName}</strong><br /><small>{review.reviewText}</small></span><span aria-label={review.reviewedAt ? 'İncelendi' : 'İnceleme bekliyor'}>{review.reviewedAt ? 'İncelendi' : 'İnceleme bekliyor'}</span><button type="button" disabled={busy === review.id} onClick={() => void mark(review)}>{busy === review.id ? 'Kaydediliyor…' : review.reviewedAt ? 'İnceleme işaretini kaldır' : 'İncelendi olarak işaretle'}</button></div>)}
+  </section>;
 }
 
 function ReservationEditor({ data, onChange, dir, ro }: { data: ReservationSectionData; onChange: (d: ReservationSectionData) => void; dir: string; ro?: boolean }) {

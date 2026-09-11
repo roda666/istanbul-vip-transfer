@@ -13,7 +13,7 @@
 
 import type { TranslationInput } from '@/lib/ai/translate';
 
-export type RunTaskEntityType = 'content' | 'service_page' | 'faq' | 'vehicle' | 'navigation';
+export type RunTaskEntityType = 'content' | 'service_page' | 'faq' | 'vehicle' | 'navigation' | 'optional_service';
 
 export interface RunTaskParams {
   jobId:      string;
@@ -47,7 +47,7 @@ export async function runTranslationTask(params: RunTaskParams): Promise<RunTask
   const schema           = await import('@/db/schema');
   const { eq, and, sql } = await import('drizzle-orm');
 
-  const { content, contentTranslations, auditLogs, faqs, vehicles, navigationItems } = schema;
+  const { content, contentTranslations, auditLogs, faqs, vehicles, navigationItems, optionalServices } = schema;
 
   // ── Validate AI config ────────────────────────────────────────────────────
   const { resolveIntegrationSecret } = await import('@/lib/integration-secrets');
@@ -132,6 +132,7 @@ export async function runTranslationTask(params: RunTaskParams): Promise<RunTask
   let spFields:    Record<string, string> | null = null;
   let spRawBody:   string | null = null;
   let spAuxRow:    { seoTitle: string | null; seoDescription: string | null; heroImageAlt: string | null } | null = null;
+  let optionalFields: Record<string, string> | null = null;
 
   if (entityType === 'content') {
     const [row] = await db.select().from(content).where(eq(content.id, entityId)).limit(1);
@@ -180,9 +181,17 @@ export async function runTranslationTask(params: RunTaskParams): Promise<RunTask
       sourceInput = { title: row.label, slug: '', excerpt: null, body: null,
         metaTitle: null, metaDescription: null, imageAlt: null };
     }
+  } else if (entityType === 'optional_service') {
+    const [row] = await db.select({
+      name: optionalServices.name,
+      shortDescription: optionalServices.shortDescription,
+    }).from(optionalServices).where(eq(optionalServices.id, entityId)).limit(1);
+    if (row) optionalFields = { name: row.name, shortDescription: row.shortDescription ?? '' };
   }
 
-  const entityFound = entityType === 'service_page' ? spFields !== null : sourceInput !== null;
+  const entityFound = entityType === 'service_page'
+    ? spFields !== null
+    : entityType === 'optional_service' ? optionalFields !== null : sourceInput !== null;
   if (!entityFound) {
     await db.update(contentTranslations)
       .set({ status: 'FAILED', failureReason: 'Kaynak içerik bulunamadı', updatedAt: sql`now()` })
@@ -194,7 +203,34 @@ export async function runTranslationTask(params: RunTaskParams): Promise<RunTask
   const TIMEOUT_MS = 45_000;
 
   try {
-    if (entityType === 'service_page' && spFields && spRawBody && spAuxRow) {
+    if (entityType === 'optional_service' && optionalFields) {
+      const { translateServicePageFields } = await import('@/lib/ai/translate-service-page');
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+      let result: Awaited<ReturnType<typeof translateServicePageFields>>;
+      try {
+        result = await translateServicePageFields(optionalFields, targetLang, controller.signal);
+      } finally {
+        clearTimeout(timer);
+      }
+      if (!result.ok || !result.translated.name?.trim() || !result.translated.shortDescription?.trim()) {
+        const error = result.ok ? 'Ek hizmet çevirisi boş alan döndürdü.' : (result.message ?? result.reason);
+        await db.update(contentTranslations)
+          .set({ status: 'FAILED', failureReason: error, updatedAt: sql`now()` })
+          .where(eq(contentTranslations.id, jobRowId));
+        return { status: 'failed', translationId: jobRowId, error };
+      }
+      await db.update(contentTranslations).set({
+        status: 'DRAFT',
+        serviceName: result.translated.name.trim(),
+        serviceShortDescription: result.translated.shortDescription.trim(),
+        title: result.translated.name.trim(),
+        excerpt: result.translated.shortDescription.trim(),
+        aiModel: result.model,
+        aiPromptVersion: 'optional-service-1.0',
+        updatedAt: sql`now()`,
+      }).where(eq(contentTranslations.id, jobRowId));
+    } else if (entityType === 'service_page' && spFields && spRawBody && spAuxRow) {
       const { translateServicePageFields } = await import('@/lib/ai/translate-service-page');
       const { parseServicePageBody, applyTranslatedFields, isServicePageBody, computeTranslatableHash }
         = await import('@/lib/service-page-types');

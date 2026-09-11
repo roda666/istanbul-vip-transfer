@@ -11,7 +11,7 @@ const ADMIN_API_AUDIT_CATEGORIES = new Set([
   'locations', 'login', 'logout', 'nav', 'newsletter', 'newsletter-export',
   'requests', 'reservation-settings', 'service-pages', 'service-types',
   'settings', 'social-platforms', 'staff', 'storage', 'studio',
-  'topic-clusters', 'transfer-routes', 'translations', 'vehicles',
+   'topic-clusters', 'transfer-routes', 'transfers', 'drivers', 'translations', 'vehicles',
 ]);
 
 const ADMIN_PAGE_AUDIT_CATEGORIES = new Set([
@@ -20,7 +20,7 @@ const ADMIN_PAGE_AUDIT_CATEGORIES = new Set([
   'api-anahtarlari', 'e-posta-ayarlari', 'erisim-reddedildi', 'gecmis', 'hesabim', 'hizmetler',
   'istatistikler', 'kategoriler', 'menu', 'personel',
   'rezervasyon-ayarlari', 'sayfalar', 'sohbet', 'sss', 'talepler',
-  'transfer-rotalari',
+   'transfer-rotalari', 'transferler', 'soforler',
 ]);
 
 /**

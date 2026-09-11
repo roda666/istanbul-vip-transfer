@@ -28,3 +28,15 @@ export function getIstanbulCalendarDate(offsetDays = 0, referenceDate: Date = ne
   calendarDate.setUTCDate(calendarDate.getUTCDate() + offsetDays);
   return calendarDate.toISOString().slice(0, 10);
 }
+
+/** Inclusive start/exclusive end instants for an Istanbul calendar day. */
+export function getIstanbulDayBounds(offsetDays = 0, referenceDate: Date = new Date()): {
+  date: string;
+  start: Date;
+  end: Date;
+} {
+  const date = getIstanbulCalendarDate(offsetDays, referenceDate);
+  // Istanbul has used UTC+03:00 continuously for the application's domain.
+  const start = new Date(`${date}T00:00:00+03:00`);
+  return { date, start, end: new Date(start.getTime() + 86_400_000) };
+}

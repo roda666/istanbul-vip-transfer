@@ -599,6 +599,9 @@ export const contentTranslations = pgTable(
 
     // ── Translated fields ──────────────────────────────────────────────────
     title: text('title'),
+    /** Optional-service translations use these canonical fields. */
+    serviceName: text('service_name'),
+    serviceShortDescription: text('service_short_description'),
     slug: text('slug'),
     excerpt: text('excerpt'),
     body: text('body'),
@@ -714,6 +717,11 @@ export const reservationRequests = pgTable('reservation_requests', {
   normalizedEmail: text('normalized_email'),
   locale:          text('locale').default('tr').notNull(),
   requestData:     jsonb('request_data').notNull().default({}),
+  /** Server-resolved, immutable optional-service snapshots (never client prices/labels). */
+  optionalServicesSnapshot: jsonb('optional_services_snapshot').$type<Array<{
+    id: string; key: string; name: string; shortDescription: string | null;
+    quantity: number; unitAmount: number; currency: string; includedInTransfer: boolean;
+  }>>().default([]).notNull(),
   /** Optional immutable admin-created quote. Public request payloads can never set this. */
   priceQuoteSnapshotId: uuid('price_quote_snapshot_id').references(() => priceQuoteSnapshots.id, { onDelete: 'set null' }),
   status:          requestStatusEnum('status').default('NEW').notNull(),
@@ -729,6 +737,68 @@ export const reservationRequests = pgTable('reservation_requests', {
   /** Null means the request has not yet been opened by an administrator. */
   readAt:          timestamp('read_at', { withTimezone: true }),
 });
+
+// ── Transfer operations (deliberately separate from reservation request data) ─
+export const transferOperationStatusEnum = pgEnum('transfer_operation_status', [
+  'PLANNED', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED',
+]);
+
+/** Drivers are operational records and do not require an admin login account. */
+export const drivers = pgTable('drivers', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  phone: text('phone'),
+  notes: text('notes'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  createdBy: uuid('created_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+  updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+}, (table) => [index('drivers_active_idx').on(table.isActive)]);
+
+/**
+ * A dispatchable operation has an explicit, timezone-aware pickup time and
+ * human-readable route/location summaries. It must never be inferred from
+ * reservationRequests.requestData or createdAt.
+ */
+export const transferOperations = pgTable('transfer_operations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  requestId: uuid('request_id').unique().references(() => reservationRequests.id, { onDelete: 'set null' }),
+  plannedPickupAt: timestamp('planned_pickup_at', { withTimezone: true }).notNull(),
+  pickupLocationSummary: text('pickup_location_summary').notNull(),
+  dropoffLocationSummary: text('dropoff_location_summary').notNull(),
+  routeSummary: text('route_summary').notNull(),
+  customerSummary: text('customer_summary').notNull(),
+  vehicleId: uuid('vehicle_id').references(() => vehicles.id, { onDelete: 'set null' }),
+  driverId: uuid('driver_id').references(() => drivers.id, { onDelete: 'set null' }),
+  status: transferOperationStatusEnum('status').default('PLANNED').notNull(),
+  assignedAt: timestamp('assigned_at', { withTimezone: true }),
+  assignedBy: uuid('assigned_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+  unassignedAt: timestamp('unassigned_at', { withTimezone: true }),
+  unassignedBy: uuid('unassigned_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  createdBy: uuid('created_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+  updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+}, (table) => [
+  index('transfer_operations_pickup_idx').on(table.plannedPickupAt),
+  index('transfer_operations_driver_pickup_idx').on(table.driverId, table.plannedPickupAt),
+  index('transfer_operations_status_idx').on(table.status),
+]);
+
+/** Append-only assignment history for operational accountability. */
+export const transferAssignmentAudits = pgTable('transfer_assignment_audits', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  transferOperationId: uuid('transfer_operation_id').notNull().references(() => transferOperations.id, { onDelete: 'cascade' }),
+  action: text('action').notNull(), // ASSIGNED | UNASSIGNED | VEHICLE_CHANGED
+  previousDriverId: uuid('previous_driver_id').references(() => drivers.id, { onDelete: 'set null' }),
+  driverId: uuid('driver_id').references(() => drivers.id, { onDelete: 'set null' }),
+  previousVehicleId: uuid('previous_vehicle_id').references(() => vehicles.id, { onDelete: 'set null' }),
+  vehicleId: uuid('vehicle_id').references(() => vehicles.id, { onDelete: 'set null' }),
+  adminUserId: uuid('admin_user_id').references(() => adminUsers.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  metadata: jsonb('metadata').default({}).notNull(),
+}, (table) => [index('transfer_assignment_audits_transfer_idx').on(table.transferOperationId, table.createdAt)]);
 
 /**
  * A durable recovery queue for a booking request whose normal write path fails.
@@ -791,6 +861,11 @@ export const newsletterTokens = pgTable('newsletter_tokens', {
 
 export type ReservationRequest    = typeof reservationRequests.$inferSelect;
 export type NewReservationRequest = typeof reservationRequests.$inferInsert;
+export type Driver = typeof drivers.$inferSelect;
+export type NewDriver = typeof drivers.$inferInsert;
+export type TransferOperation = typeof transferOperations.$inferSelect;
+export type NewTransferOperation = typeof transferOperations.$inferInsert;
+export type TransferAssignmentAudit = typeof transferAssignmentAudits.$inferSelect;
 export type ReservationSubmissionFailure = typeof reservationSubmissionFailures.$inferSelect;
 export type NewReservationSubmissionFailure = typeof reservationSubmissionFailures.$inferInsert;
 export type NewsletterSubscriber    = typeof newsletterSubscribers.$inferSelect;
@@ -816,6 +891,8 @@ export const googleReviews = pgTable('google_reviews', {
   isVisible:             boolean('is_visible').notNull().default(true),
   sortOrder:             integer('sort_order').notNull().default(0),
   googleSourceIndicator: boolean('google_source_indicator').notNull().default(true),
+  reviewedAt:            timestamp('reviewed_at', { withTimezone: true }),
+  reviewedBy:            uuid('reviewed_by').references(() => adminUsers.id, { onDelete: 'set null' }),
   createdAt:             timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt:             timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
@@ -1812,13 +1889,22 @@ export const tollPricingSettings = pgTable('toll_pricing_settings', {
 export const optionalServices = pgTable('optional_services', {
   id: uuid('id').primaryKey().defaultRandom(),
   key: text('key').notNull().unique(),
+  /** Turkish source copy. The stable key is the only identifier clients may submit. */
   name: text('name').notNull(),
+  shortDescription: text('short_description'),
+  /** JSONB translations are retained alongside the durable translation queue. */
+  nameTranslations: jsonb('name_translations').$type<Record<string, string>>().default({}).notNull(),
+  shortDescriptionTranslations: jsonb('short_description_translations').$type<Record<string, string>>().default({}).notNull(),
   currency: text('currency').default('TRY').notNull(),
   unitAmount: integer('unit_amount').notNull(),
   chargeType: text('charge_type').default('PER_BOOKING').notNull(),
   maximumQuantity: integer('maximum_quantity').default(1).notNull(),
   includedInTransfer: boolean('included_in_transfer').default(false).notNull(),
+  /** Service types where the catalog entry is eligible. Empty means no public scope. */
+  serviceTypeScope: jsonb('service_type_scope').$type<string[]>().default([]).notNull(),
+  /** Included services are automatically costed only for these service types. */
   automaticServiceTypes: jsonb('automatic_service_types').$type<string[]>().default([]).notNull(),
+  customerVisible: boolean('customer_visible').default(true).notNull(),
   active: boolean('active').default(true).notNull(),
   displayOrder: integer('display_order').default(0).notNull(),
   /** Archived services remain in quote snapshots but cannot be selected for new quotes. */

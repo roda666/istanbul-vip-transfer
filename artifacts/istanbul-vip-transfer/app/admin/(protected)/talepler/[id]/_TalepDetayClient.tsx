@@ -54,6 +54,9 @@ export default function TalepDetayClient({
   const [copyDone, setCopyDone]       = useState(false);
   const [isTestData, setIsTestData]   = useState(initialIsTestData);
   const [testDataSaving, setTestDataSaving] = useState(false);
+  const [conversion, setConversion] = useState(false);
+  const [conversionData, setConversionData] = useState({ plannedPickupAt: '', pickupLocationSummary: '', dropoffLocationSummary: '', routeSummary: '', customerSummary: customerName });
+  const [conversionSaving, setConversionSaving] = useState(false);
   const router = useRouter();
 
   const isLegacy = status === 'SPAM';
@@ -125,6 +128,15 @@ export default function TalepDetayClient({
   function openWhatsApp() {
     const message = `Merhaba ${customerName}, IVT referans numaranız: ${referenceNumber} hakkında size ulaşmak istedik.`;
     openWhatsAppChat(customerPhone, message);
+  }
+
+  async function convertToTransfer(e: React.FormEvent) {
+    e.preventDefault(); setConversionSaving(true);
+    try {
+      const response = await fetch(`/admin/api/requests/${requestId}/convert-to-transfer`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...conversionData, plannedPickupAt: new Date(conversionData.plannedPickupAt).toISOString() }) });
+      if (!response.ok) throw new Error((await response.json()).error ?? 'Dönüştürme başarısız.');
+      setConversion(false); setSaved(true); router.refresh();
+    } catch (error) { setSaved(false); alert(error instanceof Error ? error.message : 'Dönüştürme başarısız.'); } finally { setConversionSaving(false); }
   }
 
   /** Builds the WhatsApp review-request message and opens it */
@@ -323,6 +335,16 @@ export default function TalepDetayClient({
       )}
 
       {/* Internal notes */}
+      {status !== 'COMPLETED' && status !== 'CANCELLED' && !archivedAt && (
+        <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: 16 }}>
+          <button type="button" onClick={() => setConversion(!conversion)} style={{ minHeight: 44 }}>Transfer operasyonuna dönüştür</button>
+          {conversion && <form onSubmit={convertToTransfer} style={{ display: 'grid', gap: 8, marginTop: 12 }}>
+            <label>Planlanan alış zamanı<input required type="datetime-local" value={conversionData.plannedPickupAt} onChange={e => setConversionData({ ...conversionData, plannedPickupAt: e.target.value })} /></label>
+            {(['pickupLocationSummary', 'dropoffLocationSummary', 'routeSummary', 'customerSummary'] as const).map(key => <label key={key}>{key === 'pickupLocationSummary' ? 'Alış konumu' : key === 'dropoffLocationSummary' ? 'Varış konumu' : key === 'routeSummary' ? 'Rota özeti' : 'Müşteri özeti'}<input required value={conversionData[key]} onChange={e => setConversionData({ ...conversionData, [key]: e.target.value })} /></label>)}
+            <button disabled={conversionSaving}>{conversionSaving ? 'Dönüştürülüyor…' : 'Transfer oluştur'}</button>
+          </form>}
+        </div>
+      )}
       <div>
         <label style={labelStyle}>İç Notlar (yalnızca admin görür)</label>
         <textarea

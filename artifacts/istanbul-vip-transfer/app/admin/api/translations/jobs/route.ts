@@ -13,7 +13,7 @@ import { z } from 'zod';
 import { requireAdminSession } from '@/lib/auth/session';
 
 const bodySchema = z.object({
-  entityType: z.enum(['content', 'service_page', 'faq', 'vehicle', 'navigation']),
+  entityType: z.enum(['content', 'service_page', 'faq', 'vehicle', 'navigation', 'optional_service']),
   entityId:   z.string().uuid(),
   targetLanguageCodes: z.array(z.string().min(2).max(10)).min(1).max(80),
   force: z.boolean().default(false),

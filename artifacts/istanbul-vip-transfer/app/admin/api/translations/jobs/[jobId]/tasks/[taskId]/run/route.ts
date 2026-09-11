@@ -96,7 +96,7 @@ export async function POST(
   const result = await runTranslationTask({
     jobId,
     taskId,
-    entityType: job.entityType as 'content' | 'service_page' | 'faq' | 'vehicle' | 'navigation',
+    entityType: job.entityType as 'content' | 'service_page' | 'faq' | 'vehicle' | 'navigation' | 'optional_service',
     entityId:   job.entityId,
     targetLang: task.targetLanguageCode,
     force:      job.force,

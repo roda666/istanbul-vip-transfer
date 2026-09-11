@@ -176,6 +176,7 @@ function buildSchema(b: import('@/lib/i18n/types').Dictionary['booking']) {
     planlananSure:     z.string().optional(),
     planlananSureUnit: z.enum(['SAAT', 'GUN']).default('SAAT'),
     vehiclePreference: z.string().optional(),
+    optionalServices: z.array(z.object({ serviceId: z.string(), quantity: z.number().int().min(1) })).optional(),
   });
 }
 
@@ -397,6 +398,34 @@ export default function BookingForm({
   const [submissionNotice, setSubmissionNotice] = useState<{ kind: 'saved' | 'failed'; message: string } | null>(null);
   const [intercityPickupOption, setIntercityPickupOption] = useState<LocationOption | null>(null);
   const [intercityDropoffOption, setIntercityDropoffOption] = useState<LocationOption | null>(null);
+  const [optionalServices, setOptionalServices] = useState<Array<{
+    id: string; key: string; name: string; shortDescription: string | null;
+    currency: string; unitAmount: number; chargeType: string; maximumQuantity: number;
+  }>>([]);
+  const [selectedOptionalServices, setSelectedOptionalServices] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    let mounted = true;
+    // Clear dependent choices synchronously before the new catalog arrives;
+    // a failed request must never leave selections from another scope/locale.
+    setOptionalServices([]);
+    setSelectedOptionalServices({});
+    fetch(`/data/optional-services?locale=${encodeURIComponent(lang)}&serviceType=${encodeURIComponent(activeService)}`, { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() as Promise<{ services?: typeof optionalServices }> : null)
+      .then((payload) => {
+        if (!mounted) return;
+        const services = payload?.services ?? [];
+        setOptionalServices(services);
+        // A service can be disabled or unpublished while the form is open.
+        // Never submit a selection that is no longer in the current catalog.
+        const available = new Set(services.map((service) => service.id));
+        setSelectedOptionalServices((current) => Object.fromEntries(
+          Object.entries(current).filter(([id, quantity]) => available.has(id) && quantity > 0),
+        ));
+      })
+      .catch(() => { if (mounted) setOptionalServices([]); });
+    return () => { mounted = false; };
+  }, [lang, activeService]);
 
   useEffect(() => {
     let active = true;
@@ -561,6 +590,9 @@ export default function BookingForm({
         : [];
     });
     const submittedFormData = { ...activeFormData, customFields: customFieldAnswers };
+    submittedFormData.optionalServices = Object.entries(selectedOptionalServices)
+      .filter(([, quantity]) => quantity > 0)
+      .map(([serviceId, quantity]) => ({ serviceId, quantity }));
     const submissionId = crypto.randomUUID();
     const msg = buildWhatsAppMessage(
       activeFormData,
@@ -1086,12 +1118,6 @@ export default function BookingForm({
                       </select>
                     </div>
                   )}
-                  {showOptionalField('showChildSeatCount') && (
-                    <div data-testid="field-child-seat-count">
-                      <label htmlFor="bf-child-seat-count" style={labelStyle}>{b.childSeatCount} {optionalBadge}</label>
-                      <input id="bf-child-seat-count" type="number" min="0" inputMode="numeric" {...register('childSeatCount')} className="vip-input" placeholder={b.childSeatCountPlaceholder} />
-                    </div>
-                  )}
                   {showOptionalField('showAdditionalNotes') && (
                     <div className="md:col-span-2" data-testid="field-additional-notes">
                       <label htmlFor="bf-additional-notes" style={labelStyle}>{b.additionalNotes} {optionalBadge}</label>
@@ -1214,6 +1240,42 @@ export default function BookingForm({
                   </div>
                 </div>
               </div>
+
+              {/* Notice */}
+              {optionalServices.length > 0 && (
+                <section className="mb-6 rounded-xl border border-slate-200 bg-white p-5" aria-labelledby="optional-services-heading">
+                  <h2 id="optional-services-heading" className="mb-3 text-sm font-bold text-slate-800">
+                    {lang === 'tr' ? 'Ücretli ek hizmetler' : 'Paid optional services'}
+                  </h2>
+                  <div className="space-y-3">
+                    {optionalServices.map((service) => {
+                      const quantity = selectedOptionalServices[service.id] ?? 0;
+                      const amount = new Intl.NumberFormat(lang, { style: 'currency', currency: service.currency }).format(service.unitAmount / 100);
+                      return <label key={service.id} className="flex items-center justify-between gap-3 text-sm text-slate-700">
+                        <span><input type="checkbox" checked={quantity > 0} onChange={(event) => setSelectedOptionalServices((current) => ({ ...current, [service.id]: event.target.checked ? 1 : 0 }))} className="mr-2" />{service.name} <span className="text-xs text-slate-500">({amount}{quantity > 1 ? ` × ${quantity}` : ''})</span></span>
+                        {service.chargeType !== 'PER_BOOKING' && quantity > 0 && <input aria-label={`${service.name} quantity`} type="number" min={1} max={service.maximumQuantity} value={quantity} onChange={(event) => setSelectedOptionalServices((current) => ({ ...current, [service.id]: Math.max(1, Math.min(service.maximumQuantity, Number(event.target.value) || 1)) }))} className="w-16 rounded border border-slate-300 px-2 py-1" />}
+                      </label>;
+                    })}
+                  </div>
+                  {Object.keys(selectedOptionalServices).some((id) => (selectedOptionalServices[id] ?? 0) > 0) && (
+                    <div className="mt-4 border-t border-slate-100 pt-3 text-sm font-bold text-slate-800">
+                      {(() => {
+                        const totals = optionalServices
+                          .filter((service) => (selectedOptionalServices[service.id] ?? 0) > 0)
+                          .reduce<Record<string, number>>((result, service) => {
+                            result[service.currency] = (result[service.currency] ?? 0)
+                              + service.unitAmount * (selectedOptionalServices[service.id] ?? 0);
+                            return result;
+                          }, {});
+                        return `Ara toplam: ${Object.entries(totals)
+                          .map(([currency, total]) => new Intl.NumberFormat(lang, { style: 'currency', currency }).format(total / 100))
+                          .join(' + ')}`;
+                      })()}
+                    </div>
+                  )}
+                  <p className="mt-3 text-xs text-slate-500">{lang === 'tr' ? 'Yalnız ek hizmet ara toplamı gösterilir; transfer toplamı bu formda hesaplanmaz.' : 'Only the optional-service subtotal is shown; transfer total is not calculated here.'}</p>
+                </section>
+              )}
 
               {/* Notice */}
               <div className="mt-2 mb-6 rounded-xl px-5 py-4" style={{ background: 'rgba(199,154,53,0.06)', border: '1px solid rgba(199,154,53,0.25)' }}>

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Search, ChevronLeft, ChevronRight, Archive, RefreshCw, Phone, Download, FileText, Trash2 } from 'lucide-react';
 import { SOURCE_FILTER_OPTIONS, formatSource } from '@/lib/source-labels';
 
@@ -266,6 +267,10 @@ function RequestCard({
 
 /* ── Main component ─────────────────────────────────────── */
 export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const hydratedFromUrl = useRef(false);
   const [data, setData]         = useState<PageResult | null>(null);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');
@@ -284,6 +289,35 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectingAll, setSelectingAll] = useState(false);
   const [exportScope, setExportScope] = useState<'selected' | 'all'>('all');
+
+  // The URL is the shareable source of truth. Hydrate once on mount before
+  // fetching; subsequent changes replace the URL without losing other filters.
+  useEffect(() => {
+    if (hydratedFromUrl.current) return;
+    const p = searchParams;
+    setSearch(p.get('search') ?? '');
+    setStatus(p.get('status') ?? '');
+    setService(p.get('service') ?? '');
+    setIntent(p.get('intent') ?? '');
+    setLang(p.get('lang') ?? '');
+    setSource(p.get('source') ?? '');
+    setDateFrom(p.get('date_from') ?? '');
+    setDateTo(p.get('date_to') ?? '');
+    setTestData(p.get('test_data') ?? '');
+    setPage(Math.max(1, Number(p.get('page') ?? '1') || 1));
+    setLimit([10, 20, 50, 100].includes(Number(p.get('limit'))) ? Number(p.get('limit')) : 20);
+    hydratedFromUrl.current = true;
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!hydratedFromUrl.current) return;
+    const params = buildFilterParams();
+    if (page > 1) params.set('page', String(page));
+    if (limit !== 20) params.set('limit', String(limit));
+    const next = params.toString();
+    if (next !== searchParams.toString()) router.replace(`${pathname}${next ? `?${next}` : ''}`, { scroll: false });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, status, service, intent, lang, source, dateFrom, dateTo, testData, page, limit]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);

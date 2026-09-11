@@ -631,6 +631,28 @@
       "when": 1789076697829,
       "tag": "0089_heavy_prism",
       "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1789078000000,
+      "tag": "0090_optional_services_catalog_contract",
+      "breakpoints": true
+    }
+    ,
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1789079000000,
+      "tag": "0091_transfer_operations",
+      "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1789079100000,
+      "tag": "0092_google_review_review_marker",
+      "breakpoints": true
     }
   ]
 }

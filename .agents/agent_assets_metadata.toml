@@ -140,3 +140,17 @@ mtime_ms = 1788972004379
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/ca8c0305-c080-46db-af5d-f375112a1aa8/321b96a6-de27-46e5-bdb6-ba138f5d0837"
 storage_version_token = "1788972029836746"
 content_type = "text/csv"
+
+[[outputs]]
+id = "TkjeS_HPsW6Zfb-p8MCZM"
+uri = "file://screenshots/tasks-241-242-272-araclar-final.jpg"
+type = "image"
+title = "#241–#242–#272 Final Araçlar Görünümü"
+description = "1280px final development preview screenshot; araç sayfası intro/SSS içeriği ve responsive grid doğrulamasının görsel kanıtı."
+logical_id = "5b4f7832-61ae-4c86-815b-86f7567d915f"
+content_hash = "sha256:d8fb2cbeedfebbda16e00886d38e9d72a4d4684f3d80793ed8ba8affb0d767fc"
+size = 131593
+mtime_ms = 1789111864077
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/5b4f7832-61ae-4c86-815b-86f7567d915f/0e327f44-6a23-427c-b876-fa977c564579"
+storage_version_token = "1789111895965485"
+content_type = "image/jpeg"

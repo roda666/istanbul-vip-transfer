@@ -14,8 +14,6 @@ type TollPoint = {
   name: string;
   type: 'BRIDGE' | 'TUNNEL' | 'HIGHWAY';
   active: boolean;
-  verificationLocked: boolean;
-  verificationLockReason: string | null;
   // Per-point day/night cutover hours (0-23); null on both means this point
   // has no day/night differentiation (its tariffs are entered as ALL/DAY).
   dayStartHour: number | null;
@@ -543,7 +541,6 @@ function TariffForm({ point, vClass, initialData, onSave, onClose }: { point: To
            <div className="font-black text-slate-900 text-sm">{vehicleClassLabel(vClass)}</div>
          </div>
        </div>
-       {point.verificationLocked && <div className="rounded-lg bg-red-50 p-3 text-xs font-bold text-red-800">🔒 Kilitli nokta: tarife ekleme/değiştirme devre dışı. Resmî kaynak ve yetkili inceleme gerekir.</div>}
        {error && (
          <div className="bg-red-50 text-red-700 p-3 rounded-lg border border-red-100 text-xs font-bold leading-relaxed">{error}</div>
        )}
@@ -607,7 +604,7 @@ function TariffForm({ point, vClass, initialData, onSave, onClose }: { point: To
          </p>
        </div>
         <label className="flex items-center gap-3 cursor-pointer min-h-[44px] p-2 hover:bg-slate-50 rounded-lg transition-colors -ml-2">
-          <input type="checkbox" disabled={point.verificationLocked} title={point.verificationLocked ? 'Doğrulama kilidi nedeniyle değiştirilemez' : undefined} aria-label={point.verificationLocked ? 'Kilitli nokta etkinleştirme devre dışı' : 'Aktif'} checked={formData.active} onChange={e => setFormData(f => ({...f, active: e.target.checked}))} className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-40" />
+          <input type="checkbox" aria-label="Aktif" checked={formData.active} onChange={e => setFormData(f => ({...f, active: e.target.checked}))} className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
           <span className="font-bold text-sm text-slate-900">Aktif Tarife</span>
         </label>
 
@@ -1022,7 +1019,7 @@ function TariffImportPanel({ point, onRefresh }: { point: TollPoint; onRefresh: 
         <input type="file" accept=".pdf,.xls,.xlsx,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={e => setFile(e.target.files?.[0] ?? null)} className="w-full min-h-[44px] rounded-lg border border-blue-200 bg-white px-2 py-2 text-xs" />
         <input type="date" aria-label="Tarifenin yürürlük tarihi" value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)} className="min-h-[44px] rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm" />
       </div>
-      <button onClick={previewFile} disabled={busy || !file || point.verificationLocked} className="min-h-[44px] w-full sm:w-auto px-4 py-2 rounded-lg bg-blue-700 text-white text-sm font-bold disabled:opacity-50">{busy ? 'İşleniyor…' : 'Önizleme oluştur'}</button>
+      <button onClick={previewFile} disabled={busy || !file} className="min-h-[44px] w-full sm:w-auto px-4 py-2 rounded-lg bg-blue-700 text-white text-sm font-bold disabled:opacity-50">{busy ? 'İşleniyor…' : 'Önizleme oluştur'}</button>
       {preview && <div className="space-y-2">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {preview.rows.map(row => <div key={row.classNumber} className="rounded-lg border border-blue-100 bg-white p-2.5 text-xs">
@@ -1099,10 +1096,10 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
 
   return (
     <div className="space-y-6">
-      {point.verificationLocked && (
-        <div className="rounded-xl border-2 border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800">
-          🔒 Doğrulama kilidi: {point.verificationLockReason ?? 'Bu nokta kullanılamaz.'}
-          <div className="mt-1 font-medium">Yalnızca resmî HTTPS kaynak kanıtı ve yetkili inceleme sonrası kilit kaldırılabilir.</div>
+      {(point.tollDirection == null || point.bannedVehicleClasses == null) && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800">
+          Doğrulanmamış ilave ücret — {point.name} için kaynak veya yön bilgisi henüz teyit edilmemiş olabilir.
+          Admin bu veriyi yönetebilir; bu uyarı müşteriye gösterilmez.
         </div>
       )}
       <div className="bg-white border border-slate-200 rounded-xl p-5 md:p-6 shadow-sm">
@@ -1160,7 +1157,7 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
         </AdvancedSection>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-4 mt-5">
-           <button onClick={handleSave} disabled={loading || point.verificationLocked} className="min-h-[44px] px-6 py-2 bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm">
+           <button onClick={handleSave} disabled={loading} className="min-h-[44px] px-6 py-2 bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm">
              {loading ? <Loader2 size={16} className="animate-spin" /> : saved ? <Check size={16} className="text-emerald-400" /> : <Save size={16} />}
              {saved ? 'Değişiklikler Kaydedildi' : 'Değişiklikleri Kaydet'}
            </button>
@@ -1202,7 +1199,7 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
                       {!isCovered && !hasAnyRowAtAll && point.notes && <span className="bg-slate-100 text-slate-600 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">Tarife Yok (Notu Kontrol Edin)</span>}
                       {!isCovered && (!point.notes || hasAnyRowAtAll) && <span className="bg-amber-100 text-amber-800 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">Eksik Tarife</span>}
                     </div>
-                     <button disabled={point.verificationLocked} title={point.verificationLocked ? 'Kilitli nokta: resmî kaynak ve yetkili inceleme gerekir' : 'Tarife ekle'} aria-label={point.verificationLocked ? 'Kilitli nokta için tarife ekleme devre dışı' : `${vehicleClassLabel(vc)} tarife ekle`} onClick={() => onEditTariff(vc)} className="min-h-11 px-3 py-1.5 rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm border bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-blue-50">
+                     <button title="Tarife ekle" aria-label={`${vehicleClassLabel(vc)} tarife ekle`} onClick={() => onEditTariff(vc)} className="min-h-11 px-3 py-1.5 rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm border bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100">
                       <Plus size={14} /> Tarife Ekle
                     </button>
                   </div>
@@ -1263,11 +1260,11 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
                             </div>
                             <div className="flex items-center gap-2 sm:self-end mt-2 sm:mt-0">
                               {tariff.sourceVerified && isAutomaticTollSyncSupported({ sourceUrl: tariff.sourceUrl, vehicleClass: tariff.vehicleClass, timeBand: tariff.timeBand }) && (
-                                 <button disabled={point.verificationLocked} title={point.verificationLocked ? 'Kilitli nokta: senkronizasyon devre dışı' : 'Resmî kaynaktan yeniden çek'} aria-label="Tarifeyi otomatik çek" onClick={() => onSync(tariff)} className="min-h-[40px] px-3 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900 rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm border border-slate-200/60 disabled:cursor-not-allowed disabled:opacity-40">
+                                 <button title="Resmî kaynaktan yeniden çek" aria-label="Tarifeyi otomatik çek" onClick={() => onSync(tariff)} className="min-h-[40px] px-3 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900 rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm border border-slate-200/60">
                                   <RefreshCw size={14} /> Otomatik Çek
                                 </button>
                               )}
-                               <button disabled={point.verificationLocked} title={point.verificationLocked ? 'Kilitli nokta: düzenleme devre dışı' : 'Tarifeyi düzenle'} aria-label="Tarifeyi düzenle" onClick={() => onEditTariff(vc, tariff)} className="min-h-[40px] px-4 py-2 rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm border bg-white border-slate-200 text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">
+                               <button title="Tarifeyi düzenle" aria-label="Tarifeyi düzenle" onClick={() => onEditTariff(vc, tariff)} className="min-h-[40px] px-4 py-2 rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm border bg-white border-slate-200 text-slate-700 hover:bg-slate-50">
                                 <Edit2 size={14} /> Düzenle
                               </button>
                             </div>
@@ -1287,11 +1284,22 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
 
 function PointsManager({ data, onRefresh }: { data: DataPayload, onRefresh: () => void }) {
   const [selectedPointId, setSelectedPointId] = useState<string | null>(null);
+  const [orderedPoints, setOrderedPoints] = useState(data.points);
   const [newPointModal, setNewPointModal] = useState(false);
   const [editTariffModal, setEditTariffModal] = useState<{vc: string, tariff?: TollTariff} | null>(null);
   const [syncModalTariff, setSyncModalTariff] = useState<TollTariff | null>(null);
 
   const selectedPoint = data.points.find(p => p.id === selectedPointId) || null;
+  useEffect(() => { setOrderedPoints(data.points); }, [data.points]);
+  const reorderPoint = async (id: string, direction: 'up' | 'down') => {
+    const response = await fetch('/admin/api/pricing/tolls/order', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, direction }),
+    });
+    const result = await response.json();
+    if (!response.ok) { alert(result.error ?? 'Sıralama güncellenemedi.'); return; }
+    if (Array.isArray(result.points)) setOrderedPoints(result.points);
+  };
 
   return (
     <div className="flex flex-col lg:flex-row gap-6">
@@ -1303,24 +1311,26 @@ function PointsManager({ data, onRefresh }: { data: DataPayload, onRefresh: () =
            <Plus size={16} /> Yeni Geçiş Noktası
         </button>
         <div className="flex flex-col gap-2 overflow-y-auto max-h-[calc(100vh-280px)] pr-1 pb-4">
-          {data.points.length === 0 ? (
+          {orderedPoints.length === 0 ? (
              <div className="text-center p-6 text-sm font-medium text-slate-500 bg-slate-50 rounded-xl border border-slate-200 border-dashed">
                Sistemde henüz geçiş noktası yok.
              </div>
-          ) : data.points.map(p => (
-             <button 
-               key={p.id} 
-               onClick={() => setSelectedPointId(p.id)} 
-               className={`text-left p-4 min-h-[56px] rounded-xl border transition-all duration-200 ${selectedPoint?.id === p.id ? 'bg-blue-50/50 border-blue-300 shadow-sm ring-1 ring-blue-500/20' : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50 shadow-sm'}`}
-             >
-                <div className={`font-black text-sm mb-1.5 ${selectedPoint?.id === p.id ? 'text-blue-900' : 'text-slate-900'}`}>{p.name}</div>
+          ) : orderedPoints.map((p, index) => (
+             <div key={p.id} className={`flex flex-col lg:flex-row lg:items-center gap-2 p-2 min-h-[124px] lg:min-h-[72px] rounded-xl border transition-all duration-200 overflow-hidden ${selectedPoint?.id === p.id ? 'bg-blue-50/50 border-blue-300 shadow-sm ring-1 ring-blue-500/20' : 'bg-white border-slate-200 shadow-sm'}`}>
+               <button onClick={() => setSelectedPointId(p.id)} className="text-left w-full min-h-[56px] min-w-0 p-2 rounded-lg hover:bg-slate-50">
+                <div className={`font-black text-sm mb-1.5 break-words leading-snug ${selectedPoint?.id === p.id ? 'text-blue-900' : 'text-slate-900'}`}>{p.name}</div>
                 <div className="flex items-center gap-2 flex-wrap">
                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{p.type}</span>
                    {!p.active && <span className="text-[9px] font-black text-red-600 bg-red-50 px-1.5 py-0.5 rounded uppercase tracking-widest">Pasif</span>}
                    {p.bannedVehicleClasses && p.bannedVehicleClasses.length > 0 && <span className="text-[9px] font-black text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded uppercase tracking-widest">Araç Yasağı</span>}
                    {p.bannedVehicleClasses === null && <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded uppercase tracking-widest">Yasak Belirsiz</span>}
                 </div>
-             </button>
+               </button>
+               <div className="flex w-full lg:w-auto shrink-0 gap-1">
+                 <button type="button" onClick={() => reorderPoint(p.id, 'up')} disabled={index === 0} aria-label={`${p.name} yukarı taşı`} className="flex-1 lg:flex-none min-w-[44px] min-h-[44px] rounded-lg border border-slate-200 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed" title="Yukarı">↑ Yukarı</button>
+                 <button type="button" onClick={() => reorderPoint(p.id, 'down')} disabled={index === orderedPoints.length - 1} aria-label={`${p.name} aşağı taşı`} className="flex-1 lg:flex-none min-w-[44px] min-h-[44px] rounded-lg border border-slate-200 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed" title="Aşağı">↓ Aşağı</button>
+               </div>
+             </div>
           ))}
         </div>
       </div>

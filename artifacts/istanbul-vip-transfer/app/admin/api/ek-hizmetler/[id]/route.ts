@@ -6,7 +6,7 @@ import { db } from '@/db';
 import { auditLogs, contentTranslations, languages, optionalServices } from '@/db/schema';
 import { sanitizeText } from '@/lib/sanitize';
 import { FLIGHT_MEET_GREET_KEY, normalizeFlightMeetGreetKey } from '@/lib/flight-meet-greet-contract';
-import { isCanonicalNonEmptyScope } from '@/lib/service-type-scope';
+import { isCanonicalServiceType } from '@/lib/service-type-scope';
 
 const updateSchema = z.object({
   key: z.string().trim().min(2).max(80).refine((key) => normalizeFlightMeetGreetKey(key) === FLIGHT_MEET_GREET_KEY || /^[A-Z0-9_]+$/.test(key), 'Geçersiz hizmet anahtarı.').optional(),
@@ -23,8 +23,9 @@ const updateSchema = z.object({
   active: z.boolean().optional(),
   displayOrder: z.number().int().min(0).max(10_000).optional(),
 }).refine((data) => Object.keys(data).length > 0, 'Güncellenecek bir alan gönderin.')
-  .refine((data) => data.serviceTypeScope === undefined || isCanonicalNonEmptyScope(data.serviceTypeScope), {
-    message: 'Hizmet türü kapsamı boş bırakılamaz; geçerli bir hizmet türü seçin.',
+  .refine((data) => (data.serviceTypeScope === undefined || data.serviceTypeScope.every(isCanonicalServiceType))
+    && (data.automaticServiceTypes === undefined || data.automaticServiceTypes.every(isCanonicalServiceType)), {
+    message: 'Geçersiz hizmet türü kapsamı seçildi.',
   });
 
 type Params = { params: Promise<{ id: string }> };
@@ -43,11 +44,6 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const data = parsed.data;
     const [current] = await db.select().from(optionalServices).where(eq(optionalServices.id, id)).limit(1);
     if (!current) return NextResponse.json({ error: 'Hizmet bulunamadı.' }, { status: 404 });
-    const resultingIncluded = data.includedInTransfer ?? current.includedInTransfer;
-    const resultingScope = data.serviceTypeScope ?? current.serviceTypeScope;
-    if (!resultingIncluded && !isCanonicalNonEmptyScope(resultingScope)) {
-      return NextResponse.json({ error: 'Ayrı ücretli hizmetlerde hizmet türü kapsamı boş bırakılamaz.' }, { status: 422 });
-    }
     let translationJob: unknown = null;
     const normalizedData = {
       ...(normalizeFlightMeetGreetKey(data.key) === FLIGHT_MEET_GREET_KEY ? { ...data, key: FLIGHT_MEET_GREET_KEY } : data),

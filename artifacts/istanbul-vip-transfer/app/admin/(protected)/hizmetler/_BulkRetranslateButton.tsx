@@ -78,6 +78,7 @@ export default function BulkRetranslateButton() {
         onClick={runAll}
         disabled={isRunning}
         style={{
+          minHeight: '44px',
           border: '1px solid #7C3AED',
           background: isRunning ? '#EDE9FE' : '#F5F3FF',
           color: '#5B21B6',

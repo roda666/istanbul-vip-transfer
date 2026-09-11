@@ -6,7 +6,7 @@ import { db } from '@/db';
 import { auditLogs, contentTranslations, languages, optionalServices } from '@/db/schema';
 import { sanitizeText } from '@/lib/sanitize';
 import { FLIGHT_MEET_GREET_KEY, normalizeFlightMeetGreetKey } from '@/lib/flight-meet-greet-contract';
-import { isCanonicalNonEmptyScope } from '@/lib/service-type-scope';
+import { isCanonicalServiceType } from '@/lib/service-type-scope';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,8 +25,8 @@ const serviceSchema = z.object({
   customerVisible: z.boolean().default(true),
   active: z.boolean(),
   displayOrder: z.number().int().min(0).max(10_000).default(0),
-}).refine((data) => data.includedInTransfer || isCanonicalNonEmptyScope(data.serviceTypeScope), {
-  message: 'Ayrı ücretli hizmetlerde hizmet türü kapsamı boş bırakılamaz; AIRPORT_TRANSFER, INTERCITY, ALLOCATION veya TOUR seçin.',
+}).refine((data) => data.serviceTypeScope.every(isCanonicalServiceType) && data.automaticServiceTypes.every(isCanonicalServiceType), {
+  message: 'Geçersiz hizmet türü kapsamı seçildi.',
 }).refine((data) => data.chargeType !== 'PER_BOOKING' || data.maximumQuantity === 1, {
   message: 'Rezervasyon başı hizmetlerde azami adet 1 olmalıdır.',
 });

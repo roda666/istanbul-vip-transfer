@@ -32,7 +32,7 @@ const updateSchema = z.object({
 });
 
 const actionSchema = z.object({
-  action: z.enum(['approve', 'publish', 'archive']),
+  action: z.enum(['approve', 'publish', 'archive', 'up', 'down']),
 });
 
 type Params = { params: Promise<{ id: string }> };
@@ -243,10 +243,28 @@ export async function POST(request: NextRequest, { params }: Params) {
   const { action } = parsed.data;
   const { db } = await import('@/db');
   const { content, auditLogs, serviceCategories } = await import('@/db/schema');
-  const { eq, and, sql } = await import('drizzle-orm');
+  const { eq, and, sql, asc } = await import('drizzle-orm');
 
   const [current] = await db.select().from(content).where(eq(content.id, id)).limit(1).catch(() => []);
   if (!current) return NextResponse.json({ error: 'Bulunamadı.' }, { status: 404 });
+
+  if (action === 'up' || action === 'down') {
+    const result = await db.transaction(async tx => {
+      const rows = await tx.select({ id: content.id, displayOrder: content.displayOrder })
+        .from(content).where(eq(content.contentType, current.contentType))
+        .orderBy(asc(content.displayOrder), asc(content.id));
+      const index = rows.findIndex(r => r.id === id);
+      const other = rows[index + (action === 'up' ? -1 : 1)];
+      if (!other) return null;
+      await tx.execute(sql`UPDATE content SET display_order = CASE
+        WHEN id = ${id} THEN ${other.displayOrder}
+        WHEN id = ${other.id} THEN ${current.displayOrder}
+        ELSE display_order END WHERE id IN (${id}, ${other.id})`);
+      return { id, otherId: other.id };
+    });
+    if (!result) return NextResponse.json({ error: 'Daha fazla hareket ettirilemiyor.' }, { status: 400 });
+    return NextResponse.json({ ok: true, ...result });
+  }
 
   let updates: Record<string, unknown> = {};
 

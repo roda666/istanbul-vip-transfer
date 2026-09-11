@@ -41,7 +41,7 @@ export default function RunHealthCheckButton() {
         onClick={handleClick}
         disabled={loading}
         style={{
-          minHeight: '40px', padding: '6px 14px',
+          minHeight: '44px', padding: '6px 14px',
           fontSize: '12px',
           fontWeight: 600,
           color: loading ? '#94A3B8' : '#0F766E',

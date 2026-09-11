@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Plus, Pencil, Trash2, X, Check, Loader2, MapPinned } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Check, Loader2, MapPinned, ChevronUp, ChevronDown } from 'lucide-react';
 import type {
   RouteFaqItem,
   RouteTransportOption,
@@ -473,6 +473,7 @@ export default function TransferRotalariList() {
   const [confirmDelete, setConfirmDelete] = useState<TransferRoute | null>(null);
   const [locationOptions, setLocationOptions] = useState<ManagedLocation[]>([]);
   const [vehicleOptions, setVehicleOptions] = useState<ManagedVehicle[]>([]);
+  const [actionId, setActionId] = useState<string | null>(null);
 
   const fetchRoutes = useCallback(async () => {
     setLoading(true);
@@ -541,6 +542,34 @@ export default function TransferRotalariList() {
     }
   }
 
+  async function listAction(route: AdminRoute, action: 'up' | 'down' | 'toggle-active') {
+    setActionId(route.id);
+    setActionError('');
+    try {
+      const res = await fetch(`/admin/api/transfer-routes/${route.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'İşlem başarısız.');
+      if (Array.isArray(json.routes)) {
+        setRoutes(json.routes.map((next: AdminRoute) => ({
+          ...next,
+          translations: next.translations ?? [],
+        })));
+        return;
+      }
+      setRoutes((current) => {
+        if (action === 'toggle-active') return current.map((item) => item.id === route.id ? { ...item, active: json.route.active } : item);
+        const index = current.findIndex((item) => item.id === route.id);
+        const peerIndex = action === 'up' ? index - 1 : index + 1;
+        if (index < 0 || peerIndex < 0 || peerIndex >= current.length) return current;
+        const next = [...current]; [next[index], next[peerIndex]] = [next[peerIndex], next[index]];
+        return next;
+      });
+    } catch (error) { setActionError(error instanceof Error ? error.message : 'İşlem başarısız.'); }
+    finally { setActionId(null); }
+  }
+
   function formatDuration(min: number) {
     if (min < 60) return `${min} dk`;
     const h = Math.floor(min / 60);
@@ -550,11 +579,23 @@ export default function TransferRotalariList() {
 
   return (
     <div>
+      <style>{`
+        @media (max-width: 899px) {
+          .route-list-table-wrap { overflow: visible !important; }
+          .route-list-table, .route-list-table tbody { display: block; width: 100%; }
+          .route-list-table thead { display: none; }
+          .route-list-table tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 10px; padding: 10px; border-bottom: 1px solid ${BORDER}; }
+          .route-list-table td { display: flex; align-items: center; min-width: 0; padding: 8px 4px !important; overflow-wrap: anywhere; }
+          .route-list-table td:first-child, .route-list-table td:nth-child(2), .route-list-table td:last-child { grid-column: 1 / -1; }
+          .route-list-table td:last-child > div { flex-wrap: wrap; }
+        }
+        @media (max-width: 480px) { .route-list-table tr { grid-template-columns: 1fr; } }
+      `}</style>
       {/* Add button */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
         <button
           onClick={() => setModal({ ...EMPTY })}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '8px', background: '#2563EB', color: '#FFFFFF', fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif', border: 'none', cursor: 'pointer' }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', minHeight: '44px', padding: '8px 16px', borderRadius: '8px', background: '#2563EB', color: '#FFFFFF', fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif', border: 'none', cursor: 'pointer' }}
         >
           <Plus size={15} />
           Yeni Güzergah Ekle
@@ -580,8 +621,8 @@ export default function TransferRotalariList() {
       ) : (
         /* Table */
         <div style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: '12px', overflow: 'hidden' }}>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>
+           <div className="route-list-table-wrap" style={{ overflowX: 'auto' }}>
+             <table className="route-list-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>
               <thead>
                 <tr style={{ borderBottom: `1px solid ${BORDER}`, background: '#F8FAFC' }}>
                   {['Görsel', 'Güzergah', 'Mesafe / Süre', 'Vito (€)', 'Sprinter (€)', 'Sıra', 'Durum', 'İşlem'].map(h => (
@@ -590,7 +631,7 @@ export default function TransferRotalariList() {
                 </tr>
               </thead>
               <tbody>
-                {routes.map(r => (
+                {routes.map((r, index) => (
                   <tr key={r.id} style={{ borderBottom: `1px solid #EDF2F7` }}
                     onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#F8FAFC'; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
@@ -645,13 +686,19 @@ export default function TransferRotalariList() {
                       <div style={{ display: 'flex', gap: '6px' }}>
                         <button
                           onClick={() => setModal({ ...r })}
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '5px 10px', borderRadius: '6px', background: '#EFF6FF', border: 'none', color: '#2563EB', fontSize: '12px', fontFamily: 'Inter, sans-serif', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', minHeight: '44px', padding: '5px 10px', borderRadius: '6px', background: '#EFF6FF', border: 'none', color: '#2563EB', fontSize: '12px', fontFamily: 'Inter, sans-serif', cursor: 'pointer', whiteSpace: 'nowrap' }}
                         >
                           <Pencil size={12} /> Düzenle
                         </button>
+                        <button onClick={() => listAction(r, 'up')} disabled={index === 0 || actionId === r.id} title="Yukarı taşı" aria-label="Yukarı taşı"
+                          style={{ minWidth: '44px', minHeight: '44px', borderRadius: '6px', border: `1px solid ${BORDER}`, background: BG, color: index === 0 ? '#CBD5E1' : TEXT, cursor: index === 0 ? 'default' : 'pointer' }}><ChevronUp size={15} /></button>
+                        <button onClick={() => listAction(r, 'down')} disabled={index === routes.length - 1 || actionId === r.id} title="Aşağı taşı" aria-label="Aşağı taşı"
+                          style={{ minWidth: '44px', minHeight: '44px', borderRadius: '6px', border: `1px solid ${BORDER}`, background: BG, color: index === routes.length - 1 ? '#CBD5E1' : TEXT, cursor: index === routes.length - 1 ? 'default' : 'pointer' }}><ChevronDown size={15} /></button>
+                        <button onClick={() => listAction(r, 'toggle-active')} disabled={actionId === r.id} title={r.active ? 'Pasifleştir' : 'Aktifleştir'}
+                          style={{ minHeight: '44px', padding: '5px 10px', borderRadius: '6px', background: r.active ? '#FFF7ED' : '#ECFDF5', border: `1px solid ${BORDER}`, color: r.active ? '#B45309' : '#047857', cursor: 'pointer', whiteSpace: 'nowrap' }}>{r.active ? 'Pasifleştir' : 'Aktifleştir'}</button>
                         <button
                           onClick={() => setConfirmDelete(r)}
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '5px 10px', borderRadius: '6px', background: '#FEF2F2', border: '1px solid #FECACA', color: '#D64545', fontSize: '12px', fontFamily: 'Inter, sans-serif', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', minHeight: '44px', padding: '5px 10px', borderRadius: '6px', background: '#FEF2F2', border: '1px solid #FECACA', color: '#D64545', fontSize: '12px', fontFamily: 'Inter, sans-serif', cursor: 'pointer', whiteSpace: 'nowrap' }}
                         >
                           <Trash2 size={12} /> Sil
                         </button>

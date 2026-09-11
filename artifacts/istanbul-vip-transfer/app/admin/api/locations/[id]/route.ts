@@ -5,6 +5,7 @@ const LOCATION_TYPES = ['AIRPORT', 'DISTRICT', 'REGION', 'HOTEL_ZONE', 'CUSTOM',
 const LOCATION_SCOPES = ['LOCAL', 'INTERCITY', 'BOTH'] as const;
 
 const updateSchema = z.object({
+  action: z.enum(['up', 'down', 'toggle-active']).optional(),
   name: z.string().min(1).max(200).optional(),
   slug: z
     .string()
@@ -38,7 +39,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const { id } = await params;
   const { db } = await import('@/db');
   const { locations } = await import('@/db/schema');
-  const { eq } = await import('drizzle-orm');
+  const { eq, isNull } = await import('drizzle-orm');
 
   const rows = await db.select().from(locations).where(eq(locations.id, id)).limit(1).catch(() => []);
   if (!rows[0]) return NextResponse.json({ error: 'Bulunamadı.' }, { status: 404 });
@@ -77,7 +78,38 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   const { db } = await import('@/db');
   const { locations, auditLogs } = await import('@/db/schema');
-  const { eq } = await import('drizzle-orm');
+  const { eq, isNull } = await import('drizzle-orm');
+
+  if (data.action) {
+    const result = await db.transaction(async (tx) => {
+      const { asc } = await import('drizzle-orm');
+      const rows = await tx.select({
+        id: locations.id, displayOrder: locations.displayOrder, isActive: locations.isActive,
+      }).from(locations).where(isNull(locations.archivedAt)).orderBy(asc(locations.displayOrder), asc(locations.id)).for('update');
+      const index = rows.findIndex((row) => row.id === id);
+      if (index < 0) return { error: 'Bulunamadı.', status: 404 as const };
+      if (data.action === 'toggle-active') {
+        const [item] = await tx.update(locations).set({ isActive: !rows[index].isActive, updatedAt: new Date(), updatedBy: session.adminId }).where(eq(locations.id, id)).returning();
+        return { item };
+      }
+      const peerIndex = data.action === 'up' ? index - 1 : index + 1;
+      if (peerIndex < 0 || peerIndex >= rows.length) return { error: 'Daha fazla hareket ettirilemiyor.', status: 400 as const };
+      const reordered = [...rows];
+      const [moved] = reordered.splice(index, 1);
+      reordered.splice(peerIndex, 0, moved);
+      for (const [position, item] of reordered.entries()) {
+        await tx.update(locations).set({
+          displayOrder: position, updatedAt: new Date(), updatedBy: session.adminId,
+        }).where(eq(locations.id, item.id));
+      }
+      return {
+        items: reordered.map((item, position) => ({ ...item, displayOrder: position })),
+        item: { ...moved, displayOrder: reordered.indexOf(moved) },
+      };
+    });
+    if ('error' in result) return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json(result);
+  }
 
   const [current] = await db
     .select({

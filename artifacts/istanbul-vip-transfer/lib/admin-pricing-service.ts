@@ -383,7 +383,7 @@ async function resolveTolls(routeId: string, alternativeId: string, vehicleId: s
   if (!items.length) return [];
   const pointIds = items.map((item) => item.tollPointId);
   const points = await db.select().from(tollPoints).where(and(
-    inArray(tollPoints.id, pointIds), eq(tollPoints.active, true), eq(tollPoints.verificationLocked, false),
+    inArray(tollPoints.id, pointIds), eq(tollPoints.active, true),
   ));
   if (points.length !== pointIds.length) throw new Error('Geçiş noktası artık aktif değil.');
   const settings = await getTollPricingSettings();

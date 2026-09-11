@@ -3,6 +3,7 @@
 import { useState, useMemo, useTransition, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { ArrowUp, ArrowDown } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -132,12 +133,18 @@ function ActionButtons({
   actionLoading,
   onDuplicate,
   onArchive,
+  onMove,
+  canMoveUp,
+  canMoveDown,
 }: {
   item: ServiceListItem;
   confirmArchive: string | null;
   actionLoading: string | null;
   onDuplicate: (item: ServiceListItem) => void;
   onArchive:   (item: ServiceListItem) => void;
+  onMove: (item: ServiceListItem, direction: 'up' | 'down') => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
 }) {
   const isLoading = actionLoading?.endsWith(item.id);
 
@@ -146,8 +153,9 @@ function ActionButtons({
       <a
         href={`/admin/hizmetler/yeni?slug=${encodeURIComponent(item.slug)}&title=${encodeURIComponent(item.title)}`}
         style={{
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px',
           fontSize: '11px', fontWeight: 700, color: '#B42318',
-          textDecoration: 'none', padding: '4px 8px',
+          textDecoration: 'none', padding: '4px 12px',
           background: '#FEF3F2', borderRadius: '5px', border: '1px solid #FDA29B',
           whiteSpace: 'nowrap',
         }}
@@ -157,21 +165,26 @@ function ActionButtons({
 
   return (
     <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+      <button aria-label="Yukarı" title="Yukarı" onClick={() => onMove(item, 'up')} disabled={!canMoveUp || !!actionLoading} style={{ minWidth: '44px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '5px', background: '#F8FAFC', color: '#52697A', border: '1px solid #D1D5DB', cursor: canMoveUp ? 'pointer' : 'not-allowed', opacity: canMoveUp ? 1 : .4 }}><ArrowUp size={14} /></button>
+      <button aria-label="Aşağı" title="Aşağı" onClick={() => onMove(item, 'down')} disabled={!canMoveDown || !!actionLoading} style={{ minWidth: '44px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '5px', background: '#F8FAFC', color: '#52697A', border: '1px solid #D1D5DB', cursor: canMoveDown ? 'pointer' : 'not-allowed', opacity: canMoveDown ? 1 : .4 }}><ArrowDown size={14} /></button>
       <a href={`/admin/hizmetler/${item.id}`} style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px',
         fontSize: '11px', fontWeight: 600, color: '#C9A84C',
-        textDecoration: 'none', padding: '4px 8px',
+        textDecoration: 'none', padding: '4px 12px',
         background: '#FFFBEB', borderRadius: '5px', border: '1px solid #F59E0B',
         whiteSpace: 'nowrap',
       }}>Düzenle</a>
       <a href={`/tr/${item.slug}`} target="_blank" rel="noopener noreferrer" style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px',
         fontSize: '11px', fontWeight: 600, color: '#0891B2',
-        textDecoration: 'none', padding: '4px 8px',
+        textDecoration: 'none', padding: '4px 12px',
         background: '#ECFEFF', borderRadius: '5px', border: '1px solid #BAE6FD',
         whiteSpace: 'nowrap',
       }}>Önizle ↗</a>
       <button onClick={() => onDuplicate(item)} disabled={!!actionLoading || !!isLoading}
         style={{
-          fontSize: '11px', fontWeight: 600, color: '#374151', padding: '4px 8px',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px',
+          fontSize: '11px', fontWeight: 600, color: '#374151', padding: '4px 12px',
           background: '#F1F5F9', borderRadius: '5px', border: '1px solid #D1D5DB',
           cursor: 'pointer', whiteSpace: 'nowrap',
           opacity: actionLoading === `dup-${item.id}` ? 0.5 : 1,
@@ -181,9 +194,10 @@ function ActionButtons({
       {item.status !== 'ARCHIVED' && (
         <button onClick={() => onArchive(item)} disabled={!!actionLoading || !!isLoading}
           style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px',
             fontSize: '11px', fontWeight: 600,
             color: confirmArchive === item.id ? '#FFFFFF' : '#64748B',
-            padding: '4px 8px',
+            padding: '4px 12px',
             background: confirmArchive === item.id ? '#DC2626' : '#F8FAFC',
             borderRadius: '5px',
             border: `1px solid ${confirmArchive === item.id ? '#DC2626' : '#D1D5DB'}`,
@@ -281,6 +295,16 @@ export default function HizmetlerList({ items }: Props) {
     } finally { setActionLoading(null); }
   }
 
+  async function handleMove(item: ServiceListItem, direction: 'up' | 'down') {
+    const index = filtered.findIndex(i => i.id === item.id);
+    if (!filtered[index + (direction === 'up' ? -1 : 1)]) return;
+    const res = await fetch(`/admin/api/service-pages/${item.id}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: direction }),
+    });
+    if (res.ok) router.refresh(); else alert('Sıralama güncellenemedi.');
+  }
+
   const categoryOptions = [...new Set(items.map(i => i.category).filter(Boolean))] as string[];
 
   return (
@@ -353,15 +377,25 @@ export default function HizmetlerList({ items }: Props) {
           .hl-card-actions a,
           .hl-card-actions button {
             flex: 1 1 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 44px;
             text-align: center;
             min-width: 72px;
           }
 
           /* Toolbar wraps well on mobile already, but ensure min sizing */
           .hl-toolbar input, .hl-toolbar select {
+            min-height: 44px !important;
             min-width: 0 !important;
             flex: 1 1 140px !important;
           }
+        }
+
+        /* Desktop toolbar inputs/selects */
+        .hl-toolbar input, .hl-toolbar select {
+          min-height: 44px;
         }
 
         @media (max-width: 480px) {
@@ -503,6 +537,9 @@ export default function HizmetlerList({ items }: Props) {
                 actionLoading={actionLoading}
                 onDuplicate={handleDuplicate}
                 onArchive={handleArchive}
+                onMove={handleMove}
+                canMoveUp={idx > 0}
+                canMoveDown={idx < filtered.length - 1}
               />
             </div>
           );
@@ -588,6 +625,9 @@ export default function HizmetlerList({ items }: Props) {
                   actionLoading={actionLoading}
                   onDuplicate={handleDuplicate}
                   onArchive={handleArchive}
+                  onMove={handleMove}
+                  canMoveUp={idx > 0}
+                  canMoveDown={idx < filtered.length - 1}
                 />
               </div>
             </div>

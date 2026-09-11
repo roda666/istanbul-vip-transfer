@@ -84,7 +84,8 @@ export async function GET() {
   try { await requireAdminSession(); } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
 
   try {
-    const rows = await db.select().from(transferRoutes).orderBy(asc(transferRoutes.displayOrder));
+    const rows = await db.select().from(transferRoutes)
+      .orderBy(asc(transferRoutes.displayOrder), asc(transferRoutes.id));
     const routeIds = rows.map((route) => route.id);
     const translations = routeIds.length
       ? await db.select().from(transferRouteTranslations).where(inArray(transferRouteTranslations.routeId, routeIds))

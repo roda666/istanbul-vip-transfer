@@ -1,0 +1,29 @@
+area,route,viewport,check,status,evidence,cleanup,notes
+Catalog responsive,/admin/ek-hizmetler,390px,"layout, overflow, and touch targets",PASS,Task #310 canonical browser run; 8/8 checks passed,No residual UI/data mutation,Responsive check passed at requested viewport.
+Catalog responsive,/admin/ek-hizmetler,768px,"layout, overflow, and touch targets",PASS,Task #310 canonical browser run; 8/8 checks passed,No residual UI/data mutation,Responsive check passed at requested viewport.
+Catalog responsive,/admin/kategoriler,390px,"layout, overflow, and touch targets",PASS,Task #310 canonical browser run; 8/8 checks passed,No residual UI/data mutation,Responsive check passed at requested viewport.
+Catalog responsive,/admin/kategoriler,768px,"layout, overflow, and touch targets",PASS,Task #310 canonical browser run; 8/8 checks passed,No residual UI/data mutation,Responsive check passed at requested viewport.
+Catalog responsive,/admin/araclar,390px,"layout, overflow, and touch targets",PASS,Task #310 canonical browser run; 8/8 checks passed,No residual UI/data mutation,Responsive check passed at requested viewport.
+Catalog responsive,/admin/araclar,768px,"layout, overflow, and touch targets",PASS,Task #310 canonical browser run; 8/8 checks passed,No residual UI/data mutation,Responsive check passed at requested viewport.
+Catalog responsive,/admin/hizmetler,390px,"layout, overflow, and touch targets",PASS,Task #310 canonical browser run; 8/8 checks passed,No residual UI/data mutation,Responsive check passed at requested viewport.
+Catalog responsive,/admin/hizmetler,768px,"layout, overflow, and touch targets",PASS,Task #310 canonical browser run; 8/8 checks passed,No residual UI/data mutation,Responsive check passed at requested viewport.
+Catalog reorder,/admin/ek-hizmetler,390px/768px,reorder and restore,PASS,Task #310 browser evidence: reorder completed and original order restored,Original order restored; no residual mutation,
+Catalog reorder,/admin/kategoriler,390px/768px,reorder and restore,PASS,Task #310 canonical broad browser run: reorder completed and original order restored,Original order restored; no residual mutation,
+Catalog reorder,/admin/araclar,390px/768px,reorder and restore,PASS,Task #310 browser evidence: reorder completed and original order restored,Original order restored; no residual mutation,
+Catalog reorder,/admin/hizmetler,390px/768px,reorder and restore,PARTIAL/BLOCKED,Next dev response/API snapshot instability; reorder outcome could not be confirmed,No confirmed business mutation; no cleanup mutation asserted,Not promoted to PASS.
+Drivers,/admin/soforler,390px/768px,full CRUD and reorder,PASS,Task #310 browser evidence: full CRUD/reorder and 44px controls passed,Test records removed/restored; order restored; no residual mutation,
+Menu,/admin/menu,390px/768px,empty state and nav API,PASS,Empty state PASS; GET /admin/api/nav returned 200,No mutation,
+Content automation,/admin/transfer-rotalari,N/A,transfer routes package,BLOCKED,Timed out in Next dev; current automation was not promoted to PASS,No confirmed business mutation,Prior evidence retained where present.
+Content automation,/admin/blog,N/A,blog package,BLOCKED,Timed out in Next dev; current automation was not promoted to PASS,No confirmed business mutation,Prior evidence retained where present.
+Content automation,/admin/sss,N/A,SSS package,BLOCKED,Timed out in Next dev; current automation was not promoted to PASS,No confirmed business mutation,Prior evidence retained where present.
+Toll automation,/admin/yol-gecis-ucretleri,N/A,automated suite,BLOCKED,Suite written but not executed because workflow repeatedly finished,No mutation,No execution claimed.
+Operational automation,/admin/*,N/A,automated suites,BLOCKED,Suites written but not executed because workflow repeatedly finished,No mutation,No execution claimed.
+Infrastructure,test harness,N/A,dedicated config,PASS,Dedicated task #310 test configuration present,N/A,
+Infrastructure,test harness,N/A,worker-scoped temporary admin,PASS,Worker-scoped temporary admin strategy documented/implemented,Temporary admin cleaned up,
+Infrastructure,test harness,N/A,global pre/post cleanup,PASS,Global cleanup hooks executed around task scope,Remaining=0; no orphan process,
+Infrastructure,test harness,N/A,signal-aware process-group runner,PASS,Signal-aware process-group runner included,Process group reaped,
+Infrastructure,test harness,N/A,safe FK-aware nullable detachment,PASS,FK-aware nullable detachment used for cleanup,No orphaned references,
+Infrastructure,test harness,N/A,DB pool close,PASS,DB pool close included in teardown,Pool closed,
+Infrastructure,test harness,N/A,canonical args filtering,PASS,Canonical argument filtering included,N/A,
+Infrastructure,test harness,N/A,failure cleanup proof,PASS,Failure cleanup proof recorded: remaining=0/no orphan process,remaining=0; no orphan process,
+Infrastructure,repository,N/A,typecheck,PASS,Typecheck PASS,N/A,

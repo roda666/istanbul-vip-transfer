@@ -444,6 +444,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     action: z.enum([
       'saveTranslation', 'approve', 'publish', 'unpublish', 'translate',
       'archiveSource', 'publishSource', 'unpublishSource', 'duplicate',
+      'up', 'down',
     ]),
     locale: z.string().min(2).max(10).optional(),
     title: z.string().trim().min(1).max(500).optional(),
@@ -464,8 +465,26 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const { db }                = await import('@/db');
   const { contentTranslations, content } = await import('@/db/schema');
-  const { eq }                = await import('drizzle-orm');
+   const { eq, asc, sql }      = await import('drizzle-orm');
   const adminUserId           = session?.adminId ?? null;
+
+  if (action === 'up' || action === 'down') {
+    const result = await db.transaction(async tx => {
+      const rows = await tx.select({ id: content.id, displayOrder: content.displayOrder })
+        .from(content).where(eq(content.contentType, 'SERVICE'))
+        .orderBy(asc(content.displayOrder), asc(content.id));
+      const index = rows.findIndex(r => r.id === id);
+      const other = rows[index + (action === 'up' ? -1 : 1)];
+      if (!other) return null;
+      await tx.execute(sql`UPDATE content SET display_order = CASE
+        WHEN id = ${id} THEN ${other.displayOrder}
+        WHEN id = ${other.id} THEN ${row.displayOrder}
+        ELSE display_order END WHERE id IN (${id}, ${other.id})`);
+      return { id, otherId: other.id };
+    });
+    if (!result) return NextResponse.json({ error: 'Daha fazla hareket ettirilemiyor.' }, { status: 400 });
+    return NextResponse.json({ ok: true, ...result });
+  }
 
   // ── Source record actions ─────────────────────────────────────────────────
 

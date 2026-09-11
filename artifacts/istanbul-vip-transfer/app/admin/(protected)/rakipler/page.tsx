@@ -11,12 +11,11 @@ type Analysis = {
   ownPublishedPostCount: number;
   note: string;
 };
-const field: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 10px', border: '1px solid #D8E1E9', borderRadius: 7, fontSize: 13, color: '#172B3A' };
-const button: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700 };
+const field: React.CSSProperties = { width: '100%', minHeight: 44, boxSizing: 'border-box', padding: '9px 12px', border: '1px solid #D8E1E9', borderRadius: 7, fontSize: 13, color: '#172B3A' };
+const button: React.CSSProperties = { display: 'inline-flex', minHeight: 44, minWidth: 44, justifyContent: 'center', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700 };
 
 export default function RakiplerPage() {
-  const [items, setItems] = useState<Competitor[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<Competitor[] | null>(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -26,15 +25,17 @@ export default function RakiplerPage() {
   const [form, setForm] = useState({ domain: '', label: '', notes: '', active: true });
 
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       const response = await fetch('/admin/api/competitors');
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? 'Rakip listesi yüklenemedi.');
-      setItems(data.items ?? []);
-      setMessage(data.analysisLabel ?? '');
-    } catch (e) { setError(e instanceof Error ? e.message : 'Rakip listesi yüklenemedi.'); }
-    finally { setLoading(false); }
+      const isJson = response.headers.get('content-type')?.includes('application/json');
+      const data = isJson ? await response.json().catch(() => null) : null;
+      if (!response.ok) throw new Error(data?.error ?? 'Rakip listesi yüklenemedi.');
+      setItems(data?.items ?? []);
+      setMessage(data?.analysisLabel ?? '');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Rakip listesi yüklenemedi.');
+      setItems(prev => prev || []);
+    }
   }, []);
   useEffect(() => { load(); }, [load]);
 
@@ -52,9 +53,13 @@ export default function RakiplerPage() {
         method: isEdit ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(isEdit ? { label: form.label, notes: form.notes || null, active: form.active } : form),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? 'Kaydedilemedi.');
-      setItems(previous => isEdit ? previous.map(item => item.id === data.item.id ? data.item : item) : [...previous, data.item].sort((a, b) => a.label.localeCompare(b.label, 'tr')));
+      const isJson = response.headers.get('content-type')?.includes('application/json');
+      const data = isJson ? await response.json().catch(() => null) : null;
+      if (!response.ok) throw new Error(data?.error ?? 'Kaydedilemedi.');
+      setItems(previous => {
+        const prev = previous || [];
+        return isEdit ? prev.map(item => item.id === data.item.id ? data.item : item) : [...prev, data.item].sort((a, b) => a.label.localeCompare(b.label, 'tr'));
+      });
       reset();
     } catch (e) { setError(e instanceof Error ? e.message : 'Kaydedilemedi.'); }
     finally { setSaving(false); }
@@ -64,9 +69,10 @@ export default function RakiplerPage() {
     setError('');
     try {
       const response = await fetch(`/admin/api/competitors/${item.id}`, { method: 'DELETE' });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? 'Silinemedi.');
-      setItems(previous => previous.filter(row => row.id !== item.id));
+      const isJson = response.headers.get('content-type')?.includes('application/json');
+      const data = isJson ? await response.json().catch(() => null) : null;
+      if (!response.ok) throw new Error(data?.error ?? 'Silinemedi.');
+      setItems(previous => (previous || []).filter(row => row.id !== item.id));
       if (editing === item.id) reset();
     } catch (e) { setError(e instanceof Error ? e.message : 'Silinemedi.'); }
   }
@@ -74,8 +80,9 @@ export default function RakiplerPage() {
     setAnalyzing(true); setError(''); setMessage('');
     try {
       const response = await fetch('/admin/api/competitors/analyze', { method: 'POST' });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? 'Rakip konu analizi yapılamadı.');
+      const isJson = response.headers.get('content-type')?.includes('application/json');
+      const data = isJson ? await response.json().catch(() => null) : null;
+      if (!response.ok) throw new Error(data?.error ?? 'Rakip konu analizi yapılamadı.');
       setAnalysis(data);
     } catch (e) { setError(e instanceof Error ? e.message : 'Rakip konu analizi yapılamadı.'); }
     finally { setAnalyzing(false); }
@@ -88,7 +95,7 @@ export default function RakiplerPage() {
     <section style={{ marginBottom: 18, padding: 16, borderRadius: 10, border: '1px solid #BFDBFE', background: '#F8FBFF' }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
         <div><strong style={{ fontSize: 14, color: '#172B3A' }}>Rakip konu boşluğu analizi</strong><p style={{ color: '#52697A', fontSize: 12, margin: '5px 0 0' }}>Yalnızca aktif alan adlarının açık sitemap’leri ve erişilebilen sayfa başlıkları kullanılır. En fazla 24 URL/alan adı taranır.</p></div>
-        <button onClick={analyze} disabled={analyzing || loading || items.filter(item => item.active).length === 0} style={{ ...button, background: '#2563EB', color: '#fff', opacity: analyzing || loading ? .7 : 1 }}>{analyzing ? <Loader2 size={14} /> : <Globe2 size={14} />}{analyzing ? 'Analiz ediliyor…' : 'Konu boşluklarını analiz et'}</button>
+        <button onClick={analyze} disabled={analyzing || !items || items.filter(item => item.active).length === 0} style={{ ...button, background: '#2563EB', color: '#fff', opacity: analyzing || !items ? .7 : 1 }}>{analyzing ? <Loader2 size={18} className="animate-spin" /> : <Globe2 size={18} />}{analyzing ? 'Analiz ediliyor…' : 'Konu boşluklarını analiz et'}</button>
       </div>
       {analysis && <div style={{ marginTop: 16, fontSize: 12 }}>
         <p style={{ color: '#52697A', margin: '0 0 10px' }}>{analysis.note} Sitede karşılaştırılan yayımlı blog: {analysis.ownPublishedPostCount}.</p>
@@ -101,23 +108,23 @@ export default function RakiplerPage() {
           <div style={{ display: 'grid', gap: 7 }}>{analysis.gaps.map(gap => <div key={`${gap.domain}-${gap.url}`} style={{ padding: 10, background: '#fff', border: '1px solid #D8E1E9', borderRadius: 7 }}><strong style={{ color: '#172B3A' }}>{gap.topic}</strong><div style={{ color: '#52697A', marginTop: 3 }}>{gap.label} ({gap.domain}) · <a href={gap.url} target="_blank" rel="noreferrer" style={{ color: '#1D4ED8' }}>Sayfa kaynağı</a> · <a href={gap.sourceUrl} target="_blank" rel="noreferrer" style={{ color: '#1D4ED8' }}>Sitemap</a></div></div>)}</div>}
       </div>}
     </section>
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 310px', gap: 18, alignItems: 'start' }}>
-      <section style={{ background: '#fff', border: '1px solid #D8E1E9', borderRadius: 10 }}>
-        {loading ? <p style={{ padding: 24, color: '#718596' }}><Loader2 size={14} /> Yükleniyor…</p> : items.length === 0 ? <p style={{ padding: 30, color: '#718596', textAlign: 'center' }}>Henüz rakip alan adı eklenmedi.</p> : items.map((item, index) =>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'flex-start' }}>
+      <section style={{ flex: '1 1 320px', minWidth: 0, background: '#fff', border: '1px solid #D8E1E9', borderRadius: 10 }}>
+        {!items ? <p style={{ padding: 24, color: '#718596', display: 'flex', alignItems: 'center', gap: 8 }}><Loader2 size={16} className="animate-spin" /> Yükleniyor…</p> : items.length === 0 ? <p style={{ padding: 30, color: '#718596', textAlign: 'center' }}>Henüz rakip alan adı eklenmedi.</p> : items.map((item, index) =>
           <div key={item.id} style={{ display: 'flex', gap: 12, padding: 15, borderBottom: index < items.length - 1 ? '1px solid #EDF2F7' : undefined }}>
             <Globe2 size={18} color="#2563EB" style={{ marginTop: 2, flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}><strong style={{ fontSize: 13, color: '#172B3A' }}>{item.label}</strong><div style={{ fontSize: 12, color: '#52697A', marginTop: 3 }}>{item.domain} {!item.active && <em style={{ color: '#B45309' }}>• Pasif</em>}</div>{item.notes && <p style={{ fontSize: 12, color: '#718596', margin: '6px 0 0' }}>{item.notes}</p>}</div>
-            <div style={{ display: 'flex', gap: 5, height: 31 }}><button title="Düzenle" onClick={() => edit(item)} style={{ ...button, color: '#1D4ED8', background: '#EFF6FF' }}><Pencil size={14} /></button><button title="Sil" onClick={() => remove(item)} style={{ ...button, color: '#B42318', background: '#FEF2F2' }}><Trash2 size={14} /></button></div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><button type="button" aria-label="Düzenle" title="Düzenle" onClick={() => edit(item)} style={{ ...button, color: '#1D4ED8', background: '#EFF6FF' }}><Pencil size={18} /><span className="md:hidden">Düzenle</span></button><button type="button" aria-label="Sil" title="Sil" onClick={() => remove(item)} style={{ ...button, color: '#B42318', background: '#FEF2F2' }}><Trash2 size={18} /><span className="md:hidden">Sil</span></button></div>
           </div>)}
       </section>
-      <section style={{ background: '#fff', border: '1px solid #D8E1E9', borderRadius: 10, padding: 16 }}>
+      <section style={{ flex: '1 1 310px', minWidth: 0, background: '#fff', border: '1px solid #D8E1E9', borderRadius: 10, padding: 16 }}>
         <h2 style={{ fontSize: 14, margin: '0 0 14px', color: '#172B3A' }}>{editing ? 'Rakibi Düzenle' : 'Rakip Ekle'}</h2>
         <form onSubmit={submit} style={{ display: 'grid', gap: 10 }}>
           <label style={{ fontSize: 12, color: '#52697A' }}>Görünen ad<input required value={form.label} onChange={e => setForm(current => ({ ...current, label: e.target.value }))} style={{ ...field, marginTop: 4 }} /></label>
           <label style={{ fontSize: 12, color: '#52697A' }}>Alan adı<input required disabled={editing !== null} placeholder="ornek.com" value={form.domain} onChange={e => setForm(current => ({ ...current, domain: e.target.value }))} style={{ ...field, marginTop: 4, background: editing ? '#F8FAFC' : '#fff' }} /></label>
           <label style={{ fontSize: 12, color: '#52697A' }}>Notlar (opsiyonel)<textarea value={form.notes} onChange={e => setForm(current => ({ ...current, notes: e.target.value }))} maxLength={2000} rows={3} style={{ ...field, marginTop: 4, resize: 'vertical' }} /></label>
           <label style={{ display: 'flex', gap: 7, fontSize: 12, color: '#52697A', alignItems: 'center' }}><input type="checkbox" checked={form.active} onChange={e => setForm(current => ({ ...current, active: e.target.checked }))} /> Aktif</label>
-          <div style={{ display: 'flex', gap: 7 }}><button type="submit" disabled={saving} style={{ ...button, background: '#2563EB', color: '#fff' }}>{saving ? <Loader2 size={14} /> : <Check size={14} />}{saving ? 'Kaydediliyor' : 'Kaydet'}</button>{editing !== null && <button type="button" onClick={reset} style={{ ...button, background: '#F1F5F9', color: '#52697A' }}><X size={14} /> İptal</button>}</div>
+          <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}><button type="submit" disabled={saving} style={{ ...button, background: '#2563EB', color: '#fff' }}>{saving ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}{saving ? 'Kaydediliyor' : 'Kaydet'}</button>{editing !== null && <button type="button" onClick={reset} style={{ ...button, background: '#F1F5F9', color: '#52697A' }}><X size={18} /> İptal</button>}</div>
         </form>
       </section>
     </div>

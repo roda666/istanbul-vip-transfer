@@ -19,7 +19,7 @@ export async function GET() {
     const { db } = await import('@/db');
     const { drivers } = await import('@/db/schema');
     const { asc } = await import('drizzle-orm');
-    return NextResponse.json({ items: await db.select().from(drivers).orderBy(asc(drivers.name)) });
+    return NextResponse.json({ items: await db.select().from(drivers).orderBy(asc(drivers.displayOrder), asc(drivers.id)) });
   } catch { return NextResponse.json({ error: 'Sürücüler yüklenemedi.' }, { status: 503 }); }
 }
 
@@ -31,7 +31,9 @@ export async function POST(req: NextRequest) {
   try {
     const { db } = await import('@/db');
     const { drivers, auditLogs } = await import('@/db/schema');
-    const [item] = await db.insert(drivers).values({ ...parsed.data, createdBy: admin.adminId, updatedBy: admin.adminId }).returning();
+    const { desc } = await import('drizzle-orm');
+    const [last] = await db.select({ displayOrder: drivers.displayOrder }).from(drivers).orderBy(desc(drivers.displayOrder)).limit(1);
+    const [item] = await db.insert(drivers).values({ ...parsed.data, displayOrder: (last?.displayOrder ?? -1) + 1, createdBy: admin.adminId, updatedBy: admin.adminId }).returning();
     await db.insert(auditLogs).values({ adminUserId: admin.adminId, action: 'CREATE', entityType: 'driver', entityId: item.id, metadata: {} });
     return NextResponse.json({ item }, { status: 201 });
   } catch { return NextResponse.json({ error: 'Sürücü oluşturulamadı.' }, { status: 503 }); }

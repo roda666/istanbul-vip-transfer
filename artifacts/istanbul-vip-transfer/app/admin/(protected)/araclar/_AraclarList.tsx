@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { ChevronUp, ChevronDown } from 'lucide-react';
 import type { Vehicle } from '@/db/schema';
 import type { ContentStatus } from '@/lib/workflow';
 import { STATUS_LABELS } from '@/lib/workflow';
@@ -122,11 +122,11 @@ const filterInputStyle: React.CSSProperties = {
   fontSize: '13px',
   fontFamily: 'Inter, sans-serif',
   padding: '8px 12px',
+  minHeight: '44px',
   outline: 'none',
 };
 
 export default function AraclarList() {
-  const router = useRouter();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -134,8 +134,9 @@ export default function AraclarList() {
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [sort, setSort] = useState<'updatedAt' | 'displayOrder'>('updatedAt');
-  const [order, setOrder] = useState<'asc' | 'desc'>('desc');
+  // Ordering controls operate on the same ordered peer list shown to the admin.
+  const [sort, setSort] = useState<'updatedAt' | 'displayOrder'>('displayOrder');
+  const [order, setOrder] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState(1);
   const limit = 20;
 
@@ -147,6 +148,7 @@ export default function AraclarList() {
     onConfirm: () => void;
   } | null>(null);
   const [actionError, setActionError] = useState('');
+  const [orderingId, setOrderingId] = useState<string | null>(null);
 
   const fetchVehicles = useCallback(async () => {
     setLoading(true);
@@ -209,7 +211,6 @@ export default function AraclarList() {
       setActionError(json.error ?? 'Arşivleme başarısız.');
     } else {
       fetchVehicles();
-      router.refresh();
     }
   }
 
@@ -220,7 +221,6 @@ export default function AraclarList() {
       setActionError(json.error ?? 'Silme başarısız.');
     } else {
       fetchVehicles();
-      router.refresh();
     }
   }
 
@@ -235,8 +235,29 @@ export default function AraclarList() {
       setActionError(json.error ?? 'Araç durumu güncellenemedi.');
     } else {
       fetchVehicles();
-      router.refresh();
     }
+  }
+
+  async function reorder(vehicle: Vehicle, direction: 'up' | 'down') {
+    setOrderingId(vehicle.id);
+    setActionError('');
+    try {
+      const res = await fetch(`/admin/api/vehicles/${vehicle.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: direction }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'Sıralama güncellenemedi.');
+      setVehicles((current) => {
+        const index = current.findIndex((item) => item.id === vehicle.id);
+        const peerIndex = direction === 'up' ? index - 1 : index + 1;
+        if (index < 0 || peerIndex < 0 || peerIndex >= current.length) return current;
+        const next = [...current];
+        [next[index], next[peerIndex]] = [next[peerIndex], next[index]];
+        return next;
+      });
+    } catch (error) { setActionError(error instanceof Error ? error.message : 'Sıralama güncellenemedi.'); }
+    finally { setOrderingId(null); }
   }
 
   function formatDate(d: Date | string | null) {
@@ -248,6 +269,34 @@ export default function AraclarList() {
 
   return (
     <div>
+      <style>{`
+        @media (max-width: 899px) {
+          .vehicle-list-table-wrap { overflow: visible !important; }
+          .vehicle-list-table, .vehicle-list-table tbody { display: block; width: 100%; }
+          .vehicle-list-table thead { display: none; }
+          .vehicle-list-table tr {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0 10px;
+            padding: 10px;
+            border-bottom: 1px solid #D8E1E9;
+          }
+          .vehicle-list-table td {
+            display: flex;
+            align-items: center;
+            min-width: 0;
+            padding: 8px 4px !important;
+            overflow-wrap: anywhere;
+          }
+          .vehicle-list-table td:first-child,
+          .vehicle-list-table td:nth-child(2),
+          .vehicle-list-table td:last-child { grid-column: 1 / -1; }
+          .vehicle-list-table td:last-child > div { flex-wrap: wrap; }
+        }
+        @media (max-width: 480px) {
+          .vehicle-list-table tr { grid-template-columns: 1fr; }
+        }
+      `}</style>
       {/* ── Filters ── */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
         <input
@@ -308,8 +357,8 @@ export default function AraclarList() {
         <>
           {/* ── Table ── */}
           <div style={{ background: '#FFFFFF', border: '1px solid #D8E1E9', borderRadius: '12px', overflow: 'hidden' }}>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>
+           <div className="vehicle-list-table-wrap" style={{ overflowX: 'auto' }}>
+             <table className="vehicle-list-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #D8E1E9', background: '#F8FAFC' }}>
                     {['Görsel', 'Araç', 'Kap.', 'Durum', 'Aktif', 'Öne Çıkan', 'Sıra', 'Güncellendi', 'İşlem'].map((h) => (
@@ -388,12 +437,17 @@ export default function AraclarList() {
                         {/* Actions */}
                         <td style={{ padding: '10px 12px' }}>
                           <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                            <Link
+                             <button onClick={() => reorder(v, 'up')} disabled={orderingId === v.id || vehicles.indexOf(v) === 0} title="Yukarı taşı" aria-label="Yukarı taşı"
+                               style={{ minWidth: '44px', minHeight: '44px', border: '1px solid #D8E1E9', borderRadius: '6px', background: '#FFF', color: vehicles.indexOf(v) === 0 ? '#CBD5E1' : '#172B3A', cursor: vehicles.indexOf(v) === 0 ? 'default' : 'pointer' }}><ChevronUp size={15} /></button>
+                             <button onClick={() => reorder(v, 'down')} disabled={orderingId === v.id || vehicles.indexOf(v) === vehicles.length - 1} title="Aşağı taşı" aria-label="Aşağı taşı"
+                               style={{ minWidth: '44px', minHeight: '44px', border: '1px solid #D8E1E9', borderRadius: '6px', background: '#FFF', color: vehicles.indexOf(v) === vehicles.length - 1 ? '#CBD5E1' : '#172B3A', cursor: vehicles.indexOf(v) === vehicles.length - 1 ? 'default' : 'pointer' }}><ChevronDown size={15} /></button>
+                             <Link
                               href={`/admin/araclar/${v.id}/duzenle`}
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                padding: '5px 12px',
+                                 padding: '5px 12px',
+                                 minHeight: '44px',
                                 borderRadius: '6px',
                                 background: '#EFF6FF',
                                 color: '#2563EB',
@@ -413,7 +467,8 @@ export default function AraclarList() {
                                 style={{
                                   display: 'inline-flex',
                                   alignItems: 'center',
-                                  padding: '5px 12px',
+                                   padding: '5px 12px',
+                                   minHeight: '44px',
                                   borderRadius: '6px',
                                   background: v.isActive ? '#F8FAFC' : '#ECFDF5',
                                   border: '1px solid #D8E1E9',
@@ -434,7 +489,8 @@ export default function AraclarList() {
                                 style={{
                                   display: 'inline-flex',
                                   alignItems: 'center',
-                                  padding: '5px 12px',
+                                   padding: '5px 12px',
+                                   minHeight: '44px',
                                   borderRadius: '6px',
                                   background: '#FEF2F2',
                                   border: 'none',
@@ -455,7 +511,10 @@ export default function AraclarList() {
                                 style={{
                                   display: 'inline-flex',
                                   alignItems: 'center',
-                                  padding: '5px 12px',
+                                  justifyContent: 'center',
+                                   padding: '5px 12px',
+                                   minWidth: '44px',
+                                   minHeight: '44px',
                                   borderRadius: '6px',
                                   background: '#FEF2F2',
                                   border: '1px solid #FECACA',

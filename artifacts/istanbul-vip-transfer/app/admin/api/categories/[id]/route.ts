@@ -43,28 +43,26 @@ export async function PATCH(
     if (!cat) return NextResponse.json({ error: 'Kategori bulunamadı.' }, { status: 404 });
 
     if (action === 'up' || action === 'down') {
-      // Find the adjacent category to swap sort_order with
-      const allCats = await db
-        .select({ id: serviceCategories.id, sortOrder: serviceCategories.sortOrder })
-        .from(serviceCategories)
-        .orderBy(serviceCategories.sortOrder);
-
-      const idx = allCats.findIndex(c => c.id === catId);
-      const swapIdx = action === 'up' ? idx - 1 : idx + 1;
-      if (swapIdx < 0 || swapIdx >= allCats.length) {
-        return NextResponse.json({ error: 'Daha fazla hareket ettirilemiyor.' }, { status: 400 });
-      }
-
-      const swapCat = allCats[swapIdx];
-      // Swap sort_orders
-      await db.execute(sql`
-        UPDATE service_categories SET sort_order = CASE
-          WHEN id = ${catId}      THEN ${swapCat.sortOrder}
-          WHEN id = ${swapCat.id} THEN ${cat.sortOrder}
-          ELSE sort_order
-        END
-        WHERE id IN (${catId}, ${swapCat.id})
-      `);
+      // Swap both values in one transaction so concurrent reorder requests cannot
+      // leave duplicate or partially updated positions.
+      await db.transaction(async (tx) => {
+        const allCats = await tx.select({
+          id: serviceCategories.id, sortOrder: serviceCategories.sortOrder,
+        }).from(serviceCategories).orderBy(serviceCategories.sortOrder).for('update');
+        const idx = allCats.findIndex(c => c.id === catId);
+        const swapIdx = action === 'up' ? idx - 1 : idx + 1;
+        if (swapIdx < 0 || swapIdx >= allCats.length) throw new Error('Daha fazla hareket ettirilemiyor.');
+        const swapCat = allCats[swapIdx];
+        const locked = await tx.select({
+          id: serviceCategories.id,
+          sortOrder: serviceCategories.sortOrder,
+        }).from(serviceCategories).where(sql`id IN (${catId}, ${swapCat.id})`).for('update');
+        const target = locked.find((item) => item.id === catId);
+        const peer = locked.find((item) => item.id === swapCat.id);
+        if (!target || !peer) throw new Error('Kategori sırası değiştirilemedi.');
+        await tx.update(serviceCategories).set({ sortOrder: peer.sortOrder, updatedAt: new Date() }).where(sql`id = ${catId}`);
+        await tx.update(serviceCategories).set({ sortOrder: target.sortOrder, updatedAt: new Date() }).where(sql`id = ${swapCat.id}`);
+      });
     } else if (action === 'toggle-active') {
       // Publication/assignment and deactivation use the same transaction-scoped
       // advisory lock.  This makes the service count and category update one
@@ -140,6 +138,8 @@ export async function PATCH(
     const updated = await db.select().from(serviceCategories).orderBy(serviceCategories.sortOrder);
     return NextResponse.json({ categories: updated });
   } catch (err) {
+    if (err instanceof Error && err.message === 'Daha fazla hareket ettirilemiyor.')
+      return NextResponse.json({ error: err.message }, { status: 400 });
     console.error('PATCH /admin/api/categories/[id] error:', err);
     return NextResponse.json({ error: 'Veritabanı hatası.' }, { status: 503 });
   }

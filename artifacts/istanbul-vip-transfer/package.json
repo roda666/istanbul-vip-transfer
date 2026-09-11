@@ -42,6 +42,7 @@
     "create-admin": "tsx scripts/create-admin.ts",
     "reset-admin-password": "tsx scripts/reset-admin-password.ts",
     "test:e2e": "playwright test",
+    "test:admin-acceptance": "tsx scripts/run-admin-acceptance.ts",
     "test:unit": "vitest run",
     "test:database-backup-roundtrip": "tsx scripts/test-database-backup-roundtrip.ts",
     "test:unit:watch": "vitest",

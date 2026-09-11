@@ -694,6 +694,27 @@
       "when": 1789079700000,
       "tag": "0098_optional_service_airport_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1789079800000,
+      "tag": "0099_remove_toll_verification_lockdown",
+      "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1789079900000,
+      "tag": "0100_toll_point_display_order",
+      "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1789080000000,
+      "tag": "0101_driver_display_order",
+      "breakpoints": true
     }
   ]
 }

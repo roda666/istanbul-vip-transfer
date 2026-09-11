@@ -24,6 +24,7 @@ export default function AraclarPage() {
               alignItems: 'center',
               gap: '6px',
               padding: '8px 16px',
+              minHeight: '44px',
               borderRadius: '8px',
               background: '#2563EB',
               color: '#FFFFFF',

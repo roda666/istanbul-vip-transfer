@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Pencil, Archive, Trash2, Search, RefreshCw, Check, X, GripVertical, MapPin } from 'lucide-react';
+import { Plus, Pencil, Archive, Trash2, Search, RefreshCw, Check, X, GripVertical, MapPin, ChevronUp, ChevronDown } from 'lucide-react';
 import AdminPageHeader from '../../_components/AdminPageHeader';
 import {
   applyGeocodingResultToForm,
@@ -161,8 +161,8 @@ function Btn({ onClick, loading, disabled, variant, children, small }: {
     ghost: { background: '#F1F5F9', color: MUTED, fontWeight: 400 },
   };
   return (
-    <button onClick={onClick} disabled={disabled || loading}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: small ? '5px 12px' : '8px 18px', borderRadius: '8px', border: 'none', fontSize: small ? '12px' : '13px', fontFamily: 'Inter, sans-serif', cursor: disabled || loading ? 'not-allowed' : 'pointer', opacity: disabled || loading ? 0.6 : 1, transition: 'opacity 0.15s', ...styles[variant] }}>
+      <button onClick={onClick} disabled={disabled || loading}
+       style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', minHeight: '44px', padding: small ? '5px 12px' : '8px 18px', borderRadius: '8px', border: 'none', fontSize: small ? '12px' : '13px', fontFamily: 'Inter, sans-serif', cursor: disabled || loading ? 'not-allowed' : 'pointer', opacity: disabled || loading ? 0.6 : 1, transition: 'opacity 0.15s', ...styles[variant] }}>
       {children}
     </button>
   );
@@ -629,6 +629,29 @@ export default function ReservasyonAyarlariClient() {
     setConfirm(null);
   }
 
+  async function locationAction(loc: Location, action: 'up' | 'down' | 'toggle-active') {
+    setActionLoading(loc.id);
+    try {
+      const res = await fetch(`/admin/api/locations/${loc.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'İşlem başarısız.');
+      setItems((current) => {
+        if (Array.isArray(json.items) && action !== 'toggle-active') {
+          return json.items.map((item: Location) => ({ ...item }));
+        }
+        if (action === 'toggle-active') return current.map((item) => item.id === loc.id ? { ...item, isActive: json.item.isActive } : item);
+        const index = current.findIndex((item) => item.id === loc.id);
+        const peerIndex = action === 'up' ? index - 1 : index + 1;
+        if (index < 0 || peerIndex < 0 || peerIndex >= current.length) return current;
+        const next = [...current]; [next[index], next[peerIndex]] = [next[peerIndex], next[index]];
+        return next;
+      });
+    } catch (error) { alert(error instanceof Error ? error.message : 'İşlem başarısız.'); }
+    finally { setActionLoading(null); }
+  }
+
   async function saveSettings() {
     setSettingsSaving(true);
     setSettingsMsg(null);
@@ -680,16 +703,16 @@ export default function ReservasyonAyarlariClient() {
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '16px', alignItems: 'center' }}>
             <div style={{ position: 'relative', flex: '1 1 220px', minWidth: '180px' }}>
               <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: MUTED }} />
-              <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Lokasyon ara…"
-                style={{ width: '100%', paddingLeft: '32px', paddingRight: '12px', paddingTop: '8px', paddingBottom: '8px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', color: NAVY, fontSize: '13px', fontFamily: 'Inter, sans-serif', outline: 'none', boxSizing: 'border-box' }} />
+               <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Lokasyon ara…"
+                 style={{ width: '100%', minHeight: '44px', paddingLeft: '32px', paddingRight: '12px', paddingTop: '8px', paddingBottom: '8px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', color: NAVY, fontSize: '13px', fontFamily: 'Inter, sans-serif', outline: 'none', boxSizing: 'border-box' }} />
             </div>
             <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
-              style={{ padding: '8px 12px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', color: NAVY, fontSize: '13px', fontFamily: 'Inter, sans-serif', outline: 'none' }}>
+               style={{ minHeight: '44px', padding: '8px 12px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', color: NAVY, fontSize: '13px', fontFamily: 'Inter, sans-serif', outline: 'none' }}>
               <option value="">Tüm Tipler</option>
               {Object.entries(TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
             <select value={scopeFilter} onChange={e => setScopeFilter(e.target.value)}
-              style={{ padding: '8px 12px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', color: NAVY, fontSize: '13px', fontFamily: 'Inter, sans-serif', outline: 'none' }}>
+               style={{ minHeight: '44px', padding: '8px 12px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', color: NAVY, fontSize: '13px', fontFamily: 'Inter, sans-serif', outline: 'none' }}>
               <option value="">Tüm Kapsamlar</option>
               {Object.entries(SCOPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
@@ -705,14 +728,26 @@ export default function ReservasyonAyarlariClient() {
             {items.length} lokasyon {total > items.length ? `(toplam ${total})` : ''}
           </p>
 
-          <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(23,43,58,0.06)' }}>
+           <style>{`
+             @media (max-width: 899px) {
+               .location-list-table-wrap { overflow: visible !important; }
+               .location-list-table, .location-list-table tbody { display: block; width: 100%; }
+               .location-list-table thead { display: none; }
+               .location-list-table tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 10px; padding: 10px; border-bottom: 1px solid ${BORDER}; }
+               .location-list-table td { display: flex; align-items: center; min-width: 0; padding: 8px 4px !important; overflow-wrap: anywhere; }
+               .location-list-table td:first-child, .location-list-table td:last-child { grid-column: 1 / -1; }
+               .location-list-table td:last-child > div { flex-wrap: wrap; }
+             }
+             @media (max-width: 480px) { .location-list-table tr { grid-template-columns: 1fr; } }
+           `}</style>
+           <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(23,43,58,0.06)' }}>
             {loading ? (
               <div style={{ padding: '48px', textAlign: 'center', color: MUTED, fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>Yükleniyor…</div>
             ) : items.length === 0 ? (
               <div style={{ padding: '48px', textAlign: 'center', color: MUTED, fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>Lokasyon bulunamadı.</div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+               <div className="location-list-table-wrap" style={{ overflowX: 'auto' }}>
+                 <table className="location-list-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: '#F8FAFC', borderBottom: `1px solid ${BORDER}` }}>
                       {['Ad', 'Tip', 'Kapsam', 'Alış', 'Bırakış', 'Aktif', 'Sıra', 'Güncelleme', ''].map((h, i) => (
@@ -759,15 +794,21 @@ export default function ReservasyonAyarlariClient() {
                           </td>
                           <td style={{ padding: '10px 14px' }}>
                             <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-                              {!isArchived && (
+                               {!isArchived && (
                                 <button onClick={() => setModalLoc(loc)} title="Düzenle"
-                                  style={{ background: '#EEF3F9', border: 'none', borderRadius: '6px', padding: '5px 8px', cursor: 'pointer', color: BLUE, display: 'flex', alignItems: 'center' }}>
+                                  style={{ background: '#EEF3F9', border: 'none', borderRadius: '6px', minWidth: '44px', minHeight: '44px', padding: '5px 8px', cursor: 'pointer', color: BLUE, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                   <Pencil size={13} />
                                 </button>
                               )}
+                              {!isArchived && <button onClick={() => locationAction(loc, 'up')} disabled={i === 0 || actionLoading === loc.id} title="Yukarı taşı" aria-label="Yukarı taşı"
+                                style={{ minWidth: '44px', minHeight: '44px', border: `1px solid ${BORDER}`, borderRadius: '6px', background: CARD, color: i === 0 ? '#CBD5E1' : NAVY }}><ChevronUp size={13} /></button>}
+                              {!isArchived && <button onClick={() => locationAction(loc, 'down')} disabled={i === items.length - 1 || actionLoading === loc.id} title="Aşağı taşı" aria-label="Aşağı taşı"
+                                style={{ minWidth: '44px', minHeight: '44px', border: `1px solid ${BORDER}`, borderRadius: '6px', background: CARD, color: i === items.length - 1 ? '#CBD5E1' : NAVY }}><ChevronDown size={13} /></button>}
+                              {!isArchived && <button onClick={() => locationAction(loc, 'toggle-active')} disabled={actionLoading === loc.id} title={loc.isActive ? 'Pasifleştir' : 'Aktifleştir'}
+                                style={{ minHeight: '44px', padding: '5px 9px', border: `1px solid ${BORDER}`, borderRadius: '6px', background: loc.isActive ? '#FFF7ED' : '#ECFDF5', color: loc.isActive ? '#B45309' : '#047857', whiteSpace: 'nowrap' }}>{loc.isActive ? 'Pasifleştir' : 'Aktifleştir'}</button>}
                               <button onClick={() => setConfirm({ loc, action: isArchived ? 'delete' : 'archive' })}
                                 disabled={actionLoading === loc.id} title={isArchived ? 'Kalıcı Sil' : 'Arşivle'}
-                                style={{ background: isArchived ? '#FEF2F2' : '#FFF8E1', border: 'none', borderRadius: '6px', padding: '5px 8px', cursor: actionLoading === loc.id ? 'not-allowed' : 'pointer', color: isArchived ? RED : '#B45309', display: 'flex', alignItems: 'center', opacity: actionLoading === loc.id ? 0.5 : 1 }}>
+                                style={{ background: isArchived ? '#FEF2F2' : '#FFF8E1', border: 'none', borderRadius: '6px', minWidth: '44px', minHeight: '44px', padding: '5px 8px', cursor: actionLoading === loc.id ? 'not-allowed' : 'pointer', color: isArchived ? RED : '#B45309', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: actionLoading === loc.id ? 0.5 : 1 }}>
                                 {isArchived ? <Trash2 size={13} /> : <Archive size={13} />}
                               </button>
                             </div>

@@ -1,10 +1,10 @@
 ---
-name: Unverified toll point lockdown
-description: Safety rule for toll points whose evidence is not sufficient for customer pricing.
+name: Owner-approved unverified toll management
+description: Owner decision for managing toll points whose fee evidence remains incomplete.
 ---
 
-When a toll point has unverified or contradictory fee evidence, use a durable verification lock rather than only marking it inactive. The lock must prevent point reactivation, tariff insertion or activation, vehicle classification assignment, alternative membership, and alternative reactivation at the database layer. The application must also filter such points from every quote resolver and reject direct API writes with an explanatory response.
+Unverified toll points remain editable by the admin. Do not use database triggers, API 409 guards, resolver filters, or disabled controls as a verification lock. Keep the “Doğrulanmamış ilave ücret” warning informational and preserve the independent rule that toll details never appear in customer APIs or UI.
 
-**Why:** A UI-only inactive flag or one resolver check can be bypassed by a later import, sync, generic admin API call, or an explicitly supplied stale alternative ID. Keeping old tariffs and alternatives as inactive history permits audits without allowing them to affect a quote.
+**Why:** On 2026-09-11 the owner explicitly chose to remove the Ankara/Antalya/Bodrum verification-lock mechanism while preserving their existing inactive state, tariffs, alternatives, and customer-data boundary.
 
-**How to apply:** Do not clear a verification lock through generic admin updates. A future reactivation needs a separately reviewed official-source verification flow or migration with explicit evidence and audit. Apply both the route-alternative and intercity-corridor paths whenever changing this safety rule.
+**How to apply:** Admin activation, tariff maintenance, imports, assignments, and alternatives must follow the normal authenticated rules even when evidence is unverified. Keep the warning and customer toll-leak checks; do not reintroduce lock gates without a new explicit owner decision.

@@ -217,8 +217,9 @@ export default async function HizmetlerPage() {
         <RunHealthCheckButton />
         <BulkRetranslateButton />
         <Link href="/admin/hizmetler/yeni" style={{
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           background: '#C9A84C', color: '#0A0A0A', textDecoration: 'none',
-          borderRadius: '8px', padding: '8px 16px', fontSize: '12px',
+          borderRadius: '8px', padding: '8px 16px', fontSize: '12px', minHeight: '44px',
           fontWeight: 700, fontFamily: 'Inter, sans-serif', flexShrink: 0,
         }}>
           + Yeni Hizmet

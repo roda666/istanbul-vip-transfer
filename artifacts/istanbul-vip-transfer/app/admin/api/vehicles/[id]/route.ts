@@ -40,12 +40,47 @@ const updateSchema = z.object({
 });
 
 const actionSchema = z.object({
-  action: z.enum(['approve', 'publish', 'archive', 'activate', 'deactivate']),
+  action: z.enum(['approve', 'publish', 'archive', 'activate', 'deactivate', 'up', 'down']),
 });
 
 const REQUEST_ONLY_SLUGS = new Set(['mercedes-e-class', 'mercedes-s-class', 'mercedes-v-class']);
 
 type Params = { params: Promise<{ id: string }> };
+
+/** PATCH /admin/api/vehicles/[id] — atomic adjacent display-order swap. */
+export async function PATCH(request: NextRequest, { params }: Params) {
+  let session;
+  try { session = await (await import('@/lib/auth/session')).requireAdminSession(); }
+  catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
+  let body: unknown;
+  try { body = await request.json(); } catch { return NextResponse.json({ error: 'Geçersiz JSON.' }, { status: 400 }); }
+  const parsed = actionSchema.safeParse(body);
+  if (!parsed.success || !['up', 'down'].includes(parsed.data.action))
+    return NextResponse.json({ error: 'Geçersiz sıralama işlemi.' }, { status: 422 });
+  const { id } = await params;
+  const { db } = await import('@/db');
+  const { vehicles } = await import('@/db/schema');
+  const { asc, eq } = await import('drizzle-orm');
+  try {
+    const result = await db.transaction(async (tx) => {
+      const rows = await tx.select({ id: vehicles.id, displayOrder: vehicles.displayOrder })
+        .from(vehicles).orderBy(asc(vehicles.displayOrder), asc(vehicles.name)).for('update');
+      const index = rows.findIndex((row) => row.id === id);
+      if (index < 0) return { error: 'Araç bulunamadı.', status: 404 as const };
+      const peerIndex = parsed.data.action === 'up' ? index - 1 : index + 1;
+      if (peerIndex < 0 || peerIndex >= rows.length)
+        return { error: 'Daha fazla hareket ettirilemiyor.', status: 400 as const };
+      const current = rows[index]; const peer = rows[peerIndex];
+      await tx.update(vehicles).set({ displayOrder: peer.displayOrder, updatedAt: new Date(), updatedBy: session.adminId }).where(eq(vehicles.id, id));
+      await tx.update(vehicles).set({ displayOrder: current.displayOrder, updatedAt: new Date(), updatedBy: session.adminId }).where(eq(vehicles.id, peer.id));
+      return { item: { ...current, displayOrder: peer.displayOrder }, peer: { ...peer, displayOrder: current.displayOrder } };
+    });
+    if ('error' in result) return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json(result);
+  } catch {
+    return NextResponse.json({ error: 'Sıralama güncellenemedi.' }, { status: 503 });
+  }
+}
 
 /** GET /admin/api/vehicles/[id] */
 export async function GET(_req: NextRequest, { params }: Params) {

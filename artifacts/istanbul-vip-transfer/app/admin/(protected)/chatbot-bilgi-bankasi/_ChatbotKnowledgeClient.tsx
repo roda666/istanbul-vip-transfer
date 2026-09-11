@@ -276,21 +276,21 @@ export default function ChatbotKnowledgeClient() {
                       <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
                         <button
                           onClick={() => setTranslateId(r.id)}
-                          style={{ padding: '6px', background: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD', borderRadius: '4px', cursor: 'pointer', display: 'flex' }}
+                           style={{ minWidth: '44px', minHeight: '44px', padding: '6px', background: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           title="Çevir"
                         >
                           <Globe size={14} />
                         </button>
                         <button
                           onClick={() => setEditForm(r)}
-                          style={{ padding: '6px', background: '#F8FAFC', color: '#334155', border: '1px solid #E2E8F0', borderRadius: '4px', cursor: 'pointer', display: 'flex' }}
+                           style={{ minWidth: '44px', minHeight: '44px', padding: '6px', background: '#F8FAFC', color: '#334155', border: '1px solid #E2E8F0', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           title="Düzenle"
                         >
                           <Edit2 size={14} />
                         </button>
                         <button
                           onClick={() => setDeleteId(r.id)}
-                          style={{ padding: '6px', background: '#FEF2F2', color: '#EF4444', border: '1px solid #FECACA', borderRadius: '4px', cursor: 'pointer', display: 'flex' }}
+                           style={{ minWidth: '44px', minHeight: '44px', padding: '6px', background: '#FEF2F2', color: '#EF4444', border: '1px solid #FECACA', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           title="Sil"
                         >
                           <Trash2 size={14} />

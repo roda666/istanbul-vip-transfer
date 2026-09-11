@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Pencil, Trash2, X, Check, Loader2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Check, Loader2, ToggleLeft, ToggleRight, ArrowUp, ArrowDown } from 'lucide-react';
 import AdminPageHeader from '../../_components/AdminPageHeader';
 
 interface NavItem {
@@ -21,9 +21,9 @@ const LOCATIONS = [
 ];
 
 const inputStyle: React.CSSProperties = {
-  width: '100%', padding: '8px 12px', background: '#FFFFFF',
+  width: '100%', padding: '10px 14px', minHeight: '44px', background: '#FFFFFF',
   border: '1px solid #D8E1E9', borderRadius: '8px',
-  color: '#172B3A', fontSize: '13px', fontFamily: 'Inter, sans-serif', outline: 'none', boxSizing: 'border-box',
+  color: '#172B3A', fontSize: '14px', fontFamily: 'Inter, sans-serif', outline: 'none', boxSizing: 'border-box',
 };
 
 const labelStyle: React.CSSProperties = {
@@ -32,8 +32,8 @@ const labelStyle: React.CSSProperties = {
 };
 
 export default function MenuPage() {
-  const [items, setItems] = useState<NavItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<NavItem[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [label, setLabel] = useState('');
@@ -47,13 +47,17 @@ export default function MenuPage() {
   const [formError, setFormError] = useState('');
 
   const fetchItems = useCallback(async () => {
-    setLoading(true);
+    setLoadError(null);
+    setItems(null);
     try {
       const res = await fetch('/admin/api/nav');
-      const data = await res.json();
-      setItems(data.items ?? []);
-    } catch { setItems([]); }
-    finally { setLoading(false); }
+      const isJson = res.headers.get('content-type')?.includes('application/json');
+      const data = isJson ? await res.json().catch(() => null) : null;
+      if (!res.ok) throw new Error(data?.error ?? 'Menü öğeleri yüklenemedi.');
+      setItems(data?.items ?? []);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Menü öğeleri yüklenemedi.');
+    }
   }, []);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
@@ -93,25 +97,49 @@ export default function MenuPage() {
     finally { setDeleting(null); }
   }
 
+  async function moveItem(item: NavItem, direction: 'up' | 'down') {
+    const siblings = (items ?? []).filter(i => i.location === item.location);
+    const index = siblings.findIndex(i => i.id === item.id);
+    if (index < 0 || !siblings[index + (direction === 'up' ? -1 : 1)]) return;
+    const res = await fetch(`/admin/api/nav/${item.id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: direction }),
+    });
+    if (res.ok) {
+      const other = siblings[index + (direction === 'up' ? -1 : 1)];
+      setItems(prev => {
+        const next = [...(prev ?? [])];
+        const a = next.findIndex(i => i.id === item.id);
+        const b = next.findIndex(i => i.id === other.id);
+        if (a >= 0 && b >= 0) {
+          [next[a], next[b]] = [next[b], next[a]];
+          next[a] = { ...next[a], sortOrder: item.sortOrder };
+          next[b] = { ...next[b], sortOrder: other.sortOrder };
+        }
+        return next;
+      });
+    } else alert('Sıralama güncellenemedi.');
+  }
+
   const groupedItems = LOCATIONS.map(loc => ({
     ...loc,
-    items: items.filter(i => i.location === loc.value),
+    items: (items ?? []).filter(i => i.location === loc.value),
   }));
 
   return (
     <div style={{ padding: '28px 24px' }}>
       <AdminPageHeader title="Menü Yönetimi" description="Site navigasyon öğelerini yönetin"
-        action={<button onClick={openCreate} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '8px', background: '#2563EB', color: '#FFFFFF', fontSize: '13px', fontWeight: 600, border: 'none', cursor: 'pointer' }}><Plus size={15} /> Yeni Öğe</button>}
+        action={<button onClick={openCreate} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px', gap: '8px', padding: '8px 20px', borderRadius: '8px', background: '#2563EB', color: '#FFFFFF', fontSize: '14px', fontWeight: 600, border: 'none', cursor: 'pointer' }}><Plus size={18} /> Yeni Öğe</button>}
       />
 
       {showForm && (
         <div style={{ background: '#FFFFFF', border: '1px solid #D8E1E9', borderRadius: '12px', padding: '20px', marginBottom: '20px', boxShadow: '0 2px 8px rgba(23,43,58,0.06)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
             <h3 style={{ color: '#172B3A', fontSize: '14px', fontFamily: 'Inter, sans-serif', fontWeight: 600, margin: 0 }}>{editId ? 'Öğeyi Düzenle' : 'Yeni Menü Öğesi'}</h3>
-            <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', color: '#718596', cursor: 'pointer' }}><X size={16} /></button>
+            <button type="button" onClick={() => setShowForm(false)} style={{ minHeight: '44px', minWidth: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: '#718596', cursor: 'pointer', margin: '-10px -10px 0 0' }} aria-label="Kapat"><X size={20} /></button>
           </div>
           {formError && <p style={{ color: '#D64545', fontSize: '12px', fontFamily: 'Inter, sans-serif', marginBottom: '12px' }}>{formError}</p>}
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
             <div>
               <label style={labelStyle}>Etiket *</label>
               <input type="text" value={label} onChange={(e) => setLabel(e.target.value)} style={inputStyle} required />
@@ -130,7 +158,7 @@ export default function MenuPage() {
               <label style={labelStyle}>Üst Öğe</label>
               <select value={parentId} onChange={(e) => setParentId(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
                 <option value="">—</option>
-                {items.filter(i => i.id !== editId).map(i => <option key={i.id} value={i.id}>{i.label}</option>)}
+                {(items ?? []).filter(i => i.id !== editId).map(i => <option key={i.id} value={i.id}>{i.label}</option>)}
               </select>
             </div>
             <div>
@@ -138,23 +166,34 @@ export default function MenuPage() {
               <input type="number" value={sortOrder} onChange={(e) => setSortOrder(parseInt(e.target.value))} style={{ ...inputStyle, width: '80px' }} min={0} />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '20px' }}>
-              <button type="button" onClick={() => setActive(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: active ? '#2563EB' : '#A0B0BC', padding: 0 }}>
-                {active ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+              <button type="button" aria-label="Aktifliği değiştir" onClick={() => setActive(v => !v)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px', background: 'none', border: 'none', cursor: 'pointer', color: active ? '#2563EB' : '#A0B0BC', padding: 0 }}>
+                {active ? <ToggleRight size={36} /> : <ToggleLeft size={36} />}
               </button>
-              <span style={{ color: '#52697A', fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>Aktif</span>
+              <span style={{ color: '#52697A', fontSize: '14px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>Aktif</span>
             </div>
-            <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '8px', marginTop: '4px' }}>
-              <button type="submit" disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '8px', background: saving ? '#93C5FD' : '#2563EB', color: '#FFFFFF', fontWeight: 600, fontSize: '13px', border: 'none', cursor: saving ? 'not-allowed' : 'pointer' }}>
-                {saving ? <Loader2 size={13} /> : <Check size={13} />} Kaydet
+            <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '8px' }}>
+              <button type="submit" disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px', gap: '8px', padding: '8px 24px', borderRadius: '8px', background: saving ? '#93C5FD' : '#2563EB', color: '#FFFFFF', fontWeight: 600, fontSize: '14px', border: 'none', cursor: saving ? 'not-allowed' : 'pointer' }}>
+                {saving ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />} Kaydet
               </button>
-              <button type="button" onClick={() => setShowForm(false)} style={{ padding: '8px 16px', borderRadius: '8px', background: '#FFFFFF', color: '#52697A', fontSize: '13px', border: '1px solid #D8E1E9', cursor: 'pointer' }}>İptal</button>
+              <button type="button" onClick={() => setShowForm(false)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px', padding: '8px 24px', borderRadius: '8px', background: '#FFFFFF', color: '#52697A', fontSize: '14px', fontWeight: 600, border: '1px solid #D8E1E9', cursor: 'pointer' }}>İptal</button>
             </div>
           </form>
         </div>
       )}
 
-      {loading ? (
-        <p style={{ color: '#718596', fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>Yükleniyor...</p>
+      {loadError ? (
+        <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'flex-start' }}>
+          <p style={{ color: '#DC2626', fontSize: '14px', fontFamily: 'Inter, sans-serif', margin: 0, fontWeight: 600 }}>
+            {loadError}
+          </p>
+          <button type="button" onClick={fetchItems} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px', padding: '8px 20px', borderRadius: '8px', background: '#FFFFFF', color: '#DC2626', fontSize: '13px', fontWeight: 600, border: '1px solid #FECACA', cursor: 'pointer' }}>
+            Yeniden Dene
+          </button>
+        </div>
+      ) : !items ? (
+        <p style={{ color: '#718596', fontFamily: 'Inter, sans-serif', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Loader2 size={16} className="animate-spin" /> Yükleniyor...
+        </p>
       ) : (
         groupedItems.map(group => (
           <div key={group.value} style={{ marginBottom: '24px' }}>
@@ -164,14 +203,18 @@ export default function MenuPage() {
             ) : (
               <div style={{ background: '#FFFFFF', border: '1px solid #D8E1E9', borderRadius: '12px', overflow: 'hidden' }}>
                 {group.items.map((item, i) => (
-                  <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', borderBottom: i < group.items.length - 1 ? '1px solid #EDF2F7' : 'none' }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: item.active ? '#168C5B' : '#D8E1E9', flexShrink: 0 }} />
-                    <span style={{ color: '#172B3A', fontSize: '13px', fontFamily: 'Inter, sans-serif', fontWeight: 500 }}>{item.label}</span>
-                    <span style={{ color: '#718596', fontSize: '12px', fontFamily: 'monospace', flex: 1 }}>{item.href}</span>
-                    <span style={{ color: '#A0B0BC', fontSize: '11px', fontFamily: 'monospace' }}>#{item.sortOrder}</span>
-                    <div style={{ display: 'flex', gap: '4px' }}>
-                      <button onClick={() => openEdit(item)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '6px', background: '#EFF6FF', color: '#2563EB', border: 'none', cursor: 'pointer' }}><Pencil size={13} /></button>
-                      <button onClick={() => handleDelete(item.id)} disabled={deleting === item.id} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '6px', background: '#FEF2F2', color: '#D64545', border: 'none', cursor: 'pointer', opacity: deleting === item.id ? 0.5 : 1 }}><Trash2 size={13} /></button>
+                  <div key={item.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '16px', padding: '16px', borderBottom: i < group.items.length - 1 ? '1px solid #EDF2F7' : 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1 1 200px', minWidth: 0 }}>
+                      <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: item.active ? '#168C5B' : '#D8E1E9', flexShrink: 0 }} />
+                      <span style={{ color: '#172B3A', fontSize: '14px', fontFamily: 'Inter, sans-serif', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>
+                      <span style={{ color: '#718596', fontSize: '13px', fontFamily: 'monospace', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.href}</span>
+                      <span style={{ color: '#A0B0BC', fontSize: '12px', fontFamily: 'monospace' }}>#{item.sortOrder}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <button aria-label="Yukarı" title="Yukarı" onClick={() => moveItem(item, 'up')} disabled={i === 0} style={{ minWidth: '44px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', background: '#F8FAFC', color: '#52697A', border: '1px solid #D8E1E9', cursor: i === 0 ? 'not-allowed' : 'pointer', opacity: i === 0 ? 0.4 : 1 }}><ArrowUp size={18} /></button>
+                      <button aria-label="Aşağı" title="Aşağı" onClick={() => moveItem(item, 'down')} disabled={i === group.items.length - 1} style={{ minWidth: '44px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', background: '#F8FAFC', color: '#52697A', border: '1px solid #D8E1E9', cursor: i === group.items.length - 1 ? 'not-allowed' : 'pointer', opacity: i === group.items.length - 1 ? 0.4 : 1 }}><ArrowDown size={18} /></button>
+                      <button aria-label="Düzenle" onClick={() => openEdit(item)} style={{ minWidth: '44px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', background: '#EFF6FF', color: '#2563EB', border: 'none', cursor: 'pointer' }}><Pencil size={18} /></button>
+                      <button aria-label="Sil" onClick={() => handleDelete(item.id)} disabled={deleting === item.id} style={{ minWidth: '44px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', background: '#FEF2F2', color: '#D64545', border: 'none', cursor: 'pointer', opacity: deleting === item.id ? 0.5 : 1 }}><Trash2 size={18} /></button>
                     </div>
                   </div>
                 ))}

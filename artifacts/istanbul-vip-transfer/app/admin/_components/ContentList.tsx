@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Pencil, Trash2, ChevronLeft, ChevronRight, ArrowUp, ArrowDown } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 import type { ContentStatus } from '@/lib/workflow';
 
@@ -14,6 +14,7 @@ interface ContentItem {
   status: ContentStatus;
   updatedAt: Date;
   publishedAt: Date | null;
+  displayOrder: number;
 }
 
 interface Props {
@@ -38,6 +39,7 @@ function formatDate(date: Date) {
 export default function ContentList({ items, baseUrl, page, total, limit }: Props) {
   const router = useRouter();
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [moving, setMoving] = useState<string | null>(null);
   const totalPages = Math.ceil(total / limit);
 
   async function handleDelete(id: string, title: string) {
@@ -56,6 +58,18 @@ export default function ContentList({ items, baseUrl, page, total, limit }: Prop
     } finally {
       setDeleting(null);
     }
+  }
+
+  async function move(id: string, direction: 'up' | 'down') {
+    setMoving(id);
+    try {
+      const res = await fetch(`/admin/api/content/${id}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: direction }),
+      });
+      if (res.ok) router.refresh();
+      else alert('Sıralama güncellenemedi.');
+    } finally { setMoving(null); }
   }
 
   if (items.length === 0) {
@@ -171,7 +185,9 @@ export default function ContentList({ items, baseUrl, page, total, limit }: Prop
               {formatDate(item.updatedAt)}
             </span>
 
-            <div style={{ display: 'flex', gap: '4px' }}>
+            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+              <button aria-label="Yukarı" title="Yukarı" onClick={() => move(item.id, 'up')} disabled={moving === item.id} style={{ minWidth: '44px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', background: '#F8FAFC', color: '#52697A', border: '1px solid #D8E1E9', cursor: 'pointer' }}><ArrowUp size={14} /></button>
+              <button aria-label="Aşağı" title="Aşağı" onClick={() => move(item.id, 'down')} disabled={moving === item.id} style={{ minWidth: '44px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', background: '#F8FAFC', color: '#52697A', border: '1px solid #D8E1E9', cursor: 'pointer' }}><ArrowDown size={14} /></button>
               <Link
                 href={`${baseUrl}/${item.id}`}
                 title="Düzenle"
@@ -179,8 +195,8 @@ export default function ContentList({ items, baseUrl, page, total, limit }: Prop
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  width: '32px',
-                  height: '32px',
+                  minWidth: '44px',
+                  minHeight: '44px',
                   borderRadius: '6px',
                   background: '#EFF6FF',
                   color: '#2563EB',
@@ -198,8 +214,8 @@ export default function ContentList({ items, baseUrl, page, total, limit }: Prop
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  width: '32px',
-                  height: '32px',
+                  minWidth: '44px',
+                  minHeight: '44px',
                   borderRadius: '6px',
                   background: '#FEF2F2',
                   color: '#D64545',

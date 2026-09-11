@@ -20,11 +20,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!payload.success) {
     return NextResponse.json({ error: payload.error.issues[0]?.message ?? 'Geçersiz geçiş noktası.' }, { status: 422 });
   }
-  const [existing] = await db.select({ verificationLocked: tollPoints.verificationLocked })
-    .from(tollPoints).where(eq(tollPoints.id, id)).limit(1);
-  if (existing?.verificationLocked) {
-    return NextResponse.json({ error: 'Bu geçiş noktası doğrulama kilidi altında; yalnızca resmî kaynak ve yetkili inceleme sonrası işlem yapılabilir.' }, { status: 409 });
-  }
   const [point] = await db.update(tollPoints).set({
     ...payload.data,
     updatedAt: new Date(),

@@ -750,6 +750,7 @@ export const drivers = pgTable('drivers', {
   phone: text('phone'),
   notes: text('notes'),
   isActive: boolean('is_active').default(true).notNull(),
+  displayOrder: integer('display_order').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   createdBy: uuid('created_by').references(() => adminUsers.id, { onDelete: 'set null' }),
@@ -1641,6 +1642,8 @@ export const tollPoints = pgTable('toll_points', {
   name: text('name').notNull(),
   type: tollPointTypeEnum('type').notNull(),
   active: boolean('active').default(true).notNull(),
+  /** Admin-only ordering for the toll point list; unrelated to pricing. */
+  displayOrder: integer('display_order').default(0).notNull(),
   /** Durable safety lock: normal APIs and direct SQL cannot reactivate this point. */
   verificationLocked: boolean('verification_locked').default(false).notNull(),
   verificationLockReason: text('verification_lock_reason'),

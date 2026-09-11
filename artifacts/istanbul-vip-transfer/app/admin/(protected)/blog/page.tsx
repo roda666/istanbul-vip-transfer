@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { db } from '@/db';
 import { blogHealthRuns, content, contentTranslations } from '@/db/schema';
-import { eq, desc, count, inArray, and } from 'drizzle-orm';
+import { eq, desc, asc, count, inArray, and } from 'drizzle-orm';
 import AdminPageHeader from '../../_components/AdminPageHeader';
 import ContentList from '../../_components/ContentList';
 import BlogHealthStatus from './_BlogHealthStatus';
@@ -24,7 +24,7 @@ const ISSUE_LABELS: Record<string, string> = {
   translation_not_published: 'Çeviri yayında değil',
 };
 
-export default async function BlogPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+export default async function BlogPage({ searchParams }: { searchParams: Promise<{ page?: string; archived?: string }> }) {
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page || '1', 10));
   const limit = 20;
@@ -39,8 +39,14 @@ export default async function BlogPage({ searchParams }: { searchParams: Promise
 
   try {
     const [rows, totalRows] = await Promise.all([
-      db.select().from(content).where(eq(content.contentType, 'BLOG_POST')).orderBy(desc(content.updatedAt)).limit(limit).offset(offset),
-      db.select({ count: count() }).from(content).where(eq(content.contentType, 'BLOG_POST')),
+      db.select().from(content).where(and(
+        eq(content.contentType, 'BLOG_POST'),
+        params.archived === 'true' ? eq(content.status, 'ARCHIVED') : undefined,
+      )).orderBy(asc(content.displayOrder), desc(content.updatedAt)).limit(limit).offset(offset),
+      db.select({ count: count() }).from(content).where(and(
+        eq(content.contentType, 'BLOG_POST'),
+        params.archived === 'true' ? eq(content.status, 'ARCHIVED') : undefined,
+      )),
     ]);
     items = rows;
     total = totalRows[0]?.count ?? 0;
@@ -149,7 +155,17 @@ export default async function BlogPage({ searchParams }: { searchParams: Promise
       {dbError ? (
         <p style={{ color: '#f87171', fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>Veritabanı bağlantı hatası.</p>
       ) : (
-        <ContentList items={items} baseUrl="/admin/blog" page={page} total={total} limit={limit} />
+        <>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
+            <Link
+              href={params.archived === 'true' ? '/admin/blog' : '/admin/blog?archived=true'}
+              style={{ minHeight: '44px', display: 'inline-flex', alignItems: 'center', padding: '0 14px', border: '1px solid #D8E1E9', borderRadius: '8px', color: '#52697A', fontSize: '12px', textDecoration: 'none' }}
+            >
+              {params.archived === 'true' ? 'Yayındaki / taslaklar' : 'Arşivdekileri göster'}
+            </Link>
+          </div>
+          <ContentList items={items} baseUrl="/admin/blog" page={page} total={total} limit={limit} />
+        </>
       )}
     </div>
   );

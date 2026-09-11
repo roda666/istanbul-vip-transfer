@@ -13,6 +13,7 @@ import * as schema from './schema';
 export type DB = ReturnType<typeof drizzle<typeof schema>>;
 
 let _db: DB | null = null;
+let _client: ReturnType<typeof postgres> | null = null;
 
 function createDb(): DB {
   const databaseUrl = process.env.DATABASE_URL;
@@ -30,8 +31,15 @@ function createDb(): DB {
     idle_timeout: 30,
     connect_timeout: 10,
   });
+  _client = client;
 
   return drizzle(client, { schema });
+}
+
+export async function closeDatabaseConnection() {
+  if (_client) await _client.end();
+  _client = null;
+  _db = null;
 }
 
 export const db: DB = new Proxy({} as DB, {

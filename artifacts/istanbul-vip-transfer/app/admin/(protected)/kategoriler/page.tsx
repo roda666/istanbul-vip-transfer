@@ -24,8 +24,8 @@ const LOCALE_LABELS: Record<string,string> = {
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const inp: React.CSSProperties = {
-  width:'100%', padding:'7px 10px', border:'1px solid #D1D5DB', borderRadius:'6px',
-  fontSize:'13px', fontFamily:'Inter, sans-serif', color:'#1E293B',
+  width:'100%', padding:'10px 14px', minHeight:'44px', border:'1px solid #D1D5DB', borderRadius:'8px',
+  fontSize:'14px', fontFamily:'Inter, sans-serif', color:'#1E293B',
   background:'#FFFFFF', outline:'none', boxSizing:'border-box',
 };
 
@@ -53,7 +53,9 @@ export default function KategorilerPage() {
       const res  = await fetch('/admin/api/categories');
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Yüklenemedi.');
-      setCats(data.categories ?? []);
+       setCats((data.categories ?? []).map((c: Category) => ({
+         ...c, serviceCount: cats.find(x => x.id === c.id)?.serviceCount ?? 0,
+       })));
     } catch (e: unknown) {
       setError(String(e));
     } finally {
@@ -75,7 +77,10 @@ export default function KategorilerPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Hata.');
-      setCats(data.categories ?? []);
+       setCats((data.categories ?? []).map((category: Category) => ({
+         ...category,
+         serviceCount: cats.find((current) => current.id === category.id)?.serviceCount ?? 0,
+       })));
     } catch (e: unknown) {
       setError(String(e));
     } finally {
@@ -209,62 +214,60 @@ export default function KategorilerPage() {
             }}>
               {/* ── Summary row ─────────────────────────────────────── */}
               <div style={{
-                display: 'grid', gridTemplateColumns: '38px 1fr 80px 90px auto',
-                alignItems: 'center', gap: '12px', padding: '12px 16px',
+                display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '16px', padding: '16px',
               }}>
                 {/* Sort order / up-down */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                   <button
                     onClick={() => reorder(cat.id, 'up')}
                     disabled={idx === 0 || actionId === cat.id}
                     title="Yukarı taşı"
-                    style={{ background: 'none', border: 'none', cursor: idx === 0 ? 'default' : 'pointer', opacity: idx === 0 ? 0.2 : 0.7, padding: '2px' }}
+                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '6px', cursor: idx === 0 ? 'default' : 'pointer', opacity: idx === 0 ? 0.4 : 1, padding: '4px', minWidth: '44px', minHeight: '44px' }}
                   >
-                    <ChevronUp size={16} />
+                    <ChevronUp size={20} />
                   </button>
-                  <span style={{ fontSize: '11px', color: '#94A3B8', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>{idx + 1}</span>
+                  <span style={{ fontSize: '13px', color: '#64748B', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>{idx + 1}</span>
                   <button
                     onClick={() => reorder(cat.id, 'down')}
                     disabled={idx === cats.length - 1 || actionId === cat.id}
                     title="Aşağı taşı"
-                    style={{ background: 'none', border: 'none', cursor: idx === cats.length - 1 ? 'default' : 'pointer', opacity: idx === cats.length - 1 ? 0.2 : 0.7, padding: '2px' }}
+                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '6px', cursor: idx === cats.length - 1 ? 'default' : 'pointer', opacity: idx === cats.length - 1 ? 0.4 : 1, padding: '4px', minWidth: '44px', minHeight: '44px' }}
                   >
-                    <ChevronDown size={16} />
+                    <ChevronDown size={20} />
                   </button>
                 </div>
 
                 {/* Category info */}
-                <div>
-                  <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', fontWeight: 600, color: '#0F172A', margin: 0 }}>
+                <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+                  <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px', fontWeight: 600, color: '#0F172A', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {cat.nameTranslations['tr'] ?? cat.slug}
                   </p>
-                  <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: '#94A3B8', margin: '2px 0 0' }}>
+                  <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: '#94A3B8', margin: '4px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     slug: {cat.slug}
                     {cat.nameTranslations['en'] && ` • EN: ${cat.nameTranslations['en']}`}
                   </p>
-                  <span style={{ display: 'inline-block', marginTop: '5px', padding: '2px 7px', borderRadius: '10px', fontSize: '10px', fontWeight: 700, color: cat.isActive ? '#166534' : '#B91C1C', background: cat.isActive ? '#DCFCE7' : '#FEE2E2' }}>
-                    {cat.isActive ? 'AKTİF' : 'DEVRE DIŞI'}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px', flexWrap: 'wrap' }}>
+                    <span style={{ display: 'inline-flex', padding: '3px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: 700, color: cat.isActive ? '#166534' : '#B91C1C', background: cat.isActive ? '#DCFCE7' : '#FEE2E2' }}>
+                      {cat.isActive ? 'AKTİF' : 'DEVRE DIŞI'}
+                    </span>
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      background: cat.serviceCount > 0 ? '#EFF6FF' : '#F8FAFC',
+                      color: cat.serviceCount > 0 ? '#1D4ED8' : '#94A3B8',
+                      border: `1px solid ${cat.serviceCount > 0 ? '#BFDBFE' : '#E2E8F0'}`,
+                      borderRadius: '20px', padding: '3px 10px',
+                      fontSize: '11px', fontWeight: 600, fontFamily: 'Inter, sans-serif',
+                    }}>
+                      {cat.serviceCount} hizmet
+                    </span>
+                  </div>
                 </div>
 
-                {/* Service count */}
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  background: cat.serviceCount > 0 ? '#EFF6FF' : '#F8FAFC',
-                  color: cat.serviceCount > 0 ? '#1D4ED8' : '#94A3B8',
-                  border: `1px solid ${cat.serviceCount > 0 ? '#BFDBFE' : '#E2E8F0'}`,
-                  borderRadius: '20px', padding: '3px 10px',
-                  fontSize: '12px', fontWeight: 600, fontFamily: 'Inter, sans-serif',
-                  whiteSpace: 'nowrap',
-                }}>
-                  {cat.serviceCount} hizmet
-                </span>
-
                 {/* Lang coverage */}
-                <div style={{ display: 'flex', gap: '2px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', flex: '1 1 120px' }}>
                   {LOCALES.map(loc => (
                     <span key={loc} title={LOCALE_LABELS[loc]} style={{
-                      fontSize: '9px', fontWeight: 700, padding: '1px 4px', borderRadius: '3px',
+                      fontSize: '10px', fontWeight: 700, padding: '3px 6px', borderRadius: '4px',
                       background: cat.nameTranslations[loc] ? '#DCFCE7' : '#F1F5F9',
                       color: cat.nameTranslations[loc] ? '#166534' : '#CBD5E1',
                       fontFamily: 'Inter, sans-serif',
@@ -275,27 +278,27 @@ export default function KategorilerPage() {
                 </div>
 
                 {/* Actions */}
-                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginLeft: 'auto' }}>
                   {editId === cat.id ? (
                     <>
                       <button onClick={saveEdit} disabled={saving}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '5px 10px', background: '#059669', color: '#FFF', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
-                        {saving ? <Loader2 size={12} /> : <Check size={12} />} Kaydet
+                        style={{ display: 'inline-flex', alignItems: 'center', minHeight: '44px', gap: '6px', padding: '8px 16px', background: '#059669', color: '#FFF', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                        {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Kaydet
                       </button>
                       <button onClick={cancelEdit}
-                        style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 8px', background: '#F1F5F9', color: '#374151', border: '1px solid #D1D5DB', borderRadius: '6px', cursor: 'pointer' }}>
-                        <X size={12} />
+                        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px', minWidth: '44px', padding: '8px 12px', background: '#F1F5F9', color: '#374151', border: '1px solid #D1D5DB', borderRadius: '8px', cursor: 'pointer' }}>
+                        <X size={18} />
                       </button>
                     </>
                   ) : (
                     <>
                       <button onClick={() => startEdit(cat)} title="Düzenle"
-                        style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 8px', background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', borderRadius: '6px', cursor: 'pointer' }}>
-                        <Pencil size={12} />
+                         style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '44px', minHeight: '44px', padding: '8px', background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', borderRadius: '8px', cursor: 'pointer' }}>
+                        <Pencil size={18} />
                       </button>
                       <button onClick={() => toggleActive(cat)} disabled={actionId === cat.id}
                         title={cat.isActive ? 'Kategoriyi devre dışı bırak' : 'Kategoriyi etkinleştir'}
-                        style={{ padding: '5px 8px', background: cat.isActive ? '#FFF7ED' : '#ECFDF5', color: cat.isActive ? '#B45309' : '#047857', border: '1px solid #D1D5DB', borderRadius: '6px', cursor: 'pointer', fontSize: '11px' }}>
+                         style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '80px', minHeight: '44px', padding: '8px 16px', background: cat.isActive ? '#FFF7ED' : '#ECFDF5', color: cat.isActive ? '#B45309' : '#047857', border: `1px solid ${cat.isActive ? '#FED7AA' : '#A7F3D0'}`, borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
                         {cat.isActive ? 'Kapat' : 'Aç'}
                       </button>
                       <button
@@ -303,14 +306,14 @@ export default function KategorilerPage() {
                         disabled={cat.serviceCount > 0 || actionId === cat.id}
                         title={cat.serviceCount > 0 ? `${cat.serviceCount} hizmet içeriyor — önce hizmetleri taşıyın` : confirmDelete === cat.id ? 'Onaylamak için tekrar tıklayın' : 'Sil'}
                         style={{
-                          display: 'inline-flex', alignItems: 'center', padding: '5px 8px',
+                           display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '44px', minHeight: '44px', padding: '8px',
                           background: cat.serviceCount > 0 ? '#F1F5F9' : confirmDelete === cat.id ? '#DC2626' : '#FEF2F2',
-                          color:      cat.serviceCount > 0 ? '#CBD5E1' : confirmDelete === cat.id ? '#FFFFFF' : '#DC2626',
+                          color:      cat.serviceCount > 0 ? '#94A3B8' : confirmDelete === cat.id ? '#FFFFFF' : '#DC2626',
                           border:     `1px solid ${cat.serviceCount > 0 ? '#E2E8F0' : '#FECACA'}`,
-                          borderRadius: '6px',
+                          borderRadius: '8px',
                           cursor: cat.serviceCount > 0 ? 'not-allowed' : 'pointer',
                         }}>
-                        <Trash2 size={12} />
+                        <Trash2 size={18} />
                       </button>
                     </>
                   )}
@@ -374,7 +377,7 @@ export default function KategorilerPage() {
             disabled={adding || !newName.trim()}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '6px',
-              padding: '8px 16px', borderRadius: '8px',
+               padding: '8px 16px', minHeight: '44px', borderRadius: '8px',
               background: adding ? '#93C5FD' : '#2563EB',
               color: '#FFFFFF', border: 'none',
               fontWeight: 700, fontSize: '13px', fontFamily: 'Inter, sans-serif',

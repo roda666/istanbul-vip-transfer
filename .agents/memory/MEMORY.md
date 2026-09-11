@@ -132,5 +132,6 @@
 - [Structural reference translation sync](structural-reference-translation-sync.md) — changed location/vehicle reference fields replace all 8 live locale values; blog translations remain draft-gated.
 - [Temporary ESM script imports](temporary-esm-script-imports.md) — scripts run from /tmp cannot use artifact-relative package imports; resolve through verified artifact node_modules symlinks.
 - [Legacy optional-service safety](legacy-optional-service-safety.md) — preserve legacy prices; enforce new writes, quarantine invalid rows at runtime, and dedupe semantic aliases without silent data rewrites.
-- [Unverified toll point lockdown](unverified-toll-point-lockdown.md) — lock unverified fees at DB and resolver layers; preserve history but deny all activation, pricing, import and alternative use.
-- [Optional-service scope integrity](optional-service-scope-integrity.md) — empty scopes are never wildcards; service visibility and quote validation share canonical scope rules.
+- [Owner-approved unverified toll management](unverified-toll-point-lockdown.md) — admin locks were removed by owner decision; warnings and customer toll-data isolation remain mandatory.
+- [Optional-service scope integrity](optional-service-scope-integrity.md) — empty scope is valid and public-hidden, never a wildcard; keys come from the canonical service-type catalog.
+- [Admin acceptance cleanup lifecycle](admin-acceptance-cleanup-lifecycle.md) — interrupted Playwright runs need process-tree shutdown, FK-aware temp-admin cleanup, and explicit postgres client close.

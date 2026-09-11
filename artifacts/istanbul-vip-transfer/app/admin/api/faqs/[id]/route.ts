@@ -29,10 +29,27 @@ export async function PUT(request: NextRequest, { params }: Params) {
   try {
     const { db } = await import('@/db');
     const { faqs, auditLogs } = await import('@/db/schema');
-    const { eq } = await import('drizzle-orm');
+    const { eq, sql } = await import('drizzle-orm');
 
     const [current] = await db.select().from(faqs).where(eq(faqs.id, id)).limit(1);
     if (!current) return NextResponse.json({ error: 'Bulunamadı.' }, { status: 404 });
+    const action = (body as { action?: string }).action;
+    if (action === 'up' || action === 'down') {
+      const result = await db.transaction(async (tx) => {
+        const rows = await tx.select({ id: faqs.id, sortOrder: faqs.sortOrder })
+          .from(faqs).orderBy(faqs.sortOrder, faqs.id);
+        const index = rows.findIndex(r => r.id === id);
+        const other = rows[index + (action === 'up' ? -1 : 1)];
+        if (!other) return null;
+        await tx.execute(sql`UPDATE faqs SET sort_order = CASE
+          WHEN id = ${id} THEN ${other.sortOrder}
+          WHEN id = ${other.id} THEN ${current.sortOrder}
+          ELSE sort_order END WHERE id IN (${id}, ${other.id})`);
+        return { id, otherId: other.id };
+      });
+      if (!result) return NextResponse.json({ error: 'Daha fazla hareket ettirilemiyor.' }, { status: 400 });
+      return NextResponse.json({ ok: true, ...result });
+    }
     const { fillMissingTranslations } = await import('@/lib/ai/fill-missing-translations');
     const translations = await fillMissingTranslations({
       question: parsed.data.question ?? current.question,

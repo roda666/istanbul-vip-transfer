@@ -97,6 +97,7 @@ export default function VehicleFeatureDefaultsPanel() {
           border: 'none',
           cursor: 'pointer',
           padding: 0,
+          minHeight: '44px',
         }}
       >
         <div style={{ textAlign: 'left' }}>
@@ -153,7 +154,7 @@ export default function VehicleFeatureDefaultsPanel() {
                   <div key={feature.code} style={{ border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '10px', marginBottom: '8px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: MUTED, fontSize: '11px' }}>
                       <span>{feature.code}</span>
-                      <button type="button" onClick={() => setCustomFeatures((prev) => prev.filter((_, i) => i !== index))}>Kaldır</button>
+                       <button type="button" onClick={() => setCustomFeatures((prev) => prev.filter((_, i) => i !== index))} style={{ minHeight: '44px', padding: '8px 10px' }}>Kaldır</button>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: '6px', marginTop: '6px' }}>
                       {PUBLIC_VEHICLE_LOCALES.map((locale) => (
@@ -172,7 +173,7 @@ export default function VehicleFeatureDefaultsPanel() {
                     </div>
                   </div>
                 ))}
-                <button type="button" onClick={addCustomFeature} style={{ border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '7px 12px', color: TEXT }}>+ Özel özellik ekle</button>
+                 <button type="button" onClick={addCustomFeature} style={{ border: `1px solid ${BORDER}`, borderRadius: '7px', minHeight: '44px', padding: '7px 12px', color: TEXT }}>+ Özel özellik ekle</button>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '14px' }}>
                 <button
@@ -184,6 +185,7 @@ export default function VehicleFeatureDefaultsPanel() {
                     border: 'none',
                     borderRadius: '7px',
                     padding: '9px 18px',
+                    minHeight: '44px',
                     fontSize: '13px',
                     fontWeight: 600,
                     fontFamily: 'Inter, sans-serif',

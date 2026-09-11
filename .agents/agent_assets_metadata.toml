@@ -154,3 +154,45 @@ mtime_ms = 1789111864077
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/5b4f7832-61ae-4c86-815b-86f7567d915f/0e327f44-6a23-427c-b876-fa977c564579"
 storage_version_token = "1789111895965485"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "I1xU4iApUja3EAkTltgPm"
+uri = "file://reports/admin-list-controls-inventory.csv"
+type = "table"
+title = "Güncellenmiş Admin Liste Kontrolleri Envanteri"
+description = "25 admin ekranının güncel responsive, 44px, CRUD ve reorder doğrulama durumu; #310 browser sonuçları işlendi."
+logical_id = "060d5598-066b-4339-ab81-809e2aec0e94"
+content_hash = "sha256:a1bca46e8f0c083a7c8e497ce464e71fee4f3fadb15a534573ee8f2c73586b32"
+size = 13601
+mtime_ms = 1789141492254
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/060d5598-066b-4339-ab81-809e2aec0e94/3fbabe8b-1480-4e3c-a911-ca94a6bc9705"
+storage_version_token = "1789141601579789"
+content_type = "text/csv"
+
+[[outputs]]
+id = "5AmMfGEo-xpTdyFC0nBXl"
+uri = "file://reports/admin-visual-consistency-audit.csv"
+type = "table"
+title = "Admin Görsel Tutarlılık Denetimi"
+description = "Sürücüler dahil 10 admin ekranının önceki durumu, yapılan görsel düzeltmeler, 390/768 browser kanıtları ve değiştirilmeden bırakılan modern ekranlar."
+logical_id = "a58e1b70-d01a-4e0c-b4a3-16cc5fbefd21"
+content_hash = "sha256:d3e4ce291cf9b261eacdb4c3b3094517e90e7dbcbcb800b26f946833a3dabe15"
+size = 5188
+mtime_ms = 1789136881636
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/a58e1b70-d01a-4e0c-b4a3-16cc5fbefd21/b6b8984d-9329-493d-b656-87dd57cf112b"
+storage_version_token = "1789136940760763"
+content_type = "text/csv"
+
+[[outputs]]
+id = "FXdLUahVx5e__Sj7TuHT2"
+uri = "file://reports/admin-acceptance-310.csv"
+type = "table"
+title = "Admin Kabul Altyapısı ve Test Sonuçları"
+description = "#310 kapsamında eklenen güvenli admin Playwright runner/cleanup altyapısı ile 390/768 testlerinin PASS, PARTIAL ve BLOCKED kanıtları."
+logical_id = "cda2fa89-5311-46f6-915f-db55e2ca87a8"
+content_hash = "sha256:c1eac4d70645c4a9be2dc97e5015062b9aa20df23f575c4fcc403800b728d31c"
+size = 4957
+mtime_ms = 1789141466710
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/cda2fa89-5311-46f6-915f-db55e2ca87a8/04cbf7dd-e661-4120-aab3-4ce7fcb3a77d"
+storage_version_token = "1789141600229873"
+content_type = "text/csv"

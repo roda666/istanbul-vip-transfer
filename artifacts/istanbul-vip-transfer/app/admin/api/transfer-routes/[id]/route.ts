@@ -3,7 +3,7 @@ import { requireAdminSession } from '@/lib/auth/session';
 import { db } from '@/db';
 import { locations, transferRoutes, transferRouteTranslations, vehicles } from '@/db/schema';
 import type { NewTransferRoute } from '@/db/schema';
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { revalidateAllHomepages } from '@/lib/homepage-revalidation';
 
@@ -325,6 +325,56 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: 'Bu slug zaten kullanılıyor.' }, { status: 409 });
     }
     console.error('admin transfer-routes PUT error:', err);
+    return NextResponse.json({ error: 'Sunucu hatası' }, { status: 500 });
+  }
+}
+
+/** PATCH /admin/api/transfer-routes/[id] — lightweight list controls. */
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try { await requireAdminSession(); } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
+  const { id } = await params;
+  let body: { action?: 'up' | 'down' | 'toggle-active' };
+  try { body = await req.json(); } catch { return NextResponse.json({ error: 'Geçersiz JSON' }, { status: 400 }); }
+  if (!body.action || !['up', 'down', 'toggle-active'].includes(body.action)) {
+    return NextResponse.json({ error: 'Geçersiz action.' }, { status: 422 });
+  }
+  try {
+    const result = await db.transaction(async (tx) => {
+      const rows = await tx.select({
+        id: transferRoutes.id,
+        displayOrder: transferRoutes.displayOrder,
+        active: transferRoutes.active,
+      }).from(transferRoutes).orderBy(asc(transferRoutes.displayOrder), asc(transferRoutes.id)).for('update');
+      const index = rows.findIndex((row) => row.id === id);
+      if (index < 0) return { error: 'Güzergah bulunamadı.', status: 404 as const };
+      if (body.action === 'toggle-active') {
+        const [updated] = await tx.update(transferRoutes)
+          .set({ active: !rows[index].active, updatedAt: new Date() })
+          .where(eq(transferRoutes.id, id)).returning();
+        return { route: updated };
+      }
+      const peerIndex = body.action === 'up' ? index - 1 : index + 1;
+      if (peerIndex < 0 || peerIndex >= rows.length) return { error: 'Daha fazla hareket ettirilemiyor.', status: 400 as const };
+      const reordered = [...rows];
+      const [moved] = reordered.splice(index, 1);
+      reordered.splice(peerIndex, 0, moved);
+      // Normalize only ordering metadata. This makes duplicate legacy values
+      // deterministic and guarantees an inverse move restores the exact IDs.
+      for (const [position, item] of reordered.entries()) {
+        await tx.update(transferRoutes)
+          .set({ displayOrder: position, updatedAt: new Date() })
+          .where(eq(transferRoutes.id, item.id));
+      }
+      return {
+        routes: reordered.map((item, position) => ({ ...item, displayOrder: position })),
+        route: { ...moved, displayOrder: reordered.indexOf(moved) },
+      };
+    });
+    if ('error' in result) return NextResponse.json({ error: result.error }, { status: result.status });
+    revalidateAllHomepages();
+    return NextResponse.json(result);
+  } catch (err) {
+    console.error('admin transfer-routes PATCH error:', err);
     return NextResponse.json({ error: 'Sunucu hatası' }, { status: 500 });
   }
 }

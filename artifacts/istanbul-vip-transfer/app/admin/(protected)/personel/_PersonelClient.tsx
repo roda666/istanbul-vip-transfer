@@ -29,26 +29,28 @@ function fmtDate(iso: string | null): string {
   return d.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-function Btn({ children, onClick, variant = 'primary', loading = false, disabled = false }: {
+function Btn({ children, onClick, variant = 'primary', loading = false, disabled = false, type = 'button' }: {
   children: React.ReactNode;
   onClick?: () => void;
   variant?: 'primary' | 'ghost' | 'danger';
   loading?: boolean;
   disabled?: boolean;
+  type?: 'button' | 'submit';
 }) {
   const bg = variant === 'primary' ? BLUE : variant === 'danger' ? RED : 'transparent';
   const color = variant === 'ghost' ? NAVY : '#fff';
   const border = variant === 'ghost' ? `1px solid ${BORDER}` : 'none';
   return (
     <button
+      type={type}
       onClick={onClick}
       disabled={loading || disabled}
       style={{
-        background: bg, color, border, padding: '8px 14px', borderRadius: '7px',
-        fontSize: '13px', fontFamily: 'Inter, sans-serif', fontWeight: 600,
+        background: bg, color, border, padding: '8px 16px', borderRadius: '8px', minHeight: '44px', minWidth: '44px',
+        fontSize: '14px', fontFamily: 'Inter, sans-serif', fontWeight: 600,
         cursor: loading || disabled ? 'not-allowed' : 'pointer',
         opacity: loading || disabled ? 0.6 : 1,
-        display: 'inline-flex', alignItems: 'center', gap: '6px',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
       }}
     >
       {children}
@@ -71,8 +73,8 @@ function FieldInput({ label, value, onChange, type = 'text', placeholder = '', r
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         style={{
-          width: '100%', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '7px',
-          color: NAVY, fontSize: '13px', fontFamily: 'Inter, sans-serif', padding: '9px 12px',
+          width: '100%', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px',
+          color: NAVY, fontSize: '14px', fontFamily: 'Inter, sans-serif', padding: '10px 14px', minHeight: '44px',
           outline: 'none', boxSizing: 'border-box',
         }}
       />
@@ -212,11 +214,11 @@ export default function PersonelClient() {
 
       {/* Create form */}
       {showCreate && (
-        <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px', padding: '24px', marginBottom: '20px', boxShadow: '0 2px 12px rgba(23,43,58,0.07)' }}>
+        <form onSubmit={(e) => { e.preventDefault(); handleCreate(); }} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px', padding: '24px', marginBottom: '20px', boxShadow: '0 2px 12px rgba(23,43,58,0.07)' }}>
           <h3 style={{ color: GOLD, fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 16px', paddingBottom: '12px', borderBottom: `1px solid ${BORDER}` }}>
             Yeni Sohbet Personeli
           </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
             <FieldInput label="Ad Soyad" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} placeholder="Ali Yılmaz" required />
             <FieldInput label="E-posta" type="email" value={form.email} onChange={v => setForm(f => ({ ...f, email: v }))} placeholder="ali@example.com" required />
             <div style={{ gridColumn: '1/-1' }}>
@@ -230,12 +232,12 @@ export default function PersonelClient() {
           )}
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '16px' }}>
             <Btn variant="ghost" onClick={() => { setShowCreate(false); setFormError(''); }}>İptal</Btn>
-            <Btn loading={creating} onClick={handleCreate}>Oluştur</Btn>
+            <Btn type="submit" loading={creating}>Oluştur</Btn>
           </div>
           <p style={{ marginTop: '10px', fontSize: '11px', color: MUTED }}>
             Bu hesap yalnızca <strong>/admin/sohbet</strong> sayfasına erişebilir. Diğer admin sayfalarına erişimi yoktur.
           </p>
-        </div>
+        </form>
       )}
 
       {/* Staff table */}
@@ -248,70 +250,135 @@ export default function PersonelClient() {
             <p style={{ fontSize: '12px' }}>Yukarıdaki &ldquo;Yeni Personel Ekle&rdquo; butonunu kullanın.</p>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-              <thead>
-                <tr style={{ borderBottom: `1px solid ${BORDER}`, background: '#F8FAFC' }}>
-                  {['Ad Soyad', 'E-posta', 'Durum', 'Son Giriş', 'Oluşturulma', 'İşlem'].map(h => (
-                    <th key={h} style={{ padding: '10px 16px', textAlign: 'left', color: MUTED, fontWeight: 600, fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                      {h}
-                    </th>
+          <>
+            <div className="hidden lg:block overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', minWidth: '700px' }}>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${BORDER}`, background: '#F8FAFC' }}>
+                    {['Ad Soyad', 'E-posta', 'Durum', 'Son Giriş', 'Oluşturulma', 'İşlem'].map(h => (
+                      <th key={h} style={{ padding: '10px 16px', textAlign: 'left', color: MUTED, fontWeight: 600, fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {staff.map((u, i) => (
+                    <tr key={u.id} style={{ borderBottom: i < staff.length - 1 ? `1px solid ${BORDER}` : 'none', background: u.active ? 'transparent' : '#FAFAFA' }}>
+                      <td style={{ padding: '12px 16px', color: NAVY, fontWeight: 600 }}>{u.name}</td>
+                      <td style={{ padding: '12px 16px', color: MUTED }}>{u.email}</td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '4px',
+                          padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 700,
+                          background: u.active ? '#ECFDF5' : '#F1F5F9',
+                          color: u.active ? GREEN : MUTED,
+                        }}>
+                          {u.active ? <UserCheck size={11} /> : <UserX size={11} />}
+                          {u.active ? 'Aktif' : 'Pasif'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 16px', color: MUTED, fontSize: '12px' }}>{fmtDate(u.lastLoginAt)}</td>
+                      <td style={{ padding: '12px 16px', color: MUTED, fontSize: '12px' }}>{fmtDate(u.createdAt)}</td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => handleToggleActive(u)}
+                            disabled={actionLoading === u.id + '-active'}
+                            title={u.active ? 'Devre dışı bırak' : 'Aktif et'}
+                            style={{
+                              background: u.active ? '#FEF9EE' : '#ECFDF5',
+                              border: `1px solid ${u.active ? '#FCD34D' : '#86EFAC'}`,
+                              color: u.active ? '#92400E' : GREEN,
+                              borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', minHeight: '44px',
+                              fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif',
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
+                            }}
+                          >
+                            {actionLoading === u.id + '-active' ? '…' : u.active ? 'Devre Dışı' : 'Aktif Et'}
+                          </button>
+                          <button
+                            onClick={() => handleDelete(u)}
+                            disabled={actionLoading === u.id + '-delete'}
+                            title="Kalıcı sil"
+                            style={{
+                              background: '#FEF2F2', border: '1px solid #FECACA',
+                              color: RED, borderRadius: '8px', padding: '8px 12px', minHeight: '44px', minWidth: '44px',
+                              cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
+                            }}
+                          >
+                            {actionLoading === u.id + '-delete' ? '…' : <Trash2 size={18} />}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
                   ))}
-                </tr>
-              </thead>
-              <tbody>
-                {staff.map((u, i) => (
-                  <tr key={u.id} style={{ borderBottom: i < staff.length - 1 ? `1px solid ${BORDER}` : 'none', background: u.active ? 'transparent' : '#FAFAFA' }}>
-                    <td style={{ padding: '12px 16px', color: NAVY, fontWeight: 600 }}>{u.name}</td>
-                    <td style={{ padding: '12px 16px', color: MUTED }}>{u.email}</td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{
+                </tbody>
+              </table>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 lg:hidden p-4">
+              {staff.map((u) => (
+                <div key={u.id} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-4 shadow-sm" style={{ background: u.active ? CARD : '#FAFAFA' }}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900 m-0">{u.name}</h3>
+                      <p className="mt-1 text-sm font-medium text-slate-600 m-0">{u.email}</p>
+                    </div>
+                    <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: '4px',
-                        padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 700,
+                        padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 700,
                         background: u.active ? '#ECFDF5' : '#F1F5F9',
                         color: u.active ? GREEN : MUTED,
                       }}>
-                        {u.active ? <UserCheck size={11} /> : <UserX size={11} />}
+                        {u.active ? <UserCheck size={14} /> : <UserX size={14} />}
                         {u.active ? 'Aktif' : 'Pasif'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 16px', color: MUTED, fontSize: '12px' }}>{fmtDate(u.lastLoginAt)}</td>
-                    <td style={{ padding: '12px 16px', color: MUTED, fontSize: '12px' }}>{fmtDate(u.createdAt)}</td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <button
-                          onClick={() => handleToggleActive(u)}
-                          disabled={actionLoading === u.id + '-active'}
-                          title={u.active ? 'Devre dışı bırak' : 'Aktif et'}
-                          style={{
-                            background: u.active ? '#FEF9EE' : '#ECFDF5',
-                            border: `1px solid ${u.active ? '#FCD34D' : '#86EFAC'}`,
-                            color: u.active ? '#92400E' : GREEN,
-                            borderRadius: '6px', padding: '5px 10px', cursor: 'pointer',
-                            fontSize: '11px', fontWeight: 600, fontFamily: 'Inter, sans-serif',
-                          }}
-                        >
-                          {actionLoading === u.id + '-active' ? '…' : u.active ? 'Devre Dışı' : 'Aktif Et'}
-                        </button>
-                        <button
-                          onClick={() => handleDelete(u)}
-                          disabled={actionLoading === u.id + '-delete'}
-                          title="Kalıcı sil"
-                          style={{
-                            background: '#FEF2F2', border: '1px solid #FECACA',
-                            color: RED, borderRadius: '6px', padding: '5px 8px',
-                            cursor: 'pointer', display: 'flex', alignItems: 'center',
-                          }}
-                        >
-                          {actionLoading === u.id + '-delete' ? '…' : <Trash2 size={13} />}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-sm text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100 mt-1">
+                    <div>
+                      <span className="block font-semibold text-slate-700 mb-0.5 text-[11px] uppercase tracking-wider">Son Giriş</span>
+                      {fmtDate(u.lastLoginAt)}
+                    </div>
+                    <div>
+                      <span className="block font-semibold text-slate-700 mb-0.5 text-[11px] uppercase tracking-wider">Oluşturulma</span>
+                      {fmtDate(u.createdAt)}
+                    </div>
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+                    <button
+                      onClick={() => handleToggleActive(u)}
+                      disabled={actionLoading === u.id + '-active'}
+                      className="flex-1 inline-flex items-center justify-center"
+                      style={{
+                        background: u.active ? '#FEF9EE' : '#ECFDF5',
+                        border: `1px solid ${u.active ? '#FCD34D' : '#86EFAC'}`,
+                        color: u.active ? '#92400E' : GREEN,
+                        borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', minHeight: '44px',
+                        fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif'
+                      }}
+                    >
+                      {actionLoading === u.id + '-active' ? '…' : u.active ? 'Devre Dışı Bırak' : 'Aktif Et'}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(u)}
+                      disabled={actionLoading === u.id + '-delete'}
+                      className="inline-flex items-center justify-center"
+                      style={{
+                        background: '#FEF2F2', border: '1px solid #FECACA',
+                        color: RED, borderRadius: '8px', padding: '8px 16px', minHeight: '44px', minWidth: '44px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {actionLoading === u.id + '-delete' ? '…' : <Trash2 size={18} />} <span className="ml-2 font-semibold text-[13px]">Sil</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 

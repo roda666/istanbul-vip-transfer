@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { buildHealthHistoryViewModel } from '@/lib/health-history';
 import { shouldSendServiceHealthAlert, shouldRecordServiceHealthAlert } from '@/lib/service-health-scheduler';
 import { isMissingBlogHealthTableError, escapeBlogHealthHtml, ownsHealthCheckLease } from '@/lib/blog-health-scheduler';
-import { computeBlogHealthIssues } from '@/lib/blog-health';
+import { computeBlogHealthIssues, isActionableBlogHealthStatus } from '@/lib/blog-health';
+import BlogHealthStatus from '@/app/admin/(protected)/blog/_BlogHealthStatus';
 
 describe('health monitoring regressions', () => {
   it('keeps a bounded history model and exposes recurring outage slugs', () => {
@@ -60,6 +63,27 @@ describe('health monitoring regressions', () => {
       { locale: 'en', problem: 'not_published' },
       { locale: 'de', problem: 'missing' },
     ]);
+  });
+
+  it('excludes unfinished blog drafts from scheduled health checks', () => {
+    expect(isActionableBlogHealthStatus('PUBLISHED')).toBe(true);
+    expect(isActionableBlogHealthStatus('APPROVED')).toBe(true);
+    expect(isActionableBlogHealthStatus('SCHEDULED')).toBe(true);
+    expect(isActionableBlogHealthStatus('DRAFT')).toBe(false);
+    expect(isActionableBlogHealthStatus('IDEA')).toBe(false);
+    expect(isActionableBlogHealthStatus('RESEARCH')).toBe(false);
+    expect(isActionableBlogHealthStatus('REVIEW')).toBe(false);
+  });
+
+  it('shows the latest automatic check even when the run is healthy', () => {
+    const html = renderToStaticMarkup(
+      createElement(BlogHealthStatus, {
+        checkedAt: new Date('2026-09-11T00:00:00Z'),
+        unhealthyCount: 0,
+      }),
+    );
+    expect(html).toContain('Otomatik blog kontrolü sağlıklı');
+    expect(html).toContain('Son otomatik kontrol:');
   });
 
   it('keeps the canonical health migration after the current journal entry', () => {

@@ -2,10 +2,11 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { db } from '@/db';
-import { content, contentTranslations } from '@/db/schema';
+import { blogHealthRuns, content, contentTranslations } from '@/db/schema';
 import { eq, desc, count, inArray, and } from 'drizzle-orm';
 import AdminPageHeader from '../../_components/AdminPageHeader';
 import ContentList from '../../_components/ContentList';
+import BlogHealthStatus from './_BlogHealthStatus';
 import {
   computeBlogHealthIssues,
   getKnownBlogSlugs,
@@ -33,6 +34,8 @@ export default async function BlogPage({ searchParams }: { searchParams: Promise
   let total = 0;
   let dbError = false;
   let healthIssues: BlogHealthItem[] = [];
+  let lastAutomatedCheckAt: Date | null = null;
+  let lastAutomatedUnhealthyCount: number | null = null;
 
   try {
     const [rows, totalRows] = await Promise.all([
@@ -82,12 +85,35 @@ export default async function BlogPage({ searchParams }: { searchParams: Promise
     );
   } catch { dbError = true; }
 
+  // Monitoring history is optional during rollout. Keep this query isolated so
+  // a pending health-table migration never prevents admins from managing posts.
+  try {
+    const latestRuns = await db
+      .select({
+        checkedAt: blogHealthRuns.checkedAt,
+        unhealthyCount: blogHealthRuns.unhealthyCount,
+      })
+      .from(blogHealthRuns)
+      .orderBy(desc(blogHealthRuns.checkedAt))
+      .limit(1);
+    lastAutomatedCheckAt = latestRuns[0]?.checkedAt ?? null;
+    lastAutomatedUnhealthyCount = latestRuns[0]?.unhealthyCount ?? null;
+  } catch {
+    lastAutomatedCheckAt = null;
+    lastAutomatedUnhealthyCount = null;
+  }
+
   return (
     <div style={{ padding: '28px 24px' }}>
       <AdminPageHeader
         title="Blog"
         description="Blog yazılarını yönetin"
         action={<Link href="/admin/blog/yeni" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '8px', background: '#2563EB', color: '#FFFFFF', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}><Plus size={15} /> Yeni Yazı</Link>}
+      />
+
+      <BlogHealthStatus
+        checkedAt={lastAutomatedCheckAt}
+        unhealthyCount={lastAutomatedUnhealthyCount}
       />
 
       {/* ── Health warning banner ──────────────────────────────────────────── */}

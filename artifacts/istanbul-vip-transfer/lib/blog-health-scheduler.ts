@@ -1,7 +1,12 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
-import { computeBlogHealthIssues, getTranslationLocales, getKnownBlogSlugs } from '@/lib/blog-health';
+import {
+  ACTIONABLE_BLOG_HEALTH_STATUSES,
+  computeBlogHealthIssues,
+  getTranslationLocales,
+  getKnownBlogSlugs,
+} from '@/lib/blog-health';
 
 const INTERVAL_MS = 60 * 60 * 1_000;
 const COOLDOWN_MS = 6 * 60 * 60 * 1_000;
@@ -52,7 +57,10 @@ export async function runBlogHealthCheck(): Promise<
     if (!ownsHealthCheckLease(lease[0]?.ownerToken, ownerToken)) return { status: 'skipped_overlap' };
     leaseOwner = ownerToken;
     const sources = await db.select({ id: schema.content.id, slug: schema.content.slug, title: schema.content.title })
-      .from(schema.content).where(eq(schema.content.contentType, 'BLOG_POST'));
+      .from(schema.content).where(and(
+        eq(schema.content.contentType, 'BLOG_POST'),
+        inArray(schema.content.status, [...ACTIONABLE_BLOG_HEALTH_STATUSES]),
+      ));
     const ids = sources.map(row => row.id);
     const translations = ids.length
       ? await db.select({

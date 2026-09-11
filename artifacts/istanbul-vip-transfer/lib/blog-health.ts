@@ -29,6 +29,12 @@
  */
 import { SUPPORTED_LANGS } from './i18n';
 
+export const ACTIONABLE_BLOG_HEALTH_STATUSES = ['PUBLISHED', 'APPROVED', 'SCHEDULED'] as const;
+
+export function isActionableBlogHealthStatus(status: string): boolean {
+  return (ACTIONABLE_BLOG_HEALTH_STATUSES as readonly string[]).includes(status);
+}
+
 // ── Public types ─────────────────────────────────────────────────────────────
 
 export type BlogIssueCode =

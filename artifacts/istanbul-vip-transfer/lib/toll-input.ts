@@ -1,8 +1,18 @@
 import { z } from 'zod';
-import { assertTypeMatchesPricingMode, isOfficialTollSourceUrl, TOLL_DIRECTIONS, TOLL_PRICING_MODES, TOLL_TIME_BANDS, TOLL_VEHICLE_CLASSES } from '@/lib/toll-management';
+import { assertTypeMatchesPricingMode, TOLL_DIRECTIONS, TOLL_PRICING_MODES, TOLL_TIME_BANDS, TOLL_VEHICLE_CLASSES } from '@/lib/toll-management';
 
 const nullableAmount = z.number().int().min(1).max(100_000_000).nullable().optional();
 const nullableText = z.string().trim().max(500).nullable().optional();
+/** Source links are optional evidence, but a supplied link must be a safe HTTPS URL. */
+const nullableSourceUrl = z.string().trim().max(500).refine((value) => {
+  if (!value) return true;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && !!url.hostname && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}, 'Kaynak adresi kimlik bilgisi içermeyen geçerli bir HTTPS URL olmalıdır.').nullable().optional();
 const nullableDate = z.string().trim().max(40).nullable().optional();
 const nullableHour = z.number().int().min(0).max(23).nullable().optional();
 const nullableGateName = z.string().trim().min(1).max(160).nullable().optional();
@@ -20,10 +30,12 @@ export const tollPointInputSchema = z.object({
   classificationLabel: nullableText,
   /** null = unconfirmed (ask owner), [] = confirmed nothing is banned, non-empty = confirmed banned list. Requires bannedVehicleClassesSourceUrl whenever non-null. */
   bannedVehicleClasses: z.array(z.enum(TOLL_VEHICLE_CLASSES)).max(6).nullable().optional(),
-  bannedVehicleClassesSourceUrl: nullableText,
+  bannedVehicleClassesSourceUrl: nullableSourceUrl,
+  bannedVehicleTypes: z.array(z.string().trim().min(1).max(80)).max(10).nullable().optional(),
+  bannedVehicleTypesSourceUrl: nullableSourceUrl,
   /** null = unconfirmed (never checked against an official source). Requires tollDirectionSourceUrl whenever non-null. */
   tollDirection: z.enum(TOLL_DIRECTIONS).nullable().optional(),
-  tollDirectionSourceUrl: nullableText,
+  tollDirectionSourceUrl: nullableSourceUrl,
   tollDirectionNotes: nullableText,
   /** FLAT (default) or GATE_PAIR — see toll-management.ts for what each means. */
   pricingMode: z.enum(TOLL_PRICING_MODES).default('FLAT'),
@@ -38,15 +50,9 @@ export const tollPointInputSchema = z.object({
   // Same verification pattern as a tariff amount: a banned-classes claim
   // (including a confirmed-empty list) may only be saved with a matching
   // official source URL — never self-certified.
-  if (value.bannedVehicleClasses !== undefined && value.bannedVehicleClasses !== null && !isOfficialTollSourceUrl(value.bannedVehicleClassesSourceUrl)) {
-    context.addIssue({ code: 'custom', path: ['bannedVehicleClassesSourceUrl'], message: 'Yasaklı araç sınıfları listesi (boş liste dahil) yalnızca resmî bir kaynak adresiyle birlikte kaydedilebilir.' });
-  }
   // Same pattern again for the separate vehicle-TYPE ban axis (e.g. a
   // categorical "Otobüs" ban, independent of the axle-based class ban above).
   // Same pattern again for the tolling-direction claim.
-  if (value.tollDirection != null && !isOfficialTollSourceUrl(value.tollDirectionSourceUrl)) {
-    context.addIssue({ code: 'custom', path: ['tollDirectionSourceUrl'], message: 'Geçiş yönü bilgisi yalnızca resmî bir kaynak adresiyle birlikte kaydedilebilir.' });
-  }
   // Bridges/tunnels (açık sistem, tek fiyat) must always be FLAT; highway
   // segments (kapalı sistem, giriş+çıkış) must always be GATE_PAIR — this can
   // never drift apart, enforced here so both the point form and any future
@@ -71,7 +77,7 @@ export const tollTariffInputSchema = z.object({
   automaticAmountKurus: nullableAmount,
   manualAmountKurus: nullableAmount,
   sourceName: nullableText,
-  sourceUrl: nullableText,
+  sourceUrl: nullableSourceUrl,
   validFrom: nullableDate,
   validUntil: nullableDate,
   active: z.boolean().default(true),
@@ -101,9 +107,6 @@ export const tollTariffInputSchema = z.object({
   // admin-ticked checkbox: any row that DOES carry an amount must have a
   // matching official source, or it is rejected outright.
   const amount = value.manualAmountKurus ?? value.automaticAmountKurus ?? null;
-  if (amount != null && !isOfficialTollSourceUrl(value.sourceUrl)) {
-    context.addIssue({ code: 'custom', path: ['sourceUrl'], message: 'Bir TRY tutarı yalnız KGM, Avrasya Tüneli veya 1915 Çanakkale Köprüsü gibi resmî bir kaynak adresiyle birlikte kaydedilebilir.' });
-  }
   if (amount != null && !value.sourceName?.trim()) {
     context.addIssue({ code: 'custom', path: ['sourceName'], message: 'Bir TRY tutarı için kaynak adı gereklidir.' });
   }

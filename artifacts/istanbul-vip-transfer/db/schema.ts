@@ -1796,6 +1796,25 @@ export const tollTariffs = pgTable('toll_tariffs', {
   index('toll_tariffs_lookup_idx').on(table.tollPointId, table.vehicleClass, table.active, table.validFrom, table.validUntil),
 ]);
 
+/** Immutable, admin-reviewed source document previews. File bytes are never retained. */
+export const tollTariffImports = pgTable('toll_tariff_imports', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  originalFilename: text('original_filename').notNull(),
+  tollPointId: uuid('toll_point_id').notNull().references(() => tollPoints.id, { onDelete: 'restrict' }),
+  effectiveDate: timestamp('effective_date', { withTimezone: true }),
+  previewJson: jsonb('preview_json').notNull(),
+  previewHash: text('preview_hash').notNull(),
+  status: text('status').default('PREVIEW').notNull(),
+  parserVersion: text('parser_version').notNull(),
+  createdBy: uuid('created_by').notNull().references(() => adminUsers.id, { onDelete: 'restrict' }),
+  confirmedBy: uuid('confirmed_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
+}, (table) => [
+  uniqueIndex('toll_tariff_imports_preview_identity_unique').on(table.previewHash, table.tollPointId, table.createdBy),
+  index('toll_tariff_imports_point_status_idx').on(table.tollPointId, table.status),
+]);
+
 export const routeTollAlternatives = pgTable('route_toll_alternatives', {
   id: uuid('id').primaryKey().defaultRandom(),
   routeId: uuid('route_id').notNull().references(() => transferRoutes.id, { onDelete: 'cascade' }),
@@ -1880,7 +1899,7 @@ export const tollPricingSettings = pgTable('toll_pricing_settings', {
   /** A tariff not reviewed/updated within this many days is flagged stale in the admin panel. */
   staleAfterDays: integer('stale_after_days').default(180).notNull(),
   /** Also flag a tariff stale once the calendar year has turned over since it was last reviewed. */
-  warnOnNewYearRollover: boolean('warn_on_new_year_rollover').default(true).notNull(),
+  warnOnNewYearRollover: boolean('warn_on_new_year_rollover').default(false).notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
 });

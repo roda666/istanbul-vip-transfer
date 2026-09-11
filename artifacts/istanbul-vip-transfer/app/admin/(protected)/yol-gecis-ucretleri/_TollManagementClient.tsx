@@ -6,6 +6,7 @@ import {
   RefreshCw, Check, X, AlertCircle, Loader2, Car, ShieldCheck, Clock, Settings2
 } from 'lucide-react';
 import { TOLL_VEHICLE_CLASS_LABELS, TOLL_VEHICLE_CLASS_SELECTION_WARNING } from '@/lib/toll-vehicle-classes';
+import { isAutomaticTollSyncSupported } from '@/lib/toll-tariff-sync-support';
 
 // --- Types ---
 type TollPoint = {
@@ -312,9 +313,9 @@ function BannedClassesEditor({
       )}
       {showEvidence && mode !== 'unknown' && (
         <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kaynak URL <span className="text-red-600">*</span></label>
+          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kaynak URL (isteğe bağlı)</label>
           <input type="url" value={bannedSourceUrl} onChange={e => onChange(bannedVehicleClasses, e.target.value)} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all" placeholder="https://..." />
-          <p className="text-[10px] font-medium text-slate-500 mt-1">Bu bilginin doğrulandığı resmî sayfa veya belge bağlantısı zorunludur.</p>
+           <p className="text-[10px] font-medium text-slate-500 mt-1">İsteğe bağlıdır. Girerseniz geçerli bir resmî sayfa veya belge bağlantısı olmalıdır.</p>
         </div>
       )}
     </div>
@@ -377,7 +378,7 @@ function DirectionEditor({
       {tollDirection != null && (
         <>
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kaynak URL <span className="text-red-600">*</span></label>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kaynak URL (isteğe bağlı)</label>
             <input type="url" value={tollDirectionSourceUrl} onChange={e => onChange(tollDirection, e.target.value, tollDirectionNotes)} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all" placeholder="https://..." />
           </div>
           <div>
@@ -395,14 +396,6 @@ function PointForm({ onSave, onClose }: { onSave: (point: TollPoint) => void, on
   const [loading, setLoading] = useState(false);
   
   const handleSubmit = async () => {
-    if (formData.bannedVehicleClasses !== null && !formData.bannedVehicleClassesSourceUrl.trim()) {
-      alert('Araç sınıfı yasağı belirtildiğinde kaynak URL zorunludur.');
-      return;
-    }
-    if (formData.tollDirection !== null && !formData.tollDirectionSourceUrl.trim()) {
-      alert('Geçiş yönü belirtildiğinde kaynak URL zorunludur.');
-      return;
-    }
     setLoading(true);
     try {
       const res = await fetch('/admin/api/pricing/tolls', {
@@ -460,7 +453,7 @@ function PointForm({ onSave, onClose }: { onSave: (point: TollPoint) => void, on
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Sınıflandırma Sistemi (isteğe bağlı)</label>
             <input type="text" value={formData.classificationLabel} onChange={e => setFormData(f => ({ ...f, classificationLabel: e.target.value }))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all" placeholder="Örn: KGM Resmî Sınıf 1-6 ile uyumlu" />
           </div>
-          {formData.bannedVehicleClasses !== null && <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Sınıf Yasağı Kaynak URL <span className="text-red-600">*</span></label><input type="url" value={formData.bannedVehicleClassesSourceUrl} onChange={e => setFormData(f => ({ ...f, bannedVehicleClassesSourceUrl: e.target.value }))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900" placeholder="https://..." /></div>}
+          {formData.bannedVehicleClasses !== null && <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Sınıf yasağı kaynak URL (isteğe bağlı)</label><input type="url" value={formData.bannedVehicleClassesSourceUrl} onChange={e => setFormData(f => ({ ...f, bannedVehicleClassesSourceUrl: e.target.value }))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900" placeholder="https://..." /><p className="text-[10px] text-slate-500 mt-1">Boş bırakılabilir; girilen adres geçersizse sunucu hata gösterir.</p></div>}
           <DirectionEditor pricingMode={formData.pricingMode} onPricingModeChange={v => setFormData(f => ({ ...f, pricingMode: v }))} tollDirection={formData.tollDirection} tollDirectionSourceUrl={formData.tollDirectionSourceUrl} tollDirectionNotes={formData.tollDirectionNotes} onChange={(direction, sourceUrl, notes) => setFormData(f => ({ ...f, tollDirection: direction, tollDirectionSourceUrl: sourceUrl, tollDirectionNotes: notes }))} />
           <DayNightHourFields dayStartHour={formData.dayStartHour} nightStartHour={formData.nightStartHour} onChange={(day, night) => setFormData(f => ({...f, dayStartHour: day, nightStartHour: night}))} />
           <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Not / Kısıtlama (isteğe bağlı)</label><textarea value={formData.notes} onChange={e => setFormData(f => ({...f, notes: e.target.value}))} rows={2} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500" placeholder="Örn: Ağır araçlar bu tünelden geçemez" /></div>
@@ -622,7 +615,7 @@ function TariffForm({ point, vClass, initialData, onSave, onClose }: { point: To
            <input type="text" value={formData.sourceName} onChange={e => setFormData(f => ({...f, sourceName: e.target.value}))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-sm" placeholder="Belirtilmemiş" />
          </div>
          <div>
-           <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kaynak URL</label>
+           <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kaynak URL (isteğe bağlı)</label>
            <input type="url" value={formData.sourceUrl} onChange={e => setFormData(f => ({...f, sourceUrl: e.target.value}))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-sm" placeholder="https://..." />
          </div>
        </div>
@@ -968,6 +961,84 @@ function AlternativeForm({ routeId, routes, points, initialData, onSave, onClose
   )
 }
 
+type ImportPreviewRow = { classNumber: number; status: 'RESOLVED' | 'UNRESOLVED'; amountKurus: number | null; reason: string | null; evidence: string };
+type ImportPreview = { importId: string; previewHash: string; rows: ImportPreviewRow[]; effectiveDate: string };
+
+function TariffImportPanel({ point, onRefresh }: { point: TollPoint; onRefresh: () => void }) {
+  const [file, setFile] = useState<File | null>(null);
+  const [effectiveDate, setEffectiveDate] = useState('');
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+
+  if (point.pricingMode === 'GATE_PAIR') return (
+    <div className="mx-5 md:mx-6 mb-5 rounded-xl border border-purple-200 bg-purple-50 p-4 text-xs font-medium text-purple-900 leading-relaxed">
+      <strong>Dosyadan tarife içe aktarma kullanılamaz.</strong> Bu nokta giriş/çıkış gişesi çiftleriyle ücretlendirilir; dosya içe aktarma bu çiftleri güvenilir biçimde çıkaramaz.
+    </div>
+  );
+
+  const previewFile = async () => {
+    if (!file) return setError('Önce PDF, XLS veya XLSX dosyası seçin.');
+    setBusy(true); setError(''); setMessage(''); setPreview(null); setConfirmed(false);
+    try {
+      const form = new FormData();
+      form.append('file', file); form.append('tollPointId', point.id);
+      if (effectiveDate) form.append('effectiveDate', effectiveDate);
+      const res = await fetch('/admin/api/pricing/tolls/import/preview', { method: 'POST', body: form });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Önizleme oluşturulamadı.');
+      setPreview(json);
+    } catch (e) { setError(errorMessage(e, 'Önizleme oluşturulamadı.')); }
+    finally { setBusy(false); }
+  };
+
+  const confirmImport = async () => {
+    if (!preview || !confirmed) return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const res = await fetch('/admin/api/pricing/tolls/import/confirm', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ importId: preview.importId, previewHash: preview.previewHash, confirm: true }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'İçe aktarma onaylanamadı.');
+      setMessage(json.message || 'Çözülen tarifeler kaydedildi.'); setPreview(null); setFile(null); setConfirmed(false); onRefresh();
+    } catch (e) { setError(errorMessage(e, 'İçe aktarma onaylanamadı.')); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className="mx-5 md:mx-6 mb-5 rounded-xl border border-blue-200 bg-blue-50/60 p-4 space-y-3">
+      <div>
+        <h4 className="font-black text-sm text-blue-950">PDF / Excel’den tarife içe aktar</h4>
+        <p className="text-xs text-blue-900/80 mt-1 leading-relaxed">Yalnızca açıkça çözülen ve gözden geçirilen Sınıf 1–6 tutarları kaydedilir. Çözülemeyen sınıflar otomatik doldurulmaz ve atlanır.</p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3">
+        <input type="file" accept=".pdf,.xls,.xlsx,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={e => setFile(e.target.files?.[0] ?? null)} className="w-full min-h-[44px] rounded-lg border border-blue-200 bg-white px-2 py-2 text-xs" />
+        <input type="date" aria-label="Tarifenin yürürlük tarihi" value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)} className="min-h-[44px] rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm" />
+      </div>
+      <button onClick={previewFile} disabled={busy || !file} className="min-h-[44px] w-full sm:w-auto px-4 py-2 rounded-lg bg-blue-700 text-white text-sm font-bold disabled:opacity-50">{busy ? 'İşleniyor…' : 'Önizleme oluştur'}</button>
+      {preview && <div className="space-y-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {preview.rows.map(row => <div key={row.classNumber} className="rounded-lg border border-blue-100 bg-white p-2.5 text-xs">
+            <div className="font-black text-slate-800">Sınıf {row.classNumber}: {row.status === 'RESOLVED' ? formatTRY(row.amountKurus) : 'Okunamadı, elle girin'}</div>
+            {row.status === 'RESOLVED' ? <div className="mt-1 text-slate-500 break-words">Kanıt: {row.evidence || '—'}</div> : <div className="mt-1 text-amber-700">{row.reason || 'Tutar açıkça bulunamadı.'}</div>}
+          </div>)}
+        </div>
+        <label className="flex items-start gap-2 min-h-[44px] text-xs font-bold text-blue-950">
+          <input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-1 w-5 h-5 shrink-0" />
+          Önizlemeyi kontrol ettim; yalnızca çözülen değerlerin kaydedileceğini, çözülemeyenlerin atlanacağını onaylıyorum.
+        </label>
+        <button onClick={confirmImport} disabled={busy || !confirmed} className="min-h-[44px] w-full px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-bold disabled:opacity-50">İçe aktarmayı onayla</button>
+      </div>}
+      {message && <div className="text-sm font-bold text-emerald-700">{message}</div>}
+      {error && <div className="text-sm font-bold text-red-700">{error}</div>}
+    </div>
+  );
+}
+
 function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, onSync }: { point: TollPoint, tariffs: TollTariff[], vehicleClasses: string[], onRefresh: () => void, onEditTariff: (vc: string, t?: TollTariff) => void, onSync: (t: TollTariff) => void }) {
   const [formData, setFormData] = useState({
     name: point.name,
@@ -997,14 +1068,6 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
   }, [point]);
 
   const handleSave = async () => {
-    if (formData.bannedVehicleClasses !== null && !formData.bannedVehicleClassesSourceUrl.trim()) {
-      alert('Araç sınıfı yasağı belirtildiğinde kaynak URL zorunludur.');
-      return;
-    }
-    if (formData.tollDirection !== null && !formData.tollDirectionSourceUrl.trim()) {
-      alert('Geçiş yönü belirtildiğinde kaynak URL zorunludur.');
-      return;
-    }
     setLoading(true);
     try {
       const res = await fetch(`/admin/api/pricing/tolls/${point.id}`, {
@@ -1080,7 +1143,7 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Sınıflandırma Sistemi (isteğe bağlı)</label>
               <input type="text" value={formData.classificationLabel} onChange={e => setFormData(f => ({ ...f, classificationLabel: e.target.value }))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-4 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm" placeholder="Örn: KGM Resmî Sınıf 1-6 ile uyumlu" />
             </div>
-            {formData.bannedVehicleClasses !== null && <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Sınıf Yasağı Kaynak URL <span className="text-red-600">*</span></label><input type="url" value={formData.bannedVehicleClassesSourceUrl} onChange={e => setFormData(f => ({ ...f, bannedVehicleClassesSourceUrl: e.target.value }))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-4 py-2 text-sm font-medium text-slate-900" placeholder="https://..." /></div>}
+            {formData.bannedVehicleClasses !== null && <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Sınıf yasağı kaynak URL (isteğe bağlı)</label><input type="url" value={formData.bannedVehicleClassesSourceUrl} onChange={e => setFormData(f => ({ ...f, bannedVehicleClassesSourceUrl: e.target.value }))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-4 py-2 text-sm font-medium text-slate-900" placeholder="https://..." /></div>}
             <DirectionEditor pricingMode={formData.pricingMode} onPricingModeChange={v => setFormData(f => ({ ...f, pricingMode: v }))} tollDirection={formData.tollDirection} tollDirectionSourceUrl={formData.tollDirectionSourceUrl} tollDirectionNotes={formData.tollDirectionNotes} onChange={(direction, sourceUrl, notes) => setFormData(f => ({ ...f, tollDirection: direction, tollDirectionSourceUrl: sourceUrl, tollDirectionNotes: notes }))} />
             <DayNightHourFields dayStartHour={formData.dayStartHour} nightStartHour={formData.nightStartHour} onChange={(day, night) => setFormData(f => ({...f, dayStartHour: day, nightStartHour: night}))} />
             <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Not / Kısıtlama (isteğe bağlı)</label><textarea value={formData.notes} onChange={e => setFormData(f => ({...f, notes: e.target.value}))} rows={2} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500" placeholder="Örn: Ağır araçlar bu tünelden geçemez" /></div>
@@ -1102,6 +1165,8 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
           </h3>
         </div>
 
+        <TariffImportPanel point={point} onRefresh={onRefresh} />
+
         {point.notes && (
           <div className="mx-5 md:mx-6 mt-5 bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs font-medium text-blue-900 leading-relaxed flex items-start gap-2">
             <AlertCircle size={14} className="shrink-0 mt-0.5 text-blue-500" />
@@ -1110,8 +1175,9 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
         )}
         
         <div className="p-5 md:p-6 flex flex-col gap-3">
+          <p className="text-xs text-slate-500 leading-relaxed">“Bayat tarife” yalnızca yeniden gözden geçirme uyarısıdır; yürürlük tarihi girmek tek başına tarifeyi bayat yapmaz. Bayatlık, son inceleme zamanına göre değerlendirilir.</p>
           {vehicleClasses.map(vc => {
-             const classTariffs = tariffs.filter(t => t.tollPointId === point.id && t.vehicleClass === vc);
+             const classTariffs = tariffs.filter(t => t.tollPointId === point.id && t.vehicleClass === vc && (t.active || t.amountKurus != null || t.manualAmountKurus != null || t.automaticAmountKurus != null));
              const activeTariffs = classTariffs.filter(t => t.active);
              const hasAll = activeTariffs.some(t => t.timeBand === 'ALL');
              const hasDay = activeTariffs.some(t => t.timeBand === 'DAY');
@@ -1127,7 +1193,7 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
                       {!isCovered && !hasAnyRowAtAll && point.notes && <span className="bg-slate-100 text-slate-600 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">Tarife Yok (Notu Kontrol Edin)</span>}
                       {!isCovered && (!point.notes || hasAnyRowAtAll) && <span className="bg-amber-100 text-amber-800 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">Eksik Tarife</span>}
                     </div>
-                    <button onClick={() => onEditTariff(vc)} className="min-h-[36px] px-3 py-1.5 rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm border bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100">
+                    <button onClick={() => onEditTariff(vc)} className="min-h-11 px-3 py-1.5 rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm border bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100">
                       <Plus size={14} /> Tarife Ekle
                     </button>
                   </div>
@@ -1145,12 +1211,13 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
                         const isEffectiveManual = tariff.manualAmountKurus != null;
                         return (
                           <div key={tariff.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-100 rounded-lg gap-4 bg-slate-50/60">
-                            <div className="flex-1">
+                            <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-2 flex-wrap">
                                 <span className="flex items-center gap-1 text-[10px] font-black text-slate-600 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded">
                                   <Clock size={11} /> {TIME_BAND_LABELS[tariff.timeBand]}
                                 </span>
-                                {!tariff.active && <span className="bg-red-100 text-red-800 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">Pasif</span>}
+                                {!tariff.active && <span className="bg-red-100 text-red-800 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">Önceki tarife (pasif)</span>}
+                                {point.pricingMode === 'GATE_PAIR' && (tariff.entryGateName || tariff.exitGateName) && <span className="bg-purple-100 text-purple-800 text-[10px] font-black px-2 py-0.5 rounded tracking-wider">{tariff.entryGateName || '?'} → {tariff.exitGateName || '?'}</span>}
                                 {tariff.stale && (
                                   <span title={tariff.staleReasons?.map(r => STALE_REASON_LABELS[r]).join(' • ')} className="bg-orange-100 text-orange-800 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider flex items-center gap-1">
                                     <AlertCircle size={11} /> Bayat Tarife
@@ -1186,7 +1253,7 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
                               </div>
                             </div>
                             <div className="flex items-center gap-2 sm:self-end mt-2 sm:mt-0">
-                              {tariff.sourceVerified && (
+                              {tariff.sourceVerified && isAutomaticTollSyncSupported({ sourceUrl: tariff.sourceUrl, vehicleClass: tariff.vehicleClass, timeBand: tariff.timeBand }) && (
                                 <button onClick={() => onSync(tariff)} className="min-h-[40px] px-3 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900 rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm border border-slate-200/60">
                                   <RefreshCw size={14} /> Otomatik Çek
                                 </button>

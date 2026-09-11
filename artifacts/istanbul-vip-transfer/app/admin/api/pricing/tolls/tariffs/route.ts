@@ -7,7 +7,6 @@ import {
   assertNoActiveTariffOverlap,
   assertPricingModeMatchesGatePair,
   assertTollDateRange,
-  assertVerifiedSourceForAmount,
   effectiveTollAmount,
   isOfficialTollSourceUrl,
   parseTollDate,
@@ -40,11 +39,8 @@ export async function POST(request: NextRequest) {
     assertTollDateRange(validFrom, validUntil);
     const sourceUrl = safeOfficialSourceUrl(payload.data.sourceUrl);
     const amountKurus = effectiveTollAmount(payload.data);
-    // A blank scaffold row (no amount yet) is allowed to exist — it is a
-    // documented "not sourced yet" placeholder, not an error. When an amount
-    // IS present, the server (not an admin checkbox) verifies it against the
-    // official-source domain allowlist and rejects the save otherwise.
-    assertVerifiedSourceForAmount(amountKurus, sourceUrl);
+    // Source evidence is optional. When supplied, safeOfficialSourceUrl has
+    // already enforced a well-formed HTTPS URL.
     const sourceVerified = isOfficialTollSourceUrl(sourceUrl);
     const { appliesDay, appliesNight } = tollTimeBandFlags(payload.data.timeBand);
     if (payload.data.active) {

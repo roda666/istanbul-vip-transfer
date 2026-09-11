@@ -338,7 +338,7 @@ export type TollPricingSettings = {
 
 const DEFAULT_TOLL_PRICING_SETTINGS: TollPricingSettings = {
   staleAfterDays: 180,
-  warnOnNewYearRollover: true,
+  warnOnNewYearRollover: false,
 };
 
 export async function getTollPricingSettings(): Promise<TollPricingSettings> {
@@ -417,7 +417,9 @@ export function evaluateTollTariffStaleness(
   settings: TollPricingSettings,
   now: Date,
 ): { stale: boolean; reasons: TollStaleReason[]; lastReviewedAt: Date } {
-  const lastReviewedAt = [tariff.manualUpdatedAt, tariff.sourceFetchedAt, tariff.createdAt]
+  // queriedAt is review evidence too: it records when a calculator was
+  // personally checked, even when no source fetch or manual amount edit ran.
+  const lastReviewedAt = [tariff.manualUpdatedAt, tariff.sourceFetchedAt, tariff.queriedAt, tariff.createdAt]
     .filter((value): value is Date => value != null)
     .sort((a, b) => b.getTime() - a.getTime())[0] ?? tariff.createdAt;
   if (!tariff.active) return { stale: false, reasons: [], lastReviewedAt };
@@ -425,14 +427,28 @@ export function evaluateTollTariffStaleness(
   const ageDays = (now.getTime() - lastReviewedAt.getTime()) / (24 * 60 * 60 * 1000);
   if (ageDays > settings.staleAfterDays) reasons.push('AGE');
   if (settings.warnOnNewYearRollover && now.getFullYear() > lastReviewedAt.getFullYear()) reasons.push('YEAR_ROLLOVER');
-  if (tariff.validFrom) {
-    const effectiveDateAgeDays = (now.getTime() - tariff.validFrom.getTime()) / (24 * 60 * 60 * 1000);
-    if (effectiveDateAgeDays > settings.staleAfterDays) reasons.push('SOURCE_EFFECTIVE_DATE_OLD');
-  } else if (tariff.queriedAt) {
+  // validFrom is an effective-start boundary, not a freshness timestamp.
+  // For date-less calculator tariffs queriedAt is the separate evidence
+  // baseline; never invent an effective date.
+  if (!tariff.validFrom && tariff.queriedAt) {
     const queryDateAgeDays = (now.getTime() - tariff.queriedAt.getTime()) / (24 * 60 * 60 * 1000);
     if (queryDateAgeDays > settings.staleAfterDays) reasons.push('QUERY_DATE_OLD');
   }
   return { stale: reasons.length > 0, reasons, lastReviewedAt };
+}
+
+export type InactiveTollTariffClassification = 'DISPOSABLE_DRAFT' | 'HISTORICAL';
+
+/** Inactive blank scaffolds are safe UI drafts; inactive priced rows are history. */
+export function classifyInactiveTollTariff(input: {
+  active: boolean;
+  amountKurus?: number | null;
+  automaticAmountKurus?: number | null;
+  manualAmountKurus?: number | null;
+}): InactiveTollTariffClassification | null {
+  if (input.active) return null;
+  const amount = input.amountKurus ?? input.manualAmountKurus ?? input.automaticAmountKurus;
+  return amount == null ? 'DISPOSABLE_DRAFT' : 'HISTORICAL';
 }
 
 export function effectiveTollAmount(input: {

@@ -7,7 +7,6 @@ import {
   assertNoActiveTariffOverlap,
   assertPricingModeMatchesGatePair,
   assertTollDateRange,
-  assertVerifiedSourceForAmount,
   effectiveTollAmount,
   isOfficialTollSourceUrl,
   parseTollDate,
@@ -44,7 +43,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     assertTollDateRange(validFrom, validUntil);
     const sourceUrl = safeOfficialSourceUrl(payload.data.sourceUrl);
     const amountKurus = effectiveTollAmount(payload.data);
-    assertVerifiedSourceForAmount(amountKurus, sourceUrl);
     const sourceVerified = isOfficialTollSourceUrl(sourceUrl);
     const { appliesDay, appliesNight } = tollTimeBandFlags(payload.data.timeBand);
     if (payload.data.active) {

@@ -1,8 +1,10 @@
 import 'server-only';
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { AVRASYA_TARIFF_URL, isAutomaticTollSyncSupported } from './toll-tariff-sync-support';
 
-export const AVRASYA_TARIFF_URL = 'https://www.avrasyatuneli.com/ucretlendirme/';
+export { AVRASYA_TARIFF_URL, isAutomaticTollSyncSupported } from './toll-tariff-sync-support';
+
 const TOKEN_TTL_MS = 10 * 60 * 1000;
 
 export type SyncedTariff = {
@@ -50,14 +52,11 @@ export function parseAvrasyaTariffPage(html: string, timeBand: string, vehicleCl
  * This is intentionally not a domain allowlist: no database-provided path,
  * query parameter, redirect, or admin-entered URL is ever fetched.
  */
-export function isSupportedOfficialTariff(identity: TariffIdentity): boolean {
-  return identity.sourceUrl === AVRASYA_TARIFF_URL
-    && (identity.timeBand === 'DAY' || identity.timeBand === 'NIGHT')
-    && ['class_1', 'class_2', 'class_6'].includes(identity.vehicleClass);
-}
+/** Backwards-compatible name for existing server callers. */
+export const isSupportedOfficialTariff = isAutomaticTollSyncSupported;
 
 export async function fetchSupportedOfficialTariff(identity: TariffIdentity, fetcher: typeof fetch = fetch): Promise<SyncedTariff> {
-  if (!isSupportedOfficialTariff(identity)) {
+  if (!isAutomaticTollSyncSupported(identity)) {
     throw new Error('Bu resmî kaynak/satır için güvenli bir otomatik adaptör yok. URL’ye istek atılmadı; manuel override kullanılabilir.');
   }
   const response = await fetcher(AVRASYA_TARIFF_URL, {

@@ -57,6 +57,7 @@
     "test:perf:browser": "playwright test tests/perf.spec.ts"
   },
   "dependencies": {
+    "@e965/xlsx": "^0.20.3",
     "@google-cloud/storage": "^7.21.0",
     "bcryptjs": "^2.4.3",
     "dotenv": "^17.4.2",
@@ -64,11 +65,13 @@
     "iron-session": "^8.0.4",
     "nodemailer": "^9.0.5",
     "openai": "^6.49.0",
+    "pdf-parse": "^2.4.5",
     "postgres": "^3.4.4",
     "server-only": "^0.0.1",
     "sharp": "^0.35.3",
     "twitter-api-v2": "^1.29.1",
-    "web-vitals": "^6.1.0"
+    "web-vitals": "^6.1.0",
+    "yauzl": "^3.4.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.6",

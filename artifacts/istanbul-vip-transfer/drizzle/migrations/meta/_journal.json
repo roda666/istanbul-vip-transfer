@@ -638,8 +638,7 @@
       "when": 1789078000000,
       "tag": "0090_optional_services_catalog_contract",
       "breakpoints": true
-    }
-    ,
+    },
     {
       "idx": 91,
       "version": "7",
@@ -666,6 +665,34 @@
       "version": "7",
       "when": 1789079300000,
       "tag": "0094_toll_tariff_import_reconciliation",
+      "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1789079400000,
+      "tag": "0095_toll_point_verification_lockdown",
+      "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1789079500000,
+      "tag": "0096_transfer_routes_default_vehicle_reconciliation",
+      "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1789079600000,
+      "tag": "0097_toll_lock_write_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1789079700000,
+      "tag": "0098_optional_service_airport_scope",
       "breakpoints": true
     }
   ]

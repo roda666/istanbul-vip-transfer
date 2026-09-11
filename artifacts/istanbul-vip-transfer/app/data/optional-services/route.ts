@@ -6,6 +6,7 @@ import { getPublicLangCodes } from '@/lib/i18n/active-locales';
 import { FLIGHT_MEET_GREET_KEY, normalizeFlightMeetGreetKey } from '@/lib/flight-meet-greet-contract';
 import { isOptionalServiceRuntimeValid } from '@/lib/optional-service-validity';
 import { dedupeOptionalServices } from '@/lib/optional-service-selection';
+import { isServiceTypeInScope } from '@/lib/service-type-scope';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +38,7 @@ export async function GET(request: NextRequest) {
       chargeType: optionalServices.chargeType,
       maximumQuantity: optionalServices.maximumQuantity,
       serviceTypeScope: optionalServices.serviceTypeScope,
+       includedInTransfer: optionalServices.includedInTransfer,
       customerVisible: optionalServices.customerVisible,
       translationStatus: contentTranslations.status,
       translationName: contentTranslations.serviceName,
@@ -52,7 +54,7 @@ export async function GET(request: NextRequest) {
     const services = dedupeOptionalServices(rows.filter((row) => {
       if (!isOptionalServiceRuntimeValid(row)) return false;
       const scope = (row.serviceTypeScope ?? []) as string[];
-      if (serviceType && !scope.includes(serviceType)) return false;
+       if (!isServiceTypeInScope(scope, serviceType)) return false;
        if (normalizeFlightMeetGreetKey(row.key) === FLIGHT_MEET_GREET_KEY && meetGreet?.enabled !== true) return false;
       if (locale !== 'tr' && row.translationStatus !== 'PUBLISHED') return false;
       if (row.customerVisible !== true) return false;

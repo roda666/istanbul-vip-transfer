@@ -132,3 +132,5 @@
 - [Structural reference translation sync](structural-reference-translation-sync.md) — changed location/vehicle reference fields replace all 8 live locale values; blog translations remain draft-gated.
 - [Temporary ESM script imports](temporary-esm-script-imports.md) — scripts run from /tmp cannot use artifact-relative package imports; resolve through verified artifact node_modules symlinks.
 - [Legacy optional-service safety](legacy-optional-service-safety.md) — preserve legacy prices; enforce new writes, quarantine invalid rows at runtime, and dedupe semantic aliases without silent data rewrites.
+- [Unverified toll point lockdown](unverified-toll-point-lockdown.md) — lock unverified fees at DB and resolver layers; preserve history but deny all activation, pricing, import and alternative use.
+- [Optional-service scope integrity](optional-service-scope-integrity.md) — empty scopes are never wildcards; service visibility and quote validation share canonical scope rules.

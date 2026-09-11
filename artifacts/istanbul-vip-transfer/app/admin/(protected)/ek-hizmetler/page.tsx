@@ -1,23 +1,6 @@
-import type { Metadata } from 'next';
-import AdminPageHeader from '../../_components/AdminPageHeader';
-import OptionalServicesClient from './_OptionalServicesClient';
+import { permanentRedirect } from 'next/navigation';
 
-export const dynamic = 'force-dynamic';
-
-export const metadata: Metadata = {
-  title: 'Ek Hizmetler | Admin',
-  robots: { index: false },
-};
-
+/** Compatibility URL: the catalog now lives as a pricing-workspace tab. */
 export default function OptionalServicesPage() {
-  return (
-    <div style={{ padding: '28px 24px' }}>
-      <AdminPageHeader
-        title="Ek Hizmetler"
-        description="Transfer tekliflerinde kullanılacak ücretli ek hizmet kataloğu"
-        action={null}
-      />
-      <OptionalServicesClient />
-    </div>
-  );
+  permanentRedirect('/admin/fiyat-kurallari?tab=ek-hizmetler');
 }

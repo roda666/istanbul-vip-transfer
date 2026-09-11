@@ -30,6 +30,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (existing.routeId !== payload.data.routeId) {
       return NextResponse.json({ error: 'Alternatif başka bir güzergâha taşınamaz. Hedef rota için yeni alternatif oluşturun.' }, { status: 422 });
     }
+    const existingLocked = await db.select({ id: tollPoints.id }).from(routeTollAlternativeItems)
+      .innerJoin(tollPoints, eq(tollPoints.id, routeTollAlternativeItems.tollPointId))
+      .where(and(eq(routeTollAlternativeItems.alternativeId, id), eq(tollPoints.verificationLocked, true)));
+    if (existingLocked.length) return NextResponse.json({ error: 'Kilitli nokta içeren alternatif değiştirilemez; resmî kaynak ve yetkili inceleme gerekir.' }, { status: 409 });
     if (payload.data.pointIds.length) {
       const points = await db.select({ id: tollPoints.id }).from(tollPoints).where(and(
         inArray(tollPoints.id, payload.data.pointIds),
@@ -38,6 +42,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       if (points.length !== payload.data.pointIds.length) {
         return NextResponse.json({ error: 'Alternatife yalnız aktif geçiş noktaları eklenebilir.' }, { status: 422 });
       }
+      const locked = await db.select({ id: tollPoints.id }).from(tollPoints).where(and(
+        inArray(tollPoints.id, payload.data.pointIds), eq(tollPoints.verificationLocked, true),
+      ));
+      if (locked.length) return NextResponse.json({ error: 'Kilitli geçiş noktaları alternatiflere eklenemez.' }, { status: 409 });
     }
     const now = new Date();
     const alternative = await db.transaction(async (tx) => {

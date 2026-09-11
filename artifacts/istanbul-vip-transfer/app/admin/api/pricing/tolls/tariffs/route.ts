@@ -12,6 +12,7 @@ import {
   parseTollDate,
   safeOfficialSourceUrl,
   tollTimeBandFlags,
+  isTollPointVerificationLocked,
 } from '@/lib/toll-management';
 import { tollTariffInputSchema } from '@/lib/toll-input';
 
@@ -30,9 +31,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: payload.error.issues[0]?.message ?? 'Geçersiz geçiş tarifesi.' }, { status: 422 });
   }
   try {
-    const [point] = await db.select({ id: tollPoints.id, pricingMode: tollPoints.pricingMode }).from(tollPoints)
+    const [point] = await db.select({ id: tollPoints.id, pricingMode: tollPoints.pricingMode, verificationLocked: tollPoints.verificationLocked }).from(tollPoints)
       .where(eq(tollPoints.id, payload.data.tollPointId)).limit(1);
     if (!point) return NextResponse.json({ error: 'Geçiş noktası bulunamadı.' }, { status: 404 });
+    if (point.verificationLocked || await isTollPointVerificationLocked(payload.data.tollPointId)) {
+      return NextResponse.json({ error: 'Bu nokta doğrulama kilidi altında; tarife oluşturulamaz.' }, { status: 409 });
+    }
     assertPricingModeMatchesGatePair(point.pricingMode, payload.data.entryGateName, payload.data.exitGateName);
     const validFrom = parseTollDate(payload.data.validFrom);
     const validUntil = parseTollDate(payload.data.validUntil);

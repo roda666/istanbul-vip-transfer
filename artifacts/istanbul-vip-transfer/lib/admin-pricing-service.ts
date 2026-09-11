@@ -38,6 +38,7 @@ import {
 import { assertOptionalServiceRuntimeValid } from '@/lib/optional-service-validity';
 import { dedupeOptionalServices } from '@/lib/optional-service-selection';
 import { normalizeFlightMeetGreetKey } from '@/lib/flight-meet-greet-contract';
+import { isServiceTypeInScope } from '@/lib/service-type-scope';
 
 type ResolvedQuoteToll = NonNullable<Parameters<typeof calculateAdminQuote>[0]['tolls']>[number] & {
   source?: 'EXACT_ROUTE' | 'CORRIDOR';
@@ -322,7 +323,7 @@ async function resolveServices(
      const service = winnerBySemanticKey.get(normalizeFlightMeetGreetKey(raw.key))!;
       assertOptionalServiceRuntimeValid(service);
      const scope = (service.serviceTypeScope ?? []) as string[];
-     if (service.includedInTransfer || (serviceType && !scope.includes(serviceType))) {
+      if (service.includedInTransfer || !isServiceTypeInScope(scope, serviceType)) {
        throw new Error('Seçilen ek hizmet bu hizmet türü için geçerli değil.');
      }
      if (!Number.isInteger(selection.quantity) || selection.quantity < 1 || selection.quantity > service.maximumQuantity
@@ -381,7 +382,9 @@ async function resolveTolls(routeId: string, alternativeId: string, vehicleId: s
   const items = await db.select().from(routeTollAlternativeItems).where(eq(routeTollAlternativeItems.alternativeId, alternativeId));
   if (!items.length) return [];
   const pointIds = items.map((item) => item.tollPointId);
-  const points = await db.select().from(tollPoints).where(and(inArray(tollPoints.id, pointIds), eq(tollPoints.active, true)));
+  const points = await db.select().from(tollPoints).where(and(
+    inArray(tollPoints.id, pointIds), eq(tollPoints.active, true), eq(tollPoints.verificationLocked, false),
+  ));
   if (points.length !== pointIds.length) throw new Error('Geçiş noktası artık aktif değil.');
   const settings = await getTollPricingSettings();
   const pointBand = new Map(points.map((point) => [point.id, resolveActiveTimeBandForPoint(pickupAt, point)]));

@@ -28,6 +28,10 @@ export async function POST(request: NextRequest) {
         inArray(tollPoints.id, payload.data.pointIds),
         eq(tollPoints.active, true),
       ));
+      const locked = await db.select({ id: tollPoints.id }).from(tollPoints).where(and(
+        inArray(tollPoints.id, payload.data.pointIds), eq(tollPoints.verificationLocked, true),
+      ));
+      if (locked.length) return NextResponse.json({ error: 'Kilitli geçiş noktaları alternatiflere eklenemez; resmî kaynak ve yetkili inceleme gerekir.' }, { status: 409 });
       if (points.length !== payload.data.pointIds.length) {
         return NextResponse.json({ error: 'Alternatife yalnız aktif geçiş noktaları eklenebilir.' }, { status: 422 });
       }

@@ -98,7 +98,6 @@ function getNavGroups(role: string, isSuperOrAdmin: boolean): NavGroup[] {
         { href: '/admin/transfer-rotalari',   label: 'Transfer Rotaları',   icon: <MapPin size={18} /> },
         { href: '/admin/fiyat-kurallari',     label: 'Fiyat Hesaplama',     icon: <Banknote size={18} />, highlight: true, badge: 'ÖZEL' },
         { href: '/admin/yol-gecis-ucretleri', label: 'Yol & Geçiş Ücretleri', icon: <MapPin size={18} /> },
-        { href: '/admin/ek-hizmetler',        label: 'Ek Hizmetler',        icon: <PackagePlus size={18} /> },
         { href: '/admin/ucus-karsilama',      label: 'Uçuşla Karşılama',    icon: <Plane size={18} /> },
       ],
     },

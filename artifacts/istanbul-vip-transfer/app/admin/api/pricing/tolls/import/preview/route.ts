@@ -19,8 +19,9 @@ export async function POST(request: NextRequest) {
     const tollPointId = String(form.get('tollPointId') ?? '');
     const suppliedDate = String(form.get('effectiveDate') ?? '').trim();
     if (!(file instanceof File) || !tollPointId) return NextResponse.json({ error: 'Dosya ve geçiş noktası zorunludur.' }, { status: 422 });
-    const [point] = await db.select({ id: tollPoints.id, pricingMode: tollPoints.pricingMode }).from(tollPoints).where(eq(tollPoints.id, tollPointId)).limit(1);
+    const [point] = await db.select({ id: tollPoints.id, pricingMode: tollPoints.pricingMode, verificationLocked: tollPoints.verificationLocked }).from(tollPoints).where(eq(tollPoints.id, tollPointId)).limit(1);
     if (!point) return NextResponse.json({ error: 'Geçiş noktası bulunamadı.' }, { status: 404 });
+    if (point.verificationLocked) return NextResponse.json({ error: 'Bu nokta doğrulama kilidi altında; içe aktarma önizlemesi oluşturulamaz.' }, { status: 409 });
     if (point.pricingMode === 'GATE_PAIR') return NextResponse.json({ error: 'Giriş/çıkış gişesi gerektiren noktalar bu içe aktarmayı desteklemez.' }, { status: 422 });
     if (file.size > MAX_IMPORT_BYTES) throw new Error('Dosya boyutu izin verilen sınırı aşıyor (en fazla 8 MB).');
     const bytes = Buffer.from(await file.arrayBuffer());

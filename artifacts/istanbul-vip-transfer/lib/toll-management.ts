@@ -34,6 +34,19 @@ export {
 } from '@/lib/toll-vehicle-classes';
 import { TOLL_VEHICLE_CLASSES, type TollVehicleClass } from '@/lib/toll-vehicle-classes';
 
+export const LOCKED_TOLL_POINT_IDS = [
+  '23fa5f1d-b43f-43ab-9984-c2684cf8055d',
+  '1058e3a6-07a8-4844-bc1a-6e9d31314597',
+  '402dfb8e-176f-4b18-8cfe-020557765768',
+] as const;
+
+/** Application-level guard used before writes so callers receive a useful 409. */
+export async function isTollPointVerificationLocked(tollPointId: string): Promise<boolean> {
+  const [point] = await db.select({ verificationLocked: tollPoints.verificationLocked })
+    .from(tollPoints).where(eq(tollPoints.id, tollPointId)).limit(1);
+  return point?.verificationLocked === true;
+}
+
 /**
  * How many times a round trip actually pays a given point. Every existing
  * point defaults to null (unconfirmed) until an admin/agent has actually
@@ -141,6 +154,7 @@ export async function getLocationPairTollAlternatives(
   if (vehicleId && !vehicle) throw new Error('Araç bulunamadı.');
   const points = await db.select().from(tollPoints).where(and(
     eq(tollPoints.active, true), eq(tollPoints.isBosphorusCrossing, true),
+    eq(tollPoints.verificationLocked, false),
   )).orderBy(asc(tollPoints.bosphorusCrossingOrder), asc(tollPoints.name));
   const eligible = points.filter((point) => {
     if (!vehicle) return true;
@@ -204,6 +218,8 @@ async function getIntercityCorridorAlternatives(
   const pointIds = [...new Set(items.map(i => i.tollPointId))];
   const points = pointIds.length ? await db.select().from(tollPoints).where(inArray(tollPoints.id, pointIds)) : [];
   const pointById = new Map(points.map(p => [p.id, p]));
+  const safeAlternatives = alternatives.filter(a => items.filter(i => i.alternativeId === a.id)
+    .every(i => !pointById.get(i.tollPointId)?.verificationLocked));
   const vehicleClass = vehicle?.tollClass ?? null;
   const now = new Date();
   const tariffs = vehicleClass && pointIds.length ? await db.select().from(tollTariffs).where(and(
@@ -213,8 +229,8 @@ async function getIntercityCorridorAlternatives(
   )) : [];
   return {
     crossingRequired: true, source: 'CORRIDOR' as const,
-    defaultAlternativeId: alternatives.find(a => a.isDefault)?.id ?? null,
-    alternatives: alternatives.map(a => {
+    defaultAlternativeId: safeAlternatives.find(a => a.isDefault)?.id ?? null,
+    alternatives: safeAlternatives.map(a => {
       const its = items.filter(i => i.alternativeId === a.id);
       const missingTariffPointNames: string[] = [], bannedPointNames: string[] = [];
       let totalKurus = 0, complete = true;
@@ -288,7 +304,7 @@ export async function resolveIntercityCorridorToll(
   let directionUnconfirmed = false;
   for (const item of items) {
     const point = points.find(candidate => candidate.id === item.tollPointId);
-    if (!point || !point.active || (point.bannedVehicleClasses ?? []).includes(vehicle.tollClass)) {
+    if (!point || !point.active || point.verificationLocked || (point.bannedVehicleClasses ?? []).includes(vehicle.tollClass)) {
       return { id: selected.id, name: selected.name, amountKurus: null, missing: true, stale, directionUnconfirmed, source: 'CORRIDOR' as const };
     }
     directionUnconfirmed ||= point.tollDirection == null;
@@ -727,6 +743,8 @@ export async function getRouteTollAlternatives(routeId: string, vehicleId?: stri
     : [];
   const vehicleClass = vehicle?.tollClass ?? null;
   const pointById = new Map(points.map((point) => [point.id, point]));
+  const safeAlternatives = alternatives.filter(a => items.filter(i => i.alternativeId === a.id)
+    .every(i => !pointById.get(i.tollPointId)?.verificationLocked));
   // Each point may have its own day/night cutover, so the active band is
   // resolved per point rather than with one shared band filter.
   const pointBand = new Map(points.map((point) => [point.id, resolveActiveTimeBandForPoint(activeAt, point)]));
@@ -747,8 +765,8 @@ export async function getRouteTollAlternatives(routeId: string, vehicleId?: stri
   });
 
   return {
-    defaultAlternativeId: alternatives.find((alternative) => alternative.isDefault)?.id ?? null,
-    alternatives: alternatives.map((alternative) => {
+    defaultAlternativeId: safeAlternatives.find((alternative) => alternative.isDefault)?.id ?? null,
+    alternatives: safeAlternatives.map((alternative) => {
       const alternativeItems = items.filter((item) => item.alternativeId === alternative.id);
       const missingTariffPointNames: string[] = [];
       const bannedPointNames: string[] = [];

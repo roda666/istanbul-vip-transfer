@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { requireAdminSession } from '@/lib/auth/session';
 import { db } from '@/db';
 import { auditLogs, tollTariffs } from '@/db/schema';
+import { isTollPointVerificationLocked } from '@/lib/toll-management';
 import { fetchSupportedOfficialTariff, isSupportedOfficialTariff, signTariffSyncPreview, verifyTariffSyncPreview } from '@/lib/toll-tariff-sync';
 
 export const dynamic = 'force-dynamic';
@@ -33,6 +34,9 @@ export async function POST(request: NextRequest) {
   if (!payload.success) return NextResponse.json({ error: 'Geçersiz senkronizasyon isteği.' }, { status: 422 });
   const [tariff] = await db.select().from(tollTariffs).where(eq(tollTariffs.id, payload.data.tollTariffId)).limit(1);
   if (!tariff) return NextResponse.json({ error: 'Geçiş tarifesi bulunamadı.' }, { status: 404 });
+  if (await isTollPointVerificationLocked(tariff.tollPointId)) {
+    return NextResponse.json({ error: 'Bu nokta doğrulama kilidi altında; senkronizasyon devre dışı.' }, { status: 409 });
+  }
   if (!tariff.sourceVerified || !tariff.sourceName || !tariff.sourceUrl) {
     return NextResponse.json({ error: 'Bu tarife için doğrulanmış resmî kaynak bulunmuyor; manuel değer kullanılmaya devam eder.' }, { status: 422 });
   }

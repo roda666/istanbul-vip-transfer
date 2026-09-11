@@ -1641,6 +1641,11 @@ export const tollPoints = pgTable('toll_points', {
   name: text('name').notNull(),
   type: tollPointTypeEnum('type').notNull(),
   active: boolean('active').default(true).notNull(),
+  /** Durable safety lock: normal APIs and direct SQL cannot reactivate this point. */
+  verificationLocked: boolean('verification_locked').default(false).notNull(),
+  verificationLockReason: text('verification_lock_reason'),
+  verificationLockedAt: timestamp('verification_locked_at', { withTimezone: true }),
+  verificationLockedBy: uuid('verification_locked_by').references(() => adminUsers.id, { onDelete: 'set null' }),
   /** Marks an active bridge/tunnel as a generic Bosphorus crossing option for cross-side Istanbul trips. */
   isBosphorusCrossing: boolean('is_bosphorus_crossing').default(false).notNull(),
   bosphorusCrossingOrder: integer('bosphorus_crossing_order').default(0).notNull(),

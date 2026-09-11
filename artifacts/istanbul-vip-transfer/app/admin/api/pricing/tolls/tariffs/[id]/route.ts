@@ -12,6 +12,7 @@ import {
   parseTollDate,
   safeOfficialSourceUrl,
   tollTimeBandFlags,
+  isTollPointVerificationLocked,
 } from '@/lib/toll-management';
 import { tollTariffInputSchema } from '@/lib/toll-input';
 
@@ -33,10 +34,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   try {
     const [[existing], [point]] = await Promise.all([
       db.select().from(tollTariffs).where(eq(tollTariffs.id, id)).limit(1),
-      db.select({ id: tollPoints.id, pricingMode: tollPoints.pricingMode }).from(tollPoints).where(eq(tollPoints.id, payload.data.tollPointId)).limit(1),
+      db.select({ id: tollPoints.id, pricingMode: tollPoints.pricingMode, verificationLocked: tollPoints.verificationLocked }).from(tollPoints).where(eq(tollPoints.id, payload.data.tollPointId)).limit(1),
     ]);
     if (!existing) return NextResponse.json({ error: 'Geçiş tarifesi bulunamadı.' }, { status: 404 });
     if (!point) return NextResponse.json({ error: 'Geçiş noktası bulunamadı.' }, { status: 404 });
+    const existingParentLocked = await isTollPointVerificationLocked(existing.tollPointId);
+    if ((point.verificationLocked || await isTollPointVerificationLocked(payload.data.tollPointId))
+      && (payload.data.active || !existingParentLocked || payload.data.tollPointId !== existing.tollPointId)) {
+      return NextResponse.json({ error: 'Bu nokta doğrulama kilidi altında; yalnızca mevcut tarihçenin pasifleştirilmesi mümkündür.' }, { status: 409 });
+    }
     assertPricingModeMatchesGatePair(point.pricingMode, payload.data.entryGateName, payload.data.exitGateName);
     const validFrom = parseTollDate(payload.data.validFrom);
     const validUntil = parseTollDate(payload.data.validUntil);

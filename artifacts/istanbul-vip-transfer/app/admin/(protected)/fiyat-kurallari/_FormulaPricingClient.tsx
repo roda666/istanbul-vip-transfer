@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { resolveEffectiveFastQuoteRoute, sortFastQuoteTollAlternatives } from '@/lib/admin-fast-quote';
 import { TOLL_VEHICLE_CLASS_LABELS, type TollVehicleClass } from '@/lib/toll-vehicle-classes';
+import { isServiceTypeInScope } from '@/lib/service-type-scope';
 
 // --- Types ---
 
@@ -371,8 +372,8 @@ function FastQuotePanel({
         const services = (payload?.services ?? []).filter((service) => {
           const scope = (service.serviceTypeScope ?? []) as string[];
           const automaticScope = (service.automaticServiceTypes ?? []) as string[];
-          return service.active
-            && (scope.length === 0 || scope.includes(quoteServiceType))
+            return service.active
+             && isServiceTypeInScope(scope, quoteServiceType)
             && (!service.includedInTransfer || automaticScope.includes(quoteServiceType));
         });
         setOptionalServices(services);
@@ -790,14 +791,15 @@ function FastQuotePanel({
                 const quantity = selectedServiceQuantities[service.id] ?? 0;
                 const included = service.includedInTransfer;
                 return (
-                  <label key={service.id} className="flex items-center justify-between gap-3 text-xs text-slate-700">
-                    <span>
+                  <label key={service.id} className={`flex min-h-11 items-center justify-between gap-3 rounded-lg border p-3 text-xs text-slate-700 transition-colors ${quantity > 0 ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-200' : 'border-slate-200 bg-white hover:border-blue-300'}`}>
+                    <span className="flex items-center gap-2">
                       {!included && (
-                        <input type="checkbox" checked={quantity > 0}
+                        <input aria-label={`${service.name} seç`} type="checkbox" checked={quantity > 0}
                           onChange={(event) => setSelectedServiceQuantities((current) => ({ ...current, [service.id]: event.target.checked ? 1 : 0 }))}
-                          className="mr-2" />
+                          className="h-5 w-5 accent-blue-600" />
                       )}
-                      {service.name} {included ? '(Dahil)' : ''}
+                      {quantity > 0 && <Check size={16} className="text-blue-600" aria-hidden="true" />}
+                      <span>{service.name} {included ? '(Dahil)' : ''}</span>
                     </span>
                     {!included && quantity > 0 && service.chargeType !== 'PER_BOOKING' && (
                       <input type="number" min={1} max={service.maximumQuantity} value={quantity}

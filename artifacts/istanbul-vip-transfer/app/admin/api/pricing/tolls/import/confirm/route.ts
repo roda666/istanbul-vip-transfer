@@ -26,7 +26,10 @@ export async function POST(request: NextRequest) {
       )).limit(1);
       if (!imp) throw new Error('İçe aktarma önizlemesi bulunamadı.');
       if (imp.previewHash !== previewHash || hashPreview(imp.previewJson) !== previewHash) throw new Error('Önizleme değişmiş veya özeti geçersiz.');
-      if (imp.status === 'CONFIRMED') return { imported: 0, skipped: [], alreadyConfirmed: true };
+       const [guardPoint] = await tx.select({ verificationLocked: tollPoints.verificationLocked })
+         .from(tollPoints).where(eq(tollPoints.id, imp.tollPointId)).limit(1);
+       if (guardPoint?.verificationLocked) return { imported: 0, skipped: [], alreadyConfirmed: false, locked: true };
+       if (imp.status === 'CONFIRMED') return { imported: 0, skipped: [], alreadyConfirmed: true };
       const [claimed] = await tx.update(tollTariffImports).set({ status: 'CONFIRMING' })
         .where(and(eq(tollTariffImports.id, imp.id), eq(tollTariffImports.createdBy, session.adminId), eq(tollTariffImports.tollPointId, imp.tollPointId), eq(tollTariffImports.status, 'PREVIEW'))).returning();
       if (!claimed) {
@@ -54,6 +57,7 @@ export async function POST(request: NextRequest) {
       await tx.insert(auditLogs).values({ adminUserId: session.adminId, action: 'TOLL_TARIFF_IMPORT_CONFIRMED', entityType: 'TollTariffImport', entityId: imp.id, metadata: { filename: imp.originalFilename.slice(0, 120), resolvedCount: resolved.length, skippedClasses: skipped.join(',') } });
       return { imported: resolved.length, skipped, alreadyConfirmed: false };
     });
+    if ('locked' in result && result.locked) return NextResponse.json({ error: 'Bu nokta doğrulama kilidi altında; içe aktarma onaylanamaz.' }, { status: 409 });
     return NextResponse.json({ ...result, message: result.skipped.length ? `Çözülemeyen sınıflar atlandı: ${result.skipped.join(', ')}` : 'Tarifeler içe aktarıldı.' });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'İçe aktarma onaylanamadı.' }, { status: 422 });

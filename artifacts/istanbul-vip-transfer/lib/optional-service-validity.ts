@@ -1,6 +1,5 @@
 export const OPTIONAL_SERVICE_CURRENCIES = ['TRY', 'EUR', 'USD'] as const;
 export const OPTIONAL_SERVICE_CHARGE_TYPES = ['PER_BOOKING', 'PER_PERSON'] as const;
-
 type OptionalServiceValidityInput = {
   unitAmount: unknown;
   currency: unknown;

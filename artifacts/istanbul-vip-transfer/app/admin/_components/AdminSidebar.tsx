@@ -34,7 +34,6 @@ import {
   Database,
   Banknote,
   Plane,
-  PackagePlus,
   Globe2,
   ShieldCheck,
 } from 'lucide-react';
@@ -176,7 +175,7 @@ function NavGroup({ group, collapsed, openGroups, toggleGroup, renderNavItem }: 
           onClick={() => toggleGroup(group.key)}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            width: '100%', minHeight: '42px', padding: '9px 11px',
+            width: '100%', minHeight: '44px', padding: '9px 11px',
             background: isOpen ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
             border: '1px solid rgba(255,255,255,0.10)', cursor: 'pointer',
             borderRadius: '8px', transition: 'background 0.15s, border-color 0.15s',
@@ -439,7 +438,7 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
         )}
         <button
           onClick={() => setCollapsed(c => !c)}
-          style={{ background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: '6px', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '6px', display: 'flex' }}
+          style={{ width: '44px', minWidth: '44px', height: '44px', background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: '6px', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           aria-label={collapsed ? 'Genişlet' : 'Daralt'}
         >
           {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}

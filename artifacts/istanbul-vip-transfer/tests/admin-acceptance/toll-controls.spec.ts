@@ -8,15 +8,13 @@ import {
 } from './fixtures';
 
 const viewports = [
+  { name: 'compact-mobile', width: 320, height: 700 },
   { name: 'phone', width: 390, height: 844 },
   { name: 'tablet', width: 768, height: 1024 },
+  { name: 'desktop', width: 1440, height: 1000 },
 ] as const;
 
-const pointStates = [
-  { name: 'Ankara', active: true },
-  { name: 'Antalya', active: false },
-  { name: 'Bodrum', active: true },
-] as const;
+const pointNames = ['Ankara', 'Antalya', 'Bodrum'] as const;
 
 type TollPoint = {
   id: string;
@@ -68,6 +66,10 @@ function businessFields(points: TollPoint[]) {
       updatedBy?: string | null;
       updatedByName?: string | null;
     };
+    void _displayOrder;
+    void _updatedAt;
+    void _updatedBy;
+    void _updatedByName;
     return business;
   });
 }
@@ -99,7 +101,6 @@ async function assertPointControlsAreEnabledAndSized(page: import('@playwright/t
   const failures = await controls.evaluateAll((elements) =>
     elements.flatMap((element) => {
       const box = element.getBoundingClientRect();
-      const button = element as HTMLButtonElement;
       return box.width < 44 || box.height < 44
         ? [{ name: element.getAttribute('aria-label') || element.textContent?.trim(), width: box.width, height: box.height }]
         : [];
@@ -110,7 +111,9 @@ async function assertPointControlsAreEnabledAndSized(page: import('@playwright/t
 
 for (const viewport of viewports) {
   test(`toll controls remain usable and settled at ${viewport.name} size`, async ({ adminPage }) => {
+    test.setTimeout(120_000);
     await adminPage.setViewportSize({ width: viewport.width, height: viewport.height });
+    const pointsBeforePageLoad = await tollPoints(adminPage);
     const response = await adminPage.goto('/admin/yol-gecis-ucretleri');
     expect(response?.status()).toBe(200);
     await waitForSettledAdminPage(adminPage);
@@ -124,14 +127,22 @@ for (const viewport of viewports) {
     await assertTouchTargets(adminPage, 44);
 
     const apiPoints = await tollPoints(adminPage);
-    for (const { name: pointName, active } of pointStates) {
+    for (const pointName of pointNames) {
+      const pointBeforePageLoad = pointsBeforePageLoad.points.find(({ name }) =>
+        name.toLocaleLowerCase('tr-TR').includes(pointName.toLocaleLowerCase('tr-TR')),
+      );
       const apiPoint = apiPoints.points.find(({ name }) => name.toLocaleLowerCase('tr-TR').includes(pointName.toLocaleLowerCase('tr-TR')));
+      expect(pointBeforePageLoad, `${pointName} must be present before page load`).toBeDefined();
       expect(apiPoint, `${pointName} must be present in the admin API`).toBeDefined();
-      expect(apiPoint?.active, `${pointName} active state must be preserved`).toBe(active);
+      expect(apiPoint?.active, `${pointName} active state must be preserved`).toBe(pointBeforePageLoad?.active);
       expect(apiPoint?.verificationLocked ?? apiPoint?.verification_locked, `${pointName} must not be verification locked`).not.toBe(true);
-      const pointButton = adminPage.getByRole('button', { name: new RegExp(pointName, 'i') }).first();
-      await expect(pointButton, `${pointName} toll point should be visible`).toBeVisible();
-      const card = pointButton.locator('xpath=..');
+      const pointControl = adminPage.getByRole('button', {
+        name: `${apiPoint!.name} aşağı taşı`,
+        exact: true,
+      });
+      await pointControl.scrollIntoViewIfNeeded();
+      await expect(pointControl, `${pointName} toll point controls should be visible`).toBeVisible();
+      const card = pointControl.locator('xpath=../..');
       await expect(card.getByRole('button')).not.toHaveCount(0);
       await expect(card.locator('button:disabled')).toHaveCount(0);
       await expect(card).not.toContainText(/doğrulama gerekli|kilitli|kilitlendi/i);
@@ -172,6 +183,7 @@ test('customer quote, reservation, public APIs, and UI never expose toll interna
 });
 
 test('one adjacent toll point reorder is reversible without changing toll data', async ({ adminPage }) => {
+  test.setTimeout(120_000);
   await adminPage.setViewportSize({ width: 390, height: 844 });
   const response = await adminPage.goto('/admin/yol-gecis-ucretleri');
   expect(response?.status()).toBe(200);

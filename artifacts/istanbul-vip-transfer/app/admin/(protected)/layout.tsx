@@ -31,6 +31,7 @@ export default async function ProtectedAdminLayout({
 
   return (
     <div
+      data-admin
       style={{
         display: 'flex',
         height: '100dvh',

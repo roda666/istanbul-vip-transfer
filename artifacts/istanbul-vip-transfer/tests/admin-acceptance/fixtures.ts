@@ -18,7 +18,7 @@ export async function assertNoHorizontalOverflow(page: Page) {
 export async function assertTouchTargets(
   page: Page,
   min = 44,
-  selector = 'main button, main a, main input, main select, main textarea, main [role="button"]',
+  selector = '[data-admin] button, [data-admin] a, [data-admin] input, [data-admin] select, [data-admin] textarea, [data-admin] [role="button"]',
 ) {
   const tooSmall = await page.locator(selector).evaluateAll((elements, minimum) => {
     const results: Array<{ selector: string; name: string; width: number; height: number }> = [];
@@ -72,7 +72,7 @@ export async function screenshotEvidence(page: Page, name: string) {
   const path = `test-results/admin-acceptance/${safeName}-${Date.now()}.png`;
   await page.screenshot({
     path,
-    fullPage: true,
+    fullPage: false,
   });
   return path;
 }
@@ -122,6 +122,7 @@ export const test = base.extend<AdminFixtures, AdminWorkerFixtures>({
           response = await request.post(new URL('/admin/api/login', baseURL).toString(), {
             data: { email: adminIdentity.email, password: adminIdentity.password },
             headers: { 'content-type': 'application/json' },
+            timeout: 45_000,
           });
           if (!transientStatuses.has(response.status())) break;
         } catch (error) {

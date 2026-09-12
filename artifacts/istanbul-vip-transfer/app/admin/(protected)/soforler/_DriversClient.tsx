@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { AlertCircle, ArrowDown, ArrowUp, Check, Edit3, Loader2, Plus, RefreshCw, Trash2, X, Users } from 'lucide-react';
+import { AlertCircle, ArrowDown, ArrowUp, Edit3, Loader2, Plus, RefreshCw, Trash2, X, Users } from 'lucide-react';
 
 type Driver = { id: string; name: string; phone: string | null; notes: string | null; isActive: boolean; displayOrder: number };
 type FormValues = Omit<Driver, 'id' | 'displayOrder'>;

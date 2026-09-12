@@ -6,11 +6,13 @@ interface Props {
 }
 
 export default function StatusBadge({ status, size = 'md' }: Props) {
-  const colors = STATUS_COLORS[status] ?? { bg: '#2a2a2a', text: '#aaa' };
+  const colors = STATUS_COLORS[status] ?? { bg: '#F1F5F9', text: '#52697A' };
   const label = STATUS_LABELS[status] ?? status;
 
   return (
     <span
+      role="status"
+      aria-label={`Durum: ${label}`}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -25,6 +27,17 @@ export default function StatusBadge({ status, size = 'md' }: Props) {
         whiteSpace: 'nowrap',
       }}
     >
+      <span
+        aria-hidden="true"
+        style={{
+          width: size === 'sm' ? '6px' : '7px',
+          height: size === 'sm' ? '6px' : '7px',
+          marginRight: '6px',
+          borderRadius: '999px',
+          background: 'currentColor',
+          flexShrink: 0,
+        }}
+      />
       {label}
     </span>
   );

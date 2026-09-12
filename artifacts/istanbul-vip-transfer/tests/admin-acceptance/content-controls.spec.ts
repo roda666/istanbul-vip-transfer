@@ -9,8 +9,10 @@ import {
 import type { Page } from '@playwright/test';
 
 const viewports = [
+  { width: 320, height: 700, name: 'compact-mobile' },
   { width: 390, height: 844, name: 'mobile' },
   { width: 768, height: 1024, name: 'tablet' },
+  { width: 1440, height: 1000, name: 'desktop' },
 ] as const;
 
 const routes = [
@@ -27,15 +29,6 @@ async function cancelOpenForm(page: Page) {
     return;
   }
 
-  // Blog's create screen is a page, rather than an in-place form.  Return to
-  // the list instead of leaving the smoke test on a half-filled editor.
-  const blogBack = page.getByRole('link', { name: /^Blog$/i });
-  if (await blogBack.isVisible().catch(() => false)) {
-    await blogBack.click();
-    await waitForSettledAdminPage(page);
-    return;
-  }
-
   // Route and location editors use an icon-only close button.  Scope it to
   // the visible form heading so this does not accidentally close the shell.
   const modalHeading = page.getByRole('heading', {
@@ -46,6 +39,17 @@ async function cancelOpenForm(page: Page) {
     if (await close.isVisible().catch(() => false)) {
       await close.click();
       await expect(modalHeading).toBeHidden();
+      return;
+    }
+  }
+
+  // Blog's create screen is a page, rather than an in-place form. Return to
+  // the list only from that editor; the desktop sidebar also has a Blog link.
+  if (/\/admin\/blog\/(yeni|[^/]+)$/.test(new URL(page.url()).pathname)) {
+    const blogBack = page.locator('main').getByRole('link', { name: /^Blog$/i });
+    if (await blogBack.isVisible().catch(() => false)) {
+      await blogBack.click();
+      await waitForSettledAdminPage(page);
     }
   }
 }

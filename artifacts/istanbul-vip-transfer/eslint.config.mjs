@@ -25,6 +25,14 @@ const eslintConfig = [
     ],
   },
   ...compat.extends('next/core-web-vitals', 'next/typescript'),
+  {
+    files: ['tests/admin-acceptance/**/*.ts'],
+    rules: {
+      // Playwright fixture callbacks conventionally name their continuation
+      // argument `use`; it is not React.use and must not be treated as a Hook.
+      'react-hooks/rules-of-hooks': 'off',
+    },
+  },
 ];
 
 export default eslintConfig;

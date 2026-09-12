@@ -53,8 +53,8 @@ export default function KategorilerPage() {
       const res  = await fetch('/admin/api/categories');
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Yüklenemedi.');
-       setCats((data.categories ?? []).map((c: Category) => ({
-         ...c, serviceCount: cats.find(x => x.id === c.id)?.serviceCount ?? 0,
+       setCats((current) => (data.categories ?? []).map((c: Category) => ({
+         ...c, serviceCount: current.find(x => x.id === c.id)?.serviceCount ?? 0,
        })));
     } catch (e: unknown) {
       setError(String(e));

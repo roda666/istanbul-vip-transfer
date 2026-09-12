@@ -182,6 +182,55 @@ body {
 [data-admin] ::-webkit-scrollbar-track { background: #F4F6FA; }
 [data-admin] ::-webkit-scrollbar-thumb { background: #DDE3EC; }
 
+/* ── Admin action controls ───────────────────────────
+   Shared interaction baseline only. Individual screens keep their semantic
+   primary/success/danger colors while every action remains keyboard-visible
+   and touch-friendly across desktop, tablet, and mobile. */
+[data-admin] button,
+[data-admin] [role='button'],
+[data-admin] a[role='button'],
+[data-admin] input:not([type='hidden']):not([type='checkbox']):not([type='radio']),
+[data-admin] select,
+[data-admin] textarea {
+  min-height: 44px;
+}
+
+[data-admin] button,
+[data-admin] [role='button'],
+[data-admin] a[role='button'] {
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+[data-admin] :is(button, [role='button'], a, input, select, textarea):focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.38);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 1px #2563EB;
+}
+
+[data-admin] :is(button, input, select, textarea):disabled,
+[data-admin] [role='button'][aria-disabled='true'] {
+  cursor: not-allowed !important;
+  opacity: 0.55;
+}
+
+[data-admin] button[aria-busy='true'],
+[data-admin] [role='button'][aria-busy='true'] {
+  cursor: wait;
+}
+
+@media (hover: hover) {
+  [data-admin] :is(button, [role='button'], a[role='button']):not(:disabled):not([aria-disabled='true']):hover {
+    filter: brightness(0.98);
+    box-shadow: 0 6px 18px rgba(19, 42, 68, 0.10);
+  }
+}
+
 /* ── Public form inputs (dark vip-input — used on dark sections) ─── */
 .vip-input {
   background-color: #1A1A1A;

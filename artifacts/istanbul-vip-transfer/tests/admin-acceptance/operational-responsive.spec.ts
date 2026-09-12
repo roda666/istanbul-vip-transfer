@@ -4,8 +4,10 @@ import { expect, test, waitForSettledAdminPage } from './fixtures';
 test.setTimeout(120_000);
 
 const VIEWPORTS = [
+  { name: 'compact-mobile', width: 320, height: 700 },
   { name: 'mobile', width: 390, height: 844 },
   { name: 'tablet', width: 768, height: 1024 },
+  { name: 'desktop', width: 1440, height: 1000 },
 ] as const;
 
 /**
@@ -25,6 +27,9 @@ const ROUTES = [
   '/admin/gecmis',
   // Translation management and its job queue are both present in the codebase.
   '/admin/dil-ve-ceviri',
+  '/admin/diller',
+  '/admin/ceviriler',
+  '/admin/chatbot-bilgi-bankasi',
   '/admin/veritabani-yedegi',
   '/admin/ayarlar',
 ] as const;

@@ -212,8 +212,10 @@ const pages: CatalogPage[] = [
 ];
 
 for (const viewport of [
+  { name: 'compact-mobile', width: 320, height: 700 },
   { name: 'mobile', width: 390, height: 844 },
   { name: 'tablet', width: 768, height: 1024 },
+  { name: 'desktop', width: 1440, height: 1000 },
 ]) {
   for (const config of pages) {
     test(`${config.name} controls and layout at ${viewport.name}`, async ({ adminPage }) => {

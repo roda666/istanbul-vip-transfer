@@ -781,9 +781,9 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
                               <Archive size={11} /> Arşivle
                             </button>
                           )}
-                          {canDelete && <button onClick={() => deleteRequest(row.id)} disabled={!!updating} title="Kalıcı olarak sil" style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '11px', background: '#FFF1F2', color: '#BE123C', border: 'none', cursor: 'pointer', display: 'flex' }}><Trash2 size={11} /></button>}
+                          {canDelete && <button onClick={() => deleteRequest(row.id)} disabled={!!updating} title="Kalıcı olarak sil" aria-label={`${row.referenceNumber} talebini kalıcı olarak sil`} style={{ minWidth: '44px', minHeight: '44px', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', background: '#FFF1F2', color: '#BE123C', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Trash2 size={11} /></button>}
                            <button onClick={() => exportSingleRequest('xls', row)} disabled={!!updating} aria-label={`${row.referenceNumber} talebini Excel indir`} style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '11px', background: '#F0FDF4', color: '#15803D', border: 'none', cursor: 'pointer' }}>Excel</button>
-                           <button onClick={() => exportSingleRequest('pdf', row)} disabled={!!updating} aria-label={`${row.referenceNumber} talebini PDF indir`} style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '11px', background: '#FFF7ED', color: '#C2410C', border: 'none', cursor: 'pointer' }}>PDF</button>
+                            <button onClick={() => exportSingleRequest('pdf', row)} disabled={!!updating} aria-label={`${row.referenceNumber} talebini PDF indir`} style={{ minWidth: '44px', minHeight: '44px', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', background: '#FFF7ED', color: '#C2410C', border: 'none', cursor: 'pointer' }}>PDF</button>
                         </div>
                       </td>
                     </tr>

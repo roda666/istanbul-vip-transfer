@@ -39,7 +39,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const { id } = await params;
   const { db } = await import('@/db');
   const { locations } = await import('@/db/schema');
-  const { eq, isNull } = await import('drizzle-orm');
+  const { eq } = await import('drizzle-orm');
 
   const rows = await db.select().from(locations).where(eq(locations.id, id)).limit(1).catch(() => []);
   if (!rows[0]) return NextResponse.json({ error: 'Bulunamadı.' }, { status: 404 });

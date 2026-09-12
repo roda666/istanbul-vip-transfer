@@ -14,8 +14,6 @@ export const MAX_IMPORT_TEXT = 200_000;
 const MAX_ENTRY_BYTES = 4 * 1024 * 1024;
 const MAX_TOTAL_UNCOMPRESSED = 32 * 1024 * 1024;
 const MAX_COMPRESSION_RATIO = 100;
-type ZipEntry = { fileName: string; generalPurposeBitFlag: number; uncompressedSize: number; compressedSize: number };
-type ZipLike = { readEntry(): void; close(): void; on(event: string, handler: (...args: never[]) => void): void };
 const CLASSES = [1, 2, 3, 4, 5, 6] as const;
 type ClassNumber = (typeof CLASSES)[number];
 export type ImportRow = {
@@ -55,11 +53,11 @@ export function validateImportFile(filename: string, mime: string, bytes: Buffer
 
 export async function preflightXlsxZip(bytes: Buffer): Promise<void> {
   await new Promise<void>((resolve, reject) => {
-    yauzl.fromBuffer(bytes, { lazyEntries: true, validateEntrySizes: true }, (error: Error | null, zip: ZipLike | null) => {
+    yauzl.fromBuffer(bytes, { lazyEntries: true, validateEntrySizes: true }, (error, zip) => {
       if (error || !zip) return reject(new Error('XLSX ZIP yapısı güvenli değil.'));
       let count = 0, total = 0;
       zip.readEntry();
-      zip.on('entry', (entry: ZipEntry) => {
+      zip.on('entry', (entry) => {
         count++;
         const name = entry.fileName.replace(/\\/g, '/');
         if (count > MAX_IMPORT_SHEETS * 20 || name.startsWith('/') || name.split('/').includes('..') || (entry.generalPurposeBitFlag & 1)) {

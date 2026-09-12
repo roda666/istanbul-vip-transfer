@@ -16,9 +16,9 @@ describe('category deactivation concurrency contract', () => {
     expect(categoryRoute).toContain('pg_advisory_xact_lock(hashtext(${cat.slug}))');
     expect(categoryRoute).toContain('SELECT COUNT(*)::int AS cnt FROM content');
 
-    const transactionStart = categoryRoute.indexOf('db.transaction(async (tx) =>');
     const countCheck = categoryRoute.indexOf('SELECT COUNT(*)::int AS cnt FROM content');
-    const categoryUpdate = categoryRoute.indexOf('tx.update(serviceCategories)');
+    const transactionStart = categoryRoute.lastIndexOf('db.transaction(async (tx) =>', countCheck);
+    const categoryUpdate = categoryRoute.indexOf('tx.update(serviceCategories)', countCheck);
     expect(transactionStart).toBeGreaterThanOrEqual(0);
     expect(countCheck).toBeGreaterThan(transactionStart);
     expect(categoryUpdate).toBeGreaterThan(countCheck);

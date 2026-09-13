@@ -425,10 +425,13 @@ test.describe('@route-package transfer-route admin acceptance', () => {
       const pngBytes = Array.from(await readFile(createdFile));
       const jpegBytes = Array.from(await sharp(pngSource).jpeg({ quality: 85 }).toBuffer());
       const uploadInOpenModal = async (): Promise<string> => {
+        await adminPage.getByRole('button', { name: 'Bilgisayardan Yükle' }).click();
+        const fileInput = adminPage.locator('input[type="file"]');
+        await expect(fileInput).toBeAttached();
         const responsePromise = adminPage.waitForResponse((response) =>
           response.request().method() === 'POST'
           && new URL(response.url()).pathname === '/admin/api/transfer-routes/image');
-        await adminPage.locator('input[type="file"]').setInputFiles(createdFile);
+        await fileInput.setInputFiles(createdFile);
         const response = await responsePromise;
         expect(response.status()).toBe(201);
         const payload = await response.json() as Record<string, unknown>;

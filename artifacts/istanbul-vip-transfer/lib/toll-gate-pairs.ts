@@ -10,8 +10,33 @@ export type GatePair = {
   exitGateName: string;
 };
 
+/** Trims and collapses user-entered gate whitespace without changing display case. */
+export function normalizeGateName(value: string): string {
+  return value.normalize('NFC').trim().replace(/\s+/gu, ' ');
+}
+
+/** Canonical gate identity used for duplicate checks, not for display. */
+export function canonicalGateName(value: string): string {
+  return normalizeGateName(value).toLocaleLowerCase('tr-TR');
+}
+
+/** Stable identity for one point/class/gate-pair tariff. */
+export function gatePairTariffIdentity(
+  tollPointId: string,
+  entryGateName: string,
+  exitGateName: string,
+  vehicleClass: string,
+): string {
+  return JSON.stringify([
+    tollPointId,
+    canonicalGateName(entryGateName),
+    canonicalGateName(exitGateName),
+    vehicleClass.toLocaleLowerCase('tr-TR'),
+  ]);
+}
+
 export function gatePairKey(entryGateName: string, exitGateName: string) {
-  return `${entryGateName}\u0000${exitGateName}`;
+  return `${canonicalGateName(entryGateName)}\u0000${canonicalGateName(exitGateName)}`;
 }
 
 /** Returns active tariff-backed pairs once, preserving the input row order. */
@@ -33,7 +58,7 @@ export function isExactGatePair(
   availablePairs: GatePair[],
 ) {
   return !!pair && availablePairs.some((candidate) =>
-    candidate.entryGateName === pair.entryGateName &&
-    candidate.exitGateName === pair.exitGateName,
+    gatePairKey(candidate.entryGateName, candidate.exitGateName)
+      === gatePairKey(pair.entryGateName, pair.exitGateName),
   );
 }

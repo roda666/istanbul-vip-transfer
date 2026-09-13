@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   MapPin, Navigation, Plus, Save, Edit2, 
   RefreshCw, Check, X, AlertCircle, Loader2, Car, ShieldCheck, Clock, Settings2
@@ -980,7 +980,7 @@ function AlternativeForm({ routeId, routes, points, tariffs, initialData, onSave
         ? `/admin/api/pricing/tolls/alternatives/${initialData.id}` 
         : `/admin/api/pricing/tolls/alternatives`;
       const method = initialData ? 'PATCH' : 'POST';
-      
+
       // Only send gate pairs for points that are (a) selected and (b)
       // actually GATE_PAIR-priced — a stray entry for a FLAT point would be
       // silently ignored server-side, but keep the payload clean anyway.
@@ -1004,7 +1004,7 @@ function AlternativeForm({ routeId, routes, points, tariffs, initialData, onSave
          needsReview: formData.needsReview,
          reviewNote: formData.reviewNote.trim() || null,
       };
-      
+
       const res = await fetch(url, { method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Kaydedilemedi');
@@ -1133,85 +1133,204 @@ function AlternativeForm({ routeId, routes, points, tariffs, initialData, onSave
   )
 }
 
-type ImportPreviewRow = { classNumber: number; status: 'RESOLVED' | 'UNRESOLVED'; amountKurus: number | null; reason: string | null; evidence: string };
-type ImportPreview = { importId: string; previewHash: string; rows: ImportPreviewRow[]; effectiveDate: string };
 
-function TariffImportPanel({ point, onRefresh }: { point: TollPoint; onRefresh: () => void }) {
-  const [file, setFile] = useState<File | null>(null);
-  const [effectiveDate, setEffectiveDate] = useState('');
-  const [preview, setPreview] = useState<ImportPreview | null>(null);
-  const [confirmed, setConfirmed] = useState(false);
+type QuickTariffClassRequest = {
+  pointId: string;
+  vehicleClass: string;
+  nonce: number;
+};
+
+function QuickTariffAdd({
+  point,
+  vehicleClasses,
+  onRefresh,
+  classRequest,
+}: {
+  point: TollPoint;
+  vehicleClasses: string[];
+  onRefresh: () => void;
+  classRequest: QuickTariffClassRequest | null;
+}) {
+  const [entryGateName, setEntryGateName] = useState('');
+  const [exitGateName, setExitGateName] = useState('');
+  const [amountStr, setAmountStr] = useState('');
+  const [vehicleClass, setVehicleClass] = useState(vehicleClasses[0] || 'class_1');
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [message, setMessage] = useState('');
+  const amountInputRef = useRef<HTMLInputElement>(null);
 
-  if (point.pricingMode === 'GATE_PAIR') return (
-    <div className="mx-5 md:mx-6 mb-5 rounded-xl border border-purple-200 bg-purple-50 p-4 text-xs font-medium text-purple-900 leading-relaxed">
-      <strong>Dosyadan tarife içe aktarma kullanılamaz.</strong> Bu nokta giriş/çıkış gişesi çiftleriyle ücretlendirilir; dosya içe aktarma bu çiftleri güvenilir biçimde çıkaramaz.
-    </div>
-  );
-
-  const previewFile = async () => {
-    if (!file) return setError('Önce PDF, XLS veya XLSX dosyası seçin.');
-    setBusy(true); setError(''); setMessage(''); setPreview(null); setConfirmed(false);
-    try {
-      const form = new FormData();
-      form.append('file', file); form.append('tollPointId', point.id);
-      if (effectiveDate) form.append('effectiveDate', effectiveDate);
-      const res = await fetch('/admin/api/pricing/tolls/import/preview', { method: 'POST', body: form });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Önizleme oluşturulamadı.');
-      setPreview(json);
-    } catch (e) { setError(errorMessage(e, 'Önizleme oluşturulamadı.')); }
-    finally { setBusy(false); }
+  const handleClassChange = (newVc: string) => {
+    setVehicleClass(newVc);
+    setAmountStr('');
+    setFieldErrors({});
+    setError('');
+    setMessage('');
   };
 
-  const confirmImport = async () => {
-    if (!preview || !confirmed) return;
-    setBusy(true); setError(''); setMessage('');
+  useEffect(() => {
+    if (!classRequest || classRequest.pointId !== point.id) return;
+    handleClassChange(classRequest.vehicleClass);
+    amountInputRef.current?.focus();
+  }, [classRequest, point.id]);
+
+  const handleAdd = async () => {
+    const requiredErrors: Record<string, string> = {};
+    if (!entryGateName.trim()) requiredErrors.entryGateName = 'Giriş gişesi zorunludur.';
+    if (!exitGateName.trim()) requiredErrors.exitGateName = 'Çıkış gişesi zorunludur.';
+    if (!amountStr.trim()) requiredErrors.amount = 'Ücret zorunludur.';
+    if (Object.keys(requiredErrors).length > 0) {
+      setFieldErrors(requiredErrors);
+      return;
+    }
+    setBusy(true);
+    setError('');
+    setMessage('');
+    setFieldErrors({});
+
+    let responseHasFieldErrors = false;
     try {
-      const res = await fetch('/admin/api/pricing/tolls/import/confirm', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ importId: preview.importId, previewHash: preview.previewHash, confirm: true }),
+      const res = await fetch('/admin/api/pricing/tolls/tariffs/quick', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tollPointId: point.id,
+          entryGateName,
+          exitGateName,
+          amount: amountStr,
+          vehicleClass
+        }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'İçe aktarma onaylanamadı.');
-      setMessage(json.message || 'Çözülen tarifeler kaydedildi.'); setPreview(null); setFile(null); setConfirmed(false); onRefresh();
-    } catch (e) { setError(errorMessage(e, 'İçe aktarma onaylanamadı.')); }
-    finally { setBusy(false); }
+      if (!res.ok) {
+        if (json.fieldErrors) {
+          responseHasFieldErrors = true;
+          setFieldErrors(json.fieldErrors);
+        }
+        throw new Error(json.error || 'Tarife eklenemedi.');
+      }
+
+      setMessage('Tarife başarıyla eklendi.');
+      setAmountStr('');
+      onRefresh();
+
+      setTimeout(() => setMessage(''), 3000);
+    } catch (e: unknown) {
+      if (!responseHasFieldErrors) setError(errorMessage(e, 'Tarife eklenemedi.'));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
-    <div className="mx-5 md:mx-6 mb-5 rounded-xl border border-blue-200 bg-blue-50/60 p-4 space-y-3">
-      <div>
-        <h4 className="font-black text-sm text-blue-950">PDF / Excel’den tarife içe aktar</h4>
-        <p className="text-xs text-blue-900/80 mt-1 leading-relaxed">Yalnızca açıkça çözülen ve gözden geçirilen Sınıf 1–6 tutarları kaydedilir. Çözülemeyen sınıflar otomatik doldurulmaz ve atlanır.</p>
+    <div className="mx-5 md:mx-6 mt-5 mb-5 rounded-xl border border-blue-200 bg-blue-50/60 p-4 sm:p-5 shadow-sm">
+      <div className="mb-4">
+        <h4 className="font-black text-base text-blue-950">Hızlı Tarife Ekle</h4>
+        <p className="text-xs text-blue-900/80 mt-1 leading-relaxed">Değerleri girip doğrudan yeni bir onaylanmış tarife satırı oluşturun. Rota haritası olmadan anında kayıt.</p>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3">
-        <input type="file" accept=".pdf,.xls,.xlsx,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={e => setFile(e.target.files?.[0] ?? null)} className="w-full min-h-[44px] rounded-lg border border-blue-200 bg-white px-2 py-2 text-xs" />
-        <input type="date" aria-label="Tarifenin yürürlük tarihi" value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)} className="min-h-[44px] rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm" />
-      </div>
-      <button onClick={previewFile} disabled={busy || !file} className="min-h-[44px] w-full sm:w-auto px-4 py-2 rounded-lg bg-blue-700 text-white text-sm font-bold disabled:opacity-50">{busy ? 'İşleniyor…' : 'Önizleme oluştur'}</button>
-      {preview && <div className="space-y-2">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {preview.rows.map(row => <div key={row.classNumber} className="rounded-lg border border-blue-100 bg-white p-2.5 text-xs">
-            <div className="font-black text-slate-800">Sınıf {row.classNumber}: {row.status === 'RESOLVED' ? formatTRY(row.amountKurus) : 'Okunamadı, elle girin'}</div>
-            {row.status === 'RESOLVED' ? <div className="mt-1 text-slate-500 break-words">Kanıt: {row.evidence || '—'}</div> : <div className="mt-1 text-amber-700">{row.reason || 'Tutar açıkça bulunamadı.'}</div>}
-          </div>)}
+
+      <div className={`grid grid-cols-1 sm:grid-cols-2 ${point.pricingMode === 'GATE_PAIR' ? 'lg:grid-cols-5' : 'lg:grid-cols-3'} gap-3 items-start`}>
+        {point.pricingMode === 'GATE_PAIR' && (
+          <>
+            <div>
+              <label htmlFor="quick-tariff-entry-gate" className="block text-[10px] font-bold text-blue-900 uppercase tracking-wider mb-1.5">Giriş Gişesi</label>
+              <input
+                id="quick-tariff-entry-gate"
+                data-testid="quick-tariff-entry-gate"
+                type="text"
+                value={entryGateName}
+                onChange={e => { setEntryGateName(e.target.value); setFieldErrors(f => ({ ...f, entryGateName: '' })); }}
+                placeholder="Örn. Işıktepe"
+                className={`w-full min-h-[44px] rounded-lg border bg-white px-3 py-2 text-sm font-medium focus:outline-none focus:ring-1 shadow-sm transition-all ${fieldErrors.entryGateName ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : 'border-blue-200 focus:border-blue-500 focus:ring-blue-500'}`}
+              />
+              {fieldErrors.entryGateName && <div className="text-[10px] text-red-600 mt-1 font-bold">{fieldErrors.entryGateName}</div>}
+            </div>
+
+            <div>
+              <label htmlFor="quick-tariff-exit-gate" className="block text-[10px] font-bold text-blue-900 uppercase tracking-wider mb-1.5">Çıkış Gişesi</label>
+              <input
+                id="quick-tariff-exit-gate"
+                data-testid="quick-tariff-exit-gate"
+                type="text"
+                value={exitGateName}
+                onChange={e => { setExitGateName(e.target.value); setFieldErrors(f => ({ ...f, exitGateName: '' })); }}
+                placeholder="Örn. Kestel"
+                className={`w-full min-h-[44px] rounded-lg border bg-white px-3 py-2 text-sm font-medium focus:outline-none focus:ring-1 shadow-sm transition-all ${fieldErrors.exitGateName ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : 'border-blue-200 focus:border-blue-500 focus:ring-blue-500'}`}
+              />
+              {fieldErrors.exitGateName && <div className="text-[10px] text-red-600 mt-1 font-bold">{fieldErrors.exitGateName}</div>}
+            </div>
+          </>
+        )}
+
+        <div>
+          <label htmlFor="quick-tariff-amount" className="block text-[10px] font-bold text-blue-900 uppercase tracking-wider mb-1.5">Ücret (TRY)</label>
+          <input
+            ref={amountInputRef}
+            id="quick-tariff-amount"
+            data-testid="quick-tariff-amount"
+            type="text"
+            inputMode="decimal"
+            value={amountStr}
+            onChange={e => { setAmountStr(e.target.value); setFieldErrors(f => ({...f, amount: ''})); }}
+            placeholder="0.00"
+            className={`w-full min-h-[44px] rounded-lg border bg-white px-3 py-2 text-sm font-bold focus:outline-none focus:ring-1 shadow-sm transition-all ${fieldErrors.amount ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : 'border-blue-200 focus:border-blue-500 focus:ring-blue-500'}`}
+          />
+          {fieldErrors.amount && <div className="text-[10px] text-red-600 mt-1 font-bold">{fieldErrors.amount}</div>}
         </div>
-        <label className="flex items-start gap-2 min-h-[44px] text-xs font-bold text-blue-950">
-          <input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-1 w-5 h-5 shrink-0" />
-          Önizlemeyi kontrol ettim; yalnızca çözülen değerlerin kaydedileceğini, çözülemeyenlerin atlanacağını onaylıyorum.
-        </label>
-        <button onClick={confirmImport} disabled={busy || !confirmed} className="min-h-[44px] w-full px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-bold disabled:opacity-50">İçe aktarmayı onayla</button>
-      </div>}
-      {message && <div className="text-sm font-bold text-emerald-700">{message}</div>}
-      {error && <div className="text-sm font-bold text-red-700">{error}</div>}
+
+        <div>
+          <label htmlFor="quick-tariff-class" className="block text-[10px] font-bold text-blue-900 uppercase tracking-wider mb-1.5">Araç Sınıfı</label>
+          <select
+            id="quick-tariff-class"
+            data-testid="quick-tariff-class"
+            value={vehicleClass}
+            onChange={e => handleClassChange(e.target.value)}
+            className={`w-full min-h-[44px] rounded-lg border bg-white px-3 py-2 text-sm font-bold focus:outline-none focus:ring-1 shadow-sm transition-all ${fieldErrors.vehicleClass ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : 'border-blue-200 focus:border-blue-500 focus:ring-blue-500'}`}
+          >
+            {vehicleClasses.map(vc => (
+              <option key={vc} value={vc}>{vehicleClassLabel(vc)}</option>
+            ))}
+          </select>
+          {fieldErrors.vehicleClass && <div className="text-[10px] text-red-600 mt-1 font-bold">{fieldErrors.vehicleClass}</div>}
+        </div>
+
+        <div className="flex items-end pt-1 lg:pt-0 sm:col-span-2 lg:col-span-1">
+          <button
+            data-testid="quick-tariff-add"
+            onClick={handleAdd}
+            disabled={busy}
+            className="w-full min-h-[44px] rounded-lg bg-blue-700 text-white text-sm font-bold transition-colors hover:bg-blue-800 disabled:opacity-50 disabled:pointer-events-none shadow-sm flex items-center justify-center gap-2"
+          >
+            {busy ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+            {busy ? 'Ekleniyor...' : 'Tarife Ekle'}
+          </button>
+        </div>
+      </div>
+
+      {(error || message || fieldErrors._general) && (
+        <div className="mt-4 text-sm font-bold">
+          {error && <div className="text-red-700 bg-red-50 p-2 rounded-md border border-red-100">{error}</div>}
+          {fieldErrors._general && <div className="text-red-700 bg-red-50 p-2 rounded-md border border-red-100">{fieldErrors._general}</div>}
+          {message && <div className="text-emerald-700 bg-emerald-50 p-2 rounded-md border border-emerald-100">{message}</div>}
+        </div>
+      )}
     </div>
   );
 }
 
+
 function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, onSync }: { point: TollPoint, tariffs: TollTariff[], vehicleClasses: string[], onRefresh: () => void, onEditTariff: (vc: string, t?: TollTariff) => void, onSync: (t: TollTariff) => void }) {
+  const [quickTariffClassRequest, setQuickTariffClassRequest] = useState<QuickTariffClassRequest | null>(null);
+
+  const prepareQuickTariffClass = (vehicleClass: string) => {
+    setQuickTariffClassRequest({
+      pointId: point.id,
+      vehicleClass,
+      nonce: Date.now(),
+    });
+  };
+
   const [formData, setFormData] = useState({
     name: point.name,
     type: point.type,
@@ -1343,7 +1462,15 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
           </h3>
         </div>
 
-        <TariffImportPanel point={point} onRefresh={onRefresh} />
+        {point.pricingMode === 'GATE_PAIR' && (
+          <QuickTariffAdd
+            key={point.id}
+            point={point}
+            vehicleClasses={vehicleClasses}
+            onRefresh={onRefresh}
+            classRequest={quickTariffClassRequest}
+          />
+        )}
         <BulkIncreaseCard point={point} onRefresh={onRefresh} />
 
         {point.notes && (
@@ -1353,7 +1480,7 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
           </div>
         )}
         
-        <div className="p-5 md:p-6 flex flex-col gap-3">
+        <div className="p-5 md:p-6 flex flex-col gap-6">
           <p className="text-xs text-slate-500 leading-relaxed">“Bayat tarife” yalnızca yeniden gözden geçirme uyarısıdır; yürürlük tarihi girmek tek başına tarifeyi bayat yapmaz. Bayatlık, son inceleme zamanına göre değerlendirilir.</p>
           {vehicleClasses.map(vc => {
              const classTariffs = tariffs.filter(t => t.tollPointId === point.id && t.vehicleClass === vc && (t.active || t.amountKurus != null || t.manualAmountKurus != null || t.automaticAmountKurus != null));
@@ -1365,20 +1492,34 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
              const hasAnyRowAtAll = classTariffs.length > 0;
 
              return (
-               <div key={vc} className={`flex flex-col p-4 border rounded-xl gap-4 transition-all duration-200 ${classTariffs.length > 0 ? 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm' : 'border-dashed border-slate-300 bg-slate-50/50'}`}>
-                  <div className="flex flex-wrap items-center justify-between gap-3">
+               <section
+                 key={vc}
+                 data-testid={`tariff-class-section-${vc}`}
+                 className="flex flex-col gap-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 hover:border-blue-300 hover:shadow-md md:p-6"
+               >
+                  <div className="flex flex-col items-stretch justify-between gap-4 border-b border-slate-100 pb-4 sm:flex-row sm:items-center">
                     <div className="flex items-center gap-3">
-                      <span className="font-black text-slate-900 text-base tracking-tight">{vehicleClassLabel(vc)}</span>
+                       <h4 className="text-lg font-black tracking-tight text-slate-950 md:text-xl">
+                        {vehicleClassLabel(vc)} <span className="text-slate-500 font-medium ml-1">({classTariffs.length})</span>
+                       </h4>
                       {!isCovered && !hasAnyRowAtAll && point.notes && <span className="bg-slate-100 text-slate-600 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">Tarife Yok (Notu Kontrol Edin)</span>}
                       {!isCovered && (!point.notes || hasAnyRowAtAll) && <span className="bg-amber-100 text-amber-800 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">Eksik Tarife</span>}
                     </div>
-                     <button title="Tarife ekle" aria-label={`${vehicleClassLabel(vc)} tarife ekle`} onClick={() => onEditTariff(vc)} className="min-h-11 px-3 py-1.5 rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm border bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100">
+                      <button
+                        title="Tarife ekle"
+                        aria-label={`${vehicleClassLabel(vc)} tarife ekle`}
+                        data-testid={`prepare-quick-tariff-${vc}`}
+                        onClick={() => point.pricingMode === 'GATE_PAIR' ? prepareQuickTariffClass(vc) : onEditTariff(vc)}
+                        className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-bold text-blue-700 shadow-sm transition-colors hover:bg-blue-100 sm:w-auto"
+                      >
                       <Plus size={14} /> Tarife Ekle
                     </button>
                   </div>
 
                   {classTariffs.length === 0 ? (
-                    <div className="text-xs font-medium text-amber-800 leading-relaxed">Bu araç sınıfı için henüz aktif/geçerli tarife tanımlanmamış. Bu nokta seçili bir rota alternatifindeyse fiyat motoru teklifi güvenle durdurur; eksik veri olarak işaretlenir, asla 0 TRY varsayılmaz.</div>
+                    <div className="text-xs font-medium text-amber-800 bg-amber-50 p-3 rounded-lg border border-amber-200 leading-relaxed">
+                      <strong>Henüz tarife yok.</strong> Bu araç sınıfı için henüz aktif/geçerli tarife tanımlanmamış. Bu nokta seçili bir rota alternatifindeyse fiyat motoru teklifi güvenle durdurur; eksik veri olarak işaretlenir, asla 0 TRY varsayılmaz.
+                    </div>
                   ) : (
                     <div className="flex flex-col gap-3">
                       {!isCovered && (
@@ -1389,14 +1530,14 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
                       {classTariffs.map(tariff => {
                         const isEffectiveManual = tariff.manualAmountKurus != null;
                         return (
-                          <div key={tariff.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-slate-100 rounded-lg gap-4 bg-slate-50/60">
+                           <div key={tariff.id} data-testid={`tariff-row-${vc}`} className="flex flex-col justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4 sm:flex-row sm:items-center">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-2 flex-wrap">
                                 <span className="flex items-center gap-1 text-[10px] font-black text-slate-600 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded">
                                   <Clock size={11} /> {TIME_BAND_LABELS[tariff.timeBand]}
                                 </span>
                                 {!tariff.active && <span className="bg-red-100 text-red-800 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">Önceki tarife (pasif)</span>}
-                                {point.pricingMode === 'GATE_PAIR' && (tariff.entryGateName || tariff.exitGateName) && <span className="bg-purple-100 text-purple-800 text-[10px] font-black px-2 py-0.5 rounded tracking-wider">{tariff.entryGateName || '?'} → {tariff.exitGateName || '?'}</span>}
+                                {(tariff.entryGateName || tariff.exitGateName) && <span className="bg-purple-100 text-purple-800 text-[10px] font-black px-2 py-0.5 rounded tracking-wider">{tariff.entryGateName || '?'} → {tariff.exitGateName || '?'}</span>}
                                 {tariff.stale && (
                                   <span title={tariff.staleReasons?.map(r => STALE_REASON_LABELS[r]).join(' • ')} className="bg-orange-100 text-orange-800 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider flex items-center gap-1">
                                     <AlertCircle size={11} /> Bayat Tarife
@@ -1446,7 +1587,7 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
                       })}
                     </div>
                   )}
-               </div>
+               </section>
              );
           })}
         </div>

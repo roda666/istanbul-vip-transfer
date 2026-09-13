@@ -6,7 +6,12 @@ import type { NewTransferRoute } from '@/db/schema';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { revalidateAllHomepages } from '@/lib/homepage-revalidation';
-import { isValidTransferRouteImagePath, normalizeRouteImageAltText } from '@/lib/transfer-route-media';
+import {
+  deleteTransferRouteImageObject,
+  isStrictTransferRouteImagePath,
+  isValidTransferRouteImagePath,
+  normalizeRouteImageAltText,
+} from '@/lib/transfer-route-media';
 import { transferRouteDisplayOrder } from '@/lib/inventory-order';
 import { getPublishedTransferServices, resolvePublishedServiceSlug } from '@/lib/transfer-route-services';
 
@@ -160,6 +165,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     : undefined;
 
   try {
+    const [before] = await db.select({
+      imagePath: transferRoutes.imagePath,
+    }).from(transferRoutes).where(eq(transferRoutes.id, id)).limit(1);
     const updatePayload: Partial<NewTransferRoute> = {
       name: String(name),
       origin: String(origin),
@@ -207,18 +215,37 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       .returning();
 
     if (!row) return NextResponse.json({ error: 'Güzergah bulunamadı.' }, { status: 404 });
+    // The route row has been mutated, so it is now safe to remove the previous
+    // object when no other route still points at it. Translation work below
+    // must not leave an otherwise unreferenced old asset behind.
+    if (
+      before?.imagePath
+      && before.imagePath !== row.imagePath
+      && isStrictTransferRouteImagePath(before.imagePath)
+    ) {
+      const stillReferenced = await db.select({ id: transferRoutes.id })
+        .from(transferRoutes)
+        .where(eq(transferRoutes.imagePath, before.imagePath))
+        .limit(1);
+      if (!stillReferenced.length) await deleteTransferRouteImageObject(before.imagePath);
+    }
     const payloadTranslations = Array.isArray(body.translations) ? body.translations as TranslationPayload[] : [];
+    const existingBeforePayload = await db.select().from(transferRouteTranslations)
+      .where(eq(transferRouteTranslations.routeId, row.id));
+    const existingByLocale = new Map(existingBeforePayload.map((translation) => [translation.languageCode, translation]));
     for (const candidate of payloadTranslations) {
       const languageCode = text(candidate.languageCode);
       const title = text(candidate.title);
       const translatedDescription = text(candidate.description);
       if (!languageCode || languageCode === 'tr' || !title || !translatedDescription) continue;
+      const existing = existingByLocale.get(languageCode);
+      // A manual lock is durable: neither translated fields nor the lock
+      // itself may be changed by a normal route PUT payload.
+      if (existing?.isManuallyLocked) continue;
       const status = typeof candidate.status === 'string' && VALID_TRANSLATION_STATUSES.has(candidate.status)
         ? candidate.status as 'NOT_STARTED' | 'DRAFT' | 'REVIEW' | 'APPROVED' | 'PUBLISHED' | 'OUTDATED' | 'FAILED'
         : 'DRAFT';
-      await db.insert(transferRouteTranslations).values({
-        routeId: row.id,
-        languageCode,
+      const values = {
         title,
         description: translatedDescription,
         seoTitle: text(candidate.seoTitle),
@@ -233,30 +260,29 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         isManuallyLocked: candidate.isManuallyLocked === true,
         publishedAt: status === 'PUBLISHED' ? new Date() : null,
         updatedAt: new Date(),
-      }).onConflictDoUpdate({
-        target: [transferRouteTranslations.routeId, transferRouteTranslations.languageCode],
-        set: {
-          title,
-          description: translatedDescription,
-          seoTitle: text(candidate.seoTitle),
-          seoDescription: text(candidate.seoDescription),
-          ogTitle: text(candidate.ogTitle),
-          ogDescription: text(candidate.ogDescription),
-          introParagraph: text(candidate.introParagraph),
-          transportOptions: transportOptions(candidate.transportOptions),
-          routeNotes: routeNotes(candidate.routeNotes),
-          faqItems: faqItems(candidate.faqItems),
-          status,
-          isManuallyLocked: candidate.isManuallyLocked === true,
-          publishedAt: status === 'PUBLISHED' ? new Date() : null,
-          updatedAt: new Date(),
-        },
-      });
+      };
+      if (existing) {
+        await db.update(transferRouteTranslations).set(values).where(and(
+          eq(transferRouteTranslations.id, existing.id),
+          eq(transferRouteTranslations.isManuallyLocked, false),
+        ));
+      } else {
+        await db.insert(transferRouteTranslations).values({
+          routeId: row.id,
+          languageCode,
+          ...values,
+        }).onConflictDoNothing({
+          target: [transferRouteTranslations.routeId, transferRouteTranslations.languageCode],
+        });
+      }
     }
 
     const { fillMissingTranslations, AUTO_TRANSLATION_LOCALES } = await import('@/lib/ai/fill-missing-translations');
     const existingRows = await db.select().from(transferRouteTranslations)
       .where(eq(transferRouteTranslations.routeId, row.id));
+    const lockedLocales = new Set(existingRows
+      .filter((translation) => translation.isManuallyLocked)
+      .map((translation) => translation.languageCode));
     const existingMap = Object.fromEntries(existingRows.map((translation) => [
       translation.languageCode,
       translation.isManuallyLocked ? {
@@ -287,7 +313,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       introParagraph: text(introParagraph),
       origin: String(origin),
       destination: String(destination),
-    }, existingMap);
+    }, existingMap, { lockedLocales });
     const nameTranslations = { ...(row.nameTranslations ?? {}) };
     const originTranslations = { ...(row.originTranslations ?? {}) };
     const destinationTranslations = { ...(row.destinationTranslations ?? {}) };
@@ -402,8 +428,18 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const { id } = await params;
 
   try {
-    const [existing] = await db.select({ slug: transferRoutes.slug }).from(transferRoutes).where(eq(transferRoutes.id, id));
+    const [existing] = await db.select({
+      slug: transferRoutes.slug,
+      imagePath: transferRoutes.imagePath,
+    }).from(transferRoutes).where(eq(transferRoutes.id, id));
     await db.delete(transferRoutes).where(eq(transferRoutes.id, id));
+    if (existing?.imagePath && isStrictTransferRouteImagePath(existing.imagePath)) {
+      const stillReferenced = await db.select({ id: transferRoutes.id })
+        .from(transferRoutes)
+        .where(eq(transferRoutes.imagePath, existing.imagePath))
+        .limit(1);
+      if (!stillReferenced.length) await deleteTransferRouteImageObject(existing.imagePath);
+    }
     if (existing) {
       revalidatePath(`/guzergah/${existing.slug}`);
       for (const locale of ['en', 'de', 'ru', 'ar', 'fr', 'es', 'it', 'nl']) {

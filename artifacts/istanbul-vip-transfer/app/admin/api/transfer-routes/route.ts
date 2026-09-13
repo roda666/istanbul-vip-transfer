@@ -266,7 +266,11 @@ export async function POST(req: NextRequest) {
       introParagraph: optionalText(introParagraph),
       origin: String(origin),
       destination: String(destination),
-    }, existingMap);
+      }, existingMap, {
+        lockedLocales: new Set(existingRows
+          .filter((translation) => translation.isManuallyLocked)
+          .map((translation) => translation.languageCode)),
+      });
     const nameTranslations = { ...(row.nameTranslations ?? {}) };
     const originTranslations = { ...(row.originTranslations ?? {}) };
     const destinationTranslations = { ...(row.destinationTranslations ?? {}) };

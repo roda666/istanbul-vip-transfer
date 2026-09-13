@@ -5,6 +5,9 @@ export const AUTO_TRANSLATION_LOCALES = ['en', 'de', 'ru', 'ar', 'fr', 'es', 'it
 export type AutoTranslationLocale = typeof AUTO_TRANSLATION_LOCALES[number];
 export type TranslationFields = Record<string, string | null | undefined>;
 export type LocaleTranslationMap = Record<string, Record<string, string | null | undefined>>;
+export type FillMissingTranslationOptions = {
+  lockedLocales?: ReadonlySet<string> | readonly string[];
+};
 
 function present(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
@@ -17,10 +20,15 @@ function present(value: unknown): value is string {
 export async function fillMissingTranslations(
   source: TranslationFields,
   existing: LocaleTranslationMap = {},
+  options: FillMissingTranslationOptions = {},
 ): Promise<LocaleTranslationMap> {
   const result: LocaleTranslationMap = structuredClone(existing);
+  const lockedLocales = options.lockedLocales instanceof Set
+    ? options.lockedLocales
+    : new Set(options.lockedLocales ?? []);
 
   await Promise.all(AUTO_TRANSLATION_LOCALES.map(async (locale) => {
+    if (lockedLocales.has(locale)) return;
     const current = { ...(result[locale] ?? {}) };
     const missing = Object.fromEntries(
       Object.entries(source).filter(([key, value]) => present(value) && !present(current[key])),

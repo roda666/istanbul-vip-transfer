@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Plus, X, Check, Loader2, MapPinned } from 'lucide-react';
 import type {
   RouteFaqItem,
@@ -66,6 +66,45 @@ type RouteContentDraft = {
   routeNotes?: string[];
   faqItems?: RouteFaqItem[];
 };
+
+const REQUEST_TIMEOUT_MS = 45_000;
+
+function isJsonRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+async function readJsonResponse(response: Response): Promise<Record<string, unknown>> {
+  const text = await response.text();
+  if (!text.trim()) return {};
+  try {
+    const parsed: unknown = JSON.parse(text);
+    return isJsonRecord(parsed) ? parsed : {};
+  } catch {
+    if (!response.ok) return {};
+    throw new Error('Sunucudan geçersiz JSON yanıtı alındı.');
+  }
+}
+
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  const controller = new AbortController();
+  let timedOut = false;
+  const timeoutId = window.setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (timedOut) throw new Error('İşlem zaman aşımına uğradı. Lütfen tekrar deneyin.');
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
+function responseError(payload: Record<string, unknown>, fallback: string): string {
+  return typeof payload.error === 'string' ? payload.error : fallback;
+}
 
 function RouteContentFields({
   value,
@@ -166,10 +205,11 @@ function RouteContentFields({
 }
 
 // ── Route Image Editor ────────────────────────────────────────────────────────
-function RouteImageEditor({ imagePath, imageAlt, onImageChange, form }: { imagePath: string; imageAlt?: string | null; onImageChange: (path: string, alt?: string) => void; form: RouteDraft }) {
+function RouteImageEditor({ imagePath, imageAlt, onImageChange, onImageCreated, form }: { imagePath: string; imageAlt?: string | null; onImageChange: (path: string, alt?: string) => void; onImageCreated: (path: string) => void; form: RouteDraft }) {
   const [activeTab, setActiveTab] = useState<'upload' | 'url' | 'ai'>('upload');
   const [urlInput, setUrlInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const loadingRef = useRef(false);
   const [error, setError] = useState('');
   const [dragActive, setDragActive] = useState(false);
 
@@ -193,6 +233,8 @@ function RouteImageEditor({ imagePath, imageAlt, onImageChange, form }: { imageP
   };
 
   const uploadFile = async (file: File) => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     setLoading(true); setError('');
     try {
       const formData = new FormData();
@@ -202,25 +244,31 @@ function RouteImageEditor({ imagePath, imageAlt, onImageChange, form }: { imageP
       if (form.destination) formData.append('destination', form.destination);
       if (form.imageAlt) formData.append('altText', form.imageAlt);
 
-      const res = await fetch('/admin/api/transfer-routes/image', {
+      const res = await fetchWithTimeout('/admin/api/transfer-routes/image', {
         method: 'POST',
         body: formData,
       });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error ?? 'Yükleme başarısız');
-      if (json.image?.imagePath) onImageChange(json.image.imagePath, json.image.altText);
+      const json = await readJsonResponse(res);
+      if (!res.ok) throw new Error(responseError(json, 'Yükleme başarısız'));
+      const image = isJsonRecord(json.image) ? json.image : json;
+      const path = typeof image.imagePath === 'string' ? image.imagePath : '';
+      if (!path) throw new Error('Sunucu geçerli bir görsel yolu döndürmedi.');
+      onImageCreated(path);
+      onImageChange(path, typeof image.altText === 'string' ? image.altText : undefined);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Bir hata oluştu');
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
   };
 
   const handleUrl = async () => {
-    if (!urlInput) return;
+    if (!urlInput || loadingRef.current) return;
+    loadingRef.current = true;
     setLoading(true); setError('');
     try {
-      const res = await fetch('/admin/api/transfer-routes/image', {
+      const res = await fetchWithTimeout('/admin/api/transfer-routes/image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -231,23 +279,28 @@ function RouteImageEditor({ imagePath, imageAlt, onImageChange, form }: { imageP
           altText: form.imageAlt ?? undefined,
         }),
       });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error ?? 'URL ekleme başarısız');
-      if (json.image?.imagePath) {
-        onImageChange(json.image.imagePath, json.image.altText);
-        setUrlInput('');
-      }
+      const json = await readJsonResponse(res);
+      if (!res.ok) throw new Error(responseError(json, 'URL ekleme başarısız'));
+      const image = isJsonRecord(json.image) ? json.image : json;
+      const path = typeof image.imagePath === 'string' ? image.imagePath : '';
+      if (!path) throw new Error('Sunucu geçerli bir görsel yolu döndürmedi.');
+      onImageCreated(path);
+      onImageChange(path, typeof image.altText === 'string' ? image.altText : undefined);
+      setUrlInput('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Bir hata oluştu');
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
   };
 
   const handleAI = async () => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     setLoading(true); setError('');
     try {
-      const res = await fetch('/admin/api/transfer-routes/image', {
+      const res = await fetchWithTimeout('/admin/api/transfer-routes/image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -258,14 +311,17 @@ function RouteImageEditor({ imagePath, imageAlt, onImageChange, form }: { imageP
           altText: form.imageAlt ?? undefined,
         }),
       });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error ?? 'AI ile oluşturma başarısız');
-      if (json.image?.imagePath) {
-        onImageChange(json.image.imagePath, json.image.altText);
-      }
+      const json = await readJsonResponse(res);
+      if (!res.ok) throw new Error(responseError(json, 'AI ile oluşturma başarısız'));
+      const image = isJsonRecord(json.image) ? json.image : json;
+      const path = typeof image.imagePath === 'string' ? image.imagePath : '';
+      if (!path) throw new Error('Sunucu geçerli bir görsel yolu döndürmedi.');
+      onImageCreated(path);
+      onImageChange(path, typeof image.altText === 'string' ? image.altText : undefined);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Bir hata oluştu');
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
   };
@@ -284,8 +340,8 @@ function RouteImageEditor({ imagePath, imageAlt, onImageChange, form }: { imageP
               </div>
             </div>
             <div>
-              <label style={labelStyle}>Alternatif Metin (Alt Text)</label>
-              <input style={inputStyle} value={imageAlt ?? ''} onChange={e => onImageChange(imagePath, e.target.value)} placeholder="Görseli açıklayan metin" />
+              <label htmlFor="transfer-route-image-alt" style={labelStyle}>Alternatif Metin (Alt Text)</label>
+              <input id="transfer-route-image-alt" style={inputStyle} value={imageAlt ?? ''} onChange={e => onImageChange(imagePath, e.target.value)} placeholder="Görseli açıklayan metin" />
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button type="button" onClick={() => onImageChange('', '')} style={{ minHeight: '44px', fontSize: '13px', color: '#D64545', background: 'none', border: `1px solid #FECACA`, borderRadius: '6px', cursor: 'pointer', padding: '0 16px', fontWeight: 600 }}>Kaldır / Değiştir</button>
@@ -336,7 +392,7 @@ function RouteImageEditor({ imagePath, imageAlt, onImageChange, form }: { imageP
         {activeTab === 'url' && (
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <input style={{ ...inputStyle, flex: '1 1 200px' }} placeholder="https://example.com/image.jpg" value={urlInput} onChange={e => setUrlInput(e.target.value)} disabled={loading} />
-            <button type="button" onClick={handleUrl} disabled={loading || !urlInput} style={{ minHeight: '44px', background: '#2563EB', color: '#FFF', border: 'none', borderRadius: '6px', padding: '0 20px', fontSize: '13px', fontWeight: 600, cursor: loading || !urlInput ? 'not-allowed' : 'pointer', opacity: loading || !urlInput ? 0.6 : 1, flex: '0 0 auto' }}>
+             <button type="button" onClick={handleUrl} disabled={loading || !urlInput} style={{ minHeight: '44px', background: '#2563EB', color: '#FFF', border: 'none', borderRadius: '6px', padding: '0 20px', fontSize: '13px', fontWeight: 600, cursor: loading || !urlInput ? 'not-allowed' : 'pointer', opacity: loading || !urlInput ? 0.6 : 1, flex: '0 0 auto' }}>
               {loading ? <Loader2 size={16} className="animate-spin" /> : 'Ekle'}
             </button>
           </div>
@@ -392,8 +448,19 @@ function RouteModal({ route, locationOptions, vehicleOptions, serviceOptions, on
   const [distanceMessage, setDistanceMessage] = useState('');
 
   const [aiFilling, setAiFilling] = useState(false);
+  const aiFillingRef = useRef(false);
   const [aiFillMessage, setAiFillMessage] = useState('');
+  const [aiImageGenerating, setAiImageGenerating] = useState(false);
+  const aiImageGeneratingRef = useRef(false);
+  const [aiImageMessage, setAiImageMessage] = useState('');
+  const [closing, setClosing] = useState(false);
   const [aiFillIncludeImage, setAiFillIncludeImage] = useState(true);
+  const sessionImagePathsRef = useRef<Set<string>>(new Set());
+  const deletingImagePathsRef = useRef<Map<string, Promise<void>>>(new Map());
+  const sessionOpenRef = useRef(true);
+  useEffect(() => () => {
+    sessionOpenRef.current = false;
+  }, []);
 
   const groupedLocations = useMemo(() => groupManagedLocationOptions(locationOptions), [locationOptions]);
   const set = <K extends keyof RouteDraft>(key: K, val: RouteDraft[K]) => setForm(f => ({ ...f, [key]: val }));
@@ -424,8 +491,97 @@ function RouteModal({ route, locationOptions, vehicleOptions, serviceOptions, on
     });
   };
 
+  const deleteTemporaryImage = (path: string, force = false): Promise<void> => {
+    if (!path || (!force && !sessionImagePathsRef.current.has(path))) return Promise.resolve();
+    const existing = deletingImagePathsRef.current.get(path);
+    if (existing) return existing;
+    const deletion = (async () => {
+      try {
+        const response = await fetchWithTimeout('/admin/api/transfer-routes/image', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imagePath: path }),
+        });
+        const payload = await readJsonResponse(response);
+        if (!response.ok) throw new Error(responseError(payload, 'Geçici görsel silinemedi.'));
+        sessionImagePathsRef.current.delete(path);
+      } catch (error) {
+        setAiImageMessage(error instanceof Error ? error.message : 'Geçici görsel silinemedi.');
+      } finally {
+        deletingImagePathsRef.current.delete(path);
+      }
+    })();
+    deletingImagePathsRef.current.set(path, deletion);
+    return deletion;
+  };
+
+  const registerCreatedImage = (path: string) => {
+    if (!path) return;
+    if (sessionOpenRef.current) sessionImagePathsRef.current.add(path);
+    else void deleteTemporaryImage(path, true);
+  };
+
+  const changeImage = (path: string, alt?: string) => {
+    if (!sessionOpenRef.current) {
+      if (path) void deleteTemporaryImage(path, true);
+      return;
+    }
+    const previousPath = form.imagePath ?? '';
+    if (previousPath && previousPath !== path && sessionImagePathsRef.current.has(previousPath)) {
+      void deleteTemporaryImage(previousPath);
+    }
+    setForm(current => ({ ...current, imagePath: path, imageAlt: alt }));
+  };
+
+  const closeModal = async () => {
+    if (closing) return;
+    setClosing(true);
+    sessionOpenRef.current = false;
+    await Promise.allSettled(
+      Array.from(sessionImagePathsRef.current, path => deleteTemporaryImage(path)),
+    );
+    onClose();
+  };
+
+  const generateAiFillImage = async (sourceForm: RouteDraft) => {
+    if (aiImageGeneratingRef.current || !sourceForm.origin || !sourceForm.destination) return;
+    aiImageGeneratingRef.current = true;
+    setAiImageGenerating(true);
+    setAiImageMessage('Görsel oluşturuluyor…');
+    try {
+      const response = await fetchWithTimeout('/admin/api/transfer-routes/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'generate',
+          name: sourceForm.name,
+          origin: sourceForm.origin,
+          destination: sourceForm.destination,
+          altText: sourceForm.imageAlt ?? undefined,
+        }),
+      });
+      const payload = await readJsonResponse(response);
+      if (!response.ok) throw new Error(responseError(payload, 'AI görseli oluşturulamadı.'));
+      const image = isJsonRecord(payload.image) ? payload.image : payload;
+      const path = typeof image.imagePath === 'string' ? image.imagePath : '';
+      if (!path) throw new Error('Sunucu geçerli bir görsel yolu döndürmedi.');
+      registerCreatedImage(path);
+      if (sessionOpenRef.current) {
+        changeImage(path, typeof image.altText === 'string' ? image.altText : undefined);
+        setAiImageMessage('Görsel başarıyla oluşturuldu.');
+      } else {
+        await deleteTemporaryImage(path, true);
+      }
+    } catch (error) {
+      setAiImageMessage(error instanceof Error ? error.message : 'Görsel oluşturulamadı.');
+    } finally {
+      aiImageGeneratingRef.current = false;
+      setAiImageGenerating(false);
+    }
+  };
+
   const fillWithAI = async () => {
-    if (!form.name || !form.origin || !form.destination) return;
+    if (aiFillingRef.current || !form.name || !form.origin || !form.destination) return;
 
     const hasContent = !!(
       form.description || form.introParagraph || (form.transportOptions && form.transportOptions.length > 0) ||
@@ -438,10 +594,14 @@ function RouteModal({ route, locationOptions, vehicleOptions, serviceOptions, on
       overwrite = window.confirm('Mevcut içerikleriniz (açıklama, SEO, SSS vb.) yapay zeka tarafından üretilen yeni içeriklerle değiştirilsin mi? (İptal derseniz yalnızca boş alanlar doldurulacaktır)');
     }
 
+    aiFillingRef.current = true;
     setAiFilling(true);
     setAiFillMessage('');
+    setAiImageMessage('');
+    const includeImageAfterText = aiFillIncludeImage;
+    let textPayload: Record<string, unknown> | null = null;
     try {
-      const response = await fetch('/admin/api/transfer-routes/ai-fill', {
+      const response = await fetchWithTimeout('/admin/api/transfer-routes/ai-fill', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -450,18 +610,20 @@ function RouteModal({ route, locationOptions, vehicleOptions, serviceOptions, on
           destination: form.destination,
           originLocationId: form.originLocationId,
           destinationLocationId: form.destinationLocationId,
-          includeImage: aiFillIncludeImage,
+          includeImage: false,
           overwrite,
         }),
       });
 
-      const payload = await response.json().catch(() => null);
+      const payload = await readJsonResponse(response);
       if (!response.ok) {
-        setAiFillMessage(payload?.error ?? 'AI ile doldurma işlemi başarısız oldu.');
+        setAiFillMessage(responseError(payload, 'AI ile doldurma işlemi başarısız oldu.'));
         return;
       }
+      textPayload = payload;
 
       setForm(current => {
+        const content = isJsonRecord(payload.content) ? payload.content : {};
         const mergeStr = (oldVal: string | null | undefined, newVal: string | null | undefined) =>
           (!overwrite && oldVal && oldVal.trim().length > 0) ? oldVal : (newVal ?? oldVal ?? undefined);
 
@@ -469,15 +631,24 @@ function RouteModal({ route, locationOptions, vehicleOptions, serviceOptions, on
           (!overwrite && oldArr && oldArr.length > 0) ? oldArr : (newArr ?? oldArr ?? undefined);
 
         const hasVerifiedPayload = payload.distanceSource === 'ADMIN_VERIFIED';
+        const payloadDistanceSource = typeof payload.distanceSource === 'string'
+          ? payload.distanceSource as RouteDraft['distanceSource']
+          : current.distanceSource;
+        const payloadDistanceKm = typeof payload.distanceKm === 'number'
+          ? payload.distanceKm
+          : current.distanceKm;
+        const payloadDurationMinutes = typeof payload.durationMinutes === 'number'
+          ? payload.durationMinutes
+          : current.durationMinutes;
         const distanceSource = hasVerifiedPayload
           ? 'ADMIN_VERIFIED'
-          : (payload.distanceSource ?? current.distanceSource);
+          : payloadDistanceSource;
         const distanceKm = hasVerifiedPayload
-          ? payload.distanceKm
-          : (payload.distanceKm ?? current.distanceKm);
+          ? payloadDistanceKm
+          : payloadDistanceKm;
         const durationMinutes = hasVerifiedPayload
-          ? payload.durationMinutes
-          : (payload.durationMinutes ?? current.durationMinutes);
+          ? payloadDurationMinutes
+          : payloadDurationMinutes;
         const keepExistingImage = !overwrite && Boolean(current.imagePath?.trim());
 
         return {
@@ -485,27 +656,30 @@ function RouteModal({ route, locationOptions, vehicleOptions, serviceOptions, on
           distanceKm,
           durationMinutes,
           distanceSource,
-          description: mergeStr(current.description, payload.content?.description),
-          introParagraph: mergeStr(current.introParagraph, payload.content?.introParagraph),
-          transportOptions: mergeArr(current.transportOptions, payload.content?.transportOptions),
-          routeNotes: mergeArr(current.routeNotes, payload.content?.routeNotes),
-          faqItems: mergeArr(current.faqItems, payload.content?.faqItems),
-          seoTitle: mergeStr(current.seoTitle, payload.content?.seoTitle),
-          seoDescription: mergeStr(current.seoDescription, payload.content?.seoDescription),
-          ogTitle: mergeStr(current.ogTitle, payload.content?.ogTitle),
-          ogDescription: mergeStr(current.ogDescription, payload.content?.ogDescription),
-          relatedServiceSlug: mergeStr(current.relatedServiceSlug, payload.content?.relatedServiceSlug),
-          imagePath: mergeStr(current.imagePath, payload.image?.imagePath),
+          description: mergeStr(current.description, typeof content.description === 'string' ? content.description : undefined),
+          introParagraph: mergeStr(current.introParagraph, typeof content.introParagraph === 'string' ? content.introParagraph : undefined),
+          transportOptions: mergeArr(current.transportOptions, Array.isArray(content.transportOptions) ? content.transportOptions as RouteTransportOption[] : undefined),
+          routeNotes: mergeArr(current.routeNotes, Array.isArray(content.routeNotes) ? content.routeNotes as string[] : undefined),
+          faqItems: mergeArr(current.faqItems, Array.isArray(content.faqItems) ? content.faqItems as RouteFaqItem[] : undefined),
+          seoTitle: mergeStr(current.seoTitle, typeof content.seoTitle === 'string' ? content.seoTitle : undefined),
+          seoDescription: mergeStr(current.seoDescription, typeof content.seoDescription === 'string' ? content.seoDescription : undefined),
+          ogTitle: mergeStr(current.ogTitle, typeof content.ogTitle === 'string' ? content.ogTitle : undefined),
+          ogDescription: mergeStr(current.ogDescription, typeof content.ogDescription === 'string' ? content.ogDescription : undefined),
+          relatedServiceSlug: mergeStr(current.relatedServiceSlug, typeof content.relatedServiceSlug === 'string' ? content.relatedServiceSlug : undefined),
           imageAlt: keepExistingImage
             ? current.imageAlt
-            : mergeStr(current.imageAlt, payload.image?.altText),
+            : current.imageAlt,
         };
       });
-      setAiFillMessage('Güzergâh başarıyla dolduruldu.');
-    } catch {
-      setAiFillMessage('Bağlantı hatası oluştu. Lütfen tekrar deneyin.');
+      setAiFillMessage('Metin alanları başarıyla dolduruldu.');
+    } catch (error) {
+      setAiFillMessage(error instanceof Error ? error.message : 'Bağlantı hatası oluştu. Lütfen tekrar deneyin.');
     } finally {
+      aiFillingRef.current = false;
       setAiFilling(false);
+    }
+    if (textPayload && includeImageAfterText) {
+      void generateAiFillImage(form);
     }
   };
 
@@ -530,7 +704,7 @@ function RouteModal({ route, locationOptions, vehicleOptions, serviceOptions, on
     setResolvingDistance(true);
     setDistanceMessage('');
     try {
-      const response = await fetch('/admin/api/location-distance', {
+      const response = await fetchWithTimeout('/admin/api/location-distance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -538,12 +712,13 @@ function RouteModal({ route, locationOptions, vehicleOptions, serviceOptions, on
           destinationLocationId: form.destinationLocationId,
         }),
       });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok || !payload?.result || payload.result.state === 'UNAVAILABLE') {
-        setDistanceMessage(payload?.error ?? 'Google Maps yol mesafesi hesaplanamadı.');
+      const payload = await readJsonResponse(response);
+      const resultPayload = isJsonRecord(payload.result) ? payload.result : null;
+      if (!response.ok || !resultPayload || resultPayload.state === 'UNAVAILABLE') {
+        setDistanceMessage(responseError(payload, 'Google Maps yol mesafesi hesaplanamadı.'));
         return;
       }
-       const result = payload.result as { distanceKm: number; durationMinutes?: number; source: string; roadDistanceMultiplier?: number };
+       const result = resultPayload as { distanceKm: number; durationMinutes?: number; source: string; roadDistanceMultiplier?: number };
       setForm((current) => ({
         ...current,
         distanceKm: result.distanceKm,
@@ -570,23 +745,53 @@ function RouteModal({ route, locationOptions, vehicleOptions, serviceOptions, on
     }
   };
 
+  const localeStripRef = useRef<HTMLDivElement | null>(null);
+  const localeTabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const localeCodes = useMemo(() => ['tr', ...LOCALES.map(([code]) => code)], []);
+  const focusLocale = (code: string) => {
+    setActiveLocale(code);
+    window.requestAnimationFrame(() => localeTabRefs.current[code]?.focus());
+  };
+  const handleLocaleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, code: string) => {
+    const currentIndex = localeCodes.indexOf(code);
+    let nextIndex: number | null = null;
+    if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % localeCodes.length;
+    if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + localeCodes.length) % localeCodes.length;
+    if (event.key === 'Home') nextIndex = 0;
+    if (event.key === 'End') nextIndex = localeCodes.length - 1;
+    if (nextIndex == null) return;
+    event.preventDefault();
+    focusLocale(localeCodes[nextIndex]);
+  };
+  useEffect(() => {
+    const strip = localeStripRef.current;
+    const tab = localeTabRefs.current[activeLocale];
+    if (!strip || !tab) return;
+    const tabStart = tab.offsetLeft;
+    const tabEnd = tabStart + tab.offsetWidth;
+    const visibleStart = strip.scrollLeft;
+    const visibleEnd = visibleStart + strip.clientWidth;
+    if (tabStart < visibleStart) strip.scrollLeft = Math.max(0, tabStart - 8);
+    else if (tabEnd > visibleEnd) strip.scrollLeft = tabEnd - strip.clientWidth + 8;
+  }, [activeLocale]);
+
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(23,43,58,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
-      <div style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '24px', maxWidth: '780px', width: '100%', maxHeight: 'calc(100dvh - 32px)', boxSizing: 'border-box', boxShadow: '0 8px 40px rgba(23,43,58,0.14)', margin: 'auto', display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(23,43,58,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto', overscrollBehavior: 'contain' }}>
+      <div style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '24px', maxWidth: '780px', width: '100%', maxHeight: 'calc(100dvh - 32px)', boxSizing: 'border-box', boxShadow: '0 8px 40px rgba(23,43,58,0.14)', margin: 'auto', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', minWidth: 0, flex: '0 0 auto' }}>
           <h2 style={{ color: TEXT, fontSize: '18px', fontFamily: 'Inter, sans-serif', fontWeight: 700, margin: 0, minWidth: 0, overflowWrap: 'anywhere' }}>
             {form.id ? 'Güzergahı Düzenle' : 'Yeni Güzergah Ekle'}
           </h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: MUTED, padding: '4px', borderRadius: '6px', minHeight: '44px', minWidth: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={20} /></button>
+          <button onClick={closeModal} disabled={closing || saving} style={{ background: 'none', border: 'none', cursor: closing || saving ? 'wait' : 'pointer', color: MUTED, padding: '4px', borderRadius: '6px', minHeight: '44px', minWidth: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={20} /></button>
         </div>
 
-        <div style={{ minWidth: 0, overflowY: 'auto', paddingRight: '2px' }}>
-        <div aria-label="Güzergâh içerik dilleri" style={{ display: 'flex', gap: '8px', overflowX: 'auto', overflowY: 'hidden', maxWidth: '100%', minWidth: 0, paddingBottom: '12px', borderBottom: `1px solid ${BORDER}`, marginBottom: '20px', WebkitOverflowScrolling: 'touch' }}>
-          <button type="button" onClick={() => setActiveLocale('tr')} style={{ minHeight: '44px', flex: '0 0 auto', border: `1px solid ${activeLocale === 'tr' ? '#2563EB' : BORDER}`, borderRadius: '7px', background: activeLocale === 'tr' ? '#EFF6FF' : BG, color: activeLocale === 'tr' ? '#2563EB' : MUTED, padding: '0 16px', cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: 700, fontSize: '13px' }}>Türkçe kaynak</button>
+        <div style={{ flex: '1 1 auto', minHeight: 0, minWidth: 0, overflowY: 'auto', paddingRight: '2px', overscrollBehavior: 'contain' }}>
+        <div ref={localeStripRef} role="tablist" aria-label="Güzergâh içerik dilleri" onWheel={(event) => { if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) { event.currentTarget.scrollLeft += event.deltaY; event.preventDefault(); } }} style={{ display: 'flex', gap: '8px', overflowX: 'auto', overflowY: 'hidden', maxWidth: '100%', minWidth: 0, paddingBottom: '12px', borderBottom: `1px solid ${BORDER}`, marginBottom: '20px', WebkitOverflowScrolling: 'touch', overscrollBehaviorX: 'contain' }}>
+          <button ref={(element) => { localeTabRefs.current.tr = element; }} role="tab" aria-selected={activeLocale === 'tr'} tabIndex={activeLocale === 'tr' ? 0 : -1} type="button" onClick={() => setActiveLocale('tr')} onKeyDown={(event) => handleLocaleKeyDown(event, 'tr')} style={{ minHeight: '44px', flex: '0 0 auto', border: `1px solid ${activeLocale === 'tr' ? '#2563EB' : BORDER}`, borderRadius: '7px', background: activeLocale === 'tr' ? '#EFF6FF' : BG, color: activeLocale === 'tr' ? '#2563EB' : MUTED, padding: '0 16px', cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: 700, fontSize: '13px' }}>Türkçe kaynak</button>
           {LOCALES.map(([code, label]) => {
             const status = form.translations?.find((item) => item.languageCode === code)?.status;
-            return <button key={code} type="button" onClick={() => setActiveLocale(code)} style={{ minHeight: '44px', flex: '0 0 auto', border: `1px solid ${activeLocale === code ? '#2563EB' : BORDER}`, borderRadius: '7px', background: activeLocale === code ? '#EFF6FF' : BG, color: activeLocale === code ? '#2563EB' : MUTED, padding: '0 16px', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 500 }}>{label}{status === 'PUBLISHED' ? ' • ✓' : ''}</button>;
+            return <button ref={(element) => { localeTabRefs.current[code] = element; }} role="tab" aria-selected={activeLocale === code} tabIndex={activeLocale === code ? 0 : -1} key={code} type="button" onClick={() => setActiveLocale(code)} onKeyDown={(event) => handleLocaleKeyDown(event, code)} style={{ minHeight: '44px', flex: '0 0 auto', border: `1px solid ${activeLocale === code ? '#2563EB' : BORDER}`, borderRadius: '7px', background: activeLocale === code ? '#EFF6FF' : BG, color: activeLocale === code ? '#2563EB' : MUTED, padding: '0 16px', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 500 }}>{label}{status === 'PUBLISHED' ? ' • ✓' : ''}</button>;
           })}
         </div>
 
@@ -625,21 +830,21 @@ function RouteModal({ route, locationOptions, vehicleOptions, serviceOptions, on
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#0369A1', cursor: 'pointer', userSelect: 'none', minHeight: '44px' }}>
-                  <input type="checkbox" checked={aiFillIncludeImage} onChange={e => setAiFillIncludeImage(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
+                   <input type="checkbox" checked={aiFillIncludeImage} onChange={e => setAiFillIncludeImage(e.target.checked)} disabled={aiFilling} style={{ width: '16px', height: '16px', cursor: aiFilling ? 'not-allowed' : 'pointer' }} />
                   Görseli de oluştur
                 </label>
-                <button
+                 <button
                   type="button"
                   onClick={fillWithAI}
-                  disabled={aiFilling || !form.name || !form.origin || !form.destination}
+                    disabled={aiFilling || !form.name || !form.origin || !form.destination}
                   style={{
                     minHeight: '44px', background: '#0EA5E9', border: 'none', borderRadius: '8px', color: '#FFF',
-                    padding: '0 20px', fontSize: '13px', fontWeight: 600, cursor: aiFilling || !form.name || !form.origin || !form.destination ? 'not-allowed' : 'pointer',
-                    opacity: aiFilling || !form.name || !form.origin || !form.destination ? 0.6 : 1,
+                     padding: '0 20px', fontSize: '13px', fontWeight: 600, cursor: aiFilling || !form.name || !form.origin || !form.destination ? 'not-allowed' : 'pointer',
+                     opacity: aiFilling || !form.name || !form.origin || !form.destination ? 0.6 : 1,
                     display: 'flex', alignItems: 'center', gap: '8px'
                   }}
                 >
-                  {aiFilling && <Loader2 size={16} className="animate-spin" />}
+                   {aiFilling && <Loader2 size={16} className="animate-spin" />}
                   Otomatik Doldur
                 </button>
               </div>
@@ -647,6 +852,12 @@ function RouteModal({ route, locationOptions, vehicleOptions, serviceOptions, on
             {aiFillMessage && (
               <div style={{ fontSize: '13px', color: aiFillMessage.includes('başarı') ? '#15803D' : '#B91C1C', fontWeight: 500, padding: '12px', background: aiFillMessage.includes('başarı') ? '#F0FDF4' : '#FEF2F2', borderRadius: '6px', border: `1px solid ${aiFillMessage.includes('başarı') ? '#BBF7D0' : '#FECACA'}` }}>
                 {aiFillMessage}
+              </div>
+            )}
+            {aiImageMessage && (
+              <div style={{ fontSize: '13px', color: aiImageMessage.includes('başarı') || aiImageMessage.includes('oluşturuluyor') ? '#0369A1' : '#B91C1C', fontWeight: 500, padding: '12px', background: aiImageMessage.includes('başarı') || aiImageMessage.includes('oluşturuluyor') ? '#F0F9FF' : '#FEF2F2', borderRadius: '6px', border: `1px solid ${aiImageMessage.includes('başarı') || aiImageMessage.includes('oluşturuluyor') ? '#BAE6FD' : '#FECACA'}`, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {aiImageGenerating && <Loader2 size={16} className="animate-spin" />}
+                {aiImageMessage}
               </div>
             )}
           </div>
@@ -755,7 +966,8 @@ function RouteModal({ route, locationOptions, vehicleOptions, serviceOptions, on
             <RouteImageEditor
               imagePath={form.imagePath ?? ''}
               imageAlt={form.imageAlt ?? ''}
-              onImageChange={(path, alt) => setForm(f => ({ ...f, imagePath: path, imageAlt: alt }))}
+               onImageCreated={registerCreatedImage}
+               onImageChange={changeImage}
               form={form}
             />
           </div>
@@ -808,11 +1020,11 @@ function RouteModal({ route, locationOptions, vehicleOptions, serviceOptions, on
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '16px', paddingTop: '16px', borderTop: `1px solid ${BORDER}`, flexWrap: 'wrap', flex: '0 0 auto', background: BG }}>
-          <button onClick={onClose} disabled={saving} style={{ minHeight: '44px', background: BG, border: `1px solid ${BORDER}`, borderRadius: '8px', color: MUTED, cursor: 'pointer', padding: '0 24px', fontSize: '13px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>İptal</button>
+          <button onClick={closeModal} disabled={saving || closing} style={{ minHeight: '44px', background: BG, border: `1px solid ${BORDER}`, borderRadius: '8px', color: MUTED, cursor: saving || closing ? 'wait' : 'pointer', padding: '0 24px', fontSize: '13px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>İptal</button>
           <button
             onClick={() => onSave(form)}
-            disabled={saving || !form.name || !form.origin || !form.destination}
-            style={{ minHeight: '44px', background: '#2563EB', border: 'none', borderRadius: '8px', color: '#FFFFFF', cursor: saving ? 'wait' : 'pointer', padding: '0 24px', fontSize: '13px', fontFamily: 'Inter, sans-serif', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', opacity: saving ? 0.7 : 1 }}
+             disabled={saving || closing || aiFilling || !form.name || !form.origin || !form.destination}
+             style={{ minHeight: '44px', background: '#2563EB', border: 'none', borderRadius: '8px', color: '#FFFFFF', cursor: saving || closing || aiFilling ? 'wait' : 'pointer', padding: '0 24px', fontSize: '13px', fontFamily: 'Inter, sans-serif', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', opacity: saving || closing || aiFilling ? 0.7 : 1 }}
           >
             <Check size={16} />
             {saving ? 'Kaydediliyor…' : 'Kaydet'}

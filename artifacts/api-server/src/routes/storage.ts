@@ -135,7 +135,11 @@ router.get('/storage/objects/*path', async (req: Request, res: Response) => {
     const isAiImage = /^ai-images\/(?:blog|service)\/[a-z0-9-]+\/(?:section-images\/)?[a-z0-9]+(?:-[a-z0-9]+)*\.webp$/i.test(wildcardPath);
     // Legacy Studio project images are retained for already-created projects.
     const isLegacyStudioImage = /^studio\/[0-9a-f-]{36}\/\d+\.(?:png|webp)$/i.test(wildcardPath);
-    if (!isServicePage && !isAiImage && !isLegacyStudioImage) {
+    // Transfer route images are the only route-specific objects exposed
+    // publicly: slug + canonical UUID + WebP, with no arbitrary bucket path.
+    const isTransferRouteImage =
+      /^transfer-routes\/[a-z0-9-]+\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.webp$/.test(wildcardPath);
+    if (!isServicePage && !isAiImage && !isLegacyStudioImage && !isTransferRouteImage) {
       res.status(403).json({ error: 'Access restricted' });
       return;
     }

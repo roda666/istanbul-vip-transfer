@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/auth/session';
 import { resolveLocationDistance } from '@/lib/location-distance';
-import { generateStrictJsonDraft, generateImageAsset } from '@/lib/studio/ai-studio';
+import { generateStrictJsonDraft } from '@/lib/studio/ai-studio';
 import {
   parseTransferRouteAiDraft,
   validateTransferRouteAiInput,
 } from '@/lib/transfer-route-ai';
-import { probeAndOptimizeTransferRouteImage, storeTransferRouteImage } from '@/lib/transfer-route-media';
 import { getPublishedTransferServices } from '@/lib/transfer-route-services';
 
 export const dynamic = 'force-dynamic';
@@ -119,31 +118,6 @@ Yalnızca bu verilerle rota form taslağını üret.`;
     return NextResponse.json({ error: 'AI yanıtı beklenen güvenli rota şemasını karşılamıyor.' }, { status: 502 });
   }
 
-  let image: { imagePath: string; altText: string } | undefined;
-  if (input.data.includeImage) {
-    const altText = `${input.data.origin} - ${input.data.destination} VIP transfer`;
-    const imageResult = await generateImageAsset({
-      prompt: `Realistic premium chauffeur transfer vehicle on an Istanbul route, elegant airport arrival atmosphere, refined neutral colors, wide cinematic 16:9 travel photography composition`,
-      altText,
-    });
-    if (!imageResult.ok) {
-      return NextResponse.json({ error: imageResult.message }, { status: aiStatus(imageResult.reason) });
-    }
-    const slugPart = `${input.data.origin}-${input.data.destination}`
-      .toLocaleLowerCase('tr-TR')
-      .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
-      .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
-      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 100) || 'rota';
-    const routeImage = await probeAndOptimizeTransferRouteImage('image/webp', imageResult.data.bytes);
-    if (!routeImage) return NextResponse.json({ error: 'Üretilen görsel güvenli 16:9 biçimine dönüştürülemedi.' }, { status: 502 });
-    const stored = await storeTransferRouteImage(
-      `transfer-routes/${slugPart}/${crypto.randomUUID()}.webp`,
-      routeImage.bytes,
-    );
-    if (!stored.ok) return NextResponse.json({ error: stored.message }, { status: 503 });
-    image = { imagePath: stored.path, altText: imageResult.data.altText };
-  }
-
   return NextResponse.json({
     draft,
     // Compatibility envelope for the existing admin draft editor.  This is
@@ -160,6 +134,5 @@ Yalnızca bu verilerle rota form taslağını üret.`;
       source: 'google_maps',
       calculatedAt: verified.calculatedAt,
     },
-    ...(image ? { image } : {}),
   }, { status: 200 });
 }

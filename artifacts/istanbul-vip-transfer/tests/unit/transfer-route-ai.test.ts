@@ -5,6 +5,7 @@ import {
   validateTransferRouteAiInput,
 } from '@/lib/transfer-route-ai';
 import { isValidTransferRouteImagePath } from '@/lib/transfer-route-media';
+import { fillMissingTranslations } from '@/lib/ai/fill-missing-translations';
 
 const uuidA = '11111111-1111-4111-8111-111111111111';
 const uuidB = '22222222-2222-4222-8222-222222222222';
@@ -54,7 +55,17 @@ describe('transfer route AI contracts', () => {
   });
 
   it('accepts only internal route image paths', () => {
-    expect(isValidTransferRouteImagePath('/api/storage/objects/transfer-routes/ist-taksim/abc.webp')).toBe(true);
+    expect(isValidTransferRouteImagePath('/api/storage/objects/transfer-routes/ist-taksim/550e8400-e29b-41d4-a716-446655440000.webp')).toBe(true);
+    expect(isValidTransferRouteImagePath('/api/storage/objects/transfer-routes/ist-taksim/abc.webp')).toBe(false);
     expect(isValidTransferRouteImagePath('https://example.com/route.webp')).toBe(false);
+  });
+
+  it('does not fill a manually locked locale', async () => {
+    const result = await fillMissingTranslations(
+      { title: 'Türkçe başlık' },
+      { en: { title: 'Kilitli başlık' } },
+      { lockedLocales: new Set(['en']) },
+    );
+    expect(result.en).toEqual({ title: 'Kilitli başlık' });
   });
 });

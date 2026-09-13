@@ -3,8 +3,10 @@ import 'server-only';
 import { optimizeGeneratedImage } from '@/lib/studio/image-media';
 
 const MAX_ROUTE_IMAGE_BYTES = 10 * 1024 * 1024;
+const TRANSFER_ROUTE_UUID_PATTERN =
+  '[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}';
 const ROUTE_IMAGE_PATH_PATTERN =
-  /^\/api\/storage\/objects\/transfer-routes\/[a-z0-9-]+\/[a-z0-9-]+\.webp$/;
+  new RegExp(`^/api/storage/objects/transfer-routes/[a-z0-9-]+/${TRANSFER_ROUTE_UUID_PATTERN}\\.webp$`);
 const LEGACY_LOCAL_IMAGE_PATTERN =
   /^\/(?:route-images|hero-images|images)\/[a-z0-9._/-]+$/i;
 
@@ -16,6 +18,23 @@ export type RouteImageProbe = {
 export function isValidTransferRouteImagePath(value: unknown): value is string {
   return typeof value === 'string'
     && (ROUTE_IMAGE_PATH_PATTERN.test(value) || LEGACY_LOCAL_IMAGE_PATTERN.test(value));
+}
+
+/** The only paths for which an admin may request permanent-object deletion. */
+export function isStrictTransferRouteImagePath(value: unknown): value is string {
+  return typeof value === 'string' && ROUTE_IMAGE_PATH_PATTERN.test(value);
+}
+
+export function parseStrictTransferRouteImagePath(value: unknown): {
+  entityId: string;
+  slug: string;
+  uuid: string;
+} | null {
+  if (typeof value !== 'string') return null;
+  const match = value.match(new RegExp(
+    `^/api/storage/objects/(transfer-routes/([a-z0-9-]+)/(${TRANSFER_ROUTE_UUID_PATTERN})\\.webp)$`,
+  ));
+  return match ? { entityId: match[1], slug: match[2], uuid: match[3] } : null;
 }
 
 export function normalizeRouteImageAltText(value: unknown, fallback: string): string {
@@ -144,5 +163,57 @@ export async function storeTransferRouteImage(
     return { ok: true, path: `/api/storage/objects/${entityId}` };
   } catch {
     return { ok: false, message: 'Görsel depolama hizmetine ulaşılamadı.' };
+  }
+}
+
+export type TransferRouteImageDeleteResult =
+  | { ok: true }
+  | { ok: false; reason: 'invalid_path' | 'not_found' | 'storage_unavailable' | 'delete_failed' };
+
+/**
+ * Sign and execute deletion of one canonical transfer-route object. Keeping
+ * signing here prevents route handlers from accidentally accepting raw bucket
+ * URLs or arbitrary private-object paths.
+ */
+export async function deleteTransferRouteImageObject(
+  imagePath: string,
+): Promise<TransferRouteImageDeleteResult> {
+  if (!isStrictTransferRouteImagePath(imagePath)) return { ok: false, reason: 'invalid_path' };
+  const privateDir = process.env.PRIVATE_OBJECT_DIR?.trim();
+  if (!privateDir) return { ok: false, reason: 'storage_unavailable' };
+  const { bucket, prefix } = parsePrivateObjectDir(privateDir);
+  const parsed = parseStrictTransferRouteImagePath(imagePath);
+  if (!bucket || !parsed) {
+    return { ok: false, reason: 'invalid_path' };
+  }
+  const { entityId } = parsed;
+  try {
+    const sign = await fetch(
+      `${process.env.REPLIT_SIDECAR_ENDPOINT ?? 'http://127.0.0.1:1106'}/object-storage/signed-object-url`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bucket_name: bucket,
+          object_name: [prefix, entityId].filter(Boolean).join('/'),
+          method: 'DELETE',
+          expires_at: new Date(Date.now() + 15 * 60_000).toISOString(),
+        }),
+        signal: AbortSignal.timeout(30_000),
+      },
+    );
+    if (!sign.ok) return { ok: false, reason: 'storage_unavailable' };
+    const signed = await sign.json() as { signed_url?: unknown };
+    if (typeof signed.signed_url !== 'string' || !signed.signed_url) {
+      return { ok: false, reason: 'storage_unavailable' };
+    }
+    const deleted = await fetch(signed.signed_url, {
+      method: 'DELETE',
+      signal: AbortSignal.timeout(60_000),
+    });
+    if (deleted.status === 404) return { ok: false, reason: 'not_found' };
+    return deleted.ok ? { ok: true } : { ok: false, reason: 'delete_failed' };
+  } catch {
+    return { ok: false, reason: 'storage_unavailable' };
   }
 }

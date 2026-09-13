@@ -572,24 +572,25 @@ function RouteModal({ route, locationOptions, vehicleOptions, serviceOptions, on
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(23,43,58,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
-      <div style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '24px', maxWidth: '780px', width: '100%', boxShadow: '0 8px 40px rgba(23,43,58,0.14)', margin: 'auto' }}>
+      <div style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '24px', maxWidth: '780px', width: '100%', maxHeight: 'calc(100dvh - 32px)', boxSizing: 'border-box', boxShadow: '0 8px 40px rgba(23,43,58,0.14)', margin: 'auto', display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <h2 style={{ color: TEXT, fontSize: '18px', fontFamily: 'Inter, sans-serif', fontWeight: 700, margin: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', minWidth: 0, flex: '0 0 auto' }}>
+          <h2 style={{ color: TEXT, fontSize: '18px', fontFamily: 'Inter, sans-serif', fontWeight: 700, margin: 0, minWidth: 0, overflowWrap: 'anywhere' }}>
             {form.id ? 'Güzergahı Düzenle' : 'Yeni Güzergah Ekle'}
           </h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: MUTED, padding: '4px', borderRadius: '6px', minHeight: '44px', minWidth: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={20} /></button>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '12px', borderBottom: `1px solid ${BORDER}`, marginBottom: '20px' }}>
-          <button type="button" onClick={() => setActiveLocale('tr')} style={{ minHeight: '44px', border: `1px solid ${activeLocale === 'tr' ? '#2563EB' : BORDER}`, borderRadius: '7px', background: activeLocale === 'tr' ? '#EFF6FF' : BG, color: activeLocale === 'tr' ? '#2563EB' : MUTED, padding: '0 16px', cursor: 'pointer', fontWeight: 700, fontSize: '13px' }}>Türkçe kaynak</button>
+        <div style={{ minWidth: 0, overflowY: 'auto', paddingRight: '2px' }}>
+        <div aria-label="Güzergâh içerik dilleri" style={{ display: 'flex', gap: '8px', overflowX: 'auto', overflowY: 'hidden', maxWidth: '100%', minWidth: 0, paddingBottom: '12px', borderBottom: `1px solid ${BORDER}`, marginBottom: '20px', WebkitOverflowScrolling: 'touch' }}>
+          <button type="button" onClick={() => setActiveLocale('tr')} style={{ minHeight: '44px', flex: '0 0 auto', border: `1px solid ${activeLocale === 'tr' ? '#2563EB' : BORDER}`, borderRadius: '7px', background: activeLocale === 'tr' ? '#EFF6FF' : BG, color: activeLocale === 'tr' ? '#2563EB' : MUTED, padding: '0 16px', cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: 700, fontSize: '13px' }}>Türkçe kaynak</button>
           {LOCALES.map(([code, label]) => {
             const status = form.translations?.find((item) => item.languageCode === code)?.status;
-            return <button key={code} type="button" onClick={() => setActiveLocale(code)} style={{ minHeight: '44px', border: `1px solid ${activeLocale === code ? '#2563EB' : BORDER}`, borderRadius: '7px', background: activeLocale === code ? '#EFF6FF' : BG, color: activeLocale === code ? '#2563EB' : MUTED, padding: '0 16px', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 500 }}>{label}{status === 'PUBLISHED' ? ' • ✓' : ''}</button>;
+            return <button key={code} type="button" onClick={() => setActiveLocale(code)} style={{ minHeight: '44px', flex: '0 0 auto', border: `1px solid ${activeLocale === code ? '#2563EB' : BORDER}`, borderRadius: '7px', background: activeLocale === code ? '#EFF6FF' : BG, color: activeLocale === code ? '#2563EB' : MUTED, padding: '0 16px', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 500 }}>{label}{status === 'PUBLISHED' ? ' • ✓' : ''}</button>;
           })}
         </div>
 
-        {activeLocale === 'tr' ? <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {activeLocale === 'tr' ? <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
           {/* Name */}
           <div>
             <label style={labelStyle}>Güzergah Adı *</label>
@@ -764,11 +765,11 @@ function RouteModal({ route, locationOptions, vehicleOptions, serviceOptions, on
             {numField('displayOrder', 'Sıra')}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingBottom: '4px' }}>
               <label style={labelStyle}>Durum</label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px', color: TEXT, minHeight: '32px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px', color: TEXT, minHeight: '44px' }}>
                 <input type="checkbox" checked={form.active ?? true} onChange={e => set('active', e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
                 Aktif (ana sayfada göster)
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px', color: TEXT, minHeight: '32px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px', color: TEXT, minHeight: '44px' }}>
                 <input type="checkbox" checked={form.indexable ?? true} onChange={e => set('indexable', e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
                 Arama motorlarında indekslenebilir
               </label>
@@ -803,9 +804,10 @@ function RouteModal({ route, locationOptions, vehicleOptions, serviceOptions, on
             </div>
           </div>
         )}
+        </div>
 
         {/* Actions */}
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '32px', paddingTop: '24px', borderTop: `1px solid ${BORDER}`, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '16px', paddingTop: '16px', borderTop: `1px solid ${BORDER}`, flexWrap: 'wrap', flex: '0 0 auto', background: BG }}>
           <button onClick={onClose} disabled={saving} style={{ minHeight: '44px', background: BG, border: `1px solid ${BORDER}`, borderRadius: '8px', color: MUTED, cursor: 'pointer', padding: '0 24px', fontSize: '13px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>İptal</button>
           <button
             onClick={() => onSave(form)}

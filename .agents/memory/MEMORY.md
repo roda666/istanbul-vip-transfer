@@ -138,3 +138,4 @@
 - [Admin acceptance cleanup lifecycle](admin-acceptance-cleanup-lifecycle.md) — interrupted Playwright runs need process-tree shutdown, FK-aware temp-admin cleanup, and explicit postgres client close.
 - [Admin record action safety](admin-record-action-safety.md) — blocked actions stay visible with reasons; delete is archived-only; location moves atomically swap exactly two rows.
 - [Service hero image removal validation](service-hero-image-removal-validation.md) — published services may stay image-less; first publication still requires a hero image.
+- [Toll bulk percentage increases](toll-bulk-percentage-increases.md) — preview hashes, row locks and audit-backed idempotency protect in-place manual tariff increases.

@@ -65,7 +65,7 @@ type TollTariff = {
   tollPointId: string;
   vehicleClass: string;
   timeBand: TollTimeBand;
-  amountKurus: number;
+  amountKurus: number | null;
   automaticAmountKurus: number | null;
   manualAmountKurus: number | null;
   sourceName: string | null;
@@ -144,6 +144,22 @@ type DataPayload = {
   settings: TollSettings;
 };
 
+type BulkIncreasePreview = {
+  tollPointId: string;
+  tollPointName: string;
+  normalizedPercentage: string;
+  idempotencyKey: string;
+  previewHash: string;
+  skippedEmptyCount: number;
+  rows: {
+    tariffId: string;
+    vehicleClass: string;
+    timeBand: string;
+    oldAmountKurus: number;
+    newAmountKurus: number;
+  }[];
+};
+
 // --- Helpers ---
 const formatTRY = (kurus?: number | null) => 
   kurus != null 
@@ -152,6 +168,135 @@ const formatTRY = (kurus?: number | null) =>
 
 function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function BulkIncreaseCard({ point, onRefresh }: { point: TollPoint; onRefresh: () => void }) {
+  const [percentage, setPercentage] = useState('');
+  const [preview, setPreview] = useState<BulkIncreasePreview | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    setPercentage('');
+    setPreview(null);
+    setError('');
+    setSuccess('');
+  }, [point.id]);
+
+  const post = async (body: object) => {
+    const response = await fetch('/admin/api/pricing/tolls/bulk-increase', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const json = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(json?.error ?? 'Toplu zam işlemi tamamlanamadı.');
+    return json;
+  };
+
+  const handlePreview = async () => {
+    setBusy(true);
+    setError('');
+    setSuccess('');
+    try {
+      const result = await post({ action: 'PREVIEW', tollPointId: point.id, percentage });
+      setPreview(result as BulkIncreasePreview);
+    } catch (cause) {
+      setPreview(null);
+      setError(errorMessage(cause, 'Önizleme oluşturulamadı.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleApply = async () => {
+    if (!preview || busy) return;
+    setBusy(true);
+    setError('');
+    setSuccess('');
+    try {
+      const result = await post({
+        action: 'APPLY',
+        tollPointId: point.id,
+        percentage,
+        previewHash: preview.previewHash,
+        idempotencyKey: preview.idempotencyKey,
+      });
+      setSuccess(result.alreadyApplied
+        ? 'Bu zam daha önce uygulanmıştı; ikinci kez uygulanmadı.'
+        : `${result.rows.length} tarife aynı kayıtlar üzerinde güncellendi.`);
+      setPreview(null);
+      onRefresh();
+    } catch (cause) {
+      setError(errorMessage(cause, 'Zam uygulanamadı.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div data-testid="bulk-increase-card" className="mx-4 mt-4 rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-white p-4 shadow-sm md:mx-6 md:mt-6 md:p-5">
+      <div className="mb-4">
+        <h4 className="text-base font-black text-slate-900">Toplu Yüzde Zam</h4>
+        <p className="mt-1 text-xs font-medium leading-relaxed text-slate-600">
+          Yalnız fiyatı bulunan güncel tarifeleri yerinde günceller. Boş tarifeler değişmez.
+        </p>
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+        <div>
+          <label htmlFor="bulk-increase-percentage" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-600">Zam Oranı (%)</label>
+          <input
+            id="bulk-increase-percentage"
+            data-testid="bulk-increase-percentage"
+            inputMode="decimal"
+            value={percentage}
+            onChange={(event) => { setPercentage(event.target.value); setPreview(null); setError(''); setSuccess(''); }}
+            placeholder="Örn. 15 veya 12,5"
+            className="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-base font-bold text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          />
+        </div>
+        <button
+          data-testid="bulk-increase-preview"
+          onClick={handlePreview}
+          disabled={busy || !percentage.trim()}
+          className="min-h-11 self-end rounded-lg border border-blue-200 bg-white px-5 py-2 text-sm font-black text-blue-700 shadow-sm transition-colors hover:bg-blue-100 disabled:opacity-50"
+        >
+          {busy ? 'Hazırlanıyor...' : 'Önizle'}
+        </button>
+      </div>
+
+      {preview && (
+        <div data-testid="bulk-increase-preview-list" className="mt-4 rounded-xl border border-slate-200 bg-white p-3 md:p-4">
+          <div className="mb-3 flex flex-col gap-1 text-xs font-bold text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+            <span><strong className="text-slate-900">{preview.rows.length}</strong> satır güncellenecek</span>
+            <span><strong className="text-slate-900">{preview.skippedEmptyCount}</strong> boş satır atlanacak</span>
+          </div>
+          <div className="max-h-64 space-y-2 overflow-y-auto">
+            {preview.rows.map((row) => (
+              <div key={row.tariffId} className="flex flex-col gap-1 rounded-lg bg-slate-50 px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+                <span className="font-bold text-slate-700">{vehicleClassLabel(row.vehicleClass)} · {TIME_BAND_LABELS[row.timeBand as TollTimeBand] ?? row.timeBand}</span>
+                <span className="whitespace-nowrap font-black text-slate-900">
+                  {formatTRY(row.oldAmountKurus)} <span className="px-1 text-blue-500">→</span> {formatTRY(row.newAmountKurus)}
+                </span>
+              </div>
+            ))}
+            {preview.rows.length === 0 && <p className="py-2 text-sm font-bold text-amber-700">Güncellenecek dolu tarife bulunmuyor.</p>}
+          </div>
+          <button
+            data-testid="bulk-increase-apply"
+            onClick={handleApply}
+            disabled={busy || preview.rows.length === 0}
+            className="mt-4 min-h-11 w-full rounded-lg bg-emerald-700 px-5 py-2.5 text-sm font-black text-white shadow-sm transition-colors hover:bg-emerald-800 disabled:opacity-50"
+          >
+            {busy ? 'Uygulanıyor...' : 'Zammı Uygula'}
+          </button>
+        </div>
+      )}
+      {error && <div role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700">{error}</div>}
+      {success && <div role="status" className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700">{success}</div>}
+    </div>
+  );
 }
 
 function AmountInput({ valueKurus, onChange, label }: { valueKurus: number | null, onChange: (val: number | null) => void, label?: string }) {
@@ -1173,6 +1318,7 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
         </div>
 
         <TariffImportPanel point={point} onRefresh={onRefresh} />
+        <BulkIncreaseCard point={point} onRefresh={onRefresh} />
 
         {point.notes && (
           <div className="mx-5 md:mx-6 mt-5 bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs font-medium text-blue-900 leading-relaxed flex items-start gap-2">

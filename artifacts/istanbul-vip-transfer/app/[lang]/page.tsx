@@ -26,7 +26,6 @@ import Hero from '@/components/Hero';
 const VehicleFleet         = lazyLoad(() => import('@/components/VehicleFleet'));
 const Services             = lazyLoad(() => import('@/components/Services'));
 const PopularRoutesSection = lazyLoad(() => import('@/components/PopularRoutesSection'));
-const PopularRegionsSection = lazyLoad(() => import('@/components/PopularRegionsSection'));
 const TrustSignals         = lazyLoad(() => import('@/components/TrustSignals'));
 const Reviews              = lazyLoad(() => import('@/components/Reviews'));
 const FAQ                  = lazyLoad(() => import('@/components/FAQ'));
@@ -205,9 +204,6 @@ export default async function TranslatedHomePage({ params }: Props) {
       </div>
       <div className="ivt-deferred-section">
         <PopularRoutesSection routes={transferRoutes} />
-      </div>
-      <div className="ivt-deferred-section">
-        <PopularRegionsSection routes={transferRoutes} />
       </div>
       <div className="ivt-deferred-section">
         <TrustSignals homepageMode />

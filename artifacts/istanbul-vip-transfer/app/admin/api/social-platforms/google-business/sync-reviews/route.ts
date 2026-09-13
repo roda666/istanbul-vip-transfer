@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auditLogs } from '@/db/schema';
 import { db } from '@/db';
-import { syncGoogleBusinessReviews } from '@/lib/google-business';
+import { runGoogleBusinessReviewSync } from '@/lib/google-business-review-scheduler';
 import { requireSocialPlatformAdmin, socialAuthErrorResponse } from '@/lib/social-auth';
 
 export const dynamic = 'force-dynamic';
@@ -14,7 +14,10 @@ export async function POST() {
     return NextResponse.json({ error: response.error }, { status: response.status });
   }
   try {
-    const result = await syncGoogleBusinessReviews({ source: 'manual' });
+    const result = await runGoogleBusinessReviewSync({ source: 'manual', requireEnabled: false });
+    if (result.status !== 'complete') {
+      return NextResponse.json({ error: 'Google yorumları senkronlanamadı.', status: result.status }, { status: 503 });
+    }
     await db.insert(auditLogs).values({
       adminUserId: session.adminId,
       action: 'GOOGLE_BUSINESS_REVIEWS_SYNCED',
@@ -23,9 +26,9 @@ export async function POST() {
       metadata: { received: result.received, upserted: result.upserted, skipped: result.skipped },
     });
     return NextResponse.json({ result });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Google yorumları senkronlanamadı.' },
+      { error: 'Google yorumları senkronlanamadı.' },
       { status: 503 },
     );
   }

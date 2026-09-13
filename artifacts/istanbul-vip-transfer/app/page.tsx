@@ -4,7 +4,6 @@ import dynamic from 'next/dynamic';
 import Hero from '@/components/Hero';
 import DeferredBookingForm from '@/components/DeferredBookingForm';
 import DeferredVehicleFleet from '@/components/DeferredVehicleFleet';
-import PopularRegionsSection from '@/components/PopularRegionsSection';
 import { getFaqs } from '@/lib/faq-data';
 import { SITE } from '@/lib/site-config';
 import { HomepageCmsProvider } from '@/lib/homepage-cms-context';
@@ -144,9 +143,6 @@ export default async function HomePage() {
       </div>
       <div className="ivt-deferred-section">
         <PopularRoutesSection routes={transferRoutes} />
-      </div>
-      <div className="ivt-deferred-section">
-        <PopularRegionsSection routes={transferRoutes} />
       </div>
       <div className="ivt-deferred-section">
         <TrustSignals homepageMode />

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, CheckCircle2, ExternalLink, Link2, Loader2, Power, RefreshCw, Send } from 'lucide-react';
-import { getSocialOAuthMessage, getSocialPlatformLastErrorMessage } from '@/lib/social-oauth-feedback';
+import { getSocialOAuthMessage, getSocialPlatformLastErrorMessage, isGoogleReconnectRequired } from '@/lib/social-oauth-feedback';
 import FacebookShareButton from '@/app/admin/_components/FacebookShareButton';
 import XShareButton from '@/app/admin/_components/XShareButton';
 import LinkedInShareButton from '@/app/admin/_components/LinkedInShareButton';
@@ -302,6 +302,7 @@ export default function SocialPlatformsPanel() {
       await load();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Google yorumları senkronlanamadı.');
+      void load();
     } finally {
       setBusyKey(null);
     }
@@ -356,19 +357,21 @@ export default function SocialPlatformsPanel() {
         ) : platforms.map((platform) => {
           const href = connectHref(platform);
           const isBusy = busyKey === platform.key;
+          const reconnectRequired = platform.key === 'google_business' &&
+            isGoogleReconnectRequired(platform.lastError);
           return (
             <div key={platform.key} style={{ border: '1px solid #E2E8F0', borderRadius: 10, padding: 14, background: '#FFFFFF' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <strong style={{ color: '#172B3A', fontFamily: 'Inter, sans-serif', fontSize: 13 }}>{platform.name}</strong>
-                <span style={{ fontSize: 10, fontWeight: 700, color: platform.connected ? '#168C5B' : '#D97706', background: platform.connected ? '#F0FDF4' : '#FFF7ED', padding: '3px 7px', borderRadius: 10 }}>
-                  {platform.connected ? 'Bağlı' : 'Bağlı Değil'}
+                <span style={{ fontSize: 10, fontWeight: 700, color: reconnectRequired ? '#B45309' : platform.connected ? '#168C5B' : '#D97706', background: reconnectRequired ? '#FFF7ED' : platform.connected ? '#F0FDF4' : '#FFF7ED', padding: '3px 7px', borderRadius: 10 }}>
+                  {reconnectRequired ? 'Yeniden bağlanması gerekiyor' : platform.connected ? 'Bağlı' : 'Bağlı Değil'}
                 </span>
               </div>
               <p style={{ fontFamily: 'Inter, sans-serif', color: '#52697A', fontSize: 12, lineHeight: 1.45, minHeight: 34, margin: '8px 0' }}>{platform.description}</p>
               {platform.requiredSecrets.length > 0 && !platform.connected && (
                 <p style={{ fontFamily: 'monospace', color: '#64748B', fontSize: 9, margin: '0 0 9px', lineHeight: 1.45 }}>{platform.requiredSecrets.join(' · ')}</p>
               )}
-              {platform.key === 'google_business' && !platform.connected && (
+              {platform.key === 'google_business' && (!platform.connected || reconnectRequired) && (
                 <p style={{ fontFamily: 'Inter, sans-serif', color: '#64748B', fontSize: 10, margin: '0 0 9px', lineHeight: 1.45 }}>
                   Google Cloud’da Business Profile API erişimini açın, işletme yöneticisi hesabıyla yetkilendirin ve OAuth redirect URI olarak
                   {' '}<code>https://www.istanbulviptransfer.com/admin/api/social-platforms/google-business/callback</code>{' '}
@@ -376,7 +379,7 @@ export default function SocialPlatformsPanel() {
                 </p>
               )}
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                {href && !platform.connected ? (
+                {href && (!platform.connected || reconnectRequired) ? (
                   <button
                     type="button"
                     onClick={() => connect(platform, href)}

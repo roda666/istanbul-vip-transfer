@@ -23,13 +23,12 @@ import { PUBLIC_CHROME_REVALIDATE_SECONDS, PUBLIC_CHROME_TAG } from '@/lib/publi
  */
 const getCachedPublicHomepageData = unstable_cache(
   async (locale: string) => {
-    const [cmsData, serviceCatalog, contactSettings, transferRoutes, reviews, homepageFaqs, serviceCopy] =
+    const [cmsData, serviceCatalog, contactSettings, transferRoutes, homepageFaqs, serviceCopy] =
       await Promise.all([
         getPublishedHomepageData(locale),
         getPublicServiceCatalog(locale),
         getContactSettings(),
         getHomepageTransferRoutes().catch(() => []),
-        getPublishedHomepageReviews(locale),
         getPublishedHomepageFaqs(locale),
         getPublishedHomepageServiceCopy(locale),
       ]);
@@ -39,7 +38,6 @@ const getCachedPublicHomepageData = unstable_cache(
       serviceCatalog,
       contactSettings,
       transferRoutes,
-      reviews,
       homepageFaqs,
       serviceCopy,
     };
@@ -51,6 +49,10 @@ const getCachedPublicHomepageData = unstable_cache(
   },
 );
 
-export function getPublicHomepageData(locale: string) {
-  return getCachedPublicHomepageData(locale);
+export async function getPublicHomepageData(locale: string) {
+  const [cached, reviews] = await Promise.all([
+    getCachedPublicHomepageData(locale),
+    getPublishedHomepageReviews(locale),
+  ]);
+  return { ...cached, reviews };
 }

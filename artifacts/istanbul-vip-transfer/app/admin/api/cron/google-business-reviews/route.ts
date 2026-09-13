@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { auditLogs } from '@/db/schema';
-import { syncGoogleBusinessReviews } from '@/lib/google-business';
+import { runGoogleBusinessReviewSync } from '@/lib/google-business-review-scheduler';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +17,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   try {
-    const result = await syncGoogleBusinessReviews({ requireEnabled: true, source: 'scheduled' });
+    const result = await runGoogleBusinessReviewSync({ requireEnabled: true, source: 'scheduled' });
+    if (result.status !== 'complete') {
+      return NextResponse.json({ ok: true, skipped: true, reason: result.status });
+    }
     await db.insert(auditLogs).values({
       action: 'GOOGLE_BUSINESS_REVIEWS_AUTO_SYNCED',
       entityType: 'social_platform',

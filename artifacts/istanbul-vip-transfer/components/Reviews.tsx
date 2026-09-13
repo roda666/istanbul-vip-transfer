@@ -5,11 +5,13 @@ import { useLang } from '@/lib/i18n/context';
 import { useSiteSettings } from '@/components/SiteSettingsContext';
 import { useHomepageCms } from '@/lib/homepage-cms-context';
 import type { HomepageReview } from '@/lib/homepage-public-content';
+import { formatHomepageReviewDate, isConfiguredGoogleReviewUrl } from '@/lib/google-review-public';
 
 interface Review {
   name: string;
   rating: number;
   text: string;
+  reviewDate?: string | null;
 }
 
 const REVIEWS_BY_LANG: Record<string, Review[]> = {
@@ -198,6 +200,9 @@ export default function Reviews({
   // A malformed locale must not make an international visitor see Turkish
   // review copy. Turkish is used only for an explicit Turkish route.
   const reviews = items && items.length > 0 ? items : (REVIEWS_BY_LANG[lang] ?? REVIEWS_BY_LANG.en);
+  const reviewUrl = homepageMode && isConfiguredGoogleReviewUrl(cs.googleReviewUrl)
+    ? cs.googleReviewUrl.trim()
+    : null;
 
   return (
     <section
@@ -273,6 +278,15 @@ export default function Reviews({
               >
                 &ldquo;{review.text}&rdquo;
               </p>
+              {formatHomepageReviewDate(review.reviewDate, lang) && (
+                <time
+                  dateTime={review.reviewDate ?? undefined}
+                  className="text-xs mb-4"
+                  style={{ color: '#718596', fontFamily: 'Inter, sans-serif' }}
+                >
+                  {formatHomepageReviewDate(review.reviewDate, lang)}
+                </time>
+              )}
               <div
                 className="flex items-center justify-between pt-4"
                 style={{ borderTop: '1px solid #D9E2EC' }}
@@ -295,11 +309,11 @@ export default function Reviews({
         </div>
 
         {/* CTA */}
-        <div
+        {reviewUrl && <div
           className="text-center"
         >
           <a
-            href={cs.googleBusinessUrl}
+            href={reviewUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-3 px-10 py-4 rounded-xl text-sm font-semibold transition-all duration-300 hover:shadow-xl hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C79A35] focus-visible:ring-offset-2"
@@ -314,7 +328,7 @@ export default function Reviews({
             {section?.viewAllText ?? r.viewAll}
             <ExternalLink size={16} aria-hidden="true" />
           </a>
-        </div>
+        </div>}
       </div>
     </section>
   );

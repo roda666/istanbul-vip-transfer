@@ -34,7 +34,16 @@ export function getSocialPlatformLastErrorMessage(platformKey: string, error: st
       ? getSocialOAuthMessage('x_credits_depleted')
       : 'X ile yapılan son işlem tamamlanamadı. Bağlantıyı ve X API ayarlarını kontrol edip tekrar deneyin.';
   }
+  if (platformKey === 'google_business' && isGoogleReconnectRequired(error)) {
+    return 'Google Business Profile bağlantısı yenilenmeli. OAuth iznini yeniden verin.';
+  }
   return 'Sosyal medya platformuyla yapılan son işlem tamamlanamadı. Bağlantıyı kontrol edip tekrar deneyin.';
+}
+
+/** Provider auth failures are actionable only through a fresh OAuth grant. */
+export function isGoogleReconnectRequired(error: string | null | undefined): boolean {
+  if (!error) return false;
+  return /google_(?:token_refresh_failed|connection_missing|connection_failed|token_exchange_failed|consent_denied|invalid_state|oauth|api_(?:401|403))|refresh_token|unauthori[sz]ed|invalid_grant|auth/i.test(error);
 }
 
 /**

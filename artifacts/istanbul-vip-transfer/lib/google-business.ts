@@ -296,7 +296,7 @@ export async function syncGoogleBusinessReviews(options: { requireEnabled?: bool
     const reviewDate = reviewDateValue ? new Date(reviewDateValue) : null;
     await db.insert(googleReviews).values({
       externalReviewId,
-      source: 'google_business',
+      source: 'google_business' as const,
       locationResourceName: meta.locationName,
       reviewerName: review.reviewer?.displayName?.trim() || 'Google kullanıcısı',
       reviewText,

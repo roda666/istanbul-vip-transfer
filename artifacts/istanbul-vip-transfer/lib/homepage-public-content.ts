@@ -9,6 +9,7 @@ export interface HomepageReview {
   name: string;
   rating: number;
   text: string;
+  reviewDate?: string | null;
 }
 
 export interface HomepageFaq {
@@ -42,8 +43,9 @@ export async function getPublishedHomepageReviews(locale: string): Promise<Homep
         eq(socialPlatforms.connected, true),
       ))
       .limit(1);
+    const accountName = platform?.connectionMeta?.accountName;
     const locationName = platform?.connectionMeta?.locationName;
-    if (typeof locationName !== 'string') return [];
+    if (typeof accountName !== 'string' || typeof locationName !== 'string') return [];
 
     const rows = await db
       .select({
@@ -51,17 +53,21 @@ export async function getPublishedHomepageReviews(locale: string): Promise<Homep
         name: googleReviews.reviewerName,
         rating: googleReviews.rating,
         text: googleReviews.reviewText,
+        reviewDate: googleReviews.reviewDate,
       })
       .from(googleReviews)
       .where(and(
         eq(googleReviews.isVisible, true),
-          eq(googleReviews.source, 'google_business'),
-          eq(googleReviews.locationResourceName, locationName),
+        eq(googleReviews.source, 'google_business'),
+        eq(googleReviews.locationResourceName, locationName),
       ))
       .orderBy(asc(googleReviews.sortOrder), desc(googleReviews.createdAt))
       .limit(3);
 
-    return rows;
+    return rows.map((row) => ({
+      ...row,
+      reviewDate: row.reviewDate?.toISOString() ?? null,
+    }));
   } catch {
     return [];
   }

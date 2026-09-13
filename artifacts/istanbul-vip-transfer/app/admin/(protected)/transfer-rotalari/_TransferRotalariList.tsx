@@ -458,8 +458,11 @@ function RouteModal({ route, locationOptions, vehicleOptions, serviceOptions, on
   const sessionImagePathsRef = useRef<Set<string>>(new Set());
   const deletingImagePathsRef = useRef<Map<string, Promise<void>>>(new Map());
   const sessionOpenRef = useRef(true);
-  useEffect(() => () => {
-    sessionOpenRef.current = false;
+  useEffect(() => {
+    sessionOpenRef.current = true;
+    return () => {
+      sessionOpenRef.current = false;
+    };
   }, []);
 
   const groupedLocations = useMemo(() => groupManagedLocationOptions(locationOptions), [locationOptions]);

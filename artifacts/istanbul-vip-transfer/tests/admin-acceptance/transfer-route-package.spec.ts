@@ -90,14 +90,25 @@ test.describe('@route-package transfer-route admin acceptance', () => {
       args,
     ),
 
-    multipartUpload = async (page: Page, bytes: number[], origin: string, destination: string) =>
+    multipartUpload = async (
+      page: Page,
+      bytes: number[],
+      origin: string,
+      destination: string,
+      fileName = 'route.png',
+      mimeType = 'image/png',
+    ) =>
       page.evaluate(
         async (uploadArgs) => {
           const form = new FormData();
           form.append('action', 'upload');
           form.append(
             'file',
-            new File([Uint8Array.from(uploadArgs.bytes)], 'route.png', { type: 'image/png' }),
+            new File(
+              [Uint8Array.from(uploadArgs.bytes)],
+              uploadArgs.fileName,
+              { type: uploadArgs.mimeType },
+            ),
           );
           form.append('origin', uploadArgs.origin);
           form.append('destination', uploadArgs.destination);
@@ -117,7 +128,7 @@ test.describe('@route-package transfer-route admin acceptance', () => {
           }
           return { status: response.status, payload };
         },
-        { bytes, origin, destination },
+        { bytes, origin, destination, fileName, mimeType },
       );
 
     const storageDirectory = (): { bucketName: string; prefix: string } => {
@@ -412,6 +423,7 @@ test.describe('@route-package transfer-route admin acceptance', () => {
       }).png().toBuffer();
       await sharp(pngSource).png().toFile(createdFile);
       const pngBytes = Array.from(await readFile(createdFile));
+      const jpegBytes = Array.from(await sharp(pngSource).jpeg({ quality: 85 }).toBuffer());
       const uploadInOpenModal = async (): Promise<string> => {
         const responsePromise = adminPage.waitForResponse((response) =>
           response.request().method() === 'POST'
@@ -661,6 +673,39 @@ test.describe('@route-package transfer-route admin acceptance', () => {
       const firstUploadPath = String(uploadImage.imagePath);
       expect(firstUploadPath).toMatch(/^\/api\/storage\/objects\/transfer-routes\/.+\.webp$/);
       createdImagePaths.push(firstUploadPath);
+
+      const jpegUploadResult = await multipartUpload(
+        adminPage,
+        jpegBytes,
+        routeRecord.origin,
+        `${routeRecord.destination} JPEG`,
+        'route.jpg',
+        'image/jpeg',
+      );
+      expect(jpegUploadResult.status).toBe(201);
+      const jpegUploadImage = (jpegUploadResult.payload.image ?? jpegUploadResult.payload) as Record<string, unknown>;
+      const jpegUploadPath = String(jpegUploadImage.imagePath);
+      createdImagePaths.push(jpegUploadPath);
+      const servedJpegUpload = await adminPage.evaluate(async (imagePath) => {
+        const response = await fetch(imagePath, { credentials: 'same-origin' });
+        return {
+          status: response.status,
+          bytes: Array.from(new Uint8Array(await response.arrayBuffer())),
+        };
+      }, jpegUploadPath);
+      expect(servedJpegUpload.status).toBe(200);
+      const jpegMetadata = await sharp(Buffer.from(servedJpegUpload.bytes)).metadata();
+      expect({
+        format: jpegMetadata.format,
+        width: jpegMetadata.width,
+        height: jpegMetadata.height,
+      }).toEqual({ format: 'webp', width: 1600, height: 900 });
+      const jpegDeleteResult = await apiJson(adminPage, {
+        path: '/admin/api/transfer-routes/image',
+        method: 'DELETE',
+        body: { imagePath: jpegUploadPath },
+      });
+      expect(jpegDeleteResult.status).toBe(200);
 
       const firstUpdatePayload = {
         ...routeRecord,

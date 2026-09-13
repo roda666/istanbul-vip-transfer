@@ -15,11 +15,7 @@ const updateSchema = z.object({
   passengerCapacity: z.number().int().min(1).max(99).optional().nullable(),
   luggageCapacity: z.number().int().min(0).max(99).optional().nullable(),
   vehicleType: z.enum(VEHICLE_TYPE_VALUES).optional().nullable(),
-  priceCalculationEligible: z.boolean().optional(),
-  pricingClass: z.enum(['automobile', 'minivan', 'minibus', 'midibus', 'bus']).optional(),
   tollClass: z.enum(['class_1','class_2','class_3','class_4','class_5','class_6']).nullable().optional(),
-  tollClassSourceUrl: z.string().url().max(500).nullable().optional(),
-  tollClassEvidence: z.string().max(2000).nullable().optional(),
   isActive: z.boolean().optional(),
   features: z.array(z.string().max(200)).optional(),
   coverImage: z.string().max(500).optional().nullable(),
@@ -42,8 +38,6 @@ const updateSchema = z.object({
 const actionSchema = z.object({
   action: z.enum(['approve', 'publish', 'archive', 'restore', 'activate', 'deactivate', 'up', 'down']),
 });
-
-const REQUEST_ONLY_SLUGS = new Set(['mercedes-e-class', 'mercedes-s-class', 'mercedes-v-class']);
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -167,14 +161,6 @@ export async function PUT(request: NextRequest, { params }: Params) {
     .limit(1)
     .catch(() => []);
   if (!current) return NextResponse.json({ error: 'Bulunamadı.' }, { status: 404 });
-  const resultingSlug = data.slug ?? current.slug;
-  if (REQUEST_ONLY_SLUGS.has(resultingSlug) && data.priceCalculationEligible === true) {
-    return NextResponse.json(
-      { error: 'Bu araç yalnızca talep üzerine sunulur ve otomatik fiyat hesaplamasına eklenemez.' },
-      { status: 422 },
-    );
-  }
-
   const { getApprovalReset } = await import('@/lib/workflow');
   const { sanitizeText, sanitizeHtml } = await import('@/lib/sanitize');
 
@@ -203,17 +189,10 @@ export async function PUT(request: NextRequest, { params }: Params) {
     if (data.luggageCapacity !== undefined) updateValues.luggageCapacity = data.luggageCapacity;
     if (data.vehicleType !== undefined)
       updateValues.vehicleType = data.vehicleType ? sanitizeText(data.vehicleType) : null;
-    if (data.priceCalculationEligible !== undefined) updateValues.priceCalculationEligible = data.priceCalculationEligible;
-    if (data.pricingClass !== undefined) updateValues.pricingClass = data.pricingClass;
     if (data.tollClass !== undefined) {
       updateValues.tollClass = data.tollClass;
-      updateValues.tollClassSourceUrl = data.tollClassSourceUrl ?? null;
-      updateValues.tollClassEvidence = data.tollClassEvidence ?? null;
       updateValues.tollClassVerifiedAt = data.tollClass ? new Date() : null;
       updateValues.tollClassVerifiedBy = data.tollClass ? session.adminId : null;
-    } else {
-      if (data.tollClassSourceUrl !== undefined) updateValues.tollClassSourceUrl = data.tollClassSourceUrl;
-      if (data.tollClassEvidence !== undefined) updateValues.tollClassEvidence = data.tollClassEvidence;
     }
     if (data.isActive !== undefined) updateValues.isActive = data.isActive;
     if (data.features !== undefined)

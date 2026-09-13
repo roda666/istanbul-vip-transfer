@@ -47,11 +47,7 @@ interface FormState {
   shortDescription: string;
   fullDescription: string;
   vehicleType: string;
-  priceCalculationEligible: boolean;
-  pricingClass: string;
   tollClass: string;
-  tollClassSourceUrl: string;
-  tollClassEvidence: string;
   isActive: boolean;
   passengerCapacity: string;
   luggageCapacity: string;
@@ -87,11 +83,7 @@ function vehicleToForm(v: Vehicle): FormState {
     shortDescription: v.shortDescription ?? '',
     fullDescription: v.fullDescription ?? '',
     vehicleType: normalizeVehicleType(v.vehicleType) ?? '',
-    priceCalculationEligible: v.priceCalculationEligible,
-    pricingClass: v.pricingClass,
     tollClass: v.tollClass ?? '',
-    tollClassSourceUrl: v.tollClassSourceUrl ?? '',
-    tollClassEvidence: v.tollClassEvidence ?? '',
     isActive: v.isActive,
     passengerCapacity: v.passengerCapacity != null ? String(v.passengerCapacity) : '',
     luggageCapacity: v.luggageCapacity != null ? String(v.luggageCapacity) : '',
@@ -119,11 +111,7 @@ const emptyForm: FormState = {
   shortDescription: '',
   fullDescription: '',
   vehicleType: '',
-  priceCalculationEligible: false,
-  pricingClass: 'automobile',
   tollClass: '',
-  tollClassSourceUrl: '',
-  tollClassEvidence: '',
   isActive: true,
   passengerCapacity: '',
   luggageCapacity: '',
@@ -166,15 +154,18 @@ function Input({
   placeholder,
   type = 'text',
   disabled,
+  testId,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   type?: string;
   disabled?: boolean;
+  testId?: string;
 }) {
   return (
     <input
+      data-testid={testId}
       type={type}
       value={value}
       onChange={(e) => onChange(e.target.value)}
@@ -318,12 +309,14 @@ function ActionButton({
   disabled,
   variant,
   children,
+  testId,
 }: {
   onClick: () => void;
   loading?: boolean;
   disabled?: boolean;
   variant: 'primary' | 'secondary' | 'danger' | 'ghost';
   children: React.ReactNode;
+  testId?: string;
 }) {
   const styles: Record<string, React.CSSProperties> = {
     primary: { background: '#2563EB', color: '#FFFFFF', fontWeight: 600 },
@@ -348,6 +341,7 @@ function ActionButton({
 
   return (
     <button
+      data-testid={testId}
       onClick={onClick}
       disabled={disabled || loading}
       style={{
@@ -469,6 +463,12 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [] }: Prop
     onConfirm: () => void;
   } | null>(null);
 
+  useEffect(() => {
+    if (!vehicle) return;
+    setForm(vehicleToForm(vehicle));
+    setSlugManuallyEdited(true);
+  }, [vehicle]);
+
   // Unsaved changes tracking
   const savedRef = useRef(false);
   const isDirty = useCallback(() => {
@@ -545,11 +545,7 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [] }: Prop
       passengerCapacity: form.passengerCapacity ? parseInt(form.passengerCapacity, 10) : null,
       luggageCapacity: form.luggageCapacity ? parseInt(form.luggageCapacity, 10) : null,
       vehicleType: form.vehicleType || null,
-      priceCalculationEligible: form.priceCalculationEligible,
-      pricingClass: form.pricingClass,
       tollClass: form.tollClass || null,
-      tollClassSourceUrl: form.tollClassSourceUrl || null,
-      tollClassEvidence: form.tollClassEvidence || null,
       isActive: form.isActive,
       features: form.features.filter(Boolean),
       coverImage: form.coverImage || null,
@@ -678,12 +674,13 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [] }: Prop
 
       <div style={{ marginBottom: '16px' }}>
         <Label required>Araç Adı</Label>
-        <Input value={form.name} onChange={handleNameChange} placeholder="ör. Mercedes-Benz E-Serisi" />
+        <Input testId="vehicle-name" value={form.name} onChange={handleNameChange} placeholder="ör. Mercedes-Benz E-Serisi" />
       </div>
 
       <div style={{ marginBottom: '16px' }}>
         <Label required>Slug</Label>
         <Input
+          testId="vehicle-slug"
           value={form.slug}
           onChange={handleSlugChange}
           placeholder="ör. mercedes-benz-e-serisi"
@@ -760,40 +757,18 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [] }: Prop
         />
       </div>
 
-      {/* ── Fiyat Hesaplama ─────────────────────────────── */}
-      <SectionTitle>Fiyat Hesaplama</SectionTitle>
-      <div style={{ background: '#F8FAFC', border: `1px solid ${BORDER}`, borderRadius: '8px', padding: '14px 16px', marginBottom: '16px' }}>
-        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '9px', cursor: 'pointer', color: '#172B3A', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>
-          <input
-            type="checkbox"
-            checked={form.priceCalculationEligible}
-            onChange={(event) => setForm((current) => ({ ...current, priceCalculationEligible: event.target.checked }))}
-            style={{ accentColor: '#2563EB', width: '15px', height: '15px', marginTop: '2px' }}
-          />
-          <span><strong>Bu araç otomatik fiyat hesaplamasına uygundur</strong><br /><span style={{ color: '#52697A', fontSize: '12px', lineHeight: 1.5 }}>Kapalıysa araç yayınlanmaya devam eder; yönetici fiyat merkezinde “teklif iste” olarak görünür.</span></span>
-        </label>
-      </div>
+      {/* ── Geçiş Araç Sınıfı ───────────────────────────── */}
+      <SectionTitle>Geçiş Araç Sınıfı</SectionTitle>
       <div style={{ marginBottom: '16px' }}>
-        <Label>Geçiş Tarife Sınıfı</Label>
-        <select value={form.pricingClass} onChange={(event) => setForm((current) => ({ ...current, pricingClass: event.target.value }))} style={{ width: '100%', background: BG2, border: `1px solid ${BORDER}`, borderRadius: '6px', color: '#172B3A', fontSize: '13px', fontFamily: 'Inter, sans-serif', padding: '8px 12px', outline: 'none', boxSizing: 'border-box' }}>
-          <option value="automobile">Otomobil</option>
-          <option value="minivan">Otomobil (eski kayıt uyumluluğu)</option>
-          <option value="minibus">Minibüs</option>
-          <option value="midibus">Midibüs</option>
-          <option value="bus">Otobüs</option>
-        </select>
-        <div style={{ color: MUTED, fontSize: '11px', marginTop: '4px' }}>Bu alan yalnızca genel fiyat profilini belirler; köprü/tünel geçiş ücretlerini aşağıdaki resmî KGM sınıfı belirler.</div>
-      </div>
-      <div style={{ marginBottom: '16px' }}>
-        <Label>Resmî Global Geçiş Sınıfı</Label>
+        <Label>Geçiş Araç Sınıfı</Label>
         <div style={{ color: MUTED, fontSize: '11px', marginBottom: '10px', lineHeight: 1.5 }}>
-          Bu seçim tüm geçiş noktalarında kullanılır. Araç tipi değiştirildiğinde sınıf otomatik olarak değiştirilmez; doğrulanmamış araçlarda tarife eksik kabul edilir.
+          Bu seçim yalnız geçiş ücretinde hangi sınıf tarifesinin kullanılacağını belirler. Kendi başına fiyat veya hesaplama formülü oluşturmaz.
         </div>
         <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px', color: '#92400E', fontSize: '11px', lineHeight: 1.6, fontWeight: 600 }}>
           {TOLL_VEHICLE_CLASS_SELECTION_WARNING}
         </div>
-        <select value={form.tollClass} onChange={(event) => setForm((current) => ({ ...current, tollClass: event.target.value }))} style={{ ...inputStyle, marginBottom: '10px' }}>
-          <option value="">— Henüz doğrulanmadı —</option>
+        <select data-testid="vehicle-toll-class" value={form.tollClass} onChange={(event) => setForm((current) => ({ ...current, tollClass: event.target.value }))} style={{ ...inputStyle, marginBottom: '10px' }}>
+          <option value="">— Sınıf seçin —</option>
           {TOLL_VEHICLE_CLASSES.map((cls) => (
             <option key={cls} value={cls}>{TOLL_VEHICLE_CLASS_LABELS[cls]}</option>
           ))}
@@ -803,8 +778,6 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [] }: Prop
             {TOLL_VEHICLE_CLASS_DESCRIPTIONS[form.tollClass as keyof typeof TOLL_VEHICLE_CLASS_DESCRIPTIONS]}
           </div>
         )}
-        <Input value={form.tollClassSourceUrl} onChange={(value) => setForm((current) => ({ ...current, tollClassSourceUrl: value }))} placeholder="Resmî kaynak URL (https://...)" />
-        <Textarea value={form.tollClassEvidence} onChange={(value) => setForm((current) => ({ ...current, tollClassEvidence: value }))} placeholder="Kanıt / doğrulama notu" rows={2} />
         {form.tollClass && tollPoints.some((point) => (point.bannedVehicleClasses ?? []).includes(form.tollClass)) && (
           <div style={{ color: '#D64545', fontSize: '11px', marginTop: '8px', fontWeight: 600 }}>
             Seçilen sınıf bazı geçiş noktalarında yasaklıdır; bu noktaları içeren alternatifler fiyatlandırılamaz.
@@ -812,7 +785,7 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [] }: Prop
         )}
       </div>
       <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '8px', padding: '12px 14px', marginBottom: '16px', color: '#1E3A8A', fontSize: '12px', fontFamily: 'Inter, sans-serif', lineHeight: 1.6 }}>
-        Mesafe ve saatlik tahsis formülleri tek merkezden yönetilir. Bu aracın formülünü görmek veya değiştirmek için{' '}
+        Mesafe ve saatlik araç fiyatlandırması yalnız tek merkezden yönetilir. Formül görmek, oluşturmak veya değiştirmek için{' '}
         <Link href="/admin/fiyat-kurallari#pricing-profiles" style={{ color: '#1D4ED8', fontWeight: 700, textDecoration: 'underline' }}>
           Fiyat Kuralları → Hesaplama Formülleri
         </Link>{' '}
@@ -1099,6 +1072,7 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [] }: Prop
         </ActionButton>
 
         <ActionButton
+          testId="vehicle-save-draft"
           variant="secondary"
           onClick={() => handleSave('DRAFT')}
           loading={saving}

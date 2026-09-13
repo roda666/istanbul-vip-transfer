@@ -41,7 +41,6 @@ export async function GET(request: NextRequest) {
       name: vehicles.name,
       pricingClass: vehicles.pricingClass,
       tollClass: vehicles.tollClass,
-      priceCalculationEligible: vehicles.priceCalculationEligible,
       status: vehicles.status,
     }).from(vehicles).orderBy(asc(vehicles.name)),
     db.select({
@@ -76,14 +75,11 @@ export async function POST(request: NextRequest) {
   const data = profileSchema.safeParse(await request.json().catch(() => null));
   if (!data.success) return NextResponse.json({ error: data.error.errors[0]?.message ?? 'Doğrulama hatası.' }, { status: 422 });
   const [{ db }, { auditLogs, vehiclePricingProfiles, vehicles }, { and, eq }] = await Promise.all([import('@/db'), import('@/db/schema'), import('drizzle-orm')]);
-  const [vehicle] = await db.select({
-    id: vehicles.id,
-    priceCalculationEligible: vehicles.priceCalculationEligible,
-  }).from(vehicles).where(eq(vehicles.id, data.data.vehicleId)).limit(1);
+  const [vehicle] = await db.select({ id: vehicles.id })
+    .from(vehicles)
+    .where(eq(vehicles.id, data.data.vehicleId))
+    .limit(1);
   if (!vehicle) return NextResponse.json({ error: 'Araç bulunamadı.' }, { status: 404 });
-  if (!vehicle.priceCalculationEligible) {
-    return NextResponse.json({ error: 'Bu araç fiyat hesaplamasına dahil değil.' }, { status: 422 });
-  }
   const [profile] = await db.transaction(async (tx) => {
     // Keep only the newest active version within this vehicle + mode pair.
     // DISTANCE and HOURLY are independent and may both remain active.
@@ -96,6 +92,11 @@ export async function POST(request: NextRequest) {
       eq(vehiclePricingProfiles.mode, data.data.mode),
       eq(vehiclePricingProfiles.active, true),
     ));
+    await tx.update(vehicles).set({
+      priceCalculationEligible: true,
+      updatedAt: new Date(),
+      updatedBy: session.adminId,
+    }).where(eq(vehicles.id, data.data.vehicleId));
     return tx.insert(vehiclePricingProfiles).values({
       ...data.data,
       validFrom: null,

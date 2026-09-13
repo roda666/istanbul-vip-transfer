@@ -11,7 +11,7 @@ import { isServiceTypeInScope } from '@/lib/service-type-scope';
 
 // --- Types ---
 
-type Vehicle = { id: string; name: string; pricingClass: string; tollClass: TollVehicleClass | null; priceCalculationEligible: boolean; status: string };
+type Vehicle = { id: string; name: string; pricingClass: string; tollClass: TollVehicleClass | null; status: string };
 type PricingRoute = {
   id: string;
   name: string;
@@ -586,16 +586,11 @@ function FastQuotePanel({
             <option value="">Araç Seçin...</option>
             {vehicles.map((vehicle) => {
               const distanceProfile = profiles.some((profile) => profile.vehicleId === vehicle.id && profile.mode === quoteMode && profile.active);
-              const suffix = !vehicle.priceCalculationEligible
-                ? ' — talep üzerine'
-                : distanceProfile ? '' : ' — formül yok';
+              const suffix = distanceProfile ? '' : ' — formül yok';
               return <option key={vehicle.id} value={vehicle.id}>{vehicle.name}{suffix}</option>;
             })}
           </select>
-          {selectedVehicle && !selectedVehicle.priceCalculationEligible && (
-            <p className="mt-2 text-xs font-medium text-amber-700">Bu araç talep üzerine fiyatlandırılıyor; otomatik fiyat üretilmez.</p>
-          )}
-          {selectedVehicle?.priceCalculationEligible && !hasFormula && (
+          {selectedVehicle && !hasFormula && (
             <p className="mt-2 text-xs font-medium text-amber-700">Bu mod için henüz fiyat formülü tanımlanmamış. <a href="#pricing-profiles" className="font-bold underline">Formül oluşturun</a>.</p>
           )}
         </div>
@@ -1206,7 +1201,7 @@ function ProfilesPanel({ profiles, vehicles, onReload }: { profiles: Profile[], 
           <h2 className="text-lg font-bold text-slate-900">Hesaplama Formülleri</h2>
           <p className="text-sm text-slate-500 mt-0.5 font-medium">Araçların mesafe ve tahsis bazlı fiyat kuralları.</p>
         </div>
-        <button onClick={() => { setCloneData(null); setModalOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2">
+        <button data-testid="new-pricing-formula" onClick={() => { setCloneData(null); setModalOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2">
           <Plus size={16}/> Yeni Formül
         </button>
       </div>
@@ -1387,9 +1382,9 @@ function ProfileModal({ isOpen, cloneData, vehicles, onClose, onSaved }: {
            <div className="grid grid-cols-2 gap-4">
              <div>
                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Araç Sınıfı</label>
-               <select value={fVehicleId} onChange={e => setFVehicleId(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm">
+                <select data-testid="formula-vehicle" value={fVehicleId} onChange={e => setFVehicleId(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm">
                  <option value="">Seçiniz...</option>
-                  {vehicles.filter((v: Vehicle) => v.priceCalculationEligible).map((v: Vehicle) => <option key={v.id} value={v.id}>{v.name}</option>)}
+                   {vehicles.map((v: Vehicle) => <option key={v.id} value={v.id}>{v.name}</option>)}
                </select>
              </div>
              <div>

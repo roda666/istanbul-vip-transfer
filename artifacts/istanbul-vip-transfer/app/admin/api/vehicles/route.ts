@@ -14,11 +14,7 @@ const createSchema = z.object({
   passengerCapacity: z.number().int().min(1).max(99).optional().nullable(),
   luggageCapacity: z.number().int().min(0).max(99).optional().nullable(),
   vehicleType: z.enum(VEHICLE_TYPE_VALUES).optional().nullable(),
-  priceCalculationEligible: z.boolean().default(false),
-  pricingClass: z.enum(['automobile', 'minivan', 'minibus', 'midibus', 'bus']).default('automobile'),
   tollClass: z.enum(['class_1','class_2','class_3','class_4','class_5','class_6']).nullable().optional(),
-  tollClassSourceUrl: z.string().url().max(500).nullable().optional(),
-  tollClassEvidence: z.string().max(2000).nullable().optional(),
   isActive: z.boolean().default(true),
   features: z.array(z.string().max(200)).default([]),
   coverImage: z.string().max(500).optional().nullable(),
@@ -37,8 +33,6 @@ const createSchema = z.object({
   robotsIndex: z.boolean().optional().default(true),
   robotsFollow: z.boolean().optional().default(true),
 });
-
-const REQUEST_ONLY_SLUGS = new Set(['mercedes-e-class', 'mercedes-s-class', 'mercedes-v-class']);
 
 /** GET /admin/api/vehicles */
 export async function GET(request: NextRequest) {
@@ -127,12 +121,6 @@ export async function POST(request: NextRequest) {
   }
 
   const data = parsed.data;
-  if (REQUEST_ONLY_SLUGS.has(data.slug) && data.priceCalculationEligible) {
-    return NextResponse.json(
-      { error: 'Bu araç yalnızca talep üzerine sunulur ve otomatik fiyat hesaplamasına eklenemez.' },
-      { status: 422 },
-    );
-  }
   const { sanitizeText, sanitizeHtml } = await import('@/lib/sanitize');
 
   try {
@@ -162,11 +150,7 @@ export async function POST(request: NextRequest) {
         passengerCapacity: data.passengerCapacity ?? null,
         luggageCapacity: data.luggageCapacity ?? null,
         vehicleType: data.vehicleType ? sanitizeText(data.vehicleType) : null,
-        priceCalculationEligible: data.priceCalculationEligible,
-        pricingClass: data.pricingClass,
         tollClass: data.tollClass ?? null,
-        tollClassSourceUrl: data.tollClassSourceUrl ?? null,
-        tollClassEvidence: data.tollClassEvidence ?? null,
         tollClassVerifiedAt: data.tollClass ? new Date() : null,
         tollClassVerifiedBy: data.tollClass ? session.adminId : null,
         isActive: data.isActive,

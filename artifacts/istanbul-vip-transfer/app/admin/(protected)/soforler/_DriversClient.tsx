@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { AlertCircle, ArrowDown, ArrowUp, Edit3, Loader2, Plus, RefreshCw, Trash2, X, Users } from 'lucide-react';
+import { AdminRecordActions } from '@/app/admin/_components/AdminRecordActions';
+import { AlertCircle, Loader2, Plus, RefreshCw, X, Users } from 'lucide-react';
 
 type Driver = { id: string; name: string; phone: string | null; notes: string | null; isActive: boolean; displayOrder: number };
 type FormValues = Omit<Driver, 'id' | 'displayOrder'>;
@@ -173,29 +174,23 @@ export default function DriversClient() {
                         {driver.notes || <span className="text-slate-400 font-normal italic">Yok</span>}
                       </td>
                       <td className="px-5 py-4">
-                        <button
-                          type="button"
-                          onClick={() => void toggleActive(driver)}
-                          disabled={actionId === driver.id}
+                        <span
                           className={driver.isActive
-                            ? 'inline-flex min-h-[44px] items-center justify-center rounded-lg bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-700 border border-emerald-200 transition-colors hover:bg-emerald-100 disabled:opacity-50'
-                            : 'inline-flex min-h-[44px] items-center justify-center rounded-lg bg-slate-100 px-4 py-2 text-xs font-bold text-slate-600 border border-slate-200 transition-colors hover:bg-slate-200 disabled:opacity-50'
+                            ? 'inline-flex items-center justify-center rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 border border-emerald-200'
+                            : 'inline-flex items-center justify-center rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 border border-slate-200'
                           }
                         >
-                          {actionId === driver.id ? <Loader2 size={16} className="animate-spin" /> : (driver.isActive ? 'Aktif' : 'Pasif')}
-                        </button>
+                          {driver.isActive ? 'Aktif' : 'Pasif'}
+                        </span>
                       </td>
                       <td className="px-5 py-4">
-                        <div className="flex flex-wrap justify-end gap-2">
-                          <button type="button" disabled={index === 0 || actionId !== null} onClick={() => void reorder(driver, 'up')} className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 disabled:opacity-40 hover:bg-slate-50 transition-colors" aria-label="Yukarı taşı"><ArrowUp size={18} /></button>
-                          <button type="button" disabled={index === (items?.length ?? 0) - 1 || actionId !== null} onClick={() => void reorder(driver, 'down')} className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 disabled:opacity-40 hover:bg-slate-50 transition-colors" aria-label="Aşağı taşı"><ArrowDown size={18} /></button>
-                          <button type="button" onClick={() => { setEditing(driver); setForm({ name: driver.name, phone: driver.phone ?? '', notes: driver.notes ?? '', isActive: driver.isActive }); }} className="inline-flex min-h-[44px] min-w-[44px] sm:min-w-0 items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 text-sm font-bold text-blue-700 hover:bg-blue-100 transition-colors">
-                            <Edit3 size={18} /><span className="hidden sm:inline">Düzenle</span>
-                          </button>
-                          <button type="button" onClick={() => void remove(driver)} disabled={actionId === driver.id} className="inline-flex min-h-[44px] min-w-[44px] sm:min-w-0 items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 text-sm font-bold text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50">
-                            {actionId === driver.id ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}<span className="hidden sm:inline">Sil</span>
-                          </button>
-                        </div>
+                        <AdminRecordActions
+                          up={{ onClick: () => reorder(driver, 'up'), disabled: index === 0 || actionId !== null }}
+                          down={{ onClick: () => reorder(driver, 'down'), disabled: index === (items?.length ?? 0) - 1 || actionId !== null }}
+                          edit={{ onClick: () => { setEditing(driver); setForm({ name: driver.name, phone: driver.phone ?? '', notes: driver.notes ?? '', isActive: driver.isActive }); } }}
+                          activation={{ onClick: () => toggleActive(driver), isActive: driver.isActive, disabled: actionId === driver.id }}
+                          delete={{ onClick: () => remove(driver), disabled: actionId === driver.id }}
+                        />
                       </td>
                     </tr>
                   ))}
@@ -214,17 +209,14 @@ export default function DriversClient() {
                       {driver.phone || <span className="font-normal italic text-slate-400">Belirtilmemiş</span>}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => void toggleActive(driver)}
-                    disabled={actionId === driver.id}
+                  <span
                     className={driver.isActive
-                      ? 'inline-flex min-h-[44px] items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-50'
-                      : 'inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-200 disabled:opacity-50'
+                      ? 'inline-flex items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700'
+                      : 'inline-flex items-center justify-center rounded-lg border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600'
                     }
                   >
-                    {actionId === driver.id ? <Loader2 size={16} className="animate-spin" /> : (driver.isActive ? 'Aktif' : 'Pasif')}
-                  </button>
+                    {driver.isActive ? 'Aktif' : 'Pasif'}
+                  </span>
                 </div>
 
                 <div className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm text-slate-600">
@@ -237,18 +229,13 @@ export default function DriversClient() {
                 </div>
 
                 <div className="mt-1 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-                  <button type="button" disabled={index === 0 || actionId !== null} onClick={() => void reorder(driver, 'up')} className="inline-flex flex-1 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-40" aria-label="Yukarı taşı">
-                    <ArrowUp size={18} />
-                  </button>
-                  <button type="button" disabled={index === (items?.length ?? 0) - 1 || actionId !== null} onClick={() => void reorder(driver, 'down')} className="inline-flex flex-1 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-40" aria-label="Aşağı taşı">
-                    <ArrowDown size={18} />
-                  </button>
-                  <button type="button" onClick={() => { setEditing(driver); setForm({ name: driver.name, phone: driver.phone ?? '', notes: driver.notes ?? '', isActive: driver.isActive }); }} className="inline-flex flex-1 min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 text-sm font-bold text-blue-700 transition-colors hover:bg-blue-100" aria-label="Düzenle">
-                    <Edit3 size={18} /><span>Düzenle</span>
-                  </button>
-                  <button type="button" onClick={() => void remove(driver)} disabled={actionId === driver.id} className="inline-flex flex-1 min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 text-sm font-bold text-red-700 transition-colors hover:bg-red-100 disabled:opacity-50" aria-label="Sil">
-                    {actionId === driver.id ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}<span>Sil</span>
-                  </button>
+                  <AdminRecordActions
+                    up={{ onClick: () => reorder(driver, 'up'), disabled: index === 0 || actionId !== null }}
+                    down={{ onClick: () => reorder(driver, 'down'), disabled: index === (items?.length ?? 0) - 1 || actionId !== null }}
+                    edit={{ onClick: () => { setEditing(driver); setForm({ name: driver.name, phone: driver.phone ?? '', notes: driver.notes ?? '', isActive: driver.isActive }); } }}
+                    activation={{ onClick: () => toggleActive(driver), isActive: driver.isActive, disabled: actionId === driver.id }}
+                    delete={{ onClick: () => remove(driver), disabled: actionId === driver.id }}
+                  />
                 </div>
               </div>
             ))}

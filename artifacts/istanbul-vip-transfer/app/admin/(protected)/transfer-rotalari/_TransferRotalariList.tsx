@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Plus, Pencil, Trash2, X, Check, Loader2, MapPinned, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, X, Check, Loader2, MapPinned } from 'lucide-react';
 import type {
   RouteFaqItem,
   RouteTransportOption,
@@ -9,6 +9,7 @@ import type {
   TransferRouteTranslation,
 } from '@/db/schema';
 import { AISeoGenerator } from '@/app/admin/_components/AISeoGenerator';
+import { AdminRecordActions } from '@/app/admin/_components/AdminRecordActions';
 import { groupManagedLocationOptions, type ManagedLocationOption } from '@/lib/admin-location-options';
 
 // ── Design tokens ────────────────────────────────────────────────────────────
@@ -683,26 +684,13 @@ export default function TransferRotalariList() {
 
                     {/* Actions */}
                     <td style={{ padding: '10px 12px' }}>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <button
-                          onClick={() => setModal({ ...r })}
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', minHeight: '44px', padding: '5px 10px', borderRadius: '6px', background: '#EFF6FF', border: 'none', color: '#2563EB', fontSize: '12px', fontFamily: 'Inter, sans-serif', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                        >
-                          <Pencil size={12} /> Düzenle
-                        </button>
-                        <button onClick={() => listAction(r, 'up')} disabled={index === 0 || actionId === r.id} title="Yukarı taşı" aria-label="Yukarı taşı"
-                          style={{ minWidth: '44px', minHeight: '44px', borderRadius: '6px', border: `1px solid ${BORDER}`, background: BG, color: index === 0 ? '#CBD5E1' : TEXT, cursor: index === 0 ? 'default' : 'pointer' }}><ChevronUp size={15} /></button>
-                        <button onClick={() => listAction(r, 'down')} disabled={index === routes.length - 1 || actionId === r.id} title="Aşağı taşı" aria-label="Aşağı taşı"
-                          style={{ minWidth: '44px', minHeight: '44px', borderRadius: '6px', border: `1px solid ${BORDER}`, background: BG, color: index === routes.length - 1 ? '#CBD5E1' : TEXT, cursor: index === routes.length - 1 ? 'default' : 'pointer' }}><ChevronDown size={15} /></button>
-                        <button onClick={() => listAction(r, 'toggle-active')} disabled={actionId === r.id} title={r.active ? 'Pasifleştir' : 'Aktifleştir'}
-                          style={{ minHeight: '44px', padding: '5px 10px', borderRadius: '6px', background: r.active ? '#FFF7ED' : '#ECFDF5', border: `1px solid ${BORDER}`, color: r.active ? '#B45309' : '#047857', cursor: 'pointer', whiteSpace: 'nowrap' }}>{r.active ? 'Pasifleştir' : 'Aktifleştir'}</button>
-                        <button
-                          onClick={() => setConfirmDelete(r)}
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', minHeight: '44px', padding: '5px 10px', borderRadius: '6px', background: '#FEF2F2', border: '1px solid #FECACA', color: '#D64545', fontSize: '12px', fontFamily: 'Inter, sans-serif', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                        >
-                          <Trash2 size={12} /> Sil
-                        </button>
-                      </div>
+                      <AdminRecordActions
+                        up={{ onClick: () => listAction(r, 'up'), disabled: index === 0 || actionId === r.id }}
+                        down={{ onClick: () => listAction(r, 'down'), disabled: index === routes.length - 1 || actionId === r.id }}
+                        edit={{ onClick: () => setModal({ ...r }) }}
+                        activation={{ onClick: () => listAction(r, 'toggle-active'), isActive: r.active, disabled: actionId === r.id }}
+                        delete={{ onClick: () => setConfirmDelete(r) }}
+                      />
                     </td>
                   </tr>
                 ))}

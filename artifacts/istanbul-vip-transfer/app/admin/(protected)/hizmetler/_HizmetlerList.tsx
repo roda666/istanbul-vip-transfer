@@ -3,7 +3,8 @@
 import { useState, useMemo, useTransition, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { ArrowUp, ArrowDown } from 'lucide-react';
+import { Copy, Eye } from 'lucide-react';
+import { AdminRecordActions } from '@/app/admin/_components/AdminRecordActions';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -129,7 +130,6 @@ function CoverThumbnail({ src, title }: { src: string | null; title: string }) {
 
 function ActionButtons({
   item,
-  confirmArchive,
   actionLoading,
   onDuplicate,
   onArchive,
@@ -138,7 +138,6 @@ function ActionButtons({
   canMoveDown,
 }: {
   item: ServiceListItem;
-  confirmArchive: string | null;
   actionLoading: string | null;
   onDuplicate: (item: ServiceListItem) => void;
   onArchive:   (item: ServiceListItem) => void;
@@ -164,50 +163,34 @@ function ActionButtons({
   }
 
   return (
-    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-      <button data-testid="service-move-up" aria-label="Yukarı" title="Yukarı" onClick={() => onMove(item, 'up')} disabled={!canMoveUp || !!actionLoading} style={{ minWidth: '44px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '5px', background: '#F8FAFC', color: '#52697A', border: '1px solid #D1D5DB', cursor: canMoveUp ? 'pointer' : 'not-allowed', opacity: canMoveUp ? 1 : .4 }}><ArrowUp size={14} /></button>
-      <button data-testid="service-move-down" aria-label="Aşağı" title="Aşağı" onClick={() => onMove(item, 'down')} disabled={!canMoveDown || !!actionLoading} style={{ minWidth: '44px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '5px', background: '#F8FAFC', color: '#52697A', border: '1px solid #D1D5DB', cursor: canMoveDown ? 'pointer' : 'not-allowed', opacity: canMoveDown ? 1 : .4 }}><ArrowDown size={14} /></button>
-      <a href={`/admin/hizmetler/${item.id}`} style={{
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px',
-        fontSize: '11px', fontWeight: 600, color: '#C9A84C',
-        textDecoration: 'none', padding: '4px 12px',
-        background: '#FFFBEB', borderRadius: '5px', border: '1px solid #F59E0B',
-        whiteSpace: 'nowrap',
-      }}>Düzenle</a>
-      <a href={`/tr/${item.slug}`} target="_blank" rel="noopener noreferrer" style={{
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px',
-        fontSize: '11px', fontWeight: 600, color: '#0891B2',
-        textDecoration: 'none', padding: '4px 12px',
-        background: '#ECFEFF', borderRadius: '5px', border: '1px solid #BAE6FD',
-        whiteSpace: 'nowrap',
-      }}>Önizle ↗</a>
-      <button onClick={() => onDuplicate(item)} disabled={!!actionLoading || !!isLoading}
-        style={{
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px',
-          fontSize: '11px', fontWeight: 600, color: '#374151', padding: '4px 12px',
-          background: '#F1F5F9', borderRadius: '5px', border: '1px solid #D1D5DB',
-          cursor: 'pointer', whiteSpace: 'nowrap',
-          opacity: actionLoading === `dup-${item.id}` ? 0.5 : 1,
-        }}
-        title="Taslak olarak kopyala"
-      >Kopyala</button>
-      {item.status !== 'ARCHIVED' && (
-        <button onClick={() => onArchive(item)} disabled={!!actionLoading || !!isLoading}
-          style={{
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px',
-            fontSize: '11px', fontWeight: 600,
-            color: confirmArchive === item.id ? '#FFFFFF' : '#64748B',
-            padding: '4px 12px',
-            background: confirmArchive === item.id ? '#DC2626' : '#F8FAFC',
-            borderRadius: '5px',
-            border: `1px solid ${confirmArchive === item.id ? '#DC2626' : '#D1D5DB'}`,
-            cursor: 'pointer', whiteSpace: 'nowrap',
-            opacity: actionLoading === `archive-${item.id}` ? 0.5 : 1,
-          }}
-          title={confirmArchive === item.id ? 'Emin misiniz? Tekrar tıklayın.' : 'Arşivle'}
-        >{confirmArchive === item.id ? 'Emin misiniz?' : 'Arşivle'}</button>
-      )}
-    </div>
+    <AdminRecordActions
+      up={{ onClick: () => onMove(item, 'up'), disabled: !canMoveUp || !!actionLoading }}
+      down={{ onClick: () => onMove(item, 'down'), disabled: !canMoveDown || !!actionLoading }}
+      edit={{ href: `/admin/hizmetler/${item.id}` }}
+      archive={item.status !== 'ARCHIVED' ? {
+        onClick: () => onArchive(item),
+        disabled: !!actionLoading || !!isLoading,
+        isArchived: false
+      } : undefined}
+      customActions={[
+        {
+          id: 'duplicate',
+          label: 'Kopyala',
+          icon: Copy,
+          colorClass: 'text-slate-700 bg-slate-50 border border-slate-200 hover:bg-slate-100',
+          onClick: () => onDuplicate(item),
+          disabled: !!actionLoading || !!isLoading
+        },
+        {
+          id: 'preview',
+          label: 'Önizle ↗',
+          icon: Eye,
+          colorClass: 'text-cyan-700 bg-cyan-50 border border-cyan-200 hover:bg-cyan-100',
+          mobileColorClass: 'text-cyan-700 hover:bg-cyan-50',
+          onClick: () => { window.open(`/tr/${item.slug}`, '_blank'); }
+        }
+      ]}
+    />
   );
 }
 
@@ -223,7 +206,6 @@ export default function HizmetlerList({ items }: Props) {
   const [statusFilter,    setStatusFilter]    = useState('');
   const [sortBy,          setSortBy]          = useState('displayOrder');
   const [actionLoading,   setActionLoading]   = useState<string | null>(null);
-  const [confirmArchive,  setConfirmArchive]  = useState<string | null>(null);
 
   // ── Dynamic category map from DB ────────────────────────────────────────
   const [catMap, setCatMap] = useState<Record<string, string>>({});
@@ -265,8 +247,7 @@ export default function HizmetlerList({ items }: Props) {
   }, [items, searchQuery, categoryFilter, statusFilter, langFilter, sortBy]);
 
   async function handleArchive(item: ServiceListItem) {
-    if (confirmArchive !== item.id) { setConfirmArchive(item.id); return; }
-    setConfirmArchive(null);
+    if (!window.confirm(`"${item.title}" hizmetini arşivlemek istediğinize emin misiniz?`)) return;
     setActionLoading(`archive-${item.id}`);
     try {
       const res = await fetch(`/admin/api/service-pages/${item.id}`, {
@@ -533,7 +514,6 @@ export default function HizmetlerList({ items }: Props) {
 
               <ActionButtons
                 item={item}
-                confirmArchive={confirmArchive}
                 actionLoading={actionLoading}
                 onDuplicate={handleDuplicate}
                 onArchive={handleArchive}
@@ -621,7 +601,6 @@ export default function HizmetlerList({ items }: Props) {
               <div className="hl-card-actions">
                 <ActionButtons
                   item={item}
-                  confirmArchive={confirmArchive}
                   actionLoading={actionLoading}
                   onDuplicate={handleDuplicate}
                   onArchive={handleArchive}

@@ -1,8 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Globe2, Loader2, Pencil, Trash2, X, Check, AlertTriangle } from 'lucide-react';
+import { Globe2, Loader2, X, Check, AlertTriangle } from 'lucide-react';
 import AdminPageHeader from '@/app/admin/_components/AdminPageHeader';
+import { AdminRecordActions } from '@/app/admin/_components/AdminRecordActions';
 
 type Competitor = { id: number; domain: string; label: string; notes: string | null; active: boolean };
 type Analysis = {
@@ -114,7 +115,7 @@ export default function RakiplerPage() {
           <div key={item.id} style={{ display: 'flex', gap: 12, padding: 15, borderBottom: index < items.length - 1 ? '1px solid #EDF2F7' : undefined }}>
             <Globe2 size={18} color="#2563EB" style={{ marginTop: 2, flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}><strong style={{ fontSize: 13, color: '#172B3A' }}>{item.label}</strong><div style={{ fontSize: 12, color: '#52697A', marginTop: 3 }}>{item.domain} {!item.active && <em style={{ color: '#B45309' }}>• Pasif</em>}</div>{item.notes && <p style={{ fontSize: 12, color: '#718596', margin: '6px 0 0' }}>{item.notes}</p>}</div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><button type="button" aria-label="Düzenle" title="Düzenle" onClick={() => edit(item)} style={{ ...button, color: '#1D4ED8', background: '#EFF6FF' }}><Pencil size={18} /><span className="md:hidden">Düzenle</span></button><button type="button" aria-label="Sil" title="Sil" onClick={() => remove(item)} style={{ ...button, color: '#B42318', background: '#FEF2F2' }}><Trash2 size={18} /><span className="md:hidden">Sil</span></button></div>
+            <AdminRecordActions edit={{ onClick: () => edit(item) }} delete={{ onClick: () => remove(item) }} />
           </div>)}
       </section>
       <section style={{ flex: '1 1 310px', minWidth: 0, background: '#fff', border: '1px solid #D8E1E9', borderRadius: 10, padding: 16 }}>

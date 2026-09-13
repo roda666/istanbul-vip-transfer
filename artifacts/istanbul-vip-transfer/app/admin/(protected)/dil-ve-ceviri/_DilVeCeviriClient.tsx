@@ -18,11 +18,12 @@ import { useState, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Globe, ChevronDown, Search, CheckCircle2, XCircle, RefreshCw,
-  Loader2, Archive, BarChart3, Settings, FileText,
-  AlertCircle, Sparkles, ArrowRight, X as XIcon,
+  Loader2, BarChart3, Settings, FileText,
+  AlertCircle, Sparkles, ArrowRight, X as XIcon, Send, Check, Rocket
 } from 'lucide-react';
 import { safeFetch, safeJson } from '@/lib/safe-fetch-json';
 import { LOCALE_FLAG_EMOJIS } from '@/lib/i18n/locale-registry';
+import { AdminRecordActions } from '../../_components/AdminRecordActions';
 import type {
   LangTranslationStats, CoverageStats, EntitySources, Job, DbLang,
 } from './page';
@@ -402,38 +403,27 @@ function DillerTab({ langs, stats }: { langs: Lang[]; stats: LangTranslationStat
 
               {/* Actions */}
               {lang.code !== 'tr' && (
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  {isLoading ? (
-                    <Loader2 size={16} style={{ animation: 'spin 1s linear infinite', color: '#3B82F6' }} />
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => setConfirm({ lang, action: lang.isEnabled ? 'disable' : 'enable' })}
-                        style={{
-                          padding: '6px 12px', borderRadius: '6px', border: '1px solid #D0D9E0',
-                          cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '12px',
-                          background: lang.isEnabled ? '#FFF1F2' : '#F0FDF4',
-                          color: lang.isEnabled ? '#BE123C' : '#15803D',
-                        }}
-                      >
-                        {lang.isEnabled ? <XCircle size={12} style={{ display: 'inline', marginRight: '4px' }} /> : <CheckCircle2 size={12} style={{ display: 'inline', marginRight: '4px' }} />}
-                        {lang.isEnabled ? 'Devre Dışı' : 'Etkinleştir'}
-                      </button>
-                      {lang.isEnabled && (
-                        <button
-                          onClick={() => setConfirm({ lang, action: lang.isPublished ? 'unpublish' : 'publish' })}
-                          style={{
-                            padding: '6px 12px', borderRadius: '6px', border: '1px solid #D0D9E0',
-                            cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '12px',
-                            background: lang.isPublished ? '#F8FAFC' : '#EFF6FF',
-                            color: lang.isPublished ? '#64748B' : '#1D4ED8',
-                          }}
-                        >
-                          {lang.isPublished ? 'Yayından Kaldır' : 'Yayına Al'}
-                        </button>
-                      )}
-                    </>
-                  )}
+                <div style={{ flex: '1 1 120px' }}>
+                  <AdminRecordActions
+                    activation={{
+                      isActive: lang.isEnabled,
+                      onClick: () => setConfirm({ lang, action: lang.isEnabled ? 'disable' : 'enable' }),
+                      disabled: isLoading
+                    }}
+                    customActions={
+                      lang.isEnabled ? [{
+                        id: 'publish',
+                        label: lang.isPublished ? 'Yayından Kaldır' : 'Yayına Al',
+                        icon: Globe,
+                        colorClass: lang.isPublished
+                          ? 'text-orange-700 bg-orange-50 border border-orange-200 hover:bg-orange-100'
+                          : 'text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100',
+                        mobileColorClass: lang.isPublished ? 'text-orange-700 hover:bg-orange-50' : 'text-blue-700 hover:bg-blue-50',
+                        onClick: () => setConfirm({ lang, action: lang.isPublished ? 'unpublish' : 'publish' }),
+                        disabled: isLoading
+                      }] : []
+                    }
+                  />
                 </div>
               )}
             </div>
@@ -940,33 +930,39 @@ function IcerikCevirileriTab({ jobs, total, page, limit, entityTypeFilter, langF
                   {isLoading ? (
                     <Loader2 size={14} style={{ animation: 'spin 1s linear infinite', color: '#3B82F6' }} />
                   ) : (
-                    <>
-                      {job.status === 'DRAFT' && (
-                        <ABtn onClick={() => doAction(job.id, 'submit_review')} bg="#FFF7ED" color="#C2410C" border="#FDBA74">
-                          İncelemeye Gönder
-                        </ABtn>
-                      )}
-                      {job.status === 'REVIEW' && (
-                        <ABtn onClick={() => doAction(job.id, 'approve')} bg="#ECFDF5" color="#065F46" border="#A7F3D0">
-                          Onayla
-                        </ABtn>
-                      )}
-                      {job.status === 'APPROVED' && (
-                        <ABtn onClick={() => doAction(job.id, 'publish')} bg="#F0FDF4" color="#166534" border="#86EFAC">
-                          Yayınla
-                        </ABtn>
-                      )}
-                      {['DRAFT', 'REVIEW', 'APPROVED', 'SCHEDULED', 'FAILED', 'OUTDATED'].includes(job.status) && (
-                        <ABtn onClick={() => doAction(job.id, 'archive')} bg="#F1F5F9" color="#64748B" border="#CBD5E1">
-                          <Archive size={11} /> Arşiv
-                        </ABtn>
-                      )}
-                      {job.status === 'FAILED' && (
-                        <ABtn onClick={() => doAction(job.id, 'submit_review')} bg="#EFF6FF" color="#1D4ED8" border="#BFDBFE">
-                          <RefreshCw size={11} /> İncelemeye Al
-                        </ABtn>
-                      )}
-                    </>
+                    <AdminRecordActions
+                      archive={
+                        ['DRAFT', 'REVIEW', 'APPROVED', 'SCHEDULED', 'FAILED', 'OUTDATED'].includes(job.status)
+                          ? { isArchived: false, onClick: () => doAction(job.id, 'archive'), disabled: isLoading }
+                          : undefined
+                      }
+                      customActions={[
+                        ...(job.status === 'DRAFT' ? [{
+                          id: 'submit_review', label: 'İncelemeye Gönder', icon: Send,
+                          colorClass: 'text-orange-700 bg-orange-50 border border-orange-200 hover:bg-orange-100',
+                          mobileColorClass: 'text-orange-700 hover:bg-orange-50',
+                          onClick: () => doAction(job.id, 'submit_review'), disabled: isLoading
+                        }] : []),
+                        ...(job.status === 'REVIEW' ? [{
+                          id: 'approve', label: 'Onayla', icon: Check,
+                          colorClass: 'text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100',
+                          mobileColorClass: 'text-emerald-700 hover:bg-emerald-50',
+                          onClick: () => doAction(job.id, 'approve'), disabled: isLoading
+                        }] : []),
+                        ...(job.status === 'APPROVED' ? [{
+                          id: 'publish', label: 'Yayınla', icon: Rocket,
+                          colorClass: 'text-green-700 bg-green-50 border border-green-200 hover:bg-green-100',
+                          mobileColorClass: 'text-green-700 hover:bg-green-50',
+                          onClick: () => doAction(job.id, 'publish'), disabled: isLoading
+                        }] : []),
+                        ...(job.status === 'FAILED' ? [{
+                          id: 'retry', label: 'İncelemeye Al', icon: RefreshCw,
+                          colorClass: 'text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100',
+                          mobileColorClass: 'text-blue-700 hover:bg-blue-50',
+                          onClick: () => doAction(job.id, 'submit_review'), disabled: isLoading
+                        }] : [])
+                      ]}
+                    />
                   )}
                 </div>
               </div>
@@ -1004,23 +1000,6 @@ function IcerikCevirileriTab({ jobs, total, page, limit, entityTypeFilter, langF
   );
 }
 
-/* Tiny action button */
-function ABtn({ onClick, bg, color, border, children }: {
-  onClick: () => void; bg: string; color: string; border: string; children: React.ReactNode;
-}) {
-  return (
-    <button onClick={onClick}
-      style={{
-        padding: '5px 10px', borderRadius: '6px', cursor: 'pointer',
-        border: `1px solid ${border}`, background: bg, color,
-        fontFamily: 'Inter, sans-serif', fontSize: '11px', fontWeight: 500,
-        display: 'inline-flex', alignItems: 'center', gap: '4px',
-      }}
-    >
-      {children}
-    </button>
-  );
-}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Tab 5 — Ayarlar

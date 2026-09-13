@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Pencil, Trash2, X, Check, Loader2, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, X, Check, Loader2 } from 'lucide-react';
 import AdminPageHeader from '../../_components/AdminPageHeader';
+import { AdminRecordActions } from '../../_components/AdminRecordActions';
 import { AIWriteAssist } from '../../_components/AIWriteAssist';
 
 interface FAQ {
@@ -194,11 +195,13 @@ export default function SssPage() {
                 <p style={{ color: '#718596', fontSize: '12px', fontFamily: 'Inter, sans-serif', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{faq.answer}</p>
               </div>
               <span style={{ color: '#A0B0BC', fontSize: '11px', fontFamily: 'monospace', flexShrink: 0 }}>#{faq.sortOrder}</span>
-              <div style={{ display: 'flex', gap: '4px', flexShrink: 0, flexWrap: 'wrap' }}>
-                <button aria-label="Yukarı" title="Yukarı" onClick={() => moveFaq(faq.id, 'up')} disabled={i === 0} style={{ minWidth: '44px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', background: '#F8FAFC', color: '#52697A', border: '1px solid #D8E1E9', cursor: i === 0 ? 'not-allowed' : 'pointer', opacity: i === 0 ? 0.4 : 1 }}><ArrowUp size={16} /></button>
-                <button aria-label="Aşağı" title="Aşağı" onClick={() => moveFaq(faq.id, 'down')} disabled={i === faqs.length - 1} style={{ minWidth: '44px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', background: '#F8FAFC', color: '#52697A', border: '1px solid #D8E1E9', cursor: i === faqs.length - 1 ? 'not-allowed' : 'pointer', opacity: i === faqs.length - 1 ? 0.4 : 1 }}><ArrowDown size={16} /></button>
-                <button aria-label="Düzenle" onClick={() => openEdit(faq)} style={{ minWidth: '44px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', background: '#EFF6FF', color: '#2563EB', border: 'none', cursor: 'pointer' }}><Pencil size={13} /></button>
-                <button aria-label="Sil" onClick={() => handleDelete(faq.id)} disabled={deleting === faq.id} style={{ minWidth: '44px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', background: '#FEF2F2', color: '#D64545', border: 'none', cursor: 'pointer', opacity: deleting === faq.id ? 0.5 : 1 }}><Trash2 size={13} /></button>
+              <div style={{ flexShrink: 0 }}>
+                <AdminRecordActions
+                  up={{ onClick: () => moveFaq(faq.id, 'up'), disabled: i === 0 }}
+                  down={{ onClick: () => moveFaq(faq.id, 'down'), disabled: i === faqs.length - 1 }}
+                  edit={{ onClick: () => openEdit(faq) }}
+                  delete={{ onClick: () => handleDelete(faq.id), disabled: deleting === faq.id }}
+                />
               </div>
             </div>
           ))}

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Globe, Loader2, Archive, Brain, AlertTriangle } from 'lucide-react';
+import { Globe, Loader2, Brain, AlertTriangle, Send, Check, Rocket } from 'lucide-react';
+import { AdminRecordActions } from '../../_components/AdminRecordActions';
 import type { Language } from '@/db/schema';
 import type { EntitySources } from './page';
 
@@ -623,38 +624,13 @@ export default function CevirilerClient({
               </div>
 
               <div className="ct-card-actions">
-                {job.status === 'DRAFT' && (
-                  <button className="ct-action-btn"
-                    style={{ background: '#FFF7ED', color: '#C2410C', borderColor: '#FDBA74' }}
-                    onClick={() => doAction(job.id, 'submit_review')} disabled={isLoading}>
-                    📤 İncelemeye Gönder
-                  </button>
-                )}
-                {job.status === 'REVIEW' && (
-                  <button className="ct-action-btn"
-                    style={{ background: '#ECFDF5', color: '#065F46', borderColor: '#A7F3D0' }}
-                    onClick={() => doAction(job.id, 'approve')} disabled={isLoading}>
-                    ✓ Onayla
-                  </button>
-                )}
-                {job.status === 'APPROVED' && (
-                  <button className="ct-action-btn"
-                    style={{ background: '#F0FDF4', color: '#166534', borderColor: '#86EFAC' }}
-                    onClick={() => doAction(job.id, 'publish')} disabled={isLoading}>
-                    🚀 Yayınla
-                  </button>
-                )}
-                {['DRAFT', 'REVIEW', 'APPROVED', 'SCHEDULED', 'FAILED', 'OUTDATED'].includes(job.status) && (
-                  <button className="ct-action-btn"
-                    style={{ background: '#F1F5F9', color: '#64748B', borderColor: '#CBD5E1', flex: 0 }}
-                    onClick={() => doAction(job.id, 'archive')} disabled={isLoading}>
-                    <Archive size={13} /> Arşiv
-                  </button>
-                )}
                 {isLoading && (
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#60748A', fontFamily: 'Inter, sans-serif' }}>
                     <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> İşleniyor…
                   </span>
+                )}
+                {!isLoading && (
+                  <TableActions job={job} isLoading={isLoading} onAction={doAction} />
                 )}
               </div>
             </div>
@@ -688,36 +664,56 @@ export default function CevirilerClient({
 
 /* ── Desktop table action buttons ──────────────────────────────────────── */
 function TableActions({ job, isLoading, onAction }: { job: Job; isLoading: boolean; onAction: (id: string, action: string) => void }) {
-  return (
-    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-      {job.status === 'DRAFT' && (
-        <TblBtn label="İncelemeye Gönder" color="#C2410C" bg="#FFF7ED" border="#FDBA74"
-          onClick={() => onAction(job.id, 'submit_review')} disabled={isLoading} />
-      )}
-      {job.status === 'REVIEW' && (
-        <TblBtn label="Onayla" color="#065F46" bg="#ECFDF5" border="#A7F3D0"
-          onClick={() => onAction(job.id, 'approve')} disabled={isLoading} />
-      )}
-      {job.status === 'APPROVED' && (
-        <TblBtn label="Yayınla" color="#166534" bg="#F0FDF4" border="#86EFAC"
-          onClick={() => onAction(job.id, 'publish')} disabled={isLoading} />
-      )}
-      {['DRAFT', 'REVIEW', 'APPROVED', 'SCHEDULED', 'FAILED', 'OUTDATED'].includes(job.status) && (
-        <TblBtn label="Arşiv" color="#64748B" bg="#F1F5F9" border="#CBD5E1"
-          onClick={() => onAction(job.id, 'archive')} disabled={isLoading} icon={<Archive size={10} />} />
-      )}
-    </div>
-  );
-}
+  const customActions = [];
 
-function TblBtn({ label, color, bg, border, onClick, disabled, icon }: {
-  label: string; color: string; bg: string; border: string;
-  onClick: () => void; disabled: boolean; icon?: React.ReactNode;
-}) {
+  if (job.status === 'DRAFT') {
+    customActions.push({
+      id: 'submit_review',
+      label: 'İncelemeye Gönder',
+      icon: Send,
+      colorClass: 'text-orange-700 bg-orange-50 border border-orange-200 hover:bg-orange-100',
+      mobileColorClass: 'text-orange-700 hover:bg-orange-50',
+      onClick: () => onAction(job.id, 'submit_review'),
+      disabled: isLoading
+    });
+  }
+
+  if (job.status === 'REVIEW') {
+    customActions.push({
+      id: 'approve',
+      label: 'Onayla',
+      icon: Check,
+      colorClass: 'text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100',
+      mobileColorClass: 'text-emerald-700 hover:bg-emerald-50',
+      onClick: () => onAction(job.id, 'approve'),
+      disabled: isLoading
+    });
+  }
+
+  if (job.status === 'APPROVED') {
+    customActions.push({
+      id: 'publish',
+      label: 'Yayınla',
+      icon: Rocket,
+      colorClass: 'text-green-700 bg-green-50 border border-green-200 hover:bg-green-100',
+      mobileColorClass: 'text-green-700 hover:bg-green-50',
+      onClick: () => onAction(job.id, 'publish'),
+      disabled: isLoading
+    });
+  }
+
+  const showArchive = ['DRAFT', 'REVIEW', 'APPROVED', 'SCHEDULED', 'FAILED', 'OUTDATED'].includes(job.status);
+
   return (
-    <button onClick={onClick} disabled={disabled} className="ct-tbl-btn"
-      style={{ background: bg, color, border: `1px solid ${border}`, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1 }}>
-      {icon}{label}
-    </button>
+    <div className="w-full">
+      <AdminRecordActions
+        archive={showArchive ? {
+          isArchived: false,
+          onClick: () => onAction(job.id, 'archive'),
+          disabled: isLoading,
+        } : undefined}
+        customActions={customActions}
+      />
+    </div>
   );
 }

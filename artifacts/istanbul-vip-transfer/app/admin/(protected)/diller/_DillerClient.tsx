@@ -12,6 +12,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Globe, Search, Lock } from 'lucide-react';
 import { RENDERABLE_LOCALES } from '@/lib/i18n/locale-registry';
+import { AdminRecordActions } from '../../_components/AdminRecordActions';
 import type { Language } from '@/db/schema';
 import type { LangTranslationStats } from './page';
 
@@ -190,41 +191,49 @@ export default function DillerClient({ langs: initialLangs, stats }: Props) {
     const busy = loading === lang.id;
     if (isTr) {
       return (
-        <span style={{ fontSize: '11px', color: '#50677A', fontStyle: 'italic', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-          <Lock size={11} /> Kaynak dil — kilitli
+        <span style={{ fontSize: '11px', color: '#50677A', fontStyle: 'italic', display: 'inline-flex', alignItems: 'center', gap: '4px', minHeight: '44px' }}>
+          <Lock size={14} /> Kaynak dil — kilitli
         </span>
       );
     }
     if (!lang.providerSupported) {
-      return <span style={{ fontSize: '11px', color: '#8899AA', fontStyle: 'italic' }}>Kullanılamaz</span>;
+      return <span style={{ fontSize: '11px', color: '#8899AA', fontStyle: 'italic', display: 'inline-flex', alignItems: 'center', minHeight: '44px' }}>Kullanılamaz</span>;
     }
+
+    const canPublish = RENDERABLE_LANGS.includes(lang.code) || lang.isPublished;
+    const customActions = [];
+    if (lang.isEnabled && canPublish) {
+      customActions.push({
+        id: 'publish',
+        label: lang.isPublished ? 'Yayından Kaldır' : 'Yayınla',
+        icon: Globe,
+        colorClass: lang.isPublished
+          ? 'text-orange-700 bg-orange-50 border border-orange-200 hover:bg-orange-100'
+          : 'text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100',
+        mobileColorClass: lang.isPublished ? 'text-orange-700 hover:bg-orange-50' : 'text-blue-700 hover:bg-blue-50',
+        onClick: () => requestTogglePublished(lang),
+        disabled: busy
+      });
+    }
+
     return (
-      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-        <button
-          className="dl-btn"
-          disabled={busy}
-          onClick={() => requestToggleEnabled(lang)}
-          style={{ background: lang.isEnabled ? '#FEF2F2' : '#ECFDF5', color: lang.isEnabled ? '#991B1B' : '#065F46' }}
-        >
-          {lang.isEnabled ? 'Devre Dışı' : 'Etkinleştir'}
-        </button>
-        {lang.isEnabled && (RENDERABLE_LANGS.includes(lang.code) || lang.isPublished ? (
-          <button
-            className="dl-btn"
-            disabled={busy}
-            onClick={() => requestTogglePublished(lang)}
-            style={{ background: lang.isPublished ? '#FFF7ED' : '#EFF6FF', color: lang.isPublished ? '#C2410C' : '#1E40AF' }}
-          >
-            {lang.isPublished ? 'Yayından Kaldır' : 'Yayınla'}
-          </button>
-        ) : (
+      <div className="flex items-center justify-end gap-2">
+        <AdminRecordActions
+          activation={{
+            isActive: lang.isEnabled,
+            onClick: () => requestToggleEnabled(lang),
+            disabled: busy
+          }}
+          customActions={customActions}
+        />
+        {lang.isEnabled && !canPublish && (
           <span
             title="Site arayüzü sözlüğü henüz hazır değil — yayınlanamaz. Çeviri taslakları hazırlanabilir."
-            style={{ fontSize: '11px', color: '#92400E', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '9999px', padding: '4px 10px', whiteSpace: 'nowrap' }}
+            className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1 whitespace-nowrap"
           >
             Sözlük hazır değil
           </span>
-        ))}
+        )}
       </div>
     );
   }

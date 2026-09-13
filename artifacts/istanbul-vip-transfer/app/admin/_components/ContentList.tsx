@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Pencil, Trash2, ChevronLeft, ChevronRight, ArrowUp, ArrowDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import StatusBadge from './StatusBadge';
+import { AdminRecordActions } from './AdminRecordActions';
 import type { ContentStatus } from '@/lib/workflow';
 
 interface ContentItem {
@@ -104,7 +105,7 @@ export default function ContentList({ items, baseUrl, page, total, limit }: Prop
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 200px 130px 160px 90px',
+            gridTemplateColumns: '1fr 180px 100px 140px minmax(280px, auto)',
             gap: '12px',
             padding: '10px 16px',
             borderBottom: '1px solid #D8E1E9',
@@ -129,12 +130,18 @@ export default function ContentList({ items, baseUrl, page, total, limit }: Prop
         </div>
 
         {/* Rows */}
-        {items.map((item) => (
+        {items.map((item) => {
+          const isSafeToDelete = ['IDEA', 'DRAFT', 'RESEARCH'].includes(item.status);
+          const deleteOmittedReason = isSafeToDelete
+            ? undefined
+            : 'Yayında, onayda veya arşivlenmiş içerikler doğrudan silinemez. Önce taslağa alın.';
+
+          return (
           <div
             key={item.id}
             style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 200px 130px 160px 90px',
+              gridTemplateColumns: '1fr 180px 100px 140px minmax(280px, auto)',
               gap: '12px',
               padding: '12px 16px',
               alignItems: 'center',
@@ -185,51 +192,28 @@ export default function ContentList({ items, baseUrl, page, total, limit }: Prop
               {formatDate(item.updatedAt)}
             </span>
 
-            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-              <button aria-label="Yukarı" title="Yukarı" onClick={() => move(item.id, 'up')} disabled={moving === item.id} style={{ minWidth: '44px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', background: '#F8FAFC', color: '#52697A', border: '1px solid #D8E1E9', cursor: 'pointer' }}><ArrowUp size={14} /></button>
-              <button aria-label="Aşağı" title="Aşağı" onClick={() => move(item.id, 'down')} disabled={moving === item.id} style={{ minWidth: '44px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', background: '#F8FAFC', color: '#52697A', border: '1px solid #D8E1E9', cursor: 'pointer' }}><ArrowDown size={14} /></button>
-              <Link
-                href={`${baseUrl}/${item.id}`}
-                title="Düzenle"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minWidth: '44px',
-                  minHeight: '44px',
-                  borderRadius: '6px',
-                  background: '#EFF6FF',
-                  color: '#2563EB',
-                  textDecoration: 'none',
-                  transition: 'background 0.15s',
+            <div>
+              <AdminRecordActions
+                up={{
+                  onClick: () => move(item.id, 'up'),
+                  disabled: moving === item.id,
                 }}
-              >
-                <Pencil size={14} />
-              </Link>
-              <button
-                onClick={() => handleDelete(item.id, item.title)}
-                disabled={deleting === item.id}
-                title="Sil"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minWidth: '44px',
-                  minHeight: '44px',
-                  borderRadius: '6px',
-                  background: '#FEF2F2',
-                  color: '#D64545',
-                  border: 'none',
-                  cursor: deleting === item.id ? 'not-allowed' : 'pointer',
-                  opacity: deleting === item.id ? 0.5 : 1,
-                  transition: 'background 0.15s',
+                down={{
+                  onClick: () => move(item.id, 'down'),
+                  disabled: moving === item.id,
                 }}
-              >
-                <Trash2 size={14} />
-              </button>
+                edit={{
+                  href: `${baseUrl}/${item.id}`,
+                }}
+                delete={isSafeToDelete ? {
+                  onClick: () => handleDelete(item.id, item.title),
+                  disabled: deleting === item.id,
+                } : undefined}
+                deleteOmittedReason={deleteOmittedReason}
+              />
             </div>
           </div>
-        ))}
+        )})}
       </div>
 
       {/* Pagination */}

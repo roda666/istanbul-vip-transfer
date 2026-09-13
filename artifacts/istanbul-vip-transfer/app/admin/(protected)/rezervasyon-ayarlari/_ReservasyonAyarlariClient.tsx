@@ -1,12 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Pencil, Archive, Trash2, Search, RefreshCw, Check, X, GripVertical, MapPin, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, RefreshCw, Check, X, GripVertical, MapPin } from 'lucide-react';
 import AdminPageHeader from '../../_components/AdminPageHeader';
-import {
-  applyGeocodingResultToForm,
-  type LocationGeocodingResult,
-} from '@/lib/location-geocoding';
+import { applyGeocodingResultToForm, type LocationGeocodingResult } from '@/lib/location-geocoding';
+import { AdminRecordActions } from '../../_components/AdminRecordActions';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const GOLD = '#C99A32';
@@ -136,13 +134,13 @@ function FieldInput({ value, onChange, placeholder, type = 'text', disabled }: {
 }) {
   return (
     <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} disabled={disabled}
-      style={{ width: '100%', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '6px', color: NAVY, fontSize: '13px', fontFamily: 'Inter, sans-serif', padding: '8px 12px', outline: 'none', boxSizing: 'border-box', opacity: disabled ? 0.5 : 1 }} />
+      style={{ width: '100%', minHeight: '44px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '6px', color: NAVY, fontSize: '13px', fontFamily: 'Inter, sans-serif', padding: '8px 12px', outline: 'none', boxSizing: 'border-box', opacity: disabled ? 0.5 : 1 }} />
   );
 }
 
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
-    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none' }}>
+    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none', minHeight: '44px' }}>
       <div onClick={() => onChange(!checked)} style={{ width: '40px', height: '22px', borderRadius: '11px', position: 'relative', flexShrink: 0, cursor: 'pointer', background: checked ? BLUE : '#CBD5E0', transition: 'background 0.2s' }}>
         <div style={{ position: 'absolute', top: '3px', left: checked ? '21px' : '3px', width: '16px', height: '16px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
       </div>
@@ -168,8 +166,8 @@ function Btn({ onClick, loading, disabled, variant, children, small }: {
   );
 }
 
-function ConfirmDialog({ title, message, confirmLabel, danger, onConfirm, onCancel }: {
-  title: string; message: string; confirmLabel: string; danger?: boolean; onConfirm: () => void; onCancel: () => void;
+function ConfirmDialog({ title, message, confirmLabel, danger, loading, onConfirm, onCancel }: {
+  title: string; message: string; confirmLabel: string; danger?: boolean; loading?: boolean; onConfirm: () => void; onCancel: () => void;
 }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(23,43,58,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
@@ -177,8 +175,8 @@ function ConfirmDialog({ title, message, confirmLabel, danger, onConfirm, onCanc
         <h3 style={{ color: NAVY, fontSize: '16px', fontFamily: 'Inter, sans-serif', fontWeight: 600, margin: '0 0 10px' }}>{title}</h3>
         <p style={{ color: MUTED, fontSize: '13px', fontFamily: 'Inter, sans-serif', margin: '0 0 24px', lineHeight: 1.6 }}>{message}</p>
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-          <Btn variant="ghost" onClick={onCancel}>Vazgeç</Btn>
-          <Btn variant={danger ? 'danger' : 'primary'} onClick={onConfirm}>{confirmLabel}</Btn>
+          <Btn variant="ghost" onClick={onCancel} disabled={loading}>Vazgeç</Btn>
+          <Btn variant={danger ? 'danger' : 'primary'} onClick={onConfirm} loading={loading}>{confirmLabel}</Btn>
         </div>
       </div>
     </div>
@@ -294,7 +292,7 @@ function LocationModal({ loc, onSave, onClose }: { loc?: Location; onSave: () =>
     }
   }
 
-  const selectStyle: React.CSSProperties = { width: '100%', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '6px', color: NAVY, fontSize: '13px', fontFamily: 'Inter, sans-serif', padding: '8px 12px', outline: 'none' };
+  const selectStyle: React.CSSProperties = { width: '100%', minHeight: '44px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '6px', color: NAVY, fontSize: '13px', fontFamily: 'Inter, sans-serif', padding: '8px 12px', outline: 'none' };
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(23,43,58,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
@@ -310,7 +308,7 @@ function LocationModal({ loc, onSave, onClose }: { loc?: Location; onSave: () =>
           <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', padding: '10px 14px', color: RED, fontSize: '13px', fontFamily: 'Inter, sans-serif', marginBottom: '16px' }}>{error}</div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
           <div style={{ gridColumn: '1 / -1' }}>
             <Label required>Lokasyon Adı</Label>
             <FieldInput value={form.name} onChange={handleNameChange} placeholder="ör. Kadıköy" />
@@ -324,17 +322,17 @@ function LocationModal({ loc, onSave, onClose }: { loc?: Location; onSave: () =>
               </span>
             </div>
           </div>
-          <div>
+          <div style={{ flex: '1 1 200px' }}>
             <Label required>Slug</Label>
             <FieldInput value={form.slug} onChange={v => { setSlugManual(true); set('slug', v); }} placeholder="kadikoy" />
           </div>
-          <div>
+          <div style={{ flex: '1 1 200px' }}>
             <Label required>Tip</Label>
             <select value={form.type} onChange={e => set('type', e.target.value as LocationType)} style={selectStyle}>
               {Object.entries(TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </div>
-          <div>
+          <div style={{ flex: '1 1 200px' }}>
             <Label required>Kapsam</Label>
             <select value={form.scope} onChange={e => set('scope', e.target.value as LocationScope)} style={selectStyle}>
               {Object.entries(SCOPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -429,7 +427,7 @@ function ServiceTypeRow({ st, onSaved }: { st: ServiceTypeItem; onSaved: () => v
     setSaving(false);
   }
 
-  const inputS: React.CSSProperties = { background: CARD, border: `1px solid ${BORDER}`, borderRadius: '6px', color: NAVY, fontSize: '13px', fontFamily: 'Inter, sans-serif', padding: '6px 10px', outline: 'none', width: '100%', boxSizing: 'border-box' };
+  const inputS: React.CSSProperties = { minHeight: '44px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '6px', color: NAVY, fontSize: '13px', fontFamily: 'Inter, sans-serif', padding: '6px 10px', outline: 'none', width: '100%', boxSizing: 'border-box' };
 
   return (
     <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '18px 20px', marginBottom: '10px' }}>
@@ -443,15 +441,15 @@ function ServiceTypeRow({ st, onSaved }: { st: ServiceTypeItem; onSaved: () => v
           </div>
           {st.description && <p style={{ color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif', marginTop: '4px', marginBottom: 0 }}>{st.description}</p>}
         </div>
-        <button onClick={() => { setEditing(e => !e); setMsg(''); }}
-          style={{ background: editing ? '#EEF3F9' : '#F8FAFC', border: `1px solid ${BORDER}`, borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', color: BLUE, fontSize: '12px', fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
+        <button type="button" onClick={() => { setEditing(e => !e); setMsg(''); }}
+          style={{ background: editing ? '#EEF3F9' : '#F8FAFC', border: `1px solid ${BORDER}`, borderRadius: '8px', minHeight: '44px', padding: '6px 12px', cursor: 'pointer', color: BLUE, fontSize: '12px', fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
           <Pencil size={12} /> {editing ? 'Kapat' : 'Düzenle'}
         </button>
       </div>
 
       {editing && (
         <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: `1px solid ${BORDER}` }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '14px' }}>
             <div>
               <Label>Görünen Ad</Label>
               <input value={form.label} onChange={e => setForm(f => ({ ...f, label: e.target.value }))} style={inputS} />
@@ -625,11 +623,10 @@ export default function ReservasyonAyarlariClient() {
       if (!res.ok) { alert(json.error ?? 'Hata oluştu.'); }
       else { await fetchLocations(); }
     } catch { alert('Bağlantı hatası.'); }
-    setActionLoading(null);
-    setConfirm(null);
+    finally { setActionLoading(null); setConfirm(null); }
   }
 
-  async function locationAction(loc: Location, action: 'up' | 'down' | 'toggle-active') {
+  async function locationAction(loc: Location, action: 'up' | 'down' | 'toggle-active' | 'restore' | 'archive') {
     setActionLoading(loc.id);
     try {
       const res = await fetch(`/admin/api/locations/${loc.id}`, {
@@ -638,10 +635,14 @@ export default function ReservasyonAyarlariClient() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'İşlem başarısız.');
       setItems((current) => {
-        if (Array.isArray(json.items) && action !== 'toggle-active') {
+        if (Array.isArray(json.items) && action !== 'toggle-active' && action !== 'restore' && action !== 'archive') {
           return json.items.map((item: Location) => ({ ...item }));
         }
         if (action === 'toggle-active') return current.map((item) => item.id === loc.id ? { ...item, isActive: json.item.isActive } : item);
+        if (action === 'restore' || action === 'archive') {
+          fetchLocations(); // Fetch to cleanly re-sort restored/archived items
+          return current;
+        }
         const index = current.findIndex((item) => item.id === loc.id);
         const peerIndex = action === 'up' ? index - 1 : index + 1;
         if (index < 0 || peerIndex < 0 || peerIndex >= current.length) return current;
@@ -684,14 +685,14 @@ export default function ReservasyonAyarlariClient() {
   ] as const;
 
   return (
-    <div style={{ padding: '28px 24px', minHeight: '100vh', background: BG }}>
+    <div style={{ padding: 'clamp(16px, 4vw, 28px) clamp(12px, 3vw, 24px)', minHeight: '100vh', background: BG }}>
       <AdminPageHeader title="Rezervasyon Ayarları" description="Lokasyonları, hizmet türlerini ve form ayarlarını yönetin" />
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '4px', background: '#E2E8F0', borderRadius: '10px', padding: '4px', width: 'fit-content', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', background: '#E2E8F0', borderRadius: '10px', padding: '4px', width: '100%', maxWidth: 'max-content', marginBottom: '24px' }}>
         {TABS.map(([key, label]) => (
           <button key={key} onClick={() => setTab(key)}
-            style={{ padding: '7px 20px', borderRadius: '7px', border: 'none', cursor: 'pointer', fontSize: '13px', fontFamily: 'Inter, sans-serif', fontWeight: tab === key ? 600 : 400, background: tab === key ? CARD : 'transparent', color: tab === key ? NAVY : MUTED, boxShadow: tab === key ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.15s' }}>
+            style={{ flex: '1 1 auto', padding: '7px 20px', minHeight: '44px', borderRadius: '7px', border: 'none', cursor: 'pointer', fontSize: '13px', fontFamily: 'Inter, sans-serif', fontWeight: tab === key ? 600 : 400, background: tab === key ? CARD : 'transparent', color: tab === key ? NAVY : MUTED, boxShadow: tab === key ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.15s' }}>
             {label}
           </button>
         ))}
@@ -716,38 +717,44 @@ export default function ReservasyonAyarlariClient() {
               <option value="">Tüm Kapsamlar</option>
               {Object.entries(SCOPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', color: MUTED, fontFamily: 'Inter, sans-serif' }}>
-              <input type="checkbox" checked={showArchived} onChange={e => setShowArchived(e.target.checked)} />
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: MUTED, fontFamily: 'Inter, sans-serif', minHeight: '44px', padding: '0 8px' }}>
+              <input type="checkbox" checked={showArchived} onChange={e => setShowArchived(e.target.checked)} style={{ width: '16px', height: '16px' }} />
               Arşivlenenleri Göster
             </label>
-            <Btn variant="ghost" onClick={fetchLocations} small><RefreshCw size={13} /></Btn>
-            <Btn variant="primary" onClick={() => setModalLoc('new')} small><Plus size={13} /> Yeni Lokasyon</Btn>
+            <button
+              type="button"
+              onClick={fetchLocations}
+              aria-label="Listeyi Yenile"
+              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '44px', height: '44px', background: '#F1F5F9', color: MUTED, border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+            >
+              <RefreshCw size={16} />
+            </button>
+            <Btn variant="primary" onClick={() => setModalLoc('new')}><Plus size={16} /> Yeni Lokasyon</Btn>
           </div>
 
           <p style={{ color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif', marginBottom: '12px' }}>
             {items.length} lokasyon {total > items.length ? `(toplam ${total})` : ''}
           </p>
 
+           <div style={{ display: 'none' }}>
            <style>{`
-             @media (max-width: 899px) {
-               .location-list-table-wrap { overflow: visible !important; }
-               .location-list-table, .location-list-table tbody { display: block; width: 100%; }
-               .location-list-table thead { display: none; }
-               .location-list-table tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 10px; padding: 10px; border-bottom: 1px solid ${BORDER}; }
-               .location-list-table td { display: flex; align-items: center; min-width: 0; padding: 8px 4px !important; overflow-wrap: anywhere; }
-               .location-list-table td:first-child, .location-list-table td:last-child { grid-column: 1 / -1; }
-               .location-list-table td:last-child > div { flex-wrap: wrap; }
+             @media (min-width: 481px) {
+               .mobile-loc-list { display: none !important; }
              }
-             @media (max-width: 480px) { .location-list-table tr { grid-template-columns: 1fr; } }
+             @media (max-width: 480px) {
+               .desktop-loc-table { display: none !important; }
+             }
            `}</style>
-           <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(23,43,58,0.06)' }}>
+           </div>
+
+           <div className="desktop-loc-table" style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px', overflowX: 'auto', boxShadow: '0 2px 8px rgba(23,43,58,0.06)' }}>
             {loading ? (
               <div style={{ padding: '48px', textAlign: 'center', color: MUTED, fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>Yükleniyor…</div>
             ) : items.length === 0 ? (
               <div style={{ padding: '48px', textAlign: 'center', color: MUTED, fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>Lokasyon bulunamadı.</div>
             ) : (
-               <div className="location-list-table-wrap" style={{ overflowX: 'auto' }}>
-                 <table className="location-list-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+               <div style={{ minWidth: '800px' }}>
+                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: '#F8FAFC', borderBottom: `1px solid ${BORDER}` }}>
                       {['Ad', 'Tip', 'Kapsam', 'Alış', 'Bırakış', 'Aktif', 'Sıra', 'Güncelleme', ''].map((h, i) => (
@@ -793,25 +800,38 @@ export default function ReservasyonAyarlariClient() {
                             {new Date(loc.updatedAt).toLocaleDateString('tr-TR')}
                           </td>
                           <td style={{ padding: '10px 14px' }}>
-                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-                               {!isArchived && (
-                                <button onClick={() => setModalLoc(loc)} title="Düzenle"
-                                  style={{ background: '#EEF3F9', border: 'none', borderRadius: '6px', minWidth: '44px', minHeight: '44px', padding: '5px 8px', cursor: 'pointer', color: BLUE, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                  <Pencil size={13} />
-                                </button>
-                              )}
-                              {!isArchived && <button onClick={() => locationAction(loc, 'up')} disabled={i === 0 || actionLoading === loc.id} title="Yukarı taşı" aria-label="Yukarı taşı"
-                                style={{ minWidth: '44px', minHeight: '44px', border: `1px solid ${BORDER}`, borderRadius: '6px', background: CARD, color: i === 0 ? '#CBD5E1' : NAVY }}><ChevronUp size={13} /></button>}
-                              {!isArchived && <button onClick={() => locationAction(loc, 'down')} disabled={i === items.length - 1 || actionLoading === loc.id} title="Aşağı taşı" aria-label="Aşağı taşı"
-                                style={{ minWidth: '44px', minHeight: '44px', border: `1px solid ${BORDER}`, borderRadius: '6px', background: CARD, color: i === items.length - 1 ? '#CBD5E1' : NAVY }}><ChevronDown size={13} /></button>}
-                              {!isArchived && <button onClick={() => locationAction(loc, 'toggle-active')} disabled={actionLoading === loc.id} title={loc.isActive ? 'Pasifleştir' : 'Aktifleştir'}
-                                style={{ minHeight: '44px', padding: '5px 9px', border: `1px solid ${BORDER}`, borderRadius: '6px', background: loc.isActive ? '#FFF7ED' : '#ECFDF5', color: loc.isActive ? '#B45309' : '#047857', whiteSpace: 'nowrap' }}>{loc.isActive ? 'Pasifleştir' : 'Aktifleştir'}</button>}
-                              <button onClick={() => setConfirm({ loc, action: isArchived ? 'delete' : 'archive' })}
-                                disabled={actionLoading === loc.id} title={isArchived ? 'Kalıcı Sil' : 'Arşivle'}
-                                style={{ background: isArchived ? '#FEF2F2' : '#FFF8E1', border: 'none', borderRadius: '6px', minWidth: '44px', minHeight: '44px', padding: '5px 8px', cursor: actionLoading === loc.id ? 'not-allowed' : 'pointer', color: isArchived ? RED : '#B45309', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: actionLoading === loc.id ? 0.5 : 1 }}>
-                                {isArchived ? <Trash2 size={13} /> : <Archive size={13} />}
-                              </button>
-                            </div>
+                            <AdminRecordActions
+                              up={{
+                                hidden: isArchived,
+                                onClick: () => locationAction(loc, 'up'),
+                                disabled: i === 0 || actionLoading === loc.id,
+                                disabledReason: i === 0 ? "Listenin en üstünde" : undefined
+                              }}
+                              down={{
+                                hidden: isArchived,
+                                onClick: () => locationAction(loc, 'down'),
+                                disabled: i === items.length - 1 || actionLoading === loc.id,
+                                disabledReason: i === items.length - 1 ? "Listenin en altında" : undefined
+                              }}
+                              edit={{
+                                hidden: isArchived,
+                                onClick: () => setModalLoc(loc)
+                              }}
+                              activation={{
+                                hidden: isArchived,
+                                isActive: loc.isActive,
+                                onClick: () => locationAction(loc, 'toggle-active')
+                              }}
+                              archive={{
+                                isArchived: isArchived,
+                                onClick: () => setConfirm({ loc, action: 'archive' }),
+                                onRestore: () => locationAction(loc, 'restore')
+                              }}
+                              delete={{
+                                hidden: !isArchived,
+                                onClick: () => setConfirm({ loc, action: 'delete' })
+                              }}
+                            />
                           </td>
                         </tr>
                       );
@@ -819,6 +839,85 @@ export default function ReservasyonAyarlariClient() {
                   </tbody>
                 </table>
               </div>
+            )}
+          </div>
+
+          <div className="mobile-loc-list" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {loading ? (
+              <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px', padding: '32px', textAlign: 'center', color: MUTED, fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>Yükleniyor…</div>
+            ) : items.length === 0 ? (
+              <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px', padding: '32px', textAlign: 'center', color: MUTED, fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>Lokasyon bulunamadı.</div>
+            ) : (
+              items.map((loc, i) => {
+                const tc = TYPE_COLORS[loc.type] ?? TYPE_COLORS.CUSTOM;
+                const sc = SCOPE_COLORS[loc.scope] ?? SCOPE_COLORS.LOCAL;
+                const isArchived = !!loc.archivedAt;
+                return (
+                  <div key={loc.id} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px', padding: '16px', opacity: isArchived ? 0.6 : 1, display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 2px 8px rgba(23,43,58,0.04)' }}>
+                    <div>
+                      <div style={{ color: NAVY, fontSize: '15px', fontFamily: 'Inter, sans-serif', fontWeight: 600, wordWrap: 'break-word' }}>{loc.name}</div>
+                      <div style={{ color: MUTED, fontSize: '13px', fontFamily: 'Inter, sans-serif', wordWrap: 'break-word', marginTop: '2px' }}>{loc.slug}</div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      <span style={{ background: tc.bg, color: tc.color, fontSize: '11px', padding: '2px 8px', borderRadius: '12px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>{TYPE_LABELS[loc.type]}</span>
+                      <span style={{ background: sc.bg, color: sc.color, fontSize: '11px', padding: '2px 8px', borderRadius: '12px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>{SCOPE_LABELS[loc.scope]}</span>
+                      <span style={{ background: loc.isActive ? '#ECFDF5' : '#F1F5F9', color: loc.isActive ? '#065F46' : MUTED, fontSize: '11px', padding: '2px 8px', borderRadius: '12px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>{loc.isActive ? 'Aktif' : 'Pasif'}</span>
+                      {isArchived && <span style={{ background: '#FEF2F2', color: RED, fontSize: '11px', padding: '2px 8px', borderRadius: '12px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>Arşiv</span>}
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '13px', fontFamily: 'Inter, sans-serif', color: MUTED }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontWeight: 500 }}>Alış:</span> {loc.pickupEnabled ? <Check size={14} color="#065F46" /> : <X size={14} color="#9CA3AF" />}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontWeight: 500 }}>Bırakış:</span> {loc.dropoffEnabled ? <Check size={14} color="#065F46" /> : <X size={14} color="#9CA3AF" />}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontWeight: 500 }}>Sıra:</span> {loc.displayOrder}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontWeight: 500 }}>Tarih:</span> {new Date(loc.updatedAt).toLocaleDateString('tr-TR')}
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: '4px', paddingTop: '16px', borderTop: `1px solid ${BORDER}` }}>
+                      <AdminRecordActions
+                        up={{
+                          hidden: isArchived,
+                          onClick: () => locationAction(loc, 'up'),
+                          disabled: i === 0 || actionLoading === loc.id,
+                          disabledReason: i === 0 ? "Listenin en üstünde" : undefined
+                        }}
+                        down={{
+                          hidden: isArchived,
+                          onClick: () => locationAction(loc, 'down'),
+                          disabled: i === items.length - 1 || actionLoading === loc.id,
+                          disabledReason: i === items.length - 1 ? "Listenin en altında" : undefined
+                        }}
+                        edit={{
+                          hidden: isArchived,
+                          onClick: () => setModalLoc(loc)
+                        }}
+                        activation={{
+                          hidden: isArchived,
+                          isActive: loc.isActive,
+                          onClick: () => locationAction(loc, 'toggle-active')
+                        }}
+                        archive={{
+                          isArchived: isArchived,
+                          onClick: () => setConfirm({ loc, action: 'archive' }),
+                          onRestore: () => locationAction(loc, 'restore')
+                        }}
+                        delete={{
+                          hidden: !isArchived,
+                          onClick: () => setConfirm({ loc, action: 'delete' })
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
@@ -967,8 +1066,8 @@ export default function ReservasyonAyarlariClient() {
       {/* ── Özel Alanlar Tab ── */}
       {tab === 'ozel-alanlar' && (
         <div style={{ maxWidth: '640px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <p style={{ color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif', margin: 0 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <p style={{ color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif', margin: 0, flex: '1 1 200px' }}>
               Rezervasyon formuna servis bazlı özel alanlar ekleyin. Boş &ldquo;Geçerli Hizmetler&rdquo; = tüm servislerde göster.
             </p>
             <Btn variant="primary" small onClick={() => { setCfEditId('new'); setCfForm({ label: '', appliesToSlugs: [], fieldType: 'checkbox' }); setCfMsg(null); }}>
@@ -990,7 +1089,7 @@ export default function ReservasyonAyarlariClient() {
                 <div>
                   <Label>Alan Türü</Label>
                   <select value={cfForm.fieldType} onChange={e => setCfForm(f => f ? { ...f, fieldType: e.target.value } : f)}
-                    style={{ width: '100%', padding: '8px 12px', background: '#F8FAFC', border: `1px solid ${BORDER}`, borderRadius: '8px', color: NAVY, fontSize: '13px', fontFamily: 'Inter, sans-serif', outline: 'none' }}>
+                    style={{ width: '100%', minHeight: '44px', padding: '8px 12px', background: '#F8FAFC', border: `1px solid ${BORDER}`, borderRadius: '8px', color: NAVY, fontSize: '13px', fontFamily: 'Inter, sans-serif', outline: 'none' }}>
                     <option value="checkbox">Onay Kutusu (checkbox)</option>
                     <option value="text">Metin Girişi (text)</option>
                   </select>
@@ -998,8 +1097,8 @@ export default function ReservasyonAyarlariClient() {
                 <div>
                   <Label>Geçerli Hizmetler / Sayfalar</Label>
                   <div style={{ maxHeight: '160px', overflowY: 'auto', border: `1px solid ${BORDER}`, borderRadius: '6px', padding: '8px 10px', display: 'grid', gap: '7px' }}>
-                    {pageOptions.map((option) => <label key={option.slug} style={{ display: 'flex', alignItems: 'center', gap: '7px', color: NAVY, fontSize: '12px', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={cfForm.appliesToSlugs.includes(option.slug)} onChange={() => setCfForm((current) => current ? {
+                    {pageOptions.map((option) => <label key={option.slug} style={{ display: 'flex', alignItems: 'center', gap: '7px', color: NAVY, fontSize: '12px', fontFamily: 'Inter, sans-serif', cursor: 'pointer', minHeight: '44px' }}>
+                      <input type="checkbox" style={{ width: '16px', height: '16px' }} checked={cfForm.appliesToSlugs.includes(option.slug)} onChange={() => setCfForm((current) => current ? {
                         ...current, appliesToSlugs: current.appliesToSlugs.includes(option.slug)
                           ? current.appliesToSlugs.filter((slug) => slug !== option.slug)
                           : [...current.appliesToSlugs, option.slug],
@@ -1059,8 +1158,8 @@ export default function ReservasyonAyarlariClient() {
                         {field.appliesToSlugs?.length ? field.appliesToSlugs.join(', ') : <em style={{ color: '#9CA3AF' }}>Hepsi</em>}
                       </td>
                       <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                        <button onClick={() => toggleCustomFieldActive(field)} title={field.isActive ? 'Pasife Al' : 'Aktife Al'}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                        <button type="button" onClick={() => toggleCustomFieldActive(field)} title={field.isActive ? 'Pasife Al' : 'Aktife Al'}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, minHeight: '44px', minWidth: '44px' }}>
                           {field.isActive
                             ? <span style={{ background: '#ECFDF5', color: '#065F46', fontSize: '11px', padding: '2px 8px', borderRadius: '12px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>Aktif</span>
                             : <span style={{ background: '#F1F5F9', color: MUTED, fontSize: '11px', padding: '2px 8px', borderRadius: '12px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>Pasif</span>}
@@ -1068,13 +1167,13 @@ export default function ReservasyonAyarlariClient() {
                       </td>
                       <td style={{ padding: '10px 14px' }}>
                         <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-                          <button onClick={() => { setCfEditId(field.id); setCfForm({ label: field.label, appliesToSlugs: field.appliesToSlugs ?? [], fieldType: field.fieldType }); setCfMsg(null); }} title="Düzenle"
-                            style={{ background: '#EEF3F9', border: 'none', borderRadius: '6px', padding: '5px 8px', cursor: 'pointer', color: BLUE, display: 'flex', alignItems: 'center' }}>
-                            <Pencil size={13} />
+                          <button type="button" onClick={() => { setCfEditId(field.id); setCfForm({ label: field.label, appliesToSlugs: field.appliesToSlugs ?? [], fieldType: field.fieldType }); setCfMsg(null); }} title="Düzenle"
+                            style={{ background: '#EEF3F9', border: 'none', borderRadius: '6px', minHeight: '44px', minWidth: '44px', justifyContent: 'center', cursor: 'pointer', color: BLUE, display: 'flex', alignItems: 'center' }}>
+                            <Pencil size={16} />
                           </button>
-                          <button onClick={() => deleteCustomField(field.id)} disabled={cfSaving === field.id} title="Sil"
-                            style={{ background: '#FEF2F2', border: 'none', borderRadius: '6px', padding: '5px 8px', cursor: cfSaving === field.id ? 'not-allowed' : 'pointer', color: RED, display: 'flex', alignItems: 'center', opacity: cfSaving === field.id ? 0.5 : 1 }}>
-                            <Trash2 size={13} />
+                          <button type="button" onClick={() => deleteCustomField(field.id)} disabled={cfSaving === field.id} title="Sil"
+                            style={{ background: '#FEF2F2', border: 'none', borderRadius: '6px', minHeight: '44px', minWidth: '44px', justifyContent: 'center', cursor: cfSaving === field.id ? 'not-allowed' : 'pointer', color: RED, display: 'flex', alignItems: 'center', opacity: cfSaving === field.id ? 0.5 : 1 }}>
+                            <Trash2 size={16} />
                           </button>
                         </div>
                       </td>
@@ -1107,7 +1206,8 @@ export default function ReservasyonAyarlariClient() {
           }
           confirmLabel={confirm.action === 'archive' ? 'Arşivle' : 'Kalıcı Sil'}
           danger={confirm.action === 'delete'}
-          onConfirm={() => handleArchiveOrDelete(confirm.loc)}
+          loading={actionLoading === confirm.loc.id}
+          onConfirm={() => confirm.action === 'archive' ? locationAction(confirm.loc, 'archive') : handleArchiveOrDelete(confirm.loc)}
           onCancel={() => setConfirm(null)}
         />
       )}

@@ -40,7 +40,7 @@ const updateSchema = z.object({
 });
 
 const actionSchema = z.object({
-  action: z.enum(['approve', 'publish', 'archive', 'activate', 'deactivate', 'up', 'down']),
+  action: z.enum(['approve', 'publish', 'archive', 'restore', 'activate', 'deactivate', 'up', 'down']),
 });
 
 const REQUEST_ONLY_SLUGS = new Set(['mercedes-e-class', 'mercedes-s-class', 'mercedes-v-class']);
@@ -495,6 +495,17 @@ export async function POST(request: NextRequest, { params }: Params) {
     updates = {
       status: 'ARCHIVED',
       archivedAt: new Date(),
+      updatedAt: new Date(),
+      updatedBy: session.adminId,
+    };
+  } else if (action === 'restore') {
+    if (current.status !== 'ARCHIVED') {
+      return NextResponse.json({ error: 'Sadece arşivlenmiş kayıtlar geri yüklenebilir.' }, { status: 422 });
+    }
+    updates = {
+      status: 'DRAFT',
+      isActive: false,
+      archivedAt: null,
       updatedAt: new Date(),
       updatedBy: session.adminId,
     };

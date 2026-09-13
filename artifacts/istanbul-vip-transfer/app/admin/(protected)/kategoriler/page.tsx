@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronUp, ChevronDown, Pencil, Trash2, Plus, Loader2, Check, X, Languages } from 'lucide-react';
+import { Plus, Loader2, Check, X, Languages } from 'lucide-react';
 import AdminPageHeader from '@/app/admin/_components/AdminPageHeader';
+import { AdminRecordActions } from '@/app/admin/_components/AdminRecordActions';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -90,11 +91,8 @@ export default function KategorilerPage() {
 
   // ── Delete ────────────────────────────────────────────────────────────────────
 
-  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
-
   async function handleDelete(cat: Category) {
-    if (confirmDelete !== cat.id) { setConfirmDelete(cat.id); return; }
-    setConfirmDelete(null);
+    if (!window.confirm(`"${cat.nameTranslations['tr'] ?? cat.slug}" kategorisini silmek istediğinize emin misiniz?`)) return;
     setActionId(cat.id);
     try {
       const res  = await fetch(`/admin/api/categories/${cat.id}`, { method: 'DELETE' });
@@ -130,7 +128,6 @@ export default function KategorilerPage() {
   function startEdit(cat: Category) {
     setEditId(cat.id);
     setEditNames({ ...cat.nameTranslations });
-    setConfirmDelete(null);
   }
 
   function cancelEdit() { setEditId(null); setEditNames({}); }
@@ -216,27 +213,6 @@ export default function KategorilerPage() {
               <div style={{
                 display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '16px', padding: '16px',
               }}>
-                {/* Sort order / up-down */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                  <button
-                    onClick={() => reorder(cat.id, 'up')}
-                    disabled={idx === 0 || actionId === cat.id}
-                    title="Yukarı taşı"
-                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '6px', cursor: idx === 0 ? 'default' : 'pointer', opacity: idx === 0 ? 0.4 : 1, padding: '4px', minWidth: '44px', minHeight: '44px' }}
-                  >
-                    <ChevronUp size={20} />
-                  </button>
-                  <span style={{ fontSize: '13px', color: '#64748B', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>{idx + 1}</span>
-                  <button
-                    onClick={() => reorder(cat.id, 'down')}
-                    disabled={idx === cats.length - 1 || actionId === cat.id}
-                    title="Aşağı taşı"
-                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '6px', cursor: idx === cats.length - 1 ? 'default' : 'pointer', opacity: idx === cats.length - 1 ? 0.4 : 1, padding: '4px', minWidth: '44px', minHeight: '44px' }}
-                  >
-                    <ChevronDown size={20} />
-                  </button>
-                </div>
-
                 {/* Category info */}
                 <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                   <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px', fontWeight: 600, color: '#0F172A', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -291,31 +267,18 @@ export default function KategorilerPage() {
                       </button>
                     </>
                   ) : (
-                    <>
-                      <button onClick={() => startEdit(cat)} title="Düzenle"
-                         style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '44px', minHeight: '44px', padding: '8px', background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', borderRadius: '8px', cursor: 'pointer' }}>
-                        <Pencil size={18} />
-                      </button>
-                      <button onClick={() => toggleActive(cat)} disabled={actionId === cat.id}
-                        title={cat.isActive ? 'Kategoriyi devre dışı bırak' : 'Kategoriyi etkinleştir'}
-                         style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '80px', minHeight: '44px', padding: '8px 16px', background: cat.isActive ? '#FFF7ED' : '#ECFDF5', color: cat.isActive ? '#B45309' : '#047857', border: `1px solid ${cat.isActive ? '#FED7AA' : '#A7F3D0'}`, borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
-                        {cat.isActive ? 'Kapat' : 'Aç'}
-                      </button>
-                      <button
-                        onClick={() => handleDelete(cat)}
-                        disabled={cat.serviceCount > 0 || actionId === cat.id}
-                        title={cat.serviceCount > 0 ? `${cat.serviceCount} hizmet içeriyor — önce hizmetleri taşıyın` : confirmDelete === cat.id ? 'Onaylamak için tekrar tıklayın' : 'Sil'}
-                        style={{
-                           display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '44px', minHeight: '44px', padding: '8px',
-                          background: cat.serviceCount > 0 ? '#F1F5F9' : confirmDelete === cat.id ? '#DC2626' : '#FEF2F2',
-                          color:      cat.serviceCount > 0 ? '#94A3B8' : confirmDelete === cat.id ? '#FFFFFF' : '#DC2626',
-                          border:     `1px solid ${cat.serviceCount > 0 ? '#E2E8F0' : '#FECACA'}`,
-                          borderRadius: '8px',
-                          cursor: cat.serviceCount > 0 ? 'not-allowed' : 'pointer',
-                        }}>
-                        <Trash2 size={18} />
-                      </button>
-                    </>
+                    <AdminRecordActions
+                      up={{ onClick: () => reorder(cat.id, 'up'), disabled: idx === 0 || actionId === cat.id }}
+                      down={{ onClick: () => reorder(cat.id, 'down'), disabled: idx === cats.length - 1 || actionId === cat.id }}
+                      edit={{ onClick: () => startEdit(cat) }}
+                      activation={{ onClick: () => toggleActive(cat), isActive: cat.isActive, disabled: actionId === cat.id }}
+                      delete={{
+                        onClick: () => handleDelete(cat),
+                        disabled: cat.serviceCount > 0 || actionId === cat.id,
+                        disabledReason: cat.serviceCount > 0 ? `${cat.serviceCount} hizmet içeriyor — önce hizmetleri taşıyın` : undefined
+                      }}
+                      deleteOmittedReason={cat.serviceCount > 0 ? `${cat.serviceCount} hizmet içeriyor` : undefined}
+                    />
                   )}
                 </div>
               </div>

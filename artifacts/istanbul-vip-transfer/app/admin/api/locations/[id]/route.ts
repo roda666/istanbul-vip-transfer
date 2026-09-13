@@ -5,7 +5,7 @@ const LOCATION_TYPES = ['AIRPORT', 'DISTRICT', 'REGION', 'HOTEL_ZONE', 'CUSTOM',
 const LOCATION_SCOPES = ['LOCAL', 'INTERCITY', 'BOTH'] as const;
 
 const updateSchema = z.object({
-  action: z.enum(['up', 'down', 'toggle-active']).optional(),
+  action: z.enum(['up', 'down', 'toggle-active', 'restore', 'archive']).optional(),
   name: z.string().min(1).max(200).optional(),
   slug: z
     .string()
@@ -78,7 +78,55 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   const { db } = await import('@/db');
   const { locations, auditLogs } = await import('@/db/schema');
-  const { eq, isNull } = await import('drizzle-orm');
+  const { eq, isNull, isNotNull, and } = await import('drizzle-orm');
+
+  if (data.action === 'restore') {
+    const [item] = await db.update(locations)
+      .set({ archivedAt: null, isActive: false, updatedAt: new Date(), updatedBy: session.adminId })
+      .where(and(eq(locations.id, id), isNotNull(locations.archivedAt)))
+      .returning();
+
+    if (!item) return NextResponse.json({ error: 'Arşivlenmiş lokasyon bulunamadı.' }, { status: 422 });
+
+    await db.insert(auditLogs).values({
+      adminUserId: session.adminId,
+      action: 'RESTORE',
+      entityType: 'Location',
+      entityId: id,
+      metadata: { restored: true }
+    }).catch(() => {});
+
+    const { revalidatePath } = await import('next/cache');
+    revalidatePath('/data/locations');
+    const { revalidateBookingFormBootstrap } = await import('@/lib/booking-form-bootstrap');
+    revalidateBookingFormBootstrap();
+
+    return NextResponse.json({ item });
+  }
+
+  if (data.action === 'archive') {
+    const [item] = await db.update(locations)
+      .set({ archivedAt: new Date(), isActive: false, updatedAt: new Date(), updatedBy: session.adminId })
+      .where(and(eq(locations.id, id), isNull(locations.archivedAt)))
+      .returning();
+
+    if (!item) return NextResponse.json({ error: 'Lokasyon bulunamadı veya zaten arşivlenmiş.' }, { status: 422 });
+
+    await db.insert(auditLogs).values({
+      adminUserId: session.adminId,
+      action: 'ARCHIVE',
+      entityType: 'Location',
+      entityId: id,
+      metadata: { name: item.name }
+    }).catch(() => {});
+
+    const { revalidatePath } = await import('next/cache');
+    revalidatePath('/data/locations');
+    const { revalidateBookingFormBootstrap } = await import('@/lib/booking-form-bootstrap');
+    revalidateBookingFormBootstrap();
+
+    return NextResponse.json({ item });
+  }
 
   if (data.action) {
     const result = await db.transaction(async (tx) => {
@@ -226,22 +274,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   const { revalidateBookingFormBootstrap } = await import('@/lib/booking-form-bootstrap');
 
   if (!current.archivedAt) {
-    const [updated] = await db.update(locations)
-      .set({ archivedAt: new Date(), isActive: false, updatedAt: new Date(), updatedBy: session.adminId })
-      .where(eq(locations.id, id))
-      .returning();
-
-    await db.insert(auditLogs).values({
-      adminUserId: session.adminId,
-      action: 'ARCHIVE',
-      entityType: 'Location',
-      entityId: id,
-      metadata: { name: current.name },
-    }).catch(() => {});
-
-    revalidatePath('/data/locations');
-    revalidateBookingFormBootstrap();
-    return NextResponse.json({ item: updated, archived: true });
+    return NextResponse.json({ error: 'Yalnızca arşivlenmiş lokasyonlar kalıcı olarak silinebilir. Lütfen önce arşivleyin.' }, { status: 422 });
   } else {
     await db.delete(locations).where(eq(locations.id, id));
 

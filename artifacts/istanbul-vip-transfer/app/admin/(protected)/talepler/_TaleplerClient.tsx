@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Search, ChevronLeft, ChevronRight, Archive, RefreshCw, Phone, Download, FileText, Trash2 } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, RefreshCw, Phone, Download, FileText, Trash2 } from 'lucide-react';
 import { SOURCE_FILTER_OPTIONS, formatSource } from '@/lib/source-labels';
+import { AdminRecordActions } from '@/app/admin/_components/AdminRecordActions';
 
 interface RequestRow {
   id: string;
@@ -233,32 +234,49 @@ function RequestCard({
         <span style={{ fontSize: '12px', color: '#94A3B8', fontFamily: 'Inter, sans-serif' }}>
           {formatDate(row.createdAt)}
         </span>
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          <Link
-            href={`/admin/talepler/${row.id}`}
-            style={{ minHeight: '44px', padding: '5px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, background: '#EFF6FF', color: '#2563EB', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
-          >
-            Detay
-          </Link>
-          <button
-            onClick={() => onToggleTestData(row.id, !row.isTestData)}
-            disabled={!!updating}
-            style={{ minHeight: '44px', padding: '5px 10px', borderRadius: '6px', fontSize: '12px', background: row.isTestData ? '#FEF3C7' : '#F1F5F9', color: row.isTestData ? '#92400E' : '#64748B', border: 'none', cursor: 'pointer' }}
-          >
-            {row.isTestData ? 'Test İşaretini Kaldır' : 'Test Olarak İşaretle'}
-          </button>
-          {!row.archivedAt && (
-            <button
-              onClick={() => onArchive(row.id)}
-              disabled={!!updating}
-              style={{ minHeight: '44px', padding: '5px 10px', borderRadius: '6px', fontSize: '12px', background: '#F1F5F9', color: '#64748B', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-            >
-              <Archive size={11} /> Arşivle
-            </button>
-          )}
-          {canDelete && <button onClick={() => onDelete(row.id)} disabled={!!updating} style={{ minWidth: '44px', minHeight: '44px', padding: '5px 10px', borderRadius: '6px', fontSize: '12px', background: '#FFF1F2', color: '#BE123C', border: 'none', cursor: 'pointer' }}>Sil</button>}
-          <button onClick={() => onExport('xls', row)} disabled={!!updating} aria-label={`${row.referenceNumber} talebini Excel indir`} style={{ minWidth: '44px', minHeight: '44px', padding: '5px 10px', borderRadius: '6px', fontSize: '12px', background: '#F0FDF4', color: '#15803D', border: 'none', cursor: 'pointer' }}>Excel</button>
-          <button onClick={() => onExport('pdf', row)} disabled={!!updating} aria-label={`${row.referenceNumber} talebini PDF indir`} style={{ minWidth: '44px', minHeight: '44px', padding: '5px 10px', borderRadius: '6px', fontSize: '12px', background: '#FFF7ED', color: '#C2410C', border: 'none', cursor: 'pointer' }}>PDF</button>
+        <div className="flex items-center gap-2">
+          <AdminRecordActions
+            customActions={[
+              {
+                id: 'toggle-test',
+                label: row.isTestData ? 'Testi Kaldır' : 'Test Yap',
+                icon: () => <span className="font-bold text-[10px] w-[14px] h-[14px] flex items-center justify-center border border-current rounded-sm">T</span>,
+                colorClass: row.isTestData ? 'text-amber-800 bg-amber-100 border border-amber-300 hover:bg-amber-200' : 'text-slate-700 bg-slate-50 border border-slate-200 hover:bg-slate-100',
+                onClick: () => onToggleTestData(row.id, !row.isTestData),
+                disabled: !!updating,
+              },
+              {
+                id: 'export-xls',
+                label: 'Excel İndir',
+                icon: Download,
+                colorClass: 'text-green-700 bg-green-50 border border-green-200 hover:bg-green-100',
+                onClick: () => onExport('xls', row),
+                disabled: !!updating,
+              },
+              {
+                id: 'export-pdf',
+                label: 'PDF İndir',
+                icon: FileText,
+                colorClass: 'text-orange-700 bg-orange-50 border border-orange-200 hover:bg-orange-100',
+                onClick: () => onExport('pdf', row),
+                disabled: !!updating,
+              }
+            ]}
+            edit={{
+              href: `/admin/talepler/${row.id}`,
+            }}
+            archive={{
+              isArchived: !!row.archivedAt,
+              onClick: () => onArchive(row.id),
+              hidden: !!row.archivedAt,
+              disabled: !!updating,
+            }}
+            delete={{
+              onClick: () => onDelete(row.id),
+              hidden: !canDelete,
+              disabled: !!updating,
+            }}
+          />
         </div>
       </div>
     </div>
@@ -772,18 +790,49 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
                       </td>
                       <td style={{ ...td, fontSize: '12px', color: '#64748B', whiteSpace: 'nowrap' }}>{formatDate(row.createdAt)}</td>
                       <td style={td}>
-                         <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap', minWidth: 260 }}>
-                          <Link href={`/admin/talepler/${row.id}`} style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#EFF6FF', color: '#2563EB', textDecoration: 'none' }}>
-                            Detay
-                          </Link>
-                          {!row.archivedAt && (
-                            <button onClick={() => archiveRequest(row.id)} disabled={!!updating} title="Arşivle" style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '11px', background: '#F1F5F9', color: '#64748B', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <Archive size={11} /> Arşivle
-                            </button>
-                          )}
-                          {canDelete && <button onClick={() => deleteRequest(row.id)} disabled={!!updating} title="Kalıcı olarak sil" aria-label={`${row.referenceNumber} talebini kalıcı olarak sil`} style={{ minWidth: '44px', minHeight: '44px', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', background: '#FFF1F2', color: '#BE123C', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Trash2 size={11} /></button>}
-                           <button onClick={() => exportSingleRequest('xls', row)} disabled={!!updating} aria-label={`${row.referenceNumber} talebini Excel indir`} style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '11px', background: '#F0FDF4', color: '#15803D', border: 'none', cursor: 'pointer' }}>Excel</button>
-                            <button onClick={() => exportSingleRequest('pdf', row)} disabled={!!updating} aria-label={`${row.referenceNumber} talebini PDF indir`} style={{ minWidth: '44px', minHeight: '44px', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', background: '#FFF7ED', color: '#C2410C', border: 'none', cursor: 'pointer' }}>PDF</button>
+                        <div className="flex items-center justify-end gap-2">
+                          <AdminRecordActions
+                            customActions={[
+                              {
+                                id: 'toggle-test',
+                                label: row.isTestData ? 'Testi Kaldır' : 'Test Yap',
+                                icon: () => <span className="font-bold text-[10px] w-[14px] h-[14px] flex items-center justify-center border border-current rounded-sm">T</span>,
+                                colorClass: row.isTestData ? 'text-amber-800 bg-amber-100 border border-amber-300 hover:bg-amber-200' : 'text-slate-700 bg-slate-50 border border-slate-200 hover:bg-slate-100',
+                                onClick: () => toggleTestData(row.id, !row.isTestData),
+                                disabled: !!updating,
+                              },
+                              {
+                                id: 'export-xls',
+                                label: 'Excel İndir',
+                                icon: Download,
+                                colorClass: 'text-green-700 bg-green-50 border border-green-200 hover:bg-green-100',
+                                onClick: () => exportSingleRequest('xls', row),
+                                disabled: !!updating,
+                              },
+                              {
+                                id: 'export-pdf',
+                                label: 'PDF İndir',
+                                icon: FileText,
+                                colorClass: 'text-orange-700 bg-orange-50 border border-orange-200 hover:bg-orange-100',
+                                onClick: () => exportSingleRequest('pdf', row),
+                                disabled: !!updating,
+                              }
+                            ]}
+                            edit={{
+                              href: `/admin/talepler/${row.id}`,
+                            }}
+                            archive={{
+                              isArchived: !!row.archivedAt,
+                              onClick: () => archiveRequest(row.id),
+                              hidden: !!row.archivedAt,
+                              disabled: !!updating,
+                            }}
+                            delete={{
+                              onClick: () => deleteRequest(row.id),
+                              hidden: !canDelete,
+                              disabled: !!updating,
+                            }}
+                          />
                         </div>
                       </td>
                     </tr>

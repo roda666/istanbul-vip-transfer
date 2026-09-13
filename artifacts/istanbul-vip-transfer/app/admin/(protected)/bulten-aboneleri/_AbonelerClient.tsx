@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Download, RefreshCw, Search } from 'lucide-react';
+import { Download, RefreshCw, Search, UserMinus } from 'lucide-react';
 import { SOURCE_FILTER_OPTIONS, formatSource } from '@/lib/source-labels';
 import { LOCALE_REGISTRY } from '@/lib/i18n/locale-registry';
+import { AdminRecordActions } from '@/app/admin/_components/AdminRecordActions';
 
 /** Registry-derived: automatically updated when locales change. */
 const LOCALE_REGISTRY_CODES = LOCALE_REGISTRY.map((l) => l.code);
@@ -281,20 +282,21 @@ export default function AbonelerClient() {
                         </td>
                         <td style={{ ...td, fontSize: '12px', color: '#64748B' }}>{formatDate(sub.createdAt)}</td>
                         <td style={td}>
-                          {sub.status !== 'UNSUBSCRIBED' && sub.status !== 'SUPPRESSED' && (
-                            <button
-                              onClick={() => unsubscribe(sub.id)}
-                              disabled={!!updating}
-                              style={{
-                                minHeight: '44px',
-                                padding: '4px 10px', borderRadius: '6px', border: '1px solid #FECDD3',
-                                background: '#FFF1F2', color: '#BE123C', fontSize: '11px', fontWeight: 600,
-                                cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-                              }}
-                            >
-                              Aboneliği İptal Et
-                            </button>
-                          )}
+                          <AdminRecordActions
+                            customActions={
+                              sub.status !== 'UNSUBSCRIBED' && sub.status !== 'SUPPRESSED' ? [
+                                {
+                                  id: 'unsubscribe',
+                                  label: 'Aboneliği İptal Et',
+                                  icon: UserMinus,
+                                  colorClass: 'text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100',
+                                  mobileColorClass: 'text-rose-700 hover:bg-rose-50',
+                                  onClick: () => unsubscribe(sub.id),
+                                  disabled: !!updating
+                                }
+                              ] : []
+                            }
+                          />
                         </td>
                       </tr>
                     );

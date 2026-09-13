@@ -3,9 +3,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { LOCALE_REGISTRY } from '@/lib/i18n/locale-registry';
 import { 
-  Plus, Edit2, Trash2, Globe, X, Filter, AlertCircle, Save, Loader2, Database 
+  Plus, Globe, X, Filter, AlertCircle, Save, Loader2, Database, Trash2
 } from 'lucide-react';
 import { AIWriteAssist } from '@/app/admin/_components/AIWriteAssist';
+import { AdminRecordActions } from '@/app/admin/_components/AdminRecordActions';
 
 type AIWritingLanguage = 'tr' | 'en' | 'de' | 'ru' | 'ar' | 'fr' | 'es' | 'it' | 'nl';
 
@@ -265,36 +266,38 @@ export default function ChatbotKnowledgeClient() {
                       {r.sourceId && <span style={{ marginLeft: '6px', fontSize: '11px', color: '#94A3B8', border: '1px solid #E2E8F0', borderRadius: '4px', padding: '2px 4px' }}>Çeviri</span>}
                     </td>
                     <td style={{ padding: '12px 16px' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', userSelect: 'none' }}>
-                        <input type="checkbox" checked={r.isActive} onChange={() => toggleActive(r)} style={{ accentColor: '#C99A32', width: '16px', height: '16px' }} />
-                        <span style={{ color: r.isActive ? '#16A34A' : '#64748B', fontSize: '12px', fontWeight: 500 }}>
-                          {r.isActive ? 'Aktif' : 'Pasif'}
-                        </span>
-                      </label>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '4px',
+                        padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 700,
+                        background: r.isActive ? '#ECFDF5' : '#F1F5F9',
+                        color: r.isActive ? '#065F46' : '#52697A',
+                      }}>
+                        {r.isActive ? 'Aktif' : 'Pasif'}
+                      </span>
                     </td>
                     <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-                        <button
-                          onClick={() => setTranslateId(r.id)}
-                           style={{ minWidth: '44px', minHeight: '44px', padding: '6px', background: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          title="Çevir"
-                        >
-                          <Globe size={14} />
-                        </button>
-                        <button
-                          onClick={() => setEditForm(r)}
-                           style={{ minWidth: '44px', minHeight: '44px', padding: '6px', background: '#F8FAFC', color: '#334155', border: '1px solid #E2E8F0', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          title="Düzenle"
-                        >
-                          <Edit2 size={14} />
-                        </button>
-                        <button
-                          onClick={() => setDeleteId(r.id)}
-                           style={{ minWidth: '44px', minHeight: '44px', padding: '6px', background: '#FEF2F2', color: '#EF4444', border: '1px solid #FECACA', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          title="Sil"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <AdminRecordActions
+                          customActions={[
+                            {
+                              id: 'translate',
+                              label: 'Çevir',
+                              icon: Globe,
+                              colorClass: 'text-sky-700 bg-sky-50 border border-sky-200 hover:bg-sky-100',
+                              onClick: () => setTranslateId(r.id),
+                            }
+                          ]}
+                          activation={{
+                            isActive: r.isActive,
+                            onClick: () => toggleActive(r),
+                          }}
+                          edit={{
+                            onClick: () => setEditForm(r),
+                          }}
+                          delete={{
+                            onClick: () => setDeleteId(r.id),
+                          }}
+                        />
                       </div>
                     </td>
                   </tr>

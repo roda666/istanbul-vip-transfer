@@ -5,6 +5,7 @@ import {
   MapPin, Navigation, Plus, Save, Edit2, 
   RefreshCw, Check, X, AlertCircle, Loader2, Car, ShieldCheck, Clock, Settings2
 } from 'lucide-react';
+import { AdminRecordActions } from '@/app/admin/_components/AdminRecordActions';
 import { TOLL_VEHICLE_CLASS_LABELS, TOLL_VEHICLE_CLASS_SELECTION_WARNING } from '@/lib/toll-vehicle-classes';
 import { isAutomaticTollSyncSupported } from '@/lib/toll-tariff-sync-support';
 
@@ -1326,9 +1327,11 @@ function PointsManager({ data, onRefresh }: { data: DataPayload, onRefresh: () =
                    {p.bannedVehicleClasses === null && <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded uppercase tracking-widest">Yasak Belirsiz</span>}
                 </div>
                </button>
-               <div className="flex w-full lg:w-auto shrink-0 gap-1">
-                 <button type="button" onClick={() => reorderPoint(p.id, 'up')} disabled={index === 0} aria-label={`${p.name} yukarı taşı`} className="flex-1 lg:flex-none min-w-[44px] min-h-[44px] rounded-lg border border-slate-200 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed" title="Yukarı">↑ Yukarı</button>
-                 <button type="button" onClick={() => reorderPoint(p.id, 'down')} disabled={index === orderedPoints.length - 1} aria-label={`${p.name} aşağı taşı`} className="flex-1 lg:flex-none min-w-[44px] min-h-[44px] rounded-lg border border-slate-200 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed" title="Aşağı">↓ Aşağı</button>
+               <div className="flex w-full lg:w-auto shrink-0 gap-1 items-center justify-end pr-2">
+                 <AdminRecordActions
+                   up={{ onClick: () => reorderPoint(p.id, 'up'), disabled: index === 0 }}
+                   down={{ onClick: () => reorderPoint(p.id, 'down'), disabled: index === orderedPoints.length - 1 }}
+                 />
                </div>
              </div>
           ))}

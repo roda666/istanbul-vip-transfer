@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Trash2, RefreshCw, UserCheck, UserX } from 'lucide-react';
+import { Plus, RefreshCw, UserCheck, UserX } from 'lucide-react';
 import AdminPageHeader from '../../_components/AdminPageHeader';
+import { AdminRecordActions } from '../../_components/AdminRecordActions';
 
 const GOLD = '#C99A32';
 const NAVY = '#172B3A';
@@ -281,35 +282,17 @@ export default function PersonelClient() {
                       <td style={{ padding: '12px 16px', color: MUTED, fontSize: '12px' }}>{fmtDate(u.lastLoginAt)}</td>
                       <td style={{ padding: '12px 16px', color: MUTED, fontSize: '12px' }}>{fmtDate(u.createdAt)}</td>
                       <td style={{ padding: '12px 16px' }}>
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                          <button
-                            onClick={() => handleToggleActive(u)}
-                            disabled={actionLoading === u.id + '-active'}
-                            title={u.active ? 'Devre dışı bırak' : 'Aktif et'}
-                            style={{
-                              background: u.active ? '#FEF9EE' : '#ECFDF5',
-                              border: `1px solid ${u.active ? '#FCD34D' : '#86EFAC'}`,
-                              color: u.active ? '#92400E' : GREEN,
-                              borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', minHeight: '44px',
-                              fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif',
-                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
-                            }}
-                          >
-                            {actionLoading === u.id + '-active' ? '…' : u.active ? 'Devre Dışı' : 'Aktif Et'}
-                          </button>
-                          <button
-                            onClick={() => handleDelete(u)}
-                            disabled={actionLoading === u.id + '-delete'}
-                            title="Kalıcı sil"
-                            style={{
-                              background: '#FEF2F2', border: '1px solid #FECACA',
-                              color: RED, borderRadius: '8px', padding: '8px 12px', minHeight: '44px', minWidth: '44px',
-                              cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
-                            }}
-                          >
-                            {actionLoading === u.id + '-delete' ? '…' : <Trash2 size={18} />}
-                          </button>
-                        </div>
+                        <AdminRecordActions
+                          activation={{
+                            isActive: u.active,
+                            onClick: () => handleToggleActive(u),
+                            disabled: actionLoading === u.id + '-active',
+                          }}
+                          delete={{
+                            onClick: () => handleDelete(u),
+                            disabled: actionLoading === u.id + '-delete',
+                          }}
+                        />
                       </td>
                     </tr>
                   ))}
@@ -347,33 +330,18 @@ export default function PersonelClient() {
                     </div>
                   </div>
 
-                  <div className="mt-2 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-                    <button
-                      onClick={() => handleToggleActive(u)}
-                      disabled={actionLoading === u.id + '-active'}
-                      className="flex-1 inline-flex items-center justify-center"
-                      style={{
-                        background: u.active ? '#FEF9EE' : '#ECFDF5',
-                        border: `1px solid ${u.active ? '#FCD34D' : '#86EFAC'}`,
-                        color: u.active ? '#92400E' : GREEN,
-                        borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', minHeight: '44px',
-                        fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif'
+                  <div className="mt-2 flex border-t border-slate-100 pt-3 justify-end">
+                    <AdminRecordActions
+                      activation={{
+                        isActive: u.active,
+                        onClick: () => handleToggleActive(u),
+                        disabled: actionLoading === u.id + '-active',
                       }}
-                    >
-                      {actionLoading === u.id + '-active' ? '…' : u.active ? 'Devre Dışı Bırak' : 'Aktif Et'}
-                    </button>
-                    <button
-                      onClick={() => handleDelete(u)}
-                      disabled={actionLoading === u.id + '-delete'}
-                      className="inline-flex items-center justify-center"
-                      style={{
-                        background: '#FEF2F2', border: '1px solid #FECACA',
-                        color: RED, borderRadius: '8px', padding: '8px 16px', minHeight: '44px', minWidth: '44px',
-                        cursor: 'pointer'
+                      delete={{
+                        onClick: () => handleDelete(u),
+                        disabled: actionLoading === u.id + '-delete',
                       }}
-                    >
-                      {actionLoading === u.id + '-delete' ? '…' : <Trash2 size={18} />} <span className="ml-2 font-semibold text-[13px]">Sil</span>
-                    </button>
+                    />
                   </div>
                 </div>
               ))}

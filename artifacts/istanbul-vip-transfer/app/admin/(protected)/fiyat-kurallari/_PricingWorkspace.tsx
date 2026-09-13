@@ -23,40 +23,40 @@ export default function PricingWorkspace() {
 
   return (
     <section>
-      <div className="mb-6 inline-flex max-w-full gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-slate-100 p-1">
+      <div className="mb-6 grid w-full grid-cols-1 gap-1 rounded-xl border border-slate-200 bg-slate-100 p-1 sm:grid-cols-2 lg:grid-cols-3 xl:flex xl:w-fit">
         <button
           type="button"
-           onClick={() => selectTab('engine')}
-          className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold transition-colors ${tab === 'engine' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+          onClick={() => selectTab('engine')}
+          className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-center text-sm font-bold transition-colors ${tab === 'engine' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
         >
           <Calculator size={16} />
           Formül ve Kur Motoru
         </button>
         <button
           type="button"
-           onClick={() => selectTab('policy')}
-          className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold transition-colors ${tab === 'policy' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+          onClick={() => selectTab('policy')}
+          className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-center text-sm font-bold transition-colors ${tab === 'policy' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
         >
           <Settings2 size={16} />
           Kur ve Maliyet Politikası
         </button>
         <button
           type="button"
-           onClick={() => selectTab('formulas')}
-          className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold transition-colors ${tab === 'formulas' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+          onClick={() => selectTab('formulas')}
+          className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-center text-sm font-bold transition-colors ${tab === 'formulas' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
         >
           <TableProperties size={16} />
           Hesaplama Formülleri
         </button>
         <button
           type="button"
-           onClick={() => selectTab('legacy')}
-          className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold transition-colors ${tab === 'legacy' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+          onClick={() => selectTab('legacy')}
+          className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-center text-sm font-bold transition-colors ${tab === 'legacy' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
         >
           <MapPinned size={16} />
           Elle Sabitlenmiş Fiyatlar
         </button>
-        <button type="button" onClick={() => selectTab('ek-hizmetler')} className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold transition-colors ${tab === 'ek-hizmetler' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}>
+        <button type="button" onClick={() => selectTab('ek-hizmetler')} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-center text-sm font-bold transition-colors ${tab === 'ek-hizmetler' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}>
           <PackagePlus size={16} /> Ek Hizmetler
         </button>
       </div>

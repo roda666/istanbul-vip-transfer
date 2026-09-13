@@ -1,12 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
-import { ChevronUp, ChevronDown } from 'lucide-react';
 import type { Vehicle } from '@/db/schema';
 import type { ContentStatus } from '@/lib/workflow';
 import { STATUS_LABELS } from '@/lib/workflow';
 import StatusBadge from '../../_components/StatusBadge';
+import { AdminRecordActions } from '../../_components/AdminRecordActions';
 
 const GOLD = '#C99A32';
 
@@ -19,6 +18,7 @@ function ConfirmDialog({
   message,
   confirmLabel,
   danger,
+  loading,
   onConfirm,
   onCancel,
 }: {
@@ -26,6 +26,7 @@ function ConfirmDialog({
   message: string;
   confirmLabel: string;
   danger?: boolean;
+  loading?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -34,7 +35,7 @@ function ConfirmDialog({
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 200,
+        zIndex: 300,
         background: 'rgba(23,43,58,0.5)',
         backdropFilter: 'blur(4px)',
         display: 'flex',
@@ -79,33 +80,42 @@ function ConfirmDialog({
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
           <button
             onClick={onCancel}
+            disabled={loading}
             style={{
               background: '#FFFFFF',
               border: '1px solid #D8E1E9',
               borderRadius: '8px',
               color: '#52697A',
-              cursor: 'pointer',
+              cursor: loading ? 'not-allowed' : 'pointer',
               padding: '8px 18px',
               fontSize: '13px',
               fontFamily: 'Inter, sans-serif',
+              opacity: loading ? 0.6 : 1,
             }}
           >
             Vazgeç
           </button>
           <button
             onClick={onConfirm}
+            disabled={loading}
+            aria-busy={loading}
             style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
               background: danger ? '#FEF2F2' : '#2563EB',
               border: danger ? '1px solid #FECACA' : 'none',
               borderRadius: '8px',
               color: danger ? '#D64545' : '#FFFFFF',
-              cursor: 'pointer',
+              cursor: loading ? 'not-allowed' : 'pointer',
               padding: '8px 18px',
               fontSize: '13px',
               fontFamily: 'Inter, sans-serif',
               fontWeight: 600,
+              opacity: loading ? 0.6 : 1,
             }}
           >
+            {loading && <span style={{ display: 'inline-block', width: '14px', height: '14px', border: '2px solid currentColor', borderRightColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />}
             {confirmLabel}
           </button>
         </div>
@@ -149,6 +159,7 @@ export default function AraclarList() {
   } | null>(null);
   const [actionError, setActionError] = useState('');
   const [orderingId, setOrderingId] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const fetchVehicles = useCallback(async () => {
     setLoading(true);
@@ -185,7 +196,7 @@ export default function AraclarList() {
       message: `"${v.name}" aracı arşivlenecektir. Araç listeden kaldırılır ancak kalıcı olarak silinmez.`,
       confirmLabel: 'Arşivle',
       danger: true,
-      onConfirm: () => { setConfirm(null); doArchive(v.id); },
+      onConfirm: () => doArchive(v.id),
     });
   }
 
@@ -196,31 +207,79 @@ export default function AraclarList() {
       message: `"${v.name}" aracı kalıcı olarak silinecektir. Bu işlem geri alınamaz. Hiç yayınlanmamış taslak araçlar için geçerlidir.`,
       confirmLabel: 'Kalıcı Sil',
       danger: true,
-      onConfirm: () => { setConfirm(null); doDelete(v.id); },
+      onConfirm: () => doDelete(v.id),
+    });
+  }
+
+  function confirmRestore(v: Vehicle) {
+    setActionError('');
+    setConfirm({
+      title: 'Aracı Geri Yükle',
+      message: `"${v.name}" aracı taslak olarak geri yüklenecektir.`,
+      confirmLabel: 'Geri Yükle',
+      onConfirm: () => doRestore(v.id),
     });
   }
 
   async function doArchive(id: string) {
-    const res = await fetch(`/admin/api/vehicles/${id}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'archive' }),
-    });
-    if (!res.ok) {
-      const json = await res.json().catch(() => ({}));
-      setActionError(json.error ?? 'Arşivleme başarısız.');
-    } else {
-      fetchVehicles();
+    setActionLoading(id);
+    try {
+      const res = await fetch(`/admin/api/vehicles/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'archive' }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        setActionError(json.error ?? 'Arşivleme başarısız.');
+      } else {
+        await fetchVehicles();
+      }
+    } catch {
+      setActionError('Bağlantı hatası.');
+    } finally {
+      setActionLoading(null);
+      setConfirm(null);
+    }
+  }
+
+  async function doRestore(id: string) {
+    setActionLoading(id);
+    try {
+      const res = await fetch(`/admin/api/vehicles/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'restore' }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        setActionError(json.error ?? 'Geri yükleme başarısız.');
+      } else {
+        await fetchVehicles();
+      }
+    } catch {
+      setActionError('Bağlantı hatası.');
+    } finally {
+      setActionLoading(null);
+      setConfirm(null);
     }
   }
 
   async function doDelete(id: string) {
-    const res = await fetch(`/admin/api/vehicles/${id}`, { method: 'DELETE' });
-    if (!res.ok) {
-      const json = await res.json().catch(() => ({}));
-      setActionError(json.error ?? 'Silme başarısız.');
-    } else {
-      fetchVehicles();
+    setActionLoading(id);
+    try {
+      const res = await fetch(`/admin/api/vehicles/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        setActionError(json.error ?? 'Silme başarısız.');
+      } else {
+        await fetchVehicles();
+      }
+    } catch {
+      setActionError('Bağlantı hatası.');
+    } finally {
+      setActionLoading(null);
+      setConfirm(null);
     }
   }
 
@@ -436,99 +495,38 @@ export default function AraclarList() {
 
                         {/* Actions */}
                         <td style={{ padding: '10px 12px' }}>
-                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                             <button onClick={() => reorder(v, 'up')} disabled={orderingId === v.id || vehicles.indexOf(v) === 0} title="Yukarı taşı" aria-label="Yukarı taşı"
-                               style={{ minWidth: '44px', minHeight: '44px', border: '1px solid #D8E1E9', borderRadius: '6px', background: '#FFF', color: vehicles.indexOf(v) === 0 ? '#CBD5E1' : '#172B3A', cursor: vehicles.indexOf(v) === 0 ? 'default' : 'pointer' }}><ChevronUp size={15} /></button>
-                             <button onClick={() => reorder(v, 'down')} disabled={orderingId === v.id || vehicles.indexOf(v) === vehicles.length - 1} title="Aşağı taşı" aria-label="Aşağı taşı"
-                               style={{ minWidth: '44px', minHeight: '44px', border: '1px solid #D8E1E9', borderRadius: '6px', background: '#FFF', color: vehicles.indexOf(v) === vehicles.length - 1 ? '#CBD5E1' : '#172B3A', cursor: vehicles.indexOf(v) === vehicles.length - 1 ? 'default' : 'pointer' }}><ChevronDown size={15} /></button>
-                             <Link
-                              href={`/admin/araclar/${v.id}/duzenle`}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                 padding: '5px 12px',
-                                 minHeight: '44px',
-                                borderRadius: '6px',
-                                background: '#EFF6FF',
-                                color: '#2563EB',
-                                fontSize: '12px',
-                                fontFamily: 'Inter, sans-serif',
-                                fontWeight: 500,
-                                textDecoration: 'none',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              Düzenle
-                            </Link>
-
-                            {v.status !== 'ARCHIVED' && (
-                              <button
-                                onClick={() => setActive(v.id, !v.isActive)}
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                   padding: '5px 12px',
-                                   minHeight: '44px',
-                                  borderRadius: '6px',
-                                  background: v.isActive ? '#F8FAFC' : '#ECFDF5',
-                                  border: '1px solid #D8E1E9',
-                                  color: v.isActive ? '#52697A' : '#047857',
-                                  fontSize: '12px',
-                                  fontFamily: 'Inter, sans-serif',
-                                  cursor: 'pointer',
-                                  whiteSpace: 'nowrap',
-                                }}
-                              >
-                                {v.isActive ? 'Pasifleştir' : 'Aktifleştir'}
-                              </button>
-                            )}
-
-                            {v.status !== 'ARCHIVED' && (
-                              <button
-                                onClick={() => confirmArchive(v)}
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                   padding: '5px 12px',
-                                   minHeight: '44px',
-                                  borderRadius: '6px',
-                                  background: '#FEF2F2',
-                                  border: 'none',
-                                  color: '#D64545',
-                                  fontSize: '12px',
-                                  fontFamily: 'Inter, sans-serif',
-                                  cursor: 'pointer',
-                                  whiteSpace: 'nowrap',
-                                }}
-                              >
-                                Arşivle
-                              </button>
-                            )}
-
-                            {(
-                              <button
-                                onClick={() => confirmDelete(v)}
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                   padding: '5px 12px',
-                                   minWidth: '44px',
-                                   minHeight: '44px',
-                                  borderRadius: '6px',
-                                  background: '#FEF2F2',
-                                  border: '1px solid #FECACA',
-                                  color: '#D64545',
-                                  fontSize: '12px',
-                                  fontFamily: 'Inter, sans-serif',
-                                  cursor: 'pointer',
-                                  whiteSpace: 'nowrap',
-                                }}
-                              >
-                                Sil
-                              </button>
-                            )}
-                          </div>
+                          <AdminRecordActions
+                            up={{
+                              onClick: () => reorder(v, 'up'),
+                              disabled: orderingId === v.id || vehicles.indexOf(v) === 0,
+                              disabledReason: vehicles.indexOf(v) === 0 ? "Listenin en üstünde" : undefined
+                            }}
+                            down={{
+                              onClick: () => reorder(v, 'down'),
+                              disabled: orderingId === v.id || vehicles.indexOf(v) === vehicles.length - 1,
+                              disabledReason: vehicles.indexOf(v) === vehicles.length - 1 ? "Listenin en altında" : undefined
+                            }}
+                            edit={{ href: `/admin/araclar/${v.id}/duzenle` }}
+                            activation={{
+                              hidden: v.status === 'ARCHIVED',
+                              isActive: v.isActive,
+                              onClick: () => setActive(v.id, !v.isActive)
+                            }}
+                            archive={{
+                              isArchived: v.status === 'ARCHIVED',
+                              onClick: () => confirmArchive(v),
+                              onRestore: () => confirmRestore(v)
+                            }}
+                            delete={{
+                              onClick: () => confirmDelete(v),
+                              hidden: v.publishedAt !== null || !['DRAFT', 'RESEARCH', 'REVIEW'].includes(v.status),
+                            }}
+                            deleteOmittedReason={
+                              (v.publishedAt !== null || !['DRAFT', 'RESEARCH', 'REVIEW'].includes(v.status))
+                                ? "Yayınlanmış araçlar kalıcı silinemez. Lütfen arşivleyin."
+                                : undefined
+                            }
+                          />
                         </td>
                       </tr>
                     );
@@ -588,6 +586,7 @@ export default function AraclarList() {
           message={confirm.message}
           confirmLabel={confirm.confirmLabel}
           danger={confirm.danger}
+          loading={!!actionLoading}
           onConfirm={confirm.onConfirm}
           onCancel={() => setConfirm(null)}
         />

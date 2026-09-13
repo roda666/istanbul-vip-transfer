@@ -9,6 +9,7 @@ import { FLIGHT_MEET_GREET_KEY, normalizeFlightMeetGreetKey } from '@/lib/flight
 import { isCanonicalServiceType } from '@/lib/service-type-scope';
 
 const updateSchema = z.object({
+  action: z.enum(['restore', 'archive']).optional(),
   key: z.string().trim().min(2).max(80).refine((key) => normalizeFlightMeetGreetKey(key) === FLIGHT_MEET_GREET_KEY || /^[A-Z0-9_]+$/.test(key), 'Geçersiz hizmet anahtarı.').optional(),
   name: z.string().trim().min(1, 'Hizmet adı gereklidir.').max(200).optional(),
   shortDescription: z.string().trim().max(500).nullable().optional(),
@@ -42,6 +43,41 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const { id } = await params;
   try {
     const data = parsed.data;
+
+    if (data.action === 'restore') {
+      const [current] = await db.select().from(optionalServices).where(eq(optionalServices.id, id)).limit(1);
+      if (!current) return NextResponse.json({ error: 'Hizmet bulunamadı.' }, { status: 404 });
+      if (!current.archivedAt) return NextResponse.json({ error: 'Sadece arşivlenmiş hizmetler geri yüklenebilir.' }, { status: 422 });
+
+      const [item] = await db.update(optionalServices)
+        .set({ archivedAt: null, active: false, updatedAt: new Date(), updatedBy: session.adminId })
+        .where(eq(optionalServices.id, id))
+        .returning();
+
+      await db.insert(auditLogs).values({
+        adminUserId: session.adminId, action: 'RESTORE', entityType: 'OptionalService', entityId: id,
+        metadata: { key: item.key, name: item.name },
+      }).catch(() => {});
+      return NextResponse.json({ item });
+    }
+
+    if (data.action === 'archive') {
+      const [current] = await db.select().from(optionalServices).where(eq(optionalServices.id, id)).limit(1);
+      if (!current) return NextResponse.json({ error: 'Hizmet bulunamadı.' }, { status: 404 });
+      if (current.archivedAt) return NextResponse.json({ error: 'Hizmet zaten arşivlenmiş.' }, { status: 422 });
+
+      const [item] = await db.update(optionalServices)
+        .set({ archivedAt: new Date(), active: false, updatedAt: new Date(), updatedBy: session.adminId })
+        .where(eq(optionalServices.id, id))
+        .returning();
+
+      await db.insert(auditLogs).values({
+        adminUserId: session.adminId, action: 'ARCHIVE', entityType: 'OptionalService', entityId: id,
+        metadata: { key: item.key, name: item.name },
+      }).catch(() => {});
+      return NextResponse.json({ item });
+    }
+
     const [current] = await db.select().from(optionalServices).where(eq(optionalServices.id, id)).limit(1);
     if (!current) return NextResponse.json({ error: 'Hizmet bulunamadı.' }, { status: 404 });
     let translationJob: unknown = null;
@@ -92,16 +128,12 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
   const [current] = await db.select().from(optionalServices).where(eq(optionalServices.id, id)).limit(1).catch(() => []);
   if (!current) return NextResponse.json({ error: 'Hizmet bulunamadı.' }, { status: 404 });
   try {
-    if (current.archivedAt) {
-      await db.delete(optionalServices).where(eq(optionalServices.id, id));
-      await db.insert(auditLogs).values({ adminUserId: session.adminId, action: 'DELETE', entityType: 'OptionalService', entityId: id, metadata: { key: current.key } }).catch(() => {});
-      return NextResponse.json({ success: true, deleted: true });
+    if (!current.archivedAt) {
+      return NextResponse.json({ error: 'Yalnızca arşivlenmiş hizmetler kalıcı olarak silinebilir. Lütfen önce arşivleyin.' }, { status: 422 });
     }
-    const [item] = await db.update(optionalServices).set({
-      active: false, archivedAt: new Date(), updatedAt: new Date(), updatedBy: session.adminId,
-    }).where(eq(optionalServices.id, id)).returning();
-    await db.insert(auditLogs).values({ adminUserId: session.adminId, action: 'ARCHIVE', entityType: 'OptionalService', entityId: id, metadata: { key: current.key } }).catch(() => {});
-    return NextResponse.json({ item, archived: true });
+    await db.delete(optionalServices).where(eq(optionalServices.id, id));
+    await db.insert(auditLogs).values({ adminUserId: session.adminId, action: 'DELETE', entityType: 'OptionalService', entityId: id, metadata: { key: current.key } }).catch(() => {});
+    return NextResponse.json({ success: true, deleted: true });
   } catch (error) {
     console.error('Optional service delete error:', error);
     return NextResponse.json({ error: 'Ek hizmet silinemedi.' }, { status: 503 });

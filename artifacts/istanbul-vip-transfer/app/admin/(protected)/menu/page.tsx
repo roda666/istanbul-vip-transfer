@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Pencil, Trash2, X, Check, Loader2, ToggleLeft, ToggleRight, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, X, Check, Loader2, ToggleLeft, ToggleRight } from 'lucide-react';
 import AdminPageHeader from '../../_components/AdminPageHeader';
+import { AdminRecordActions } from '../../_components/AdminRecordActions';
 
 interface NavItem {
   id: string;
@@ -210,12 +211,12 @@ export default function MenuPage() {
                       <span style={{ color: '#718596', fontSize: '13px', fontFamily: 'monospace', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.href}</span>
                       <span style={{ color: '#A0B0BC', fontSize: '12px', fontFamily: 'monospace' }}>#{item.sortOrder}</span>
                     </div>
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      <button aria-label="Yukarı" title="Yukarı" onClick={() => moveItem(item, 'up')} disabled={i === 0} style={{ minWidth: '44px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', background: '#F8FAFC', color: '#52697A', border: '1px solid #D8E1E9', cursor: i === 0 ? 'not-allowed' : 'pointer', opacity: i === 0 ? 0.4 : 1 }}><ArrowUp size={18} /></button>
-                      <button aria-label="Aşağı" title="Aşağı" onClick={() => moveItem(item, 'down')} disabled={i === group.items.length - 1} style={{ minWidth: '44px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', background: '#F8FAFC', color: '#52697A', border: '1px solid #D8E1E9', cursor: i === group.items.length - 1 ? 'not-allowed' : 'pointer', opacity: i === group.items.length - 1 ? 0.4 : 1 }}><ArrowDown size={18} /></button>
-                      <button aria-label="Düzenle" onClick={() => openEdit(item)} style={{ minWidth: '44px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', background: '#EFF6FF', color: '#2563EB', border: 'none', cursor: 'pointer' }}><Pencil size={18} /></button>
-                      <button aria-label="Sil" onClick={() => handleDelete(item.id)} disabled={deleting === item.id} style={{ minWidth: '44px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', background: '#FEF2F2', color: '#D64545', border: 'none', cursor: 'pointer', opacity: deleting === item.id ? 0.5 : 1 }}><Trash2 size={18} /></button>
-                    </div>
+                    <AdminRecordActions
+                      up={{ onClick: () => moveItem(item, 'up'), disabled: i === 0, disabledReason: i === 0 ? 'En üstte' : undefined }}
+                      down={{ onClick: () => moveItem(item, 'down'), disabled: i === group.items.length - 1, disabledReason: i === group.items.length - 1 ? 'En altta' : undefined }}
+                      edit={{ onClick: () => openEdit(item) }}
+                      delete={{ onClick: () => handleDelete(item.id), disabled: deleting === item.id }}
+                    />
                   </div>
                 ))}
               </div>

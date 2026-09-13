@@ -46,8 +46,21 @@ describe('vehicle form and pricing formula boundary', () => {
     expect(createVehicleRoute).not.toContain('vehiclePricingProfiles');
     expect(updateVehicleRoute).not.toContain('vehiclePricingProfiles');
     expect(profileRoute).toContain('tx.insert(vehiclePricingProfiles)');
+    expect(profileRoute).toContain('export async function PUT');
+    expect(profileRoute).toContain('.where(eq(vehiclePricingProfiles.id, existing.id))');
     expect(profileRoute).toContain('priceCalculationEligible: true');
     expect(pricingClient).toContain('data-testid="new-pricing-formula"');
     expect(pricingClient).not.toContain('vehicles.filter((v: Vehicle) => v.priceCalculationEligible)');
+  });
+
+  it('uses the pencil action for an in-place edit rather than cloning', () => {
+    const pricingClient = read('../../app/admin/(protected)/fiyat-kurallari/_FormulaPricingClient.tsx');
+
+    expect(pricingClient).toContain('title="Formülü Düzenle"');
+    expect(pricingClient).not.toContain('title="Yeni Formül Olarak Çoğalt"');
+    expect(pricingClient).not.toContain("'Formülü Çoğalt'");
+    expect(pricingClient).toContain("method: editingProfile ? 'PUT' : 'POST'");
+    expect(pricingClient).toContain("editingProfile ? 'Formülü Düzenle' : 'Yeni Formül'");
+    expect(pricingClient).toContain("editingProfile ? 'Değişiklikleri Kaydet' : 'Oluştur'");
   });
 });

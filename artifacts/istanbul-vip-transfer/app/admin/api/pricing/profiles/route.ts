@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
   });
 }
 
-/** Formula profiles accept TRY kuruş only. Update is append-only from the UI: disable old, add new. */
+/** Formula profiles accept TRY kuruş only. New records are created only through the explicit create flow. */
 export async function POST(request: NextRequest) {
   let session;
   try {
@@ -107,6 +107,83 @@ export async function POST(request: NextRequest) {
   });
   await db.insert(auditLogs).values({ adminUserId: session.adminId, action: 'CREATE', entityType: 'VehiclePricingProfile', entityId: profile.id, metadata: { vehicleId: profile.vehicleId, mode: profile.mode } }).catch(() => {});
   return NextResponse.json({ item: profile }, { status: 201 });
+}
+
+/** Edits a formula in place without creating or deactivating another version. */
+export async function PUT(request: NextRequest) {
+  let session;
+  try {
+    session = await (await import('@/lib/auth/session')).requireAdminSession();
+  } catch {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const payload = z.object({ id: z.string().uuid() }).and(profileSchema)
+    .safeParse(await request.json().catch(() => null));
+  if (!payload.success) {
+    return NextResponse.json(
+      { error: payload.error.errors[0]?.message ?? 'Doğrulama hatası.' },
+      { status: 422 },
+    );
+  }
+
+  const [{ db }, { auditLogs, vehiclePricingProfiles }, { eq }] = await Promise.all([
+    import('@/db'),
+    import('@/db/schema'),
+    import('drizzle-orm'),
+  ]);
+  const [existing] = await db.select({
+    id: vehiclePricingProfiles.id,
+    vehicleId: vehiclePricingProfiles.vehicleId,
+    mode: vehiclePricingProfiles.mode,
+  }).from(vehiclePricingProfiles)
+    .where(eq(vehiclePricingProfiles.id, payload.data.id))
+    .limit(1);
+
+  if (!existing) return NextResponse.json({ error: 'Formül bulunamadı.' }, { status: 404 });
+  if (existing.vehicleId !== payload.data.vehicleId || existing.mode !== payload.data.mode) {
+    return NextResponse.json(
+      { error: 'Düzenleme sırasında araç veya hesaplama modu değiştirilemez.' },
+      { status: 409 },
+    );
+  }
+
+  const values = payload.data.mode === 'DISTANCE'
+    ? {
+        active: payload.data.active,
+        notes: payload.data.notes ?? null,
+        distanceOpeningKurus: payload.data.distanceOpeningKurus,
+        distanceFirstKmKurus: payload.data.distanceFirstKmKurus,
+        distanceThresholdKm: payload.data.distanceThresholdKm,
+        distanceSecondKmKurus: payload.data.distanceSecondKmKurus,
+        updatedAt: new Date(),
+        updatedBy: session.adminId,
+      }
+    : {
+        active: payload.data.active,
+        notes: payload.data.notes ?? null,
+        hourlyRateKurus: payload.data.hourlyRateKurus,
+        minimumHours: payload.data.minimumHours,
+        includedKmMode: payload.data.includedKmMode,
+        includedKm: payload.data.includedKm,
+        excessKmKurus: payload.data.excessKmKurus,
+        excessHourKurus: payload.data.excessHourKurus,
+        updatedAt: new Date(),
+        updatedBy: session.adminId,
+      };
+
+  const [item] = await db.update(vehiclePricingProfiles)
+    .set(values)
+    .where(eq(vehiclePricingProfiles.id, existing.id))
+    .returning();
+  await db.insert(auditLogs).values({
+    adminUserId: session.adminId,
+    action: 'UPDATE',
+    entityType: 'VehiclePricingProfile',
+    entityId: item.id,
+    metadata: { vehicleId: item.vehicleId, mode: item.mode },
+  }).catch(() => {});
+  return NextResponse.json({ item });
 }
 
 /** Deactivation preserves historic formula references and makes new calculations fail closed. */

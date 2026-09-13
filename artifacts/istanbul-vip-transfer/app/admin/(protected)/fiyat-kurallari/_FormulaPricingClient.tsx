@@ -1165,7 +1165,7 @@ function SettingsPanel({ settings, onSave }: { settings: Settings | null, onSave
 
 function ProfilesPanel({ profiles, vehicles, onReload }: { profiles: Profile[], vehicles: Vehicle[], onReload: () => void }) {
   const [modalOpen, setModalOpen] = useState(false);
-  const [cloneData, setCloneData] = useState<Profile | null>(null);
+  const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
   const [actionError, setActionError] = useState('');
 
   const toggleActive = async (p: Profile) => {
@@ -1201,7 +1201,7 @@ function ProfilesPanel({ profiles, vehicles, onReload }: { profiles: Profile[], 
           <h2 className="text-lg font-bold text-slate-900">Hesaplama Formülleri</h2>
           <p className="text-sm text-slate-500 mt-0.5 font-medium">Araçların mesafe ve tahsis bazlı fiyat kuralları.</p>
         </div>
-        <button data-testid="new-pricing-formula" onClick={() => { setCloneData(null); setModalOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2">
+        <button data-testid="new-pricing-formula" onClick={() => { setEditingProfile(null); setModalOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2">
           <Plus size={16}/> Yeni Formül
         </button>
       </div>
@@ -1211,7 +1211,7 @@ function ProfilesPanel({ profiles, vehicles, onReload }: { profiles: Profile[], 
         <table className="w-full text-left border-collapse min-w-[850px]">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="py-3.5 px-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Araç Sınıfı</th>
+              <th className="py-3.5 px-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Araç</th>
               <th className="py-3.5 px-5 text-[10px] font-black text-slate-400 uppercase tracking-widest w-24">Mod</th>
               <th className="py-3.5 px-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Ücret Matrisi</th>
               <th className="py-3.5 px-5 text-[10px] font-black text-slate-400 uppercase tracking-widest w-28 text-center">Durum</th>
@@ -1255,7 +1255,7 @@ function ProfilesPanel({ profiles, vehicles, onReload }: { profiles: Profile[], 
                     </td>
                     <td className="py-4 px-5 text-right">
                       <div className="flex justify-end gap-1">
-                         <button onClick={() => {setCloneData(p); setModalOpen(true);}} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Yeni Formül Olarak Çoğalt"><Edit2 size={16}/></button>
+                         <button data-testid={`edit-pricing-formula-${p.id}`} onClick={() => {setEditingProfile(p); setModalOpen(true);}} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Formülü Düzenle"><Edit2 size={16}/></button>
                          <button onClick={() => toggleActive(p)} className={`p-2 rounded-lg transition-colors ${p.active ? 'text-slate-400 hover:text-red-600 hover:bg-red-50' : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'}`} title={p.active ? 'Pasife Al' : 'Aktifleştir'}>
                            {p.active ? <X size={16}/> : <Check size={16}/>}
                          </button>
@@ -1275,7 +1275,7 @@ function ProfilesPanel({ profiles, vehicles, onReload }: { profiles: Profile[], 
       {modalOpen && (
         <ProfileModal 
           isOpen={modalOpen} 
-          cloneData={cloneData} 
+          editingProfile={editingProfile}
           vehicles={vehicles}
           onClose={() => setModalOpen(false)} 
           onSaved={() => { setModalOpen(false); onReload(); }} 
@@ -1285,9 +1285,9 @@ function ProfilesPanel({ profiles, vehicles, onReload }: { profiles: Profile[], 
   );
 }
 
-function ProfileModal({ isOpen, cloneData, vehicles, onClose, onSaved }: {
+function ProfileModal({ isOpen, editingProfile, vehicles, onClose, onSaved }: {
   isOpen: boolean;
-  cloneData: Profile | null;
+  editingProfile: Profile | null;
   vehicles: Vehicle[];
   onClose: () => void;
   onSaved: () => void;
@@ -1314,30 +1314,30 @@ function ProfileModal({ isOpen, cloneData, vehicles, onClose, onSaved }: {
   const [fExcessHour, setFExcessHour] = useState(0);
 
   useEffect(() => {
-    if (isOpen && cloneData) {
-      setFMode(cloneData.mode);
-      setFVehicleId(cloneData.vehicleId);
-      setFActive(cloneData.active);
-      setFNotes(cloneData.notes || '');
-      if (cloneData.mode === 'DISTANCE') {
-        setFOpening(cloneData.distanceOpeningKurus);
-        setFFirst(cloneData.distanceFirstKmKurus);
-        setFThreshold(cloneData.distanceThresholdKm);
-        setFSecond(cloneData.distanceSecondKmKurus);
+    if (isOpen && editingProfile) {
+      setFMode(editingProfile.mode);
+      setFVehicleId(editingProfile.vehicleId);
+      setFActive(editingProfile.active);
+      setFNotes(editingProfile.notes || '');
+      if (editingProfile.mode === 'DISTANCE') {
+        setFOpening(editingProfile.distanceOpeningKurus);
+        setFFirst(editingProfile.distanceFirstKmKurus);
+        setFThreshold(editingProfile.distanceThresholdKm);
+        setFSecond(editingProfile.distanceSecondKmKurus);
       } else {
-        setFHourlyRate(cloneData.hourlyRateKurus);
-        setFMinHours(cloneData.minimumHours);
-        setFIncludedMode(cloneData.includedKmMode);
-        setFIncludedKm(cloneData.includedKm);
-        setFExcessKm(cloneData.excessKmKurus);
-        setFExcessHour(cloneData.excessHourKurus);
+        setFHourlyRate(editingProfile.hourlyRateKurus);
+        setFMinHours(editingProfile.minimumHours);
+        setFIncludedMode(editingProfile.includedKmMode);
+        setFIncludedKm(editingProfile.includedKm);
+        setFExcessKm(editingProfile.excessKmKurus);
+        setFExcessHour(editingProfile.excessHourKurus);
       }
     } else if (isOpen) {
       setFMode('DISTANCE'); setFVehicleId(''); setFActive(true); setFNotes('');
       setFOpening(0); setFFirst(0); setFThreshold(100); setFSecond(0);
       setFHourlyRate(0); setFMinHours(4); setFIncludedMode('PER_HOUR'); setFIncludedKm(10); setFExcessKm(0); setFExcessHour(0);
     }
-  }, [isOpen, cloneData]);
+  }, [isOpen, editingProfile]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -1360,9 +1360,12 @@ function ProfileModal({ isOpen, cloneData, vehicles, onClose, onSaved }: {
       }
       
       const res = await fetch('/admin/api/pricing/profiles', {
-        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+        method: editingProfile ? 'PUT' : 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(editingProfile ? { id: editingProfile.id, ...payload } : payload),
       });
-      if (res.ok) onSaved();
+      if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? 'Formül kaydedilemedi.');
+      onSaved();
     } finally {
       setSaving(false);
     }
@@ -1370,10 +1373,10 @@ function ProfileModal({ isOpen, cloneData, vehicles, onClose, onSaved }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[95vh] animate-in fade-in zoom-in-95 duration-200">
+      <div data-testid="pricing-formula-modal" className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[95vh] animate-in fade-in zoom-in-95 duration-200">
         <div className="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50/50 rounded-t-2xl shrink-0">
           <h2 className="text-lg font-black text-slate-900">
-            {cloneData ? 'Formülü Çoğalt' : 'Yeni Fiyat Formülü'}
+            {editingProfile ? 'Formülü Düzenle' : 'Yeni Formül'}
           </h2>
           <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-200 rounded-lg transition-colors"><X size={20} /></button>
         </div>
@@ -1381,15 +1384,15 @@ function ProfileModal({ isOpen, cloneData, vehicles, onClose, onSaved }: {
         <div className="p-6 overflow-y-auto space-y-6">
            <div className="grid grid-cols-2 gap-4">
              <div>
-               <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Araç Sınıfı</label>
-                <select data-testid="formula-vehicle" value={fVehicleId} onChange={e => setFVehicleId(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm">
+               <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Araç</label>
+                 <select data-testid="formula-vehicle" value={fVehicleId} onChange={e => setFVehicleId(e.target.value)} disabled={Boolean(editingProfile)} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm disabled:bg-slate-100 disabled:text-slate-600">
                  <option value="">Seçiniz...</option>
                    {vehicles.map((v: Vehicle) => <option key={v.id} value={v.id}>{v.name}</option>)}
                </select>
              </div>
              <div>
                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Hesaplama Modu</label>
-               <select value={fMode} onChange={e => setFMode(e.target.value as 'DISTANCE'|'HOURLY')} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm">
+               <select value={fMode} onChange={e => setFMode(e.target.value as 'DISTANCE'|'HOURLY')} disabled={Boolean(editingProfile)} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 shadow-sm disabled:bg-slate-100 disabled:text-slate-600">
                  <option value="DISTANCE">Mesafe Bazlı</option>
                  <option value="HOURLY">Saatlik Tahsis</option>
                </select>
@@ -1447,7 +1450,7 @@ function ProfileModal({ isOpen, cloneData, vehicles, onClose, onSaved }: {
         <div className="p-5 border-t border-slate-200 bg-slate-50/50 rounded-b-2xl shrink-0 flex justify-end gap-3">
            <button onClick={onClose} className="px-5 py-2.5 text-sm font-bold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl transition-colors shadow-sm">İptal</button>
            <button onClick={handleSave} disabled={!fVehicleId || saving} className="px-6 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-xl shadow-sm transition-colors flex items-center gap-2">
-             {saving ? <Loader2 className="animate-spin" size={16}/> : <Check size={16}/>} {saving ? 'Kaydediliyor...' : 'Oluştur'}
+              {saving ? <Loader2 className="animate-spin" size={16}/> : <Check size={16}/>} {saving ? 'Kaydediliyor...' : editingProfile ? 'Değişiklikleri Kaydet' : 'Oluştur'}
            </button>
         </div>
       </div>

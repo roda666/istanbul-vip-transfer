@@ -276,6 +276,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const bodyStr = JSON.stringify(bodyObj);
   const srcHash = computeTranslatableHash(bodyObj);
   const savingDraftOfPublished = data.saveAsDraft && row.status === 'PUBLISHED';
+  // An already-published service may use the text-only gradient hero after an
+  // admin removes its uploaded image. A service that has never been published
+  // still needs a hero image for its first publication.
+  const canPublishWithoutHeroImage = row.status === 'PUBLISHED' && data.heroImage === null;
 
   const imageWarnings: string[] = [];
   let heroImage: string | null;
@@ -292,7 +296,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (heroResult.warning) imageWarnings.push(heroResult.warning);
     if (ogResult.warning) imageWarnings.push(ogResult.warning);
   }
-  if (!savingDraftOfPublished && !data.saveAsDraft && !heroImage) {
+  if (!savingDraftOfPublished && !data.saveAsDraft && !heroImage && !canPublishWithoutHeroImage) {
     return NextResponse.json({ error: 'Yayımlamak için hizmete özel bir hero görseli zorunludur.' }, { status: 422 });
   }
 
@@ -340,7 +344,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         // Persist null rather than a blank URL so public renderers and metadata
         // never attempt to load an empty image source.
         heroImage,
-        heroImageAlt:   data.heroImageAlt?.trim() || null,
+        // An ALT value without a hero image is orphaned data and must not be
+        // retained, even when a stale client submits one.
+        heroImageAlt:   heroImage ? data.heroImageAlt?.trim() || null : null,
         ogImage,
         indexable:      data.indexable ?? true,
         isActive:       data.isActive ?? true,

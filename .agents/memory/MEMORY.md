@@ -136,3 +136,4 @@
 - [Optional-service scope integrity](optional-service-scope-integrity.md) — empty scope is valid and public-hidden, never a wildcard; keys come from the canonical service-type catalog.
 - [Admin acceptance cleanup lifecycle](admin-acceptance-cleanup-lifecycle.md) — interrupted Playwright runs need process-tree shutdown, FK-aware temp-admin cleanup, and explicit postgres client close.
 - [Admin record action safety](admin-record-action-safety.md) — archive/restore are explicit transitions; permanent delete accepts archived rows only, preventing double-click escalation.
+- [Service hero image removal validation](service-hero-image-removal-validation.md) — published services may stay image-less; first publication still requires a hero image.

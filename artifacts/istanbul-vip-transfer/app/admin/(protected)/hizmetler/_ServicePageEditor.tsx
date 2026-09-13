@@ -1103,6 +1103,10 @@ export default function ServicePageEditor({ initialRecord }: Props) {
               label="Hero Görseli"
               value={heroImage}
               onChange={setHeroImage}
+              onRemove={() => {
+                setHeroImage('');
+                setHeroImageAlt('');
+              }}
               namespace={`service-pages/${record.slug}`}
               hint="Her hizmet için konuya özel görsel kullanın; varsayılan/ortak görsel kullanılamaz. Görselde yazı, logo, marka amblemi, okunabilir tabela veya plaka olmamalı; kişiler yalnızca arkadan, profilden ya da uzaktan görünmelidir."
               altValue={heroImageAlt}

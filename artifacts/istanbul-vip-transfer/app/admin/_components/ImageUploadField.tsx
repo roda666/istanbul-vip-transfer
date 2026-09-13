@@ -30,6 +30,8 @@ interface ImageUploadFieldProps {
   value: string;
   /** Called when value changes (upload or manual input). */
   onChange: (v: string) => void;
+  /** Optional action for removals that must also clear related form fields. */
+  onRemove?: () => void;
   /**
    * Storage path prefix for uploads.
    * e.g. "pages/hakkimizda", "blog/istanbul-rehberi", "vehicles/vito",
@@ -75,6 +77,7 @@ export function ImageUploadField({
   label,
   value,
   onChange,
+  onRemove,
   namespace = 'uploads',
   hint,
   readOnly,
@@ -172,7 +175,7 @@ export function ImageUploadField({
             {value && (
               <button
                 type="button"
-                onClick={() => onChange('')}
+                onClick={() => onRemove ? onRemove() : onChange('')}
                 disabled={uploading}
                 title="Görsel bağlantısını bu sayfadan kaldırır. Depolamadaki dosya silinmez."
                 style={{

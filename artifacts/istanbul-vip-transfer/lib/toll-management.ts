@@ -11,6 +11,7 @@ import {
   tollTariffs,
   transferRoutes,
   vehicles,
+  vehicleTollPointClasses,
   locations,
   intercityTollCorridors,
   intercityTollCorridorAlternatives,
@@ -700,7 +701,19 @@ export async function getTollManagementData() {
     }),
     alternatives: alternatives.map((alternative) => ({
       ...alternative,
-      pointIds: items
+       ...(() => {
+         const alternativeItems = items
+           .filter((item) => item.alternativeId === alternative.id)
+           .sort((left, right) => left.displayOrder - right.displayOrder);
+         const gatePairs: Record<string, { entryGateName: string; exitGateName: string }> = {};
+         for (const item of alternativeItems) {
+           if (item.entryGateName && item.exitGateName) {
+             gatePairs[item.tollPointId] = { entryGateName: item.entryGateName, exitGateName: item.exitGateName };
+           }
+         }
+         return { gatePairs };
+       })(),
+       pointIds: items
         .filter((item) => item.alternativeId === alternative.id)
         .sort((left, right) => left.displayOrder - right.displayOrder)
         .map((item) => item.tollPointId),
@@ -719,7 +732,7 @@ export async function getRouteTollAlternatives(routeId: string, vehicleId?: stri
   if (!route) throw new Error('Güzergâh bulunamadı.');
 
   const [vehicle] = vehicleId
-    ? await db.select({ id: vehicles.id, tollClass: vehicles.tollClass }).from(vehicles).where(eq(vehicles.id, vehicleId)).limit(1)
+    ? await db.select({ id: vehicles.id }).from(vehicles).where(eq(vehicles.id, vehicleId)).limit(1)
     : [null];
   if (vehicleId && !vehicle) throw new Error('Araç bulunamadı.');
 
@@ -741,23 +754,33 @@ export async function getRouteTollAlternatives(routeId: string, vehicleId?: stri
   const points = pointIds.length
     ? await db.select().from(tollPoints).where(inArray(tollPoints.id, pointIds))
     : [];
-  const vehicleClass = vehicle?.tollClass ?? null;
   const pointById = new Map(points.map((point) => [point.id, point]));
+  const pointClasses = new Map<string, string>();
+  if (vehicle) {
+    const assignments = await db.select({
+      tollPointId: vehicleTollPointClasses.tollPointId,
+      vehicleClass: vehicleTollPointClasses.vehicleClass,
+    }).from(vehicleTollPointClasses).where(and(
+      eq(vehicleTollPointClasses.vehicleId, vehicle.id),
+      inArray(vehicleTollPointClasses.tollPointId, pointIds),
+    ));
+    for (const assignment of assignments) pointClasses.set(assignment.tollPointId, assignment.vehicleClass);
+  }
   // Each point may have its own day/night cutover, so the active band is
   // resolved per point rather than with one shared band filter.
   const pointBand = new Map(points.map((point) => [point.id, resolveActiveTimeBandForPoint(activeAt, point)]));
 
-  const allTariffs = vehicleClass && pointIds.length
+  const tariffClasses = [...new Set(pointIds.map((pointId) => pointClasses.get(pointId)).filter((value): value is string => !!value))] as TollVehicleClass[];
+  const allTariffs = tariffClasses.length && pointIds.length
     ? await db.select().from(tollTariffs).where(and(
       inArray(tollTariffs.tollPointId, pointIds),
-      eq(tollTariffs.vehicleClass, vehicleClass as TollVehicleClass),
+       inArray(tollTariffs.vehicleClass, tariffClasses),
       eq(tollTariffs.active, true),
       or(isNull(tollTariffs.validFrom), lte(tollTariffs.validFrom, now)),
       or(isNull(tollTariffs.validUntil), gte(tollTariffs.validUntil, now)),
     ))
     : [];
   const tariffs = allTariffs.filter((tariff) => {
-    if (vehicleClass !== tariff.vehicleClass) return false;
     const band = pointBand.get(tariff.tollPointId) ?? 'DAY';
     return band === 'DAY' ? tariff.appliesDay : tariff.appliesNight;
   });
@@ -775,12 +798,13 @@ export async function getRouteTollAlternatives(routeId: string, vehicleId?: stri
         if (!point) { missingTariffPointNames.push('Bilinmeyen geçiş noktası'); hasPricedAmount = false; continue; }
         if (!point.active) { missingTariffPointNames.push(`${point.name} (pasif)`); hasPricedAmount = false; continue; }
         if (!vehicle) { hasPricedAmount = false; continue; }
-        const bannedClasses = (point.bannedVehicleClasses ?? []) as string[];
-        if (vehicleClass && bannedClasses.includes(vehicleClass)) {
+         const pointClass = pointClasses.get(point.id);
+         const bannedClasses = (point.bannedVehicleClasses ?? []) as string[];
+         if (pointClass && bannedClasses.includes(pointClass)) {
           bannedPointNames.push(point.name);
           continue;
         }
-        if (!vehicleClass) { missingTariffPointNames.push(point.name); hasPricedAmount = false; continue; }
+         if (!pointClass) { missingTariffPointNames.push(point.name); hasPricedAmount = false; continue; }
         // A GATE_PAIR point (e.g. Osmangazi Köprüsü / O-5) has no single
         // "the" tariff for the point — a matching tariff must also carry the
         // exact entry/exit gate pair configured on this route item.
@@ -790,7 +814,7 @@ export async function getRouteTollAlternatives(routeId: string, vehicleId?: stri
           continue;
         }
         const matchingTariffs = tariffs.filter((tariff) => {
-          if (tariff.tollPointId !== point.id) return false;
+           if (tariff.tollPointId !== point.id || tariff.vehicleClass !== pointClass) return false;
           if (point.pricingMode !== 'GATE_PAIR') return true;
           return tariff.entryGateName === item.entryGateName && tariff.exitGateName === item.exitGateName;
         });
@@ -812,6 +836,9 @@ export async function getRouteTollAlternatives(routeId: string, vehicleId?: stri
         reviewNote: alternative.reviewNote,
         pointIds: alternativeItems.map((item) => item.tollPointId),
         pointNames: alternativeItems.map((item) => pointById.get(item.tollPointId)?.name ?? 'Bilinmeyen geçiş'),
+       gatePairs: Object.fromEntries(alternativeItems
+         .filter((item) => item.entryGateName && item.exitGateName)
+         .map((item) => [item.tollPointId, { entryGateName: item.entryGateName!, exitGateName: item.exitGateName! }])),
         // A banned point makes this alternative permanently unusable for the
         // vehicle (not just "data incomplete") — surfaced separately so the
         // admin picks a genuinely usable alternative instead of waiting on data entry.

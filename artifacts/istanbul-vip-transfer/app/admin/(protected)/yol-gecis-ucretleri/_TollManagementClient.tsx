@@ -8,6 +8,7 @@ import {
 import { AdminRecordActions } from '@/app/admin/_components/AdminRecordActions';
 import { TOLL_VEHICLE_CLASS_LABELS, TOLL_VEHICLE_CLASS_SELECTION_WARNING } from '@/lib/toll-vehicle-classes';
 import { isAutomaticTollSyncSupported } from '@/lib/toll-tariff-sync-support';
+import { availableGatePairs, gatePairKey, isExactGatePair } from '@/lib/toll-gate-pairs';
 
 // --- Types ---
 type TollPoint = {
@@ -143,6 +144,8 @@ type DataPayload = {
   vehicleClasses: string[];
   settings: TollSettings;
 };
+
+const GATE_PAIR_MISSING_WARNING = 'Önce Geçiş Noktaları ve Maliyetler bölümünde bu nokta için gişe çifti tarifesi ekleyin';
 
 type BulkIncreasePreview = {
   tollPointId: string;
@@ -938,7 +941,7 @@ function SyncModal({ tariff, onClose, onRefresh }: { tariff: TollTariff, onClose
   );
 }
 
-function AlternativeForm({ routeId, routes, points, initialData, onSave, onClose }: { routeId: string, routes: Route[], points: TollPoint[], initialData?: TollAlternative, onSave: () => void, onClose: () => void }) {
+function AlternativeForm({ routeId, routes, points, tariffs, initialData, onSave, onClose }: { routeId: string, routes: Route[], points: TollPoint[], tariffs: TollTariff[], initialData?: TollAlternative, onSave: () => void, onClose: () => void }) {
   const [formData, setFormData] = useState({
      name: initialData?.name ?? '',
      active: initialData?.active ?? true,
@@ -959,15 +962,18 @@ function AlternativeForm({ routeId, routes, points, initialData, onSave, onClose
     }));
   };
 
-  const setGatePair = (pid: string, field: 'entryGateName' | 'exitGateName', value: string) => {
-    setFormData(f => {
-      const current = f.gatePairs[pid] ?? { entryGateName: '', exitGateName: '' };
-      const updated = { ...current, [field]: value };
-      return { ...f, gatePairs: { ...f.gatePairs, [pid]: updated } };
-    });
-  };
-
   const handleSubmit = async () => {
+    const invalidGatePair = formData.pointIds.some((pid) => {
+      const point = points.find(p => p.id === pid);
+      if (point?.pricingMode !== 'GATE_PAIR') return false;
+      const pair = formData.gatePairs[pid];
+      const pairs = availableGatePairs(pid, tariffs);
+      return pairs.length === 0 || !isExactGatePair(pair, pairs);
+    });
+    if (invalidGatePair) {
+      alert(GATE_PAIR_MISSING_WARNING);
+      return;
+    }
     setLoading(true);
     try {
       const url = initialData 
@@ -1035,23 +1041,43 @@ function AlternativeForm({ routeId, routes, points, initialData, onSave, onClose
                    </div>
                 </label>
                 {formData.pointIds.includes(p.id) && p.pricingMode === 'GATE_PAIR' && (
-                  <div className="mt-2 ml-8 grid grid-cols-1 md:grid-cols-2 gap-2">
-                    <input
-                      type="text"
-                      value={formData.gatePairs[p.id]?.entryGateName ?? ''}
-                      onChange={e => setGatePair(p.id, 'entryGateName', e.target.value)}
-                      className="w-full min-h-[40px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm"
-                      placeholder="Giriş gişesi"
-                    />
-                    <input
-                      type="text"
-                      value={formData.gatePairs[p.id]?.exitGateName ?? ''}
-                      onChange={e => setGatePair(p.id, 'exitGateName', e.target.value)}
-                      className="w-full min-h-[40px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm"
-                      placeholder="Çıkış gişesi"
-                    />
-                    <p className="text-[10px] font-medium text-slate-500 col-span-1 md:col-span-2">Bu nokta gişe bazlı ücretlendiriliyor; bu alternatif için kullanılan giriş/çıkış gişesi çiftini belirtin. Boş bırakılırsa fiyat motoru bu geçişi eksik veri olarak işaretler.</p>
-                  </div>
+                   (() => {
+                     const pairs = availableGatePairs(p.id, tariffs);
+                     const current = formData.gatePairs[p.id];
+                     const currentKey = current ? gatePairKey(current.entryGateName, current.exitGateName) : '';
+                     const exactCurrent = pairs.some(pair => gatePairKey(pair.entryGateName, pair.exitGateName) === currentKey);
+                     return (
+                       <div className="mt-2 ml-8 space-y-2">
+                         {pairs.length > 0 ? (
+                           <select
+                             aria-label={`${p.name} gişe çifti`}
+                             value={exactCurrent ? currentKey : current ? '__invalid__' : ''}
+                             onChange={e => {
+                               const pair = pairs.find(candidate => gatePairKey(candidate.entryGateName, candidate.exitGateName) === e.target.value);
+                               if (pair) setFormData(f => ({ ...f, gatePairs: { ...f.gatePairs, [p.id]: pair } }));
+                             }}
+                             className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm"
+                           >
+                             <option value="">Gişe çifti seçin</option>
+                             {!exactCurrent && current && (
+                               <option value="__invalid__" disabled>{current.entryGateName} → {current.exitGateName} · Eşleştirme gerekli</option>
+                             )}
+                             {pairs.map(pair => (
+                               <option key={gatePairKey(pair.entryGateName, pair.exitGateName)} value={gatePairKey(pair.entryGateName, pair.exitGateName)}>
+                                 {pair.entryGateName} → {pair.exitGateName}
+                               </option>
+                             ))}
+                           </select>
+                         ) : (
+                           <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">{GATE_PAIR_MISSING_WARNING}</p>
+                         )}
+                         {!exactCurrent && current && (
+                           <p role="alert" className="text-xs font-bold text-amber-700">Eşleştirme gerekli</p>
+                         )}
+                         <p className="text-[10px] font-medium text-slate-500">Bu nokta gişe bazlı ücretlendiriliyor; yalnızca aktif tarife satırlarında bulunan gişe çiftleri seçilebilir.</p>
+                       </div>
+                     );
+                   })()
                 )}
               </div>
             ))}
@@ -1661,10 +1687,14 @@ function AlternativesManager({ data, onRefresh }: { data: DataPayload, onRefresh
                            {alt.pointIds.map(pid => {
                               const p = data.points.find(x => x.id === pid);
                               if (!p) return null;
+                               const pair = p.pricingMode === 'GATE_PAIR' ? alt.gatePairs?.[pid] : undefined;
                               return (
-                                <div key={pid} className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">
-                                  <MapPin size={12} className="text-blue-500" />
-                                  <span className="text-xs font-bold text-slate-700">{p.name}</span>
+                                 <div key={pid} className="flex items-start gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">
+                                   <MapPin size={12} className="mt-0.5 shrink-0 text-blue-500" />
+                                   <span className="text-xs font-bold text-slate-700">
+                                     {p.name}
+                                     {pair && <span className="block text-[10px] font-semibold text-slate-500">{pair.entryGateName} → {pair.exitGateName}</span>}
+                                   </span>
                                 </div>
                               );
                            })}
@@ -1702,6 +1732,7 @@ function AlternativesManager({ data, onRefresh }: { data: DataPayload, onRefresh
              routeId={editAltModal.routeId}
              routes={data.routes}
              points={data.points}
+             tariffs={data.tariffs}
              initialData={editAltModal.alt}
              onSave={() => { setEditAltModal(null); onRefresh(); }}
              onClose={() => setEditAltModal(null)}

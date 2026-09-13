@@ -16,6 +16,7 @@ import {
   transferRoutes,
   vehiclePricingProfiles,
   vehicles,
+  vehicleTollPointClasses,
 } from '@/db/schema';
 import { resolveCoordinateDistance, resolveLocationDistance, type CoordinatePoint, type LocationDistanceResult } from '@/lib/location-distance';
 import {
@@ -176,7 +177,7 @@ export async function createAdminQuote(input: {
     ? input.tollAlternativeId ?? routeDefaultTollAlternativeId
     : null;
   const tolls: ResolvedQuoteToll[] = effectiveRouteId && effectiveTollAlternativeId
-     ? (await resolveTolls(effectiveRouteId, effectiveTollAlternativeId, vehicleId, vehicle.tollClass, now, pickupAt, input.tripType))
+     ? (await resolveTolls(effectiveRouteId, effectiveTollAlternativeId, vehicleId, now, pickupAt, input.tripType))
        .map(toll => ({ ...toll, source: 'EXACT_ROUTE' as const }))
      : [];
   const genericPair = !effectiveRouteId && originLocationId && destinationLocationId
@@ -372,7 +373,7 @@ async function resolveServices(
  * own day/night band independently, since cutover hours are configured per
  * toll point, not globally.
  */
-async function resolveTolls(routeId: string, alternativeId: string, vehicleId: string, vehicleTollClass: string | null, now: Date, pickupAt: Date, tripType: 'ONE_WAY' | 'ROUND_TRIP') {
+async function resolveTolls(routeId: string, alternativeId: string, vehicleId: string, now: Date, pickupAt: Date, tripType: 'ONE_WAY' | 'ROUND_TRIP') {
   const [alternative] = await db.select().from(routeTollAlternatives).where(and(
     eq(routeTollAlternatives.id, alternativeId),
     eq(routeTollAlternatives.routeId, routeId),
@@ -386,31 +387,41 @@ async function resolveTolls(routeId: string, alternativeId: string, vehicleId: s
     inArray(tollPoints.id, pointIds), eq(tollPoints.active, true),
   ));
   if (points.length !== pointIds.length) throw new Error('Geçiş noktası artık aktif değil.');
+  const pointClasses = new Map<string, string>();
+  const assignments = await db.select({
+    tollPointId: vehicleTollPointClasses.tollPointId,
+    vehicleClass: vehicleTollPointClasses.vehicleClass,
+  }).from(vehicleTollPointClasses).where(and(
+    eq(vehicleTollPointClasses.vehicleId, vehicleId),
+    inArray(vehicleTollPointClasses.tollPointId, pointIds),
+  ));
+  for (const assignment of assignments) pointClasses.set(assignment.tollPointId, assignment.vehicleClass);
+  const tariffClasses = [...new Set(pointIds.map((pointId) => pointClasses.get(pointId)).filter((value): value is string => !!value))];
   const settings = await getTollPricingSettings();
   const pointBand = new Map(points.map((point) => [point.id, resolveActiveTimeBandForPoint(pickupAt, point)]));
 
-  const allTariffs = vehicleTollClass
+  const allTariffs = tariffClasses.length
     ? await db.select().from(tollTariffs).where(and(
       inArray(tollTariffs.tollPointId, pointIds),
-      eq(tollTariffs.vehicleClass, vehicleTollClass as 'class_1' | 'class_2' | 'class_3' | 'class_4' | 'class_5' | 'class_6'),
+       inArray(tollTariffs.vehicleClass, tariffClasses as ('class_1' | 'class_2' | 'class_3' | 'class_4' | 'class_5' | 'class_6')[]),
       eq(tollTariffs.active, true),
       or(isNull(tollTariffs.validFrom), lte(tollTariffs.validFrom, now)),
       or(isNull(tollTariffs.validUntil), gte(tollTariffs.validUntil, now)),
     ))
     : [];
   const tariffs = allTariffs.filter((tariff) => {
-    if (vehicleTollClass !== tariff.vehicleClass) return false;
     const band = pointBand.get(tariff.tollPointId) ?? 'DAY';
     return band === 'DAY' ? tariff.appliesDay : tariff.appliesNight;
   });
 
   return items.map((item) => {
     const point = points.find((candidate) => candidate.id === item.tollPointId)!;
+    const pointClass = pointClasses.get(point.id);
     const bannedClasses = (point.bannedVehicleClasses ?? []) as string[];
-    if (vehicleTollClass && bannedClasses.includes(vehicleTollClass)) {
-      throw new Error(`${point.name} bu araç sınıfı (${vehicleTollClass}) için geçişe kapalıdır. Fiyat üretimi güvenle durduruldu — lütfen bu geçiş noktasını içermeyen başka bir alternatif seçin.`);
+    if (pointClass && bannedClasses.includes(pointClass)) {
+      throw new Error(`${point.name} bu araç sınıfı (${pointClass}) için geçişe kapalıdır. Fiyat üretimi güvenle durduruldu — lütfen bu geçiş noktasını içermeyen başka bir alternatif seçin.`);
     }
-    if (!vehicleTollClass) {
+    if (!pointClass) {
       return { id: point.id, name: point.name, amountKurus: null as number | null, missing: true as const, stale: false, directionUnconfirmed: point.tollDirection == null };
     }
     const isGatePair = point.pricingMode === 'GATE_PAIR';
@@ -422,14 +433,14 @@ async function resolveTolls(routeId: string, alternativeId: string, vehicleId: s
       // other missing tariff.
       return { id: point.id, name: point.name, amountKurus: null as number | null, missing: true as const, stale: false, directionUnconfirmed: point.tollDirection == null };
     }
-    const pointTariffs = tariffs.filter((candidate) => candidate.tollPointId === item.tollPointId);
+    const pointTariffs = tariffs.filter((candidate) => candidate.tollPointId === item.tollPointId && candidate.vehicleClass === pointClass);
     const forwardCandidates = pointTariffs.filter((candidate) => {
       if (isGatePair) return candidate.entryGateName === item.entryGateName && candidate.exitGateName === item.exitGateName;
       if (point.tollDirection === 'TWO_WAY_DIRECTIONAL') return candidate.direction === 'FORWARD';
       return true;
     });
     if (forwardCandidates.length > 1) {
-      throw new Error(`${point.name} için ${vehicleTollClass} sınıfında birden fazla geçerli tarife bulundu. Fiyat üretimi güvenle durduruldu.`);
+        throw new Error(`${point.name} için ${pointClass} sınıfında birden fazla geçerli tarife bulundu. Fiyat üretimi güvenle durduruldu.`);
     }
     const forwardAmountKurus = forwardCandidates[0]?.amountKurus ?? null;
     if (forwardCandidates.length === 0 || forwardAmountKurus == null) {
@@ -455,7 +466,7 @@ async function resolveTolls(routeId: string, alternativeId: string, vehicleId: s
         return candidate.direction === 'BACKWARD';
       });
       if (backwardCandidates.length > 1) {
-        throw new Error(`${point.name} için ${vehicleTollClass} sınıfında dönüş yönünde birden fazla geçerli tarife bulundu. Fiyat üretimi güvenle durduruldu.`);
+        throw new Error(`${point.name} için ${pointClass} sınıfında dönüş yönünde birden fazla geçerli tarife bulundu. Fiyat üretimi güvenle durduruldu.`);
       }
       const backwardAmountKurus = backwardCandidates[0]?.amountKurus ?? null;
       if (backwardCandidates.length === 0 || backwardAmountKurus == null) {

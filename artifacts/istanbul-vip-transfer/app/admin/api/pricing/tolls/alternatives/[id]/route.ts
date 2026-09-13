@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { and, eq, inArray } from 'drizzle-orm';
 import { requireAdminSession } from '@/lib/auth/session';
 import { db } from '@/db';
-import { auditLogs, routeTollAlternativeItems, routeTollAlternatives, tollPoints, transferRoutes } from '@/db/schema';
+import { auditLogs, routeTollAlternativeItems, routeTollAlternatives, tollPoints, tollTariffs, transferRoutes } from '@/db/schema';
 import { tollAlternativeInputSchema } from '@/lib/toll-input';
 
 export const dynamic = 'force-dynamic';
@@ -31,12 +31,27 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: 'Alternatif başka bir güzergâha taşınamaz. Hedef rota için yeni alternatif oluşturun.' }, { status: 422 });
     }
     if (payload.data.pointIds.length) {
-      const points = await db.select({ id: tollPoints.id }).from(tollPoints).where(and(
+      const points = await db.select({ id: tollPoints.id, pricingMode: tollPoints.pricingMode }).from(tollPoints).where(and(
         inArray(tollPoints.id, payload.data.pointIds),
         eq(tollPoints.active, true),
       ));
       if (points.length !== payload.data.pointIds.length) {
         return NextResponse.json({ error: 'Alternatife yalnız aktif geçiş noktaları eklenebilir.' }, { status: 422 });
+      }
+      const gatePointIds = points.filter((point) => point.pricingMode === 'GATE_PAIR').map((point) => point.id);
+      if (Object.keys(payload.data.gatePairs).some((tollPointId) => !gatePointIds.includes(tollPointId))) {
+        return NextResponse.json({ error: 'Gişe çifti yalnızca gişe bazlı ücretlendirilen geçiş noktaları için tanımlanabilir.' }, { status: 422 });
+      }
+      for (const tollPointId of gatePointIds) {
+        const pair = payload.data.gatePairs[tollPointId];
+        if (!pair) return NextResponse.json({ error: 'Önce Geçiş Noktaları ve Maliyetler bölümünde bu nokta için gişe çifti tarifesi ekleyin' }, { status: 422 });
+        const [tariff] = await db.select({ id: tollTariffs.id }).from(tollTariffs).where(and(
+          eq(tollTariffs.tollPointId, tollPointId),
+          eq(tollTariffs.entryGateName, pair.entryGateName),
+          eq(tollTariffs.exitGateName, pair.exitGateName),
+          eq(tollTariffs.active, true),
+        )).limit(1);
+        if (!tariff) return NextResponse.json({ error: 'Önce Geçiş Noktaları ve Maliyetler bölümünde bu nokta için gişe çifti tarifesi ekleyin' }, { status: 422 });
       }
     }
     const now = new Date();
@@ -85,7 +100,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       entityId: alternative.id,
       metadata: { routeId: alternative.routeId, isDefault: alternative.isDefault, points: payload.data.pointIds.length },
     }).catch(() => {});
-    return NextResponse.json({ alternative: { ...alternative, pointIds: payload.data.pointIds } });
+    return NextResponse.json({ alternative: { ...alternative, pointIds: payload.data.pointIds, gatePairs: payload.data.gatePairs ?? {} } });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Rota alternatifi güncellenemedi.' }, { status: 422 });
   }

@@ -1,0 +1,301 @@
+{
+  "schemaVersion": 1,
+  "appliedAt": "2026-09-13T07:52:10.387Z",
+  "baselinePath": "reports/location-order-baseline-2026-09-13.json",
+  "baselineSha256": "a6fcfaf9cafbb8676ad63a5618d00fd4405de80e14111dffc6854421aa43a0a0",
+  "rowCountBefore": 133,
+  "rowCountAfter": 133,
+  "uniqueIdCount": 133,
+  "protectedStateSha256": "42761a3b5178a954855ed60b07897b432a58b54276a73bd9f028ac5f88886dd7",
+  "unclassified": [],
+  "groups": [
+    {
+      "id": "AIRPORT",
+      "label": "Havalimanları",
+      "count": 2,
+      "startDisplayOrder": 0,
+      "endDisplayOrder": 1,
+      "firstFive": [
+        {
+          "id": "ec3d9952-340f-4f2d-b185-50800ae9f5d8",
+          "name": "İstanbul Havalimanı (IST)",
+          "displayOrder": 0
+        },
+        {
+          "id": "f68a05cf-4ae4-40e7-88f8-f5eb1afca54d",
+          "name": "Sabiha Gökçen Havalimanı (SAW)",
+          "displayOrder": 1
+        }
+      ],
+      "lastFive": [
+        {
+          "id": "ec3d9952-340f-4f2d-b185-50800ae9f5d8",
+          "name": "İstanbul Havalimanı (IST)",
+          "displayOrder": 0
+        },
+        {
+          "id": "f68a05cf-4ae4-40e7-88f8-f5eb1afca54d",
+          "name": "Sabiha Gökçen Havalimanı (SAW)",
+          "displayOrder": 1
+        }
+      ]
+    },
+    {
+      "id": "ISTANBUL_DISTRICT",
+      "label": "İstanbul ilçeleri",
+      "count": 38,
+      "startDisplayOrder": 2,
+      "endDisplayOrder": 39,
+      "firstFive": [
+        {
+          "id": "594eb7bb-df98-4947-a0b7-5343d9e8e4a2",
+          "name": "Arnavutköy",
+          "displayOrder": 2
+        },
+        {
+          "id": "0731cfc4-7135-45e8-92a6-2d924a3f27e8",
+          "name": "Ataşehir",
+          "displayOrder": 3
+        },
+        {
+          "id": "0a9d4cd6-95e3-4018-b78e-76e4649eb1d3",
+          "name": "Avcılar",
+          "displayOrder": 4
+        },
+        {
+          "id": "9f9f4251-9764-44b6-be3b-58ed215feb50",
+          "name": "Bağcılar",
+          "displayOrder": 5
+        },
+        {
+          "id": "452cec94-e779-4d2d-a8cd-73120192185b",
+          "name": "Bahçelievler",
+          "displayOrder": 6
+        }
+      ],
+      "lastFive": [
+        {
+          "id": "c35cdf15-ec6c-4338-b9d4-de33a3d6f684",
+          "name": "Şişli",
+          "displayOrder": 35
+        },
+        {
+          "id": "8577ccf2-e3f2-4299-8188-6ef0ea54811c",
+          "name": "Tuzla",
+          "displayOrder": 36
+        },
+        {
+          "id": "fcaf9d3a-3b72-40ef-b830-efdfc9e082c1",
+          "name": "Ümraniye",
+          "displayOrder": 37
+        },
+        {
+          "id": "0862c5e5-68be-4648-9e6d-b4c715edd54e",
+          "name": "Üsküdar",
+          "displayOrder": 38
+        },
+        {
+          "id": "0dff4fe3-5a25-49a7-bbba-9c03713cb530",
+          "name": "Zeytinburnu",
+          "displayOrder": 39
+        }
+      ]
+    },
+    {
+      "id": "ISTANBUL_PLACE",
+      "label": "İstanbul bölgeleri ve özel noktaları",
+      "count": 12,
+      "startDisplayOrder": 40,
+      "endDisplayOrder": 51,
+      "firstFive": [
+        {
+          "id": "32a3dc22-ec21-4359-8221-c6958411f4bf",
+          "name": "Ayasofya",
+          "displayOrder": 40
+        },
+        {
+          "id": "f8113710-8bba-4d3a-98aa-7823f34be254",
+          "name": "Dolmabahçe Sarayı",
+          "displayOrder": 41
+        },
+        {
+          "id": "3ff53921-9685-4c45-846a-b954a07fdea3",
+          "name": "Galata Kulesi",
+          "displayOrder": 42
+        },
+        {
+          "id": "9bc1cebf-548e-4acb-bb08-078606bb8737",
+          "name": "İstiklal Caddesi",
+          "displayOrder": 43
+        },
+        {
+          "id": "84e474d4-dc9b-4dbc-8cc8-fe6a3c7e3bb3",
+          "name": "Kapalıçarşı",
+          "displayOrder": 44
+        }
+      ],
+      "lastFive": [
+        {
+          "id": "de1ab8d0-0f0d-41be-8f5f-9c0ab9b55183",
+          "name": "Ortaköy",
+          "displayOrder": 47
+        },
+        {
+          "id": "58add9e9-ee55-4ec3-a3d2-133f91ec2552",
+          "name": "Sirkeci",
+          "displayOrder": 48
+        },
+        {
+          "id": "b282aa0d-3a54-4024-8401-f5b6dbee05dd",
+          "name": "Sultanahmet Meydanı",
+          "displayOrder": 49
+        },
+        {
+          "id": "296af085-9237-4244-9632-2f4255345f47",
+          "name": "Taksim Meydanı",
+          "displayOrder": 50
+        },
+        {
+          "id": "bfeb2555-eaa2-4891-8758-c8977b020e07",
+          "name": "Topkapı Sarayı",
+          "displayOrder": 51
+        }
+      ]
+    },
+    {
+      "id": "PROVINCE",
+      "label": "Diğer iller",
+      "count": 81,
+      "startDisplayOrder": 52,
+      "endDisplayOrder": 132,
+      "firstFive": [
+        {
+          "id": "d20d199e-3f81-41b6-a8a5-7d77fb49adf0",
+          "name": "Adana",
+          "displayOrder": 52
+        },
+        {
+          "id": "9be60135-22c8-454c-a871-9abf1efc12b6",
+          "name": "Adıyaman",
+          "displayOrder": 53
+        },
+        {
+          "id": "f9e1a356-5df9-40a9-b2a7-6a222fca51ec",
+          "name": "Afyonkarahisar",
+          "displayOrder": 54
+        },
+        {
+          "id": "e15b06d2-5e1d-4993-ae62-35fbe1aee98a",
+          "name": "Ağrı",
+          "displayOrder": 55
+        },
+        {
+          "id": "3efa426e-798e-422f-abac-6d45243f6cc5",
+          "name": "Aksaray",
+          "displayOrder": 56
+        }
+      ],
+      "lastFive": [
+        {
+          "id": "75c0ec1e-2c4e-4f9e-81c3-167c4838b7ce",
+          "name": "Uşak",
+          "displayOrder": 128
+        },
+        {
+          "id": "65e5720d-5aab-44a2-940f-5e45f1acd5b0",
+          "name": "Van",
+          "displayOrder": 129
+        },
+        {
+          "id": "3fc970e8-053e-40b1-898b-3deb8d52543a",
+          "name": "Yalova",
+          "displayOrder": 130
+        },
+        {
+          "id": "c2645a57-db7a-4051-a094-2c59bbbc0ae0",
+          "name": "Yozgat",
+          "displayOrder": 131
+        },
+        {
+          "id": "f8e1ee82-6a4a-4665-8d69-fdd2a2912aa6",
+          "name": "Zonguldak",
+          "displayOrder": 132
+        }
+      ]
+    }
+  ],
+  "firstFive": [
+    {
+      "id": "ec3d9952-340f-4f2d-b185-50800ae9f5d8",
+      "name": "İstanbul Havalimanı (IST)",
+      "type": "AIRPORT",
+      "scope": "BOTH",
+      "displayOrder": 0
+    },
+    {
+      "id": "f68a05cf-4ae4-40e7-88f8-f5eb1afca54d",
+      "name": "Sabiha Gökçen Havalimanı (SAW)",
+      "type": "AIRPORT",
+      "scope": "BOTH",
+      "displayOrder": 1
+    },
+    {
+      "id": "594eb7bb-df98-4947-a0b7-5343d9e8e4a2",
+      "name": "Arnavutköy",
+      "type": "DISTRICT",
+      "scope": "BOTH",
+      "displayOrder": 2
+    },
+    {
+      "id": "0731cfc4-7135-45e8-92a6-2d924a3f27e8",
+      "name": "Ataşehir",
+      "type": "DISTRICT",
+      "scope": "BOTH",
+      "displayOrder": 3
+    },
+    {
+      "id": "0a9d4cd6-95e3-4018-b78e-76e4649eb1d3",
+      "name": "Avcılar",
+      "type": "DISTRICT",
+      "scope": "BOTH",
+      "displayOrder": 4
+    }
+  ],
+  "lastFive": [
+    {
+      "id": "75c0ec1e-2c4e-4f9e-81c3-167c4838b7ce",
+      "name": "Uşak",
+      "type": "PROVINCE",
+      "scope": "INTERCITY",
+      "displayOrder": 128
+    },
+    {
+      "id": "65e5720d-5aab-44a2-940f-5e45f1acd5b0",
+      "name": "Van",
+      "type": "PROVINCE",
+      "scope": "INTERCITY",
+      "displayOrder": 129
+    },
+    {
+      "id": "3fc970e8-053e-40b1-898b-3deb8d52543a",
+      "name": "Yalova",
+      "type": "PROVINCE",
+      "scope": "INTERCITY",
+      "displayOrder": 130
+    },
+    {
+      "id": "c2645a57-db7a-4051-a094-2c59bbbc0ae0",
+      "name": "Yozgat",
+      "type": "PROVINCE",
+      "scope": "INTERCITY",
+      "displayOrder": 131
+    },
+    {
+      "id": "f8e1ee82-6a4a-4665-8d69-fdd2a2912aa6",
+      "name": "Zonguldak",
+      "type": "PROVINCE",
+      "scope": "INTERCITY",
+      "displayOrder": 132
+    }
+  ]
+}

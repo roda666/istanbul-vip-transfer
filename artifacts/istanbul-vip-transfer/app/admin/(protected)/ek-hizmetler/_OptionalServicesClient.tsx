@@ -213,12 +213,12 @@ export default function OptionalServicesClient() {
                           </td>
                           <td className="px-5 py-4">
                             <AdminRecordActions
-                              up={{ hidden: service.archivedAt !== null, disabled: index === 0, disabledReason: index === 0 ? "Listenin en üstünde" : undefined, onClick: () => reorder(service, 'up') }}
-                              down={{ hidden: service.archivedAt !== null, disabled: index === -1 || index === visibleServices.length - 1, disabledReason: index === visibleServices.length - 1 ? "Listenin en altında" : undefined, onClick: () => reorder(service, 'down') }}
-                              edit={{ hidden: service.archivedAt !== null, onClick: () => { setEditing(service); setForm(toForm(service)); } }}
-                              activation={{ hidden: service.archivedAt !== null, isActive: service.active, onClick: () => toggleActive(service) }}
+                              up={{ disabled: service.archivedAt !== null || index === 0, disabledReason: service.archivedAt !== null ? "Arşivlenmiş hizmet sıralanamaz." : index === 0 ? "Listenin en üstünde" : undefined, onClick: () => reorder(service, 'up') }}
+                              down={{ disabled: service.archivedAt !== null || index === -1 || index === visibleServices.length - 1, disabledReason: service.archivedAt !== null ? "Arşivlenmiş hizmet sıralanamaz." : index === visibleServices.length - 1 ? "Listenin en altında" : undefined, onClick: () => reorder(service, 'down') }}
+                              edit={{ disabled: service.archivedAt !== null, disabledReason: service.archivedAt !== null ? "Düzenlemek için önce arşivden çıkarın." : undefined, onClick: () => { setEditing(service); setForm(toForm(service)); } }}
+                              activation={{ disabled: service.archivedAt !== null, disabledReason: service.archivedAt !== null ? "Durumu değiştirmek için önce arşivden çıkarın." : undefined, isActive: service.active, onClick: () => toggleActive(service) }}
                               archive={{ isArchived: service.archivedAt !== null, onClick: () => setConfirmState({ service, action: 'archive' }), onRestore: () => restore(service) }}
-                              delete={{ hidden: service.archivedAt === null, onClick: () => setConfirmState({ service, action: 'delete' }) }}
+                              delete={{ disabled: service.archivedAt === null, disabledReason: service.archivedAt === null ? "Kalıcı silme için önce arşivleyin." : undefined, onClick: () => setConfirmState({ service, action: 'delete' }) }}
                             />
                           </td>
                         </tr>
@@ -266,12 +266,12 @@ export default function OptionalServicesClient() {
 
                     <div className="mt-2 pt-4 border-t border-slate-100">
                       <AdminRecordActions
-                        up={{ hidden: service.archivedAt !== null, disabled: index === 0, disabledReason: index === 0 ? "Listenin en üstünde" : undefined, onClick: () => reorder(service, 'up') }}
-                        down={{ hidden: service.archivedAt !== null, disabled: index === -1 || index === visibleServices.length - 1, disabledReason: index === visibleServices.length - 1 ? "Listenin en altında" : undefined, onClick: () => reorder(service, 'down') }}
-                        edit={{ hidden: service.archivedAt !== null, onClick: () => { setEditing(service); setForm(toForm(service)); } }}
-                        activation={{ hidden: service.archivedAt !== null, isActive: service.active, onClick: () => toggleActive(service) }}
+                        up={{ disabled: service.archivedAt !== null || index === 0, disabledReason: service.archivedAt !== null ? "Arşivlenmiş hizmet sıralanamaz." : index === 0 ? "Listenin en üstünde" : undefined, onClick: () => reorder(service, 'up') }}
+                        down={{ disabled: service.archivedAt !== null || index === -1 || index === visibleServices.length - 1, disabledReason: service.archivedAt !== null ? "Arşivlenmiş hizmet sıralanamaz." : index === visibleServices.length - 1 ? "Listenin en altında" : undefined, onClick: () => reorder(service, 'down') }}
+                        edit={{ disabled: service.archivedAt !== null, disabledReason: service.archivedAt !== null ? "Düzenlemek için önce arşivden çıkarın." : undefined, onClick: () => { setEditing(service); setForm(toForm(service)); } }}
+                        activation={{ disabled: service.archivedAt !== null, disabledReason: service.archivedAt !== null ? "Durumu değiştirmek için önce arşivden çıkarın." : undefined, isActive: service.active, onClick: () => toggleActive(service) }}
                         archive={{ isArchived: service.archivedAt !== null, onClick: () => setConfirmState({ service, action: 'archive' }), onRestore: () => restore(service) }}
-                        delete={{ hidden: service.archivedAt === null, onClick: () => setConfirmState({ service, action: 'delete' }) }}
+                        delete={{ disabled: service.archivedAt === null, disabledReason: service.archivedAt === null ? "Kalıcı silme için önce arşivleyin." : undefined, onClick: () => setConfirmState({ service, action: 'delete' }) }}
                       />
                     </div>
                   </div>

@@ -196,7 +196,17 @@ export function AdminRecordActions({
     const content = (
       <>
         {isBusy ? <Loader2 size={16} className="animate-spin shrink-0" /> : <action.icon size={16} className="shrink-0" />}
-        <span className={isMobile ? 'text-sm font-medium' : 'text-xs font-semibold'}>{action.label}</span>
+        <span className="min-w-0">
+          <span className={isMobile ? 'block text-sm font-medium' : 'text-xs font-semibold'}>{action.label}</span>
+          {isMobile && action.config?.disabled && action.config.disabledReason && (
+            <span className="mt-0.5 block text-xs font-normal leading-snug text-slate-500">
+              {action.config.disabledReason}
+            </span>
+          )}
+        </span>
+        {!isMobile && action.config?.disabled && action.config.disabledReason && (
+          <Info size={14} className="shrink-0" aria-hidden="true" />
+        )}
       </>
     );
 

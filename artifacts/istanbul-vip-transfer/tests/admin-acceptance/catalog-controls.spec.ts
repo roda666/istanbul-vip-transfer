@@ -23,6 +23,7 @@ type CatalogPage = {
   idFromResponse: (path: string) => string;
   actionBody: (direction: 'up' | 'down') => Record<string, string>;
   orderFromIds?: (page: import('@playwright/test').Page, ids: string[]) => Promise<string[]>;
+  reorderAllowed?: boolean;
 };
 
 async function orderedItems(page: import('@playwright/test').Page, config: CatalogPage) {
@@ -87,6 +88,33 @@ async function reorderRoundTrip(page: import('@playwright/test').Page, config: C
   }
 }
 
+async function assertStandardRecordActions(
+  page: import('@playwright/test').Page,
+  options: { nonArchivedDeleteReason?: boolean } = {},
+) {
+  const isMobile = (page.viewportSize()?.width ?? 1440) <= 480;
+  let scope = page.locator('main');
+  if (isMobile) {
+    const trigger = page.getByRole('button', { name: 'İşlemler' }).first();
+    await expect(trigger).toBeVisible();
+    await trigger.click();
+    scope = page.getByRole('dialog', { name: 'İşlemler' });
+    await expect(scope).toBeVisible();
+  }
+
+  await expect(scope.getByText('Yukarı', { exact: true }).first()).toBeVisible();
+  await expect(scope.getByText('Aşağı', { exact: true }).first()).toBeVisible();
+  await expect(scope.getByText('Düzenle', { exact: true }).first()).toBeVisible();
+  await expect(scope.getByText(/^(Aktifleştir|Pasifleştir)$/).first()).toBeVisible();
+  await expect(scope.getByText(/^(Arşivle|Arşivden Çıkar)$/).first()).toBeVisible();
+  await expect(scope.getByText('Sil', { exact: true }).first()).toBeVisible();
+
+  if (isMobile && options.nonArchivedDeleteReason) {
+    await expect(scope.getByText('Kalıcı silme için önce arşivleyin.', { exact: true }).first())
+      .toBeVisible();
+  }
+}
+
 const pages: CatalogPage[] = [
   {
     name: 'optional services',
@@ -102,19 +130,37 @@ const pages: CatalogPage[] = [
     visibleItemCount: async (page) => (await page.locator('button[aria-label="Yukarı taşı"]:visible:not([disabled])').count()) + 1,
     upButtons: (page) => page.locator('button[aria-label="Yukarı taşı"]:visible:not([disabled])'),
     controls: async (page) => {
-      const edit = page.getByRole('button', { name: 'Düzenle' }).first();
+      const isMobile = (page.viewportSize()?.width ?? 1440) <= 480;
+      const actionEntry = isMobile
+        ? page.getByRole('button', { name: 'İşlemler' }).first()
+        : page.getByText('Düzenle', { exact: true }).first();
       const empty = page.getByText(/Henüz ek hizmet tanımlanmadı|Arşivlenmiş hizmet yok/).first();
       await Promise.race([
-        edit.waitFor({ state: 'visible', timeout: 15_000 }),
+        actionEntry.waitFor({ state: 'visible', timeout: 15_000 }),
         empty.waitFor({ state: 'visible', timeout: 15_000 }),
       ]);
-      if (await edit.isVisible()) {
-      await expect(page.getByRole('button', { name: 'Düzenle' }).first()).toBeVisible();
-      await expect(page.getByRole('button', { name: /Aktif|Pasif/ }).first()).toBeVisible();
-      await expect(page.getByRole('button', { name: /Arşivle|Sil/ }).first()).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Yukarı taşı' }).first()).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Aşağı taşı' }).first()).toBeVisible();
+      if (await actionEntry.isVisible()) {
+        await assertStandardRecordActions(page, { nonArchivedDeleteReason: true });
       }
+    },
+  },
+  {
+    name: 'locations',
+    url: '/admin/rezervasyon-ayarlari',
+    api: '/admin/api/locations?limit=300',
+    collection: 'items',
+    label: (item) => String(item.name),
+    method: 'PATCH',
+    actionPrefix: '/admin/api/locations/',
+    actionPath: (id) => `/admin/api/locations/${id}`,
+    idFromResponse: (path) => path.split('/').at(-1)!,
+    actionBody: (direction) => ({ action: direction }),
+    reorderAllowed: false,
+    visibleItemCount: async (page) => page.locator('.desktop-loc-table tbody tr:visible').count(),
+    upButtons: (page) => page.locator('button[aria-label="Yukarı taşı"]:visible:not([disabled])'),
+    controls: async (page) => {
+      await expect(page.getByText(/^\d+ lokasyon/).first()).toBeVisible({ timeout: 20_000 });
+      await assertStandardRecordActions(page, { nonArchivedDeleteReason: true });
     },
   },
   {
@@ -154,13 +200,8 @@ const pages: CatalogPage[] = [
     visibleItemCount: async (page) => page.locator('tr:visible').filter({ has: page.locator('a[href*="/admin/araclar/"][href$="/duzenle"]') }).count(),
     upButtons: (page) => page.locator('button[aria-label="Yukarı taşı"]:visible:not([disabled])'),
     controls: async (page) => {
-      if (!await page.getByRole('link', { name: 'Düzenle' }).count()) return;
-      await expect(page.getByRole('link', { name: 'Düzenle' }).first()).toBeVisible();
-      await expect(page.getByRole('button', { name: /Aktif|Pasif/ }).first()).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Arşivle' }).first()).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Sil' }).first()).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Yukarı taşı' }).first()).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Aşağı taşı' }).first()).toBeVisible();
+      if (!await page.getByText('Düzenle', { exact: true }).count()) return;
+      await assertStandardRecordActions(page);
     },
   },
   {
@@ -233,6 +274,7 @@ for (const viewport of [
 }
 
 for (const config of pages) {
+  if (config.reorderAllowed === false) continue;
   test(`${config.name} adjacent reorder round trip`, async ({ adminPage }) => {
     await adminPage.setViewportSize({ width: 390, height: 844 });
     const response = await adminPage.goto(config.url);

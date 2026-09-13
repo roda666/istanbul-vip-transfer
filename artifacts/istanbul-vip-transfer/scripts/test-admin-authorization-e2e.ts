@@ -59,6 +59,27 @@ async function request(pathname: string, cookie: string, init: RequestInit = {})
 try {
   const editor = await createTestUser('EDITOR');
   const editorCookie = await login(editor.email);
+  for (const pathname of [
+    '/admin/araclar',
+    '/admin/rezervasyon-ayarlari',
+    '/admin/fiyat-kurallari?tab=ek-hizmetler',
+  ]) {
+    const response = await request(pathname, editorCookie);
+    assert.equal(response.status, 307, `EDITOR must be redirected from ${pathname}`);
+    assert.equal(response.headers.get('location'), '/admin/erisim-reddedildi');
+  }
+  for (const pathname of [
+    '/admin/api/vehicles/00000000-0000-0000-0000-000000000000',
+    '/admin/api/locations/00000000-0000-0000-0000-000000000000',
+    '/admin/api/ek-hizmetler/00000000-0000-0000-0000-000000000000',
+  ]) {
+    const response = await request(pathname, editorCookie, {
+      method: 'PATCH',
+      headers: { origin: baseUrl, 'content-type': 'application/json' },
+      body: '{"action":"toggle-active"}',
+    });
+    assert.equal(response.status, 403, `EDITOR must receive 403 from ${pathname}`);
+  }
   assert.equal((await request('/admin/api/staff', editorCookie)).status, 403, 'EDITOR must not access staff API');
   assert.equal(
     (await request('/admin/api/studio/projects/not-a-project/approve', editorCookie, {

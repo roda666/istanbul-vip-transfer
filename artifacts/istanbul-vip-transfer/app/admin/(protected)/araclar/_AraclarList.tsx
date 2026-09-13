@@ -498,22 +498,22 @@ export default function AraclarList() {
                           <AdminRecordActions
                             up={{
                               onClick: () => reorder(v, 'up'),
-                              hidden: v.status === 'ARCHIVED',
-                              disabled: orderingId === v.id || vehicles.indexOf(v) === 0,
-                              disabledReason: vehicles.indexOf(v) === 0 ? "Listenin en üstünde" : undefined
+                              disabled: v.status === 'ARCHIVED' || orderingId === v.id || vehicles.indexOf(v) === 0,
+                              disabledReason: v.status === 'ARCHIVED' ? "Arşivlenmiş araç sıralanamaz." : vehicles.indexOf(v) === 0 ? "Listenin en üstünde" : undefined
                             }}
                             down={{
                               onClick: () => reorder(v, 'down'),
-                              hidden: v.status === 'ARCHIVED',
-                              disabled: orderingId === v.id || vehicles.indexOf(v) === vehicles.length - 1,
-                              disabledReason: vehicles.indexOf(v) === vehicles.length - 1 ? "Listenin en altında" : undefined
+                              disabled: v.status === 'ARCHIVED' || orderingId === v.id || vehicles.indexOf(v) === vehicles.length - 1,
+                              disabledReason: v.status === 'ARCHIVED' ? "Arşivlenmiş araç sıralanamaz." : vehicles.indexOf(v) === vehicles.length - 1 ? "Listenin en altında" : undefined
                             }}
                             edit={{
                               href: `/admin/araclar/${v.id}/duzenle`,
-                              hidden: v.status === 'ARCHIVED',
+                              disabled: v.status === 'ARCHIVED',
+                              disabledReason: v.status === 'ARCHIVED' ? "Düzenlemek için önce arşivden çıkarın." : undefined,
                             }}
                             activation={{
-                              hidden: v.status === 'ARCHIVED',
+                              disabled: v.status === 'ARCHIVED',
+                              disabledReason: v.status === 'ARCHIVED' ? "Durumu değiştirmek için önce arşivden çıkarın." : undefined,
                               isActive: v.isActive,
                               onClick: () => setActive(v.id, !v.isActive)
                             }}
@@ -524,15 +524,13 @@ export default function AraclarList() {
                             }}
                             delete={{
                               onClick: () => confirmDelete(v),
-                              hidden: v.isActive || v.publishedAt !== null || !['DRAFT', 'RESEARCH', 'REVIEW'].includes(v.status),
-                            }}
-                            deleteOmittedReason={
-                              v.isActive
+                              disabled: v.isActive || v.publishedAt !== null || !['DRAFT', 'RESEARCH', 'REVIEW'].includes(v.status),
+                              disabledReason: v.isActive
                                 ? "Aktif araçlar kalıcı silinemez. Lütfen önce pasifleştirin."
                                 : (v.publishedAt !== null || !['DRAFT', 'RESEARCH', 'REVIEW'].includes(v.status))
-                                ? "Yayınlanmış araçlar kalıcı silinemez. Lütfen arşivleyin."
-                                : undefined
-                            }
+                                  ? "Yayınlanmış araçlar kalıcı silinemez. Lütfen arşivleyin."
+                                  : undefined,
+                            }}
                           />
                         </td>
                       </tr>

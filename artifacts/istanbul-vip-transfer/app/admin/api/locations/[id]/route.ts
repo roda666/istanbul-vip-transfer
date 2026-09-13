@@ -131,7 +131,11 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (data.action) {
     const action = data.action;
     const result = await db.transaction(async (tx) => {
+      const { planAdjacentLocationSwap } = await import('@/lib/location-ordering');
       const { asc } = await import('drizzle-orm');
+      await tx.execute(
+        (await import('drizzle-orm')).sql`select pg_advisory_xact_lock(hashtext('locations-display-order'))`,
+      );
       const rows = await tx.select({
         id: locations.id, displayOrder: locations.displayOrder, isActive: locations.isActive,
       }).from(locations).where(isNull(locations.archivedAt)).orderBy(asc(locations.displayOrder), asc(locations.id)).for('update');
@@ -148,27 +152,24 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         }).catch(() => {});
         return { item };
       }
-      const peerIndex = action === 'up' ? index - 1 : index + 1;
-      if (peerIndex < 0 || peerIndex >= rows.length) return { error: 'Daha fazla hareket ettirilemiyor.', status: 400 as const };
-      const reordered = [...rows];
-      const [moved] = reordered.splice(index, 1);
-      reordered.splice(peerIndex, 0, moved);
-      for (const [position, item] of reordered.entries()) {
-        await tx.update(locations).set({
-          displayOrder: position, updatedAt: new Date(), updatedBy: session.adminId,
-        }).where(eq(locations.id, item.id));
-      }
+      const swap = planAdjacentLocationSwap(rows, id, action);
+      if (!swap.ok) return { error: swap.error, status: swap.status };
+      const [item] = await tx.update(locations)
+        .set({ displayOrder: swap.current.displayOrder })
+        .where(eq(locations.id, swap.current.id))
+        .returning();
+      const [peer] = await tx.update(locations)
+        .set({ displayOrder: swap.peer.displayOrder })
+        .where(eq(locations.id, swap.peer.id))
+        .returning();
       await tx.insert(auditLogs).values({
         adminUserId: session.adminId,
         action: action.toUpperCase(),
         entityType: 'Location',
         entityId: id,
-        metadata: { direction: action, from: index, to: peerIndex },
-      }).catch(() => {});
-      return {
-        items: reordered.map((item, position) => ({ ...item, displayOrder: position })),
-        item: { ...moved, displayOrder: reordered.indexOf(moved) },
-      };
+        metadata: swap.metadata,
+      });
+      return { item, peer };
     });
     if ('error' in result) return NextResponse.json({ error: result.error }, { status: result.status });
     return NextResponse.json(result);

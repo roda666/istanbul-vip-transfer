@@ -635,19 +635,18 @@ export default function ReservasyonAyarlariClient() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'İşlem başarısız.');
       setItems((current) => {
-        if (Array.isArray(json.items) && action !== 'toggle-active' && action !== 'restore' && action !== 'archive') {
-          return json.items.map((item: Location) => ({ ...item }));
-        }
         if (action === 'toggle-active') return current.map((item) => item.id === loc.id ? { ...item, isActive: json.item.isActive } : item);
         if (action === 'restore' || action === 'archive') {
           fetchLocations(); // Fetch to cleanly re-sort restored/archived items
           return current;
         }
-        const index = current.findIndex((item) => item.id === loc.id);
-        const peerIndex = action === 'up' ? index - 1 : index + 1;
-        if (index < 0 || peerIndex < 0 || peerIndex >= current.length) return current;
-        const next = [...current]; [next[index], next[peerIndex]] = [next[peerIndex], next[index]];
-        return next;
+        return current
+          .map((item) => {
+            if (item.id === json.item?.id) return { ...item, displayOrder: json.item.displayOrder };
+            if (item.id === json.peer?.id) return { ...item, displayOrder: json.peer.displayOrder };
+            return item;
+          })
+          .sort((a, b) => a.displayOrder - b.displayOrder || a.id.localeCompare(b.id));
       });
     } catch (error) { alert(error instanceof Error ? error.message : 'İşlem başarısız.'); }
     finally { setActionLoading(null); }
@@ -802,23 +801,23 @@ export default function ReservasyonAyarlariClient() {
                           <td style={{ padding: '10px 14px' }}>
                             <AdminRecordActions
                               up={{
-                                hidden: isArchived,
                                 onClick: () => locationAction(loc, 'up'),
-                                disabled: i === 0 || actionLoading === loc.id,
-                                disabledReason: i === 0 ? "Listenin en üstünde" : undefined
+                                disabled: isArchived || i === 0 || actionLoading === loc.id,
+                                disabledReason: isArchived ? "Arşivlenmiş lokasyon sıralanamaz." : i === 0 ? "Listenin en üstünde" : undefined
                               }}
                               down={{
-                                hidden: isArchived,
                                 onClick: () => locationAction(loc, 'down'),
-                                disabled: i === items.length - 1 || actionLoading === loc.id,
-                                disabledReason: i === items.length - 1 ? "Listenin en altında" : undefined
+                                disabled: isArchived || i === items.length - 1 || actionLoading === loc.id,
+                                disabledReason: isArchived ? "Arşivlenmiş lokasyon sıralanamaz." : i === items.length - 1 ? "Listenin en altında" : undefined
                               }}
                               edit={{
-                                hidden: isArchived,
+                                disabled: isArchived,
+                                disabledReason: isArchived ? "Düzenlemek için önce arşivden çıkarın." : undefined,
                                 onClick: () => setModalLoc(loc)
                               }}
                               activation={{
-                                hidden: isArchived,
+                                disabled: isArchived,
+                                disabledReason: isArchived ? "Durumu değiştirmek için önce arşivden çıkarın." : undefined,
                                 isActive: loc.isActive,
                                 onClick: () => locationAction(loc, 'toggle-active')
                               }}
@@ -828,7 +827,8 @@ export default function ReservasyonAyarlariClient() {
                                 onRestore: () => locationAction(loc, 'restore')
                               }}
                               delete={{
-                                hidden: !isArchived,
+                                disabled: !isArchived,
+                                disabledReason: !isArchived ? "Kalıcı silme için önce arşivleyin." : undefined,
                                 onClick: () => setConfirm({ loc, action: 'delete' })
                               }}
                             />
@@ -884,23 +884,23 @@ export default function ReservasyonAyarlariClient() {
                     <div style={{ marginTop: '4px', paddingTop: '16px', borderTop: `1px solid ${BORDER}` }}>
                       <AdminRecordActions
                         up={{
-                          hidden: isArchived,
                           onClick: () => locationAction(loc, 'up'),
-                          disabled: i === 0 || actionLoading === loc.id,
-                          disabledReason: i === 0 ? "Listenin en üstünde" : undefined
+                          disabled: isArchived || i === 0 || actionLoading === loc.id,
+                          disabledReason: isArchived ? "Arşivlenmiş lokasyon sıralanamaz." : i === 0 ? "Listenin en üstünde" : undefined
                         }}
                         down={{
-                          hidden: isArchived,
                           onClick: () => locationAction(loc, 'down'),
-                          disabled: i === items.length - 1 || actionLoading === loc.id,
-                          disabledReason: i === items.length - 1 ? "Listenin en altında" : undefined
+                          disabled: isArchived || i === items.length - 1 || actionLoading === loc.id,
+                          disabledReason: isArchived ? "Arşivlenmiş lokasyon sıralanamaz." : i === items.length - 1 ? "Listenin en altında" : undefined
                         }}
                         edit={{
-                          hidden: isArchived,
+                          disabled: isArchived,
+                          disabledReason: isArchived ? "Düzenlemek için önce arşivden çıkarın." : undefined,
                           onClick: () => setModalLoc(loc)
                         }}
                         activation={{
-                          hidden: isArchived,
+                          disabled: isArchived,
+                          disabledReason: isArchived ? "Durumu değiştirmek için önce arşivden çıkarın." : undefined,
                           isActive: loc.isActive,
                           onClick: () => locationAction(loc, 'toggle-active')
                         }}
@@ -910,7 +910,8 @@ export default function ReservasyonAyarlariClient() {
                           onRestore: () => locationAction(loc, 'restore')
                         }}
                         delete={{
-                          hidden: !isArchived,
+                          disabled: !isArchived,
+                          disabledReason: !isArchived ? "Kalıcı silme için önce arşivleyin." : undefined,
                           onClick: () => setConfirm({ loc, action: 'delete' })
                         }}
                       />

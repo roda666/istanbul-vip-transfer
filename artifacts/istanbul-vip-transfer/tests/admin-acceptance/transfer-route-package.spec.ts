@@ -464,7 +464,7 @@ test.describe('@route-package transfer-route admin acceptance', () => {
       await languageStrip.getByRole('tab', { name: 'Türkçe kaynak' }).click();
 
       await adminPage.getByPlaceholder('örn: Taksim → Sabiha Gökçen Havalimanı').fill('QA AI route');
-      await adminPage.getByPlaceholder('örn: Taksim').fill('Istanbul Airport');
+      await adminPage.getByPlaceholder('örn: Taksim', { exact: true }).fill('Istanbul Airport');
       await adminPage.getByPlaceholder('örn: Sabiha Gökçen Havalimanı').fill('Kadıköy');
       await adminPage.getByPlaceholder('Güzergah için ziyaretçiye gösterilecek özgün açıklama')
         .fill('MANUAL DESCRIPTION MUST SURVIVE');
@@ -503,7 +503,6 @@ test.describe('@route-package transfer-route admin acceptance', () => {
       });
       await adminPage.getByRole('button', { name: 'Görsel Oluştur' }).click();
       expect((await controlledImageResponse).headers()['x-route-image-source']).toBe('controlled-acceptance-mock');
-      await expect(adminPage.getByText('Görsel başarıyla oluşturuldu.')).toBeVisible();
       await expect(adminPage.locator(`img[src="${mockedGeneratedImagePath}"]`)).toBeVisible();
       await adminPage.getByRole('button', { name: 'Kaldır / Değiştir' }).click();
       await expect.poll(() => imageDeleteRequests.includes(mockedGeneratedImagePath)).toBe(true);

@@ -59,12 +59,20 @@ function isOwnObjectStoragePath(value: string): boolean {
 /** Returns an absolute, public image URL only when it can actually be fetched. */
 export async function getReachableServiceImageUrl(
   value: string | null | undefined,
-  options: { probeOwnStorage?: boolean } = {},
+  options: {
+    probeOwnStorage?: boolean;
+    timeoutMs?: number;
+    headOnly?: boolean;
+  } = {},
 ): Promise<string | null> {
   if (!value?.trim() || GENERIC_SERVICE_IMAGES.has(value.trim())) return null;
   const url = absoluteImageUrl(value.trim());
   if (!url) return null;
-  const cacheKey = `${url}|${options.probeOwnStorage ? 'probe' : 'trusted'}`;
+  const cacheKey = [
+    url,
+    options.probeOwnStorage ? 'probe' : 'trusted',
+    options.headOnly ? 'head-only' : 'head-get',
+  ].join('|');
   const cached = reachabilityCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
 
@@ -83,14 +91,16 @@ export async function getReachableServiceImageUrl(
     headers: method === 'GET' ? { Range: 'bytes=0-0' } : undefined,
     // Do not let a trusted host redirect the server to an unchecked target.
     redirect: 'error',
-    signal: AbortSignal.timeout(5_000),
+    signal: AbortSignal.timeout(options.timeoutMs ?? 5_000),
     cache: 'no-store',
   });
   try {
     let response = await request('HEAD');
     // Some object stores do not implement HEAD; a one-byte GET still verifies
     // both public availability and image content type.
-    if (response.status === 405 || response.status === 403) response = await request('GET');
+    if (!options.headOnly && (response.status === 405 || response.status === 403)) {
+      response = await request('GET');
+    }
     const result = response.ok && response.headers.get('content-type')?.toLowerCase().startsWith('image/')
       ? url : null;
     reachabilityCache.set(cacheKey, { value: result, expiresAt: Date.now() + REACHABILITY_CACHE_TTL_MS });

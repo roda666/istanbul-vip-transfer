@@ -12,7 +12,6 @@ import {
   resolveImageField,
   validateServiceImageAsset,
 } from '@/lib/service-image-assets';
-import { getServiceOgImageUrl } from '@/lib/service-og-images';
 
 const { revalidatePath, revalidateTag } = vi.hoisted(() => ({
   revalidatePath: vi.fn(),
@@ -90,16 +89,16 @@ describe('service CMS regression contracts', () => {
     expect(field).toContain('Düzenlemeyi kaydetmeniz engellenmez');
   });
 
-  it('#84 uses a service-specific OG fallback when a stored image is unreachable', async () => {
+  it('#84 uses the site OG fallback when a stored image is unreachable', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('gone')));
     await expect(getReachableServiceImageUrl('https://images.example.invalid/og.jpg')).resolves.toBeNull();
-    expect(getServiceOgImageUrl('vip-transfer', 'https://www.istanbulviptransfer.com'))
-      .toBe('https://www.istanbulviptransfer.com/images/og/og-vip-transfer.jpg');
 
     const route = source('app/[lang]/[...slug]/page.tsx');
-    expect(route).toContain('dbMeta.socialImage ?? fallback');
+    expect(route).toContain(': [SITE.ogImage]');
     expect(route).toContain('page.ogImage ?? page.heroImage');
     expect(route).toContain('probeOwnStorage: true');
+    expect(route).toContain('timeoutMs: 2_000');
+    expect(route).toContain('headOnly: true');
   });
 
   it('#84 probes deleted own-storage objects for metadata without changing save-time trust', async () => {
@@ -119,6 +118,7 @@ describe('service CMS regression contracts', () => {
     await expect(getReachableServiceImageUrl(ownPath, { probeOwnStorage: true })).resolves.toBeNull();
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(fetchSpy.mock.calls[0]?.[0]).toContain('/api/storage/objects/service-pages/vip-transfer/hero.webp');
+    expect(fetchSpy.mock.calls[0]?.[1]).toMatchObject({ method: 'HEAD' });
   });
 
   it('rejects private, metadata, and arbitrary hosts before probe fetches', async () => {

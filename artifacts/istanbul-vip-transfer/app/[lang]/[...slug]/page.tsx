@@ -22,7 +22,6 @@ import {
 } from '@/lib/i18n/seo';
 import { SITE } from '@/lib/site-config';
 import { getReachableServiceImageUrl } from '@/lib/service-image-assets';
-import { getServiceOgImageUrl } from '@/lib/service-og-images';
 import { getContactSettings } from '@/lib/site-settings-server';
 import rawPageMeta from '@/lib/page-meta.json';
 import { PAGE_REGISTRY } from '@/lib/page-registry';
@@ -118,7 +117,11 @@ async function getDbMeta(slug: string, lang: string): Promise<{
       // an object can be deleted after upload and must then fall back safely.
       socialImage: await getReachableServiceImageUrl(
         page.ogImage ?? page.heroImage,
-        { probeOwnStorage: true },
+        {
+          probeOwnStorage: true,
+          timeoutMs: 2_000,
+          headOnly: true,
+        },
       ),
     };
   } catch {
@@ -174,18 +177,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     if (dbMeta) {
       title       = dbMeta.title;
       description = dbMeta.description;
-      // A deleted CMS asset must never become an unreachable og:image. Use the
-      // checked CMS value when available, otherwise the service-specific static
-      // card (never the generic site card).
-      const fallback = (() => {
-        try {
-          return getServiceOgImageUrl(pathKey, SITE.siteUrl);
-        } catch {
-          // Admin-created service slugs may not have a generated card yet.
-          return SITE.ogImage.url;
-        }
-      })();
-      ogImages = [{ url: dbMeta.socialImage ?? fallback, width: 1200, height: 630 }];
+      // Social crawlers cache broken previews aggressively. If the short HEAD
+      // probe cannot verify the CMS image, emit the known-good site default.
+      ogImages = dbMeta.socialImage
+        ? [{ url: dbMeta.socialImage, width: 1200, height: 630 }]
+        : [SITE.ogImage];
     }
   }
 

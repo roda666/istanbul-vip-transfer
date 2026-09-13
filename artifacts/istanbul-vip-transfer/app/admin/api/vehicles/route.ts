@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { VEHICLE_TYPE_VALUES } from '@/lib/vehicle-options';
+import { adminVehicleOrder } from '@/lib/inventory-order';
 
 const createSchema = z.object({
   name: z.string().min(1, 'Araç adı gereklidir').max(200),
@@ -45,8 +46,23 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const search = searchParams.get('search')?.trim() ?? '';
   const status = searchParams.get('status') ?? '';
-  const sort = searchParams.get('sort') === 'displayOrder' ? 'displayOrder' : 'updatedAt';
-  const order = searchParams.get('order') === 'asc' ? 'asc' : 'desc';
+  const requestedSort = searchParams.get('sort');
+  // The inventory default is the same stable order used by public vehicle
+  // collections. An explicit sort continues to control the primary column.
+  const hasExplicitSort = requestedSort != null;
+  const sort = requestedSort == null
+    ? 'displayOrder'
+    : requestedSort === 'displayOrder'
+      ? 'displayOrder'
+      : 'updatedAt';
+  const requestedOrder = searchParams.get('order');
+  const order = requestedOrder === 'asc'
+    ? 'asc'
+    : requestedOrder === 'desc'
+      ? 'desc'
+      : !hasExplicitSort && sort === 'displayOrder'
+        ? 'asc'
+        : 'desc';
   const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20', 10)));
   const offset = (page - 1) * limit;
@@ -54,7 +70,7 @@ export async function GET(request: NextRequest) {
   try {
     const { db } = await import('@/db');
     const { vehicles } = await import('@/db/schema');
-    const { eq, desc, asc, ilike, and, count } = await import('drizzle-orm');
+    const { eq, ilike, and, count } = await import('drizzle-orm');
 
     const conditions = [];
     if (search) conditions.push(ilike(vehicles.name, `%${search}%`));
@@ -62,17 +78,10 @@ export async function GET(request: NextRequest) {
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const orderBy =
-      sort === 'displayOrder'
-        ? order === 'asc'
-          ? asc(vehicles.displayOrder)
-          : desc(vehicles.displayOrder)
-        : order === 'asc'
-          ? asc(vehicles.updatedAt)
-          : desc(vehicles.updatedAt);
+    const orderBy = adminVehicleOrder(sort, order);
 
     const [items, totalRows] = await Promise.all([
-      db.select().from(vehicles).where(where).orderBy(orderBy).limit(limit).offset(offset),
+      db.select().from(vehicles).where(where).orderBy(...orderBy).limit(limit).offset(offset),
       db.select({ count: count() }).from(vehicles).where(where),
     ]);
 

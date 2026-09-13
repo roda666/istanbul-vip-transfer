@@ -11,6 +11,7 @@ import {
 } from '@/db/schema';
 import { currentlyApplicable, getCurrentExchangeRates } from '@/lib/admin-pricing-service';
 import { calculateAdminQuote, type PricingProfileInput } from '@/lib/admin-pricing-engine';
+import { transferRouteDisplayOrder, vehicleDisplayOrder } from '@/lib/inventory-order';
 
 export type ChatbotFareRangeMatch = {
   origin: string;
@@ -58,7 +59,8 @@ export async function getChatbotFareRangeMatches(visitorMessage: string): Promis
         distanceKm: transferRoutes.distanceKm,
       })
       .from(transferRoutes)
-      .where(eq(transferRoutes.active, true));
+      .where(eq(transferRoutes.active, true))
+      .orderBy(...transferRouteDisplayOrder());
 
     const scoredRoutes = routes
       .map((route) => {
@@ -82,7 +84,8 @@ export async function getChatbotFareRangeMatches(visitorMessage: string): Promis
     const eligibleVehicles = await db
       .select()
       .from(vehicles)
-      .where(and(eq(vehicles.priceCalculationEligible, true), eq(vehicles.isActive, true)));
+      .where(and(eq(vehicles.priceCalculationEligible, true), eq(vehicles.isActive, true)))
+      .orderBy(...vehicleDisplayOrder());
     if (eligibleVehicles.length === 0) return [];
 
     const results: ChatbotFareRangeMatch[] = [];

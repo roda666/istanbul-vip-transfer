@@ -95,6 +95,43 @@ export function classifyOpenAiError(err: unknown): { ok: false; reason: 'not_con
 
 const classifyError = classifyOpenAiError;
 
+/**
+ * Server-only structured JSON bridge for admin workflows.  Callers still own
+ * the domain validation; this helper only guarantees that the existing OpenAI
+ * client, timeout and sanitised error policy are used consistently.
+ */
+export async function generateStrictJsonDraft(opts: {
+  systemPrompt: string;
+  userPrompt: string;
+  maxCompletionTokens: number;
+}): Promise<AIResult<{ raw: string }>> {
+  const client = await getClient();
+  if (!client) {
+    return { ok: false, reason: 'not_configured', message: 'OpenAI yazım servisi yapılandırılmamış.' };
+  }
+  try {
+    const response = await client.chat.completions.create({
+      model: getModel(),
+      messages: [
+        { role: 'system', content: opts.systemPrompt },
+        { role: 'user', content: opts.userPrompt },
+      ],
+      response_format: { type: 'json_object' },
+      max_completion_tokens: Math.min(8_192, Math.max(300, opts.maxCompletionTokens)),
+    }, { signal: AbortSignal.timeout(90_000) });
+    const raw = response.choices[0]?.message?.content?.trim();
+    if (!raw) return { ok: false, reason: 'api_error', message: 'AI boş bir taslak döndürdü. Lütfen tekrar deneyin.' };
+    if (response.choices[0]?.finish_reason === 'length') {
+      return { ok: false, reason: 'truncated', message: 'AI taslağı kesildi. Lütfen tekrar deneyin.' };
+    }
+    return { ok: true, data: { raw }, model: getModel(), tokens: response.usage?.total_tokens };
+  } catch (error) {
+    const classified = classifyError(error);
+    if (classified.reason === 'rate_limited') return classified;
+    return { ok: false, reason: classified.reason, message: 'AI taslağı oluşturulamadı. Lütfen tekrar deneyin.' };
+  }
+}
+
 export type AdminFieldDraftRequest = {
   context: 'blog' | 'service' | 'homepage' | 'chatbot' | 'faq' | 'vehicle' | 'route';
   field: 'title' | 'body' | 'description' | 'short_text' | 'cta' | 'seo_title' | 'seo_description' | 'faq_question' | 'faq_answer' | 'chatbot_answer';

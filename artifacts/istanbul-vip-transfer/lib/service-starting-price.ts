@@ -23,6 +23,7 @@ export async function getServiceStartingPriceEur(serviceSlug: string): Promise<n
     const { db } = await import('@/db');
     const { transferRoutes, routePriceRules } = await import('@/db/schema');
     const { eq, and } = await import('drizzle-orm');
+    const { transferRouteDisplayOrder } = await import('@/lib/inventory-order');
 
     const routes = await db
       .select({
@@ -31,7 +32,8 @@ export async function getServiceStartingPriceEur(serviceSlug: string): Promise<n
         priceSprinterMinEur: transferRoutes.priceSprinterMinEur,
       })
       .from(transferRoutes)
-      .where(and(eq(transferRoutes.relatedServiceSlug, serviceSlug), eq(transferRoutes.active, true)));
+      .where(and(eq(transferRoutes.relatedServiceSlug, serviceSlug), eq(transferRoutes.active, true)))
+      .orderBy(...transferRouteDisplayOrder());
 
     if (routes.length === 0) return null;
 

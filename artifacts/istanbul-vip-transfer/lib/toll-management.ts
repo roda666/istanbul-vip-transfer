@@ -197,7 +197,12 @@ async function getIntercityCorridorAlternatives(
   const alternatives = await db.select().from(intercityTollCorridorAlternatives).where(and(
     eq(intercityTollCorridorAlternatives.corridorId, corridor.id),
     eq(intercityTollCorridorAlternatives.active, true),
-  )).orderBy(desc(intercityTollCorridorAlternatives.isDefault), asc(intercityTollCorridorAlternatives.displayOrder));
+  )).orderBy(
+    desc(intercityTollCorridorAlternatives.isDefault),
+    asc(intercityTollCorridorAlternatives.displayOrder),
+    asc(intercityTollCorridorAlternatives.name),
+    asc(intercityTollCorridorAlternatives.id),
+  );
   const items = alternatives.length ? await db.select().from(intercityTollCorridorAlternativeItems)
     .where(inArray(intercityTollCorridorAlternativeItems.alternativeId, alternatives.map(a => a.id)))
     .orderBy(asc(intercityTollCorridorAlternativeItems.displayOrder)) : [];
@@ -660,9 +665,15 @@ export async function getTollManagementData() {
   const [points, tariffs, alternatives, routes, items, admins, settings] = await Promise.all([
     db.select().from(tollPoints).orderBy(asc(tollPoints.displayOrder), asc(tollPoints.name), asc(tollPoints.id)),
     db.select().from(tollTariffs).orderBy(asc(tollTariffs.vehicleClass), desc(tollTariffs.updatedAt)),
-    db.select().from(routeTollAlternatives).orderBy(asc(routeTollAlternatives.routeId), desc(routeTollAlternatives.isDefault), asc(routeTollAlternatives.displayOrder)),
+    db.select().from(routeTollAlternatives).orderBy(
+      asc(routeTollAlternatives.routeId),
+      desc(routeTollAlternatives.isDefault),
+      asc(routeTollAlternatives.displayOrder),
+      asc(routeTollAlternatives.name),
+      asc(routeTollAlternatives.id),
+    ),
     db.select({ id: transferRoutes.id, name: transferRoutes.name, active: transferRoutes.active })
-      .from(transferRoutes).orderBy(asc(transferRoutes.name)),
+      .from(transferRoutes).orderBy(asc(transferRoutes.displayOrder), asc(transferRoutes.name), asc(transferRoutes.id)),
     db.select().from(routeTollAlternativeItems).orderBy(asc(routeTollAlternativeItems.displayOrder)),
     db.select({ id: adminUsers.id, name: adminUsers.name }).from(adminUsers),
     getTollPricingSettings(),
@@ -715,7 +726,12 @@ export async function getRouteTollAlternatives(routeId: string, vehicleId?: stri
   const alternatives = await db.select().from(routeTollAlternatives).where(and(
     eq(routeTollAlternatives.routeId, routeId),
     eq(routeTollAlternatives.active, true),
-  )).orderBy(desc(routeTollAlternatives.isDefault), asc(routeTollAlternatives.displayOrder));
+  )).orderBy(
+    desc(routeTollAlternatives.isDefault),
+    asc(routeTollAlternatives.displayOrder),
+    asc(routeTollAlternatives.name),
+    asc(routeTollAlternatives.id),
+  );
   if (!alternatives.length) return { alternatives: [], defaultAlternativeId: null };
 
   const alternativeIds = alternatives.map((alternative) => alternative.id);
@@ -838,7 +854,12 @@ export async function getDefaultRouteTollAlternative(routeId: string): Promise<s
       eq(routeTollAlternatives.routeId, routeId),
       eq(routeTollAlternatives.active, true),
     ))
-    .orderBy(desc(routeTollAlternatives.isDefault), asc(routeTollAlternatives.displayOrder));
+    .orderBy(
+      desc(routeTollAlternatives.isDefault),
+      asc(routeTollAlternatives.displayOrder),
+      asc(routeTollAlternatives.name),
+      asc(routeTollAlternatives.id),
+    );
   return chooseDefaultRouteTollAlternative(alternatives);
 }
 

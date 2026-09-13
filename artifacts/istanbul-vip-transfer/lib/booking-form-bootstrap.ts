@@ -22,6 +22,7 @@ import {
   type BookingFormOptions,
 } from '@/lib/booking-form-types';
 import { PUBLICLY_UNAVAILABLE_BOOKING_LOCATION_SLUGS } from '@/lib/booking-location-policy';
+import { vehicleDisplayOrder } from '@/lib/inventory-order';
 
 export const BOOKING_FORM_BOOTSTRAP_TAG = 'public-booking-form-bootstrap';
 
@@ -124,7 +125,7 @@ const getCachedBookingFormOptions = unstable_cache(
           taglineTranslations: vehicles.taglineTranslations,
         }).from(vehicles)
           .where(and(eq(vehicles.status, 'PUBLISHED'), eq(vehicles.isActive, true)))
-          .orderBy(asc(vehicles.displayOrder)),
+          .orderBy(...vehicleDisplayOrder()),
         getVehicleFeatureDefaults(),
       ]);
 

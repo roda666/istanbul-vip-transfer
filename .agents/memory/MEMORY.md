@@ -120,7 +120,7 @@
 - [Admin request presentation safety](admin-request-presentation-safety.md) — detail/PDF/Excel use one grouped allowlist; never render raw requestData entries or unknown objects.
 - [WhatsApp link contract](whatsapp-link-contract.md) — callers pass plain text; one builder encodes once; wa.me paths are digits-only, displayed customer phones are +E.164, app choice belongs to the OS.
 - [Admin location geocoding](admin-location-geocoding.md) — geocoding is an explicit admin-only form-fill action; coordinates remain editable and persist only after normal save.
-- [Transfer-route Google metrics](transfer-route-google-metrics.md) — bulk route verification accepts only unambiguous endpoint matches and never changes pricing or manual traffic windows.
+- [Transfer-route Google metrics](transfer-route-google-metrics.md) — route AI requires real Google distance+duration; drafts never change pricing or structural fields.
 - [Admin translation auto-fill](admin-translation-auto-fill.md) — Turkish saves fill only blank EN/DE/RU/AR/FR/ES/IT/NL fields; every existing value acts as a durable manual lock.
 - [Vehicle pricing mode persistence](vehicle-pricing-mode-persistence.md) — preserve each mode’s latest values independently while allowing only one active formula per vehicle.
 - [Admin form route-state reuse](admin-form-route-state-reuse.md) — create/edit routes sharing one client form must resync state when the record identity changes.

@@ -44,12 +44,18 @@ describe('fast quote map location matching', () => {
 });
 
 describe('fast quote toll alternative ordering', () => {
-  it('puts the default first, then preserves display order for every other option', () => {
+  it('puts the default first, then orders by display, name, and id', () => {
     const sorted = sortFastQuoteTollAlternatives([
-      { id: 'review-2', name: 'Review 2', isDefault: false, displayOrder: 2, needsReview: true },
+      { id: 'review-2', name: 'Same name', isDefault: false, displayOrder: 2, needsReview: true },
       { id: 'default', name: 'Default', isDefault: true, displayOrder: 50, needsReview: false },
-      { id: 'review-1', name: 'Review 1', isDefault: false, displayOrder: 1, needsReview: true },
+      { id: 'review-1', name: 'Same name', isDefault: false, displayOrder: 2, needsReview: true },
+      { id: 'display-first', name: 'Zeta', isDefault: false, displayOrder: 1, needsReview: true },
     ]);
-    expect(sorted.map((alternative) => alternative.id)).toEqual(['default', 'review-1', 'review-2']);
+    expect(sorted.map((alternative) => alternative.id)).toEqual([
+      'default',
+      'display-first',
+      'review-1',
+      'review-2',
+    ]);
   });
 });

@@ -155,9 +155,13 @@ export function getAdminApiPermission(pathname: string, method: string): AdminPe
       pathname.startsWith('/admin/api/transfers') ||
       pathname.startsWith('/admin/api/vehicle-feature-defaults') ||
       pathname.startsWith('/admin/api/locations') ||
-      pathname.startsWith('/admin/api/transfer-routes') ||
       pathname.startsWith('/admin/api/price-rules') ||
       pathname.startsWith('/admin/api/price-calculator')) return 'FLEET_MANAGE';
+  // Route AI drafting consumes AI capability; route image generation/upload
+  // consumes media capability. Keep these ahead of the route CRUD mapping.
+  if (pathname.startsWith('/admin/api/transfer-routes/ai-fill')) return 'AI_USE';
+  if (pathname.startsWith('/admin/api/transfer-routes/image')) return 'MEDIA_MANAGE';
+  if (pathname.startsWith('/admin/api/transfer-routes')) return 'FLEET_MANAGE';
   if (pathname.startsWith('/admin/api/flight-meet-greet')) return 'SITE_SETTINGS_MANAGE';
   if (pathname.startsWith('/admin/api/reservation-settings') ||
       pathname.startsWith('/admin/api/custom-fields') ||

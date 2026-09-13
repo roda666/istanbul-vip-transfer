@@ -3,9 +3,12 @@ import { requireAdminSession } from '@/lib/auth/session';
 import { db } from '@/db';
 import { locations, transferRoutes, transferRouteTranslations, vehicles } from '@/db/schema';
 import type { NewTransferRoute } from '@/db/schema';
-import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { revalidateAllHomepages } from '@/lib/homepage-revalidation';
+import { isValidTransferRouteImagePath, normalizeRouteImageAltText } from '@/lib/transfer-route-media';
+import { transferRouteDisplayOrder } from '@/lib/inventory-order';
+import { getPublishedTransferServices, resolvePublishedServiceSlug } from '@/lib/transfer-route-services';
 
 export const dynamic = 'force-dynamic';
 const VALID_TRANSLATION_STATUSES = new Set(['NOT_STARTED', 'DRAFT', 'REVIEW', 'APPROVED', 'PUBLISHED', 'OUTDATED', 'FAILED']);
@@ -92,7 +95,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { name, origin, destination, distanceKm, durationMinutes,
     priceVitoMinEur, priceVitoMaxEur, priceSprinterMinEur, priceSprinterMaxEur,
-    imagePath, displayOrder, active, description, seoTitle, seoDescription,
+     imagePath, imageAltText, imageAlt, displayOrder, active, description, seoTitle, seoDescription,
      ogTitle, ogDescription, relatedServiceSlug, indexable, introParagraph, transportOptions: rawTransportOptions,
      routeNotes: rawRouteNotes, faqItems: rawFaqItems, normalDurationMinMinutes, normalDurationMaxMinutes,
      peakDurationMinMinutes, peakDurationMaxMinutes, hasCrossContinentPassage,
@@ -100,6 +103,18 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   if (!name || !origin || !destination) {
     return NextResponse.json({ error: 'Güzergah adı, kalkış ve varış zorunludur.' }, { status: 400 });
+  }
+  if (imagePath != null && imagePath !== '' && !isValidTransferRouteImagePath(imagePath)) {
+    return NextResponse.json({ error: 'Görsel yolu güvenli bir dahili depolama yolu olmalıdır.' }, { status: 422 });
+  }
+  let relatedServiceSlugValue: string | null;
+  try {
+    const services = await getPublishedTransferServices();
+    const relatedService = resolvePublishedServiceSlug(relatedServiceSlug, new Set(services.map((service) => service.slug)));
+    if (!relatedService.ok) return NextResponse.json({ error: relatedService.error }, { status: 422 });
+    relatedServiceSlugValue = relatedService.slug;
+  } catch {
+    return NextResponse.json({ error: 'Yayınlanmış hizmetler doğrulanamadı.' }, { status: 503 });
   }
   if ((originLocationId == null) !== (destinationLocationId == null)) {
     return NextResponse.json({ error: 'Kalkış ve varış lokasyon kimlikleri birlikte seçilmelidir.' }, { status: 422 });
@@ -166,7 +181,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       priceVitoMaxEur: Number(priceVitoMaxEur ?? 0),
       priceSprinterMinEur: Number(priceSprinterMinEur ?? 0),
       priceSprinterMaxEur: Number(priceSprinterMaxEur ?? 0),
-      imagePath: imagePath ? String(imagePath) : null,
+       imagePath: imagePath ? String(imagePath) : null,
+       imageAltText: imagePath ? normalizeRouteImageAltText(imageAltText ?? imageAlt, `${String(origin)} - ${String(destination)} VIP transfer`) : null,
       displayOrder: Number(displayOrder ?? 0),
       active: active !== false,
       description: text(description),
@@ -178,7 +194,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       seoDescription: text(seoDescription),
       ogTitle: text(ogTitle),
       ogDescription: text(ogDescription),
-      relatedServiceSlug: text(relatedServiceSlug) ? slugify(String(relatedServiceSlug)) : 'vip-transfer',
+      relatedServiceSlug: relatedServiceSlugValue,
       indexable: indexable !== false,
       updatedAt: new Date(),
     };
@@ -344,7 +360,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         id: transferRoutes.id,
         displayOrder: transferRoutes.displayOrder,
         active: transferRoutes.active,
-      }).from(transferRoutes).orderBy(asc(transferRoutes.displayOrder), asc(transferRoutes.id)).for('update');
+      }).from(transferRoutes).orderBy(...transferRouteDisplayOrder()).for('update');
       const index = rows.findIndex((row) => row.id === id);
       if (index < 0) return { error: 'Güzergah bulunamadı.', status: 404 as const };
       if (body.action === 'toggle-active') {

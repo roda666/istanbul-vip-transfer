@@ -9,6 +9,7 @@ import { contentTranslations, content, languages, faqs, vehicles, navigationItem
 import { desc, asc, sql, eq, and, count as drizzleCount } from 'drizzle-orm';
 import AdminPageHeader from '../../_components/AdminPageHeader';
 import CevirilerClient from './_CevirilerClient';
+import { vehicleDisplayOrder } from '@/lib/inventory-order';
 
 export const metadata: Metadata = { title: 'Çeviriler | Admin', robots: { index: false } };
 
@@ -112,7 +113,7 @@ export default async function CevirilerPage({
       // Vehicles
       db.select({ id: vehicles.id, title: vehicles.name, slug: vehicles.slug })
         .from(vehicles)
-        .orderBy(asc(vehicles.displayOrder)),
+        .orderBy(...vehicleDisplayOrder()),
       // Navigation items
       db.select({ id: navigationItems.id, title: navigationItems.label, slug: navigationItems.href })
         .from(navigationItems)

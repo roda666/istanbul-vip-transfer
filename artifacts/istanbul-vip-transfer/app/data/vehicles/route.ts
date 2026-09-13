@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 import { isLocaleCodeSyntax } from '@/lib/i18n/locale-registry';
 import { resolvePublishedVehicles } from '@/lib/vehicle-localization';
 import { getVehicleFeatureDefaults } from '@/lib/vehicle-feature-defaults-server';
+import { vehicleDisplayOrder } from '@/lib/inventory-order';
 
 export async function GET(request: Request) {
   const { NextResponse } = await import('next/server');
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
   try {
     const { db } = await import('@/db');
     const { vehicles } = await import('@/db/schema');
-     const { and, eq, asc } = await import('drizzle-orm');
+      const { and, eq } = await import('drizzle-orm');
 
     const rows = await db
       .select({
@@ -39,7 +40,7 @@ export async function GET(request: Request) {
       })
       .from(vehicles)
        .where(and(eq(vehicles.status, 'PUBLISHED'), eq(vehicles.isActive, true)))
-      .orderBy(asc(vehicles.displayOrder));
+       .orderBy(...vehicleDisplayOrder());
 
     const defaultFeatureCodes = await getVehicleFeatureDefaults();
     const resolved = resolvePublishedVehicles(rows, lang, defaultFeatureCodes);

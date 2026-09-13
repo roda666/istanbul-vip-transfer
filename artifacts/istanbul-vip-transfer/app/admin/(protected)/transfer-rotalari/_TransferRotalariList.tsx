@@ -22,13 +22,16 @@ const BG      = '#FFFFFF';
 const inputStyle: React.CSSProperties = {
   width: '100%', background: BG, border: `1px solid ${BORDER}`, borderRadius: '6px',
   color: TEXT, fontSize: '13px', fontFamily: 'Inter, sans-serif',
-  padding: '8px 10px', outline: 'none', boxSizing: 'border-box',
+  padding: '10px 12px', minHeight: '44px', outline: 'none', boxSizing: 'border-box',
 };
 
 const labelStyle: React.CSSProperties = {
   display: 'block', color: '#52697A', fontSize: '11px', fontFamily: 'Inter, sans-serif',
   marginBottom: '4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em',
 };
+
+const btnStyleDelete: React.CSSProperties = { border: '1px solid #FECACA', borderRadius: '6px', color: '#D64545', background: '#FFF', padding: '0 16px', minHeight: '44px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' };
+const btnStyleAdd: React.CSSProperties = { border: `1px solid ${BORDER}`, borderRadius: '6px', color: '#2563EB', background: '#FFF', padding: '0 16px', minHeight: '44px', cursor: 'pointer', fontSize: '13px', fontWeight: 700 };
 
 // ── Empty form ───────────────────────────────────────────────────────────────
 const EMPTY: Partial<TransferRoute> = {
@@ -48,7 +51,7 @@ type RouteTranslationDraft = Pick<TransferRouteTranslation,
   'languageCode' | 'title' | 'description' | 'seoTitle' | 'seoDescription' | 'ogTitle' | 'ogDescription' |
   'introParagraph' | 'transportOptions' | 'routeNotes' | 'faqItems' | 'status' | 'isManuallyLocked'>;
 type AdminRoute = TransferRoute & { translations: RouteTranslationDraft[] };
-type RouteDraft = Partial<TransferRoute> & { translations?: RouteTranslationDraft[] };
+type RouteDraft = Partial<TransferRoute> & { translations?: RouteTranslationDraft[], imageAlt?: string | null };
 type ManagedLocation = ManagedLocationOption;
 type ManagedVehicle = { id: string; name: string; priceCalculationEligible: boolean };
 
@@ -88,7 +91,7 @@ function RouteContentFields({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '16px', border: `1px solid ${BORDER}`, borderRadius: '10px', background: '#F8FAFC' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '20px', border: `1px solid ${BORDER}`, borderRadius: '10px', background: '#F8FAFC' }}>
       <div>
         <label style={labelStyle}>Doğrudan Cevap Paragrafı</label>
         <textarea
@@ -102,40 +105,254 @@ function RouteContentFields({
 
       <div>
         <label style={labelStyle}>Ulaşım Seçenekleri (ucuzdan pahalıya)</label>
-        <p style={{ margin: '0 0 8px', color: MUTED, fontSize: '11px', lineHeight: 1.45 }}>Her seçenekte avantajın yanında dürüst bir dezavantaj yazın. Özel transferi son sıraya ekleyin.</p>
+        <p style={{ margin: '0 0 12px', color: MUTED, fontSize: '11px', lineHeight: 1.45 }}>Her seçenekte avantajın yanında dürüst bir dezavantaj yazın. Özel transferi son sıraya ekleyin.</p>
         {transportOptions.map((option, index) => (
-          <div key={index} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '8px', marginBottom: '8px' }}>
-            <input dir={direction} style={inputStyle} value={option.name} placeholder="Seçenek" onChange={(event) => updateTransport(index, 'name', event.target.value)} />
-            <input dir={direction} style={inputStyle} value={option.summary} placeholder="Kısa açıklama" onChange={(event) => updateTransport(index, 'summary', event.target.value)} />
-            <button type="button" onClick={() => onChange({ transportOptions: transportOptions.filter((_, itemIndex) => itemIndex !== index) })} style={{ border: '1px solid #FECACA', borderRadius: '6px', color: '#D64545', background: '#FFF', padding: '0 9px', cursor: 'pointer' }}>Sil</button>
-            <textarea dir={direction} style={{ ...inputStyle, gridColumn: '1 / -1', minHeight: '48px', resize: 'vertical' }} value={option.downside} placeholder="Dürüst dezavantaj" onChange={(event) => updateTransport(index, 'downside', event.target.value)} />
+          <div key={index} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px', border: `1px solid ${BORDER}`, padding: '16px', borderRadius: '8px', background: '#FFF' }}>
+            <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => onChange({ transportOptions: transportOptions.filter((_, itemIndex) => itemIndex !== index) })} style={btnStyleDelete}>Sil</button>
+            </div>
+            <div>
+              <label style={labelStyle}>Seçenek</label>
+              <input dir={direction} style={inputStyle} value={option.name} placeholder="Seçenek" onChange={(event) => updateTransport(index, 'name', event.target.value)} />
+            </div>
+            <div>
+              <label style={labelStyle}>Kısa Açıklama</label>
+              <input dir={direction} style={inputStyle} value={option.summary} placeholder="Kısa açıklama" onChange={(event) => updateTransport(index, 'summary', event.target.value)} />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>Dürüst Dezavantaj</label>
+              <textarea dir={direction} style={{ ...inputStyle, minHeight: '64px', resize: 'vertical' }} value={option.downside} placeholder="Dürüst dezavantaj" onChange={(event) => updateTransport(index, 'downside', event.target.value)} />
+            </div>
           </div>
         ))}
-        {transportOptions.length < 8 && <button type="button" onClick={() => onChange({ transportOptions: [...transportOptions, { name: '', summary: '', downside: '' }] })} style={{ border: `1px solid ${BORDER}`, borderRadius: '6px', color: '#2563EB', background: '#FFF', padding: '7px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: 700 }}>+ Ulaşım seçeneği ekle</button>}
+        {transportOptions.length < 8 && <button type="button" onClick={() => onChange({ transportOptions: [...transportOptions, { name: '', summary: '', downside: '' }] })} style={btnStyleAdd}>+ Ulaşım seçeneği ekle</button>}
       </div>
 
       <div>
         <label style={labelStyle}>Güzergâh ve Trafik Notları</label>
         {routeNotes.map((note, index) => (
-          <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '7px' }}>
-            <input dir={direction} style={inputStyle} value={note} placeholder="Örn: Akşam saatlerinde TEM bağlantılarında yoğunluk görülebilir." onChange={(event) => onChange({ routeNotes: routeNotes.map((item, itemIndex) => itemIndex === index ? event.target.value : item) })} />
-            <button type="button" onClick={() => onChange({ routeNotes: routeNotes.filter((_, itemIndex) => itemIndex !== index) })} style={{ border: '1px solid #FECACA', borderRadius: '6px', color: '#D64545', background: '#FFF', padding: '0 9px', cursor: 'pointer' }}>Sil</button>
+          <div key={index} style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
+            <input dir={direction} style={{ ...inputStyle, flex: '1 1 200px' }} value={note} placeholder="Örn: Akşam saatlerinde TEM bağlantılarında yoğunluk görülebilir." onChange={(event) => onChange({ routeNotes: routeNotes.map((item, itemIndex) => itemIndex === index ? event.target.value : item) })} />
+            <button type="button" onClick={() => onChange({ routeNotes: routeNotes.filter((_, itemIndex) => itemIndex !== index) })} style={{ ...btnStyleDelete, flex: '0 0 auto' }}>Sil</button>
           </div>
         ))}
-        {routeNotes.length < 12 && <button type="button" onClick={() => onChange({ routeNotes: [...routeNotes, ''] })} style={{ border: `1px solid ${BORDER}`, borderRadius: '6px', color: '#2563EB', background: '#FFF', padding: '7px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: 700 }}>+ Not ekle</button>}
+        {routeNotes.length < 12 && <button type="button" onClick={() => onChange({ routeNotes: [...routeNotes, ''] })} style={btnStyleAdd}>+ Not ekle</button>}
       </div>
 
       <div>
         <label style={labelStyle}>Sık Sorulan Sorular</label>
-        <p style={{ margin: '0 0 8px', color: MUTED, fontSize: '11px', lineHeight: 1.45 }}>Yayımlanan rota sayfaları için en az beş soru ve cevap girin; her cevap ilk cümlede doğrudan cevap vermelidir.</p>
+        <p style={{ margin: '0 0 12px', color: MUTED, fontSize: '11px', lineHeight: 1.45 }}>Yayımlanan rota sayfaları için en az beş soru ve cevap girin; her cevap ilk cümlede doğrudan cevap vermelidir.</p>
         {faqItems.map((faq, index) => (
-          <div key={index} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '8px', marginBottom: '8px' }}>
-            <input dir={direction} style={inputStyle} value={faq.question} placeholder="Soru" onChange={(event) => updateFaq(index, 'question', event.target.value)} />
-            <button type="button" onClick={() => onChange({ faqItems: faqItems.filter((_, itemIndex) => itemIndex !== index) })} style={{ border: '1px solid #FECACA', borderRadius: '6px', color: '#D64545', background: '#FFF', padding: '0 9px', cursor: 'pointer' }}>Sil</button>
-            <textarea dir={direction} style={{ ...inputStyle, gridColumn: '1 / -1', minHeight: '70px', resize: 'vertical' }} value={faq.answer} placeholder="Cevap (40–70 kelime)" onChange={(event) => updateFaq(index, 'answer', event.target.value)} />
+          <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px', border: `1px solid ${BORDER}`, padding: '16px', borderRadius: '8px', background: '#FFF' }}>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 200px' }}>
+                <label style={labelStyle}>Soru</label>
+                <input dir={direction} style={inputStyle} value={faq.question} placeholder="Soru" onChange={(event) => updateFaq(index, 'question', event.target.value)} />
+              </div>
+              <div style={{ marginTop: '19px', flex: '0 0 auto' }}>
+                <button type="button" onClick={() => onChange({ faqItems: faqItems.filter((_, itemIndex) => itemIndex !== index) })} style={btnStyleDelete}>Sil</button>
+              </div>
+            </div>
+            <div>
+              <label style={labelStyle}>Cevap</label>
+              <textarea dir={direction} style={{ ...inputStyle, minHeight: '94px', resize: 'vertical' }} value={faq.answer} placeholder="Cevap (40–70 kelime)" onChange={(event) => updateFaq(index, 'answer', event.target.value)} />
+            </div>
           </div>
         ))}
-        {faqItems.length < 12 && <button type="button" onClick={() => onChange({ faqItems: [...faqItems, { question: '', answer: '' }] })} style={{ border: `1px solid ${BORDER}`, borderRadius: '6px', color: '#2563EB', background: '#FFF', padding: '7px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: 700 }}>+ SSS ekle</button>}
+        {faqItems.length < 12 && <button type="button" onClick={() => onChange({ faqItems: [...faqItems, { question: '', answer: '' }] })} style={btnStyleAdd}>+ SSS ekle</button>}
+      </div>
+    </div>
+  );
+}
+
+// ── Route Image Editor ────────────────────────────────────────────────────────
+function RouteImageEditor({ imagePath, imageAlt, onImageChange, form }: { imagePath: string; imageAlt?: string | null; onImageChange: (path: string, alt?: string) => void; form: RouteDraft }) {
+  const [activeTab, setActiveTab] = useState<'upload' | 'url' | 'ai'>('upload');
+  const [urlInput, setUrlInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [dragActive, setDragActive] = useState(false);
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') setDragActive(true);
+    else if (e.type === 'dragleave' || e.type === 'drop') setDragActive(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    setDragActive(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) await uploadFile(file);
+  };
+
+  const handleUploadClick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) await uploadFile(file);
+    if (e.target) e.target.value = '';
+  };
+
+  const uploadFile = async (file: File) => {
+    setLoading(true); setError('');
+    try {
+      const formData = new FormData();
+      formData.append('action', 'upload');
+      formData.append('file', file);
+      if (form.origin) formData.append('origin', form.origin);
+      if (form.destination) formData.append('destination', form.destination);
+      if (form.imageAlt) formData.append('altText', form.imageAlt);
+
+      const res = await fetch('/admin/api/transfer-routes/image', {
+        method: 'POST',
+        body: formData,
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error ?? 'Yükleme başarısız');
+      if (json.image?.imagePath) onImageChange(json.image.imagePath, json.image.altText);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Bir hata oluştu');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUrl = async () => {
+    if (!urlInput) return;
+    setLoading(true); setError('');
+    try {
+      const res = await fetch('/admin/api/transfer-routes/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'import-url',
+          url: urlInput,
+          origin: form.origin,
+          destination: form.destination,
+          altText: form.imageAlt ?? undefined,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error ?? 'URL ekleme başarısız');
+      if (json.image?.imagePath) {
+        onImageChange(json.image.imagePath, json.image.altText);
+        setUrlInput('');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Bir hata oluştu');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAI = async () => {
+    setLoading(true); setError('');
+    try {
+      const res = await fetch('/admin/api/transfer-routes/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'generate',
+          name: form.name,
+          origin: form.origin,
+          destination: form.destination,
+          altText: form.imageAlt ?? undefined,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error ?? 'AI ile oluşturma başarısız');
+      if (json.image?.imagePath) {
+        onImageChange(json.image.imagePath, json.image.altText);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Bir hata oluştu');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (imagePath) {
+    return (
+      <div style={{ border: `1px solid ${BORDER}`, borderRadius: '8px', padding: '16px', background: '#F8FAFC' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: '16px' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={imagePath} alt={imageAlt ?? ''} style={{ width: '100%', height: '140px', objectFit: 'cover', borderRadius: '6px', border: `1px solid ${BORDER}` }} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div>
+              <label style={labelStyle}>Görsel Yolu (Salt Okunur)</label>
+              <div style={{ ...inputStyle, background: '#EDF2F7', color: MUTED, display: 'flex', alignItems: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {imagePath}
+              </div>
+            </div>
+            <div>
+              <label style={labelStyle}>Alternatif Metin (Alt Text)</label>
+              <input style={inputStyle} value={imageAlt ?? ''} onChange={e => onImageChange(imagePath, e.target.value)} placeholder="Görseli açıklayan metin" />
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button type="button" onClick={() => onImageChange('', '')} style={{ minHeight: '44px', fontSize: '13px', color: '#D64545', background: 'none', border: `1px solid #FECACA`, borderRadius: '6px', cursor: 'pointer', padding: '0 16px', fontWeight: 600 }}>Kaldır / Değiştir</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ border: `1px solid ${BORDER}`, borderRadius: '8px', overflow: 'hidden', background: '#FFF' }}>
+      <div style={{ display: 'flex', borderBottom: `1px solid ${BORDER}`, background: '#F8FAFC', flexWrap: 'wrap' }}>
+        <button type="button" onClick={() => setActiveTab('upload')} style={{ minHeight: '44px', flex: '1 1 auto', padding: '10px', fontSize: '13px', fontWeight: 600, color: activeTab === 'upload' ? '#2563EB' : MUTED, background: activeTab === 'upload' ? '#FFF' : 'transparent', border: 'none', borderBottom: activeTab === 'upload' ? '2px solid #2563EB' : '2px solid transparent', cursor: 'pointer' }}>Bilgisayardan Yükle</button>
+        <button type="button" onClick={() => setActiveTab('url')} style={{ minHeight: '44px', flex: '1 1 auto', padding: '10px', fontSize: '13px', fontWeight: 600, color: activeTab === 'url' ? '#2563EB' : MUTED, background: activeTab === 'url' ? '#FFF' : 'transparent', border: 'none', borderBottom: activeTab === 'url' ? '2px solid #2563EB' : '2px solid transparent', cursor: 'pointer' }}>URL&apos;den Ekle</button>
+        <button type="button" onClick={() => setActiveTab('ai')} style={{ minHeight: '44px', flex: '1 1 auto', padding: '10px', fontSize: '13px', fontWeight: 600, color: activeTab === 'ai' ? '#0369A1' : MUTED, background: activeTab === 'ai' ? '#FFF' : 'transparent', border: 'none', borderBottom: activeTab === 'ai' ? '2px solid #0369A1' : '2px solid transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>AI ile Oluştur</button>
+      </div>
+
+      <div style={{ padding: '16px' }}>
+        {error && <div style={{ color: '#D64545', fontSize: '13px', marginBottom: '12px', fontWeight: 500 }}>{error}</div>}
+
+        {activeTab === 'upload' && (
+          <label
+            onDragEnter={handleDrag}
+            onDragOver={handleDrag}
+            onDragLeave={handleDrag}
+            onDrop={handleDrop}
+            style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '120px',
+              border: `2px dashed ${dragActive ? '#2563EB' : BORDER}`,
+              borderRadius: '8px',
+              background: dragActive ? '#EFF6FF' : '#F8FAFC',
+              cursor: loading ? 'wait' : 'pointer',
+              opacity: loading ? 0.6 : 1, padding: '20px'
+            }}
+          >
+            {loading ? <Loader2 size={24} className="animate-spin" color={MUTED} /> : (
+              <>
+                <div style={{ fontSize: '24px', marginBottom: '8px', color: MUTED }}>+</div>
+                <span style={{ fontSize: '13px', color: TEXT, fontWeight: 500 }}>Tıklayın veya sürükleyin</span>
+                <span style={{ fontSize: '12px', color: MUTED, marginTop: '4px' }}>jpg, png, webp, avif</span>
+              </>
+            )}
+            <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" style={{ display: 'none' }} onChange={handleUploadClick} disabled={loading} />
+          </label>
+        )}
+
+        {activeTab === 'url' && (
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <input style={{ ...inputStyle, flex: '1 1 200px' }} placeholder="https://example.com/image.jpg" value={urlInput} onChange={e => setUrlInput(e.target.value)} disabled={loading} />
+            <button type="button" onClick={handleUrl} disabled={loading || !urlInput} style={{ minHeight: '44px', background: '#2563EB', color: '#FFF', border: 'none', borderRadius: '6px', padding: '0 20px', fontSize: '13px', fontWeight: 600, cursor: loading || !urlInput ? 'not-allowed' : 'pointer', opacity: loading || !urlInput ? 0.6 : 1, flex: '0 0 auto' }}>
+              {loading ? <Loader2 size={16} className="animate-spin" /> : 'Ekle'}
+            </button>
+          </div>
+        )}
+
+        {activeTab === 'ai' && (
+          <div style={{ textAlign: 'center', padding: '16px 0' }}>
+            <p style={{ fontSize: '13px', color: MUTED, marginBottom: '16px', lineHeight: 1.5 }}>
+              Girilen güzergâh bilgilerine (Kalkış ve Varış) uygun, özgün bir görsel oluşturulur. İşlem birkaç saniye sürebilir.
+            </p>
+            <button type="button" onClick={handleAI} disabled={loading || !form.origin || !form.destination} style={{ minHeight: '44px', background: '#0EA5E9', color: '#FFF', border: 'none', borderRadius: '8px', padding: '10px 24px', fontSize: '13px', fontWeight: 600, cursor: loading || !form.origin || !form.destination ? 'not-allowed' : 'pointer', opacity: loading || !form.origin || !form.destination ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+              {loading ? <Loader2 size={16} className="animate-spin" /> : 'Görsel Oluştur'}
+            </button>
+            {(!form.origin || !form.destination) && <div style={{ fontSize: '12px', color: '#D64545', marginTop: '12px' }}>Önce Kalkış ve Varış bilgilerini doldurun.</div>}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -150,9 +367,9 @@ function ConfirmDialog({ title, message, onConfirm, onCancel }: {
       <div style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: '12px', padding: '28px', maxWidth: '420px', width: '100%', boxShadow: '0 8px 32px rgba(23,43,58,0.12)' }}>
         <h3 style={{ color: TEXT, fontSize: '15px', fontFamily: 'Inter, sans-serif', fontWeight: 600, margin: '0 0 10px' }}>{title}</h3>
         <p style={{ color: MUTED, fontSize: '13px', fontFamily: 'Inter, sans-serif', margin: '0 0 24px', lineHeight: 1.6 }}>{message}</p>
-        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-          <button onClick={onCancel} style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: '8px', color: MUTED, cursor: 'pointer', padding: '8px 16px', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>Vazgeç</button>
-          <button onClick={onConfirm} style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#D64545', cursor: 'pointer', padding: '8px 16px', fontSize: '13px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>Sil</button>
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+          <button onClick={onCancel} style={{ minHeight: '44px', background: BG, border: `1px solid ${BORDER}`, borderRadius: '8px', color: MUTED, cursor: 'pointer', padding: '8px 24px', fontSize: '13px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>Vazgeç</button>
+          <button onClick={onConfirm} style={{ minHeight: '44px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#D64545', cursor: 'pointer', padding: '8px 24px', fontSize: '13px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>Sil</button>
         </div>
       </div>
     </div>
@@ -160,10 +377,11 @@ function ConfirmDialog({ title, message, onConfirm, onCancel }: {
 }
 
 // ── Route form modal ──────────────────────────────────────────────────────────
-function RouteModal({ route, locationOptions, vehicleOptions, onSave, onClose, saving }: {
+function RouteModal({ route, locationOptions, vehicleOptions, serviceOptions, onSave, onClose, saving }: {
   route: RouteDraft;
   locationOptions: ManagedLocation[];
   vehicleOptions: ManagedVehicle[];
+  serviceOptions: { slug: string; title: string }[];
   onSave: (data: RouteDraft) => void;
   onClose: () => void;
   saving: boolean;
@@ -172,8 +390,14 @@ function RouteModal({ route, locationOptions, vehicleOptions, onSave, onClose, s
   const [activeLocale, setActiveLocale] = useState<string>('tr');
   const [resolvingDistance, setResolvingDistance] = useState(false);
   const [distanceMessage, setDistanceMessage] = useState('');
+
+  const [aiFilling, setAiFilling] = useState(false);
+  const [aiFillMessage, setAiFillMessage] = useState('');
+  const [aiFillIncludeImage, setAiFillIncludeImage] = useState(true);
+
   const groupedLocations = useMemo(() => groupManagedLocationOptions(locationOptions), [locationOptions]);
-  const set = (key: keyof TransferRoute, val: unknown) => setForm(f => ({ ...f, [key]: val }));
+  const set = <K extends keyof RouteDraft>(key: K, val: RouteDraft[K]) => setForm(f => ({ ...f, [key]: val }));
+
   const translation = form.translations?.find((item) => item.languageCode === activeLocale);
   const setTranslation = (key: keyof RouteTranslationDraft, value: unknown) => {
     if (activeLocale === 'tr') return;
@@ -200,13 +424,98 @@ function RouteModal({ route, locationOptions, vehicleOptions, onSave, onClose, s
     });
   };
 
+  const fillWithAI = async () => {
+    if (!form.name || !form.origin || !form.destination) return;
+
+    const hasContent = !!(
+      form.description || form.introParagraph || (form.transportOptions && form.transportOptions.length > 0) ||
+      (form.routeNotes && form.routeNotes.length > 0) || (form.faqItems && form.faqItems.length > 0) ||
+      form.seoTitle || form.seoDescription || form.ogTitle || form.ogDescription || form.relatedServiceSlug || form.imagePath
+    );
+
+    let overwrite = false;
+    if (hasContent) {
+      overwrite = window.confirm('Mevcut içerikleriniz (açıklama, SEO, SSS vb.) yapay zeka tarafından üretilen yeni içeriklerle değiştirilsin mi? (İptal derseniz yalnızca boş alanlar doldurulacaktır)');
+    }
+
+    setAiFilling(true);
+    setAiFillMessage('');
+    try {
+      const response = await fetch('/admin/api/transfer-routes/ai-fill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          origin: form.origin,
+          destination: form.destination,
+          originLocationId: form.originLocationId,
+          destinationLocationId: form.destinationLocationId,
+          includeImage: aiFillIncludeImage,
+          overwrite,
+        }),
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        setAiFillMessage(payload?.error ?? 'AI ile doldurma işlemi başarısız oldu.');
+        return;
+      }
+
+      setForm(current => {
+        const mergeStr = (oldVal: string | null | undefined, newVal: string | null | undefined) =>
+          (!overwrite && oldVal && oldVal.trim().length > 0) ? oldVal : (newVal ?? oldVal ?? undefined);
+
+        const mergeArr = <T,>(oldArr: T[] | null | undefined, newArr: T[] | null | undefined): T[] | undefined =>
+          (!overwrite && oldArr && oldArr.length > 0) ? oldArr : (newArr ?? oldArr ?? undefined);
+
+        const hasVerifiedPayload = payload.distanceSource === 'ADMIN_VERIFIED';
+        const distanceSource = hasVerifiedPayload
+          ? 'ADMIN_VERIFIED'
+          : (payload.distanceSource ?? current.distanceSource);
+        const distanceKm = hasVerifiedPayload
+          ? payload.distanceKm
+          : (payload.distanceKm ?? current.distanceKm);
+        const durationMinutes = hasVerifiedPayload
+          ? payload.durationMinutes
+          : (payload.durationMinutes ?? current.durationMinutes);
+        const keepExistingImage = !overwrite && Boolean(current.imagePath?.trim());
+
+        return {
+          ...current,
+          distanceKm,
+          durationMinutes,
+          distanceSource,
+          description: mergeStr(current.description, payload.content?.description),
+          introParagraph: mergeStr(current.introParagraph, payload.content?.introParagraph),
+          transportOptions: mergeArr(current.transportOptions, payload.content?.transportOptions),
+          routeNotes: mergeArr(current.routeNotes, payload.content?.routeNotes),
+          faqItems: mergeArr(current.faqItems, payload.content?.faqItems),
+          seoTitle: mergeStr(current.seoTitle, payload.content?.seoTitle),
+          seoDescription: mergeStr(current.seoDescription, payload.content?.seoDescription),
+          ogTitle: mergeStr(current.ogTitle, payload.content?.ogTitle),
+          ogDescription: mergeStr(current.ogDescription, payload.content?.ogDescription),
+          relatedServiceSlug: mergeStr(current.relatedServiceSlug, payload.content?.relatedServiceSlug),
+          imagePath: mergeStr(current.imagePath, payload.image?.imagePath),
+          imageAlt: keepExistingImage
+            ? current.imageAlt
+            : mergeStr(current.imageAlt, payload.image?.altText),
+        };
+      });
+      setAiFillMessage('Güzergâh başarıyla dolduruldu.');
+    } catch {
+      setAiFillMessage('Bağlantı hatası oluştu. Lütfen tekrar deneyin.');
+    } finally {
+      setAiFilling(false);
+    }
+  };
+
   const numField = (key: keyof TransferRoute, label: string, placeholder?: string) => (
     <div>
       <label style={labelStyle}>{label}</label>
       <input type="number" min={key === 'distanceKm' || key === 'durationMinutes' ? '1' : '0'} style={inputStyle} placeholder={placeholder}
         value={String(form[key] ?? 0)}
         onChange={e => {
-          set(key, Number(e.target.value));
+          setForm((current) => ({ ...current, [key]: Number(e.target.value) }));
           if (key === 'distanceKm' && form.distanceSource !== 'ADMIN_VERIFIED') set('distanceSource', 'LEGACY_UNVERIFIED');
         }}
       />
@@ -263,24 +572,24 @@ function RouteModal({ route, locationOptions, vehicleOptions, onSave, onClose, s
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(23,43,58,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
-      <div style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '28px', maxWidth: '780px', width: '100%', boxShadow: '0 8px 40px rgba(23,43,58,0.14)', margin: 'auto' }}>
+      <div style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '24px', maxWidth: '780px', width: '100%', boxShadow: '0 8px 40px rgba(23,43,58,0.14)', margin: 'auto' }}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <h2 style={{ color: TEXT, fontSize: '16px', fontFamily: 'Inter, sans-serif', fontWeight: 700, margin: 0 }}>
+          <h2 style={{ color: TEXT, fontSize: '18px', fontFamily: 'Inter, sans-serif', fontWeight: 700, margin: 0 }}>
             {form.id ? 'Güzergahı Düzenle' : 'Yeni Güzergah Ekle'}
           </h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: MUTED, padding: '4px', borderRadius: '6px' }}><X size={18} /></button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: MUTED, padding: '4px', borderRadius: '6px', minHeight: '44px', minWidth: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={20} /></button>
         </div>
 
-        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '10px', borderBottom: `1px solid ${BORDER}`, marginBottom: '18px' }}>
-          <button type="button" onClick={() => setActiveLocale('tr')} style={{ border: `1px solid ${activeLocale === 'tr' ? '#2563EB' : BORDER}`, borderRadius: '7px', background: activeLocale === 'tr' ? '#EFF6FF' : BG, color: activeLocale === 'tr' ? '#2563EB' : MUTED, padding: '7px 10px', cursor: 'pointer', fontWeight: 700 }}>Türkçe kaynak</button>
+        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '12px', borderBottom: `1px solid ${BORDER}`, marginBottom: '20px' }}>
+          <button type="button" onClick={() => setActiveLocale('tr')} style={{ minHeight: '44px', border: `1px solid ${activeLocale === 'tr' ? '#2563EB' : BORDER}`, borderRadius: '7px', background: activeLocale === 'tr' ? '#EFF6FF' : BG, color: activeLocale === 'tr' ? '#2563EB' : MUTED, padding: '0 16px', cursor: 'pointer', fontWeight: 700, fontSize: '13px' }}>Türkçe kaynak</button>
           {LOCALES.map(([code, label]) => {
             const status = form.translations?.find((item) => item.languageCode === code)?.status;
-            return <button key={code} type="button" onClick={() => setActiveLocale(code)} style={{ border: `1px solid ${activeLocale === code ? '#2563EB' : BORDER}`, borderRadius: '7px', background: activeLocale === code ? '#EFF6FF' : BG, color: activeLocale === code ? '#2563EB' : MUTED, padding: '7px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>{label}{status === 'PUBLISHED' ? ' • ✓' : ''}</button>;
+            return <button key={code} type="button" onClick={() => setActiveLocale(code)} style={{ minHeight: '44px', border: `1px solid ${activeLocale === code ? '#2563EB' : BORDER}`, borderRadius: '7px', background: activeLocale === code ? '#EFF6FF' : BG, color: activeLocale === code ? '#2563EB' : MUTED, padding: '0 16px', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 500 }}>{label}{status === 'PUBLISHED' ? ' • ✓' : ''}</button>;
           })}
         </div>
 
-        {activeLocale === 'tr' ? <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        {activeLocale === 'tr' ? <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {/* Name */}
           <div>
             <label style={labelStyle}>Güzergah Adı *</label>
@@ -291,14 +600,9 @@ function RouteModal({ route, locationOptions, vehicleOptions, onSave, onClose, s
             <label style={labelStyle}>Sayfa Açıklaması *</label>
             <textarea style={{ ...inputStyle, minHeight: '94px', resize: 'vertical' }} placeholder="Güzergah için ziyaretçiye gösterilecek özgün açıklama" value={form.description ?? ''} onChange={e => set('description', e.target.value)} />
           </div>
-          <RouteContentFields
-            value={form}
-            locale="tr"
-            onChange={(patch) => setForm((current) => ({ ...current, ...patch }))}
-          />
 
           {/* Origin / Destination */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '16px' }}>
             <div>
               <label style={labelStyle}>Kalkış *</label>
               <input style={inputStyle} placeholder="örn: Taksim" value={form.origin ?? ''} onChange={e => set('origin', e.target.value)} />
@@ -308,7 +612,51 @@ function RouteModal({ route, locationOptions, vehicleOptions, onSave, onClose, s
               <input style={inputStyle} placeholder="örn: Sabiha Gökçen Havalimanı" value={form.destination ?? ''} onChange={e => set('destination', e.target.value)} />
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', padding: '12px', border: `1px solid ${BORDER}`, borderRadius: '8px', background: '#F8FAFC' }}>
+
+          {/* AI Fill Block */}
+          <div style={{ background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '10px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+              <div style={{ flex: '1 1 300px' }}>
+                <h4 style={{ color: '#0369A1', fontSize: '15px', margin: '0 0 6px', fontWeight: 600 }}>AI ile Güzergâhı Doldur</h4>
+                <p style={{ color: '#0284C7', fontSize: '13px', margin: 0, lineHeight: 1.4 }}>
+                  Ad, kalkış ve varış noktalarını girin; mesafe, süre, ulaşım seçenekleri, SSS ve SEO alanlarını yapay zekaya bırakın.
+                </p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#0369A1', cursor: 'pointer', userSelect: 'none', minHeight: '44px' }}>
+                  <input type="checkbox" checked={aiFillIncludeImage} onChange={e => setAiFillIncludeImage(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
+                  Görseli de oluştur
+                </label>
+                <button
+                  type="button"
+                  onClick={fillWithAI}
+                  disabled={aiFilling || !form.name || !form.origin || !form.destination}
+                  style={{
+                    minHeight: '44px', background: '#0EA5E9', border: 'none', borderRadius: '8px', color: '#FFF',
+                    padding: '0 20px', fontSize: '13px', fontWeight: 600, cursor: aiFilling || !form.name || !form.origin || !form.destination ? 'not-allowed' : 'pointer',
+                    opacity: aiFilling || !form.name || !form.origin || !form.destination ? 0.6 : 1,
+                    display: 'flex', alignItems: 'center', gap: '8px'
+                  }}
+                >
+                  {aiFilling && <Loader2 size={16} className="animate-spin" />}
+                  Otomatik Doldur
+                </button>
+              </div>
+            </div>
+            {aiFillMessage && (
+              <div style={{ fontSize: '13px', color: aiFillMessage.includes('başarı') ? '#15803D' : '#B91C1C', fontWeight: 500, padding: '12px', background: aiFillMessage.includes('başarı') ? '#F0FDF4' : '#FEF2F2', borderRadius: '6px', border: `1px solid ${aiFillMessage.includes('başarı') ? '#BBF7D0' : '#FECACA'}` }}>
+                {aiFillMessage}
+              </div>
+            )}
+          </div>
+
+          <RouteContentFields
+            value={form}
+            locale="tr"
+            onChange={(patch) => setForm((current) => ({ ...current, ...patch }))}
+          />
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '16px', padding: '16px', border: `1px solid ${BORDER}`, borderRadius: '8px', background: '#F8FAFC' }}>
             <div>
               <label style={labelStyle}>Doğrulanmış Kalkış Lokasyonu</label>
               <select style={inputStyle} value={form.originLocationId ?? ''} onChange={e => set('originLocationId', e.target.value || null)}>
@@ -331,13 +679,13 @@ function RouteModal({ route, locationOptions, vehicleOptions, onSave, onClose, s
                 ))}
               </select>
             </div>
-            <p style={{ gridColumn: '1 / -1', color: MUTED, fontSize: '11px', fontFamily: 'Inter, sans-serif', lineHeight: 1.5, margin: 0 }}>
+            <p style={{ gridColumn: '1 / -1', color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif', lineHeight: 1.5, margin: 0 }}>
               İki kayıtlı lokasyonu birlikte seçin. Yol mesafesi Google Maps Routes üzerinden alınır; Google kullanılamazsa kayıtlı doğrulanmış rota veya dahili güvenlik tahmini devreye girer.
             </p>
           </div>
 
           {/* Distance / Duration */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '16px' }}>
             {numField('distanceKm', 'Yaklaşık Mesafe (km)')}
             {numField('durationMinutes', 'Referans Süre (dakika)')}
             {numField('normalDurationMinMinutes', 'Normal Trafik Min. (dk)')}
@@ -345,16 +693,16 @@ function RouteModal({ route, locationOptions, vehicleOptions, onSave, onClose, s
             {numField('peakDurationMinMinutes', 'Yoğun Saat Min. (dk)')}
             {numField('peakDurationMaxMinutes', 'Yoğun Saat Maks. (dk)')}
           </div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px', color: TEXT }}>
-            <input type="checkbox" checked={form.hasCrossContinentPassage ?? false} onChange={(event) => set('hasCrossContinentPassage', event.target.checked)} />
+          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px', color: TEXT, minHeight: '44px' }}>
+            <input type="checkbox" checked={form.hasCrossContinentPassage ?? false} onChange={(event) => set('hasCrossContinentPassage', event.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
             Rota yaka geçişi içeriyor
           </label>
-          <div style={{ background: '#F8FAFC', border: `1px solid ${BORDER}`, borderRadius: '8px', padding: '12px', display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
-            <button type="button" onClick={resolveGoogleMapsDistance} disabled={resolvingDistance || !form.originLocationId || !form.destinationLocationId} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '7px', color: '#1D4ED8', padding: '7px 10px', fontSize: '12px', fontWeight: 600, cursor: resolvingDistance ? 'wait' : 'pointer', opacity: !form.originLocationId || !form.destinationLocationId ? 0.55 : 1 }}>
-              {resolvingDistance ? <Loader2 size={14} className="animate-spin" /> : <MapPinned size={14} />}
+          <div style={{ background: '#F8FAFC', border: `1px solid ${BORDER}`, borderRadius: '8px', padding: '16px', display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
+            <button type="button" onClick={resolveGoogleMapsDistance} disabled={resolvingDistance || !form.originLocationId || !form.destinationLocationId} style={{ minHeight: '44px', display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '7px', color: '#1D4ED8', padding: '0 20px', fontSize: '13px', fontWeight: 600, cursor: resolvingDistance ? 'wait' : 'pointer', opacity: !form.originLocationId || !form.destinationLocationId ? 0.55 : 1 }}>
+              {resolvingDistance ? <Loader2 size={16} className="animate-spin" /> : <MapPinned size={16} />}
               Google Maps Yol Mesafesini Getir
             </button>
-            {distanceMessage && <span style={{ width: '100%', color: MUTED, fontSize: '11px', fontFamily: 'Inter, sans-serif' }}>{distanceMessage}</span>}
+            {distanceMessage && <span style={{ width: '100%', color: MUTED, fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>{distanceMessage}</span>}
           </div>
           <div>
             <label style={labelStyle}>Varsayılan Araç (isteğe bağlı)</label>
@@ -367,60 +715,70 @@ function RouteModal({ route, locationOptions, vehicleOptions, onSave, onClose, s
           {/* Vito prices */}
           <div>
             <label style={{ ...labelStyle, marginBottom: '8px' }}>Mercedes Vito Fiyat Aralığı (EUR)</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '16px' }}>
               {numField('priceVitoMinEur', 'Min EUR')}
               {numField('priceVitoMaxEur', 'Max EUR')}
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div><label style={labelStyle}>SEO Başlığı</label><input style={inputStyle} value={form.seoTitle ?? ''} onChange={e => set('seoTitle', e.target.value)} /></div>
-            <div><label style={labelStyle}>İlgili Hizmet Slug&apos;ı</label><input style={inputStyle} placeholder="vip-transfer" value={form.relatedServiceSlug ?? ''} onChange={e => set('relatedServiceSlug', e.target.value)} /></div>
-          </div>
-          <AISeoGenerator context="route" title={form.seoTitle ?? ''} description={form.seoDescription ?? ''}
-            onTitleChange={v => set('seoTitle', v)} onDescriptionChange={v => set('seoDescription', v)} />
-          <div><label style={labelStyle}>SEO Açıklaması</label><textarea style={{ ...inputStyle, minHeight: '66px', resize: 'vertical' }} value={form.seoDescription ?? ''} onChange={e => set('seoDescription', e.target.value)} /></div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div><label style={labelStyle}>Open Graph Başlığı</label><input style={inputStyle} value={form.ogTitle ?? ''} onChange={e => set('ogTitle', e.target.value)} /></div>
-            <div><label style={labelStyle}>Open Graph Açıklaması</label><input style={inputStyle} value={form.ogDescription ?? ''} onChange={e => set('ogDescription', e.target.value)} /></div>
-          </div>
-
           {/* Sprinter prices */}
           <div>
             <label style={{ ...labelStyle, marginBottom: '8px' }}>Mercedes Sprinter Fiyat Aralığı (EUR)</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '16px' }}>
               {numField('priceSprinterMinEur', 'Min EUR')}
               {numField('priceSprinterMaxEur', 'Max EUR')}
             </div>
           </div>
 
-          {/* Image path */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '16px' }}>
+            <div><label style={labelStyle}>SEO Başlığı</label><input style={inputStyle} value={form.seoTitle ?? ''} onChange={e => set('seoTitle', e.target.value)} /></div>
+            <div>
+              <label style={labelStyle}>İlgili Hizmet</label>
+              <select style={inputStyle} value={form.relatedServiceSlug ?? ''} onChange={e => set('relatedServiceSlug', e.target.value)}>
+                <option value="">Seçiniz</option>
+                {serviceOptions.map(s => <option key={s.slug} value={s.slug}>{s.title}</option>)}
+              </select>
+            </div>
+          </div>
+          <AISeoGenerator context="route" title={form.seoTitle ?? ''} description={form.seoDescription ?? ''}
+            onTitleChange={v => set('seoTitle', v)} onDescriptionChange={v => set('seoDescription', v)} />
+          <div><label style={labelStyle}>SEO Açıklaması</label><textarea style={{ ...inputStyle, minHeight: '66px', resize: 'vertical' }} value={form.seoDescription ?? ''} onChange={e => set('seoDescription', e.target.value)} /></div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '16px' }}>
+            <div><label style={labelStyle}>Open Graph Başlığı</label><input style={inputStyle} value={form.ogTitle ?? ''} onChange={e => set('ogTitle', e.target.value)} /></div>
+            <div><label style={labelStyle}>Open Graph Açıklaması</label><input style={inputStyle} value={form.ogDescription ?? ''} onChange={e => set('ogDescription', e.target.value)} /></div>
+          </div>
+
+          {/* Image Editor */}
           <div>
-            <label style={labelStyle}>Görsel Yolu</label>
-            <input style={inputStyle} placeholder="/route-images/taksim-sabiha.jpg" value={form.imagePath ?? ''} onChange={e => set('imagePath', e.target.value)} />
-            <p style={{ color: MUTED, fontSize: '11px', fontFamily: 'Inter, sans-serif', margin: '4px 0 0' }}>public/ klasöründeki görsel dosyasının yolu. Örn: /route-images/taksim-sabiha.jpg</p>
+            <label style={labelStyle}>Güzergâh Görseli</label>
+            <RouteImageEditor
+              imagePath={form.imagePath ?? ''}
+              imageAlt={form.imageAlt ?? ''}
+              onImageChange={(path, alt) => setForm(f => ({ ...f, imagePath: path, imageAlt: alt }))}
+              form={form}
+            />
           </div>
 
           {/* Display order + active */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', alignItems: 'end' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '16px', alignItems: 'end' }}>
             {numField('displayOrder', 'Sıra')}
-            <div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingBottom: '4px' }}>
               <label style={labelStyle}>Durum</label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px', color: TEXT, padding: '8px 0' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px', color: TEXT, minHeight: '32px' }}>
                 <input type="checkbox" checked={form.active ?? true} onChange={e => set('active', e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
                 Aktif (ana sayfada göster)
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px', color: TEXT, padding: '3px 0' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px', color: TEXT, minHeight: '32px' }}>
                 <input type="checkbox" checked={form.indexable ?? true} onChange={e => set('indexable', e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
                 Arama motorlarında indekslenebilir
               </label>
             </div>
           </div>
         </div> : !form.id ? (
-          <div style={{ padding: '20px', borderRadius: '10px', background: '#F8FAFC', color: MUTED, fontSize: '13px', lineHeight: 1.6 }}>Önce Türkçe rotayı kaydedin. Ardından her dil için sayfa metnini ekleyip yayın durumunu seçebilirsiniz.</div>
+          <div style={{ padding: '24px', borderRadius: '10px', background: '#F8FAFC', color: MUTED, fontSize: '14px', lineHeight: 1.6 }}>Önce Türkçe rotayı kaydedin. Ardından her dil için sayfa metnini ekleyip yayın durumunu seçebilirsiniz.</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ background: '#F8FAFC', border: `1px solid ${BORDER}`, padding: '12px', borderRadius: '8px', color: MUTED, fontSize: '12px', lineHeight: 1.55 }}>Bu sayfa yalnızca <strong>PUBLISHED</strong> durumuna getirildiğinde ziyaretçilere, sitemap&apos;e ve hreflang etiketlerine eklenir. Eksik çeviri Türkçe metne düşmez.</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ background: '#F8FAFC', border: `1px solid ${BORDER}`, padding: '16px', borderRadius: '8px', color: MUTED, fontSize: '13px', lineHeight: 1.55 }}>Bu sayfa yalnızca <strong>PUBLISHED</strong> durumuna getirildiğinde ziyaretçilere, sitemap&apos;e ve hreflang etiketlerine eklenir. Eksik çeviri Türkçe metne düşmez.</div>
             <div><label style={labelStyle}>Başlık *</label><input style={inputStyle} value={translation?.title ?? ''} onChange={e => setTranslation('title', e.target.value)} /></div>
             <div><label style={labelStyle}>Sayfa Açıklaması *</label><textarea dir={activeLocale === 'ar' ? 'rtl' : 'ltr'} style={{ ...inputStyle, minHeight: '112px', resize: 'vertical' }} value={translation?.description ?? ''} onChange={e => setTranslation('description', e.target.value)} /></div>
             <RouteContentFields
@@ -432,14 +790,14 @@ function RouteModal({ route, locationOptions, vehicleOptions, onSave, onClose, s
                 }
               }}
             />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '16px' }}>
               <div><label style={labelStyle}>SEO Başlığı</label><input style={inputStyle} value={translation?.seoTitle ?? ''} onChange={e => setTranslation('seoTitle', e.target.value)} /></div>
               <div><label style={labelStyle}>Yayın Durumu</label><select style={inputStyle} value={translation?.status ?? 'DRAFT'} onChange={e => setTranslation('status', e.target.value)}><option value="DRAFT">Taslak</option><option value="REVIEW">İncelemede</option><option value="APPROVED">Onaylandı</option><option value="PUBLISHED">Yayında</option><option value="OUTDATED">Güncellenecek</option></select></div>
             </div>
             <AISeoGenerator context="route" language={activeLocale} title={translation?.seoTitle ?? ''} description={translation?.seoDescription ?? ''}
               onTitleChange={v => setTranslation('seoTitle', v)} onDescriptionChange={v => setTranslation('seoDescription', v)} />
             <div><label style={labelStyle}>SEO Açıklaması</label><textarea style={{ ...inputStyle, minHeight: '66px', resize: 'vertical' }} value={translation?.seoDescription ?? ''} onChange={e => setTranslation('seoDescription', e.target.value)} /></div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '16px' }}>
               <div><label style={labelStyle}>Open Graph Başlığı</label><input style={inputStyle} value={translation?.ogTitle ?? ''} onChange={e => setTranslation('ogTitle', e.target.value)} /></div>
               <div><label style={labelStyle}>Open Graph Açıklaması</label><input style={inputStyle} value={translation?.ogDescription ?? ''} onChange={e => setTranslation('ogDescription', e.target.value)} /></div>
             </div>
@@ -447,14 +805,14 @@ function RouteModal({ route, locationOptions, vehicleOptions, onSave, onClose, s
         )}
 
         {/* Actions */}
-        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '24px', paddingTop: '20px', borderTop: `1px solid ${BORDER}` }}>
-          <button onClick={onClose} disabled={saving} style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: '8px', color: MUTED, cursor: 'pointer', padding: '9px 20px', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>İptal</button>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '32px', paddingTop: '24px', borderTop: `1px solid ${BORDER}`, flexWrap: 'wrap' }}>
+          <button onClick={onClose} disabled={saving} style={{ minHeight: '44px', background: BG, border: `1px solid ${BORDER}`, borderRadius: '8px', color: MUTED, cursor: 'pointer', padding: '0 24px', fontSize: '13px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>İptal</button>
           <button
             onClick={() => onSave(form)}
             disabled={saving || !form.name || !form.origin || !form.destination}
-            style={{ background: '#2563EB', border: 'none', borderRadius: '8px', color: '#FFFFFF', cursor: saving ? 'wait' : 'pointer', padding: '9px 20px', fontSize: '13px', fontFamily: 'Inter, sans-serif', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', opacity: saving ? 0.7 : 1 }}
+            style={{ minHeight: '44px', background: '#2563EB', border: 'none', borderRadius: '8px', color: '#FFFFFF', cursor: saving ? 'wait' : 'pointer', padding: '0 24px', fontSize: '13px', fontFamily: 'Inter, sans-serif', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', opacity: saving ? 0.7 : 1 }}
           >
-            <Check size={14} />
+            <Check size={16} />
             {saving ? 'Kaydediliyor…' : 'Kaydet'}
           </button>
         </div>
@@ -474,6 +832,7 @@ export default function TransferRotalariList() {
   const [confirmDelete, setConfirmDelete] = useState<TransferRoute | null>(null);
   const [locationOptions, setLocationOptions] = useState<ManagedLocation[]>([]);
   const [vehicleOptions, setVehicleOptions] = useState<ManagedVehicle[]>([]);
+  const [serviceOptions, setServiceOptions] = useState<{slug: string, title: string}[]>([]);
   const [actionId, setActionId] = useState<string | null>(null);
 
   const fetchRoutes = useCallback(async () => {
@@ -484,6 +843,7 @@ export default function TransferRotalariList() {
       if (!res.ok) throw new Error('API hatası');
       const json = await res.json();
       setRoutes(json.routes ?? []);
+      setServiceOptions(json.serviceOptions ?? json.services ?? []);
     } catch {
       setError('Rotalar yüklenemedi. Lütfen sayfayı yenileyin.');
     } finally {
@@ -596,9 +956,9 @@ export default function TransferRotalariList() {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
         <button
           onClick={() => setModal({ ...EMPTY })}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', minHeight: '44px', padding: '8px 16px', borderRadius: '8px', background: '#2563EB', color: '#FFFFFF', fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif', border: 'none', cursor: 'pointer' }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', minHeight: '44px', padding: '0 20px', borderRadius: '8px', background: '#2563EB', color: '#FFFFFF', fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif', border: 'none', cursor: 'pointer' }}
         >
-          <Plus size={15} />
+          <Plus size={16} />
           Yeni Güzergah Ekle
         </button>
       </div>
@@ -627,7 +987,7 @@ export default function TransferRotalariList() {
               <thead>
                 <tr style={{ borderBottom: `1px solid ${BORDER}`, background: '#F8FAFC' }}>
                   {['Görsel', 'Güzergah', 'Mesafe / Süre', 'Vito (€)', 'Sprinter (€)', 'Sıra', 'Durum', 'İşlem'].map(h => (
-                    <th key={h} style={{ padding: '10px 12px', color: MUTED, fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap', fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{h}</th>
+                    <th key={h} style={{ padding: '12px 16px', color: MUTED, fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap', fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -638,52 +998,52 @@ export default function TransferRotalariList() {
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
                   >
                     {/* Image */}
-                    <td style={{ padding: '10px 12px' }}>
+                    <td style={{ padding: '12px 16px' }}>
                       {r.imagePath ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={r.imagePath} alt={r.name} style={{ width: '60px', height: '40px', objectFit: 'cover', borderRadius: '4px', background: '#EDF2F7' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                        <img src={r.imagePath} alt={r.name} style={{ width: '64px', height: '44px', objectFit: 'cover', borderRadius: '4px', background: '#EDF2F7' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                       ) : (
-                        <div style={{ width: '60px', height: '40px', background: '#EDF2F7', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>🗺️</div>
+                        <div style={{ width: '64px', height: '44px', background: '#EDF2F7', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', color: MUTED, fontWeight: 600 }}>Görsel Yok</div>
                       )}
                     </td>
 
                     {/* Name */}
-                    <td style={{ padding: '10px 12px', maxWidth: '240px' }}>
-                      <div style={{ color: TEXT, fontWeight: 500 }}>{r.name}</div>
-                      <div style={{ color: MUTED, fontSize: '11px', marginTop: '2px' }}>{r.origin} → {r.destination}</div>
+                    <td style={{ padding: '12px 16px', maxWidth: '240px' }}>
+                      <div style={{ color: TEXT, fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>{r.name}</div>
+                      <div style={{ color: MUTED, fontSize: '12px' }}>{r.origin} → {r.destination}</div>
                     </td>
 
                     {/* Distance / Duration */}
-                    <td style={{ padding: '10px 12px', color: MUTED, whiteSpace: 'nowrap' }}>
-                      <div>{r.distanceKm} km</div>
-                      <div style={{ fontSize: '11px' }}>{formatDuration(r.durationMinutes)}</div>
-                      <div style={{ marginTop: '3px', fontSize: '10px', fontWeight: 700, color: r.distanceSource === 'ADMIN_VERIFIED' ? '#047857' : r.distanceSource === 'COORDINATE_ESTIMATE' ? '#1D4ED8' : '#A16207' }}>
+                    <td style={{ padding: '12px 16px', color: MUTED, whiteSpace: 'nowrap' }}>
+                      <div style={{ color: TEXT, fontWeight: 500, marginBottom: '2px' }}>{r.distanceKm} km</div>
+                      <div style={{ fontSize: '12px' }}>{formatDuration(r.durationMinutes)}</div>
+                      <div style={{ marginTop: '4px', fontSize: '11px', fontWeight: 700, color: r.distanceSource === 'ADMIN_VERIFIED' ? '#047857' : r.distanceSource === 'COORDINATE_ESTIMATE' ? '#1D4ED8' : '#A16207' }}>
                         {r.distanceSource === 'ADMIN_VERIFIED' ? 'Doğrulanmış' : r.distanceSource === 'COORDINATE_ESTIMATE' ? 'Güvenlik tahmini' : 'Doğrulanmamış'}
                       </div>
                     </td>
 
                     {/* Vito price */}
-                    <td style={{ padding: '10px 12px', color: TEXT, whiteSpace: 'nowrap', fontWeight: 500 }}>
+                    <td style={{ padding: '12px 16px', color: TEXT, whiteSpace: 'nowrap', fontWeight: 600 }}>
                       {r.priceVitoMinEur}–{r.priceVitoMaxEur}
                     </td>
 
                     {/* Sprinter price */}
-                    <td style={{ padding: '10px 12px', color: TEXT, whiteSpace: 'nowrap', fontWeight: 500 }}>
+                    <td style={{ padding: '12px 16px', color: TEXT, whiteSpace: 'nowrap', fontWeight: 600 }}>
                       {r.priceSprinterMinEur}–{r.priceSprinterMaxEur}
                     </td>
 
                     {/* Display order */}
-                    <td style={{ padding: '10px 12px', color: MUTED }}>{r.displayOrder}</td>
+                    <td style={{ padding: '12px 16px', color: MUTED }}>{r.displayOrder}</td>
 
                     {/* Status */}
-                    <td style={{ padding: '10px 12px' }}>
-                      <span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: '9999px', fontSize: '11px', fontWeight: 600, background: r.active ? '#F0FDF4' : '#FEF2F2', color: r.active ? '#16A34A' : '#D64545', border: `1px solid ${r.active ? '#BBF7D0' : '#FECACA'}` }}>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '9999px', fontSize: '11px', fontWeight: 600, background: r.active ? '#F0FDF4' : '#FEF2F2', color: r.active ? '#16A34A' : '#D64545', border: `1px solid ${r.active ? '#BBF7D0' : '#FECACA'}` }}>
                         {r.active ? 'Aktif' : 'Pasif'}
                       </span>
                     </td>
 
                     {/* Actions */}
-                    <td style={{ padding: '10px 12px' }}>
+                    <td style={{ padding: '12px 16px' }}>
                       <AdminRecordActions
                         up={{ onClick: () => listAction(r, 'up'), disabled: index === 0 || actionId === r.id }}
                         down={{ onClick: () => listAction(r, 'down'), disabled: index === routes.length - 1 || actionId === r.id }}
@@ -706,6 +1066,7 @@ export default function TransferRotalariList() {
           route={modal}
           locationOptions={locationOptions}
           vehicleOptions={vehicleOptions}
+          serviceOptions={serviceOptions}
           onSave={handleSave}
           onClose={() => setModal(null)}
           saving={saving}

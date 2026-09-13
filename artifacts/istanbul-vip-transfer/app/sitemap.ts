@@ -244,6 +244,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const { db } = await import('@/db');
     const { transferRoutes, transferRouteTranslations } = await import('@/db/schema');
     const { and, eq, inArray } = await import('drizzle-orm');
+    const { transferRouteDisplayOrder } = await import('@/lib/inventory-order');
     const routes = await db.select({
       id: transferRoutes.id,
       slug: transferRoutes.slug,
@@ -251,7 +252,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }).from(transferRoutes).where(and(
       eq(transferRoutes.active, true),
       eq(transferRoutes.indexable, true),
-    ));
+    )).orderBy(...transferRouteDisplayOrder());
 
     if (routes.length > 0) {
       const routeIds = routes.map((route) => route.id);

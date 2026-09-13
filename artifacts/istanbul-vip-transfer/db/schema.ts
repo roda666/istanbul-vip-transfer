@@ -1456,6 +1456,7 @@ export const transferRoutes = pgTable('transfer_routes', {
   priceSprinterMinEur:    integer('price_sprinter_min_eur').notNull(),
   priceSprinterMaxEur:    integer('price_sprinter_max_eur').notNull(),
   imagePath:              text('image_path'),
+  imageAltText:           text('image_alt_text'),
   displayOrder:           integer('display_order').default(0).notNull(),
   active:                 boolean('active').default(true).notNull(),
   /** Turkish source copy for the public route-detail page. */

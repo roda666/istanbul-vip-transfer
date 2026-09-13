@@ -15,6 +15,7 @@ import {
   navigationItems,
 } from '@/db/schema';
 import { asc, desc, sql, eq, and, count as drizzleCount } from 'drizzle-orm';
+import { vehicleDisplayOrder } from '@/lib/inventory-order';
 import AdminPageHeader from '../../_components/AdminPageHeader';
 import DilVeCeviriClient from './_DilVeCeviriClient';
 
@@ -145,7 +146,7 @@ export default async function DilVeCeviriPage({
       db.select({ id: faqs.id, title: faqs.question, slug: sql<string>`''::text`.as('faq_slug') })
         .from(faqs).orderBy(asc(faqs.sortOrder)),
       db.select({ id: vehicles.id, title: vehicles.name, slug: vehicles.slug })
-        .from(vehicles).orderBy(asc(vehicles.displayOrder)),
+        .from(vehicles).orderBy(...vehicleDisplayOrder()),
       db.select({ id: navigationItems.id, title: navigationItems.label, slug: navigationItems.href })
         .from(navigationItems).orderBy(asc(navigationItems.sortOrder)),
     ]);

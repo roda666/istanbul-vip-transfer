@@ -1,0 +1,1 @@
+ALTER TABLE "transfer_routes" ADD COLUMN "image_alt_text" text;

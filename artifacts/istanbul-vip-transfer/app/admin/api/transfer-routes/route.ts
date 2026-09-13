@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/auth/session';
 import { db } from '@/db';
 import { locations, transferRoutes, transferRouteTranslations, vehicles } from '@/db/schema';
-import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { revalidateAllHomepages } from '@/lib/homepage-revalidation';
+import { isValidTransferRouteImagePath, normalizeRouteImageAltText } from '@/lib/transfer-route-media';
+import { transferRouteDisplayOrder } from '@/lib/inventory-order';
+import { getPublishedTransferServices, resolvePublishedServiceSlug } from '@/lib/transfer-route-services';
 
 export const dynamic = 'force-dynamic';
 const DISTANCE_SOURCES = new Set(['LEGACY_UNVERIFIED', 'COORDINATE_ESTIMATE', 'ADMIN_VERIFIED']);
@@ -85,11 +88,12 @@ export async function GET() {
 
   try {
     const rows = await db.select().from(transferRoutes)
-      .orderBy(asc(transferRoutes.displayOrder), asc(transferRoutes.id));
+      .orderBy(...transferRouteDisplayOrder());
     const routeIds = rows.map((route) => route.id);
     const translations = routeIds.length
       ? await db.select().from(transferRouteTranslations).where(inArray(transferRouteTranslations.routeId, routeIds))
       : [];
+    const services = await getPublishedTransferServices();
     const translationsByRoute = new Map<string, typeof translations>();
     for (const translation of translations) {
       const current = translationsByRoute.get(translation.routeId) ?? [];
@@ -97,7 +101,13 @@ export async function GET() {
       translationsByRoute.set(translation.routeId, current);
     }
     return NextResponse.json({
-      routes: rows.map((route) => ({ ...route, translations: translationsByRoute.get(route.id) ?? [] })),
+      routes: rows.map((route) => ({
+        ...route,
+        imageAlt: route.imageAltText,
+        translations: translationsByRoute.get(route.id) ?? [],
+      })),
+      services,
+      serviceOptions: services,
     });
   } catch (err) {
     console.error('admin transfer-routes GET error:', err);
@@ -115,7 +125,7 @@ export async function POST(req: NextRequest) {
 
   const { name, origin, destination, distanceKm, durationMinutes,
     priceVitoMinEur, priceVitoMaxEur, priceSprinterMinEur, priceSprinterMaxEur,
-    imagePath, displayOrder, active, description, seoTitle, seoDescription,
+     imagePath, imageAltText, imageAlt, displayOrder, active, description, seoTitle, seoDescription,
      ogTitle, ogDescription, relatedServiceSlug, indexable, introParagraph, transportOptions: rawTransportOptions,
      routeNotes: rawRouteNotes, faqItems: rawFaqItems, normalDurationMinMinutes, normalDurationMaxMinutes,
      peakDurationMinMinutes, peakDurationMaxMinutes, hasCrossContinentPassage,
@@ -123,6 +133,18 @@ export async function POST(req: NextRequest) {
 
   if (!name || !origin || !destination) {
     return NextResponse.json({ error: 'Güzergah adı, kalkış ve varış zorunludur.' }, { status: 400 });
+  }
+  if (imagePath != null && imagePath !== '' && !isValidTransferRouteImagePath(imagePath)) {
+    return NextResponse.json({ error: 'Görsel yolu güvenli bir dahili depolama yolu olmalıdır.' }, { status: 422 });
+  }
+  let relatedServiceSlugValue: string | null;
+  try {
+    const services = await getPublishedTransferServices();
+    const relatedService = resolvePublishedServiceSlug(relatedServiceSlug, new Set(services.map((service) => service.slug)));
+    if (!relatedService.ok) return NextResponse.json({ error: relatedService.error }, { status: 422 });
+    relatedServiceSlugValue = relatedService.slug;
+  } catch {
+    return NextResponse.json({ error: 'Yayınlanmış hizmetler doğrulanamadı.' }, { status: 503 });
   }
   if ((originLocationId == null) !== (destinationLocationId == null)) {
     return NextResponse.json({ error: 'Kalkış ve varış lokasyon kimlikleri birlikte seçilmelidir.' }, { status: 422 });
@@ -192,7 +214,8 @@ export async function POST(req: NextRequest) {
       priceVitoMaxEur: Number(priceVitoMaxEur ?? 0),
       priceSprinterMinEur: Number(priceSprinterMinEur ?? 0),
       priceSprinterMaxEur: Number(priceSprinterMaxEur ?? 0),
-      imagePath: imagePath ? String(imagePath) : null,
+       imagePath: imagePath ? String(imagePath) : null,
+       imageAltText: imagePath ? normalizeRouteImageAltText(imageAltText ?? imageAlt, `${String(origin)} - ${String(destination)} VIP transfer`) : null,
       displayOrder: Number(displayOrder ?? 0),
       active: active !== false,
       description: description ? String(description) : null,
@@ -204,9 +227,85 @@ export async function POST(req: NextRequest) {
       seoDescription: seoDescription ? String(seoDescription) : null,
       ogTitle: ogTitle ? String(ogTitle) : null,
       ogDescription: ogDescription ? String(ogDescription) : null,
-      relatedServiceSlug: relatedServiceSlug ? slugify(String(relatedServiceSlug)) : 'vip-transfer',
+       relatedServiceSlug: relatedServiceSlugValue,
       indexable: indexable !== false,
     }).returning();
+
+    // Keep new-route saves on the same Turkish-source translation workflow as
+    // edits. New locale rows are always DRAFT and no locale is published here.
+    const { fillMissingTranslations, AUTO_TRANSLATION_LOCALES } = await import('@/lib/ai/fill-missing-translations');
+    const existingRows = await db.select().from(transferRouteTranslations)
+      .where(eq(transferRouteTranslations.routeId, row.id));
+    const existingMap = Object.fromEntries(existingRows.map((translation) => [
+      translation.languageCode,
+      translation.isManuallyLocked ? {
+        title: String(name), description: optionalText(description) ?? String(name),
+        seoTitle: optionalText(seoTitle) ?? '', seoDescription: optionalText(seoDescription) ?? '',
+        ogTitle: optionalText(ogTitle) ?? '', ogDescription: optionalText(ogDescription) ?? '',
+        introParagraph: optionalText(introParagraph) ?? '',
+        origin: String(origin), destination: String(destination),
+      } : {
+        title: translation.title,
+        description: translation.description,
+        seoTitle: translation.seoTitle,
+        seoDescription: translation.seoDescription,
+        ogTitle: translation.ogTitle,
+        ogDescription: translation.ogDescription,
+        introParagraph: translation.introParagraph,
+        origin: row.originTranslations?.[translation.languageCode],
+        destination: row.destinationTranslations?.[translation.languageCode],
+      },
+    ]));
+    const completed = await fillMissingTranslations({
+      title: String(name),
+      description: optionalText(description) ?? String(name),
+      seoTitle: optionalText(seoTitle),
+      seoDescription: optionalText(seoDescription),
+      ogTitle: optionalText(ogTitle),
+      ogDescription: optionalText(ogDescription),
+      introParagraph: optionalText(introParagraph),
+      origin: String(origin),
+      destination: String(destination),
+    }, existingMap);
+    const nameTranslations = { ...(row.nameTranslations ?? {}) };
+    const originTranslations = { ...(row.originTranslations ?? {}) };
+    const destinationTranslations = { ...(row.destinationTranslations ?? {}) };
+    for (const locale of AUTO_TRANSLATION_LOCALES) {
+      const current = existingRows.find((translation) => translation.languageCode === locale);
+      if (current?.isManuallyLocked) continue;
+      const fields = completed[locale];
+      if (!fields?.title || !fields.description) continue;
+      if (!nameTranslations[locale]) nameTranslations[locale] = fields.title;
+      if (!originTranslations[locale] && fields.origin) originTranslations[locale] = fields.origin;
+      if (!destinationTranslations[locale] && fields.destination) destinationTranslations[locale] = fields.destination;
+      const values = {
+        title: current?.title || fields.title,
+        description: current?.description || fields.description,
+        seoTitle: current?.seoTitle || fields.seoTitle || null,
+        seoDescription: current?.seoDescription || fields.seoDescription || null,
+        ogTitle: current?.ogTitle || fields.ogTitle || null,
+        ogDescription: current?.ogDescription || fields.ogDescription || null,
+        introParagraph: current?.introParagraph || fields.introParagraph || null,
+        updatedAt: new Date(),
+      };
+      if (current) {
+        await db.update(transferRouteTranslations).set(values).where(eq(transferRouteTranslations.id, current.id));
+      } else {
+        await db.insert(transferRouteTranslations).values({
+          routeId: row.id,
+          languageCode: locale,
+          status: 'DRAFT',
+          isManuallyLocked: false,
+          ...values,
+        });
+      }
+    }
+    await db.update(transferRoutes).set({
+      nameTranslations,
+      originTranslations,
+      destinationTranslations,
+      updatedAt: new Date(),
+    }).where(eq(transferRoutes.id, row.id));
 
     revalidateAllHomepages();
     return NextResponse.json({ route: row }, { status: 201 });

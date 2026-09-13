@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { transferRouteDisplayOrder, vehicleDisplayOrder } from '@/lib/inventory-order';
 
 const common = {
   vehicleId: z.string().uuid(),
@@ -42,12 +43,12 @@ export async function GET(request: NextRequest) {
       pricingClass: vehicles.pricingClass,
       tollClass: vehicles.tollClass,
       status: vehicles.status,
-    }).from(vehicles).orderBy(asc(vehicles.name)),
+    }).from(vehicles).orderBy(...vehicleDisplayOrder()),
     db.select({
       id: transferRoutes.id, name: transferRoutes.name, originLocationId: transferRoutes.originLocationId,
       destinationLocationId: transferRoutes.destinationLocationId, defaultVehicleId: transferRoutes.defaultVehicleId,
       distanceKm: transferRoutes.distanceKm, distanceSource: transferRoutes.distanceSource, active: transferRoutes.active,
-    }).from(transferRoutes).where(eq(transferRoutes.active, true)).orderBy(asc(transferRoutes.name)),
+    }).from(transferRoutes).where(eq(transferRoutes.active, true)).orderBy(...transferRouteDisplayOrder()),
     db.select({
       id: locations.id, name: locations.name, city: locations.city, type: locations.type,
       latitude: locations.latitude, longitude: locations.longitude, istanbulSide: locations.istanbulSide,

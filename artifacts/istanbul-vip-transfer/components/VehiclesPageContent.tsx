@@ -9,6 +9,7 @@ import { localizedStaticPath } from '@/lib/localized-service-path';
 import { serializeJsonLd } from '@/lib/json-ld';
 import ArticleBody from '@/components/ArticleBody';
 import { VEHICLES_INTRO_ARTICLE, VEHICLES_INTRO_FAQS } from '@/lib/vehicles-page-content';
+import { vehicleDisplayOrder } from '@/lib/inventory-order';
 
 const BASE = SITE.siteUrl;
 type IntroFaq = { question: string; answer: string };
@@ -40,12 +41,12 @@ async function getVehicles(locale: string): Promise<DbVehicle[]> {
   try {
     const { db } = await import('@/db');
     const { vehicles } = await import('@/db/schema');
-    const { asc, eq } = await import('drizzle-orm');
+    const { eq } = await import('drizzle-orm');
     const rows = await db
       .select()
       .from(vehicles)
       .where(eq(vehicles.status, 'PUBLISHED'))
-      .orderBy(asc(vehicles.displayOrder), asc(vehicles.name));
+      .orderBy(...vehicleDisplayOrder());
 
     return rows.flatMap((vehicle) => {
       const localized = resolvePublicVehicle(vehicle, locale);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { VEHICLE_TYPE_VALUES } from '@/lib/vehicle-options';
+import { vehicleDisplayOrder } from '@/lib/inventory-order';
 
 const updateSchema = z.object({
   name: z.string().min(1, 'Araç adı gereklidir').max(200).optional(),
@@ -55,11 +56,11 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const { id } = await params;
   const { db } = await import('@/db');
   const { vehicles, auditLogs } = await import('@/db/schema');
-  const { asc, eq } = await import('drizzle-orm');
+  const { eq } = await import('drizzle-orm');
   try {
     const result = await db.transaction(async (tx) => {
       const rows = await tx.select({ id: vehicles.id, displayOrder: vehicles.displayOrder })
-        .from(vehicles).orderBy(asc(vehicles.displayOrder), asc(vehicles.name)).for('update');
+        .from(vehicles).orderBy(...vehicleDisplayOrder()).for('update');
       const index = rows.findIndex((row) => row.id === id);
       if (index < 0) return { error: 'Araç bulunamadı.', status: 404 as const };
       const peerIndex = action === 'up' ? index - 1 : index + 1;

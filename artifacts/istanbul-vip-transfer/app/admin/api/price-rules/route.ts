@@ -4,6 +4,7 @@ import { requireAdminSession } from '@/lib/auth/session';
 import { db } from '@/db';
 import { auditLogs, routePriceRules, transferRoutes, vehicles } from '@/db/schema';
 import { priceRuleInputSchema } from '@/lib/price-rule-input';
+import { transferRouteDisplayOrder, vehicleDisplayOrder } from '@/lib/inventory-order';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,10 +49,10 @@ export async function GET() {
         .orderBy(routePriceRules.updatedAt),
       db.select({ id: transferRoutes.id, name: transferRoutes.name, active: transferRoutes.active })
         .from(transferRoutes)
-        .orderBy(transferRoutes.name),
+        .orderBy(...transferRouteDisplayOrder()),
       db.select({ id: vehicles.id, name: vehicles.name, status: vehicles.status })
         .from(vehicles)
-        .orderBy(vehicles.name),
+        .orderBy(...vehicleDisplayOrder()),
     ]);
     return NextResponse.json({ rules, routes, vehicles: vehicleRows });
   } catch (error) {

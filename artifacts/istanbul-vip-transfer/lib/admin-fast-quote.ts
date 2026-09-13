@@ -47,7 +47,8 @@ export function sortFastQuoteTollAlternatives<T extends FastQuoteTollAlternative
   return [...alternatives].sort((left, right) =>
     Number(right.isDefault) - Number(left.isDefault)
     || left.displayOrder - right.displayOrder
-    || collator.compare(left.name, right.name),
+    || collator.compare(left.name, right.name)
+    || left.id.localeCompare(right.id),
   );
 }
 

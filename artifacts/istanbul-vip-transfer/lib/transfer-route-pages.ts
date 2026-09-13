@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import {
   transferRoutes,
@@ -9,6 +9,7 @@ import {
 } from '@/db/schema';
 import { getPublicLanguages } from '@/lib/i18n/active-locales';
 import { removeCustomerVisibleTollCopy } from '@/lib/customer-visible-copy';
+import { transferRouteDisplayOrder } from '@/lib/inventory-order';
 
 export const ROUTE_PAGE_LOCALES = ['en', 'de', 'ru', 'ar', 'fr', 'es', 'it', 'nl'] as const;
 
@@ -101,7 +102,7 @@ export async function getHomepageTransferRoutes(): Promise<TransferRouteCard[]> 
     .select()
     .from(transferRoutes)
     .where(eq(transferRoutes.active, true))
-    .orderBy(asc(transferRoutes.displayOrder));
+    .orderBy(...transferRouteDisplayOrder());
 
   if (routes.length === 0) return [];
 
@@ -164,7 +165,7 @@ export async function getPublicTransferRoute(
       })
       .from(transferRoutes)
       .where(and(eq(transferRoutes.active, true), sql`${transferRoutes.id} <> ${route.id}`))
-      .orderBy(asc(transferRoutes.displayOrder))
+      .orderBy(...transferRouteDisplayOrder())
       .limit(3),
   ]);
   if (locale === 'tr') {

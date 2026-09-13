@@ -314,8 +314,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
 /** DELETE /admin/api/vehicles/[id]
  *  Permanent delete is only allowed for never-published drafts (publishedAt IS NULL
- *  and status is DRAFT/RESEARCH/REVIEW). All other records must be archived via
- *  the POST action endpoint instead.
+ *  and status is DRAFT/RESEARCH/REVIEW) or never-published archived records.
  */
 export async function DELETE(_req: NextRequest, { params }: Params) {
   let session;
@@ -363,13 +362,13 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     );
   }
 
-  // Also block if status is not a pre-approval state
-  const deletableStatuses = ['DRAFT', 'RESEARCH', 'REVIEW'];
+  // Archived records remain deletable only when they were never published.
+  const deletableStatuses = ['DRAFT', 'RESEARCH', 'REVIEW', 'ARCHIVED'];
   if (!deletableStatuses.includes(current.status)) {
     return NextResponse.json(
       {
         error:
-          'Yalnızca taslak veya incelemede olan araçlar kalıcı olarak silinebilir. Diğerleri için arşivleme kullanın.',
+          'Yalnızca hiç yayınlanmamış taslak, inceleme veya arşiv kayıtları kalıcı olarak silinebilir.',
       },
       { status: 422 },
     );

@@ -649,7 +649,7 @@ export default function ReservasyonAyarlariClient() {
           .sort((a, b) => a.displayOrder - b.displayOrder || a.id.localeCompare(b.id));
       });
     } catch (error) { alert(error instanceof Error ? error.message : 'İşlem başarısız.'); }
-    finally { setActionLoading(null); }
+    finally { setActionLoading(null); setConfirm(null); }
   }
 
   async function saveSettings() {

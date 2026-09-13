@@ -524,11 +524,13 @@ export default function AraclarList() {
                             }}
                             delete={{
                               onClick: () => confirmDelete(v),
-                              disabled: v.isActive || v.publishedAt !== null || !['DRAFT', 'RESEARCH', 'REVIEW'].includes(v.status),
+                              disabled: v.isActive || v.publishedAt !== null || !['DRAFT', 'RESEARCH', 'REVIEW', 'ARCHIVED'].includes(v.status),
                               disabledReason: v.isActive
                                 ? "Aktif araçlar kalıcı silinemez. Lütfen önce pasifleştirin."
-                                : (v.publishedAt !== null || !['DRAFT', 'RESEARCH', 'REVIEW'].includes(v.status))
+                                : v.publishedAt !== null
                                   ? "Yayınlanmış araçlar kalıcı silinemez. Lütfen arşivleyin."
+                                  : !['DRAFT', 'RESEARCH', 'REVIEW', 'ARCHIVED'].includes(v.status)
+                                    ? "Yalnızca hiç yayınlanmamış taslak, inceleme veya arşiv kayıtları kalıcı silinebilir."
                                   : undefined,
                             }}
                           />

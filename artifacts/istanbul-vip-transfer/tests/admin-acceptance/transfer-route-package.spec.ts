@@ -554,7 +554,7 @@ test.describe('@route-package transfer-route admin acceptance', () => {
         .getByRole('button', { name: 'Düzenle' });
       await expect(editButton).toBeVisible();
       await editButton.click();
-      const editHeading = adminPage.getByRole('heading', { name: 'Güzergâhı Düzenle' });
+      const editHeading = adminPage.getByRole('heading', { name: 'Güzergahı Düzenle' });
       await expect(editHeading).toBeVisible();
       const tabletModal = adminPage.locator('div[style*="position: fixed"]').filter({ has: editHeading }).last();
       const tabletModalBox = await tabletModal.boundingBox();

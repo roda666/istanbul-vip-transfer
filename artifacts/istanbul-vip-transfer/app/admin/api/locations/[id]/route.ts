@@ -129,6 +129,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 
   if (data.action) {
+    const action = data.action;
     const result = await db.transaction(async (tx) => {
       const { asc } = await import('drizzle-orm');
       const rows = await tx.select({
@@ -136,11 +137,18 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       }).from(locations).where(isNull(locations.archivedAt)).orderBy(asc(locations.displayOrder), asc(locations.id)).for('update');
       const index = rows.findIndex((row) => row.id === id);
       if (index < 0) return { error: 'Bulunamadı.', status: 404 as const };
-      if (data.action === 'toggle-active') {
+      if (action === 'toggle-active') {
         const [item] = await tx.update(locations).set({ isActive: !rows[index].isActive, updatedAt: new Date(), updatedBy: session.adminId }).where(eq(locations.id, id)).returning();
+        await tx.insert(auditLogs).values({
+          adminUserId: session.adminId,
+          action: item.isActive ? 'ACTIVATE' : 'DEACTIVATE',
+          entityType: 'Location',
+          entityId: id,
+          metadata: { previousIsActive: rows[index].isActive, isActive: item.isActive },
+        }).catch(() => {});
         return { item };
       }
-      const peerIndex = data.action === 'up' ? index - 1 : index + 1;
+      const peerIndex = action === 'up' ? index - 1 : index + 1;
       if (peerIndex < 0 || peerIndex >= rows.length) return { error: 'Daha fazla hareket ettirilemiyor.', status: 400 as const };
       const reordered = [...rows];
       const [moved] = reordered.splice(index, 1);
@@ -150,6 +158,13 @@ export async function PATCH(request: NextRequest, { params }: Params) {
           displayOrder: position, updatedAt: new Date(), updatedBy: session.adminId,
         }).where(eq(locations.id, item.id));
       }
+      await tx.insert(auditLogs).values({
+        adminUserId: session.adminId,
+        action: action.toUpperCase(),
+        entityType: 'Location',
+        entityId: id,
+        metadata: { direction: action, from: index, to: peerIndex },
+      }).catch(() => {});
       return {
         items: reordered.map((item, position) => ({ ...item, displayOrder: position })),
         item: { ...moved, displayOrder: reordered.indexOf(moved) },

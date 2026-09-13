@@ -57,9 +57,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const parsed = actionSchema.safeParse(body);
   if (!parsed.success || !['up', 'down'].includes(parsed.data.action))
     return NextResponse.json({ error: 'Geçersiz sıralama işlemi.' }, { status: 422 });
+  const action = parsed.data.action as 'up' | 'down';
   const { id } = await params;
   const { db } = await import('@/db');
-  const { vehicles } = await import('@/db/schema');
+  const { vehicles, auditLogs } = await import('@/db/schema');
   const { asc, eq } = await import('drizzle-orm');
   try {
     const result = await db.transaction(async (tx) => {
@@ -67,12 +68,24 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         .from(vehicles).orderBy(asc(vehicles.displayOrder), asc(vehicles.name)).for('update');
       const index = rows.findIndex((row) => row.id === id);
       if (index < 0) return { error: 'Araç bulunamadı.', status: 404 as const };
-      const peerIndex = parsed.data.action === 'up' ? index - 1 : index + 1;
+      const peerIndex = action === 'up' ? index - 1 : index + 1;
       if (peerIndex < 0 || peerIndex >= rows.length)
         return { error: 'Daha fazla hareket ettirilemiyor.', status: 400 as const };
       const current = rows[index]; const peer = rows[peerIndex];
       await tx.update(vehicles).set({ displayOrder: peer.displayOrder, updatedAt: new Date(), updatedBy: session.adminId }).where(eq(vehicles.id, id));
       await tx.update(vehicles).set({ displayOrder: current.displayOrder, updatedAt: new Date(), updatedBy: session.adminId }).where(eq(vehicles.id, peer.id));
+      await tx.insert(auditLogs).values({
+        adminUserId: session.adminId,
+        action: action.toUpperCase(),
+        entityType: 'Vehicle',
+        entityId: id,
+        metadata: {
+          direction: action,
+          from: current.displayOrder,
+          to: peer.displayOrder,
+          peerId: peer.id,
+        },
+      }).catch(() => {});
       return { item: { ...current, displayOrder: peer.displayOrder }, peer: { ...peer, displayOrder: current.displayOrder } };
     });
     if ('error' in result) return NextResponse.json({ error: result.error }, { status: result.status });
@@ -318,13 +331,26 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   const { count, eq } = await import('drizzle-orm');
 
   const [current] = await db
-    .select({ id: vehicles.id, name: vehicles.name, status: vehicles.status, publishedAt: vehicles.publishedAt })
+    .select({
+      id: vehicles.id,
+      name: vehicles.name,
+      status: vehicles.status,
+      publishedAt: vehicles.publishedAt,
+      isActive: vehicles.isActive,
+    })
     .from(vehicles)
     .where(eq(vehicles.id, id))
     .limit(1)
     .catch(() => []);
 
   if (!current) return NextResponse.json({ error: 'Bulunamadı.' }, { status: 404 });
+
+  if (current.isActive) {
+    return NextResponse.json(
+      { error: 'Aktif araçlar kalıcı olarak silinemez. Lütfen önce aracı pasifleştirin.' },
+      { status: 422 },
+    );
+  }
 
   // Block permanent deletion if the vehicle was ever published
   if (current.publishedAt !== null) {

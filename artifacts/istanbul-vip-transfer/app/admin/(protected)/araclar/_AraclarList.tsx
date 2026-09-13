@@ -498,15 +498,20 @@ export default function AraclarList() {
                           <AdminRecordActions
                             up={{
                               onClick: () => reorder(v, 'up'),
+                              hidden: v.status === 'ARCHIVED',
                               disabled: orderingId === v.id || vehicles.indexOf(v) === 0,
                               disabledReason: vehicles.indexOf(v) === 0 ? "Listenin en üstünde" : undefined
                             }}
                             down={{
                               onClick: () => reorder(v, 'down'),
+                              hidden: v.status === 'ARCHIVED',
                               disabled: orderingId === v.id || vehicles.indexOf(v) === vehicles.length - 1,
                               disabledReason: vehicles.indexOf(v) === vehicles.length - 1 ? "Listenin en altında" : undefined
                             }}
-                            edit={{ href: `/admin/araclar/${v.id}/duzenle` }}
+                            edit={{
+                              href: `/admin/araclar/${v.id}/duzenle`,
+                              hidden: v.status === 'ARCHIVED',
+                            }}
                             activation={{
                               hidden: v.status === 'ARCHIVED',
                               isActive: v.isActive,
@@ -519,10 +524,12 @@ export default function AraclarList() {
                             }}
                             delete={{
                               onClick: () => confirmDelete(v),
-                              hidden: v.publishedAt !== null || !['DRAFT', 'RESEARCH', 'REVIEW'].includes(v.status),
+                              hidden: v.isActive || v.publishedAt !== null || !['DRAFT', 'RESEARCH', 'REVIEW'].includes(v.status),
                             }}
                             deleteOmittedReason={
-                              (v.publishedAt !== null || !['DRAFT', 'RESEARCH', 'REVIEW'].includes(v.status))
+                              v.isActive
+                                ? "Aktif araçlar kalıcı silinemez. Lütfen önce pasifleştirin."
+                                : (v.publishedAt !== null || !['DRAFT', 'RESEARCH', 'REVIEW'].includes(v.status))
                                 ? "Yayınlanmış araçlar kalıcı silinemez. Lütfen arşivleyin."
                                 : undefined
                             }

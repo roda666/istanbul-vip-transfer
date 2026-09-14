@@ -16,6 +16,23 @@ describe('public performance contracts', () => {
     const route = source('components/TransferRouteDetail.tsx');
     expect(route).toContain('priority fetchPriority="high"');
     expect(route).toContain('sizes="(max-width: 900px) 100vw, 38vw"');
+    expect(route).toContain('unoptimized={isProxiedStorageImage(route.imagePath)}');
+  });
+
+  it('serves proxied storage route images without the Next image optimizer', () => {
+    const cards = source('components/PopularRoutesSection.tsx');
+    expect(cards).toContain("src.startsWith('/api/storage/objects/')");
+    expect(cards).toContain('unoptimized={isProxiedStorageImage(route.imagePath)}');
+  });
+
+  it('keeps vehicle names and descriptions fully readable', () => {
+    const fleet = source('components/VehicleFleet.tsx');
+    const nameBlock = fleet.slice(fleet.indexOf('<h3'), fleet.indexOf('</h3>'));
+    const descriptionBlock = fleet.slice(fleet.indexOf('<p', fleet.indexOf('</h3>')), fleet.indexOf('</p>', fleet.indexOf('</h3>')));
+    expect(nameBlock).not.toContain('line-clamp');
+    expect(nameBlock).not.toContain('overflow-hidden');
+    expect(descriptionBlock).not.toContain('line-clamp');
+    expect(descriptionBlock).not.toContain('overflow-hidden');
   });
 
   it('keeps below-fold homepage sections server-rendered', () => {

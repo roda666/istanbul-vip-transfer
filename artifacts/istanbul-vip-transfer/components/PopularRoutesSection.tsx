@@ -25,6 +25,10 @@ function formatDuration(minutes: number, min: string, h: string) {
   return m > 0 ? `${hours} ${h} ${m} ${min}` : `${hours} ${h}`;
 }
 
+function isProxiedStorageImage(src: string): boolean {
+  return src.startsWith('/api/storage/objects/');
+}
+
 /** Never display a Turkish source route name on a non-Turkish public page. */
 function localize(base: string, translations: Record<string, string> | null | undefined, lang: string): string | null {
   if (lang === 'tr') return base;
@@ -88,6 +92,7 @@ function RouteCard({ route, lang, t }: {
               src={route.imagePath}
               alt={name}
               fill
+              unoptimized={isProxiedStorageImage(route.imagePath)}
               sizes="(max-width:600px) 100vw, (max-width:900px) 50vw, 340px"
               style={{ objectFit: 'cover' }}
             />

@@ -33,6 +33,10 @@ function durationRange(minimum: number | null, maximum: number | null, t: { min:
     : `${formatDuration(minimum, t.min, t.hours)} – ${formatDuration(maximum, t.min, t.hours)}`;
 }
 
+function isProxiedStorageImage(src: string): boolean {
+  return src.startsWith('/api/storage/objects/');
+}
+
 export default function TransferRouteDetail({ route, locale }: { route: PublicTransferRoute; locale: string }) {
   const t = copy[locale as keyof typeof copy] ?? copy.en;
   const canonicalPath = localizedTransferRoutePath(route.slug, locale);
@@ -76,16 +80,16 @@ export default function TransferRouteDetail({ route, locale }: { route: PublicTr
 
   return (
     <main dir={dir} style={{ background: '#F7F8FC', color: '#172B3A' }}>
-      <style>{`.route-scroll{overflow-x:auto}.route-table{min-width:640px;width:100%;border-collapse:collapse}.route-table th,.route-table td{padding:14px 16px;border-bottom:1px solid #E2E8F0;text-align:start;vertical-align:top}.route-table th{background:#F8FAFC;color:#52697A;font-size:12px;text-transform:uppercase;letter-spacing:.06em}.route-table td{font-size:14px;line-height:1.55}.route-card{background:#fff;border:1px solid #E2E8F0;border-radius:16px;padding:clamp(20px,4vw,38px)}@media(max-width:640px){.route-table{min-width:580px}.route-card{border-radius:12px}}`}</style>
+      <style>{`.route-scroll{overflow-x:auto}.route-table{min-width:640px;width:100%;border-collapse:collapse}.route-table th,.route-table td{padding:14px 16px;border-bottom:1px solid #E2E8F0;text-align:start;vertical-align:top}.route-table th{background:#F8FAFC;color:#52697A;font-size:12px;text-transform:uppercase;letter-spacing:.06em}.route-table td{font-size:14px;line-height:1.55}.route-card{background:#fff;border:1px solid #E2E8F0;border-radius:16px;padding:clamp(20px,4vw,38px)}.route-hero-grid{max-width:1120px;margin:0 auto;display:grid;grid-template-columns:1fr;gap:34px;align-items:center}.route-hero-grid.has-image{grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr)}@media(max-width:900px){.route-hero-grid.has-image{grid-template-columns:minmax(0,1fr)}}@media(max-width:640px){.route-table{min-width:580px}.route-card{border-radius:12px}}`}</style>
       <section style={{ background: 'linear-gradient(135deg, #0C1B2A 0%, #17354B 100%)', color: '#FFF', padding: 'clamp(52px, 8vw, 88px) 24px' }}>
-        <div style={{ maxWidth: '1120px', margin: '0 auto', display: 'grid', gridTemplateColumns: route.imagePath ? 'minmax(0,1.15fr) minmax(280px,.85fr)' : '1fr', gap: '34px', alignItems: 'center' }}>
+        <div className={`route-hero-grid${route.imagePath ? ' has-image' : ''}`}>
           <div>
             <p style={{ color: '#E8B84B', margin: '0 0 14px', fontSize: '12px', fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' }}>{t.route}</p>
             <h1 style={{ maxWidth: '760px', margin: 0, fontSize: 'clamp(32px, 5vw, 54px)', fontFamily: 'Georgia, serif', lineHeight: 1.12 }}>{route.content.title}</h1>
             <p style={{ maxWidth: '760px', color: 'rgba(255,255,255,.86)', margin: '20px 0 0', lineHeight: 1.75, fontSize: '17px' }}>{intro}</p>
             <a href="#rezervasyon" style={{ display: 'inline-block', marginTop: '28px', borderRadius: '8px', padding: '13px 20px', background: '#C99A32', color: '#0C1B2A', textDecoration: 'none', fontWeight: 700 }}>{t.reserve}</a>
           </div>
-          {route.imagePath && <Image src={route.imagePath} alt={route.content.title} width={720} height={460} priority fetchPriority="high" quality={60} sizes="(max-width: 900px) 100vw, 38vw" style={{ width: '100%', height: 'auto', borderRadius: '16px', objectFit: 'cover', border: '1px solid rgba(232,184,75,.48)' }} />}
+          {route.imagePath && <Image src={route.imagePath} alt={route.content.title} width={720} height={460} priority fetchPriority="high" quality={60} unoptimized={isProxiedStorageImage(route.imagePath)} sizes="(max-width: 900px) 100vw, 38vw" style={{ width: '100%', height: 'auto', borderRadius: '16px', objectFit: 'cover', border: '1px solid rgba(232,184,75,.48)' }} />}
         </div>
       </section>
 

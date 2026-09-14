@@ -194,7 +194,7 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
       </div>
 
       {/* Content */}
-      <div className="flex flex-1 flex-col p-6">
+      <div className="flex flex-1 flex-col p-5 sm:p-6">
         <span
           className="mb-1 block h-[18px] overflow-hidden text-xs font-semibold uppercase tracking-[0.2em] line-clamp-1"
           style={{ color: '#8A651C', fontFamily: 'Inter, sans-serif' }}
@@ -202,13 +202,13 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
           {isolateLtrValues(vehicle.tagline, lang)}
         </span>
         <h3
-          className="mb-2 h-[30px] overflow-hidden text-xl font-bold line-clamp-1"
+          className="mb-2 min-h-[30px] break-words text-[clamp(1.05rem,1.5vw,1.25rem)] font-bold leading-snug"
           style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}
         >
           {isolateLtrValues(vehicle.name, lang)}
         </h3>
         <p
-          className="mb-4 h-[60px] overflow-hidden line-clamp-3 text-sm leading-relaxed"
+          className="mb-4 min-h-[60px] break-words text-[13px] leading-relaxed sm:text-sm"
           style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
         >
           {isolateLtrValues(vehicle.description, lang)}

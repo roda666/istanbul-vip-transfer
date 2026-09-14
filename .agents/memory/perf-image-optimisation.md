@@ -17,6 +17,13 @@ Only two patterns needed:
 
 Blog hero images use plain `<img loading="lazy" decoding="async">` with explicit width/height — admin enters arbitrary external URLs so domain enumeration is impossible.
 
+## Artifact-routed storage images
+Keep global Next Image optimisation enabled, but opt individual images out when their source is the artifact-routed `/api/storage/objects/` path.
+
+**Why:** The public proxy sends that path to the separate API artifact, so a browser GET succeeds. Next Image's server-side fetch stays inside the web artifact, receives the web app's redirect/null response instead of image bytes, and returns “The requested resource isn't a valid image.”
+
+**How to apply:** For a trusted existing `/api/storage/objects/` source, pass `unoptimized` on that `<Image>` so the browser requests the real path directly. Continue optimising bundled public assets and directly reachable remote URLs normally; do not restore global `images.unoptimized`.
+
 ## web-vitals pipeline
 - `web-vitals` (v6) installed as dependency
 - `components/WebVitalsReporter.tsx` — client component, dynamic import, sendBeacon to `/api/vitals`

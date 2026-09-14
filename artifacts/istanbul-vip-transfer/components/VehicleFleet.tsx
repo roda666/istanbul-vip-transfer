@@ -196,27 +196,31 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
       {/* Content */}
       <div className="flex flex-1 flex-col p-5 sm:p-6">
         <span
-          className="mb-1 block h-[18px] overflow-hidden text-xs font-semibold uppercase tracking-[0.2em] line-clamp-1"
+          className="mb-2 block min-h-[36px] break-words text-[11px] font-semibold uppercase leading-[1.45] tracking-[0.16em] sm:text-xs sm:tracking-[0.18em]"
           style={{ color: '#8A651C', fontFamily: 'Inter, sans-serif' }}
+          data-testid={`vehicle-tagline-${i}`}
         >
           {isolateLtrValues(vehicle.tagline, lang)}
         </span>
         <h3
-          className="mb-2 min-h-[30px] break-words text-[clamp(1.05rem,1.5vw,1.25rem)] font-bold leading-snug"
+          className="mb-2 min-h-[58px] break-words text-[clamp(1rem,1.45vw,1.2rem)] font-bold leading-[1.35]"
           style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}
+          data-testid={`vehicle-name-${i}`}
         >
           {isolateLtrValues(vehicle.name, lang)}
         </h3>
         <p
-          className="mb-4 min-h-[60px] break-words text-[13px] leading-relaxed sm:text-sm"
+          className="mb-4 min-h-[126px] break-words text-[12px] leading-[1.65] sm:text-[13px] lg:text-sm"
           style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
+          data-testid={`vehicle-description-${i}`}
         >
           {isolateLtrValues(vehicle.description, lang)}
         </p>
 
         {/* Capacity */}
         <div
-          className="mb-4 flex h-[39px] shrink-0 items-start gap-5 border-b border-[#D9E2EC] pb-4"
+          className="mb-4 flex min-h-[44px] shrink-0 flex-wrap items-start gap-x-5 gap-y-2 border-b border-[#D9E2EC] pb-4"
+          data-testid={`vehicle-capacity-${i}`}
         >
           <div className="flex items-center gap-1.5">
             <Users size={14} style={{ color: '#8A651C' }} aria-hidden="true" />
@@ -233,11 +237,14 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
         </div>
 
         {/* Features */}
-        <div className="mb-5 flex h-[58px] shrink-0 flex-wrap content-start gap-1.5 overflow-hidden">
+        <div
+          className="mb-5 flex min-h-[112px] shrink-0 flex-wrap content-start items-start gap-1.5"
+          data-testid={`vehicle-features-${i}`}
+        >
           {vehicle.features.map((feature) => (
             <div
               key={feature.label}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg"
+              className="flex min-w-0 items-center gap-1 rounded-lg px-2.5 py-1"
               style={{
                 background: 'rgba(199,154,53,0.08)',
                 border: '1px solid rgba(199,154,53,0.2)',

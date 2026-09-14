@@ -25,14 +25,27 @@ describe('public performance contracts', () => {
     expect(cards).toContain('unoptimized={isProxiedStorageImage(route.imagePath)}');
   });
 
-  it('keeps vehicle names and descriptions fully readable', () => {
+  it('keeps vehicle card copy readable and reserves aligned content rows', () => {
     const fleet = source('components/VehicleFleet.tsx');
+    const taglineBlock = fleet.slice(fleet.indexOf('<span', fleet.indexOf('{/* Content */}')), fleet.indexOf('</span>', fleet.indexOf('{/* Content */}')));
     const nameBlock = fleet.slice(fleet.indexOf('<h3'), fleet.indexOf('</h3>'));
     const descriptionBlock = fleet.slice(fleet.indexOf('<p', fleet.indexOf('</h3>')), fleet.indexOf('</p>', fleet.indexOf('</h3>')));
+    const featuresBlock = fleet.slice(fleet.indexOf('{/* Features */}'), fleet.indexOf('{/* CTA */}'));
+    expect(taglineBlock).not.toContain('line-clamp');
+    expect(taglineBlock).not.toContain('overflow-hidden');
     expect(nameBlock).not.toContain('line-clamp');
     expect(nameBlock).not.toContain('overflow-hidden');
     expect(descriptionBlock).not.toContain('line-clamp');
     expect(descriptionBlock).not.toContain('overflow-hidden');
+    expect(featuresBlock).not.toContain('overflow-hidden');
+    expect(fleet).toContain('data-testid={`vehicle-tagline-${i}`}');
+    expect(fleet).toContain('data-testid={`vehicle-name-${i}`}');
+    expect(fleet).toContain('data-testid={`vehicle-description-${i}`}');
+    expect(fleet).toContain('data-testid={`vehicle-capacity-${i}`}');
+    expect(fleet).toContain('data-testid={`vehicle-features-${i}`}');
+    expect(fleet).toContain('min-h-[126px]');
+    expect(fleet).toContain('min-h-[112px]');
+    expect(fleet).toContain("marginTop: 'auto'");
   });
 
   it('keeps below-fold homepage sections server-rendered', () => {

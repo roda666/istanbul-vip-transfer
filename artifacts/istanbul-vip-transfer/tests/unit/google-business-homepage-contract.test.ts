@@ -41,6 +41,24 @@ describe('public Google Business review contracts', () => {
 });
 
 describe('hourly sync lease and API contracts', () => {
+  it('surfaces safe Google option errors and locks activation until a location is selected', () => {
+    const panel = read('app/admin/(protected)/ayarlar/icerik-entegrasyonlari/SocialPlatformsPanel.tsx');
+    const integration = read('lib/google-business.ts');
+
+    expect(panel).toContain('setGoogleOptionsError(optionsPayload.error');
+    expect(panel).toContain('googleSelectionMissing');
+    expect(panel).toContain('Aktifleştirmek için önce aşağıdan Google hesabı ve işletme konumu seçin.');
+    expect(panel).toContain('role="alert"');
+    expect(panel).toContain("role={googleFeedback.type === 'error' ? 'alert' : 'status'}");
+    expect(panel).toContain('payload.platform?.enabled');
+    expect(panel).toContain('Google Business Profile kanalı aktifleştirildi.');
+    expect(integration).toContain("reasons.includes('SERVICE_DISABLED')");
+    expect(integration).toContain("reasons.includes('RATE_LIMIT_EXCEEDED')");
+    expect(integration).toContain("detail.metadata?.quota_limit_value === '0'");
+    expect(integration).toContain('proje istek kotası 0');
+    expect(integration).toContain('Google Business Profile dakika kotası doldu.');
+  });
+
   it('uses the one-hour interval, local guard, and expiring shared health lease', () => {
     const scheduler = read('lib/google-business-review-scheduler.ts');
     expect(scheduler).toContain('60 * 60 * 1_000');

@@ -43,7 +43,40 @@ export type GoogleBusinessReviewSyncResult = {
 };
 
 function safeGoogleMessage(status?: number) {
+  if (status === 401) return 'Google Business Profile oturumu geçersiz. Lütfen yeniden bağlanın.';
+  if (status === 403) return 'Google Business Profile API erişimi reddedildi. Google Cloud API erişimini ve işletme hesabı yetkinizi kontrol edin.';
+  if (status === 429) return 'Google Business Profile dakika kotası doldu. Bir dakika bekleyip durumları yenileyin.';
   return status ? `Google Business Profile isteği başarısız oldu (HTTP ${status}).` : 'Google Business Profile isteği başarısız oldu.';
+}
+
+async function safeGoogleResponseMessage(response: Response) {
+  const payload = await response.clone().json().catch(() => null) as {
+    error?: {
+      details?: Array<{
+        reason?: string;
+        metadata?: {
+          service?: string;
+          quota_limit_value?: string;
+        };
+      }>;
+    };
+  } | null;
+  const details = payload?.error?.details ?? [];
+  const reasons = details.map((detail) => detail.reason).filter(Boolean);
+  const serviceDisabled = reasons.includes('SERVICE_DISABLED');
+  const rateLimited = reasons.includes('RATE_LIMIT_EXCEEDED');
+  const quotaIsZero = details.some((detail) => detail.metadata?.quota_limit_value === '0');
+
+  if (serviceDisabled) {
+    return 'My Business Account Management API Google Cloud projesinde devre dışı. API’yi etkinleştirip birkaç dakika sonra tekrar deneyin.';
+  }
+  if (rateLimited && quotaIsZero) {
+    return 'My Business Account Management API etkin, ancak proje istek kotası 0. Google Cloud’da bu API için kota erişimi/onayı alınmadan hesap ve konumlar yüklenemez.';
+  }
+  if (rateLimited) {
+    return 'Google Business Profile dakika kotası doldu. Bir dakika bekleyip durumları yenileyin.';
+  }
+  return safeGoogleMessage(response.status);
 }
 
 function metaOf(platform: GoogleBusinessPlatform): GoogleBusinessMeta {
@@ -144,7 +177,7 @@ export async function getGoogleBusinessLocationOptions(): Promise<GoogleBusiness
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
     signal: AbortSignal.timeout(15_000),
   });
-  if (!accountsResponse.ok) throw new Error(safeGoogleMessage(accountsResponse.status));
+  if (!accountsResponse.ok) throw new Error(await safeGoogleResponseMessage(accountsResponse));
   const accountsPayload = await accountsResponse.json() as {
     accounts?: Array<{ name?: string; accountName?: string }>;
   };

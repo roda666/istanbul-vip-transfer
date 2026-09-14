@@ -54,10 +54,17 @@ export default function SocialPlatformsPanel() {
   const [profileLinks, setProfileLinks] = useState({ tiktokUrl: '', youtubeUrl: '' });
   const [approvalGateEnabled, setApprovalGateEnabled] = useState(true);
   const [googleLocations, setGoogleLocations] = useState<GoogleBusinessLocation[]>([]);
+  const [googleOptionsError, setGoogleOptionsError] = useState<string | null>(null);
+  const [googleOptionsLoading, setGoogleOptionsLoading] = useState(false);
+  const [googleFeedback, setGoogleFeedback] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
   const popupPollRef = useRef<number | null>(null);
+  const loadInProgressRef = useRef(false);
+  const initialLoadCompleteRef = useRef(false);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    if (loadInProgressRef.current) return;
+    loadInProgressRef.current = true;
+    if (!initialLoadCompleteRef.current) setLoading(true);
     setError(null);
     try {
       const [response, latestBlogResponse, settingsResponse] = await Promise.all([
@@ -70,11 +77,21 @@ export default function SocialPlatformsPanel() {
       setPlatforms(payload.platforms);
       const googleBusiness = payload.platforms.find((platform) => platform.key === 'google_business');
       if (googleBusiness?.connected) {
+        setGoogleOptionsLoading(true);
+        setGoogleOptionsError(null);
         const optionsResponse = await fetch('/admin/api/social-platforms/google-business/options', { cache: 'no-store' });
-        const optionsPayload = await optionsResponse.json() as { locations?: GoogleBusinessLocation[] };
-        setGoogleLocations(optionsResponse.ok ? optionsPayload.locations ?? [] : []);
+        const optionsPayload = await optionsResponse.json() as { locations?: GoogleBusinessLocation[]; error?: string };
+        if (optionsResponse.ok) {
+          setGoogleLocations(optionsPayload.locations ?? []);
+        } else {
+          setGoogleLocations([]);
+          setGoogleOptionsError(optionsPayload.error ?? 'Google hesap ve işletme konumları alınamadı.');
+        }
+        setGoogleOptionsLoading(false);
       } else {
         setGoogleLocations([]);
+        setGoogleOptionsError(null);
+        setGoogleOptionsLoading(false);
       }
 
       if (latestBlogResponse.ok) {
@@ -97,6 +114,9 @@ export default function SocialPlatformsPanel() {
       setError(caught instanceof Error ? caught.message : 'Platformlar yüklenemedi.');
     } finally {
       setLoading(false);
+      setGoogleOptionsLoading(false);
+      loadInProgressRef.current = false;
+      initialLoadCompleteRef.current = true;
     }
   }, []);
 
@@ -180,17 +200,27 @@ export default function SocialPlatformsPanel() {
   async function toggle(platform: Platform) {
     setBusyKey(platform.key);
     setError(null);
+    if (platform.key === 'google_business') setGoogleFeedback(null);
     try {
       const response = await fetch(`/admin/api/social-platforms/${platform.key}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled: !platform.enabled }),
       });
-      const payload = await response.json() as { error?: string };
+      const payload = await response.json() as { error?: string; platform?: { enabled?: boolean } };
       if (!response.ok) throw new Error(payload.error ?? 'Durum güncellenemedi.');
-      setPlatforms((items) => items.map((item) => item.key === platform.key ? { ...item, enabled: !platform.enabled } : item));
+      const enabled = payload.platform?.enabled ?? !platform.enabled;
+      setPlatforms((items) => items.map((item) => item.key === platform.key ? { ...item, enabled } : item));
+      if (platform.key === 'google_business') {
+        setGoogleFeedback({
+          type: 'success',
+          text: enabled ? 'Google Business Profile kanalı aktifleştirildi.' : 'Google Business Profile kanalı pasife alındı.',
+        });
+      }
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Durum güncellenemedi.');
+      const text = caught instanceof Error ? caught.message : 'Durum güncellenemedi.';
+      if (platform.key === 'google_business') setGoogleFeedback({ type: 'error', text });
+      else setError(text);
     } finally {
       setBusyKey(null);
     }
@@ -273,6 +303,7 @@ export default function SocialPlatformsPanel() {
     }
     setBusyKey('google-business-location');
     setError(null);
+    setGoogleFeedback(null);
     try {
       const response = await fetch('/admin/api/social-platforms/google-business/options', {
         method: 'PUT',
@@ -281,10 +312,13 @@ export default function SocialPlatformsPanel() {
       });
       const payload = await response.json() as { error?: string };
       if (!response.ok) throw new Error(payload.error ?? 'Google işletme konumu seçilemedi.');
-      setMessage('Google Business Profile konumu seçildi. Kanali aktifleştirip yorumları senkronlayabilirsiniz.');
+      setGoogleFeedback({ type: 'success', text: 'Google Business Profile konumu seçildi. Kanalı aktifleştirip yorumları senkronlayabilirsiniz.' });
       await load();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Google işletme konumu seçilemedi.');
+      setGoogleFeedback({
+        type: 'error',
+        text: caught instanceof Error ? caught.message : 'Google işletme konumu seçilemedi.',
+      });
     } finally {
       setBusyKey(null);
     }
@@ -294,14 +328,18 @@ export default function SocialPlatformsPanel() {
     setBusyKey('google-business-sync');
     setError(null);
     setMessage(null);
+    setGoogleFeedback(null);
     try {
       const response = await fetch('/admin/api/social-platforms/google-business/sync-reviews', { method: 'POST' });
       const payload = await response.json() as { result?: { upserted: number; received: number }; error?: string };
       if (!response.ok || !payload.result) throw new Error(payload.error ?? 'Google yorumları senkronlanamadı.');
-      setMessage(`${payload.result.upserted}/${payload.result.received} gerçek Google yorumu senkronlandı.`);
+      setGoogleFeedback({ type: 'success', text: `${payload.result.upserted}/${payload.result.received} gerçek Google yorumu senkronlandı.` });
       await load();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Google yorumları senkronlanamadı.');
+      setGoogleFeedback({
+        type: 'error',
+        text: caught instanceof Error ? caught.message : 'Google yorumları senkronlanamadı.',
+      });
       void load();
     } finally {
       setBusyKey(null);
@@ -357,6 +395,11 @@ export default function SocialPlatformsPanel() {
         ) : platforms.map((platform) => {
           const href = connectHref(platform);
           const isBusy = busyKey === platform.key;
+          const googleSelectionMissing = platform.key === 'google_business' &&
+            platform.connected &&
+            (typeof platform.connectionMeta.accountName !== 'string' ||
+              typeof platform.connectionMeta.locationName !== 'string');
+          const toggleDisabled = !platform.connected || isBusy || googleSelectionMissing;
           const reconnectRequired = platform.key === 'google_business' &&
             isGoogleReconnectRequired(platform.lastError);
           return (
@@ -397,21 +440,30 @@ export default function SocialPlatformsPanel() {
                 <button
                   type="button"
                   onClick={() => void toggle(platform)}
-                  disabled={!platform.connected || isBusy}
-                  title={!platform.connected ? 'Önce bağlanmalı' : platform.enabled ? 'Pasife al' : 'Aktife al'}
+                  disabled={toggleDisabled}
+                  title={!platform.connected
+                    ? 'Önce bağlanmalı'
+                    : googleSelectionMissing
+                      ? 'Önce Google hesabı ve işletme konumu seçilmeli'
+                      : platform.enabled ? 'Pasife al' : 'Aktife al'}
                   style={{
                     marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 5, borderRadius: 7, padding: '7px 9px',
                     border: `1px solid ${platform.enabled ? '#86EFAC' : '#D8E1E9'}`,
                     background: platform.enabled ? '#F0FDF4' : '#F8FAFC',
                     color: platform.enabled ? '#168C5B' : '#64748B',
-                    cursor: !platform.connected || isBusy ? 'not-allowed' : 'pointer',
-                    opacity: !platform.connected ? 0.55 : 1,
+                    cursor: toggleDisabled ? 'not-allowed' : 'pointer',
+                    opacity: toggleDisabled ? 0.55 : 1,
                     fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700,
                   }}
                 >
                   <Power size={12} /> {platform.enabled ? 'Aktif' : 'Pasif'}
                 </button>
               </div>
+              {googleSelectionMissing && (
+                <p style={{ color: '#B45309', fontFamily: 'Inter, sans-serif', fontSize: 10, margin: '7px 0 0', lineHeight: 1.45 }}>
+                  Aktifleştirmek için önce aşağıdan Google hesabı ve işletme konumu seçin.
+                </p>
+              )}
               {platform.key === 'x' && (
                 <div style={{ marginTop: 10 }}>
                   {latestBlog ? (
@@ -508,7 +560,15 @@ export default function SocialPlatformsPanel() {
                   <p style={{ color: '#52697A', fontFamily: 'Inter, sans-serif', fontSize: 10, margin: '0 0 6px', lineHeight: 1.45 }}>
                     1. Hesap ve işletme konumunu seçin. 2. Kanalı aktifleştirin. 3. Gerçek yorumları senkronlayın.
                   </p>
-                  {googleLocations.length > 0 ? (
+                  {googleOptionsLoading ? (
+                    <p style={{ color: '#52697A', fontFamily: 'Inter, sans-serif', fontSize: 10, margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> Hesap ve işletme konumları yükleniyor…
+                    </p>
+                  ) : googleOptionsError ? (
+                    <div role="alert" style={{ color: '#991B1B', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 7, padding: '8px 9px', fontFamily: 'Inter, sans-serif', fontSize: 10, margin: '0 0 8px', lineHeight: 1.45 }}>
+                      {googleOptionsError}
+                    </div>
+                  ) : googleLocations.length > 0 ? (
                     <select
                       value=""
                       onChange={(event) => {
@@ -532,6 +592,11 @@ export default function SocialPlatformsPanel() {
                     <p style={{ color: '#B45309', fontFamily: 'Inter, sans-serif', fontSize: 10, margin: '0 0 8px' }}>
                       Erişilebilir işletme konumu bulunamadı. Google hesabının işletme yöneticisi olduğundan emin olun.
                     </p>
+                  )}
+                  {googleFeedback && (
+                    <div role={googleFeedback.type === 'error' ? 'alert' : 'status'} style={{ color: googleFeedback.type === 'error' ? '#991B1B' : '#14532D', background: googleFeedback.type === 'error' ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${googleFeedback.type === 'error' ? '#FECACA' : '#BBF7D0'}`, borderRadius: 7, padding: '8px 9px', fontFamily: 'Inter, sans-serif', fontSize: 10, margin: '0 0 8px', lineHeight: 1.45 }}>
+                      {googleFeedback.text}
+                    </div>
                   )}
                   <button
                     type="button"

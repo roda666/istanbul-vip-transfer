@@ -46,8 +46,13 @@ describe('hourly sync lease and API contracts', () => {
     const integration = read('lib/google-business.ts');
 
     expect(panel).toContain('setGoogleOptionsError(optionsPayload.error');
-    expect(panel).toContain('googleSelectionMissing');
+    expect(panel).toContain('googleActivationBlocked = googleSelectionMissing && !platform.enabled');
+    expect(panel).toContain('toggleDisabled = !platform.connected || isBusy || googleActivationBlocked');
     expect(panel).toContain('Aktifleştirmek için önce aşağıdan Google hesabı ve işletme konumu seçin.');
+    expect(panel).toContain("(platform.key === 'google_business' && !platform.enabled)");
+    expect(panel).toContain("platform.connected ? 'Yeniden Bağla' : 'Bağlan'");
+    expect(panel).toContain("platform.enabled ? 'Pasif Et' : 'Aktif Et'");
+    expect(panel).toContain('aria-label="Kanal durumu"');
     expect(panel).toContain('role="alert"');
     expect(panel).toContain("role={googleFeedback.type === 'error' ? 'alert' : 'status'}");
     expect(panel).toContain('payload.platform?.enabled');

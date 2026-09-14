@@ -144,10 +144,19 @@ export default function SocialPlatformsPanel() {
       setBusyKey(null);
       if (event.data.success) {
         setError(null);
-        setMessage(event.data.message ?? 'Bağlantı tamamlandı.');
+        if (event.data.provider === 'google_business') {
+          setGoogleFeedback({ type: 'success', text: event.data.message ?? 'Google Business Profile bağlantısı tamamlandı.' });
+        } else {
+          setMessage(event.data.message ?? 'Bağlantı tamamlandı.');
+        }
       } else {
-        setMessage(null);
-        setError(getSocialOAuthMessage(event.data.error));
+        const text = getSocialOAuthMessage(event.data.error);
+        if (event.data.provider === 'google_business') {
+          setGoogleFeedback({ type: 'error', text });
+        } else {
+          setMessage(null);
+          setError(text);
+        }
       }
       void load();
     }
@@ -160,6 +169,7 @@ export default function SocialPlatformsPanel() {
     setBusyKey(platform.key);
     setError(null);
     setMessage(null);
+    if (platform.key === 'google_business') setGoogleFeedback(null);
 
     if (popupPollRef.current !== null) {
       window.clearInterval(popupPollRef.current);
@@ -178,7 +188,9 @@ export default function SocialPlatformsPanel() {
 
     if (!popup) {
       setBusyKey(null);
-      setError('OAuth penceresi tarayıcı tarafından engellendi. Akış aynı sekmede açılıyor.');
+      const text = 'OAuth penceresi tarayıcı tarafından engellendi. Akış aynı sekmede açılıyor.';
+      if (platform.key === 'google_business') setGoogleFeedback({ type: 'error', text });
+      else setError(text);
       window.location.assign(href);
       return;
     }
@@ -191,7 +203,12 @@ export default function SocialPlatformsPanel() {
           popupPollRef.current = null;
         }
         setBusyKey(null);
-        setError((current) => current ?? 'Bağlantı penceresi kapandı. Yetkilendirme tamamlanmadıysa tekrar deneyin.');
+        const text = 'Bağlantı penceresi kapandı. Yetkilendirme tamamlanmadıysa tekrar deneyin.';
+        if (platform.key === 'google_business') {
+          setGoogleFeedback((current) => current ?? { type: 'error', text });
+        } else {
+          setError((current) => current ?? text);
+        }
         void load();
       }
     }, 500);
@@ -395,20 +412,34 @@ export default function SocialPlatformsPanel() {
         ) : platforms.map((platform) => {
           const href = connectHref(platform);
           const isBusy = busyKey === platform.key;
+          const connectionMeta = platform.connectionMeta ?? {};
           const googleSelectionMissing = platform.key === 'google_business' &&
             platform.connected &&
-            (typeof platform.connectionMeta.accountName !== 'string' ||
-              typeof platform.connectionMeta.locationName !== 'string');
-          const toggleDisabled = !platform.connected || isBusy || googleSelectionMissing;
+            (typeof connectionMeta.accountName !== 'string' ||
+              typeof connectionMeta.locationName !== 'string');
+          const googleActivationBlocked = googleSelectionMissing && !platform.enabled;
+          const toggleDisabled = !platform.connected || isBusy || googleActivationBlocked;
           const reconnectRequired = platform.key === 'google_business' &&
             isGoogleReconnectRequired(platform.lastError);
+          const showConnectAction = Boolean(href) && (
+            !platform.connected ||
+            reconnectRequired ||
+            (platform.key === 'google_business' && !platform.enabled)
+          );
           return (
-            <div key={platform.key} style={{ border: '1px solid #E2E8F0', borderRadius: 10, padding: 14, background: '#FFFFFF' }}>
+            <div key={platform.key} data-testid={`social-platform-card-${platform.key}`} style={{ border: '1px solid #E2E8F0', borderRadius: 10, padding: 14, background: '#FFFFFF' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <strong style={{ color: '#172B3A', fontFamily: 'Inter, sans-serif', fontSize: 13 }}>{platform.name}</strong>
-                <span style={{ fontSize: 10, fontWeight: 700, color: reconnectRequired ? '#B45309' : platform.connected ? '#168C5B' : '#D97706', background: reconnectRequired ? '#FFF7ED' : platform.connected ? '#F0FDF4' : '#FFF7ED', padding: '3px 7px', borderRadius: 10 }}>
-                  {reconnectRequired ? 'Yeniden bağlanması gerekiyor' : platform.connected ? 'Bağlı' : 'Bağlı Değil'}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: reconnectRequired ? '#B45309' : platform.connected ? '#168C5B' : '#D97706', background: reconnectRequired ? '#FFF7ED' : platform.connected ? '#F0FDF4' : '#FFF7ED', padding: '3px 7px', borderRadius: 10 }}>
+                    {reconnectRequired ? 'Yeniden bağlantı gerekli' : platform.connected ? 'Bağlı' : 'Bağlı Değil'}
+                  </span>
+                  {platform.connected && (
+                    <span aria-label="Kanal durumu" data-testid={`social-platform-status-${platform.key}`} style={{ fontSize: 10, fontWeight: 700, color: platform.enabled ? '#168C5B' : '#64748B', background: platform.enabled ? '#F0FDF4' : '#F1F5F9', padding: '3px 7px', borderRadius: 10 }}>
+                      {platform.enabled ? 'Aktif' : 'Pasif'}
+                    </span>
+                  )}
+                </div>
               </div>
               <p style={{ fontFamily: 'Inter, sans-serif', color: '#52697A', fontSize: 12, lineHeight: 1.45, minHeight: 34, margin: '8px 0' }}>{platform.description}</p>
               {platform.requiredSecrets.length > 0 && !platform.connected && (
@@ -422,15 +453,18 @@ export default function SocialPlatformsPanel() {
                 </p>
               )}
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                {href && (!platform.connected || reconnectRequired) ? (
+                {showConnectAction && href ? (
                   <button
                     type="button"
+                    data-testid={`social-platform-connect-${platform.key}`}
                     onClick={() => connect(platform, href)}
                     disabled={busyKey === platform.key}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 5, border: 0, background: '#2563EB', color: '#fff', padding: '7px 10px', borderRadius: 7, fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, cursor: busyKey === platform.key ? 'wait' : 'pointer' }}
                   >
                     {busyKey === platform.key ? <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <ExternalLink size={12} />}
-                    {busyKey === platform.key ? 'Bağlanıyor…' : 'Bağlan'}
+                    {busyKey === platform.key
+                      ? 'Bağlanıyor…'
+                      : platform.connected ? 'Yeniden Bağla' : 'Bağlan'}
                   </button>
                 ) : !platform.canConnect ? (
                   <span style={{ color: '#94A3B8', fontFamily: 'Inter, sans-serif', fontSize: 11 }}>Yakında</span>
@@ -439,11 +473,12 @@ export default function SocialPlatformsPanel() {
                 )}
                 <button
                   type="button"
+                  data-testid={`social-platform-toggle-${platform.key}`}
                   onClick={() => void toggle(platform)}
                   disabled={toggleDisabled}
                   title={!platform.connected
                     ? 'Önce bağlanmalı'
-                    : googleSelectionMissing
+                    : googleActivationBlocked
                       ? 'Önce Google hesabı ve işletme konumu seçilmeli'
                       : platform.enabled ? 'Pasife al' : 'Aktife al'}
                   style={{
@@ -456,10 +491,13 @@ export default function SocialPlatformsPanel() {
                     fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700,
                   }}
                 >
-                  <Power size={12} /> {platform.enabled ? 'Aktif' : 'Pasif'}
+                  {isBusy
+                    ? <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />
+                    : <Power size={12} />}
+                  {isBusy ? 'İşleniyor…' : platform.enabled ? 'Pasif Et' : 'Aktif Et'}
                 </button>
               </div>
-              {googleSelectionMissing && (
+              {googleActivationBlocked && (
                 <p style={{ color: '#B45309', fontFamily: 'Inter, sans-serif', fontSize: 10, margin: '7px 0 0', lineHeight: 1.45 }}>
                   Aktifleştirmek için önce aşağıdan Google hesabı ve işletme konumu seçin.
                 </p>
@@ -578,8 +616,8 @@ export default function SocialPlatformsPanel() {
                       style={{ width: '100%', border: '1px solid #CBD5E1', borderRadius: 7, padding: '7px 8px', color: '#172B3A', background: '#fff', fontSize: 11, marginBottom: 8 }}
                     >
                       <option value="">
-                        {typeof platform.connectionMeta.locationLabel === 'string'
-                          ? `Seçili: ${platform.connectionMeta.locationLabel}`
+                        {typeof connectionMeta.locationLabel === 'string'
+                          ? `Seçili: ${connectionMeta.locationLabel}`
                           : 'İşletme konumu seçin'}
                       </option>
                       {googleLocations.map((location) => (
@@ -601,14 +639,14 @@ export default function SocialPlatformsPanel() {
                   <button
                     type="button"
                     onClick={() => void syncGoogleReviews()}
-                    disabled={!platform.connectionMeta.locationName || busyKey === 'google-business-sync'}
-                    style={{ width: '100%', border: '1px solid #BFDBFE', background: '#EFF6FF', color: '#1D4ED8', borderRadius: 7, padding: '7px 9px', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, cursor: !platform.connectionMeta.locationName || busyKey === 'google-business-sync' ? 'not-allowed' : 'pointer', opacity: !platform.connectionMeta.locationName ? 0.55 : 1 }}
+                    disabled={!connectionMeta.locationName || busyKey === 'google-business-sync'}
+                    style={{ width: '100%', border: '1px solid #BFDBFE', background: '#EFF6FF', color: '#1D4ED8', borderRadius: 7, padding: '7px 9px', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, cursor: !connectionMeta.locationName || busyKey === 'google-business-sync' ? 'not-allowed' : 'pointer', opacity: !connectionMeta.locationName ? 0.55 : 1 }}
                   >
                     {busyKey === 'google-business-sync' ? 'Yorumlar alınıyor…' : 'Gerçek Google yorumlarını senkronla'}
                   </button>
-                  {typeof platform.connectionMeta.lastReviewSyncAt === 'string' && (
+                  {typeof connectionMeta.lastReviewSyncAt === 'string' && (
                     <p style={{ color: '#64748B', fontFamily: 'Inter, sans-serif', fontSize: 10, margin: '7px 0 0' }}>
-                      Son senkronizasyon: {new Date(platform.connectionMeta.lastReviewSyncAt).toLocaleString('tr-TR')}
+                      Son senkronizasyon: {new Date(connectionMeta.lastReviewSyncAt).toLocaleString('tr-TR')}
                     </p>
                   )}
                   {platform.enabled && (

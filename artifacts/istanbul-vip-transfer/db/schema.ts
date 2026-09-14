@@ -881,7 +881,7 @@ export const googleReviews = pgTable('google_reviews', {
   id:                    uuid('id').primaryKey().defaultRandom(),
   /** Google Business Profile review resource name. Legacy/admin-entered rows remain NULL. */
   externalReviewId:      text('external_review_id'),
-  /** Only google_business rows can be rendered on the public homepage. */
+  /** Public readers accept selected Google rows plus reviewed or legacy-verified manual reviews. */
   source:                text('source').notNull().default('manual'),
   locationResourceName:  text('location_resource_name'),
   reviewerName:          text('reviewer_name').notNull(),

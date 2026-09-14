@@ -41,7 +41,7 @@ async function snapshot() {
   };
 }
 
-test('TR and EN show only selected verified Google reviews without Popular Regions or overflow', async ({ page }) => {
+test('TR and EN show selected Google reviews without leaking unapproved manual rows', async ({ page }) => {
   const [originalPlatform] = await db.select().from(socialPlatforms)
     .where(eq(socialPlatforms.key, 'google_business')).limit(1);
   expect(originalPlatform, 'Google platform seed row is required for isolated acceptance fixture').toBeTruthy();
@@ -122,8 +122,9 @@ test('TR and EN show only selected verified Google reviews without Popular Regio
       }
     }
 
-    // A missing connection is a safe empty public state, not a fixture/manual
-    // fallback. Restore it after this assertion so cleanup still compares the
+    // Disconnecting hides the location-scoped Google fixture. Approved manual
+    // customer reviews may remain public independently of Google connectivity.
+    // Restore the platform after this assertion so cleanup still compares the
     // exact original database snapshot.
     await db.update(socialPlatforms).set({
       connected: false,
@@ -131,7 +132,8 @@ test('TR and EN show only selected verified Google reviews without Popular Regio
     }).where(eq(socialPlatforms.id, originalPlatform!.id));
     await invalidateHomepages();
     await page.goto('/', { waitUntil: 'domcontentloaded' });
-    await expect(page.getByTestId('reviews-section')).toHaveCount(0);
+    await expect(page.getByText('Playwright Verified Reviewer')).toHaveCount(0);
+    await expect(page.getByText('Manual Fixture')).toHaveCount(0);
   } finally {
     await db.delete(googleReviews).where(inArray(googleReviews.externalReviewId, [...fixtureIds]));
     if (originalPlatform) {

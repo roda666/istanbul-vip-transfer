@@ -3,6 +3,7 @@
  * homepage JSON document. These readers intentionally never call admin APIs.
  */
 import 'server-only';
+import { deduplicateHomepageReviews, type PublicReviewSource } from '@/lib/google-review-public';
 
 export interface HomepageReview {
   id: string;
@@ -10,6 +11,7 @@ export interface HomepageReview {
   rating: number;
   text: string;
   reviewDate?: string | null;
+  source: PublicReviewSource;
 }
 
 export interface HomepageFaq {
@@ -24,17 +26,17 @@ export type HomepageServiceCopy = Record<string, {
 }>;
 
 /**
- * Returns reviews synchronized from the selected Google Business Profile location.
- * Manual/legacy rows are deliberately excluded: public visitors must never see
- * editor-written text presented as a Google review. Google does not translate
- * review text, so the original verified text is shown for every locale.
+ * Returns verified Google reviews from the selected location plus manually
+ * entered real customer reviews that are explicitly reviewed or carry the
+ * legacy verified-source marker, without rewriting their stored source.
+ * Review text is always returned in its original language.
  */
 export async function getPublishedHomepageReviews(locale: string): Promise<HomepageReview[]> {
   void locale;
   try {
     const { db } = await import('@/db');
     const { googleReviews, socialPlatforms } = await import('@/db/schema');
-    const { and, asc, desc, eq } = await import('drizzle-orm');
+    const { and, asc, desc, eq, isNotNull, or } = await import('drizzle-orm');
 
     const [platform] = await db.select({ connectionMeta: socialPlatforms.connectionMeta })
       .from(socialPlatforms)
@@ -45,29 +47,57 @@ export async function getPublishedHomepageReviews(locale: string): Promise<Homep
       .limit(1);
     const accountName = platform?.connectionMeta?.accountName;
     const locationName = platform?.connectionMeta?.locationName;
-    if (typeof accountName !== 'string' || typeof locationName !== 'string') return [];
+    const hasSelectedGoogleLocation =
+      typeof accountName === 'string' && typeof locationName === 'string';
+
+    const manualReviewFilter = and(
+      eq(googleReviews.source, 'manual'),
+      or(
+        isNotNull(googleReviews.reviewedAt),
+        eq(googleReviews.googleSourceIndicator, true),
+      ),
+    );
+    const googleReviewFilter = hasSelectedGoogleLocation
+      ? and(
+          eq(googleReviews.source, 'google_business'),
+          eq(googleReviews.locationResourceName, locationName),
+        )
+      : undefined;
 
     const rows = await db
       .select({
         id: googleReviews.id,
+        externalReviewId: googleReviews.externalReviewId,
+        source: googleReviews.source,
         name: googleReviews.reviewerName,
         rating: googleReviews.rating,
         text: googleReviews.reviewText,
         reviewDate: googleReviews.reviewDate,
+        sortOrder: googleReviews.sortOrder,
+        createdAt: googleReviews.createdAt,
       })
       .from(googleReviews)
       .where(and(
         eq(googleReviews.isVisible, true),
-        eq(googleReviews.source, 'google_business'),
-        eq(googleReviews.locationResourceName, locationName),
+        googleReviewFilter ? or(manualReviewFilter, googleReviewFilter) : manualReviewFilter,
       ))
       .orderBy(asc(googleReviews.sortOrder), desc(googleReviews.createdAt))
-      .limit(3);
+      .limit(100);
 
-    return rows.map((row) => ({
+    return deduplicateHomepageReviews(rows.map((row) => ({
       ...row,
-      reviewDate: row.reviewDate?.toISOString() ?? null,
-    }));
+      source: row.source as PublicReviewSource,
+    })))
+      .sort((a, b) => a.sortOrder - b.sortOrder || b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, 3)
+      .map((row) => ({
+        id: row.id,
+        name: row.name,
+        rating: row.rating,
+        text: row.text,
+        reviewDate: row.reviewDate?.toISOString() ?? null,
+        source: row.source,
+      }));
   } catch {
     return [];
   }

@@ -1,11 +1,16 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { formatHomepageReviewDate, isConfiguredGoogleReviewUrl } from '../../lib/google-review-public';
+import {
+  deduplicateHomepageReviews,
+  formatHomepageReviewDate,
+  getCustomerReviewsLabel,
+  isConfiguredGoogleReviewUrl,
+} from '../../lib/google-review-public';
 
 const read = (file: string) => readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
 
 describe('public Google Business review contracts', () => {
-  it('filters the public reader to a connected selected location and verified visible source', () => {
+  it('accepts selected Google reviews and reviewed or legacy-verified visible manual reviews', () => {
     const reader = read('lib/homepage-public-content.ts');
     const section = reader.slice(
       reader.indexOf('export async function getPublishedHomepageReviews'),
@@ -14,14 +19,34 @@ describe('public Google Business review contracts', () => {
 
     expect(section).toContain("eq(socialPlatforms.key, 'google_business')");
     expect(section).toContain('eq(socialPlatforms.connected, true)');
-    expect(section).toContain('typeof accountName !== \'string\'');
-    expect(section).toContain('typeof locationName !== \'string\'');
+    expect(section).toContain('hasSelectedGoogleLocation');
     expect(section).toContain("eq(googleReviews.source, 'google_business')");
     expect(section).toContain('eq(googleReviews.locationResourceName, locationName)');
+    expect(section).toContain("eq(googleReviews.source, 'manual')");
+    expect(section).toContain('isNotNull(googleReviews.reviewedAt)');
+    expect(section).toContain('eq(googleReviews.googleSourceIndicator, true)');
     expect(section).toContain('eq(googleReviews.isVisible, true)');
     // A token refresh may disable the channel. Verified cached rows remain
     // publishable while the connection and selected location still exist.
     expect(section).not.toContain('eq(socialPlatforms.enabled, true)');
+  });
+
+  it('deduplicates a later Google sync against an approved manual review', () => {
+    const manual = {
+      externalReviewId: null,
+      source: 'manual' as const,
+      name: 'Gerçek Müşteri',
+      text: 'Özgün yorum metni.',
+    };
+    const google = {
+      externalReviewId: 'accounts/example/locations/example/reviews/1',
+      source: 'google_business' as const,
+      name: '  gerçek müşteri ',
+      text: 'Özgün   yorum metni.',
+    };
+
+    expect(deduplicateHomepageReviews([manual, google])).toEqual([google]);
+    expect(deduplicateHomepageReviews([google, manual])).toEqual([google]);
   });
 
   it('allows only safe HTTPS review links and renders valid dates', () => {
@@ -32,11 +57,15 @@ describe('public Google Business review contracts', () => {
     expect(formatHomepageReviewDate('2024-05-17T12:00:00.000Z', 'en')).toMatch(/2024/);
     expect(formatHomepageReviewDate(null, 'en')).toBeNull();
     expect(formatHomepageReviewDate('not-a-date', 'en')).toBeNull();
+    expect(getCustomerReviewsLabel('tr')).toBe('Müşteri Yorumları');
+    expect(getCustomerReviewsLabel('de')).toBe('Kundenbewertungen');
+    expect(getCustomerReviewsLabel('unknown')).toBe('Customer Reviews');
 
     const cards = read('components/Reviews.tsx');
     expect(cards).toContain('isConfiguredGoogleReviewUrl(cs.googleReviewUrl)');
     expect(cards).toContain('formatHomepageReviewDate(review.reviewDate, lang)');
     expect(cards).toContain('{reviewUrl &&');
+    expect(cards).toContain("review.source === 'google_business'");
   });
 });
 

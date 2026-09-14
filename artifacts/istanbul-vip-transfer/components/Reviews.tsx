@@ -5,13 +5,19 @@ import { useLang } from '@/lib/i18n/context';
 import { useSiteSettings } from '@/components/SiteSettingsContext';
 import { useHomepageCms } from '@/lib/homepage-cms-context';
 import type { HomepageReview } from '@/lib/homepage-public-content';
-import { formatHomepageReviewDate, isConfiguredGoogleReviewUrl } from '@/lib/google-review-public';
+import {
+  formatHomepageReviewDate,
+  getCustomerReviewsLabel,
+  isConfiguredGoogleReviewUrl,
+  type PublicReviewSource,
+} from '@/lib/google-review-public';
 
 interface Review {
   name: string;
   rating: number;
   text: string;
   reviewDate?: string | null;
+  source?: PublicReviewSource;
 }
 
 const REVIEWS_BY_LANG: Record<string, Review[]> = {
@@ -200,6 +206,7 @@ export default function Reviews({
   // A malformed locale must not make an international visitor see Turkish
   // review copy. Turkish is used only for an explicit Turkish route.
   const reviews = items && items.length > 0 ? items : (REVIEWS_BY_LANG[lang] ?? REVIEWS_BY_LANG.en);
+  const containsManualReviews = Boolean(items?.some((review) => review.source === 'manual'));
   const reviewUrl = homepageMode && isConfiguredGoogleReviewUrl(cs.googleReviewUrl)
     ? cs.googleReviewUrl.trim()
     : null;
@@ -221,12 +228,14 @@ export default function Reviews({
             className="inline-flex items-center gap-2 mb-5 px-4 py-2 rounded-full"
             style={{ background: 'rgba(255,255,255,0.85)', border: '1px solid #D9E2EC', boxShadow: '0 1px 4px rgba(16,42,67,0.06)' }}
           >
-            <GoogleMark size={16} />
+            {containsManualReviews
+              ? <Quote size={16} aria-hidden="true" />
+              : <GoogleMark size={16} />}
             <span
               className="text-xs tracking-[0.2em] uppercase"
               style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
             >
-            {section?.eyebrow ?? r.sectionLabel}
+            {containsManualReviews ? getCustomerReviewsLabel(lang) : (section?.eyebrow ?? r.sectionLabel)}
             </span>
           </div>
           <h2
@@ -302,7 +311,7 @@ export default function Reviews({
                     {review.name}
                   </p>
                 </div>
-                <div><GoogleMark size={18} /></div>
+                {review.source === 'google_business' && <div><GoogleMark size={18} /></div>}
               </div>
             </div>
           ))}

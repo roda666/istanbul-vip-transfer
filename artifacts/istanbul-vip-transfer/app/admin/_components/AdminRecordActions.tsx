@@ -191,7 +191,9 @@ export function AdminRecordActions({
   }, isMobile: boolean) => {
     const isBusy = busyAction === action.id;
     const isDisabled = action.config?.disabled || !!busyAction;
-    const title = action.config?.disabledReason || action.label;
+    const title = action.config?.disabled && action.config.disabledReason
+      ? action.config.disabledReason
+      : action.label;
 
     const content = (
       <>
@@ -222,7 +224,7 @@ export function AdminRecordActions({
 
     const linkProps = {
       title,
-      'aria-label': title,
+      'aria-label': action.label,
       'aria-disabled': isDisabled,
       className: baseClass,
     };
@@ -244,7 +246,7 @@ export function AdminRecordActions({
 
     const buttonProps = {
       title,
-      'aria-label': title,
+      'aria-label': action.label,
       'aria-busy': isBusy,
       'aria-disabled': isDisabled,
       disabled: isDisabled,

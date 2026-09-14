@@ -102,6 +102,12 @@ export async function POST(request: NextRequest) {
       const [created] = await tx.insert(tollTariffs).values({
         tollPointId: payload.data.tollPointId,
         vehicleClass: payload.data.vehicleClass,
+        displayOrder: (await tx.select({ displayOrder: tollTariffs.displayOrder })
+          .from(tollTariffs)
+          .where(and(
+            eq(tollTariffs.tollPointId, payload.data.tollPointId),
+            eq(tollTariffs.vehicleClass, payload.data.vehicleClass),
+          ))).reduce((max, row) => Math.max(max, row.displayOrder), -1) + 1,
         timeBand: 'ALL',
         appliesDay,
         appliesNight,

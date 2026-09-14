@@ -94,3 +94,38 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Geçiş tarifesi güncellenemedi.' }, { status: 422 });
   }
 }
+
+/** DELETE /admin/api/pricing/tolls/tariffs/[id] — permanently remove one tariff. */
+export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  let session;
+  try {
+    session = await requireAdminSession();
+  } catch {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const { id } = await params;
+  try {
+    const deleted = await db.transaction(async (tx) => {
+      const [existing] = await tx.select().from(tollTariffs).where(eq(tollTariffs.id, id)).limit(1);
+      if (!existing) return null;
+      const [row] = await tx.delete(tollTariffs).where(eq(tollTariffs.id, id)).returning();
+      return row ?? null;
+    });
+    if (!deleted) return NextResponse.json({ error: 'Geçiş tarifesi bulunamadı.' }, { status: 404 });
+    await db.insert(auditLogs).values({
+      adminUserId: session.adminId,
+      action: 'DELETE',
+      entityType: 'TollTariff',
+      entityId: id,
+      metadata: {
+        tollPointId: deleted.tollPointId,
+        vehicleClass: deleted.vehicleClass,
+        timeBand: deleted.timeBand,
+        amountKurus: deleted.amountKurus,
+      },
+    }).catch(() => {});
+    return NextResponse.json({ tariff: deleted });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Geçiş tarifesi silinemedi.' }, { status: 422 });
+  }
+}

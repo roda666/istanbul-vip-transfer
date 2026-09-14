@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { eq, and, max } from 'drizzle-orm';
 import { requireAdminSession } from '@/lib/auth/session';
 import { db } from '@/db';
 import { auditLogs, tollPoints, tollTariffs } from '@/db/schema';
@@ -55,9 +55,12 @@ export async function POST(request: NextRequest) {
       });
     }
     const now = new Date();
+    const [lastOrder] = await db.select({ value: max(tollTariffs.displayOrder) }).from(tollTariffs)
+      .where(and(eq(tollTariffs.tollPointId, payload.data.tollPointId), eq(tollTariffs.vehicleClass, payload.data.vehicleClass)));
     const [tariff] = await db.insert(tollTariffs).values({
       tollPointId: payload.data.tollPointId,
       vehicleClass: payload.data.vehicleClass,
+      displayOrder: (lastOrder?.value ?? -1) + 1,
       timeBand: payload.data.timeBand,
       appliesDay,
       appliesNight,

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useId, useRef } from 'react';
 import { 
   MapPin, Navigation, Plus, Save, Edit2, 
   RefreshCw, Check, X, AlertCircle, Loader2, Car, ShieldCheck, Clock, Settings2
@@ -65,6 +65,7 @@ type TollTariff = {
   id: string;
   tollPointId: string;
   vehicleClass: string;
+  displayOrder: number;
   timeBand: TollTimeBand;
   amountKurus: number | null;
   automaticAmountKurus: number | null;
@@ -304,6 +305,7 @@ function BulkIncreaseCard({ point, onRefresh }: { point: TollPoint; onRefresh: (
 
 function AmountInput({ valueKurus, onChange, label }: { valueKurus: number | null, onChange: (val: number | null) => void, label?: string }) {
   const [str, setStr] = useState(valueKurus != null ? (valueKurus / 100).toFixed(2) : '');
+  const inputId = useId();
 
   useEffect(() => {
     setStr(valueKurus != null ? (valueKurus / 100).toFixed(2) : '');
@@ -325,9 +327,10 @@ function AmountInput({ valueKurus, onChange, label }: { valueKurus: number | nul
 
   return (
     <div>
-      {label && <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">{label}</label>}
+      {label && <label htmlFor={inputId} className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">{label}</label>}
       <div className="relative">
-        <input 
+        <input
+          id={inputId}
           type="text" 
           value={str} 
           onChange={e => setStr(e.target.value)}
@@ -1148,7 +1151,7 @@ function QuickTariffAdd({
 }: {
   point: TollPoint;
   vehicleClasses: string[];
-  onRefresh: () => void;
+  onRefresh: () => Promise<void>;
   classRequest: QuickTariffClassRequest | null;
 }) {
   const [entryGateName, setEntryGateName] = useState('');
@@ -1213,7 +1216,7 @@ function QuickTariffAdd({
 
       setMessage('Tarife başarıyla eklendi.');
       setAmountStr('');
-      onRefresh();
+      await onRefresh();
 
       setTimeout(() => setMessage(''), 3000);
     } catch (e: unknown) {
@@ -1320,8 +1323,9 @@ function QuickTariffAdd({
 }
 
 
-function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, onSync }: { point: TollPoint, tariffs: TollTariff[], vehicleClasses: string[], onRefresh: () => void, onEditTariff: (vc: string, t?: TollTariff) => void, onSync: (t: TollTariff) => void }) {
+function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, onSync }: { point: TollPoint, tariffs: TollTariff[], vehicleClasses: string[], onRefresh: () => Promise<void>, onEditTariff: (vc: string, t?: TollTariff) => void, onSync: (t: TollTariff) => void }) {
   const [quickTariffClassRequest, setQuickTariffClassRequest] = useState<QuickTariffClassRequest | null>(null);
+  const [tariffActionError, setTariffActionError] = useState('');
 
   const prepareQuickTariffClass = (vehicleClass: string) => {
     setQuickTariffClassRequest({
@@ -1329,6 +1333,62 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
       vehicleClass,
       nonce: Date.now(),
     });
+  };
+
+  const patchTariffActive = async (tariff: TollTariff, active: boolean) => {
+    setTariffActionError('');
+    const response = await fetch(`/admin/api/pricing/tolls/tariffs/${tariff.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tollPointId: tariff.tollPointId,
+        vehicleClass: tariff.vehicleClass,
+        timeBand: tariff.timeBand,
+        automaticAmountKurus: tariff.automaticAmountKurus,
+        manualAmountKurus: tariff.manualAmountKurus,
+        sourceName: tariff.sourceName,
+        sourceUrl: tariff.sourceUrl,
+        validFrom: tariff.validFrom,
+        validUntil: tariff.validUntil,
+        queriedAt: tariff.queriedAt ?? null,
+        active,
+        entryGateName: tariff.entryGateName ?? null,
+        exitGateName: tariff.exitGateName ?? null,
+        direction: tariff.direction ?? null,
+      }),
+    });
+    const result = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(result?.error ?? 'Tarife durumu güncellenemedi.');
+    await onRefresh();
+  };
+
+  const deleteTariff = async (tariff: TollTariff) => {
+    if (!window.confirm(`“${vehicleClassLabel(tariff.vehicleClass)}” tarifesi kalıcı olarak silinecek. Bu işlemi açıkça onaylıyor musunuz?`)) return;
+    setTariffActionError('');
+    const response = await fetch(`/admin/api/pricing/tolls/tariffs/${tariff.id}`, { method: 'DELETE' });
+    const result = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(result?.error ?? 'Tarife silinemedi.');
+    await onRefresh();
+  };
+
+  const reorderTariff = async (tariff: TollTariff, direction: 'up' | 'down') => {
+    setTariffActionError('');
+    const response = await fetch('/admin/api/pricing/tolls/tariffs/order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: tariff.id, direction }),
+    });
+    const result = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(result?.error ?? 'Tarife sıralaması güncellenemedi.');
+    await onRefresh();
+  };
+
+  const runTariffAction = async (action: () => Promise<void>) => {
+    try {
+      await action();
+    } catch (error: unknown) {
+      setTariffActionError(errorMessage(error, 'Tarife işlemi tamamlanamadı.'));
+    }
   };
 
   const [formData, setFormData] = useState({
@@ -1482,8 +1542,10 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
         
         <div className="p-5 md:p-6 flex flex-col gap-6">
           <p className="text-xs text-slate-500 leading-relaxed">“Bayat tarife” yalnızca yeniden gözden geçirme uyarısıdır; yürürlük tarihi girmek tek başına tarifeyi bayat yapmaz. Bayatlık, son inceleme zamanına göre değerlendirilir.</p>
+          {tariffActionError && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700">{tariffActionError}</div>}
           {vehicleClasses.map(vc => {
-             const classTariffs = tariffs.filter(t => t.tollPointId === point.id && t.vehicleClass === vc && (t.active || t.amountKurus != null || t.manualAmountKurus != null || t.automaticAmountKurus != null));
+             const classTariffs = tariffs.filter(t => t.tollPointId === point.id && t.vehicleClass === vc)
+               .sort((a, b) => a.displayOrder - b.displayOrder || a.id.localeCompare(b.id));
              const activeTariffs = classTariffs.filter(t => t.active);
              const hasAll = activeTariffs.some(t => t.timeBand === 'ALL');
              const hasDay = activeTariffs.some(t => t.timeBand === 'DAY');
@@ -1527,7 +1589,7 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
                           Mevcut tarifeler tüm zaman dilimlerini kapsamıyor ({hasDay ? 'gündüz var, gece eksik' : hasNight ? 'gece var, gündüz eksik' : 'hiçbir dilim tanımlı değil'}). Kapsanmayan saatlerde fiyat motoru bu geçişi eksik veri olarak işaretler.
                         </div>
                       )}
-                      {classTariffs.map(tariff => {
+                      {classTariffs.map((tariff, tariffIndex) => {
                         const isEffectiveManual = tariff.manualAmountKurus != null;
                         return (
                            <div key={tariff.id} data-testid={`tariff-row-${vc}`} className="flex flex-col justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4 sm:flex-row sm:items-center">
@@ -1578,9 +1640,13 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
                                   <RefreshCw size={14} /> Otomatik Çek
                                 </button>
                               )}
-                               <button title="Tarifeyi düzenle" aria-label="Tarifeyi düzenle" onClick={() => onEditTariff(vc, tariff)} className="min-h-[40px] px-4 py-2 rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm border bg-white border-slate-200 text-slate-700 hover:bg-slate-50">
-                                <Edit2 size={14} /> Düzenle
-                              </button>
+                              <AdminRecordActions
+                                up={{ onClick: () => runTariffAction(() => reorderTariff(tariff, 'up')), disabled: tariffIndex === 0, disabledReason: 'Bu sınıftaki ilk tarife' }}
+                                down={{ onClick: () => runTariffAction(() => reorderTariff(tariff, 'down')), disabled: tariffIndex === classTariffs.length - 1, disabledReason: 'Bu sınıftaki son tarife' }}
+                                edit={{ onClick: () => onEditTariff(vc, tariff) }}
+                                activation={{ onClick: () => runTariffAction(() => patchTariffActive(tariff, !tariff.active)), isActive: tariff.active }}
+                                delete={{ onClick: () => runTariffAction(() => deleteTariff(tariff)) }}
+                              />
                             </div>
                           </div>
                         );
@@ -1596,7 +1662,7 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
   );
 }
 
-function PointsManager({ data, onRefresh }: { data: DataPayload, onRefresh: () => void }) {
+function PointsManager({ data, onRefresh }: { data: DataPayload, onRefresh: () => Promise<void> }) {
   const [selectedPointId, setSelectedPointId] = useState<string | null>(null);
   const [orderedPoints, setOrderedPoints] = useState(data.points);
   const [newPointModal, setNewPointModal] = useState(false);

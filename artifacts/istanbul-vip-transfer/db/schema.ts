@@ -1752,6 +1752,8 @@ export const tollTariffs = pgTable('toll_tariffs', {
   tollPointId: uuid('toll_point_id').notNull().references(() => tollPoints.id, { onDelete: 'cascade' }),
   /** class_1..class_6, the official KGM taxonomy. */
   vehicleClass: text('vehicle_class').notNull(),
+  /** Stable admin ordering within one point and vehicle class. */
+  displayOrder: integer('display_order').default(0).notNull(),
   /**
    * Effective, server-resolved TRY amount. It is kept for fast quote lookups;
    * when a manual override exists it must equal manualAmountKurus, otherwise it
@@ -1803,6 +1805,7 @@ export const tollTariffs = pgTable('toll_tariffs', {
   updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
 }, (table) => [
   index('toll_tariffs_lookup_idx').on(table.tollPointId, table.vehicleClass, table.active, table.validFrom, table.validUntil),
+  index('toll_tariffs_order_idx').on(table.tollPointId, table.vehicleClass, table.displayOrder, table.id),
 ]);
 
 /** Immutable, admin-reviewed source document previews. File bytes are never retained. */

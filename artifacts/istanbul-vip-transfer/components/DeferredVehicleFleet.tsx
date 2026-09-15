@@ -38,7 +38,12 @@ export default function DeferredVehicleFleet({
   }, []);
 
   return (
-    <div ref={sectionRef} className="ivt-deferred-section" aria-busy={!shouldLoad}>
+    <div
+      ref={sectionRef}
+      className="ivt-deferred-section min-h-px"
+      aria-busy={!shouldLoad}
+      data-testid="vehicle-fleet-deferred"
+    >
       {shouldLoad && <VehicleFleet homepageMode={homepageMode} layout={layout} />}
     </div>
   );

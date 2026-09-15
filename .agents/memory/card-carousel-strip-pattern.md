@@ -24,3 +24,14 @@ that stayed exact across every tested breakpoint (375/768/1280/1440).
 Playwright/E2E DOM check unless the test actually scrolls the section into view first
 and waits — checking immediately after `page.goto` finds nothing and looks like a
 missing-feature regression when it's actually just not mounted yet.
+
+**Mobile below-track controls:** If arrows move below the track, the control grid must
+still own the full parent width and use flexible outer columns around the fixed-size
+buttons.
+
+**Why:** A grid containing only two fixed button columns can shrink-wrap the entire
+carousel track to the buttons' intrinsic width, turning a readable card into a narrow
+column.
+
+**How to apply:** Give the wrapper `width: 100%`, span the track across every grid
+column, and center the fixed-size arrows between `minmax(0, 1fr)` outer columns.

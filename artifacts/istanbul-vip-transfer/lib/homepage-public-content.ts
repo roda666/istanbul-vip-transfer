@@ -89,7 +89,6 @@ export async function getPublishedHomepageReviews(locale: string): Promise<Homep
       source: row.source as PublicReviewSource,
     })))
       .sort((a, b) => a.sortOrder - b.sortOrder || b.createdAt.getTime() - a.createdAt.getTime())
-      .slice(0, 3)
       .map((row) => ({
         id: row.id,
         name: row.name,

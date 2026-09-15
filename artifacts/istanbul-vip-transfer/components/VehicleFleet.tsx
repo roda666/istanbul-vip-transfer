@@ -121,6 +121,7 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
   layout: 'grid' | 'carousel';
 }) {
   const [imageFailed, setImageFailed] = useState(!vehicle.image);
+  const compact = layout === 'carousel';
 
   return (
     <motion.div
@@ -194,23 +195,23 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
       </div>
 
       {/* Content */}
-      <div className="flex flex-1 flex-col p-5 sm:p-6">
+      <div className={`flex flex-1 flex-col ${compact ? 'p-4 sm:p-[18px]' : 'p-5 sm:p-6'}`}>
         <span
-          className="mb-2 block min-h-[36px] break-words text-[11px] font-semibold uppercase leading-[1.45] tracking-[0.16em] sm:text-xs sm:tracking-[0.18em]"
+          className={`${compact ? 'mb-1 text-[10px] leading-[1.4] sm:text-[11px]' : 'mb-2 min-h-[36px] text-[11px] leading-[1.45] sm:text-xs'} block break-words font-semibold uppercase tracking-[0.14em] sm:tracking-[0.16em]`}
           style={{ color: '#8A651C', fontFamily: 'Inter, sans-serif' }}
           data-testid={`vehicle-tagline-${i}`}
         >
           {isolateLtrValues(vehicle.tagline, lang)}
         </span>
         <h3
-          className="mb-2 min-h-[58px] break-words text-[clamp(1rem,1.45vw,1.2rem)] font-bold leading-[1.35]"
+          className={`${compact ? 'mb-1.5 text-[clamp(0.98rem,1.3vw,1.12rem)] leading-[1.28]' : 'mb-2 min-h-[58px] text-[clamp(1rem,1.45vw,1.2rem)] leading-[1.35]'} break-words font-bold`}
           style={{ fontFamily: 'Playfair Display, Georgia, serif', color: '#102A43' }}
           data-testid={`vehicle-name-${i}`}
         >
           {isolateLtrValues(vehicle.name, lang)}
         </h3>
         <p
-          className="mb-4 min-h-[126px] break-words text-[12px] leading-[1.65] sm:text-[13px] lg:text-sm"
+          className={`${compact ? 'mb-3 text-[11.5px] leading-[1.5] sm:text-xs lg:text-[13px]' : 'mb-4 min-h-[126px] text-[12px] leading-[1.65] sm:text-[13px] lg:text-sm'} break-words`}
           style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
           data-testid={`vehicle-description-${i}`}
         >
@@ -219,18 +220,18 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
 
         {/* Capacity */}
         <div
-          className="mb-4 flex min-h-[44px] shrink-0 flex-wrap items-start gap-x-5 gap-y-2 border-b border-[#D9E2EC] pb-4"
+          className={`${compact ? 'mb-3 mt-auto gap-x-3 gap-y-1.5 pb-3' : 'mb-4 min-h-[44px] gap-x-5 gap-y-2 pb-4'} flex shrink-0 flex-wrap items-start border-b border-[#D9E2EC]`}
           data-testid={`vehicle-capacity-${i}`}
         >
           <div className="flex items-center gap-1.5">
             <Users size={14} style={{ color: '#8A651C' }} aria-hidden="true" />
-            <span className="text-sm" style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}>
+            <span className={compact ? 'text-xs' : 'text-sm'} style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}>
               <strong dir="ltr" style={{ color: '#8A651C', unicodeBidi: 'isolate' }}>{vehicle.passengers}</strong> {passLabel}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             <Luggage size={14} style={{ color: '#8A651C' }} aria-hidden="true" />
-            <span className="text-sm" style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}>
+            <span className={compact ? 'text-xs' : 'text-sm'} style={{ color: '#263F55', fontFamily: 'Inter, sans-serif' }}>
               <strong dir="ltr" style={{ color: '#8A651C', unicodeBidi: 'isolate' }}>{vehicle.luggage}</strong> {lugLabel}
             </span>
           </div>
@@ -238,13 +239,15 @@ function VehicleCard({ vehicle, i, cta, popular, passengers: passLabel, luggage:
 
         {/* Features */}
         <div
-          className="mb-5 flex min-h-[112px] shrink-0 flex-wrap content-start items-start gap-1.5"
+          className={compact
+            ? 'mb-3 grid shrink-0 grid-cols-2 content-start gap-1.5'
+            : 'mb-5 flex min-h-[112px] shrink-0 flex-wrap content-start items-start gap-1.5'}
           data-testid={`vehicle-features-${i}`}
         >
           {vehicle.features.map((feature) => (
             <div
               key={feature.label}
-              className="flex min-w-0 items-center gap-1 rounded-lg px-2.5 py-1"
+              className={`flex min-w-0 items-start gap-1 rounded-lg ${compact ? 'px-2 py-1' : 'px-2.5 py-1'}`}
               style={{
                 background: 'rgba(199,154,53,0.08)',
                 border: '1px solid rgba(199,154,53,0.2)',
@@ -348,7 +351,7 @@ export default function VehicleFleet({
   return (
     <section
       id="araclar"
-      className="py-24 relative"
+      className="relative py-16 md:py-20"
       style={{ background: '#F7F8FC' }}
       data-testid="vehicles-section"
     >
@@ -356,7 +359,7 @@ export default function VehicleFleet({
       <div className="max-w-6xl mx-auto px-5 md:px-8">
         {/* Section Header */}
         <motion.div
-          className="text-center mb-12"
+          className="mb-8 text-center md:mb-10"
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
@@ -392,7 +395,7 @@ export default function VehicleFleet({
               role="status"
               aria-live="polite"
               aria-label={ui.location.loading}
-              className={layout === 'grid'
+               className={layout === 'grid'
                 ? 'ivt-vehicle-grid grid grid-cols-1 items-stretch gap-6 md:grid-cols-2 xl:grid-cols-3'
                 : 'flex gap-6 overflow-hidden pb-3'}
             >

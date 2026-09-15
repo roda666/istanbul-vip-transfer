@@ -32,6 +32,7 @@ interface CardCarouselStripProps {
   previousLabel: string;
   nextLabel: string;
   testId?: string;
+  mobileControlsBelow?: boolean;
 }
 
 /**
@@ -42,7 +43,14 @@ interface CardCarouselStripProps {
  * edges, vertically centered against the card row. Mouse users can also
  * click-drag the track; touch users get native swipe + snap.
  */
-export default function CardCarouselStrip({ children, itemCount, previousLabel, nextLabel, testId }: CardCarouselStripProps) {
+export default function CardCarouselStrip({
+  children,
+  itemCount,
+  previousLabel,
+  nextLabel,
+  testId,
+  mobileControlsBelow = false,
+}: CardCarouselStripProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(true);
@@ -144,7 +152,10 @@ export default function CardCarouselStrip({ children, itemCount, previousLabel, 
   }
 
   return (
-    <div className="ivt-card-strip flex items-center gap-2 md:gap-3" data-testid={testId}>
+    <div
+      className={`ivt-card-strip flex items-center gap-2 md:gap-3 ${mobileControlsBelow ? 'ivt-card-strip--controls-below' : ''}`}
+      data-testid={testId}
+    >
       <button
         type="button"
         onClick={() => scrollByPage('prev')}

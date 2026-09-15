@@ -74,6 +74,22 @@ export function getCustomerReviewsLabel(locale: string): string {
   return CUSTOMER_REVIEW_LABELS[locale] ?? CUSTOMER_REVIEW_LABELS.en;
 }
 
+const REVIEW_CAROUSEL_LABELS: Record<string, { previous: string; next: string }> = {
+  tr: { previous: 'Önceki yorumlar', next: 'Sonraki yorumlar' },
+  en: { previous: 'Previous reviews', next: 'Next reviews' },
+  de: { previous: 'Vorherige Bewertungen', next: 'Nächste Bewertungen' },
+  ru: { previous: 'Предыдущие отзывы', next: 'Следующие отзывы' },
+  ar: { previous: 'المراجعات السابقة', next: 'المراجعات التالية' },
+  fr: { previous: 'Avis précédents', next: 'Avis suivants' },
+  es: { previous: 'Reseñas anteriores', next: 'Reseñas siguientes' },
+  it: { previous: 'Recensioni precedenti', next: 'Recensioni successive' },
+  nl: { previous: 'Vorige beoordelingen', next: 'Volgende beoordelingen' },
+};
+
+export function getReviewCarouselLabels(locale: string): { previous: string; next: string } {
+  return REVIEW_CAROUSEL_LABELS[locale] ?? REVIEW_CAROUSEL_LABELS.en;
+}
+
 export function formatHomepageReviewDate(
   value: string | null | undefined,
   locale: string,

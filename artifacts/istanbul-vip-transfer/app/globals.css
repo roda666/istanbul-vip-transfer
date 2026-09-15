@@ -759,6 +759,30 @@ body {
   .ivt-card-strip-nav-next { right: 8px; }
   .ivt-card-strip-nav svg { color: #FFFFFF !important; }
 
+  .ivt-card-strip--controls-below {
+    display: grid !important;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) 48px 48px minmax(0, 1fr);
+    justify-content: center;
+    gap: 12px;
+  }
+  .ivt-card-strip--controls-below .ivt-card-strip-track {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+  .ivt-card-strip--controls-below .ivt-card-strip-nav {
+    position: static !important;
+    grid-row: 2;
+    transform: none;
+    margin-top: 2px !important;
+    border-color: rgba(199,154,53,0.45) !important;
+    background: rgba(255,255,255,0.96) !important;
+    box-shadow: 0 2px 8px rgba(16,42,67,0.12) !important;
+  }
+  .ivt-card-strip--controls-below .ivt-card-strip-nav-prev { grid-column: 2; }
+  .ivt-card-strip--controls-below .ivt-card-strip-nav-next { grid-column: 3; }
+  .ivt-card-strip--controls-below .ivt-card-strip-nav svg { color: #C79A35 !important; }
+
   .ivt-float-button {
     bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px) + var(--ivt-cookie-banner-offset, 0px)) !important;
   }

@@ -5,9 +5,11 @@ import { useLang } from '@/lib/i18n/context';
 import { useSiteSettings } from '@/components/SiteSettingsContext';
 import { useHomepageCms } from '@/lib/homepage-cms-context';
 import type { HomepageReview } from '@/lib/homepage-public-content';
+import CardCarouselStrip from '@/components/CardCarouselStrip';
 import {
   formatHomepageReviewDate,
   getCustomerReviewsLabel,
+  getReviewCarouselLabels,
   isConfiguredGoogleReviewUrl,
   type PublicReviewSource,
 } from '@/lib/google-review-public';
@@ -198,6 +200,7 @@ export default function Reviews({
   const cs = useSiteSettings();
   const r = dict.reviews;
   const cms = useHomepageCms();
+  const carouselLabels = getReviewCarouselLabels(lang);
   const section = homepageMode ? cms?.reviewsSection : null;
   if (section && !section.enabled) return null;
   // The homepage may label these as Google reviews only when a successful
@@ -213,7 +216,7 @@ export default function Reviews({
 
   return (
     <section
-      className="py-24 relative"
+      className="relative py-16 md:py-20"
       style={{ background: '#EAF2F8' }}
       data-testid="reviews-section"
     >
@@ -221,7 +224,7 @@ export default function Reviews({
       <div className="max-w-6xl mx-auto px-5 md:px-8">
         {/* Section Header */}
         <div
-          className="text-center mb-14"
+          className="mb-9 text-center md:mb-11"
           data-testid="reviews-header"
         >
           <div
@@ -251,18 +254,25 @@ export default function Reviews({
         </div>
 
         {/* Review Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          {reviews.map((review, i) => (
-            <div
-              key={review.name}
-              className="relative p-7 rounded-2xl overflow-hidden flex flex-col"
-              style={{
-                background: '#FFFFFF',
-                border: '1px solid #D9E2EC',
-                boxShadow: '0 2px 16px rgba(16,42,67,0.06)',
-              }}
-              data-testid={`review-card-${i}`}
-            >
+        <div className="mb-12">
+          <CardCarouselStrip
+            itemCount={reviews.length}
+            previousLabel={carouselLabels.previous}
+            nextLabel={carouselLabels.next}
+            testId="reviews-strip"
+            mobileControlsBelow
+          >
+            {reviews.map((review, i) => (
+              <div
+                key={review.name + i}
+                className="ivt-card-strip-item relative flex h-full flex-col overflow-hidden rounded-2xl p-5 sm:p-6"
+                style={{
+                  background: '#FFFFFF',
+                  border: '1px solid #D9E2EC',
+                  boxShadow: '0 2px 16px rgba(16,42,67,0.06)',
+                }}
+                data-testid={`review-card-${i}`}
+              >
               <div
                 className="absolute top-0 left-0 right-0 h-[2px]"
                 style={{ background: 'linear-gradient(90deg, transparent, rgba(199,154,53,0.5), transparent)' }}
@@ -314,7 +324,8 @@ export default function Reviews({
                 {review.source === 'google_business' && <div><GoogleMark size={18} /></div>}
               </div>
             </div>
-          ))}
+            ))}
+          </CardCarouselStrip>
         </div>
 
         {/* CTA */}

@@ -4,6 +4,7 @@ import {
   deduplicateHomepageReviews,
   formatHomepageReviewDate,
   getCustomerReviewsLabel,
+  getReviewCarouselLabels,
   isConfiguredGoogleReviewUrl,
 } from '../../lib/google-review-public';
 
@@ -26,6 +27,7 @@ describe('public Google Business review contracts', () => {
     expect(section).toContain('isNotNull(googleReviews.reviewedAt)');
     expect(section).toContain('eq(googleReviews.googleSourceIndicator, true)');
     expect(section).toContain('eq(googleReviews.isVisible, true)');
+    expect(section).not.toContain('.slice(0, 3)');
     // A token refresh may disable the channel. Verified cached rows remain
     // publishable while the connection and selected location still exist.
     expect(section).not.toContain('eq(socialPlatforms.enabled, true)');
@@ -60,12 +62,22 @@ describe('public Google Business review contracts', () => {
     expect(getCustomerReviewsLabel('tr')).toBe('Müşteri Yorumları');
     expect(getCustomerReviewsLabel('de')).toBe('Kundenbewertungen');
     expect(getCustomerReviewsLabel('unknown')).toBe('Customer Reviews');
+    expect(getReviewCarouselLabels('tr')).toEqual({
+      previous: 'Önceki yorumlar',
+      next: 'Sonraki yorumlar',
+    });
+    expect(getReviewCarouselLabels('ar')).toEqual({
+      previous: 'المراجعات السابقة',
+      next: 'المراجعات التالية',
+    });
 
     const cards = read('components/Reviews.tsx');
     expect(cards).toContain('isConfiguredGoogleReviewUrl(cs.googleReviewUrl)');
     expect(cards).toContain('formatHomepageReviewDate(review.reviewDate, lang)');
     expect(cards).toContain('{reviewUrl &&');
     expect(cards).toContain("review.source === 'google_business'");
+    expect(cards).toContain('testId="reviews-strip"');
+    expect(cards).toContain('mobileControlsBelow');
   });
 });
 

@@ -1051,20 +1051,27 @@ export default function TransferRotalariList() {
   const [vehicleOptions, setVehicleOptions] = useState<ManagedVehicle[]>([]);
   const [serviceOptions, setServiceOptions] = useState<{slug: string, title: string}[]>([]);
   const [actionId, setActionId] = useState<string | null>(null);
+  const listActionInFlightRef = useRef(false);
 
-  const fetchRoutes = useCallback(async () => {
-    setLoading(true);
-    setError('');
+  const fetchRoutes = useCallback(async (preserveCurrentList = false): Promise<boolean> => {
+    if (!preserveCurrentList) {
+      setLoading(true);
+      setError('');
+    }
     try {
       const res = await fetch('/admin/api/transfer-routes');
       if (!res.ok) throw new Error('API hatası');
       const json = await res.json();
       setRoutes(json.routes ?? []);
       setServiceOptions(json.serviceOptions ?? json.services ?? []);
+      return true;
     } catch {
-      setError('Rotalar yüklenemedi. Lütfen sayfayı yenileyin.');
+      if (!preserveCurrentList) {
+        setError('Rotalar yüklenemedi. Lütfen sayfayı yenileyin.');
+      }
+      return false;
     } finally {
-      setLoading(false);
+      if (!preserveCurrentList) setLoading(false);
     }
   }, []);
 
@@ -1121,31 +1128,36 @@ export default function TransferRotalariList() {
   }
 
   async function listAction(route: AdminRoute, action: 'up' | 'down' | 'toggle-active') {
+    if (listActionInFlightRef.current) return;
+    listActionInFlightRef.current = true;
     setActionId(route.id);
     setActionError('');
     try {
       const res = await fetch(`/admin/api/transfer-routes/${route.id}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? 'İşlem başarısız.');
-      if (Array.isArray(json.routes)) {
-        setRoutes(json.routes.map((next: AdminRoute) => ({
-          ...next,
-          translations: next.translations ?? [],
-        })));
+      const json = await readJsonResponse(res);
+      if (!res.ok) throw new Error(typeof json.error === 'string' ? json.error : 'İşlem başarısız.');
+      if (action === 'up' || action === 'down') {
+        const refreshed = await fetchRoutes(true);
+        if (!refreshed) {
+          setActionError('Sıralama kaydedildi ancak tam rota listesi yeniden yüklenemedi. Mevcut liste korundu; lütfen tekrar deneyin.');
+        }
         return;
       }
+      const updatedRoute = json.route;
+      if (!isJsonRecord(updatedRoute) || typeof updatedRoute.active !== 'boolean') {
+        throw new Error('Sunucudan geçersiz rota yanıtı alındı.');
+      }
+      const nextActive = updatedRoute.active;
       setRoutes((current) => {
-        if (action === 'toggle-active') return current.map((item) => item.id === route.id ? { ...item, active: json.route.active } : item);
-        const index = current.findIndex((item) => item.id === route.id);
-        const peerIndex = action === 'up' ? index - 1 : index + 1;
-        if (index < 0 || peerIndex < 0 || peerIndex >= current.length) return current;
-        const next = [...current]; [next[index], next[peerIndex]] = [next[peerIndex], next[index]];
-        return next;
+        return current.map((item) => item.id === route.id ? { ...item, active: nextActive } : item);
       });
     } catch (error) { setActionError(error instanceof Error ? error.message : 'İşlem başarısız.'); }
-    finally { setActionId(null); }
+    finally {
+      listActionInFlightRef.current = false;
+      setActionId(null);
+    }
   }
 
   function formatDuration(min: number) {
@@ -1210,7 +1222,7 @@ export default function TransferRotalariList() {
               </thead>
               <tbody>
                 {routes.map((r, index) => (
-                  <tr key={r.id} style={{ borderBottom: `1px solid #EDF2F7` }}
+                  <tr key={r.id} data-testid={`transfer-route-row-${r.id}`} style={{ borderBottom: `1px solid #EDF2F7` }}
                     onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#F8FAFC'; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
                   >
@@ -1262,10 +1274,10 @@ export default function TransferRotalariList() {
                     {/* Actions */}
                     <td style={{ padding: '12px 16px' }}>
                       <AdminRecordActions
-                        up={{ onClick: () => listAction(r, 'up'), disabled: index === 0 || actionId === r.id }}
-                        down={{ onClick: () => listAction(r, 'down'), disabled: index === routes.length - 1 || actionId === r.id }}
+                        up={{ onClick: () => listAction(r, 'up'), disabled: index === 0 || actionId !== null }}
+                        down={{ onClick: () => listAction(r, 'down'), disabled: index === routes.length - 1 || actionId !== null }}
                         edit={{ onClick: () => setModal({ ...r }) }}
-                        activation={{ onClick: () => listAction(r, 'toggle-active'), isActive: r.active, disabled: actionId === r.id }}
+                        activation={{ onClick: () => listAction(r, 'toggle-active'), isActive: r.active, disabled: actionId !== null }}
                         delete={{ onClick: () => setConfirmDelete(r) }}
                       />
                     </td>

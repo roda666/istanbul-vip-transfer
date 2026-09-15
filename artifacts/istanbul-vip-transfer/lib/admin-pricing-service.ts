@@ -33,7 +33,8 @@ import {
   getTollPricingSettings,
   resolveBosphorusToll,
   resolveIntercityCorridorToll,
-  resolveActiveTimeBandForPoint,
+  resolveTariffBandForPoint,
+  tariffAppliesToBand,
   assertBosphorusSelectionRequirement,
 } from '@/lib/toll-management';
 import { assertOptionalServiceRuntimeValid } from '@/lib/optional-service-validity';
@@ -398,7 +399,6 @@ async function resolveTolls(routeId: string, alternativeId: string, vehicleId: s
   for (const assignment of assignments) pointClasses.set(assignment.tollPointId, assignment.vehicleClass);
   const tariffClasses = [...new Set(pointIds.map((pointId) => pointClasses.get(pointId)).filter((value): value is string => !!value))];
   const settings = await getTollPricingSettings();
-  const pointBand = new Map(points.map((point) => [point.id, resolveActiveTimeBandForPoint(pickupAt, point)]));
 
   const allTariffs = tariffClasses.length
     ? await db.select().from(tollTariffs).where(and(
@@ -409,10 +409,6 @@ async function resolveTolls(routeId: string, alternativeId: string, vehicleId: s
       or(isNull(tollTariffs.validUntil), gte(tollTariffs.validUntil, now)),
     ))
     : [];
-  const tariffs = allTariffs.filter((tariff) => {
-    const band = pointBand.get(tariff.tollPointId) ?? 'DAY';
-    return band === 'DAY' ? tariff.appliesDay : tariff.appliesNight;
-  });
 
   return items.map((item) => {
     const point = points.find((candidate) => candidate.id === item.tollPointId)!;
@@ -433,7 +429,20 @@ async function resolveTolls(routeId: string, alternativeId: string, vehicleId: s
       // other missing tariff.
       return { id: point.id, name: point.name, amountKurus: null as number | null, missing: true as const, stale: false, directionUnconfirmed: point.tollDirection == null };
     }
-    const pointTariffs = tariffs.filter((candidate) => candidate.tollPointId === item.tollPointId && candidate.vehicleClass === pointClass);
+    const pointClassTariffs = allTariffs.filter((candidate) =>
+      candidate.tollPointId === item.tollPointId && candidate.vehicleClass === pointClass);
+    const band = resolveTariffBandForPoint(pickupAt, point, pointClassTariffs);
+    if (band.status === 'UNCONFIGURED') {
+      return {
+        id: point.id,
+        name: `${point.name} (gündüz/gece saatleri yapılandırılmadı)`,
+        amountKurus: null as number | null,
+        missing: true as const,
+        stale: false,
+        directionUnconfirmed: point.tollDirection == null,
+      };
+    }
+    const pointTariffs = pointClassTariffs.filter((candidate) => tariffAppliesToBand(candidate, band));
     const forwardCandidates = pointTariffs.filter((candidate) => {
       if (isGatePair) return candidate.entryGateName === item.entryGateName && candidate.exitGateName === item.exitGateName;
       if (point.tollDirection === 'TWO_WAY_DIRECTIONAL') return candidate.direction === 'FORWARD';

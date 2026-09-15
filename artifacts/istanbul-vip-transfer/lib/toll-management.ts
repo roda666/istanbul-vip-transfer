@@ -142,32 +142,56 @@ export async function getLocationPairTollAlternatives(
   const points = await db.select().from(tollPoints).where(and(
     eq(tollPoints.active, true), eq(tollPoints.isBosphorusCrossing, true),
   )).orderBy(asc(tollPoints.bosphorusCrossingOrder), asc(tollPoints.name));
+  const pointClasses = new Map<string, string>();
+  if (vehicle && points.length) {
+    const assignments = await db.select({
+      tollPointId: vehicleTollPointClasses.tollPointId,
+      vehicleClass: vehicleTollPointClasses.vehicleClass,
+    }).from(vehicleTollPointClasses).where(and(
+      eq(vehicleTollPointClasses.vehicleId, vehicle.id),
+      inArray(vehicleTollPointClasses.tollPointId, points.map((point) => point.id)),
+    ));
+    for (const assignment of assignments) pointClasses.set(assignment.tollPointId, assignment.vehicleClass);
+  }
   const eligible = points.filter((point) => {
     if (!vehicle) return true;
-    return !(vehicle.tollClass && ((point.bannedVehicleClasses ?? []) as string[]).includes(vehicle.tollClass))
+    const classCode = point.pricingMode === 'GATE_PAIR'
+      ? pointClasses.get(point.id)
+      : vehicle.tollClass;
+    return !(classCode && ((point.bannedVehicleClasses ?? []) as string[]).includes(classCode))
       && !((point.bannedVehicleTypes ?? []) as string[]).includes(vehicle.pricingClass);
   });
-  const classCode = vehicle?.tollClass;
-  const pointBand = new Map(eligible.map((p) => [p.id, resolveActiveTimeBandForPoint(activeAt, p)]));
-  const tariffRows = classCode && eligible.length ? await db.select().from(tollTariffs).where(and(
+  const tariffClasses = [...new Set(eligible.map((point) =>
+    point.pricingMode === 'GATE_PAIR' ? pointClasses.get(point.id) : vehicle?.tollClass,
+  ).filter((value): value is string => !!value))] as TollVehicleClass[];
+  const tariffRows = tariffClasses.length && eligible.length ? await db.select().from(tollTariffs).where(and(
     inArray(tollTariffs.tollPointId, eligible.map((p) => p.id)),
-    eq(tollTariffs.vehicleClass, classCode as TollVehicleClass),
+    inArray(tollTariffs.vehicleClass, tariffClasses),
     eq(tollTariffs.active, true),
     or(isNull(tollTariffs.validFrom), lte(tollTariffs.validFrom, now)),
     or(isNull(tollTariffs.validUntil), gte(tollTariffs.validUntil, now)),
   )) : [];
   const alternatives = eligible.map((point) => {
-    const band = pointBand.get(point.id) ?? 'DAY';
-    const tariffs = tariffRows.filter((t) => t.tollPointId === point.id && (band === 'DAY' ? t.appliesDay : t.appliesNight));
+    const classCode = vehicle && (point.pricingMode === 'GATE_PAIR' ? pointClasses.get(point.id) : vehicle.tollClass);
+    const pointTariffs = tariffRows.filter((t) => t.tollPointId === point.id && t.vehicleClass === classCode);
+    const band = resolveTariffBandForPoint(activeAt, point, pointTariffs);
+    const tariffs = band.status === 'UNCONFIGURED' ? [] : pointTariffs.filter((t) => tariffAppliesToBand(t, band));
     const matching = tariffs.length === 1 ? tariffs[0] : undefined;
-    const amount = matching ? effectiveTollAmount(matching) : null;
+    const amount = point.pricingMode === 'GATE_PAIR' ? null : matching ? effectiveTollAmount(matching) : null;
+    const configurationReason = band.status === 'UNCONFIGURED'
+      ? `${point.name} (gündüz/gece saatleri yapılandırılmadı)`
+      : point.pricingMode === 'GATE_PAIR'
+        ? `${point.name} (gişe çifti seçilmedi)`
+        : null;
     return {
       id: point.id, tollPointId: point.id, name: `${point.name} üzerinden`,
       active: true, isDefault: point.isDefaultBosphorusCrossing,
       displayOrder: point.bosphorusCrossingOrder, pointIds: [point.id], pointNames: [point.name],
       needsReview: false, reviewNote: null, isBannedForSelectedVehicle: false, bannedPointNames: [],
       isPricedForSelectedVehicle: Boolean(vehicle && amount != null),
-      missingTariffPointNames: vehicle && amount == null ? [point.name] : [],
+      missingTariffPointNames: vehicle && (!classCode || amount == null || band.status === 'UNCONFIGURED')
+        ? [configurationReason ?? (!classCode ? `${point.name} (araç sınıfı atanmadı)` : point.name)] : [],
+      missingReason: configurationReason,
       totalKurus: vehicle && amount != null ? amount : null,
       tariffCoverage: vehicle && amount != null ? 'FULL' : 'MISSING',
     };
@@ -209,10 +233,23 @@ async function getIntercityCorridorAlternatives(
   const pointIds = [...new Set(items.map(i => i.tollPointId))];
   const points = pointIds.length ? await db.select().from(tollPoints).where(inArray(tollPoints.id, pointIds)) : [];
   const pointById = new Map(points.map(p => [p.id, p]));
-  const vehicleClass = vehicle?.tollClass ?? null;
+  const pointClasses = new Map<string, string>();
+  if (vehicle && pointIds.length) {
+    const assignments = await db.select({
+      tollPointId: vehicleTollPointClasses.tollPointId,
+      vehicleClass: vehicleTollPointClasses.vehicleClass,
+    }).from(vehicleTollPointClasses).where(and(
+      eq(vehicleTollPointClasses.vehicleId, vehicle.id),
+      inArray(vehicleTollPointClasses.tollPointId, pointIds),
+    ));
+    for (const assignment of assignments) pointClasses.set(assignment.tollPointId, assignment.vehicleClass);
+  }
+  const tariffClasses = [...new Set(points.map((point) =>
+    point.pricingMode === 'GATE_PAIR' ? pointClasses.get(point.id) : vehicle?.tollClass,
+  ).filter((value): value is string => !!value))] as TollVehicleClass[];
   const now = new Date();
-  const tariffs = vehicleClass && pointIds.length ? await db.select().from(tollTariffs).where(and(
-    inArray(tollTariffs.tollPointId, pointIds), eq(tollTariffs.vehicleClass, vehicleClass as TollVehicleClass),
+  const tariffs = tariffClasses.length && pointIds.length ? await db.select().from(tollTariffs).where(and(
+    inArray(tollTariffs.tollPointId, pointIds), inArray(tollTariffs.vehicleClass, tariffClasses),
     eq(tollTariffs.active, true), or(isNull(tollTariffs.validFrom), lte(tollTariffs.validFrom, now)),
     or(isNull(tollTariffs.validUntil), gte(tollTariffs.validUntil, now)),
   )) : [];
@@ -222,16 +259,26 @@ async function getIntercityCorridorAlternatives(
     alternatives: alternatives.map(a => {
       const its = items.filter(i => i.alternativeId === a.id);
       const missingTariffPointNames: string[] = [], bannedPointNames: string[] = [];
+      let missingReason: string | null = null;
       let totalKurus = 0, complete = true;
       for (const item of its) {
         const point = pointById.get(item.tollPointId);
         if (!point || !vehicle) { complete = false; if (!point) missingTariffPointNames.push('Bilinmeyen geçiş noktası'); continue; }
-        if ((point.bannedVehicleClasses ?? []).includes(vehicleClass ?? '') || (point.bannedVehicleTypes ?? []).includes(vehicle.pricingClass)) {
+        const pointClass = point.pricingMode === 'GATE_PAIR' ? pointClasses.get(point.id) : vehicle.tollClass;
+        if (!pointClass) { complete = false; missingTariffPointNames.push(`${point.name} (araç sınıfı atanmadı)`); continue; }
+        if ((point.bannedVehicleClasses ?? []).includes(pointClass) || (point.bannedVehicleTypes ?? []).includes(vehicle.pricingClass)) {
           bannedPointNames.push(point.name); continue;
         }
-        const band = resolveActiveTimeBandForPoint(activeAt, point);
-        const matches = tariffs.filter(t => t.tollPointId === point.id && (band === 'DAY' ? t.appliesDay : t.appliesNight)
-          && (point.pricingMode !== 'GATE_PAIR' || (t.entryGateName === item.entryGateName && t.exitGateName === item.exitGateName)));
+        const pointTariffs = tariffs.filter(t => t.tollPointId === point.id && t.vehicleClass === pointClass);
+        const band = resolveTariffBandForPoint(activeAt, point, pointTariffs);
+        if (band.status === 'UNCONFIGURED') {
+          complete = false;
+          missingReason = `${point.name} (gündüz/gece saatleri yapılandırılmadı)`;
+          missingTariffPointNames.push(missingReason);
+          continue;
+        }
+        const matches = pointTariffs.filter(t => tariffAppliesToBand(t, band)).filter(t =>
+          point.pricingMode !== 'GATE_PAIR' || (t.entryGateName === item.entryGateName && t.exitGateName === item.exitGateName));
         if (matches.length !== 1 || effectiveTollAmount(matches[0]) == null) { complete = false; missingTariffPointNames.push(point.name); continue; }
         totalKurus += effectiveTollAmount(matches[0])!;
       }
@@ -239,7 +286,7 @@ async function getIntercityCorridorAlternatives(
         needsReview: a.needsReview, reviewNote: a.reviewNote, pointIds: its.map(i => i.tollPointId),
         pointNames: its.map(i => pointById.get(i.tollPointId)?.name ?? 'Bilinmeyen geçiş'),
         isBannedForSelectedVehicle: bannedPointNames.length > 0, bannedPointNames, isPricedForSelectedVehicle: !vehicle || (complete && !bannedPointNames.length),
-        missingTariffPointNames, totalKurus: vehicle && complete && !bannedPointNames.length ? totalKurus : null };
+        missingTariffPointNames, missingReason, totalKurus: vehicle && complete && !bannedPointNames.length ? totalKurus : null };
     }),
   };
 }
@@ -257,7 +304,15 @@ export async function resolveBosphorusToll(
   const selected = result.alternatives.find((alternative) => alternative.id === pointId);
   if (!selected) throw new Error('Seçilen Boğaz geçişi bu konum çifti veya araç için geçerli değil.');
   if (selected.totalKurus == null) {
-    return { id: selected.id, name: selected.pointNames[0], amountKurus: null, missing: true, stale: false, directionUnconfirmed: true };
+    return {
+      id: selected.id,
+      name: selected.pointNames[0],
+      amountKurus: null,
+      missing: true,
+      missingReason: selected.missingReason ?? undefined,
+      stale: false,
+      directionUnconfirmed: true,
+    };
   }
   const [point] = await db.select().from(tollPoints).where(eq(tollPoints.id, pointId)).limit(1);
   const amountKurus = tripType === 'ROUND_TRIP' && point?.tollDirection !== 'ONE_WAY'
@@ -277,13 +332,27 @@ export async function resolveIntercityCorridorToll(
   const points = await db.select().from(tollPoints).where(inArray(tollPoints.id, items.map(item => item.tollPointId)));
   const settings = await getTollPricingSettings();
   const vehicle = (await db.select().from(vehicles).where(eq(vehicles.id, vehicleId)).limit(1))[0];
-  if (!vehicle?.tollClass) {
+  const pointClasses = new Map<string, string>();
+  if (vehicle && points.length) {
+    const assignments = await db.select({
+      tollPointId: vehicleTollPointClasses.tollPointId,
+      vehicleClass: vehicleTollPointClasses.vehicleClass,
+    }).from(vehicleTollPointClasses).where(and(
+      eq(vehicleTollPointClasses.vehicleId, vehicle.id),
+      inArray(vehicleTollPointClasses.tollPointId, points.map((point) => point.id)),
+    ));
+    for (const assignment of assignments) pointClasses.set(assignment.tollPointId, assignment.vehicleClass);
+  }
+  const tariffClasses = [...new Set(points.map((point) =>
+    point.pricingMode === 'GATE_PAIR' ? pointClasses.get(point.id) : vehicle?.tollClass,
+  ).filter((value): value is string => !!value))] as TollVehicleClass[];
+  if (!vehicle || !tariffClasses.length) {
     return { id: selected.id, name: selected.name, amountKurus: null, missing: true, stale: false, directionUnconfirmed: true, source: 'CORRIDOR' as const };
   }
   const now = new Date();
   const tariffs = await db.select().from(tollTariffs).where(and(
     inArray(tollTariffs.tollPointId, points.map(point => point.id)),
-    eq(tollTariffs.vehicleClass, vehicle.tollClass as TollVehicleClass),
+    inArray(tollTariffs.vehicleClass, tariffClasses),
     eq(tollTariffs.active, true),
     or(isNull(tollTariffs.validFrom), lte(tollTariffs.validFrom, now)),
     or(isNull(tollTariffs.validUntil), gte(tollTariffs.validUntil, now)),
@@ -293,13 +362,29 @@ export async function resolveIntercityCorridorToll(
   let directionUnconfirmed = false;
   for (const item of items) {
     const point = points.find(candidate => candidate.id === item.tollPointId);
-    if (!point || !point.active || (point.bannedVehicleClasses ?? []).includes(vehicle.tollClass)) {
+    const pointClass = point && (point.pricingMode === 'GATE_PAIR' ? pointClasses.get(point.id) : vehicle.tollClass);
+    if (!point || !point.active || !pointClass) {
+      return { id: selected.id, name: selected.name, amountKurus: null, missing: true, stale, directionUnconfirmed, source: 'CORRIDOR' as const };
+    }
+    if ((point.bannedVehicleClasses ?? []).includes(pointClass)) {
       return { id: selected.id, name: selected.name, amountKurus: null, missing: true, stale, directionUnconfirmed, source: 'CORRIDOR' as const };
     }
     directionUnconfirmed ||= point.tollDirection == null;
-    const band = resolveActiveTimeBandForPoint(pickupAt, point);
-    const pointTariffs = tariffs.filter(tariff => tariff.tollPointId === point.id
-      && (band === 'DAY' ? tariff.appliesDay : tariff.appliesNight));
+    const allPointTariffs = tariffs.filter(tariff => tariff.tollPointId === point.id && tariff.vehicleClass === pointClass);
+    const band = resolveTariffBandForPoint(pickupAt, point, allPointTariffs);
+    if (band.status === 'UNCONFIGURED') {
+      return {
+        id: selected.id,
+        name: selected.name,
+        amountKurus: null,
+        missing: true,
+        missingReason: `${point.name} (gündüz/gece saatleri yapılandırılmadı)`,
+        stale,
+        directionUnconfirmed,
+        source: 'CORRIDOR' as const,
+      };
+    }
+    const pointTariffs = allPointTariffs.filter(tariff => tariffAppliesToBand(tariff, band));
     const forward = pointTariffs.filter(tariff => point.pricingMode === 'GATE_PAIR'
       ? tariff.entryGateName === item.entryGateName && tariff.exitGateName === item.exitGateName
       : point.tollDirection === 'TWO_WAY_DIRECTIONAL' ? tariff.direction === 'FORWARD' : true);
@@ -375,21 +460,85 @@ export async function updateTollPricingSettings(input: TollPricingSettings & { u
   return row;
 }
 
+export type TollTariffBandResolution =
+  | { status: 'RESOLVED'; band: 'ALL' | 'DAY' | 'NIGHT' }
+  | { status: 'UNCONFIGURED'; reason: 'MISSING_CUTOVER' | 'INVALID_CUTOVER' };
+
+type TariffBandCandidate = {
+  timeBand?: TollTimeBand | null;
+  appliesDay: boolean;
+  appliesNight: boolean;
+};
+
+function hasValidCutover(point: { dayStartHour: number | null; nightStartHour: number | null }): boolean {
+  const dayStartHour = point.dayStartHour;
+  const nightStartHour = point.nightStartHour;
+  return dayStartHour != null && nightStartHour != null
+    && Number.isInteger(dayStartHour)
+    && Number.isInteger(nightStartHour)
+    && dayStartHour >= 0 && dayStartHour <= 23
+    && nightStartHour >= 0 && nightStartHour <= 23
+    && dayStartHour !== nightStartHour;
+}
+
+function istanbulCalendarHour(at: Date): number {
+  const hour = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Istanbul',
+    hour: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(at).find((part) => part.type === 'hour')?.value;
+  return Number(hour);
+}
+
 /**
  * Which time band is in effect for a given instant, per a toll point's own
- * day/night cutover hours. A point with no day/night hours configured has no
- * differentiation — everything on it is treated as the DAY band, since its
- * tariffs are entered as ALL/DAY and there is never a NIGHT-only row to miss.
+ * day/night cutover hours. Istanbul is deliberately explicit here: server
+ * timezone must never affect a toll quote. A point with no cutover keeps the
+ * historical DAY fallback for callers that only need a legacy band; tariff
+ * pricing must use resolveTariffBandForPoint below so FERRY configuration gaps
+ * cannot be mistaken for DAY.
  */
 export function resolveActiveTimeBandForPoint(at: Date, point: { dayStartHour: number | null; nightStartHour: number | null }): 'DAY' | 'NIGHT' {
+  if (!hasValidCutover(point)) return 'DAY';
+  const hour = istanbulCalendarHour(at);
   const { dayStartHour, nightStartHour } = point;
-  if (dayStartHour == null || nightStartHour == null || dayStartHour === nightStartHour) return 'DAY';
-  const hour = at.getHours();
-  if (dayStartHour < nightStartHour) {
-    return hour >= dayStartHour && hour < nightStartHour ? 'DAY' : 'NIGHT';
+  if (dayStartHour! < nightStartHour!) {
+    return hour >= dayStartHour! && hour < nightStartHour! ? 'DAY' : 'NIGHT';
   }
   // Overnight-wrapping day window (e.g. dayStartHour=22, nightStartHour=6).
-  return hour >= dayStartHour || hour < nightStartHour ? 'DAY' : 'NIGHT';
+  return hour >= dayStartHour! || hour < nightStartHour! ? 'DAY' : 'NIGHT';
+}
+
+/**
+ * Resolves the tariff band shared by every toll pricing/display path.
+ * Legacy ALL rows remain valid without point cutover hours. A FERRY that has
+ * DAY/NIGHT rows must have a valid cutover; otherwise it is explicitly
+ * unconfigured rather than silently priced as DAY.
+ */
+export function resolveTariffBandForPoint(
+  at: Date,
+  point: { type?: string | null; dayStartHour: number | null; nightStartHour: number | null },
+  tariffs: TariffBandCandidate[],
+): TollTariffBandResolution {
+  const hasSpecificBand = tariffs.some((tariff) =>
+    tariff.timeBand === 'DAY' || tariff.timeBand === 'NIGHT'
+      || (tariff.timeBand == null && tariff.appliesDay !== tariff.appliesNight));
+  if (!hasSpecificBand) return { status: 'RESOLVED', band: 'ALL' };
+  if (point.type === 'FERRY' && point.dayStartHour == null && point.nightStartHour == null) {
+    return { status: 'UNCONFIGURED', reason: 'MISSING_CUTOVER' };
+  }
+  if (point.type === 'FERRY' && !hasValidCutover(point)) {
+    return { status: 'UNCONFIGURED', reason: 'INVALID_CUTOVER' };
+  }
+  return { status: 'RESOLVED', band: resolveActiveTimeBandForPoint(at, point) };
+}
+
+export function tariffAppliesToBand(
+  tariff: TariffBandCandidate,
+  resolution: Extract<TollTariffBandResolution, { status: 'RESOLVED' }>,
+): boolean {
+  if (resolution.band === 'ALL') return tariff.appliesDay || tariff.appliesNight;
+  return resolution.band === 'DAY' ? tariff.appliesDay : tariff.appliesNight;
 }
 
 export type TollStaleReason = 'AGE' | 'YEAR_ROLLOVER' | 'SOURCE_EFFECTIVE_DATE_OLD' | 'QUERY_DATE_OLD';
@@ -553,20 +702,18 @@ export function assertVerifiedSourceForBan(bannedVehicleClasses: string[] | null
 
 /**
  * Mirrors assertPricingModeMatchesGatePair at the point level: the owner's
- * rule is that bridges/tunnels/ferries are always a flat per-crossing fee (open
- * system, summed across genuinely distinct crossings) while highway
- * segments are always priced by entry+exit gate pair (closed system,
- * intermediate stations never separately summed). Enforced at write time so
+ * rule is that bridges/tunnels are always a flat per-crossing fee (open
+ * system, summed across genuinely distinct crossings) while ferry and highway
+ * segments are priced by entry+exit gate pair. Enforced at write time so
  * the type/pricingMode pairing can never drift apart, even though existing
- * data already happens to be consistent. FERRY points are open-system
- * crossings and use the same flat tariff model as bridges and tunnels.
+ * data already happens to be consistent.
  */
 export function assertTypeMatchesPricingMode(type: 'BRIDGE' | 'TUNNEL' | 'HIGHWAY' | 'FERRY', pricingMode: TollPricingMode): void {
-  if ((type === 'BRIDGE' || type === 'TUNNEL' || type === 'FERRY') && pricingMode !== 'FLAT') {
-    throw new Error('Köprü/tünel/feribot noktaları her zaman sabit ücretli (FLAT) olmalıdır — açık sistemde her geçiş kendi başına ücretlendirilir.');
+  if ((type === 'BRIDGE' || type === 'TUNNEL') && pricingMode !== 'FLAT') {
+    throw new Error('Köprü ve tünel noktaları her zaman sabit ücretli (FLAT) olmalıdır.');
   }
-  if (type === 'HIGHWAY' && pricingMode !== 'GATE_PAIR') {
-    throw new Error('Otoyol kesimleri her zaman giriş/çıkış gişe çiftiyle (GATE_PAIR) ücretlendirilmelidir — kapalı sistemde ara istasyonlar ayrı ayrı toplanmaz.');
+  if ((type === 'HIGHWAY' || type === 'FERRY') && pricingMode !== 'GATE_PAIR') {
+    throw new Error('Otoyol ve feribot noktaları her zaman giriş/çıkış gişe çiftiyle (GATE_PAIR) ücretlendirilmelidir.');
   }
 }
 
@@ -584,12 +731,11 @@ export function assertVerifiedSourceForDirection(tollDirection: string | null, s
 }
 
 /**
- * Enforces the two-system separation the owner requires: a bridge/tunnel/ferry
- * (pricingMode FLAT) is charged one fixed amount per crossing and must never
- * carry an entry/exit gate pair; a highway segment (pricingMode GATE_PAIR)
- * is priced by its specific entry+exit gate pair and must never be assigned
- * a single flat amount with no gate pair. Both directions of the mismatch
- * are rejected outright — never silently coerced.
+ * Enforces the two-system separation at the tariff-row level: FLAT points are
+ * charged one fixed amount per crossing and must never carry an entry/exit
+ * gate pair; GATE_PAIR points are priced by their specific pair and must
+ * never be assigned a single flat amount with no pair. Point-type invariants
+ * are enforced separately by assertTypeMatchesPricingMode.
  */
 export function assertPricingModeMatchesGatePair(
   pricingMode: TollPricingMode,
@@ -598,10 +744,10 @@ export function assertPricingModeMatchesGatePair(
 ): void {
   const hasGatePair = !!entryGateName && !!exitGateName;
   if (pricingMode === 'FLAT' && hasGatePair) {
-    throw new Error('Bu bir sabit ücretli (köprü/tünel/feribot) geçiş noktasıdır — giriş/çıkış gişe çifti girilemez, tek bir tutar geçerlidir.');
+    throw new Error('Bu sabit ücretli geçiş noktasıdır — giriş/çıkış gişe çifti girilemez, tek bir tutar geçerlidir.');
   }
   if (pricingMode === 'GATE_PAIR' && !hasGatePair) {
-    throw new Error('Bu bir otoyol kesimidir — tek bir sabit tutar girilemez, giriş ve çıkış gişesi birlikte seçilmelidir.');
+    throw new Error('Bu geçiş noktası gişe çiftiyle ücretlendirilir — tek bir sabit tutar girilemez, giriş ve çıkış gişesi birlikte seçilmelidir.');
   }
 }
 
@@ -634,8 +780,8 @@ export async function assertNoActiveTariffOverlap(input: {
    */
   entryGateName?: string | null;
   exitGateName?: string | null;
-}) {
-  const rows = await db.select({
+}, executor: Pick<typeof db, 'select'> = db) {
+  const rows = await executor.select({
     id: tollTariffs.id,
     validFrom: tollTariffs.validFrom,
     validUntil: tollTariffs.validUntil,
@@ -819,10 +965,6 @@ export async function getRouteTollAlternatives(routeId: string, vehicleId?: stri
     ));
     for (const assignment of assignments) pointClasses.set(assignment.tollPointId, assignment.vehicleClass);
   }
-  // Each point may have its own day/night cutover, so the active band is
-  // resolved per point rather than with one shared band filter.
-  const pointBand = new Map(points.map((point) => [point.id, resolveActiveTimeBandForPoint(activeAt, point)]));
-
   const tariffClasses = [...new Set(pointIds.map((pointId) => pointClasses.get(pointId)).filter((value): value is string => !!value))] as TollVehicleClass[];
   const allTariffs = tariffClasses.length && pointIds.length
     ? await db.select().from(tollTariffs).where(and(
@@ -833,11 +975,6 @@ export async function getRouteTollAlternatives(routeId: string, vehicleId?: stri
       or(isNull(tollTariffs.validUntil), gte(tollTariffs.validUntil, now)),
     ))
     : [];
-  const tariffs = allTariffs.filter((tariff) => {
-    const band = pointBand.get(tariff.tollPointId) ?? 'DAY';
-    return band === 'DAY' ? tariff.appliesDay : tariff.appliesNight;
-  });
-
   return {
     defaultAlternativeId: alternatives.find((alternative) => alternative.isDefault)?.id ?? null,
     alternatives: alternatives.map((alternative) => {
@@ -866,9 +1003,17 @@ export async function getRouteTollAlternatives(routeId: string, vehicleId?: stri
           hasPricedAmount = false;
           continue;
         }
-        const matchingTariffs = tariffs.filter((tariff) => {
-           if (tariff.tollPointId !== point.id || tariff.vehicleClass !== pointClass) return false;
-          if (point.pricingMode !== 'GATE_PAIR') return true;
+         const pointTariffs = allTariffs.filter((tariff) =>
+           tariff.tollPointId === point.id && tariff.vehicleClass === pointClass);
+         const band = resolveTariffBandForPoint(activeAt, point, pointTariffs);
+         if (band.status === 'UNCONFIGURED') {
+           missingTariffPointNames.push(`${point.name} (gündüz/gece saatleri yapılandırılmadı)`);
+           hasPricedAmount = false;
+           continue;
+         }
+         const matchingTariffs = pointTariffs.filter((tariff) => {
+           if (!tariffAppliesToBand(tariff, band)) return false;
+           if (point.pricingMode !== 'GATE_PAIR') return true;
           return tariff.entryGateName === item.entryGateName && tariff.exitGateName === item.exitGateName;
         });
         // Exactly one match is required for a usable amount — zero is a

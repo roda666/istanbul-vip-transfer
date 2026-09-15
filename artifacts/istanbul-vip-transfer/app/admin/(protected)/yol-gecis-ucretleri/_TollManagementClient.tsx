@@ -101,6 +101,8 @@ type TollIntegrationSettings = {
 };
 
 const TIME_BAND_LABELS: Record<TollTimeBand, string> = { ALL: 'Tüm Gün', DAY: 'Gündüz', NIGHT: 'Gece' };
+const closedSystemPricingMode = (type: TollPoint['type']): TollPoint['pricingMode'] =>
+  type === 'HIGHWAY' || type === 'FERRY' ? 'GATE_PAIR' : 'FLAT';
 type SyncPreview = {
   newAmountKurus?: number | null;
   amountKurus?: number | null;
@@ -435,11 +437,38 @@ function PointForm({ onSave, onClose }: { onSave: (point: TollPoint) => void, on
         </div>
         <div>
           <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Geçiş Tipi</label>
-          <select value={formData.type} onChange={e => setFormData(f => ({...f, type: e.target.value}))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all">
+          <select value={formData.type} onChange={e => {
+            const type = e.target.value as TollPoint['type'];
+            setFormData(f => ({ ...f, type, pricingMode: closedSystemPricingMode(type) }));
+          }} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all">
              <option value="BRIDGE">Köprü</option><option value="TUNNEL">Tünel</option><option value="HIGHWAY">Otoyol</option><option value="FERRY">Feribot</option>
           </select>
         </div>
       </div>
+      {formData.type === 'FERRY' && (
+        <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-3">
+          <div className="mb-3 text-xs font-bold text-blue-950">Feribot tarifeleri giriş/çıkış çifti ve İstanbul saatine göre gündüz/gece dönemiyle hesaplanır.</div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label htmlFor="new-ferry-day-start" className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-blue-900">Gündüz Başlangıcı</label>
+              <select id="new-ferry-day-start" value={formData.dayStartHour ?? ''} onChange={e => setFormData(f => ({ ...f, dayStartHour: e.target.value === '' ? null : Number(e.target.value) }))} className="min-h-[44px] w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-bold text-slate-900">
+                <option value="">Saat seçin</option>
+                {Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{String(hour).padStart(2, '0')}:00</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="new-ferry-night-start" className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-blue-900">Gece Başlangıcı</label>
+              <select id="new-ferry-night-start" value={formData.nightStartHour ?? ''} onChange={e => setFormData(f => ({ ...f, nightStartHour: e.target.value === '' ? null : Number(e.target.value) }))} className="min-h-[44px] w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-bold text-slate-900">
+                <option value="">Saat seçin</option>
+                {Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{String(hour).padStart(2, '0')}:00</option>)}
+              </select>
+            </div>
+          </div>
+          {(formData.dayStartHour == null || formData.nightStartHour == null) && (
+            <p role="alert" className="mt-2 text-xs font-bold text-amber-800">Gündüz/gece saat aralığı tanımlanmalı.</p>
+          )}
+        </div>
+      )}
       <label className="flex items-center gap-3 cursor-pointer min-h-[44px] p-2 hover:bg-slate-50 rounded-lg transition-colors -ml-2">
         <input type="checkbox" checked={formData.active} onChange={e => setFormData(f => ({...f, active: e.target.checked}))} className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
         <span className="font-bold text-sm text-slate-900">Sistemde Aktif</span>
@@ -451,7 +480,7 @@ function PointForm({ onSave, onClose }: { onSave: (point: TollPoint) => void, on
            icon={Plus}
            variant="new"
            onClick={handleSubmit}
-           disabled={!formData.name.trim()}
+           disabled={!formData.name.trim() || (formData.type === 'FERRY' && (formData.dayStartHour == null || formData.nightStartHour == null))}
            loading={loading}
            className="flex-1"
          />
@@ -1051,6 +1080,7 @@ function QuickTariffAdd({
   const [exitGateName, setExitGateName] = useState('');
   const [amountStr, setAmountStr] = useState('');
   const [vehicleClass, setVehicleClass] = useState(vehicleClasses[0] || 'class_1');
+  const [timeBand, setTimeBand] = useState<TollTimeBand>(point.type === 'FERRY' ? 'DAY' : 'ALL');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -1079,6 +1109,7 @@ function QuickTariffAdd({
     if (!entryGateName.trim()) requiredErrors.entryGateName = 'Giriş gişesi zorunludur.';
     if (!exitGateName.trim()) requiredErrors.exitGateName = 'Çıkış gişesi zorunludur.';
     if (!amountStr.trim()) requiredErrors.amount = 'Ücret zorunludur.';
+    if (point.type === 'FERRY' && timeBand !== 'DAY' && timeBand !== 'NIGHT') requiredErrors.timeBand = 'Tarife dönemi seçilmelidir.';
     if (Object.keys(requiredErrors).length > 0) {
       setFieldErrors(requiredErrors);
       requestInFlightRef.current = false;
@@ -1099,7 +1130,8 @@ function QuickTariffAdd({
           entryGateName,
           exitGateName,
           amount: amountStr,
-          vehicleClass
+          vehicleClass,
+          timeBand,
         }),
       });
       const json = await res.json();
@@ -1135,7 +1167,7 @@ function QuickTariffAdd({
         <p className="text-xs text-blue-900/80 mt-1 leading-relaxed">Değerleri girip doğrudan yeni bir onaylanmış tarife satırı oluşturun. Rota haritası olmadan anında kayıt.</p>
       </div>
 
-      <div className={`grid grid-cols-1 sm:grid-cols-2 ${point.pricingMode === 'GATE_PAIR' ? 'lg:grid-cols-5' : 'lg:grid-cols-3'} gap-3 items-start`}>
+      <div className={`grid grid-cols-1 sm:grid-cols-2 ${point.type === 'FERRY' ? 'lg:grid-cols-6' : point.pricingMode === 'GATE_PAIR' ? 'lg:grid-cols-5' : 'lg:grid-cols-3'} gap-3 items-start`}>
         {point.pricingMode === 'GATE_PAIR' && (
           <>
             <div>
@@ -1183,6 +1215,23 @@ function QuickTariffAdd({
           />
           {fieldErrors.amount && <div className="text-[10px] text-red-600 mt-1 font-bold">{fieldErrors.amount}</div>}
         </div>
+
+        {point.type === 'FERRY' && (
+          <div>
+            <label htmlFor="quick-tariff-period" className="block text-[10px] font-bold text-blue-900 uppercase tracking-wider mb-1.5">Tarife Dönemi</label>
+            <select
+              id="quick-tariff-period"
+              data-testid="quick-tariff-period"
+              value={timeBand}
+              onChange={e => { setTimeBand(e.target.value as TollTimeBand); setFieldErrors(f => ({ ...f, timeBand: '' })); }}
+              className={`w-full min-h-[44px] rounded-lg border bg-white px-3 py-2 text-sm font-bold focus:outline-none focus:ring-1 shadow-sm transition-all ${fieldErrors.timeBand ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : 'border-blue-200 focus:border-blue-500 focus:ring-blue-500'}`}
+            >
+              <option value="DAY">Gündüz</option>
+              <option value="NIGHT">Gece</option>
+            </select>
+            {fieldErrors.timeBand && <div className="text-[10px] text-red-600 mt-1 font-bold">{fieldErrors.timeBand}</div>}
+          </div>
+        )}
 
         <div>
           <label htmlFor="quick-tariff-class" className="block text-[10px] font-bold text-blue-900 uppercase tracking-wider mb-1.5">Araç Sınıfı</label>
@@ -1242,6 +1291,7 @@ function InlineTariffEditor({
   const [entryGateName, setEntryGateName] = useState(originalEntry);
   const [exitGateName, setExitGateName] = useState(originalExit);
   const [amount, setAmount] = useState(formatTRYInput(originalAmount));
+  const [timeBand, setTimeBand] = useState<TollTimeBand>(tariff.timeBand);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const requestInFlightRef = useRef(false);
@@ -1253,7 +1303,8 @@ function InlineTariffEditor({
   const dirty =
     (gatePair && entryGateName.trim() !== originalEntry) ||
     (gatePair && exitGateName.trim() !== originalExit) ||
-    parsedAmount !== originalAmount;
+    parsedAmount !== originalAmount ||
+    timeBand !== tariff.timeBand;
   const canSave = dirty && entryValid && exitValid && amountValid && !busy;
 
   const save = async () => {
@@ -1268,7 +1319,7 @@ function InlineTariffEditor({
         body: JSON.stringify({
           tollPointId: tariff.tollPointId,
           vehicleClass: tariff.vehicleClass,
-          timeBand: tariff.timeBand,
+          timeBand,
           automaticAmountKurus: tariff.automaticAmountKurus,
           manualAmountKurus: parsedAmount,
           sourceName: tariff.sourceName,
@@ -1299,7 +1350,7 @@ function InlineTariffEditor({
 
   return (
     <div className="rounded-lg border border-blue-300 bg-blue-50/60 p-3" data-testid={`tariff-row-${tariff.vehicleClass}`} data-tariff-id={tariff.id}>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(110px,0.7fr)_auto] xl:items-start">
+      <div className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${point.type === 'FERRY' ? 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(110px,0.7fr)_minmax(110px,0.7fr)_auto]' : 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(110px,0.7fr)_auto]'} xl:items-start`}>
         <div className="min-w-0">
           <label htmlFor={`tariff-entry-${tariff.id}`} className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-blue-900">Giriş Gişesi</label>
           {gatePair ? (
@@ -1311,6 +1362,15 @@ function InlineTariffEditor({
             <div className="flex min-h-[44px] items-center rounded-lg border border-slate-200 bg-slate-100 px-3 text-sm font-bold text-slate-500">—</div>
           )}
         </div>
+        {point.type === 'FERRY' && (
+          <div className="min-w-0">
+            <label htmlFor={`tariff-period-${tariff.id}`} className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-blue-900">Tarife Dönemi</label>
+            <select id={`tariff-period-${tariff.id}`} data-testid="inline-tariff-period" value={timeBand} onChange={event => setTimeBand(event.target.value as TollTimeBand)} className={inputClass}>
+              <option value="DAY">Gündüz</option>
+              <option value="NIGHT">Gece</option>
+            </select>
+          </div>
+        )}
         <div className="min-w-0">
           <label htmlFor={`tariff-exit-${tariff.id}`} className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-blue-900">Çıkış Gişesi</label>
           {gatePair ? (
@@ -1327,7 +1387,7 @@ function InlineTariffEditor({
           <input id={`tariff-amount-${tariff.id}`} data-testid="inline-tariff-amount" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} aria-invalid={!amountValid} className={`${inputClass} ${!amountValid ? 'border-red-400' : ''}`} />
           {!amountValid && <p className="mt-1 text-[10px] font-bold text-red-700">Geçerli, negatif olmayan bir TL tutarı girin.</p>}
         </div>
-        <div className="flex flex-col gap-2 sm:col-span-3 sm:flex-row sm:justify-end xl:col-span-1 xl:pt-[22px]">
+        <div className={`flex flex-col gap-2 sm:flex-row sm:justify-end xl:col-span-1 xl:pt-[22px] ${point.type === 'FERRY' ? 'sm:col-span-2' : 'sm:col-span-2'}`}>
           <AdminActionButton
             label="Vazgeç"
             icon={X}
@@ -1431,6 +1491,11 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onAddTariff, o
   });
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
+  const isUnchangedLegacyFlatFerry =
+    point.type === 'FERRY'
+    && point.pricingMode === 'FLAT'
+    && formData.type === 'FERRY'
+    && formData.pricingMode === 'FLAT';
 
   useEffect(() => {
     setFormData({
@@ -1491,7 +1556,10 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onAddTariff, o
            </div>
            <div>
              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Geçiş Tipi</label>
-              <select value={formData.type} onChange={e => setFormData(f => ({...f, type: e.target.value as TollPoint['type']}))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-4 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all">
+               <select value={formData.type} onChange={e => {
+                 const type = e.target.value as TollPoint['type'];
+                 setFormData(f => ({ ...f, type, pricingMode: closedSystemPricingMode(type) }));
+               }} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-4 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all">
                 <option value="BRIDGE">Köprü (Bridge)</option>
                 <option value="TUNNEL">Tünel (Tunnel)</option>
                 <option value="HIGHWAY">Otoyol (Highway)</option>
@@ -1499,6 +1567,36 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onAddTariff, o
              </select>
            </div>
         </div>
+
+        {formData.type === 'FERRY' && (
+          <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50/60 p-3">
+            <div className="mb-3 text-xs font-bold text-blue-950">Feribot gündüz/gece saatleri İstanbul saatine göre çalışır.</div>
+            {isUnchangedLegacyFlatFerry && (
+              <p role="status" className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900">
+                Bu mevcut feribot kaydı eski tek fiyat düzeninde korunuyor. Ad, aktiflik ve saat bilgileri düzenlenebilir; kayıt otomatik olarak gişe bazlı sisteme çevrilmez.
+              </p>
+            )}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label htmlFor={`ferry-day-start-${point.id}`} className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-blue-900">Gündüz Başlangıcı</label>
+                <select id={`ferry-day-start-${point.id}`} value={formData.dayStartHour ?? ''} onChange={e => setFormData(f => ({ ...f, dayStartHour: e.target.value === '' ? null : Number(e.target.value) }))} className="min-h-[44px] w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-bold text-slate-900">
+                  <option value="">Saat seçin</option>
+                  {Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{String(hour).padStart(2, '0')}:00</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor={`ferry-night-start-${point.id}`} className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-blue-900">Gece Başlangıcı</label>
+                <select id={`ferry-night-start-${point.id}`} value={formData.nightStartHour ?? ''} onChange={e => setFormData(f => ({ ...f, nightStartHour: e.target.value === '' ? null : Number(e.target.value) }))} className="min-h-[44px] w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-bold text-slate-900">
+                  <option value="">Saat seçin</option>
+                  {Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{String(hour).padStart(2, '0')}:00</option>)}
+                </select>
+              </div>
+            </div>
+            {!isUnchangedLegacyFlatFerry && (formData.dayStartHour == null || formData.nightStartHour == null) && (
+              <p role="alert" className="mt-2 text-xs font-bold text-amber-800">Gündüz/gece saat aralığı tanımlanmalı. Saatler kaydedilmeden dönemsel otomatik fiyat hesaplanmaz.</p>
+            )}
+          </div>
+        )}
 
         <label className="flex items-center gap-3 cursor-pointer min-h-[44px] hover:bg-slate-50 p-2 -ml-2 mb-5 rounded-lg transition-colors">
           <input type="checkbox" checked={formData.active} onChange={e => setFormData(f => ({...f, active: e.target.checked}))} className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
@@ -1511,7 +1609,7 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onAddTariff, o
              icon={saved ? Check : Save}
              variant="save"
              onClick={handleSave}
-             disabled={loading}
+              disabled={loading || (!isUnchangedLegacyFlatFerry && formData.type === 'FERRY' && (formData.dayStartHour == null || formData.nightStartHour == null))}
              loading={loading}
            />
         </div>
@@ -1607,7 +1705,12 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onAddTariff, o
                             </div>
                             <div className="min-w-0 text-right">
                               <span className="block text-[9px] font-black uppercase tracking-wider text-slate-400">Fiyat</span>
-                              <span className="block whitespace-nowrap text-sm font-black tracking-tight text-blue-700">{formatTRY(tariff.amountKurus)}</span>
+                              <span className="flex flex-wrap items-center justify-end gap-1 whitespace-nowrap text-sm font-black tracking-tight text-blue-700">
+                                {formatTRY(tariff.amountKurus)}
+                                {point.type === 'FERRY' && tariff.timeBand !== 'ALL' && (
+                                  <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-blue-800">{TIME_BAND_LABELS[tariff.timeBand]}</span>
+                                )}
+                              </span>
                               {!tariff.active && <span className="mt-0.5 block text-[9px] font-black uppercase tracking-wider text-red-700">Pasif</span>}
                             </div>
                             <div className="flex items-center justify-end">
@@ -2108,18 +2211,22 @@ export default function TollManagementClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'POINTS' | 'ALTERNATIVES' | 'SETTINGS'>('POINTS');
+  const loadRequestIdRef = useRef(0);
 
   const loadData = useCallback(async () => {
+    const requestId = ++loadRequestIdRef.current;
     try {
       const res = await fetch('/admin/api/pricing/tolls');
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Veri yüklenemedi');
+      if (requestId !== loadRequestIdRef.current) return;
       setData(json);
       setError('');
     } catch (error: unknown) {
+      if (requestId !== loadRequestIdRef.current) return;
       setError(errorMessage(error, 'Veri yüklenemedi'));
     } finally {
-      setLoading(false);
+      if (requestId === loadRequestIdRef.current) setLoading(false);
     }
   }, []);
 

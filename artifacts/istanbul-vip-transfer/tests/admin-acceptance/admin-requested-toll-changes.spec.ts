@@ -191,12 +191,12 @@ test('covers the admin toll point, route alternative, and API settings workflows
     await adminPage.goto('/admin/yol-gecis-ucretleri');
     await waitForSettledAdminPage(adminPage);
 
-    // Create the temporary FERRY through the actual form; its pricing mode
-    // remains the FLAT default rather than being inferred from its type.
+    // Create a temporary FLAT point through the actual form. Dedicated FERRY
+    // GATE_PAIR behavior is covered by toll-quick-tariff.spec.ts.
     await adminPage.getByRole('button', { name: 'Yeni Geçiş Noktası', exact: true }).click();
     const pointModal = adminPage.locator('.fixed').last();
     await pointModal.locator('input[type="text"]').first().fill(ferryName);
-    await pointModal.locator('select').selectOption('FERRY');
+    await pointModal.locator('select').first().selectOption('BRIDGE');
     const createPointResponse = adminPage.waitForResponse((response) =>
       response.url().endsWith('/admin/api/pricing/tolls') && response.request().method() === 'POST');
     await pointModal.getByRole('button', { name: 'Noktayı Ekle', exact: true }).click();
@@ -204,13 +204,13 @@ test('covers the admin toll point, route alternative, and API settings workflows
     expect(createdPointResponse.status()).toBe(201);
     const createdPoint = await createdPointResponse.json() as { point: { id: string; type: string; pricingMode: string } };
     ferryPointId = createdPoint.point.id;
-    expect(createdPoint.point).toMatchObject({ type: 'FERRY', pricingMode: 'FLAT' });
+    expect(createdPoint.point).toMatchObject({ type: 'BRIDGE', pricingMode: 'FLAT' });
     await expect(adminPage.getByText(ferryName, { exact: true })).toBeVisible();
     const ferryAfterCreate = await db.select().from(tollPoints).where(eq(tollPoints.id, ferryPointId));
     expect(ferryAfterCreate).toHaveLength(1);
-    expect(ferryAfterCreate[0]).toMatchObject({ type: 'FERRY', pricingMode: 'FLAT' });
+    expect(ferryAfterCreate[0]).toMatchObject({ type: 'BRIDGE', pricingMode: 'FLAT' });
 
-    // Edit the point and verify its FERRY type, FLAT pricing mode, and active
+    // Edit the point and verify its type, pricing mode, and active
     // state are not accidentally changed by the unrelated name update.
     const pointNameInput = adminPage.locator('input[type="text"]').first();
     await expect(pointNameInput).toHaveValue(ferryName);
@@ -225,7 +225,7 @@ test('covers the admin toll point, route alternative, and API settings workflows
     await expect.poll(async () => {
       const [point] = await db.select().from(tollPoints).where(eq(tollPoints.id, ferryPointId!));
       return point ? { name: point.name, type: point.type, pricingMode: point.pricingMode, active: point.active } : null;
-    }).toEqual({ name: editedFerryName, type: 'FERRY', pricingMode: 'FLAT', active: true });
+    }).toEqual({ name: editedFerryName, type: 'BRIDGE', pricingMode: 'FLAT', active: true });
 
     // Add a class_1 row in the existing FLAT tariff form. Leaving the
     // amount empty creates a safe, explicitly unsourced fixture row.
@@ -249,8 +249,16 @@ test('covers the admin toll point, route alternative, and API settings workflows
     secondaryAlternativeId = await createAlternative(secondaryName, false);
     expect(primaryAlternativeId).not.toBe(secondaryAlternativeId);
 
+    // Re-enter from persisted state after the two create-triggered refreshes;
+    // this avoids retaining locators from the transient loading render.
+    await adminPage.reload();
+    await waitForSettledAdminPage(adminPage);
+    await adminPage.getByRole('button', { name: 'Rota Kombinasyonları', exact: true }).click();
+    await adminPage.locator('select').first().selectOption(routeId);
     const primary = alternativeCard(primaryAlternativeId);
     const secondary = alternativeCard(secondaryAlternativeId);
+    await expect(primary).toBeVisible();
+    await expect(secondary).toBeVisible();
     await expect(primary).toContainText(`QA Entry → QA Exit`);
     await expect(primary).not.toContainText(/inceleme|review/i);
     await expect(primary).not.toContainText(/notu/i);

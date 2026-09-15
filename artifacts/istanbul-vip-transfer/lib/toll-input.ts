@@ -17,7 +17,7 @@ const nullableDate = z.string().trim().max(40).nullable().optional();
 const nullableHour = z.number().int().min(0).max(23).nullable().optional();
 const nullableGateName = z.string().trim().min(1).max(160).nullable().optional();
 
-export const tollPointInputSchema = z.object({
+const tollPointInputBaseSchema = z.object({
   name: z.string().trim().min(2, 'Geçiş noktası adı en az 2 karakter olmalıdır.').max(160),
   type: z.enum(['BRIDGE', 'TUNNEL', 'HIGHWAY', 'FERRY']),
   active: z.boolean().default(true),
@@ -37,9 +37,15 @@ export const tollPointInputSchema = z.object({
   tollDirection: z.enum(TOLL_DIRECTIONS).nullable().optional(),
   tollDirectionSourceUrl: nullableSourceUrl,
   tollDirectionNotes: nullableText,
-  /** FLAT (default) or GATE_PAIR — see toll-management.ts; ferry points, like bridges/tunnels, must be FLAT. */
+  /** FLAT (default) or GATE_PAIR — see toll-management.ts; ferries and highways must be GATE_PAIR. */
   pricingMode: z.enum(TOLL_PRICING_MODES).default('FLAT'),
-}).superRefine((value, context) => {
+});
+
+function addTollPointInputIssues(
+  value: z.infer<typeof tollPointInputBaseSchema>,
+  context: z.RefinementCtx,
+  allowLegacyFerryFlat: boolean,
+) {
   const hasDay = value.dayStartHour != null;
   const hasNight = value.nightStartHour != null;
   if (hasDay !== hasNight) {
@@ -53,15 +59,31 @@ export const tollPointInputSchema = z.object({
   // Same pattern again for the separate vehicle-TYPE ban axis (e.g. a
   // categorical "Otobüs" ban, independent of the axle-based class ban above).
   // Same pattern again for the tolling-direction claim.
-   // Bridges/tunnels/ferries (açık sistem, tek fiyat) must always be FLAT; highway
-  // segments (kapalı sistem, giriş+çıkış) must always be GATE_PAIR — this can
+    // Bridges/tunnels (açık sistem, tek fiyat) must always be FLAT; ferry and highway
+   // segments (giriş+çıkış) must always be GATE_PAIR — this can
   // never drift apart, enforced here so both the point form and any future
   // API caller are covered by the same schema.
-  try {
-    assertTypeMatchesPricingMode(value.type, value.pricingMode);
-  } catch (error) {
-    context.addIssue({ code: 'custom', path: ['pricingMode'], message: error instanceof Error ? error.message : 'Geçiş tipi ile ücretlendirme modu uyuşmuyor.' });
+  if (!(allowLegacyFerryFlat && value.type === 'FERRY' && value.pricingMode === 'FLAT')) {
+    try {
+      assertTypeMatchesPricingMode(value.type, value.pricingMode);
+    } catch (error) {
+      context.addIssue({ code: 'custom', path: ['pricingMode'], message: error instanceof Error ? error.message : 'Geçiş tipi ile ücretlendirme modu uyuşmuyor.' });
+    }
   }
+}
+
+/** Strict schema used for new points and ordinary point updates. */
+export const tollPointInputSchema = tollPointInputBaseSchema.superRefine((value, context) => {
+  addTollPointInputIssues(value, context, false);
+});
+
+/**
+ * PATCH-only compatibility schema. It accepts the legacy FERRY+FLAT shape,
+ * but the update route must prove the stored row already has that exact
+ * type/mode pair before using it; it never permits a new legacy point.
+ */
+export const legacyFerryFlatPointPatchInputSchema = tollPointInputBaseSchema.superRefine((value, context) => {
+  addTollPointInputIssues(value, context, true);
 });
 
 /** Assigns one vehicle's class at one specific toll point — never a single global class shared across all points. */

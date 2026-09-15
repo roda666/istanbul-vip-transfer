@@ -35,6 +35,19 @@ describe('quick GATE_PAIR tariff contract', () => {
     expect(first).toBe(second);
   });
 
+  it('includes the tariff period in gate-pair identity', () => {
+    const base = {
+      tollPointId: 'point',
+      entryGateName: 'Entry',
+      exitGateName: 'Exit',
+      vehicleClass: 'class_1',
+    };
+    expect(quickTariffIdentity({ ...base, timeBand: 'DAY' }))
+      .not.toBe(quickTariffIdentity({ ...base, timeBand: 'NIGHT' }));
+    expect(quickTariffIdentity({ ...base, timeBand: 'DAY' }))
+      .toBe(quickTariffIdentity({ ...base, timeBand: 'DAY' }));
+  });
+
   it('keeps amount validation and gate errors field-local in the schema', () => {
     const result = quickTariffInputSchema.safeParse({
       tollPointId: crypto.randomUUID(),

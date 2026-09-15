@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { requireAdminSession } from '@/lib/auth/session';
 import { db } from '@/db';
 import { auditLogs, tollPoints } from '@/db/schema';
-import { tollPointInputSchema } from '@/lib/toll-input';
+import { legacyFerryFlatPointPatchInputSchema, tollPointInputSchema } from '@/lib/toll-input';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +16,18 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   const { id } = await params;
-  const payload = tollPointInputSchema.safeParse(await request.json().catch(() => null));
+  const [existing] = await db.select({
+    type: tollPoints.type,
+    pricingMode: tollPoints.pricingMode,
+  }).from(tollPoints).where(eq(tollPoints.id, id)).limit(1);
+  if (!existing) return NextResponse.json({ error: 'Geçiş noktası bulunamadı.' }, { status: 404 });
+  // Legacy FERRY+FLAT rows remain editable without silently converting them.
+  // The compatibility schema is only selected for an already-stored legacy
+  // row; POST and every other point update stay strict.
+  const schema = existing.type === 'FERRY' && existing.pricingMode === 'FLAT'
+    ? legacyFerryFlatPointPatchInputSchema
+    : tollPointInputSchema;
+  const payload = schema.safeParse(await request.json().catch(() => null));
   if (!payload.success) {
     return NextResponse.json({ error: payload.error.issues[0]?.message ?? 'Geçersiz geçiş noktası.' }, { status: 422 });
   }

@@ -6,11 +6,11 @@ import { auditLogs, tollPoints, tollTariffs } from '@/db/schema';
 import { getIstanbulDayBounds } from '@/lib/istanbul-time';
 import { normalizeGateName } from '@/lib/toll-gate-pairs';
 import { parseQuickTariffAmount, quickTariffIdentity, quickTariffInputSchema } from '@/lib/toll-quick-tariff';
-import { tollTimeBandFlags } from '@/lib/toll-management';
+import { assertNoActiveTariffOverlap, tollTimeBandFlags } from '@/lib/toll-management';
 
 export const dynamic = 'force-dynamic';
 
-const DUPLICATE_ERROR = 'Bu sınıf için bu gişe çiftinin tarifesi zaten var; mevcut tarifeyi Düzenle ile güncelleyin';
+const DUPLICATE_ERROR = 'Bu sınıf ve zaman dilimi için bu gişe çiftinin tarifesi zaten var; mevcut tarifeyi Düzenle ile güncelleyin';
 
 function validationResponse(error: string, fieldErrors: Record<string, string>) {
   return NextResponse.json({ error, fieldErrors }, { status: 422 });
@@ -47,13 +47,13 @@ export async function POST(request: NextRequest) {
     entryGateName,
     exitGateName,
     vehicleClass: payload.data.vehicleClass,
+    timeBand: payload.data.timeBand,
   });
 
   try {
     const amountKurus = parseQuickTariffAmount(payload.data.amount);
     const { start: validFrom } = getIstanbulDayBounds();
     const now = new Date();
-    const { appliesDay, appliesNight } = tollTimeBandFlags('ALL');
 
     const tariff = await db.transaction(async (tx) => {
       // Hashing the complete canonical identity makes simultaneous requests for
@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
       const [point] = await tx.select({
         id: tollPoints.id,
         active: tollPoints.active,
+        type: tollPoints.type,
         pricingMode: tollPoints.pricingMode,
       }).from(tollPoints).where(eq(tollPoints.id, payload.data.tollPointId)).limit(1);
       if (!point) {
@@ -80,12 +81,23 @@ export async function POST(request: NextRequest) {
         (error as Error & { field: string }).field = 'tollPointId';
         throw error;
       }
+      if (point.type === 'FERRY' && payload.data.timeBand === 'ALL') {
+        const error = new Error('Feribot hızlı tarifesi DAY veya NIGHT zaman dilimiyle eklenmelidir.');
+        (error as Error & { field: string }).field = 'timeBand';
+        throw error;
+      }
+      if (point.type === 'HIGHWAY' && payload.data.timeBand !== 'ALL') {
+        const error = new Error('Otoyol hızlı tarifesi yalnızca ALL zaman dilimiyle eklenebilir.');
+        (error as Error & { field: string }).field = 'timeBand';
+        throw error;
+      }
 
       const existingRows = await tx.select({
         id: tollTariffs.id,
         entryGateName: tollTariffs.entryGateName,
         exitGateName: tollTariffs.exitGateName,
         vehicleClass: tollTariffs.vehicleClass,
+        timeBand: tollTariffs.timeBand,
       }).from(tollTariffs).where(and(
         eq(tollTariffs.tollPointId, payload.data.tollPointId),
         eq(tollTariffs.vehicleClass, payload.data.vehicleClass),
@@ -96,8 +108,18 @@ export async function POST(request: NextRequest) {
         entryGateName: row.entryGateName ?? '',
         exitGateName: row.exitGateName ?? '',
         vehicleClass: row.vehicleClass,
+        timeBand: row.timeBand,
       }) === identity);
       if (duplicate) throw new Error(DUPLICATE_ERROR);
+      await assertNoActiveTariffOverlap({
+        tollPointId: payload.data.tollPointId,
+        vehicleClass: payload.data.vehicleClass,
+        timeBand: payload.data.timeBand,
+        validFrom,
+        validUntil: null,
+        entryGateName,
+        exitGateName,
+      }, tx);
 
       const [created] = await tx.insert(tollTariffs).values({
         tollPointId: payload.data.tollPointId,
@@ -108,9 +130,9 @@ export async function POST(request: NextRequest) {
             eq(tollTariffs.tollPointId, payload.data.tollPointId),
             eq(tollTariffs.vehicleClass, payload.data.vehicleClass),
           ))).reduce((max, row) => Math.max(max, row.displayOrder), -1) + 1,
-        timeBand: 'ALL',
-        appliesDay,
-        appliesNight,
+        timeBand: payload.data.timeBand,
+        appliesDay: tollTimeBandFlags(payload.data.timeBand).appliesDay,
+        appliesNight: tollTimeBandFlags(payload.data.timeBand).appliesNight,
         amountKurus,
         automaticAmountKurus: null,
         manualAmountKurus: amountKurus,

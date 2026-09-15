@@ -3,6 +3,8 @@ import { TOLL_VEHICLE_CLASSES } from '@/lib/toll-vehicle-classes';
 import { gatePairTariffIdentity, normalizeGateName } from '@/lib/toll-gate-pairs';
 
 const MAX_AMOUNT_KURUS = 100_000_000;
+const TOLL_TIME_BANDS = ['ALL', 'DAY', 'NIGHT'] as const;
+type TollTimeBand = (typeof TOLL_TIME_BANDS)[number];
 
 /**
  * Parses the formats admins commonly receive from Turkish and English
@@ -89,6 +91,7 @@ export const quickTariffInputSchema = z.object({
   tollPointId: z.string().uuid({ message: 'Geçiş noktası seçilmelidir.' }),
   entryGateName: z.string().max(160).transform(normalizeGateName).refine(Boolean, 'Giriş gişesi zorunludur.'),
   exitGateName: z.string().max(160).transform(normalizeGateName).refine(Boolean, 'Çıkış gişesi zorunludur.'),
+  timeBand: z.enum(TOLL_TIME_BANDS).default('ALL'),
   amount: z.union([z.string().max(100), z.number().finite()]).superRefine((value, context) => {
     try {
       parseQuickTariffAmount(value);
@@ -104,6 +107,12 @@ export function quickTariffIdentity(input: {
   entryGateName: string;
   exitGateName: string;
   vehicleClass: string;
+  timeBand?: TollTimeBand;
 }): string {
-  return gatePairTariffIdentity(input.tollPointId, input.entryGateName, input.exitGateName, input.vehicleClass);
+  return `${gatePairTariffIdentity(
+    input.tollPointId,
+    input.entryGateName,
+    input.exitGateName,
+    input.vehicleClass,
+  )}:${input.timeBand ?? 'ALL'}`;
 }

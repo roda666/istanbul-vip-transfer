@@ -6,6 +6,7 @@ import { auditLogs, tollPoints, tollTariffs } from '@/db/schema';
 import {
   assertNoActiveTariffOverlap,
   assertPricingModeMatchesGatePair,
+  assertTariffTimeBandForPointType,
   assertTollDateRange,
   effectiveTollAmount,
   isOfficialTollSourceUrl,
@@ -30,10 +31,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: payload.error.issues[0]?.message ?? 'Geçersiz geçiş tarifesi.' }, { status: 422 });
   }
   try {
-    const [point] = await db.select({ id: tollPoints.id, pricingMode: tollPoints.pricingMode }).from(tollPoints)
+    const [point] = await db.select({ id: tollPoints.id, type: tollPoints.type, pricingMode: tollPoints.pricingMode }).from(tollPoints)
       .where(eq(tollPoints.id, payload.data.tollPointId)).limit(1);
     if (!point) return NextResponse.json({ error: 'Geçiş noktası bulunamadı.' }, { status: 404 });
     assertPricingModeMatchesGatePair(point.pricingMode, payload.data.entryGateName, payload.data.exitGateName);
+    assertTariffTimeBandForPointType(point.type, payload.data.timeBand);
     const validFrom = parseTollDate(payload.data.validFrom);
     const validUntil = parseTollDate(payload.data.validUntil);
     assertTollDateRange(validFrom, validUntil);

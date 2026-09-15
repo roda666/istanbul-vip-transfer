@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  assertTariffTimeBandForPointType,
   assertTypeMatchesPricingMode,
   resolveTariffBandForPoint,
+  tariffAppliesToBand,
 } from '@/lib/toll-management';
 import {
   legacyFerryFlatPointPatchInputSchema,
@@ -34,38 +36,29 @@ describe('toll point pricing invariants', () => {
     expect(tollPointInputSchema.safeParse(input).success).toBe(false);
     expect(legacyFerryFlatPointPatchInputSchema.safeParse(input).success).toBe(true);
   });
+
+  it('allows only one all-day tariff band for ferry and highway points', () => {
+    expect(() => assertTariffTimeBandForPointType('FERRY', 'ALL')).not.toThrow();
+    expect(() => assertTariffTimeBandForPointType('FERRY', 'DAY')).toThrow();
+    expect(() => assertTariffTimeBandForPointType('FERRY', 'NIGHT')).toThrow();
+    expect(() => assertTariffTimeBandForPointType('HIGHWAY', 'ALL')).not.toThrow();
+  });
 });
 
 describe('shared toll tariff band resolution', () => {
-  it('keeps legacy ALL tariffs usable without cutover configuration', () => {
-    expect(resolveTariffBandForPoint(
+  it('uses only the all-day ferry price regardless of cutovers or clock time', () => {
+    const tariffs = [
+      { timeBand: 'ALL' as const, appliesDay: true, appliesNight: true },
+      ...dayNightTariffs,
+    ];
+    const resolution = resolveTariffBandForPoint(
       new Date('2026-01-01T00:00:00.000Z'),
       ferry(null, null),
-      [{ timeBand: 'ALL', appliesDay: true, appliesNight: true }],
-    )).toEqual({ status: 'RESOLVED', band: 'ALL' });
-  });
-
-  it('marks ferry DAY/NIGHT tariffs unconfigured without valid cutovers', () => {
-    const at = new Date('2026-01-01T12:00:00.000Z');
-    expect(resolveTariffBandForPoint(at, ferry(null, null), dayNightTariffs))
-      .toEqual({ status: 'UNCONFIGURED', reason: 'MISSING_CUTOVER' });
-    expect(resolveTariffBandForPoint(at, ferry(6, 6), dayNightTariffs))
-      .toEqual({ status: 'UNCONFIGURED', reason: 'INVALID_CUTOVER' });
-    expect(resolveTariffBandForPoint(at, ferry(24, 6), dayNightTariffs))
-      .toEqual({ status: 'UNCONFIGURED', reason: 'INVALID_CUTOVER' });
-  });
-
-  it('resolves Istanbul calendar-hour boundaries and overnight windows', () => {
-    const standard = ferry(6, 22);
-    expect(resolveTariffBandForPoint(new Date('2026-01-01T02:59:00.000Z'), standard, dayNightTariffs).band).toBe('NIGHT');
-    expect(resolveTariffBandForPoint(new Date('2026-01-01T03:00:00.000Z'), standard, dayNightTariffs).band).toBe('DAY');
-    expect(resolveTariffBandForPoint(new Date('2026-01-01T18:59:00.000Z'), standard, dayNightTariffs).band).toBe('DAY');
-    expect(resolveTariffBandForPoint(new Date('2026-01-01T19:00:00.000Z'), standard, dayNightTariffs).band).toBe('NIGHT');
-
-    const overnight = ferry(22, 6);
-    expect(resolveTariffBandForPoint(new Date('2026-01-01T18:59:00.000Z'), overnight, dayNightTariffs).band).toBe('NIGHT');
-    expect(resolveTariffBandForPoint(new Date('2026-01-01T19:00:00.000Z'), overnight, dayNightTariffs).band).toBe('DAY');
-    expect(resolveTariffBandForPoint(new Date('2026-01-01T02:59:00.000Z'), overnight, dayNightTariffs).band).toBe('DAY');
-    expect(resolveTariffBandForPoint(new Date('2026-01-01T03:00:00.000Z'), overnight, dayNightTariffs).band).toBe('NIGHT');
+      tariffs,
+    );
+    expect(resolution).toEqual({ status: 'RESOLVED', band: 'ALL', allOnly: true });
+    if (resolution.status !== 'RESOLVED') throw new Error('Expected ferry band to resolve');
+    expect(tariffs.filter((tariff) => tariffAppliesToBand(tariff, resolution)).map((tariff) => tariff.timeBand))
+      .toEqual(['ALL']);
   });
 });

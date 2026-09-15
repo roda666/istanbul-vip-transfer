@@ -6,11 +6,11 @@ import { auditLogs, tollPoints, tollTariffs } from '@/db/schema';
 import { getIstanbulDayBounds } from '@/lib/istanbul-time';
 import { normalizeGateName } from '@/lib/toll-gate-pairs';
 import { parseQuickTariffAmount, quickTariffIdentity, quickTariffInputSchema } from '@/lib/toll-quick-tariff';
-import { assertNoActiveTariffOverlap, tollTimeBandFlags } from '@/lib/toll-management';
+import { assertNoActiveTariffOverlap, assertTariffTimeBandForPointType, tollTimeBandFlags } from '@/lib/toll-management';
 
 export const dynamic = 'force-dynamic';
 
-const DUPLICATE_ERROR = 'Bu sınıf ve zaman dilimi için bu gişe çiftinin tarifesi zaten var; mevcut tarifeyi Düzenle ile güncelleyin';
+const DUPLICATE_ERROR = 'Bu sınıf için bu gişe çiftinin tarifesi zaten var; mevcut tarifeyi Düzenle ile güncelleyin';
 
 function validationResponse(error: string, fieldErrors: Record<string, string>) {
   return NextResponse.json({ error, fieldErrors }, { status: 422 });
@@ -76,19 +76,29 @@ export async function POST(request: NextRequest) {
         (error as Error & { field: string }).field = 'tollPointId';
         throw error;
       }
-      if (point.pricingMode !== 'GATE_PAIR') {
+      assertTariffTimeBandForPointType(point.type, payload.data.timeBand);
+
+      let pricingMode = point.pricingMode;
+      if (point.type === 'FERRY' && pricingMode === 'FLAT') {
+        const [legacyTariff] = await tx.select({ id: tollTariffs.id }).from(tollTariffs)
+          .where(eq(tollTariffs.tollPointId, point.id)).limit(1);
+        if (legacyTariff) {
+          const error = new Error('Bu eski feribot noktasında mevcut sabit tarifeler var. Gişe bazlı sisteme geçmeden önce bu tarifeleri ayrıca inceleyin.');
+          (error as Error & { field: string }).field = 'tollPointId';
+          throw error;
+        }
+        await tx.update(tollPoints).set({
+          pricingMode: 'GATE_PAIR',
+          dayStartHour: null,
+          nightStartHour: null,
+          updatedAt: now,
+          updatedBy: session.adminId,
+        }).where(eq(tollPoints.id, point.id));
+        pricingMode = 'GATE_PAIR';
+      }
+      if (pricingMode !== 'GATE_PAIR') {
         const error = new Error('Hızlı tarife yalnızca giriş/çıkış gişe çifti kullanan noktalara eklenebilir.');
         (error as Error & { field: string }).field = 'tollPointId';
-        throw error;
-      }
-      if (point.type === 'FERRY' && payload.data.timeBand === 'ALL') {
-        const error = new Error('Feribot hızlı tarifesi DAY veya NIGHT zaman dilimiyle eklenmelidir.');
-        (error as Error & { field: string }).field = 'timeBand';
-        throw error;
-      }
-      if (point.type === 'HIGHWAY' && payload.data.timeBand !== 'ALL') {
-        const error = new Error('Otoyol hızlı tarifesi yalnızca ALL zaman dilimiyle eklenebilir.');
-        (error as Error & { field: string }).field = 'timeBand';
         throw error;
       }
 

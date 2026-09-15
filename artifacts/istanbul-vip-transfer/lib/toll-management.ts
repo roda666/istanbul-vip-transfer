@@ -461,7 +461,7 @@ export async function updateTollPricingSettings(input: TollPricingSettings & { u
 }
 
 export type TollTariffBandResolution =
-  | { status: 'RESOLVED'; band: 'ALL' | 'DAY' | 'NIGHT' }
+  | { status: 'RESOLVED'; band: 'ALL' | 'DAY' | 'NIGHT'; allOnly?: boolean }
   | { status: 'UNCONFIGURED'; reason: 'MISSING_CUTOVER' | 'INVALID_CUTOVER' };
 
 type TariffBandCandidate = {
@@ -520,16 +520,14 @@ export function resolveTariffBandForPoint(
   point: { type?: string | null; dayStartHour: number | null; nightStartHour: number | null },
   tariffs: TariffBandCandidate[],
 ): TollTariffBandResolution {
+  // Ferries use one price per vehicle class + ordered gate pair. Historical
+  // DAY/NIGHT rows are intentionally ignored by the ALL resolution instead
+  // of making ferry quotes depend on clock time.
+  if (point.type === 'FERRY') return { status: 'RESOLVED', band: 'ALL', allOnly: true };
   const hasSpecificBand = tariffs.some((tariff) =>
     tariff.timeBand === 'DAY' || tariff.timeBand === 'NIGHT'
       || (tariff.timeBand == null && tariff.appliesDay !== tariff.appliesNight));
   if (!hasSpecificBand) return { status: 'RESOLVED', band: 'ALL' };
-  if (point.type === 'FERRY' && point.dayStartHour == null && point.nightStartHour == null) {
-    return { status: 'UNCONFIGURED', reason: 'MISSING_CUTOVER' };
-  }
-  if (point.type === 'FERRY' && !hasValidCutover(point)) {
-    return { status: 'UNCONFIGURED', reason: 'INVALID_CUTOVER' };
-  }
   return { status: 'RESOLVED', band: resolveActiveTimeBandForPoint(at, point) };
 }
 
@@ -537,6 +535,9 @@ export function tariffAppliesToBand(
   tariff: TariffBandCandidate,
   resolution: Extract<TollTariffBandResolution, { status: 'RESOLVED' }>,
 ): boolean {
+  if (resolution.band === 'ALL' && resolution.allOnly) {
+    return tariff.timeBand === 'ALL' || (tariff.timeBand == null && tariff.appliesDay && tariff.appliesNight);
+  }
   if (resolution.band === 'ALL') return tariff.appliesDay || tariff.appliesNight;
   return resolution.band === 'DAY' ? tariff.appliesDay : tariff.appliesNight;
 }
@@ -717,6 +718,16 @@ export function assertTypeMatchesPricingMode(type: 'BRIDGE' | 'TUNNEL' | 'HIGHWA
   }
 }
 
+/** Ferries and highways have one all-day row per class and ordered gate pair. */
+export function assertTariffTimeBandForPointType(
+  type: 'BRIDGE' | 'TUNNEL' | 'HIGHWAY' | 'FERRY',
+  timeBand: TollTimeBand,
+): void {
+  if ((type === 'FERRY' || type === 'HIGHWAY') && timeBand !== 'ALL') {
+    throw new Error(`${type === 'FERRY' ? 'Feribot' : 'Otoyol'} tarifesi gündüz/gece ayrımı kullanmaz; tek fiyat Tüm Gün olarak kaydedilmelidir.`);
+  }
+}
+
 /**
  * Same verification pattern again: a tolling-direction claim (ONE_WAY /
  * TWO_WAY_SAME / TWO_WAY_DIRECTIONAL) may only be saved alongside a
@@ -804,7 +815,7 @@ export async function assertNoActiveTariffOverlap(input: {
     const bandConflict = (row.appliesDay && incoming.appliesDay) || (row.appliesNight && incoming.appliesNight);
     return bandConflict && rangesOverlap(input.validFrom, input.validUntil, row.validFrom, row.validUntil);
   })) {
-    throw new Error('Bu araç sınıfı, zaman dilimi ve gişe çifti için aynı geçerlilik aralığında aktif bir tarife zaten var.');
+    throw new Error('Bu araç sınıfı ve gişe çifti için aynı geçerlilik aralığında aktif bir tarife zaten var.');
   }
 }
 

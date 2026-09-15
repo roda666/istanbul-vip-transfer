@@ -256,7 +256,7 @@ test('adds quick gate-pair tariffs without changing gates or real pricing data',
   }
 });
 
-test('manages ferry DAY and NIGHT gate-pair tariffs independently', async ({
+test('manages one compact all-day ferry gate-pair price without opening the detailed modal', async ({
   adminPage,
   adminIdentity,
 }) => {
@@ -275,9 +275,7 @@ test('manages ferry DAY and NIGHT gate-pair tariffs independently', async ({
       name: pointName,
       type: 'FERRY',
       active: true,
-      pricingMode: 'GATE_PAIR',
-      dayStartHour: 6,
-      nightStartHour: 22,
+      pricingMode: 'FLAT',
       bannedVehicleClasses: [],
       bannedVehicleTypes: [],
       createdBy: adminIdentity.id,
@@ -289,67 +287,57 @@ test('manages ferry DAY and NIGHT gate-pair tariffs independently', async ({
     await adminPage.getByRole('button', { name: 'Geçiş Noktaları ve Maliyetler', exact: true }).click();
     await adminPage.getByRole('button', { name: new RegExp(pointName) }).click();
 
-    await expect(adminPage.getByLabel('Gündüz Başlangıcı')).toHaveValue('6');
-    await expect(adminPage.getByLabel('Gece Başlangıcı')).toHaveValue('22');
     const entry = adminPage.getByTestId('quick-tariff-entry-gate');
     const exit = adminPage.getByTestId('quick-tariff-exit-gate');
     const amount = adminPage.getByTestId('quick-tariff-amount');
     const vehicleClass = adminPage.getByTestId('quick-tariff-class');
-    const period = adminPage.getByTestId('quick-tariff-period');
     const add = adminPage.getByTestId('quick-tariff-add');
+    await expect(entry).toBeVisible();
+    await expect(adminPage.getByTestId('quick-tariff-period')).toHaveCount(0);
+    await expect(adminPage.getByTestId('inline-tariff-period')).toHaveCount(0);
+    await expect(adminPage.getByText(/Tarife Dönemi|Gündüz Başlangıcı|Gece Başlangıcı|Sadece Gündüz|Sadece Gece|Tüm Gün/i)).toHaveCount(0);
+    await expect(adminPage.getByRole('button', { name: /Sınıf .* tarife ekle/i })).toHaveCount(0);
+    await expect(adminPage.locator('.fixed')).toHaveCount(0);
 
     await entry.fill('Eskihisar');
     await exit.fill('Topçular');
+    await vehicleClass.selectOption('class_2');
     await amount.fill('100');
-    await expect(period).toHaveValue('DAY');
     await add.click();
     await expect(adminPage.getByText('Tarife başarıyla kaydedildi.', { exact: true })).toBeVisible();
 
-    await period.selectOption('NIGHT');
     await amount.fill('150');
-    await add.click();
-    const classOneRows = adminPage.getByTestId('tariff-row-class_1');
-    await expect(classOneRows.filter({ hasText: '₺150,00' })).toHaveCount(1);
-    await expect(classOneRows.filter({ hasText: 'Gündüz' })).toHaveCount(1);
-    await expect(classOneRows.filter({ hasText: 'Gece' })).toHaveCount(1);
-
-    await amount.fill('175');
     const duplicateResponse = adminPage.waitForResponse((response) =>
       response.url().endsWith('/admin/api/pricing/tolls/tariffs/quick')
       && response.request().method() === 'POST');
     await add.click();
     expect((await duplicateResponse).status()).toBe(422);
     await expect(adminPage.getByText(
-      'Bu sınıf ve zaman dilimi için bu gişe çiftinin tarifesi zaten var; mevcut tarifeyi Düzenle ile güncelleyin',
+      'Bu sınıf için bu gişe çiftinin tarifesi zaten var; mevcut tarifeyi Düzenle ile güncelleyin',
       { exact: true },
     )).toBeVisible();
-    await expect(amount).toHaveValue('175');
-    await expect(period).toHaveValue('NIGHT');
+    await expect(amount).toHaveValue('150');
 
-    await vehicleClass.selectOption('class_2');
-    await period.selectOption('DAY');
-    await amount.fill('200');
-    await add.click();
     const classTwoRow = adminPage.getByTestId('tariff-row-class_2');
-    await expect(classTwoRow.getByText('Gündüz', { exact: true })).toBeVisible();
+    await expect(classTwoRow.getByText('₺100,00', { exact: true })).toBeVisible();
     await classTwoRow.getByRole('button', { name: 'Düzenle' }).click();
-    await classTwoRow.getByTestId('inline-tariff-period').selectOption('NIGHT');
+    await classTwoRow.getByTestId('inline-tariff-amount').fill('125');
     const editResponse = adminPage.waitForResponse((response) =>
       response.url().includes('/admin/api/pricing/tolls/tariffs/')
       && response.request().method() === 'PATCH');
     await classTwoRow.getByRole('button', { name: 'Kaydet' }).click();
     expect((await editResponse).status()).toBe(200);
-    await expect(classTwoRow.getByText('Gece', { exact: true })).toBeVisible();
+    await expect(classTwoRow.getByText('₺125,00', { exact: true })).toBeVisible();
 
     const rows = await db.select().from(tollTariffs).where(eq(tollTariffs.tollPointId, pointId));
-    expect(rows).toHaveLength(3);
-    expect(rows.filter(row => row.vehicleClass === 'class_1').map(row => row.timeBand).sort()).toEqual(['DAY', 'NIGHT']);
-    expect(rows.find(row => row.vehicleClass === 'class_2')?.timeBand).toBe('NIGHT');
-
-    for (const width of [768, 390]) {
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ vehicleClass: 'class_2', timeBand: 'ALL', amountKurus: 12_500 });
+    const [convertedPoint] = await db.select().from(tollPoints).where(eq(tollPoints.id, pointId));
+    expect(convertedPoint).toMatchObject({ pricingMode: 'GATE_PAIR', dayStartHour: null, nightStartHour: null });
+    for (const width of [1440, 1280, 768, 390]) {
       await adminPage.setViewportSize({ width, height: 900 });
       expect(await adminPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-      for (const control of [entry, exit, amount, vehicleClass, period, add]) {
+      for (const control of [entry, exit, amount, vehicleClass, add]) {
         expect((await control.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
       }
     }

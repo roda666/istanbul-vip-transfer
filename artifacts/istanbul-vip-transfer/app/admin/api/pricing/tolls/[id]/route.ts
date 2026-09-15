@@ -7,7 +7,7 @@ import { legacyFerryFlatPointPatchInputSchema, tollPointInputSchema } from '@/li
 
 export const dynamic = 'force-dynamic';
 
-/** PATCH /admin/api/pricing/tolls/[id] — edit or soft-deactivate a crossing point, including its own day/night cutover hours. */
+/** PATCH /admin/api/pricing/tolls/[id] — edit or soft-deactivate a crossing point. */
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   let session;
   try {
@@ -31,8 +31,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!payload.success) {
     return NextResponse.json({ error: payload.error.issues[0]?.message ?? 'Geçersiz geçiş noktası.' }, { status: 422 });
   }
+  const pointData = payload.data.type === 'FERRY'
+    ? { ...payload.data, dayStartHour: null, nightStartHour: null }
+    : payload.data;
   const [point] = await db.update(tollPoints).set({
-    ...payload.data,
+    ...pointData,
     updatedAt: new Date(),
     updatedBy: session.adminId,
   }).where(eq(tollPoints.id, id)).returning();

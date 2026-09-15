@@ -20,6 +20,6 @@ describe('quick tariff API source contract', () => {
   });
 
   it('keeps the duplicate error wording stable', () => {
-    expect(route).toContain('Bu sınıf ve zaman dilimi için bu gişe çiftinin tarifesi zaten var; mevcut tarifeyi Düzenle ile güncelleyin');
+    expect(route).toContain('Bu sınıf için bu gişe çiftinin tarifesi zaten var; mevcut tarifeyi Düzenle ile güncelleyin');
   });
 });

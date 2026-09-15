@@ -6,6 +6,9 @@ import {
   test,
   waitForSettledAdminPage,
 } from './fixtures';
+import { and, eq, inArray, notInArray } from 'drizzle-orm';
+import { db } from '../../db';
+import { auditLogs, tollPoints } from '../../db/schema';
 
 const viewports = [
   { name: 'compact-mobile', width: 320, height: 700 },
@@ -28,7 +31,7 @@ type TollPayload = { points: TollPoint[] };
 
 const customerLeakPattern = /toll|tariff|toll[_-]?point|verification[_-]?lock|source[_-]?verified|geçiş[\s_-]?ücret|gecis[\s_-]?ucret/i;
 
-async function tollPoints(page: import('@playwright/test').Page) {
+async function fetchTollPoints(page: import('@playwright/test').Page) {
   const response = await page.request.get('/admin/api/pricing/tolls');
   expect(response.status(), 'Toll management API must be available').toBe(200);
   return (await response.json()) as TollPayload;
@@ -54,7 +57,7 @@ function sequence(points: TollPoint[]) {
 }
 
 function businessFields(points: TollPoint[]) {
-  return points.map((point) => {
+  return [...points].sort((left, right) => left.id.localeCompare(right.id)).map((point) => {
     const {
       displayOrder: _displayOrder,
       updatedAt: _updatedAt,
@@ -113,7 +116,7 @@ for (const viewport of viewports) {
   test(`toll controls remain usable and settled at ${viewport.name} size`, async ({ adminPage }) => {
     test.setTimeout(120_000);
     await adminPage.setViewportSize({ width: viewport.width, height: viewport.height });
-    const pointsBeforePageLoad = await tollPoints(adminPage);
+    const pointsBeforePageLoad = await fetchTollPoints(adminPage);
     const response = await adminPage.goto('/admin/yol-gecis-ucretleri');
     expect(response?.status()).toBe(200);
     await waitForSettledAdminPage(adminPage);
@@ -126,7 +129,7 @@ for (const viewport of viewports) {
     await assertPointControlsAreEnabledAndSized(adminPage);
     await assertTouchTargets(adminPage, 44);
 
-    const apiPoints = await tollPoints(adminPage);
+    const apiPoints = await fetchTollPoints(adminPage);
     for (const pointName of pointNames) {
       const pointBeforePageLoad = pointsBeforePageLoad.points.find(({ name }) =>
         name.toLocaleLowerCase('tr-TR').includes(pointName.toLocaleLowerCase('tr-TR')),
@@ -189,7 +192,7 @@ test('one adjacent toll point reorder is reversible without changing toll data',
   expect(response?.status()).toBe(200);
   await waitForSettledAdminPage(adminPage);
 
-  const before = await tollPoints(adminPage);
+  const before = await fetchTollPoints(adminPage);
   expect(before.points.length, 'At least two toll points are required for reorder acceptance').toBeGreaterThan(1);
   const originalSequence = sequence(before.points);
   const first = adminPage.locator('button[aria-label$=" aşağı taşı"]').first();
@@ -219,7 +222,7 @@ test('one adjacent toll point reorder is reversible without changing toll data',
     }
   }
 
-  const after = await tollPoints(adminPage);
+  const after = await fetchTollPoints(adminPage);
   expect(sequence(after.points), 'Final API toll point sequence must be restored exactly').toEqual(originalSequence);
   expect(businessFields(after.points), 'Reordering must not mutate toll point business fields').toEqual(
     businessFields(before.points),
@@ -228,4 +231,98 @@ test('one adjacent toll point reorder is reversible without changing toll data',
   await waitForSettledAdminPage(adminPage);
   await expect(adminPage.getByRole('button', { name: new RegExp(`${movedName} aşağı taşı`, 'i') })).toBeVisible();
   await screenshotEvidence(adminPage, 'toll-controls-reordered-restored');
+});
+
+test('isolated toll points move exactly one step and remain selected across rapid reorder actions', async ({ adminPage, adminIdentity }) => {
+  test.setTimeout(120_000);
+  const suffix = crypto.randomUUID();
+  const ids = Array.from({ length: 5 }, () => crypto.randomUUID());
+  const names = ids.map((_, index) => `__qa_toll_order_${suffix}_${index + 1}`);
+  const realOrderSnapshot = await db.select({
+    id: tollPoints.id,
+    displayOrder: tollPoints.displayOrder,
+    updatedAt: tollPoints.updatedAt,
+    updatedBy: tollPoints.updatedBy,
+  }).from(tollPoints);
+  const realBusinessSnapshot = await db.select().from(tollPoints);
+
+  try {
+    await db.insert(tollPoints).values(ids.map((id, index) => ({
+      id,
+      name: names[index],
+      type: 'BRIDGE' as const,
+      active: true,
+      pricingMode: 'FLAT' as const,
+      displayOrder: -10_000 + index,
+      notes: `QA tam alan ${index + 1}`,
+      classificationLabel: 'QA sınıflandırma',
+      bannedVehicleClasses: [],
+      bannedVehicleTypes: [],
+      createdBy: adminIdentity.id,
+      updatedBy: adminIdentity.id,
+    })));
+
+    await adminPage.setViewportSize({ width: 1440, height: 1000 });
+    await adminPage.goto('/admin/yol-gecis-ucretleri');
+    await waitForSettledAdminPage(adminPage);
+    await adminPage.getByRole('button', { name: new RegExp(names[2]) }).click();
+    await expect.poll(() => adminPage.locator('input').evaluateAll((elements, value) =>
+      elements.some(element => (element as HTMLInputElement).value === value), names[2])).toBe(true);
+
+    let orderRequests = 0;
+    adminPage.on('request', (request) => {
+      if (request.method() === 'POST' && request.url().endsWith('/admin/api/pricing/tolls/order')) orderRequests += 1;
+    });
+    const selectedRow = adminPage.getByRole('button', { name: new RegExp(names[2]) }).locator('..');
+    const up = selectedRow.getByRole('button', { name: 'Yukarı', exact: true });
+    await up.evaluate((element) => { (element as HTMLButtonElement).click(); (element as HTMLButtonElement).click(); });
+    await expect.poll(async () => (await db.select({ id: tollPoints.id }).from(tollPoints)
+      .orderBy(tollPoints.displayOrder, tollPoints.name, tollPoints.id)).slice(0, 5).map(row => row.id))
+      .toEqual([ids[0], ids[2], ids[1], ids[3], ids[4]]);
+    expect(orderRequests).toBe(1);
+    await expect.poll(() => adminPage.locator('input').evaluateAll((elements, value) =>
+      elements.some(element => (element as HTMLInputElement).value === value), names[2])).toBe(true);
+
+    const downResponse = adminPage.waitForResponse(response =>
+      response.url().endsWith('/admin/api/pricing/tolls/order') && response.request().method() === 'POST');
+    await selectedRow.getByRole('button', { name: 'Aşağı', exact: true }).click();
+    expect((await downResponse).status()).toBe(200);
+    const secondUpResponse = adminPage.waitForResponse(response =>
+      response.url().endsWith('/admin/api/pricing/tolls/order') && response.request().method() === 'POST');
+    await selectedRow.getByRole('button', { name: 'Yukarı', exact: true }).click();
+    expect((await secondUpResponse).status()).toBe(200);
+
+    await adminPage.reload();
+    await waitForSettledAdminPage(adminPage);
+    await expect(adminPage.getByRole('button', { name: new RegExp(names[2]) }).locator('..').getByRole('button', { name: 'Yukarı', exact: true })).toBeVisible();
+    await adminPage.getByRole('button', { name: new RegExp(names[2]) }).click();
+    await expect.poll(() => adminPage.locator('input').evaluateAll((elements, value) =>
+      elements.some(element => (element as HTMLInputElement).value === value), names[2])).toBe(true);
+
+    for (const width of [1280, 1440, 768, 390]) {
+      await adminPage.setViewportSize({ width, height: 900 });
+      await assertNoHorizontalOverflow(adminPage);
+      const responsiveRow = adminPage.getByRole('button', { name: new RegExp(names[2]) }).locator('..');
+      for (const button of await responsiveRow.getByRole('button', { name: /^(Yukarı|Aşağı)$/ }).evaluateAll(elements =>
+        elements.map(element => element.getBoundingClientRect().height))) {
+        expect(button).toBeGreaterThanOrEqual(44);
+      }
+    }
+
+    const ordered = await db.select({ id: tollPoints.id, displayOrder: tollPoints.displayOrder }).from(tollPoints)
+      .orderBy(tollPoints.displayOrder, tollPoints.name, tollPoints.id);
+    expect(new Set(ordered.map(row => row.displayOrder)).size).toBe(ordered.length);
+    const currentRealBusiness = await db.select().from(tollPoints).where(notInArray(tollPoints.id, ids));
+    expect(businessFields(currentRealBusiness)).toEqual(businessFields(realBusinessSnapshot));
+  } finally {
+    await db.delete(auditLogs).where(and(eq(auditLogs.adminUserId, adminIdentity.id), inArray(auditLogs.entityId, ids))).catch(() => {});
+    await db.delete(tollPoints).where(inArray(tollPoints.id, ids)).catch(() => {});
+    for (const row of realOrderSnapshot) {
+      await db.update(tollPoints).set({
+        displayOrder: row.displayOrder,
+        updatedAt: row.updatedAt,
+        updatedBy: row.updatedBy,
+      }).where(eq(tollPoints.id, row.id));
+    }
+  }
 });

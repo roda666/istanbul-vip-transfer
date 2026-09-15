@@ -30,8 +30,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: payload.error.issues[0]?.message ?? 'Geçersiz geçiş noktası.' }, { status: 422 });
   }
   const now = new Date();
+  const pointData = payload.data.type === 'FERRY'
+    ? { ...payload.data, dayStartHour: null, nightStartHour: null }
+    : payload.data;
   const [point] = await db.insert(tollPoints).values({
-    ...payload.data,
+    ...pointData,
     createdAt: now,
     updatedAt: now,
     createdBy: session.adminId,

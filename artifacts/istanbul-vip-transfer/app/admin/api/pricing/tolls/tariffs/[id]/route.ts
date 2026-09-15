@@ -6,6 +6,7 @@ import { auditLogs, tollPoints, tollTariffs } from '@/db/schema';
 import {
   assertNoActiveTariffOverlap,
   assertPricingModeMatchesGatePair,
+  assertTariffTimeBandForPointType,
   assertTollDateRange,
   effectiveTollAmount,
   isOfficialTollSourceUrl,
@@ -33,11 +34,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   try {
     const [[existing], [point]] = await Promise.all([
       db.select().from(tollTariffs).where(eq(tollTariffs.id, id)).limit(1),
-      db.select({ id: tollPoints.id, pricingMode: tollPoints.pricingMode }).from(tollPoints).where(eq(tollPoints.id, payload.data.tollPointId)).limit(1),
+      db.select({ id: tollPoints.id, type: tollPoints.type, pricingMode: tollPoints.pricingMode }).from(tollPoints).where(eq(tollPoints.id, payload.data.tollPointId)).limit(1),
     ]);
     if (!existing) return NextResponse.json({ error: 'Geçiş tarifesi bulunamadı.' }, { status: 404 });
     if (!point) return NextResponse.json({ error: 'Geçiş noktası bulunamadı.' }, { status: 404 });
     assertPricingModeMatchesGatePair(point.pricingMode, payload.data.entryGateName, payload.data.exitGateName);
+    assertTariffTimeBandForPointType(point.type, payload.data.timeBand);
     const validFrom = parseTollDate(payload.data.validFrom);
     const validUntil = parseTollDate(payload.data.validUntil);
     assertTollDateRange(validFrom, validUntil);

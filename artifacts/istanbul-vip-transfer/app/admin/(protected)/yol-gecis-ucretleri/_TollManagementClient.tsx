@@ -158,6 +158,22 @@ const formatTRY = (kurus?: number | null) =>
     ? (kurus / 100).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 2 }) 
     : '---';
 
+const formatTRYInput = (kurus?: number | null) =>
+  kurus != null
+    ? (kurus / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false })
+    : '';
+
+function parseTRYInput(value: string) {
+  const compact = value.trim().replace(/\s/g, '');
+  if (!compact) return null;
+  const normalized = compact.includes(',')
+    ? compact.replace(/\./g, '').replace(',', '.')
+    : compact;
+  if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) return null;
+  const amount = Number(normalized);
+  return Number.isFinite(amount) && amount >= 0 ? Math.round(amount * 100) : null;
+}
+
 function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
@@ -1138,9 +1154,130 @@ function QuickTariffAdd({
 }
 
 
-function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, onSync }: { point: TollPoint, tariffs: TollTariff[], vehicleClasses: string[], onRefresh: () => Promise<void>, onEditTariff: (vc: string, t?: TollTariff) => void, onSync: (t: TollTariff) => void }) {
+function InlineTariffEditor({
+  point,
+  tariff,
+  onCancel,
+  onUpdated,
+}: {
+  point: TollPoint;
+  tariff: TollTariff;
+  onCancel: () => void;
+  onUpdated: (tariff: TollTariff) => void;
+}) {
+  const originalEntry = tariff.entryGateName?.trim() ?? '';
+  const originalExit = tariff.exitGateName?.trim() ?? '';
+  const originalAmount = tariff.amountKurus;
+  const [entryGateName, setEntryGateName] = useState(originalEntry);
+  const [exitGateName, setExitGateName] = useState(originalExit);
+  const [amount, setAmount] = useState(formatTRYInput(originalAmount));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const requestInFlightRef = useRef(false);
+  const parsedAmount = parseTRYInput(amount);
+  const gatePair = point.pricingMode === 'GATE_PAIR';
+  const entryValid = !gatePair || entryGateName.trim().length > 0;
+  const exitValid = !gatePair || exitGateName.trim().length > 0;
+  const amountValid = parsedAmount !== null;
+  const dirty =
+    (gatePair && entryGateName.trim() !== originalEntry) ||
+    (gatePair && exitGateName.trim() !== originalExit) ||
+    parsedAmount !== originalAmount;
+  const canSave = dirty && entryValid && exitValid && amountValid && !busy;
+
+  const save = async () => {
+    if (!canSave || requestInFlightRef.current || parsedAmount === null) return;
+    requestInFlightRef.current = true;
+    setBusy(true);
+    setError('');
+    try {
+      const response = await fetch(`/admin/api/pricing/tolls/tariffs/${tariff.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tollPointId: tariff.tollPointId,
+          vehicleClass: tariff.vehicleClass,
+          timeBand: tariff.timeBand,
+          automaticAmountKurus: tariff.automaticAmountKurus,
+          manualAmountKurus: parsedAmount,
+          sourceName: tariff.sourceName,
+          sourceUrl: tariff.sourceUrl,
+          validFrom: tariff.validFrom,
+          validUntil: tariff.validUntil,
+          queriedAt: tariff.queriedAt ?? null,
+          active: tariff.active,
+          entryGateName: gatePair ? entryGateName.trim() : null,
+          exitGateName: gatePair ? exitGateName.trim() : null,
+          direction: tariff.direction ?? null,
+        }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.tariff) {
+        throw new Error(result?.error ?? 'Tarife güncellenemedi.');
+      }
+      onUpdated(result.tariff as TollTariff);
+    } catch (saveError: unknown) {
+      setError(errorMessage(saveError, 'Tarife güncellenemedi. Değerleriniz korunuyor.'));
+    } finally {
+      requestInFlightRef.current = false;
+      setBusy(false);
+    }
+  };
+
+  const inputClass = 'w-full min-h-[44px] rounded-lg border border-blue-300 bg-white px-3 py-2 text-sm font-bold text-slate-900 shadow-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+
+  return (
+    <div className="rounded-lg border border-blue-300 bg-blue-50/60 p-3" data-testid={`tariff-row-${tariff.vehicleClass}`} data-tariff-id={tariff.id}>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(110px,0.7fr)_auto] xl:items-start">
+        <div className="min-w-0">
+          <label htmlFor={`tariff-entry-${tariff.id}`} className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-blue-900">Giriş Gişesi</label>
+          {gatePair ? (
+            <>
+              <input id={`tariff-entry-${tariff.id}`} data-testid="inline-tariff-entry" value={entryGateName} onChange={(event) => setEntryGateName(event.target.value)} aria-invalid={!entryValid} className={`${inputClass} ${!entryValid ? 'border-red-400' : ''}`} />
+              {!entryValid && <p className="mt-1 text-[10px] font-bold text-red-700">Giriş gişesi zorunludur.</p>}
+            </>
+          ) : (
+            <div className="flex min-h-[44px] items-center rounded-lg border border-slate-200 bg-slate-100 px-3 text-sm font-bold text-slate-500">—</div>
+          )}
+        </div>
+        <div className="min-w-0">
+          <label htmlFor={`tariff-exit-${tariff.id}`} className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-blue-900">Çıkış Gişesi</label>
+          {gatePair ? (
+            <>
+              <input id={`tariff-exit-${tariff.id}`} data-testid="inline-tariff-exit" value={exitGateName} onChange={(event) => setExitGateName(event.target.value)} aria-invalid={!exitValid} className={`${inputClass} ${!exitValid ? 'border-red-400' : ''}`} />
+              {!exitValid && <p className="mt-1 text-[10px] font-bold text-red-700">Çıkış gişesi zorunludur.</p>}
+            </>
+          ) : (
+            <div className="flex min-h-[44px] items-center rounded-lg border border-slate-200 bg-slate-100 px-3 text-sm font-bold text-slate-500">—</div>
+          )}
+        </div>
+        <div className="min-w-0">
+          <label htmlFor={`tariff-amount-${tariff.id}`} className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-blue-900">Fiyat (TRY)</label>
+          <input id={`tariff-amount-${tariff.id}`} data-testid="inline-tariff-amount" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} aria-invalid={!amountValid} className={`${inputClass} ${!amountValid ? 'border-red-400' : ''}`} />
+          {!amountValid && <p className="mt-1 text-[10px] font-bold text-red-700">Geçerli, negatif olmayan bir TL tutarı girin.</p>}
+        </div>
+        <div className="flex flex-col gap-2 sm:col-span-3 sm:flex-row sm:justify-end xl:col-span-1 xl:pt-[22px]">
+          <button type="button" data-testid="inline-tariff-cancel" onClick={onCancel} disabled={busy} className="min-h-[44px] rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-50">Vazgeç</button>
+          <button type="button" data-testid="inline-tariff-save" onClick={save} disabled={!canSave} className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white hover:bg-blue-800 disabled:pointer-events-none disabled:opacity-45">
+            {busy ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+            {busy ? 'Kaydediliyor...' : 'Kaydet'}
+          </button>
+        </div>
+      </div>
+      {error && <div role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700">{error}</div>}
+    </div>
+  );
+}
+
+function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onAddTariff, onTariffUpdated, onSync }: { point: TollPoint, tariffs: TollTariff[], vehicleClasses: string[], onRefresh: () => Promise<void>, onAddTariff: (vc: string) => void, onTariffUpdated: (tariff: TollTariff) => void, onSync: (t: TollTariff) => void }) {
   const [quickTariffClassRequest, setQuickTariffClassRequest] = useState<QuickTariffClassRequest | null>(null);
   const [tariffActionError, setTariffActionError] = useState('');
+  const [editingTariffId, setEditingTariffId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setEditingTariffId(null);
+    setTariffActionError('');
+  }, [point.id]);
 
   const prepareQuickTariffClass = (vehicleClass: string) => {
     setQuickTariffClassRequest({
@@ -1340,7 +1477,7 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
                         title="Tarife ekle"
                         aria-label={`${vehicleClassLabel(vc)} tarife ekle`}
                         data-testid={`prepare-quick-tariff-${vc}`}
-                        onClick={() => point.pricingMode === 'GATE_PAIR' ? prepareQuickTariffClass(vc) : onEditTariff(vc)}
+                        onClick={() => point.pricingMode === 'GATE_PAIR' ? prepareQuickTariffClass(vc) : onAddTariff(vc)}
                         className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-bold text-blue-700 shadow-sm transition-colors hover:bg-blue-100 sm:w-auto"
                       >
                       <Plus size={14} /> Tarife Ekle
@@ -1358,8 +1495,19 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
                           Mevcut tarifeler tüm zaman dilimlerini kapsamıyor ({hasDay ? 'gündüz var, gece eksik' : hasNight ? 'gece var, gündüz eksik' : 'hiçbir dilim tanımlı değil'}). Kapsanmayan saatlerde fiyat motoru bu geçişi eksik veri olarak işaretler.
                         </div>
                       )}
-                      {classTariffs.map((tariff) => (
-                           <div key={tariff.id} data-testid={`tariff-row-${vc}`} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(86px,auto)_auto] items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/60 p-2.5">
+                      {classTariffs.map((tariff) => editingTariffId === tariff.id ? (
+                        <InlineTariffEditor
+                          key={tariff.id}
+                          point={point}
+                          tariff={tariff}
+                          onCancel={() => setEditingTariffId(null)}
+                          onUpdated={(updated) => {
+                            onTariffUpdated(updated);
+                            setEditingTariffId(null);
+                          }}
+                        />
+                      ) : (
+                           <div key={tariff.id} data-testid={`tariff-row-${vc}`} data-tariff-id={tariff.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(86px,auto)_auto] items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/60 p-2.5">
                             <div className="min-w-0">
                               <span className="block text-[9px] font-black uppercase tracking-wider text-slate-400">Giriş Gişesi</span>
                               <span className="block break-words text-xs font-bold leading-snug text-slate-800 [overflow-wrap:anywhere]">{tariff.entryGateName || '—'}</span>
@@ -1380,7 +1528,7 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
                                 </button>
                               )}
                               <AdminRecordActions
-                                edit={{ onClick: () => onEditTariff(vc, tariff) }}
+                                edit={{ onClick: () => { setTariffActionError(''); setEditingTariffId(tariff.id); } }}
                                 activation={{ onClick: () => runTariffAction(() => patchTariffActive(tariff, !tariff.active)), isActive: tariff.active }}
                                 delete={{ onClick: () => runTariffAction(() => deleteTariff(tariff)) }}
                               />
@@ -1398,11 +1546,11 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onEditTariff, 
   );
 }
 
-function PointsManager({ data, onRefresh }: { data: DataPayload, onRefresh: () => Promise<void> }) {
+function PointsManager({ data, onRefresh, onTariffUpdated }: { data: DataPayload, onRefresh: () => Promise<void>, onTariffUpdated: (tariff: TollTariff) => void }) {
   const [selectedPointId, setSelectedPointId] = useState<string | null>(null);
   const [orderedPoints, setOrderedPoints] = useState(data.points);
   const [newPointModal, setNewPointModal] = useState(false);
-  const [editTariffModal, setEditTariffModal] = useState<{vc: string, tariff?: TollTariff} | null>(null);
+  const [newTariffModal, setNewTariffModal] = useState<{vc: string} | null>(null);
   const [syncModalTariff, setSyncModalTariff] = useState<TollTariff | null>(null);
 
   const selectedPoint = data.points.find(p => p.id === selectedPointId) || null;
@@ -1461,7 +1609,8 @@ function PointsManager({ data, onRefresh }: { data: DataPayload, onRefresh: () =
                tariffs={data.tariffs} 
                vehicleClasses={data.vehicleClasses} 
                onRefresh={onRefresh}
-               onEditTariff={(vc, t) => setEditTariffModal({vc, tariff: t})}
+                onAddTariff={(vc) => setNewTariffModal({vc})}
+                onTariffUpdated={onTariffUpdated}
                onSync={(t) => setSyncModalTariff(t)}
              />
            </div>
@@ -1480,14 +1629,13 @@ function PointsManager({ data, onRefresh }: { data: DataPayload, onRefresh: () =
         </Modal>
       )}
 
-      {editTariffModal && selectedPoint && (
-        <Modal title={`${selectedPoint.name} — ${vehicleClassLabel(editTariffModal.vc)} Tarifesi`} onClose={() => setEditTariffModal(null)}>
+      {newTariffModal && selectedPoint && (
+        <Modal title={`${selectedPoint.name} — ${vehicleClassLabel(newTariffModal.vc)} Tarifesi`} onClose={() => setNewTariffModal(null)}>
            <TariffForm 
              point={selectedPoint} 
-             vClass={editTariffModal.vc} 
-             initialData={editTariffModal.tariff} 
-             onSave={() => { setEditTariffModal(null); onRefresh(); }} 
-             onClose={() => setEditTariffModal(null)} 
+              vClass={newTariffModal.vc}
+              onSave={() => { setNewTariffModal(null); onRefresh(); }}
+              onClose={() => setNewTariffModal(null)}
            />
         </Modal>
       )}
@@ -1831,7 +1979,14 @@ export default function TollManagementClient() {
 
       <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
         {activeTab === 'POINTS' ? (
-          <PointsManager data={data} onRefresh={loadData} />
+          <PointsManager
+            data={data}
+            onRefresh={loadData}
+            onTariffUpdated={(updatedTariff) => setData((current) => current ? {
+              ...current,
+              tariffs: current.tariffs.map((tariff) => tariff.id === updatedTariff.id ? updatedTariff : tariff),
+            } : current)}
+          />
         ) : activeTab === 'ALTERNATIVES' ? (
           <AlternativesManager data={data} onRefresh={loadData} />
         ) : (

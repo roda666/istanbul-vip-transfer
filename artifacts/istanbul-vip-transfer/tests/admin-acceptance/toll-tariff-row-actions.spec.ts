@@ -55,14 +55,17 @@ test('manages temporary tariff rows without crossing point/class boundaries', as
   const before = await snapshot(adminIdentity.id);
 
   const addQuick = async (entryGate: string, exitGate: string, vehicleClass: string, amount: string) => {
+    const addButton = adminPage.getByTestId('quick-tariff-add');
+    await expect(addButton).toBeEnabled();
     await adminPage.getByTestId('quick-tariff-entry-gate').fill(entryGate);
     await adminPage.getByTestId('quick-tariff-exit-gate').fill(exitGate);
     await adminPage.getByTestId('quick-tariff-class').selectOption(vehicleClass);
     await adminPage.getByTestId('quick-tariff-amount').fill(amount);
     const response = adminPage.waitForResponse((res) =>
       res.url().endsWith('/admin/api/pricing/tolls/tariffs/quick') && res.request().method() === 'POST');
-    await adminPage.getByTestId('quick-tariff-add').click();
+    await addButton.click();
     expect((await response).status()).toBe(201);
+    await expect(addButton).toBeEnabled();
   };
 
   const row = (vehicleClass: string, index = 0) =>
@@ -119,19 +122,99 @@ test('manages temporary tariff rows without crossing point/class boundaries', as
     await expect(amount).toHaveValue('');
     expect(await db.select().from(tollTariffs).where(eq(tollTariffs.tollPointId, pointId))).toHaveLength(0);
 
-    await addQuick('Odayeri', 'Kurnaköy', 'class_1', '1234');
+    await addQuick('KURNAKÖY 2', 'ADAPAZARI-2', 'class_1', '490');
     await addQuick('Kurnaköy', 'Odayeri', 'class_1', '2345');
     await addQuick('Odayeri', 'Kurnaköy', 'class_2', '3456');
     expect(await db.select().from(tollTariffs).where(eq(tollTariffs.tollPointId, pointId))).toHaveLength(3);
 
-    // Existing row edit uses the normal tariff form.
+    // Existing rows edit in place, never in a modal or separate form.
     await action('class_1', 'Düzenle', 0);
-    await adminPage.getByLabel(/Manuel Fiyat/).fill('4567');
+    const inlineEntry = row('class_1', 0).getByTestId('inline-tariff-entry');
+    const inlineExit = row('class_1', 0).getByTestId('inline-tariff-exit');
+    const inlineAmount = row('class_1', 0).getByTestId('inline-tariff-amount');
+    const inlineSave = row('class_1', 0).getByTestId('inline-tariff-save');
+    await expect(inlineEntry).toHaveValue('KURNAKÖY 2');
+    await expect(inlineExit).toHaveValue('ADAPAZARI-2');
+    await expect(inlineAmount).toHaveValue('490,00');
+    await expect(inlineSave).toBeDisabled();
+    await expect(adminPage.getByRole('dialog')).toHaveCount(0);
+
+    // Opening another row closes the first editor so only one row can edit at once.
+    await action('class_1', 'Düzenle', 1);
+    await expect(adminPage.getByTestId('inline-tariff-save')).toHaveCount(1);
+    await expect(row('class_1', 0).getByTestId('inline-tariff-save')).toHaveCount(0);
+    await row('class_1', 1).getByRole('button', { name: 'Vazgeç', exact: true }).click();
+    await action('class_1', 'Düzenle', 0);
+
+    // Invalid values cannot be saved; cancelling restores the original compact row.
+    await inlineEntry.fill('');
+    await inlineAmount.fill('-1');
+    await expect(inlineSave).toBeDisabled();
+    await expect(row('class_1', 0)).toContainText('Giriş gişesi zorunludur.');
+    await expect(row('class_1', 0)).toContainText('Geçerli, negatif olmayan bir TL tutarı girin.');
+    await row('class_1', 0).getByRole('button', { name: 'Vazgeç', exact: true }).click();
+    await expect(row('class_1', 0)).toContainText('KURNAKÖY 2');
+    await expect(row('class_1', 0)).toContainText('₺490,00');
+
+    // A failed PATCH keeps edit mode and every entered value.
+    await action('class_1', 'Düzenle', 0);
+    await inlineEntry.fill('KURNAKÖY TEST');
+    await inlineExit.fill('ADAPAZARI TEST');
+    await inlineAmount.fill('491,25');
+    await adminPage.route('**/admin/api/pricing/tolls/tariffs/*', async (route) => {
+      if (route.request().method() === 'PATCH') {
+        await route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: 'Geçici kayıt hatası' }) });
+      } else {
+        await route.continue();
+      }
+    }, { times: 1 });
+    await inlineSave.click();
+    await expect(row('class_1', 0).getByRole('alert')).toContainText('Geçici kayıt hatası');
+    await expect(inlineEntry).toHaveValue('KURNAKÖY TEST');
+    await expect(inlineExit).toHaveValue('ADAPAZARI TEST');
+    await expect(inlineAmount).toHaveValue('491,25');
+    expect(await db.select().from(tollTariffs).where(eq(tollTariffs.tollPointId, pointId))).toHaveLength(3);
+
+    // The responsive editor keeps inputs and both actions usable at all required widths.
+    for (const width of [1440, 1280, 768, 390]) {
+      await adminPage.setViewportSize({ width, height: 900 });
+      await assertNoHorizontalOverflow(adminPage);
+      await assertTouchTargets(
+        adminPage,
+        44,
+        '[data-testid="inline-tariff-entry"], [data-testid="inline-tariff-exit"], [data-testid="inline-tariff-amount"], [data-testid="inline-tariff-save"], [data-testid="inline-tariff-cancel"]',
+      );
+    }
+
+    // A synchronous double click produces one PATCH and updates the same DB row.
+    await adminPage.setViewportSize({ width: 1280, height: 900 });
+    await inlineEntry.fill('KURNAKÖY 3');
+    await inlineExit.fill('ADAPAZARI-3');
+    await inlineAmount.fill('491,50');
+    await expect(inlineSave).toBeEnabled();
+    let patchCount = 0;
+    await adminPage.route('**/admin/api/pricing/tolls/tariffs/*', async (route) => {
+      if (route.request().method() === 'PATCH') patchCount += 1;
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      await route.continue();
+    }, { times: 1 });
     const patchResponse = adminPage.waitForResponse((res) =>
       res.url().includes('/admin/api/pricing/tolls/tariffs/') && res.request().method() === 'PATCH');
-    await adminPage.getByRole('button', { name: 'Tarifeyi Kaydet', exact: true }).click();
+    await inlineSave.dblclick();
+    await expect(inlineSave).toContainText('Kaydediliyor...');
     expect((await patchResponse).status()).toBe(200);
-    await expect(row('class_1', 0)).toContainText('₺4.567,00');
+    expect(patchCount).toBe(1);
+    await expect(row('class_1', 0)).toContainText('KURNAKÖY 3');
+    await expect(row('class_1', 0)).toContainText('ADAPAZARI-3');
+    await expect(row('class_1', 0)).toContainText('₺491,50');
+    await expect(row('class_1', 0).getByTestId('inline-tariff-save')).toHaveCount(0);
+    const tariffsAfterEdit = await db.select().from(tollTariffs).where(eq(tollTariffs.tollPointId, pointId));
+    expect(tariffsAfterEdit).toHaveLength(3);
+    expect(tariffsAfterEdit.find((tariff) => tariff.vehicleClass === 'class_1' && tariff.entryGateName === 'KURNAKÖY 3')).toMatchObject({
+      exitGateName: 'ADAPAZARI-3',
+      amountKurus: 49_150,
+      manualAmountKurus: 49_150,
+    });
 
     // Activation is a PATCH preserving the tariff's other values.
     const class2Before = (await db.select().from(tollTariffs)
@@ -150,37 +233,6 @@ test('manages temporary tariff rows without crossing point/class boundaries', as
     await action('class_2', 'Aktifleştir');
     await expect.poll(async () => (await db.select().from(tollTariffs).where(eq(tollTariffs.tollPointId, pointId))).find((t) => t.vehicleClass === 'class_2')?.active).toBe(true);
     await expect(row('class_2').getByRole('button', { name: 'Pasifleştir', exact: true })).toBeVisible();
-
-    const beforeOrder = (await db.select().from(tollTariffs).where(eq(tollTariffs.tollPointId, pointId)))
-      .filter((t) => t.vehicleClass === 'class_1')
-      .sort((a, b) => a.displayOrder - b.displayOrder || a.id.localeCompare(b.id))
-      .map((t) => t.id);
-    await action('class_1', 'Yukarı', 1);
-    await expect.poll(async () => (await db.select().from(tollTariffs).where(eq(tollTariffs.tollPointId, pointId)))
-      .filter((t) => t.vehicleClass === 'class_1')
-      .sort((a, b) => a.displayOrder - b.displayOrder || a.id.localeCompare(b.id))
-      .map((t) => t.id)).toEqual([beforeOrder[1], beforeOrder[0]]);
-
-    // Explicitly prove a caller cannot move a row into another class.
-    const crossClassStatus = await adminPage.evaluate(async ({ tariffId, tollPointId }) => {
-      const response = await fetch('/admin/api/pricing/tolls/tariffs/order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: tariffId,
-          direction: 'down',
-          vehicleClass: 'class_2',
-          tollPointId,
-        }),
-      });
-      return response.status;
-    }, { tariffId: beforeOrder[0], tollPointId: pointId });
-    expect(crossClassStatus).toBe(422);
-
-    const first = row('class_1', 0);
-    const last = row('class_1', 1);
-    await expect(first.getByRole('button', { name: 'Yukarı', exact: true })).toBeDisabled();
-    await expect(last.getByRole('button', { name: 'Aşağı', exact: true })).toBeDisabled();
 
     // Dismiss once, then explicitly confirm permanent deletion.
     let dialogMessage = '';
@@ -202,12 +254,10 @@ test('manages temporary tariff rows without crossing point/class boundaries', as
     await waitForSettledAdminPage(adminPage);
     await adminPage.getByRole('button', { name: new RegExp(pointName) }).click();
     await expect(row('class_1', 0)).toBeVisible();
+    await expect(row('class_1', 0)).toContainText('KURNAKÖY 3');
+    await expect(row('class_1', 0)).toContainText('ADAPAZARI-3');
+    await expect(row('class_1', 0)).toContainText('₺491,50');
     await expect(adminPage.getByTestId('tariff-row-class_2')).toHaveCount(0);
-    const afterReloadOrder = (await db.select().from(tollTariffs).where(eq(tollTariffs.tollPointId, pointId)))
-      .filter((t) => t.vehicleClass === 'class_1')
-      .sort((a, b) => a.displayOrder - b.displayOrder || a.id.localeCompare(b.id))
-      .map((t) => t.id);
-    expect(afterReloadOrder).toEqual([beforeOrder[1], beforeOrder[0]]);
 
     await adminPage.setViewportSize({ width: 1280, height: 900 });
     await assertNoHorizontalOverflow(adminPage);

@@ -10,6 +10,8 @@ import XShareButton from '@/app/admin/_components/XShareButton';
 import LinkedInShareButton from '@/app/admin/_components/LinkedInShareButton';
 import TelegramShareButton from '@/app/admin/_components/TelegramShareButton';
 import { SITE } from '@/lib/site-config';
+import { AdminActionButton } from '@/app/admin/_components/AdminActionButton';
+import { Archive, Check, Eye, FilePlus2, Plus, RefreshCw, Rocket, Save, Trash2, Undo2, X } from 'lucide-react';
 
 // ── Safe JSON fetch ─────────────────────────────────────────────────────────
 async function safeJson<T = Record<string, unknown>>(res: Response): Promise<T> {
@@ -83,10 +85,6 @@ const s = {
   lbl: { fontSize: '12px', fontWeight: 600, color: '#374151', fontFamily: 'Inter, sans-serif', display: 'block', marginBottom: '4px' } as React.CSSProperties,
   hint: { fontSize: '11px', color: '#94A3B8', marginTop: '3px', fontFamily: 'Inter, sans-serif' } as React.CSSProperties,
   fld: { marginBottom: '16px' } as React.CSSProperties,
-  btn: (c: string, bg: string, border?: string): React.CSSProperties => ({
-    padding: '7px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 600,
-    cursor: 'pointer', border: border ?? 'none', color: c, background: bg, fontFamily: 'Inter, sans-serif',
-  }),
 };
 
 // ── Sub-components ───────────────────────────────────────────────────────────
@@ -146,14 +144,14 @@ function TagsInput({ tags, onChange }: { tags: string[]; onChange: (t: string[])
         {tags.map(tag => (
           <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', background: '#EFF6FF', color: '#1D4ED8', borderRadius: '4px', fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>
             {tag}
-            <button onClick={() => remove(tag)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#1D4ED8', padding: '0 2px', fontSize: '14px', lineHeight: 1 }}>×</button>
+            <AdminActionButton label="Etiketi kaldır" icon={Trash2} variant="subtle" onClick={() => remove(tag)} className="min-h-11 min-w-11 rounded px-1 py-1 text-xs" />
           </span>
         ))}
       </div>
       <div style={{ display: 'flex', gap: '8px' }}>
         <input value={inputVal} onChange={e => setInputVal(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), add())}
           placeholder="Etiket ekle (Enter ile onayla)" style={{ ...s.inp(), flex: 1 }} />
-        <button onClick={add} style={s.btn('#FFFFFF', '#2563EB')}>Ekle</button>
+        <AdminActionButton label="Ekle" icon={Plus} variant="new" onClick={add} />
       </div>
       <p style={s.hint}>Etiket eklemek için yazıp Enter&apos;a basın.</p>
     </div>
@@ -440,11 +438,14 @@ export default function BlogEditor({ blogId, initial }: Props) {
     return (
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
         {btns.map(btn => (
-          <button key={btn.action} disabled={saving}
-            onClick={() => sourceAction(btn.action, btn.action === 'scheduleSource' && scheduledAt ? { scheduledAt: new Date(scheduledAt).toISOString() } : undefined)}
-            style={{ ...s.btn(btn.color, btn.bg, btn.border), opacity: saving ? 0.6 : 1 }}>
-            {btn.label}
-          </button>
+          <AdminActionButton
+            key={btn.action}
+            label={btn.label.replace(/^[^A-Za-zÇĞİÖŞÜçğıöşü]+/u, '').trim()}
+            icon={btn.action === 'archiveSource' ? Archive : btn.action === 'toApprove' ? Check : btn.action === 'publishSource' ? Rocket : btn.action === 'toReview' ? Eye : undefined}
+            variant={btn.action === 'archiveSource' ? 'archive' : btn.action === 'publishSource' || btn.action === 'scheduleSource' || btn.action === 'toApprove' ? 'activate' : 'subtle'}
+            disabled={saving}
+            onClick={() => { void sourceAction(btn.action, btn.action === 'scheduleSource' && scheduledAt ? { scheduledAt: new Date(scheduledAt).toISOString() } : undefined); }}
+          />
         ))}
       </div>
     );
@@ -497,19 +498,10 @@ export default function BlogEditor({ blogId, initial }: Props) {
               label="Bu yazıyı Telegram'da paylaş"
               disabled={currentStatus !== 'PUBLISHED'}
             />
-          <button disabled={saving} onClick={() => { markDirty(); saveSource({ saveAsDraft: true }); }}
-            style={{ ...s.btn('#374151', '#F3F4F6', '1px solid #D1D5DB'), opacity: saving ? 0.6 : 1 }}>
-            Taslak Kaydet
-          </button>
-          <button disabled={saving} onClick={() => { markDirty(); saveSource({ saveAsDraft: false }); }}
-            style={{ ...s.btn('#FFFFFF', '#2563EB'), opacity: saving ? 0.6 : 1 }}>
-            Kaydet
-          </button>
+          <AdminActionButton label="Taslak Kaydet" icon={FilePlus2} variant="save" disabled={saving} onClick={() => { markDirty(); void saveSource({ saveAsDraft: true }); }} />
+          <AdminActionButton label="Kaydet" icon={Save} variant="save" disabled={saving} onClick={() => { markDirty(); void saveSource({ saveAsDraft: false }); }} />
           {(currentStatus === 'DRAFT' || currentStatus === 'APPROVED') && (
-            <button disabled={saving} onClick={() => saveSource({ newStatus: 'PUBLISHED' })}
-              style={{ ...s.btn('#FFFFFF', '#059669'), opacity: saving ? 0.6 : 1 }}>
-              Kaydet & Yayımla
-            </button>
+            <AdminActionButton label="Kaydet ve Yayımla" icon={Rocket} variant="activate" disabled={saving} onClick={() => void saveSource({ newStatus: 'PUBLISHED' })} />
           )}
         </div>
       </div>
@@ -564,7 +556,7 @@ export default function BlogEditor({ blogId, initial }: Props) {
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <input value={slug} onChange={e => { setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')); markDirty(); }}
                     style={{ ...s.inp(), flex: 1 }} />
-                  <button onClick={autoSlug} style={s.btn('#374151', '#F3F4F6', '1px solid #D1D5DB')}>Oluştur</button>
+                  <AdminActionButton label="Oluştur" icon={FilePlus2} variant="subtle" onClick={autoSlug} />
                 </div>
                 <p style={s.hint}>URL&apos;de görünür: /blog/{slug || '…'}</p>
               </div>
@@ -588,7 +580,7 @@ export default function BlogEditor({ blogId, initial }: Props) {
                   <input type="number" min={1} max={120} value={readTime} onChange={e => { setReadTime(e.target.value ? Number(e.target.value) : ''); markDirty(); }}
                     placeholder={String(autoReadTime)} style={{ ...s.inp(), maxWidth: '100px' }} />
                   <span style={{ fontSize: '12px', color: '#94A3B8' }}>Otomatik: ~{autoReadTime} dk</span>
-                  <button onClick={() => { setReadTime(autoReadTime); markDirty(); }} style={s.btn('#374151', '#F3F4F6', '1px solid #D1D5DB')}>Otomatik</button>
+                  <AdminActionButton label="Otomatik" icon={RefreshCw} variant="subtle" onClick={() => { setReadTime(autoReadTime); markDirty(); }} />
                 </div>
               </div>
             </div>
@@ -610,10 +602,7 @@ export default function BlogEditor({ blogId, initial }: Props) {
               namespace="blog"
             />
             {heroImage && (
-              <button type="button" onClick={() => { setHeroImage(''); markDirty(); }}
-                style={{ ...s.btn('#DC2626', '#FEF2F2', '1px solid #FECACA'), fontSize: '11px', marginTop: '4px' }}>
-                Görseli Kaldır
-              </button>
+                <AdminActionButton type="button" label="Görseli Kaldır" icon={Trash2} variant="delete" className="mt-1 text-xs" onClick={() => { setHeroImage(''); markDirty(); }} />
             )}
           </div>
           <Field label="Kapak Görseli Alt Metni" value={heroImageAlt} onChange={v => { setHeroImageAlt(v); markDirty(); }} maxLen={200} />
@@ -646,10 +635,7 @@ export default function BlogEditor({ blogId, initial }: Props) {
               <label style={s.lbl}>OG Görseli</label>
               <ImageUploadField value={ogImage} onChange={url => { setOgImage(url); markDirty(); }} namespace="blog" />
               {ogImage && (
-                <button type="button" onClick={() => { setOgImage(''); markDirty(); }}
-                  style={{ ...s.btn('#DC2626', '#FEF2F2', '1px solid #FECACA'), fontSize: '11px', marginTop: '4px' }}>
-                  OG Görselini Kaldır
-                </button>
+                <AdminActionButton type="button" label="OG Görselini Kaldır" icon={Trash2} variant="delete" className="mt-1 text-xs" onClick={() => { setOgImage(''); markDirty(); }} />
               )}
             </div>
             <Field label="Canonical URL" value={canonicalUrl} onChange={v => { setCanonicalUrl(v); markDirty(); }} hint="Boş bırakılırsa otomatik oluşturulur." />
@@ -673,10 +659,7 @@ export default function BlogEditor({ blogId, initial }: Props) {
 
           {/* Revision history */}
           <div style={{ marginBottom: '24px' }}>
-            <button onClick={() => setShowRevisions(!showRevisions)}
-              style={{ ...s.btn('#374151', '#F3F4F6', '1px solid #D1D5DB'), marginBottom: '8px' }}>
-              {showRevisions ? '▲' : '▼'} Revizyon Geçmişi ({rec.revisions.length})
-            </button>
+            <AdminActionButton label={`${showRevisions ? 'Gizle' : 'Göster'}: Revizyon Geçmişi (${rec.revisions.length})`} icon={Undo2} variant="subtle" className="mb-2" onClick={() => setShowRevisions(!showRevisions)} />
             {showRevisions && (
               <div style={{ border: '1px solid #E2E8F0', borderRadius: '8px', overflow: 'hidden' }}>
                 {rec.revisions.length === 0 ? (
@@ -692,10 +675,7 @@ export default function BlogEditor({ blogId, initial }: Props) {
                         {(rev.snapshot as Record<string, unknown>).status ? ` · ${String((rev.snapshot as Record<string, unknown>).status)}` : ''}
                       </p>
                     </div>
-                    <button onClick={() => revertRevision(rev.id)} disabled={saving}
-                      style={{ ...s.btn('#374151', '#F3F4F6', '1px solid #D1D5DB'), fontSize: '11px', opacity: saving ? 0.6 : 1, flexShrink: 0 }}>
-                      Geri Yükle
-                    </button>
+                    <AdminActionButton label="Geri Yükle" icon={Undo2} variant="subtle" className="shrink-0 text-xs" onClick={() => void revertRevision(rev.id)} disabled={saving} />
                   </div>
                 ))}
               </div>
@@ -722,32 +702,17 @@ export default function BlogEditor({ blogId, initial }: Props) {
               </div>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                 {fld.dirty && (
-                  <button disabled={saving} onClick={() => saveTx(activeTab)}
-                    style={{ ...s.btn('#FFFFFF', '#2563EB'), opacity: saving ? 0.6 : 1 }}>
-                    Çeviriyi Kaydet
-                  </button>
+                  <AdminActionButton label="Çeviriyi Kaydet" icon={Save} variant="save" disabled={saving} onClick={() => void saveTx(activeTab)} />
                 )}
-                <button disabled={saving} onClick={() => txAction(activeTab, 'retranslate')}
-                  style={{ ...s.btn('#374151', '#F3F4F6', '1px solid #D1D5DB'), opacity: saving ? 0.6 : 1 }}>
-                  🔄 Yeniden Çevir
-                </button>
+                <AdminActionButton label="Yeniden Çevir" icon={RefreshCw} variant="subtle" disabled={saving} onClick={() => void txAction(activeTab, 'retranslate')} />
                 {['DRAFT','REVIEW'].includes(txSt) && (
-                  <button disabled={saving} onClick={() => txAction(activeTab, 'approve')}
-                    style={{ ...s.btn('#0891B2', '#ECFEFF', '1px solid #A5F3FC'), opacity: saving ? 0.6 : 1 }}>
-                    ✅ Onayla
-                  </button>
+                  <AdminActionButton label="Onayla" icon={Check} variant="activate" disabled={saving} onClick={() => void txAction(activeTab, 'approve')} />
                 )}
                 {['DRAFT','REVIEW','APPROVED'].includes(txSt) && (
-                  <button disabled={saving} onClick={() => txAction(activeTab, 'publish')}
-                    style={{ ...s.btn('#FFFFFF', '#059669'), opacity: saving ? 0.6 : 1 }}>
-                    🚀 Yayımla
-                  </button>
+                  <AdminActionButton label="Yayımla" icon={Rocket} variant="activate" disabled={saving} onClick={() => void txAction(activeTab, 'publish')} />
                 )}
                 {['PUBLISHED','OUTDATED'].includes(txSt) && (
-                  <button disabled={saving} onClick={() => txAction(activeTab, 'unpublish')}
-                    style={{ ...s.btn('#374151', '#F3F4F6', '1px solid #D1D5DB'), opacity: saving ? 0.6 : 1 }}>
-                    ↩ Yayımı Kaldır
-                  </button>
+                  <AdminActionButton label="Yayımı Kaldır" icon={X} variant="deactivate" disabled={saving} onClick={() => void txAction(activeTab, 'unpublish')} />
                 )}
               </div>
             </div>

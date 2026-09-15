@@ -33,10 +33,10 @@ import {
   BarChart2,
   Database,
   Banknote,
-  Plane,
   Globe2,
   ShieldCheck,
 } from 'lucide-react';
+import type { AdminCapabilities } from '@/lib/auth/authorization';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const SIDEBAR_BG   = '#132A44';
@@ -64,8 +64,32 @@ interface NavGroup {
 }
 
 /** All nav groups for ADMIN / SUPER_ADMIN roles. Order matters. */
-function getNavGroups(role: string, isSuperOrAdmin: boolean): NavGroup[] {
-  return [
+function navSectionForHref(href: string): keyof AdminCapabilities | undefined {
+  if (href === '/admin/sohbet') return 'chat';
+  if (href === '/admin/chatbot-bilgi-bankasi') return 'chatbot';
+  if (href === '/admin/bulten-aboneleri') return 'newsletter';
+  if (href === '/admin/talepler') return 'requests';
+  if (href === '/admin/transferler') return 'transfer_operations';
+  if (href === '/admin/istatistikler') return 'analytics';
+  if (href === '/admin/rezervasyon-ayarlari' || href === '/admin/ucus-karsilama') return 'reservation_settings';
+  if (href === '/admin/araclar' || href === '/admin/transfer-rotalari' || href === '/admin/fiyat-kurallari' || href === '/admin/yol-gecis-ucretleri' || href === '/admin/soforler') return 'fleet_pricing';
+  if (href === '/admin/personel') return 'personel';
+  if (href === '/admin/blog' || href === '/admin/sayfalar' || href === '/admin/hizmetler' || href === '/admin/kategoriler' || href === '/admin/sss') return 'content';
+  if (href === '/admin/dil-ve-ceviri') return 'translations';
+  if (href === '/admin/ai-studio' || href === '/admin/ai-oneriler' || href === '/admin/rakipler') return 'ai_content';
+  if (href === '/admin/sayfalar/ana-sayfa') return 'content';
+  if (href === '/admin/menu') return 'site_navigation';
+  if (href === '/admin/e-posta-ayarlari') return 'security_settings';
+  if (href === '/admin/ayarlar/api-anahtarlari' || href === '/admin/ayarlar/icerik-entegrasyonlari') return 'integrations';
+  if (href === '/admin/ayarlar/guvenlik') return 'security_settings';
+  if (href === '/admin/veritabani-yedegi') return 'database_backup';
+  if (href === '/admin/ayarlar') return 'site_settings';
+  if (href === '/admin/gecmis') return 'audit';
+  return undefined;
+}
+
+function getNavGroups(role: string, capabilities?: AdminCapabilities): NavGroup[] {
+  const groups: NavGroup[] = [
     {
       key: 'iletisim',
       label: 'Müşteri ve İletişim',
@@ -93,14 +117,12 @@ function getNavGroups(role: string, isSuperOrAdmin: boolean): NavGroup[] {
       icon: <Car size={16} />,
       items: [
         { href: '/admin/araclar',             label: 'Araçlar',             icon: <Car size={18} /> },
-        { href: '/admin/soforler',             label: 'Sürücüler',           icon: <Users size={18} /> },
         { href: '/admin/transfer-rotalari',   label: 'Transfer Rotaları',   icon: <MapPin size={18} /> },
         { href: '/admin/fiyat-kurallari',     label: 'Fiyat Hesaplama',     icon: <Banknote size={18} />, highlight: true, badge: 'ÖZEL' },
         { href: '/admin/yol-gecis-ucretleri', label: 'Yol & Geçiş Ücretleri', icon: <MapPin size={18} /> },
-        { href: '/admin/ucus-karsilama',      label: 'Uçuşla Karşılama',    icon: <Plane size={18} /> },
       ],
     },
-    ...(isSuperOrAdmin ? [{
+    ...(role === 'SUPER_ADMIN' ? [{
       key: 'personel',
       label: 'Personel',
       icon: <Users size={16} />,
@@ -139,9 +161,9 @@ function getNavGroups(role: string, isSuperOrAdmin: boolean): NavGroup[] {
       icon: <Settings size={16} />,
       items: [
         { href: '/admin/e-posta-ayarlari',                  label: 'E-posta Ayarları',       icon: <MailOpen size={18} /> },
-         ...(role === 'SUPER_ADMIN' ? [{ href: '/admin/ayarlar/api-anahtarlari', label: 'API Anahtarları / Entegrasyonlar', icon: <ShieldCheck size={18} /> }] : []),
-        ...(role === 'SUPER_ADMIN' ? [{ href: '/admin/ayarlar/guvenlik', label: 'Form Güvenliği', icon: <ShieldCheck size={18} /> }] : []),
-        ...(role === 'SUPER_ADMIN' ? [{ href: '/admin/veritabani-yedegi', label: 'Veritabanı Yedeği', icon: <History size={18} /> }] : []),
+        { href: '/admin/ayarlar/api-anahtarlari', label: 'API Anahtarları / Entegrasyonlar', icon: <ShieldCheck size={18} /> },
+        { href: '/admin/ayarlar/guvenlik', label: 'Form Güvenliği', icon: <ShieldCheck size={18} /> },
+        { href: '/admin/veritabani-yedegi', label: 'Veritabanı Yedeği', icon: <History size={18} /> },
         { href: '/admin/ayarlar',                           label: 'Site Ayarları',           icon: <Settings size={18} /> },
         { href: '/admin/ayarlar/icerik-entegrasyonlari',    label: 'İçerik Entegrasyonları', icon: <Settings size={18} /> },
         { href: '/admin/gecmis',                            label: 'İşlem Geçmişi',          icon: <History size={18} /> },
@@ -152,12 +174,17 @@ function getNavGroups(role: string, isSuperOrAdmin: boolean): NavGroup[] {
     const order = ['operasyon', 'transferler', 'iletisim', 'personel', 'icerik', 'site', 'ayarlar'];
     return order.indexOf(left.key) - order.indexOf(right.key);
   });
+  if (!capabilities) return groups;
+  return groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        const section = navSectionForHref(item.href);
+        return !section || capabilities[section].canView;
+      }),
+    }))
+    .filter((group) => group.items.length > 0);
 }
-
-const CHAT_STAFF_ITEMS: NavItem[] = [
-  { href: '/admin/sohbet', label: 'Canlı Sohbet', icon: <MessageSquare size={18} /> },
-  { href: '/admin/hesabim', label: 'Hesabım', icon: <UserCircle size={18} /> },
-];
 
 // ── NavGroup collapsible section ──────────────────────────────────────────────
 function NavGroup({ group, collapsed, openGroups, toggleGroup, renderNavItem }: {
@@ -204,9 +231,10 @@ interface Props {
   userName: string;
   userEmail: string;
   userRole: string;
+  capabilities: AdminCapabilities;
 }
 
-export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
+export default function AdminSidebar({ userName, userEmail, userRole, capabilities }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed]   = useState(false);
@@ -217,18 +245,15 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
   const [studioCount, setStudioCount] = useState(0);
   const [groupPreferencesReady, setGroupPreferencesReady] = useState(false);
 
-  const isChatStaff    = userRole === 'CHAT_STAFF';
-  const isSuperOrAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
-
   // All groups begin open. Stored choices are restored after mount, while the
   // active route remains accessible even if it was previously collapsed.
   function getDefaultOpen(): Set<string> {
-    return new Set(getNavGroups(userRole, isSuperOrAdmin).map(group => group.key));
+    return new Set(getNavGroups(userRole, capabilities).map(group => group.key));
   }
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => getDefaultOpen());
 
   useEffect(() => {
-    const groups = getNavGroups(userRole, isSuperOrAdmin);
+    const groups = getNavGroups(userRole, capabilities);
     const validKeys = new Set(groups.map(group => group.key));
     const activeKeys = groups
       .filter(group => group.items.some(item => pathname === item.href || pathname.startsWith(item.href + '/')))
@@ -245,7 +270,7 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
     } finally {
       setGroupPreferencesReady(true);
     }
-  }, [pathname, userRole, isSuperOrAdmin]);
+  }, [pathname, userRole, capabilities]);
 
   useEffect(() => {
     if (!groupPreferencesReady) return;
@@ -257,7 +282,7 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
   }, [openGroups, groupPreferencesReady]);
 
   function isGroupActive(key: string) {
-    return getNavGroups(userRole, isSuperOrAdmin)
+    return getNavGroups(userRole, capabilities)
       .find(group => group.key === key)
       ?.items.some(item => pathname === item.href || pathname.startsWith(item.href + '/')) ?? false;
   }
@@ -447,26 +472,21 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
 
       {/* Nav */}
       <nav style={{ flex: 1, padding: '8px 8px 12px', overflowY: 'auto' }}>
-        {isChatStaff ? (
-          /* CHAT_STAFF: flat list — no groups */
-          CHAT_STAFF_ITEMS.map(item => renderNavItem(item))
-        ) : (
-          <>
-            {/* Dashboard always first, standalone */}
-            {renderNavItem({ href: '/admin/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> })}
-            {/* Grouped sections */}
-            {getNavGroups(userRole, isSuperOrAdmin).map(group => (
-              <NavGroup
-                key={group.key}
-                group={group}
-                collapsed={collapsed}
-                openGroups={openGroups}
-                toggleGroup={toggleGroup}
-                renderNavItem={renderNavItem}
-              />
-            ))}
-          </>
-        )}
+        <>
+          {/* Dashboard always first, standalone */}
+          {capabilities.dashboard.canView && renderNavItem({ href: '/admin/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> })}
+          {/* Grouped sections */}
+          {getNavGroups(userRole, capabilities).map(group => (
+            <NavGroup
+              key={group.key}
+              group={group}
+              collapsed={collapsed}
+              openGroups={openGroups}
+              toggleGroup={toggleGroup}
+              renderNavItem={renderNavItem}
+            />
+          ))}
+        </>
       </nav>
 
       {/* User footer */}
@@ -630,23 +650,19 @@ export default function AdminSidebar({ userName, userEmail, userRole }: Props) {
               padding: '10px 8px',
               WebkitOverflowScrolling: 'touch',
             }}>
-              {isChatStaff ? (
-                CHAT_STAFF_ITEMS.map(item => renderNavItem(item))
-              ) : (
-                <>
-                  {renderNavItem({ href: '/admin/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> })}
-                  {getNavGroups(userRole, isSuperOrAdmin).map(group => (
-                    <NavGroup
-                      key={group.key}
-                      group={group}
-                      collapsed={false}
-                      openGroups={openGroups}
-                      toggleGroup={toggleGroup}
-                      renderNavItem={renderNavItem}
-                    />
-                  ))}
-                </>
-              )}
+              <>
+                {capabilities.dashboard.canView && renderNavItem({ href: '/admin/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> })}
+                {getNavGroups(userRole, capabilities).map(group => (
+                  <NavGroup
+                    key={group.key}
+                    group={group}
+                    collapsed={false}
+                    openGroups={openGroups}
+                    toggleGroup={toggleGroup}
+                    renderNavItem={renderNavItem}
+                  />
+                ))}
+              </>
             </nav>
 
             {/* ③ FOOTER — always visible, safe bottom inset */}

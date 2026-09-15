@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { AdminActionButton } from '../../_components/AdminActionButton';
+import { Activity } from 'lucide-react';
 
 /**
  * Client component that triggers a manual health check via POST
@@ -37,30 +39,13 @@ export default function RunHealthCheckButton() {
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-      <button
+      <AdminActionButton
+        label={loading ? 'Kontrol ediliyor…' : status === 'ok' ? 'E-posta kabul edildi' : status === 'error' ? 'Kontrol edilemedi' : 'Şimdi kontrol et'}
+        icon={Activity}
+        variant={status === 'error' ? 'delete' : status === 'ok' ? 'activate' : 'subtle'}
+        loading={loading}
         onClick={handleClick}
-        disabled={loading}
-        style={{
-          minHeight: '44px', padding: '6px 14px',
-          fontSize: '12px',
-          fontWeight: 600,
-          color: loading ? '#94A3B8' : '#0F766E',
-          background: loading ? '#F8FAFC' : '#F0FDFA',
-          border: `1px solid ${loading ? '#E2E8F0' : '#99F6E4'}`,
-          borderRadius: '8px',
-          cursor: loading ? 'not-allowed' : 'pointer',
-          whiteSpace: 'nowrap',
-          transition: 'all 0.15s ease',
-        }}
-      >
-        {loading
-          ? 'Kontrol ediliyor…'
-          : status === 'ok'
-            ? '✓ E-posta kabul edildi'
-            : status === 'error'
-              ? '✗ Kontrol edilemedi'
-              : '▶ Şimdi kontrol et'}
-      </button>
+      />
       {message && (
         <span role="status" style={{ color: status === 'error' ? '#B42318' : '#50677A', fontSize: '12px', maxWidth: '360px' }}>
           {message}

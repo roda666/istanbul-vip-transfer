@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, ArrowLeft, CheckCircle2, ImageIcon, Loader2, RefreshCw, Send, Sparkles } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CheckCircle2, ImageIcon, RefreshCw, Send, Sparkles } from 'lucide-react';
 import AdminPageHeader from '../../../_components/AdminPageHeader';
+import { AdminActionButton } from '../../../_components/AdminActionButton';
 
 const C = {
   bg: '#F3F6FA', card: '#FFFFFF', border: '#D8E1E9', navy: '#132A44',
@@ -200,10 +201,7 @@ export default function StudioImageGeneratorPage() {
                   Alt metin, ekran okuyucu kullanan ziyaretçilere görseli açıklar ve arama motorlarının içeriği anlamasına yardımcı olur. Bu nedenle boş bırakılamaz.
                 </p>
               </div>
-              <button type="button" onClick={() => void generate()} disabled={generating || attaching} style={button(true, generating || attaching)}>
-                {generating ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : generated ? <RefreshCw size={16} /> : <Sparkles size={16} />}
-                {generating ? 'Üretiliyor…' : generated ? 'Aynı istemle yeniden üret' : 'Görsel üret'}
-              </button>
+              <AdminActionButton type="button" onClick={() => void generate()} disabled={generating || attaching} loading={generating} icon={generated ? RefreshCw : Sparkles} label={generating ? 'Üretiliyor…' : generated ? 'Aynı istemle yeniden üret' : 'Görsel üret'} variant="new" />
             </div>
           </section>
 
@@ -222,10 +220,7 @@ export default function StudioImageGeneratorPage() {
                     <div><strong style={{ color: C.text }}>İstem:</strong> {generated.prompt}</div>
                     <div style={{ overflowWrap: 'anywhere' }}><strong style={{ color: C.text }}>Nesne yolu:</strong> {generated.imagePath}</div>
                   </div>
-                  <button type="button" onClick={() => void attach()} disabled={attaching || generating} style={{ ...button(true, attaching || generating), width: '100%', marginTop: '16px', background: C.navy }}>
-                    {attaching ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={16} />}
-                    {attaching ? 'Ekleniyor…' : `${placement === 'hero' ? 'Kapak' : 'Gövde'} alanına ekle`}
-                  </button>
+                  <AdminActionButton type="button" onClick={() => void attach()} disabled={attaching || generating} loading={attaching} icon={Send} label={attaching ? 'Ekleniyor…' : `${placement === 'hero' ? 'Kapak' : 'Gövde'} alanına ekle`} variant="save" className="w-full mt-4" />
                 </>
               ) : (
                 <div style={{ minHeight: '245px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '9px', color: C.light, fontFamily: 'Inter, sans-serif', fontSize: '13px', textAlign: 'center' }}>

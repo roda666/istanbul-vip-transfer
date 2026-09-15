@@ -6,8 +6,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Trash2, Edit2, X, Check, LayoutGrid, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Edit2, X, Check, LayoutGrid } from 'lucide-react';
 import AdminPageHeader from '../../../_components/AdminPageHeader';
+import { AdminActionButton } from '../../../_components/AdminActionButton';
 
 interface Cluster {
   id: string;
@@ -28,15 +29,6 @@ const labelStyle: React.CSSProperties = {
   display: 'block', color: '#52697A', fontSize: '11px', fontFamily: 'Inter, sans-serif',
   letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '6px', fontWeight: 600,
 };
-const btn = (primary?: boolean, danger?: boolean): React.CSSProperties => ({
-  display: 'inline-flex', alignItems: 'center', gap: '6px',
-  padding: '7px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
-  fontFamily: 'Inter, sans-serif',
-  border: danger ? '1px solid #FECACA' : primary ? 'none' : '1px solid #D8E1E9',
-  background: danger ? '#FEF2F2' : primary ? '#2563EB' : '#F3F6FA',
-  color: danger ? '#D64545' : primary ? '#FFFFFF' : '#172B3A', cursor: 'pointer',
-});
-
 function EmptyState() {
   return (
     <div style={{ background: '#FFFFFF', border: '1px dashed #D8E1E9', borderRadius: '12px', padding: '60px', textAlign: 'center' }}>
@@ -131,10 +123,7 @@ export default function KumelerPage() {
         title="Konu Kümeleri"
         description="Pillar sayfalar etrafında içerik grupları oluşturun ve AI önerilerini bağlayın"
         action={
-          <button onClick={() => { setShowForm(v => !v); setError(''); }}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '8px', background: '#2563EB', color: '#FFFFFF', fontSize: '13px', fontWeight: 600, border: 'none', cursor: 'pointer' }}>
-            <Plus size={14} /> Yeni Küme
-          </button>
+          <AdminActionButton onClick={() => { setShowForm(v => !v); setError(''); }} label="Yeni Küme" icon={Plus} variant="new" />
         }
       />
 
@@ -162,11 +151,8 @@ export default function KumelerPage() {
                 style={inputStyle} placeholder="istanbul-havalimani-transfer" />
             </div>
             <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '8px' }}>
-              <button type="submit" disabled={saving} style={btn(true)}>
-                {saving ? <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <Plus size={12} />}
-                {saving ? 'Kaydediliyor...' : 'Oluştur'}
-              </button>
-              <button type="button" onClick={() => { setShowForm(false); setError(''); }} style={btn()}>İptal</button>
+              <AdminActionButton type="submit" disabled={saving} loading={saving} label={saving ? 'Kaydediliyor...' : 'Oluştur'} icon={Plus} variant="new" />
+              <AdminActionButton type="button" onClick={() => { setShowForm(false); setError(''); }} label="İptal" variant="cancel" manage={false} />
             </div>
           </form>
         </div>
@@ -189,12 +175,8 @@ export default function KumelerPage() {
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                       <input type="text" value={editTitle} onChange={e => setEditTitle(e.target.value)}
                         style={{ ...inputStyle, flex: 1 }} autoFocus />
-                      <button onClick={() => saveEdit(c.id)} disabled={editSaving} style={btn(true)}>
-                        {editSaving ? <RefreshCw size={11} style={{ animation: 'spin 1s linear infinite' }} /> : <Check size={11} />}
-                      </button>
-                      <button onClick={cancelEdit} style={btn()}>
-                        <X size={11} />
-                      </button>
+                      <AdminActionButton onClick={() => saveEdit(c.id)} disabled={editSaving} loading={editSaving} label="Kaydet" icon={Check} variant="save" className="text-xs" />
+                      <AdminActionButton onClick={cancelEdit} label="Vazgeç" icon={X} variant="cancel" manage={false} className="text-xs" />
                     </div>
                   ) : (
                     <>
@@ -205,13 +187,8 @@ export default function KumelerPage() {
                 </div>
                 {editing !== c.id && (
                   <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                    <button onClick={() => startEdit(c)} title="Düzenle" style={{ ...btn(), padding: '5px 8px' }}>
-                      <Edit2 size={12} />
-                    </button>
-                    <button onClick={() => handleDelete(c.id)} disabled={deleting === c.id} title="Sil"
-                      style={{ ...btn(false, true), padding: '5px 8px', opacity: deleting === c.id ? 0.5 : 1 }}>
-                      <Trash2 size={12} />
-                    </button>
+                    <AdminActionButton onClick={() => startEdit(c)} title="Düzenle" label="Düzenle" icon={Edit2} variant="edit" manage={false} className="text-xs" />
+                    <AdminActionButton onClick={() => handleDelete(c.id)} disabled={deleting === c.id} loading={deleting === c.id} title="Sil" label="Sil" icon={Trash2} variant="delete" className="text-xs" />
                   </div>
                 )}
               </div>

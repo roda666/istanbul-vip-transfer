@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import AdminPageHeader from '../../_components/AdminPageHeader';
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
+import { AdminActionButton } from '../../_components/AdminActionButton';
 
 // ── Styles ─────────────────────────────────────────────────────────────────
 const PAGE_BG   = '#F3F6FA';
@@ -359,22 +360,7 @@ export default function EmailSettingsClient() {
                 <span style={{ fontSize: '13px', color: cfg.enabled ? SUCCESS : MUTED_C, fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>
                   {cfg.enabled ? 'Etkin' : 'Pasif'}
                 </span>
-                <div
-                  onClick={() => setCfg(p => ({ ...p, enabled: !p.enabled }))}
-                  style={{
-                    width: '44px', height: '24px', borderRadius: '12px',
-                    background: cfg.enabled ? SUCCESS : BORDER,
-                    position: 'relative', cursor: 'pointer', transition: 'background .2s',
-                  }}
-                >
-                  <div style={{
-                    position: 'absolute', top: '3px',
-                    left: cfg.enabled ? '23px' : '3px',
-                    width: '18px', height: '18px', borderRadius: '50%',
-                    background: '#fff', transition: 'left .2s',
-                    boxShadow: '0 1px 3px rgba(0,0,0,.2)',
-                  }} />
-                </div>
+                <AdminActionButton label={cfg.enabled ? 'Etkin' : 'Pasif'} variant={cfg.enabled ? 'activate' : 'subtle'} ariaLabel="E-posta bildirimlerini değiştir" onClick={() => setCfg(p => ({ ...p, enabled: !p.enabled }))} className="px-2 text-xs" />
               </label>
             </div>
           </div>
@@ -475,13 +461,7 @@ export default function EmailSettingsClient() {
                   }}>
                     {cfg.passwordSet ? '••••••••' : 'Parola girilmemiş'}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => { setPassMode('change'); setNewPass(''); }}
-                    style={{ ...s.btn, ...s.btnGhost, fontSize: '12px', padding: '9px 14px' }}
-                  >
-                    {cfg.passwordSet ? 'Değiştir' : 'Ekle'}
-                  </button>
+                  <AdminActionButton type="button" label={cfg.passwordSet ? 'Değiştir' : 'Ekle'} variant="edit" manage={false} onClick={() => { setPassMode('change'); setNewPass(''); }} className="text-xs" />
                 </div>
               ) : (
                 <div style={{ position: 'relative' }}>
@@ -501,10 +481,7 @@ export default function EmailSettingsClient() {
                     {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                   <div style={{ marginTop: '6px', display: 'flex', gap: '8px' }}>
-                    <button type="button" onClick={() => { setPassMode('keep'); setNewPass(''); setShowPass(false); }}
-                      style={{ ...s.btn, ...s.btnGhost, fontSize: '12px', padding: '6px 12px' }}>
-                      İptal
-                    </button>
+                    <AdminActionButton type="button" label="İptal" variant="cancel" manage={false} onClick={() => { setPassMode('keep'); setNewPass(''); setShowPass(false); }} className="text-xs" />
                   </div>
                 </div>
               )}
@@ -554,10 +531,7 @@ export default function EmailSettingsClient() {
 
           {/* ── Save button & feedback ────────────────────────────────────── */}
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="submit" disabled={saving} style={{ ...s.btn, ...s.btnPrimary, opacity: saving ? 0.7 : 1 }}>
-              {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-              {saving ? 'Kaydediliyor…' : 'Kaydet'}
-            </button>
+            <AdminActionButton type="submit" label={saving ? 'Kaydediliyor…' : 'Kaydet'} icon={Save} variant="save" loading={saving} />
           </div>
 
           {saveMsg && (
@@ -584,15 +558,7 @@ export default function EmailSettingsClient() {
               <div style={{ fontSize: '13px', color: MUTED_C, fontFamily: 'Inter, sans-serif', marginBottom: '12px' }}>
                 Kayıtlı ayarlarla SMTP sunucusuna bağlantıyı doğrular. E-posta gönderilmez.
               </div>
-              <button
-                type="button"
-                onClick={handleTestConn}
-                disabled={connTesting}
-                style={{ ...s.btn, ...s.btnGhost, opacity: connTesting ? 0.7 : 1 }}
-              >
-                {connTesting ? <Loader2 size={14} className="animate-spin" /> : <Wifi size={14} />}
-                {connTesting ? 'Test ediliyor…' : 'Bağlantıyı Test Et'}
-              </button>
+              <AdminActionButton type="button" onClick={handleTestConn} loading={connTesting} label={connTesting ? 'Test ediliyor…' : 'Bağlantıyı Test Et'} icon={Wifi} variant="subtle" manage={false} />
               {connResult && (
                 <div style={{
                   ...s.msg,
@@ -623,15 +589,7 @@ export default function EmailSettingsClient() {
                   onChange={e => setSendTo(e.target.value)}
                   required
                 />
-                <button
-                  type="button"
-                  onClick={() => void handleTestSend()}
-                  disabled={sending || !sendTo.trim()}
-                  style={{ ...s.btn, ...s.btnGhost, opacity: (sending || !sendTo.trim()) ? 0.6 : 1, whiteSpace: 'nowrap' }}
-                >
-                  {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                  {sending ? 'Gönderiliyor…' : 'Test Postası Gönder'}
-                </button>
+                <AdminActionButton type="button" onClick={() => void handleTestSend()} disabled={!sendTo.trim()} loading={sending} label={sending ? 'Gönderiliyor…' : 'Test Postası Gönder'} icon={Send} variant="subtle" manage={false} />
               </div>
               {sendResult && (
                 <div style={{

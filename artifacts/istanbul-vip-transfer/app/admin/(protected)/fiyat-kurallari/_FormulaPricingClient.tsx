@@ -8,6 +8,7 @@ import {
 import { resolveEffectiveFastQuoteRoute, sortFastQuoteTollAlternatives } from '@/lib/admin-fast-quote';
 import { TOLL_VEHICLE_CLASS_LABELS, type TollVehicleClass } from '@/lib/toll-vehicle-classes';
 import { isServiceTypeInScope } from '@/lib/service-type-scope';
+import { AdminActionButton } from '../../_components/AdminActionButton';
 
 // --- Types ---
 
@@ -810,9 +811,7 @@ function FastQuotePanel({
             <p className="mt-2 text-[11px] text-slate-500">Dahil hizmetler otomatik maliyet olarak, seçilenler ayrı satır olarak hesaplanır.</p>
           </div>
         )}
-        <button onClick={handleQuote} disabled={!quoteVehicleId || !hasOriginInput || (quoteMode === 'DISTANCE' && !hasDestinationInput) || distanceLoading || quoting || tollsLoading || (tollAlternatives.length > 0 && !tollAlternativeId) || Boolean(selectedTollAlternative && selectedVehicle && !selectedTollAlternative.isPricedForSelectedVehicle)} className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50">
-          {quoting ? <Loader2 className="animate-spin" size={18} /> : 'Hesapla'}
-        </button>
+        <AdminActionButton label="Hesapla" icon={Calculator} variant="new" onClick={handleQuote} loading={quoting} disabled={!quoteVehicleId || !hasOriginInput || (quoteMode === 'DISTANCE' && !hasDestinationInput) || distanceLoading || tollsLoading || (tollAlternatives.length > 0 && !tollAlternativeId) || Boolean(selectedTollAlternative && selectedVehicle && !selectedTollAlternative.isPricedForSelectedVehicle)} className="mt-2 w-full" />
       </div>
 
       {quoteResult && (
@@ -985,9 +984,7 @@ function TcmbWidget({ settings, onApply }: { settings: Settings | null, onApply:
            Son Güncel: {settings?.latestTcmb ? new Date(settings.latestTcmb.fetchedAt).toLocaleString('tr-TR') : 'Bilinmiyor'}
         </div>
         
-        <button onClick={handlePreview} disabled={loading} className="w-full bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center justify-center gap-2">
-          {loading ? <Loader2 className="animate-spin" size={16}/> : 'Güncel Kuru Çek'}
-        </button>
+        <AdminActionButton label="Güncel Kuru Çek" icon={RefreshCw} variant="subtle" onClick={handlePreview} disabled={loading} className="w-full" />
       </div>
 
       {previewData && (
@@ -1023,10 +1020,8 @@ function TcmbWidget({ settings, onApply }: { settings: Settings | null, onApply:
                />
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setPreviewData(null)} className="flex-1 py-3 text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">İptal</button>
-              <button onClick={handleApply} disabled={confirmText !== 'KURU UYGULA' || loading} className="flex-1 py-3 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 rounded-xl transition-colors flex items-center justify-center gap-2">
-                {loading ? <Loader2 className="animate-spin" size={18}/> : 'Uygula'}
-              </button>
+              <AdminActionButton label="İptal" variant="cancel" manage={false} onClick={() => setPreviewData(null)} className="flex-1" />
+              <AdminActionButton label="Uygula" icon={Check} variant="save" onClick={handleApply} disabled={confirmText !== 'KURU UYGULA' || loading} loading={loading} className="flex-1" />
             </div>
           </div>
         </div>
@@ -1102,9 +1097,7 @@ function SettingsPanel({ settings, onSave }: { settings: Settings | null, onSave
           <h2 className="text-lg font-bold text-slate-900">Kur ve Maliyet Politikası</h2>
           <p className="text-sm text-slate-500 mt-0.5 font-medium">Motor genelinde kullanılacak KDV ve yuvarlama standartları.</p>
         </div>
-        <button onClick={handleSave} disabled={saving} className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2">
-          {saving ? <Loader2 className="animate-spin" size={16}/> : <Check size={16}/>} Kaydet
-        </button>
+        <AdminActionButton label="Kaydet" icon={Check} variant="save" onClick={handleSave} disabled={saving} loading={saving} />
       </div>
       
       <div className="p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -1201,9 +1194,7 @@ function ProfilesPanel({ profiles, vehicles, onReload }: { profiles: Profile[], 
           <h2 className="text-lg font-bold text-slate-900">Hesaplama Formülleri</h2>
           <p className="text-sm text-slate-500 mt-0.5 font-medium">Araçların mesafe ve tahsis bazlı fiyat kuralları.</p>
         </div>
-        <button data-testid="new-pricing-formula" onClick={() => { setEditingProfile(null); setModalOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2">
-          <Plus size={16}/> Yeni Formül
-        </button>
+        <AdminActionButton data-testid="new-pricing-formula" label="Yeni Formül" icon={Plus} variant="new" onClick={() => { setEditingProfile(null); setModalOpen(true); }} />
       </div>
       {actionError && <div className="mx-5 mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{actionError}</div>}
 
@@ -1255,13 +1246,9 @@ function ProfilesPanel({ profiles, vehicles, onReload }: { profiles: Profile[], 
                     </td>
                     <td className="py-4 px-5 text-right">
                       <div className="flex justify-end gap-1">
-                         <button data-testid={`edit-pricing-formula-${p.id}`} onClick={() => {setEditingProfile(p); setModalOpen(true);}} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Formülü Düzenle"><Edit2 size={16}/></button>
-                         <button onClick={() => toggleActive(p)} className={`p-2 rounded-lg transition-colors ${p.active ? 'text-slate-400 hover:text-red-600 hover:bg-red-50' : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'}`} title={p.active ? 'Pasife Al' : 'Aktifleştir'}>
-                           {p.active ? <X size={16}/> : <Check size={16}/>}
-                         </button>
-                          <button onClick={() => deleteProfile(p)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Formülü Kalıcı Sil">
-                            <Trash2 size={16}/>
-                          </button>
+                         <AdminActionButton data-testid={`edit-pricing-formula-${p.id}`} label="Düzenle" icon={Edit2} variant="edit" manage={false} onClick={() => {setEditingProfile(p); setModalOpen(true);}} className="text-xs" />
+                         <AdminActionButton label={p.active ? 'Pasife Al' : 'Aktifleştir'} icon={p.active ? X : Check} variant={p.active ? 'deactivate' : 'activate'} onClick={() => void toggleActive(p)} className="text-xs" />
+                         <AdminActionButton label="Kalıcı Sil" icon={Trash2} variant="delete" onClick={() => void deleteProfile(p)} className="text-xs" />
                       </div>
                     </td>
                   </tr>
@@ -1448,10 +1435,8 @@ function ProfileModal({ isOpen, editingProfile, vehicles, onClose, onSaved }: {
         </div>
 
         <div className="p-5 border-t border-slate-200 bg-slate-50/50 rounded-b-2xl shrink-0 flex justify-end gap-3">
-           <button onClick={onClose} className="px-5 py-2.5 text-sm font-bold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl transition-colors shadow-sm">İptal</button>
-           <button onClick={handleSave} disabled={!fVehicleId || saving} className="px-6 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-xl shadow-sm transition-colors flex items-center gap-2">
-              {saving ? <Loader2 className="animate-spin" size={16}/> : <Check size={16}/>} {saving ? 'Kaydediliyor...' : editingProfile ? 'Değişiklikleri Kaydet' : 'Oluştur'}
-           </button>
+            <AdminActionButton label="İptal" variant="cancel" manage={false} onClick={onClose} />
+            <AdminActionButton label={saving ? 'Kaydediliyor...' : editingProfile ? 'Değişiklikleri Kaydet' : 'Oluştur'} icon={editingProfile ? Check : Plus} variant={editingProfile ? 'save' : 'new'} disabled={!fVehicleId} loading={saving} onClick={() => void handleSave()} />
         </div>
       </div>
     </div>

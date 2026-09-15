@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Plus, Loader2, Check, X, Languages } from 'lucide-react';
 import AdminPageHeader from '@/app/admin/_components/AdminPageHeader';
 import { AdminRecordActions } from '@/app/admin/_components/AdminRecordActions';
+import { AdminActionButton } from '@/app/admin/_components/AdminActionButton';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -257,14 +258,8 @@ export default function KategorilerPage() {
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginLeft: 'auto' }}>
                   {editId === cat.id ? (
                     <>
-                      <button onClick={saveEdit} disabled={saving}
-                        style={{ display: 'inline-flex', alignItems: 'center', minHeight: '44px', gap: '6px', padding: '8px 16px', background: '#059669', color: '#FFF', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
-                        {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Kaydet
-                      </button>
-                      <button onClick={cancelEdit}
-                        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px', minWidth: '44px', padding: '8px 12px', background: '#F1F5F9', color: '#374151', border: '1px solid #D1D5DB', borderRadius: '8px', cursor: 'pointer' }}>
-                        <X size={18} />
-                      </button>
+                      <AdminActionButton label="Kaydet" icon={Check} variant="save" loading={saving} onClick={saveEdit} />
+                      <AdminActionButton label="Vazgeç" icon={X} variant="cancel" manage={false} onClick={cancelEdit} />
                     </>
                   ) : (
                     <AdminRecordActions
@@ -335,22 +330,7 @@ export default function KategorilerPage() {
               Türkçe ad girilirse 8 dile otomatik çevrilir. İngilizce, Almanca, Arapça, Rusça, İspanyolca, Fransızca, İtalyanca ve Hollandaca.
             </p>
           </div>
-          <button
-            type="submit"
-            disabled={adding || !newName.trim()}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: '6px',
-               padding: '8px 16px', minHeight: '44px', borderRadius: '8px',
-              background: adding ? '#93C5FD' : '#2563EB',
-              color: '#FFFFFF', border: 'none',
-              fontWeight: 700, fontSize: '13px', fontFamily: 'Inter, sans-serif',
-              cursor: adding || !newName.trim() ? 'not-allowed' : 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {adding ? <Loader2 size={14} /> : <Plus size={14} />}
-            {adding ? 'Ekleniyor & Çevriliyor…' : 'Ekle'}
-          </button>
+          <AdminActionButton type="submit" disabled={adding || !newName.trim()} loading={adding} label={adding ? 'Ekleniyor & Çevriliyor…' : 'Ekle'} icon={Plus} variant="new" />
         </form>
       </div>
     </div>

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import AdminPageHeader from '../../_components/AdminPageHeader';
 import DraftCadencePanel from './DraftCadencePanel';
+import { AdminActionButton } from '../../_components/AdminActionButton';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const C = {
@@ -240,11 +241,7 @@ export default function AiStudioPage() {
         title="AI İçerik Stüdyosu"
         description="Araştırma → Taslak → SEO → Görsel → Çeviri → Onay → Yayın"
         action={
-          <Link href="/admin/ai-studio/yeni">
-            <button style={{ display: 'flex', alignItems: 'center', gap: '6px', background: C.gold, color: '#fff', border: 'none', borderRadius: '8px', padding: '9px 18px', fontSize: '13px', fontFamily: 'Inter, sans-serif', fontWeight: 600, cursor: 'pointer' }}>
-              <Plus size={16} /> Yeni İçerik
-            </button>
-          </Link>
+          <AdminActionButton href="/admin/ai-studio/yeni" label="Yeni İçerik" icon={Plus} variant="new" manage={false} />
         }
       />
 
@@ -295,11 +292,7 @@ export default function AiStudioPage() {
                 {filter === 'all' ? (
                   <>
                     <p style={{ fontSize: '15px', fontWeight: 600, color: C.text, margin: '0 0 8px' }}>Henüz içerik yok</p>
-                    <Link href="/admin/ai-studio/yeni">
-                      <button style={{ background: C.gold, color: '#fff', border: 'none', borderRadius: '8px', padding: '9px 18px', fontSize: '13px', fontFamily: 'Inter, sans-serif', fontWeight: 600, cursor: 'pointer' }}>
-                        İlk İçeriği Oluştur
-                      </button>
-                    </Link>
+                    <AdminActionButton href="/admin/ai-studio/yeni" label="İlk İçeriği Oluştur" variant="new" manage={false} />
                   </>
                 ) : (
                   <p style={{ fontSize: '14px' }}>Bu filtre için içerik yok.</p>

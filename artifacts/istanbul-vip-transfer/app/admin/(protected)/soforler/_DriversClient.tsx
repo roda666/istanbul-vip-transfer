@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { AdminRecordActions } from '@/app/admin/_components/AdminRecordActions';
-import { AlertCircle, Loader2, Plus, RefreshCw, X, Users } from 'lucide-react';
+import { AdminActionButton } from '@/app/admin/_components/AdminActionButton';
+import { AlertCircle, Loader2, Plus, RefreshCw, Save, X, Users } from 'lucide-react';
 
 type Driver = { id: string; name: string; phone: string | null; notes: string | null; isActive: boolean; displayOrder: number };
 type FormValues = Omit<Driver, 'id' | 'displayOrder'>;
@@ -122,9 +123,7 @@ export default function DriversClient() {
           <button type="button" onClick={() => void load()} className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50 flex-1 sm:flex-none justify-center">
             <RefreshCw size={18} />Yenile
           </button>
-          <button type="button" onClick={() => { setEditing('new'); setForm(blankForm); }} className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-bold text-white hover:bg-blue-700 flex-1 sm:flex-none justify-center">
-            <Plus size={18} />Yeni sürücü
-          </button>
+          <AdminActionButton type="button" label="Yeni sürücü" icon={Plus} variant="new" onClick={() => { setEditing('new'); setForm(blankForm); }} className="flex-1 sm:flex-none" />
         </div>
       </div>
 
@@ -145,7 +144,7 @@ export default function DriversClient() {
           <Users size={32} className="mx-auto text-slate-400" />
           <p className="mt-4 font-bold text-slate-900 text-base">Henüz sürücü kaydı yok</p>
           <p className="mt-1 text-sm text-slate-500">Sistemde kayıtlı bir sürücü bulunamadı.</p>
-          <button type="button" onClick={() => { setEditing('new'); setForm(blankForm); }} className="mt-6 inline-flex min-h-[44px] items-center justify-center rounded-lg bg-blue-600 px-6 text-sm font-bold text-white hover:bg-blue-700">İlk sürücüyü ekle</button>
+           <AdminActionButton type="button" label="İlk sürücüyü ekle" icon={Plus} variant="new" onClick={() => { setEditing('new'); setForm(blankForm); }} className="mt-6" />
         </div>
       ) : (
         <>
@@ -288,11 +287,8 @@ function DriverForm({ form, editing, saving, onChange, onClose, onSave }: { form
         </div>
 
         <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end pt-5 border-t border-slate-100">
-          <button type="button" onClick={onClose} className="min-h-[48px] rounded-xl border border-slate-200 bg-white px-6 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors">İptal</button>
-          <button type="button" disabled={saving || !canSave} onClick={onSave} className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 text-sm font-bold text-white transition-colors hover:bg-blue-700 disabled:opacity-60">
-            {saving && <Loader2 size={18} className="animate-spin" />}
-            {editing === 'new' ? 'Sürücüyü Ekle' : 'Değişiklikleri Kaydet'}
-          </button>
+          <AdminActionButton type="button" label="İptal" variant="cancel" manage={false} onClick={onClose} />
+          <AdminActionButton type="button" label={editing === 'new' ? 'Sürücüyü Ekle' : 'Değişiklikleri Kaydet'} variant={editing === 'new' ? 'new' : 'save'} icon={editing === 'new' ? Plus : Save} loading={saving} disabled={!canSave} onClick={onSave} />
         </div>
       </div>
     </div>

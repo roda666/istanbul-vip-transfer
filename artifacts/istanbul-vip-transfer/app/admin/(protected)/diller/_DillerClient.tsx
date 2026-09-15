@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import { Globe, Search, Lock } from 'lucide-react';
 import { RENDERABLE_LOCALES } from '@/lib/i18n/locale-registry';
 import { AdminRecordActions } from '../../_components/AdminRecordActions';
+import { AdminActionButton } from '../../_components/AdminActionButton';
 import type { Language } from '@/db/schema';
 import type { LangTranslationStats } from './page';
 
@@ -388,12 +389,8 @@ export default function DillerClient({ langs: initialLangs, stats }: Props) {
             <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#1A2B3C', marginBottom: '10px' }}>{confirm.title}</h3>
             <p style={{ fontSize: '13px', color: '#50677A', lineHeight: 1.6, marginBottom: '20px' }}>{confirm.message}</p>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-              <button onClick={() => setConfirm(null)} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #D9E2EC', background: '#FFF', cursor: 'pointer', fontSize: '13px' }}>
-                İptal
-              </button>
-              <button onClick={() => apply(confirm)} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#2563EB', color: '#FFF', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
-                Onayla
-              </button>
+              <AdminActionButton label="İptal" variant="cancel" manage={false} onClick={() => setConfirm(null)} />
+              <AdminActionButton label="Onayla" variant="save" onClick={() => apply(confirm)} />
             </div>
           </div>
         </div>

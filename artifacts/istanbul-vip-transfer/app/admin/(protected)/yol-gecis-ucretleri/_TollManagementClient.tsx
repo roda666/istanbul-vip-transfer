@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, useCallback, useId, useRef } from 'react';
 import { 
-  MapPin, Navigation, Plus, Save, Edit2, 
+  MapPin, Navigation, Plus, Save,
   RefreshCw, Check, X, AlertCircle, Loader2, Car, ShieldCheck, Settings2,
-  ArrowUp, ArrowDown, Trash2, KeyRound
+  Trash2, KeyRound
 } from 'lucide-react';
+import { AdminActionButton } from '@/app/admin/_components/AdminActionButton';
 import { AdminRecordActions } from '@/app/admin/_components/AdminRecordActions';
 import { TOLL_VEHICLE_CLASS_LABELS, TOLL_VEHICLE_CLASS_SELECTION_WARNING } from '@/lib/toll-vehicle-classes';
 import { isAutomaticTollSyncSupported } from '@/lib/toll-tariff-sync-support';
@@ -299,14 +300,16 @@ function BulkIncreaseCard({ point, onRefresh }: { point: TollPoint; onRefresh: (
             ))}
             {preview.rows.length === 0 && <p className="py-2 text-sm font-bold text-amber-700">Güncellenecek dolu tarife bulunmuyor.</p>}
           </div>
-          <button
-            data-testid="bulk-increase-apply"
+          <AdminActionButton
+            label={busy ? 'Uygulanıyor...' : 'Zammı Uygula'}
+            icon={Save}
+            variant="save"
             onClick={handleApply}
-            disabled={busy || preview.rows.length === 0}
-            className="mt-4 min-h-11 w-full rounded-lg bg-emerald-700 px-5 py-2.5 text-sm font-black text-white shadow-sm transition-colors hover:bg-emerald-800 disabled:opacity-50"
-          >
-            {busy ? 'Uygulanıyor...' : 'Zammı Uygula'}
-          </button>
+            disabled={preview.rows.length === 0}
+            loading={busy}
+            testId="bulk-increase-apply"
+            className="mt-4 w-full"
+          />
         </div>
       )}
       {error && <div role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700">{error}</div>}
@@ -442,11 +445,16 @@ function PointForm({ onSave, onClose }: { onSave: (point: TollPoint) => void, on
         <span className="font-bold text-sm text-slate-900">Sistemde Aktif</span>
       </label>
       <div className="flex gap-3 pt-4 border-t border-slate-100">
-         <button onClick={onClose} className="flex-1 min-h-[44px] py-2 text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">İptal</button>
-         <button onClick={handleSubmit} disabled={loading || !formData.name.trim()} className="flex-1 min-h-[44px] py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2">
-            {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            Noktayı Ekle
-         </button>
+         <AdminActionButton label="İptal" icon={X} variant="cancel" onClick={onClose} className="flex-1" />
+         <AdminActionButton
+           label="Noktayı Ekle"
+           icon={Plus}
+           variant="new"
+           onClick={handleSubmit}
+           disabled={!formData.name.trim()}
+           loading={loading}
+           className="flex-1"
+         />
       </div>
     </div>
   );
@@ -648,11 +656,15 @@ function TariffForm({ point, vClass, initialData, onSave, onClose }: { point: To
         </AdvancedSection>
 
        <div className="flex gap-3 pt-5 border-t border-slate-100 mt-5">
-         <button onClick={onClose} className="flex-1 min-h-[44px] py-2 text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">İptal</button>
-         <button onClick={handleSubmit} disabled={loading} className="flex-1 min-h-[44px] py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2">
-            {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            Tarifeyi Kaydet
-         </button>
+         <AdminActionButton label="İptal" icon={X} variant="cancel" onClick={onClose} className="flex-1" />
+         <AdminActionButton
+           label="Tarifeyi Kaydet"
+           icon={initialData ? Save : Plus}
+           variant={initialData ? 'save' : 'new'}
+           onClick={handleSubmit}
+           loading={loading}
+           className="flex-1"
+         />
        </div>
     </div>
   )
@@ -757,17 +769,18 @@ function SyncModal({ tariff, onClose, onRefresh }: { tariff: TollTariff, onClose
               </div>
             )}
             
-            <div className="flex gap-3 pt-2">
-              <button onClick={onClose} className="flex-1 min-h-[44px] py-2 text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">İptal</button>
-              <button 
-                onClick={handleApply} 
-                disabled={loading || !preview.previewToken || (preview.requiresConfirmation && confirmText !== 'TARİFEYİ UYGULA')}
-                className="flex-1 min-h-[44px] py-2 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:hover:bg-emerald-600 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm"
-              >
-                 {loading ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-                 Uygula
-              </button>
-            </div>
+             <div className="flex gap-3 pt-2">
+               <AdminActionButton label="İptal" icon={X} variant="cancel" onClick={onClose} className="flex-1" />
+               <AdminActionButton
+                 label="Uygula"
+                 icon={Check}
+                 variant="save"
+                 onClick={handleApply}
+                 disabled={!preview.previewToken || (preview.requiresConfirmation && confirmText !== 'TARİFEYİ UYGULA')}
+                 loading={loading}
+                 className="flex-1"
+               />
+             </div>
          </div>
       ) : null}
     </div>
@@ -927,8 +940,10 @@ function AlternativeForm({
                    </label>
                    {selected && (
                      <div className="flex shrink-0 gap-1">
-                       <button type="button" aria-label={`${p.name} yukarı taşı`} disabled={selectedIndex === 0} onClick={() => movePoint(p.id, 'up')} className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 disabled:opacity-30"><ArrowUp size={16} /></button>
-                       <button type="button" aria-label={`${p.name} aşağı taşı`} disabled={selectedIndex === formData.pointIds.length - 1} onClick={() => movePoint(p.id, 'down')} className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 disabled:opacity-30"><ArrowDown size={16} /></button>
+                        <AdminRecordActions
+                          up={{ onClick: () => movePoint(p.id, 'up'), disabled: selectedIndex === 0 }}
+                          down={{ onClick: () => movePoint(p.id, 'down'), disabled: selectedIndex === formData.pointIds.length - 1 }}
+                        />
                      </div>
                    )}
                  </div>
@@ -998,13 +1013,18 @@ function AlternativeForm({
          </label>
        </div>
 
-       <div className="flex gap-3 pt-3 border-t border-slate-100">
-         <button onClick={onClose} className="flex-1 min-h-[44px] py-2 text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">{inline ? 'Vazgeç' : 'İptal'}</button>
-         <button onClick={handleSubmit} disabled={loading || !formData.name.trim() || (!!initialData && !isDirty)} className="flex-1 min-h-[44px] py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm">
-            {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            Kaydet
-         </button>
-       </div>
+        <div className="flex gap-3 pt-3 border-t border-slate-100">
+          <AdminActionButton label={inline ? 'Vazgeç' : 'İptal'} icon={X} variant="cancel" onClick={onClose} className="flex-1" />
+          <AdminActionButton
+            label="Kaydet"
+            icon={initialData ? Save : Plus}
+            variant={initialData ? 'save' : 'new'}
+            onClick={handleSubmit}
+            disabled={!formData.name.trim() || (!!initialData && !isDirty)}
+            loading={loading}
+            className="flex-1"
+          />
+        </div>
     </div>
   )
 }
@@ -1181,15 +1201,15 @@ function QuickTariffAdd({
         </div>
 
         <div className="flex items-end sm:col-span-2 lg:col-span-1 lg:pt-[22px]">
-          <button
-            data-testid="quick-tariff-add"
+          <AdminActionButton
+            label={busy ? 'Kaydediliyor...' : 'Kaydet'}
+            icon={Plus}
+            variant="new"
             onClick={handleAdd}
-            disabled={busy}
-            className="w-full min-h-[44px] rounded-lg bg-blue-700 text-white text-sm font-bold transition-colors hover:bg-blue-800 disabled:opacity-50 disabled:pointer-events-none shadow-sm flex items-center justify-center gap-2"
-          >
-            {busy ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            {busy ? 'Kaydediliyor...' : 'Kaydet'}
-          </button>
+            loading={busy}
+            testId="quick-tariff-add"
+            className="w-full"
+          />
         </div>
       </div>
 
@@ -1308,11 +1328,23 @@ function InlineTariffEditor({
           {!amountValid && <p className="mt-1 text-[10px] font-bold text-red-700">Geçerli, negatif olmayan bir TL tutarı girin.</p>}
         </div>
         <div className="flex flex-col gap-2 sm:col-span-3 sm:flex-row sm:justify-end xl:col-span-1 xl:pt-[22px]">
-          <button type="button" data-testid="inline-tariff-cancel" onClick={onCancel} disabled={busy} className="min-h-[44px] rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-50">Vazgeç</button>
-          <button type="button" data-testid="inline-tariff-save" onClick={save} disabled={!canSave} className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white hover:bg-blue-800 disabled:pointer-events-none disabled:opacity-45">
-            {busy ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-            {busy ? 'Kaydediliyor...' : 'Kaydet'}
-          </button>
+          <AdminActionButton
+            label="Vazgeç"
+            icon={X}
+            variant="cancel"
+            onClick={onCancel}
+            disabled={busy}
+            testId="inline-tariff-cancel"
+          />
+          <AdminActionButton
+            label={busy ? 'Kaydediliyor...' : 'Kaydet'}
+            icon={Save}
+            variant="save"
+            onClick={save}
+            disabled={!canSave}
+            loading={busy}
+            testId="inline-tariff-save"
+          />
         </div>
       </div>
       {error && <div role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700">{error}</div>}
@@ -1474,10 +1506,14 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onAddTariff, o
         </label>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-4 mt-5">
-           <button onClick={handleSave} disabled={loading} className="min-h-[44px] px-6 py-2 bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm">
-             {loading ? <Loader2 size={16} className="animate-spin" /> : saved ? <Check size={16} className="text-emerald-400" /> : <Save size={16} />}
-             {saved ? 'Değişiklikler Kaydedildi' : 'Değişiklikleri Kaydet'}
-           </button>
+           <AdminActionButton
+             label={saved ? 'Değişiklikler Kaydedildi' : 'Değişiklikleri Kaydet'}
+             icon={saved ? Check : Save}
+             variant="save"
+             onClick={handleSave}
+             disabled={loading}
+             loading={loading}
+           />
         </div>
       </div>
 
@@ -1525,15 +1561,16 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onAddTariff, o
                       {!isCovered && !hasAnyRowAtAll && point.notes && <span className="bg-slate-100 text-slate-600 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">Tarife Yok (Notu Kontrol Edin)</span>}
                       {!isCovered && (!point.notes || hasAnyRowAtAll) && <span className="bg-amber-100 text-amber-800 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">Eksik Tarife</span>}
                     </div>
-                      <button
-                        title="Tarife ekle"
-                        aria-label={`${vehicleClassLabel(vc)} tarife ekle`}
-                        data-testid={`prepare-quick-tariff-${vc}`}
+                      <AdminActionButton
+                        label="Tarife Ekle"
+                        icon={Plus}
+                        variant="new"
                         onClick={() => point.pricingMode === 'GATE_PAIR' ? prepareQuickTariffClass(vc) : onAddTariff(vc)}
-                        className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-bold text-blue-700 shadow-sm transition-colors hover:bg-blue-100 sm:w-auto"
-                      >
-                      <Plus size={14} /> Tarife Ekle
-                    </button>
+                        title={`${vehicleClassLabel(vc)} tarife ekle`}
+                        ariaLabel={`${vehicleClassLabel(vc)} tarife ekle`}
+                        testId={`prepare-quick-tariff-${vc}`}
+                        className="w-full sm:w-auto"
+                      />
                   </div>
 
                   {classTariffs.length === 0 ? (
@@ -1620,12 +1657,13 @@ function PointsManager({ data, onRefresh, onTariffUpdated }: { data: DataPayload
   return (
     <div className="flex flex-col lg:flex-row gap-6">
       <div className="w-full lg:w-[38%] xl:w-[36%] flex flex-col gap-3">
-        <button 
-          className="flex items-center justify-center gap-2 min-h-[44px] bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors shadow-sm" 
+        <AdminActionButton
+          label="Yeni Geçiş Noktası"
+          icon={Plus}
+          variant="new"
           onClick={() => setNewPointModal(true)}
-        >
-           <Plus size={16} /> Yeni Geçiş Noktası
-        </button>
+          className="w-full rounded-xl"
+        />
         <div className="flex flex-col gap-2 overflow-y-auto max-h-[calc(100vh-280px)] pr-1 pb-4">
           {orderedPoints.length === 0 ? (
              <div className="text-center p-6 text-sm font-medium text-slate-500 bg-slate-50 rounded-xl border border-slate-200 border-dashed">
@@ -1788,12 +1826,12 @@ function AlternativesManager({ data, onRefresh }: { data: DataPayload, onRefresh
             <h3 className="font-black text-slate-900 text-lg flex items-center gap-2.5 tracking-tight">
                <Navigation className="text-blue-600" size={22} /> Geçiş Alternatifleri
             </h3>
-            <button 
-              onClick={() => setNewAltModal({ routeId: selectedRouteId })}
-              className="min-h-[44px] px-5 py-2 bg-slate-900 text-white rounded-lg font-bold text-sm hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 shadow-sm"
-            >
-               <Plus size={16} /> Yeni Alternatif
-            </button>
+             <AdminActionButton
+               label="Yeni Alternatif"
+               icon={Plus}
+               variant="new"
+               onClick={() => setNewAltModal({ routeId: selectedRouteId })}
+             />
           </div>
 
           {routeAlts.length > 1 && (
@@ -1842,7 +1880,6 @@ function AlternativesManager({ data, onRefresh }: { data: DataPayload, onRefresh
                            <div className="font-black text-slate-900 text-base">{alt.name}</div>
                            {alt.isDefault && <span className="bg-emerald-100 text-emerald-900 text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-widest">Varsayılan Alternatif</span>}
                            {!alt.active && <span className="bg-red-100 text-red-800 text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-widest">Pasif</span>}
-                           <span className="bg-slate-100 text-slate-600 text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-widest sm:ml-auto">Gösterim: {alt.displayOrder}</span>
                         </div>
 
                         {compareVehicleId && (
@@ -1879,21 +1916,13 @@ function AlternativesManager({ data, onRefresh }: { data: DataPayload, onRefresh
                            )}
                         </div>
                      </div>
-                      <div className="grid grid-cols-2 gap-2 sm:self-start mt-2 sm:mt-0">
-                        <button 
-                           onClick={() => setEditingAlternativeId(alt.id)}
-                          className="min-h-[44px] px-5 py-2 bg-blue-50 border border-blue-100 text-blue-700 hover:bg-blue-100 hover:border-blue-200 hover:text-blue-800 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm"
-                        >
-                           <Edit2 size={16} /> Düzenle
-                        </button>
-                         <button
-                           onClick={() => deleteAlternative(alt)}
-                           disabled={deletingAlternativeId === alt.id}
-                           className="min-h-[44px] px-5 py-2 bg-red-600 border border-red-600 text-white hover:bg-red-700 disabled:opacity-50 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm"
-                         >
-                           {deletingAlternativeId === alt.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />} Sil
-                         </button>
-                     </div>
+                       <AdminRecordActions
+                         edit={{ onClick: () => setEditingAlternativeId(alt.id) }}
+                         delete={{
+                           onClick: () => deleteAlternative(alt),
+                           disabled: deletingAlternativeId === alt.id,
+                         }}
+                       />
                    </div>
                 ))}
              </div>
@@ -2051,13 +2080,23 @@ function SettingsPanel() {
       </div>}
 
       <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
-      {settings?.apiCodeConfigured && <button onClick={handleClear} disabled={loading} className="min-h-[44px] px-6 py-2 bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 disabled:opacity-50 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2">
-        <Trash2 size={16} /> Temizle
-      </button>}
-      <button onClick={handleSave} disabled={loading || initialLoading || !canSave} className="min-h-[44px] px-6 py-2 bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm">
-        {loading ? <Loader2 size={16} className="animate-spin" /> : saved ? <Check size={16} className="text-emerald-400" /> : <Save size={16} />}
-        {saved ? 'Kaydedildi' : 'Kaydet'}
-      </button>
+       {settings?.apiCodeConfigured && (
+         <AdminActionButton
+           label="Temizle"
+           icon={Trash2}
+           variant="delete"
+           onClick={handleClear}
+           disabled={loading}
+         />
+       )}
+       <AdminActionButton
+         label={saved ? 'Kaydedildi' : 'Kaydet'}
+         icon={saved ? Check : Save}
+         variant="save"
+         onClick={handleSave}
+         disabled={initialLoading || !canSave}
+         loading={loading}
+       />
       </div>
     </div>
   );

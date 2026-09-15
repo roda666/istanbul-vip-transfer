@@ -3,8 +3,9 @@
 import { useState, useMemo, useTransition, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Copy, Eye } from 'lucide-react';
+import { Copy, Eye, Plus } from 'lucide-react';
 import { AdminRecordActions } from '@/app/admin/_components/AdminRecordActions';
+import { AdminActionButton } from '@/app/admin/_components/AdminActionButton';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -149,16 +150,14 @@ function ActionButtons({
 
   if (item.missingRecord) {
     return (
-      <a
+      <AdminActionButton
         href={`/admin/hizmetler/yeni?slug=${encodeURIComponent(item.slug)}&title=${encodeURIComponent(item.title)}`}
-        style={{
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px',
-          fontSize: '11px', fontWeight: 700, color: '#B42318',
-          textDecoration: 'none', padding: '4px 12px',
-          background: '#FEF3F2', borderRadius: '5px', border: '1px solid #FDA29B',
-          whiteSpace: 'nowrap',
-        }}
-      >+ İçerik Oluştur</a>
+        label="İçerik Oluştur"
+        icon={Plus}
+        variant="new"
+        manage={false}
+        className="text-xs"
+      />
     );
   }
 

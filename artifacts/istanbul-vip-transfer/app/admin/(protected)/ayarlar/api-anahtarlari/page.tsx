@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CheckCircle, KeyRound, Loader2, Save } from 'lucide-react';
+import { CheckCircle, KeyRound, Save } from 'lucide-react';
 import AdminPageHeader from '../../../_components/AdminPageHeader';
+import { AdminActionButton } from '../../../_components/AdminActionButton';
 
 type Entry = {
   key: string; label: string; purpose: string; editable: boolean;
@@ -52,7 +53,7 @@ export default function ApiAnahtarlariPage() {
           </div>
           {entry.editable && <div style={{ display: 'flex', gap: 8, flex: '1 1 280px' }}>
             <input aria-label={`${entry.label} yeni değer`} type="password" value={values[entry.key] ?? ''} onChange={e => setValues(v => ({ ...v, [entry.key]: e.target.value }))} style={{ flex: 1, minWidth: 0, padding: '9px 10px', border: '1px solid #D8E1E9', borderRadius: 8 }} placeholder="Yeni değer" />
-            <button onClick={() => void save(entry.key)} disabled={saving === entry.key || !values[entry.key]?.trim()} style={{ minHeight: 38, padding: '0 12px', border: 0, borderRadius: 8, background: '#2563EB', color: '#fff', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}>{saving === entry.key ? <Loader2 size={15} /> : <Save size={15} />} Kaydet</button>
+            <AdminActionButton onClick={() => void save(entry.key)} disabled={saving === entry.key || !values[entry.key]?.trim()} loading={saving === entry.key} label="Kaydet" icon={Save} variant="save" />
           </div>}
         </div>
       </section>)}

@@ -99,6 +99,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  let capabilities;
+  try {
+    const { getAdminCapabilities } = await import('@/lib/auth/grants');
+    capabilities = await getAdminCapabilities(user.id, user.role);
+  } catch {
+    return NextResponse.json({ error: 'Yetkilendirme hizmeti kullanılamıyor.' }, { status: 503 });
+  }
+
   // Clear rate limit on success
   await clearRateLimit(ip);
 
@@ -138,8 +146,18 @@ export async function POST(request: NextRequest) {
     // Non-fatal — don't fail login over audit logging
   }
 
-  // CHAT_STAFF can only access the live-chat panel; other admins start at pricing.
-  const { getAdminRedirectPath } = await import('@/lib/admin/redirect');
-  const redirectTo = getAdminRedirectPath(user.role);
+  const destinations = [
+    ['dashboard', '/admin/dashboard'],
+    ['requests', '/admin/talepler'],
+    ['transfer_operations', '/admin/transferler'],
+    ['chat', '/admin/sohbet'],
+    ['fleet_pricing', '/admin/araclar'],
+    ['content', '/admin/blog'],
+    ['translations', '/admin/dil-ve-ceviri'],
+    ['ai_content', '/admin/ai-studio'],
+    ['site_navigation', '/admin/menu'],
+    ['site_settings', '/admin/ayarlar'],
+  ] as const;
+  const redirectTo = destinations.find(([section]) => capabilities[section].canView)?.[1] ?? '/admin/hesabim';
   return NextResponse.json({ success: true, redirectTo });
 }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, CalendarClock, CheckCircle2, RefreshCw } from 'lucide-react';
 import { schedulerGuidance } from '@/lib/studio/draft-cadence';
+import { AdminActionButton } from '../../_components/AdminActionButton';
 
 type Period = 'daily' | 'weekly' | 'monthly';
 type CadenceResponse = {
@@ -155,9 +156,7 @@ export default function DraftCadencePanel() {
             </div>
           )}
           <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-            <button onClick={() => void save()} disabled={saving} style={{ flex: 1, border: 0, borderRadius: 7, padding: '9px 10px', background: '#132A44', color: '#fff', fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 700, cursor: saving ? 'wait' : 'pointer' }}>
-              {saving ? 'Kaydediliyor…' : 'Sıklığı Kaydet'}
-            </button>
+            <AdminActionButton onClick={() => void save()} loading={saving} label={saving ? 'Kaydediliyor…' : 'Sıklığı Kaydet'} variant="save" className="flex-1" />
             <button onClick={() => void load()} disabled={loading || saving} title="Yenile" style={{ border: '1px solid #D8E1E9', borderRadius: 7, background: '#fff', color: '#52697A', padding: '0 10px', cursor: 'pointer' }}>
               <RefreshCw size={14} />
             </button>

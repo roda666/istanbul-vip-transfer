@@ -7,6 +7,7 @@ import FacebookShareButton from '@/app/admin/_components/FacebookShareButton';
 import XShareButton from '@/app/admin/_components/XShareButton';
 import LinkedInShareButton from '@/app/admin/_components/LinkedInShareButton';
 import TelegramShareButton from '@/app/admin/_components/TelegramShareButton';
+import { AdminActionButton } from '@/app/admin/_components/AdminActionButton';
 
 type Platform = {
   key: string;
@@ -394,14 +395,7 @@ export default function SocialPlatformsPanel() {
             {approvalGateEnabled ? 'Etkin — onaylanmamış içerik hiçbir yayın yolundan yayımlanamaz.' : 'Kapalı — yalnızca hesap sahibi tarafından açıkça kapatıldı.'}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void saveApprovalGate(!approvalGateEnabled)}
-          disabled={busyKey === 'approval-gate'}
-          style={{ border: '1px solid #CBD5E1', borderRadius: 7, padding: '7px 9px', background: approvalGateEnabled ? '#F0FDF4' : '#FFF7ED', color: approvalGateEnabled ? '#168C5B' : '#B45309', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, cursor: busyKey === 'approval-gate' ? 'wait' : 'pointer' }}
-        >
-          {busyKey === 'approval-gate' ? 'Kaydediliyor…' : approvalGateEnabled ? 'Etkin' : 'Kapalı'}
-        </button>
+        <AdminActionButton type="button" onClick={() => void saveApprovalGate(!approvalGateEnabled)} disabled={busyKey === 'approval-gate'} loading={busyKey === 'approval-gate'} label={busyKey === 'approval-gate' ? 'Kaydediliyor…' : approvalGateEnabled ? 'Pasifleştir' : 'Aktifleştir'} variant={approvalGateEnabled ? 'deactivate' : 'activate'} />
       </div>
 
       <div style={{ padding: '16px 20px 20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(245px, 1fr))', gap: 12 }}>
@@ -454,48 +448,13 @@ export default function SocialPlatformsPanel() {
               )}
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 {showConnectAction && href ? (
-                  <button
-                    type="button"
-                    data-testid={`social-platform-connect-${platform.key}`}
-                    onClick={() => connect(platform, href)}
-                    disabled={busyKey === platform.key}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5, border: 0, background: '#2563EB', color: '#fff', padding: '7px 10px', borderRadius: 7, fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, cursor: busyKey === platform.key ? 'wait' : 'pointer' }}
-                  >
-                    {busyKey === platform.key ? <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <ExternalLink size={12} />}
-                    {busyKey === platform.key
-                      ? 'Bağlanıyor…'
-                      : platform.connected ? 'Yeniden Bağla' : 'Bağlan'}
-                  </button>
+                  <AdminActionButton type="button" testId={`social-platform-connect-${platform.key}`} onClick={() => connect(platform, href)} disabled={busyKey === platform.key} loading={busyKey === platform.key} label={busyKey === platform.key ? 'Bağlanıyor…' : platform.connected ? 'Yeniden Bağla' : 'Bağlan'} icon={ExternalLink} variant="new" />
                 ) : !platform.canConnect ? (
                   <span style={{ color: '#94A3B8', fontFamily: 'Inter, sans-serif', fontSize: 11 }}>Yakında</span>
                 ) : (
                   <span style={{ color: '#168C5B', fontFamily: 'Inter, sans-serif', fontSize: 11 }}>Bağlantı hazır</span>
                 )}
-                <button
-                  type="button"
-                  data-testid={`social-platform-toggle-${platform.key}`}
-                  onClick={() => void toggle(platform)}
-                  disabled={toggleDisabled}
-                  title={!platform.connected
-                    ? 'Önce bağlanmalı'
-                    : googleActivationBlocked
-                      ? 'Önce Google hesabı ve işletme konumu seçilmeli'
-                      : platform.enabled ? 'Pasife al' : 'Aktife al'}
-                  style={{
-                    marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 5, borderRadius: 7, padding: '7px 9px',
-                    border: `1px solid ${platform.enabled ? '#86EFAC' : '#D8E1E9'}`,
-                    background: platform.enabled ? '#F0FDF4' : '#F8FAFC',
-                    color: platform.enabled ? '#168C5B' : '#64748B',
-                    cursor: toggleDisabled ? 'not-allowed' : 'pointer',
-                    opacity: toggleDisabled ? 0.55 : 1,
-                    fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700,
-                  }}
-                >
-                  {isBusy
-                    ? <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />
-                    : <Power size={12} />}
-                  {isBusy ? 'İşleniyor…' : platform.enabled ? 'Pasif Et' : 'Aktif Et'}
-                </button>
+                <AdminActionButton type="button" testId={`social-platform-toggle-${platform.key}`} onClick={() => void toggle(platform)} disabled={toggleDisabled} loading={isBusy} title={!platform.connected ? 'Önce bağlanmalı' : googleActivationBlocked ? 'Önce Google hesabı ve işletme konumu seçilmeli' : platform.enabled ? 'Pasife al' : 'Aktife al'} label={isBusy ? 'İşleniyor…' : platform.enabled ? 'Pasifleştir' : 'Aktifleştir'} icon={Power} variant={platform.enabled ? 'deactivate' : 'activate'} className="ml-auto" />
               </div>
               {googleActivationBlocked && (
                 <p style={{ color: '#B45309', fontFamily: 'Inter, sans-serif', fontSize: 10, margin: '7px 0 0', lineHeight: 1.45 }}>
@@ -580,14 +539,7 @@ export default function SocialPlatformsPanel() {
                     placeholder={platform.key === 'tiktok' ? 'https://www.tiktok.com/@hesabiniz' : 'https://www.youtube.com/@kanaliniz'}
                     style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #CBD5E1', borderRadius: 7, padding: '7px 8px', color: '#172B3A', background: '#fff', fontSize: 11 }}
                   />
-                  <button
-                    type="button"
-                    onClick={() => void saveProfileLink(platform.key === 'tiktok' ? 'tiktokUrl' : 'youtubeUrl')}
-                    disabled={busyKey === (platform.key === 'tiktok' ? 'tiktokUrl' : 'youtubeUrl')}
-                    style={{ marginTop: 8, width: '100%', border: '1px solid #BFDBFE', background: '#EFF6FF', color: '#1D4ED8', borderRadius: 7, padding: '7px 9px', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
-                  >
-                    {busyKey === (platform.key === 'tiktok' ? 'tiktokUrl' : 'youtubeUrl') ? 'Kaydediliyor…' : 'Linki Kaydet'}
-                  </button>
+                   <AdminActionButton type="button" onClick={() => void saveProfileLink(platform.key === 'tiktok' ? 'tiktokUrl' : 'youtubeUrl')} disabled={busyKey === (platform.key === 'tiktok' ? 'tiktokUrl' : 'youtubeUrl')} loading={busyKey === (platform.key === 'tiktok' ? 'tiktokUrl' : 'youtubeUrl')} label={busyKey === (platform.key === 'tiktok' ? 'tiktokUrl' : 'youtubeUrl') ? 'Kaydediliyor…' : 'Linki Kaydet'} variant="save" className="w-full mt-2" />
                   <p style={{ margin: '7px 0 0', color: '#64748B', fontFamily: 'Inter, sans-serif', fontSize: 10, lineHeight: 1.4 }}>
                     Kaydedilen geçerli bağlantı footer&apos;da yeni sekmede gösterilir. Video platformları için otomatik paylaşım yapılmaz.
                   </p>
@@ -636,14 +588,7 @@ export default function SocialPlatformsPanel() {
                       {googleFeedback.text}
                     </div>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => void syncGoogleReviews()}
-                    disabled={!connectionMeta.locationName || busyKey === 'google-business-sync'}
-                    style={{ width: '100%', border: '1px solid #BFDBFE', background: '#EFF6FF', color: '#1D4ED8', borderRadius: 7, padding: '7px 9px', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, cursor: !connectionMeta.locationName || busyKey === 'google-business-sync' ? 'not-allowed' : 'pointer', opacity: !connectionMeta.locationName ? 0.55 : 1 }}
-                  >
-                    {busyKey === 'google-business-sync' ? 'Yorumlar alınıyor…' : 'Gerçek Google yorumlarını senkronla'}
-                  </button>
+                   <AdminActionButton type="button" onClick={() => void syncGoogleReviews()} disabled={!connectionMeta.locationName || busyKey === 'google-business-sync'} loading={busyKey === 'google-business-sync'} label={busyKey === 'google-business-sync' ? 'Yorumlar alınıyor…' : 'Google Yorumlarını Senkronla'} variant="save" className="w-full" />
                   {typeof connectionMeta.lastReviewSyncAt === 'string' && (
                     <p style={{ color: '#64748B', fontFamily: 'Inter, sans-serif', fontSize: 10, margin: '7px 0 0' }}>
                       Son senkronizasyon: {new Date(connectionMeta.lastReviewSyncAt).toLocaleString('tr-TR')}
@@ -657,9 +602,7 @@ export default function SocialPlatformsPanel() {
                 </div>
               )}
               {(['facebook', 'instagram', 'x', 'google_business'].includes(platform.key) && platform.connected && platform.enabled) && (
-                <button onClick={() => void testLatestBlog(platform)} disabled={busyKey === `${platform.key}-test`} style={{ marginTop: 10, width: '100%', border: '1px solid #BFDBFE', background: '#EFF6FF', color: '#1D4ED8', borderRadius: 7, padding: '7px 9px', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, cursor: busyKey === `${platform.key}-test` ? 'wait' : 'pointer' }}>
-                  <Send size={12} style={{ verticalAlign: 'middle', marginRight: 5 }} /> {busyKey === `${platform.key}-test` ? 'Gönderiliyor…' : 'Yayınlanmış blogla test paylaşımı yap'}
-                </button>
+                <AdminActionButton onClick={() => void testLatestBlog(platform)} disabled={busyKey === `${platform.key}-test`} loading={busyKey === `${platform.key}-test`} label={busyKey === `${platform.key}-test` ? 'Gönderiliyor…' : 'Yayınlanmış Blogla Test Paylaşımı Yap'} icon={Send} variant="subtle" manage={false} className="w-full mt-2" />
               )}
               {platform.lastPublishUrl && (
                 <a href={platform.lastPublishUrl} target="_blank" rel="noreferrer" style={{ display: 'block', marginTop: 9, fontFamily: 'Inter, sans-serif', color: '#2563EB', fontSize: 11, fontWeight: 600 }}>

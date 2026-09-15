@@ -36,6 +36,7 @@ interface Message {
 }
 
 import { LOCALE_REGISTRY } from '@/lib/i18n/locale-registry';
+import { AdminActionButton } from '../../_components/AdminActionButton';
 
 const LANG_LABELS: Record<string, string> = Object.fromEntries(
   LOCALE_REGISTRY.map(l => [l.code, `${l.flagEmoji} ${l.code.toUpperCase()}`])
@@ -504,41 +505,16 @@ export default function SohbetClient() {
                   <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
                     {isArchived ? (
                       /* Archived session: only Restore */
-                      <button
-                        onClick={() => resolveSession(selectedId, true)}
-                        disabled={resolving}
-                        style={{ fontSize: '0.78rem', padding: '0.35rem 0.7rem', borderRadius: '0.5rem', background: '#16A36A', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}
-                      >
-                        {resolving ? '…' : '↩ Yeniden Aç'}
-                      </button>
+                      <AdminActionButton onClick={() => resolveSession(selectedId, true)} disabled={resolving} loading={resolving} label="Yeniden Aç" variant="activate" />
                     ) : (
                       /* Active session: takeover / release + close */
                       <>
                         {(selectedSession?.humanTakenOver || adminIsActive) ? (
-                          <button
-                            onClick={() => takeover(true)}
-                            disabled={takingOver}
-                            style={{ fontSize: '0.78rem', padding: '0.35rem 0.7rem', borderRadius: '0.5rem', background: '#EEF3F9', color: '#102A43', border: '1px solid #D9E2EC', cursor: 'pointer' }}
-                          >
-                            AI&apos;ya Bırak
-                          </button>
+                          <AdminActionButton onClick={() => takeover(true)} disabled={takingOver} loading={takingOver} label="AI'ya Bırak" variant="subtle" />
                         ) : (
-                          <button
-                            onClick={() => takeover(false)}
-                            disabled={takingOver}
-                            style={{ fontSize: '0.78rem', padding: '0.35rem 0.7rem', borderRadius: '0.5rem', background: '#C99A32', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}
-                          >
-                            Devral
-                          </button>
+                          <AdminActionButton onClick={() => takeover(false)} disabled={takingOver} loading={takingOver} label="Devral" variant="activate" />
                         )}
-                        <button
-                          onClick={() => resolveSession(selectedId, false)}
-                          disabled={resolving}
-                          title="Sohbeti arşivle"
-                          style={{ fontSize: '0.78rem', padding: '0.35rem 0.7rem', borderRadius: '0.5rem', background: '#F3F6FA', color: '#50677A', border: '1px solid #D9E2EC', cursor: 'pointer' }}
-                        >
-                          {resolving ? '…' : '📁 Kapat'}
-                        </button>
+                        <AdminActionButton onClick={() => resolveSession(selectedId, false)} disabled={resolving} loading={resolving} title="Sohbeti arşivle" label="Kapat" variant="archive" />
                       </>
                     )}
                   </div>
@@ -608,22 +584,7 @@ export default function SohbetClient() {
                       />
                       {error && <span style={{ fontSize: '0.75rem', color: '#c0392b' }}>{error}</span>}
                     </div>
-                    <button
-                      onClick={sendReply}
-                      disabled={!replyText.trim() || sending}
-                      style={{
-                        background: '#C99A32', border: 'none', borderRadius: '0.5rem',
-                        padding: isMobile ? '0.75rem 1.1rem' : '0.6rem 1rem',
-                        color: '#fff', fontWeight: 600, fontSize: '0.85rem',
-                        cursor: !replyText.trim() || sending ? 'not-allowed' : 'pointer',
-                        opacity: !replyText.trim() || sending ? 0.5 : 1,
-                        flexShrink: 0, alignSelf: 'flex-end',
-                        minWidth: isMobile ? 56 : undefined,
-                        minHeight: isMobile ? 44 : undefined,
-                      }}
-                    >
-                      {sending ? '…' : 'Gönder'}
-                    </button>
+                    <AdminActionButton onClick={sendReply} disabled={!replyText.trim() || sending} loading={sending} label="Gönder" variant="save" />
                   </div>
                 )}
               </>

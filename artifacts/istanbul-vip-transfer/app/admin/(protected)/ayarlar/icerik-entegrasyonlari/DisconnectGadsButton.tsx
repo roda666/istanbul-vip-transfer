@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { AdminActionButton } from '../../../_components/AdminActionButton';
 
 export default function DisconnectGadsButton() {
   const [loading, setLoading] = useState(false);
@@ -19,17 +20,6 @@ export default function DisconnectGadsButton() {
   }
 
   return (
-    <button
-      onClick={handle}
-      disabled={loading}
-      style={{
-        padding: '8px 16px', borderRadius: '8px',
-        border: '1px solid #FECACA', background: '#FEF2F2',
-        color: '#DC2626', fontSize: '13px', fontWeight: 600,
-        fontFamily: 'Inter, sans-serif', cursor: loading ? 'not-allowed' : 'pointer',
-      }}
-    >
-      {loading ? 'Kesiliyor…' : 'Bağlantıyı Kes'}
-    </button>
+    <AdminActionButton label={loading ? 'Kesiliyor…' : 'Bağlantıyı Kes'} variant="delete" loading={loading} onClick={handle} />
   );
 }

@@ -16,6 +16,7 @@ import {
   Sparkles, Trash2, ChevronRight, AlertTriangle,
   Clock, CheckCircle2, FileText, RefreshCw, X,
 } from 'lucide-react';
+import { AdminActionButton } from '../../_components/AdminActionButton';
 import AdminPageHeader from '../../_components/AdminPageHeader';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -169,13 +170,7 @@ export default function AiOnerilerPage() {
               color: '#52697A', fontSize: '12px', fontWeight: 600, border: '1px solid #D8E1E9',
               textDecoration: 'none',
             }}>Entegrasyonlar</Link>
-            <button onClick={() => { setShowForm(v => !v); if (!showForm) setFormError(''); }} style={{
-              display: 'inline-flex', alignItems: 'center', gap: '6px',
-              padding: '8px 16px', borderRadius: '8px', background: '#2563EB',
-              color: '#FFFFFF', fontSize: '13px', fontWeight: 600, border: 'none', cursor: 'pointer',
-            }}>
-              <Sparkles size={14} /> AI ile Oluştur
-            </button>
+            <AdminActionButton onClick={() => { setShowForm(v => !v); if (!showForm) setFormError(''); }} label="AI ile Oluştur" icon={Sparkles} variant="new" />
           </div>
         }
       />
@@ -299,23 +294,8 @@ export default function AiOnerilerPage() {
 
             {/* Actions */}
             <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '8px', marginTop: '4px' }}>
-              <button type="submit" disabled={generating} style={{
-                display: 'inline-flex', alignItems: 'center', gap: '6px',
-                padding: '9px 20px', borderRadius: '8px',
-                background: generating ? '#93C5FD' : '#2563EB',
-                color: '#FFFFFF', fontWeight: 600, fontSize: '13px',
-                border: 'none', cursor: generating ? 'not-allowed' : 'pointer',
-              }}>
-                {generating ? (
-                  <><RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> AI Düşünüyor...</>
-                ) : (
-                  <><Sparkles size={13} /> AI ile Konu Öner</>
-                )}
-              </button>
-              <button type="button" onClick={() => { setShowForm(false); resetForm(); }}
-                style={{ padding: '9px 16px', borderRadius: '8px', background: '#FFFFFF', color: '#52697A', fontSize: '13px', border: '1px solid #D8E1E9', cursor: 'pointer' }}>
-                İptal
-              </button>
+              <AdminActionButton type="submit" disabled={generating} loading={generating} label={generating ? 'AI Düşünüyor...' : 'AI ile Konu Öner'} icon={Sparkles} variant="new" />
+              <AdminActionButton type="button" onClick={() => { setShowForm(false); resetForm(); }} label="İptal" variant="cancel" manage={false} />
             </div>
           </form>
         </div>
@@ -388,10 +368,7 @@ export default function AiOnerilerPage() {
                   }}>
                     Detay <ChevronRight size={11} />
                   </Link>
-                  <button onClick={() => handleDelete(s.id)} disabled={deleting === s.id} title="Sil"
-                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '6px', background: '#FEF2F2', color: '#D64545', border: 'none', cursor: deleting === s.id ? 'not-allowed' : 'pointer', opacity: deleting === s.id ? 0.5 : 1 }}>
-                    <Trash2 size={12} />
-                  </button>
+                  <AdminActionButton onClick={() => handleDelete(s.id)} disabled={deleting === s.id} loading={deleting === s.id} label="Sil" icon={Trash2} variant="delete" className="text-xs" />
                 </div>
               </div>
             );

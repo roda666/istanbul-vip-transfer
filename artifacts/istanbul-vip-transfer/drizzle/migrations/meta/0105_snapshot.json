@@ -1,0 +1,39 @@
+{
+  "id": "f7d18c8b-0be2-4b38-a105-0105a11d0a01",
+  "prevId": "12ac6591-5f8c-4143-b394-5a6bd176b8a8",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.admin_section_grants": {
+      "name": "admin_section_grants",
+      "schema": "public",
+      "columns": {
+        "id": { "name": "id", "type": "uuid", "primaryKey": true, "notNull": true, "default": "gen_random_uuid()" },
+        "admin_user_id": { "name": "admin_user_id", "type": "uuid", "primaryKey": false, "notNull": true },
+        "section": { "name": "section", "type": "text", "primaryKey": false, "notNull": true },
+        "can_view": { "name": "can_view", "type": "boolean", "primaryKey": false, "notNull": true, "default": false },
+        "can_manage": { "name": "can_manage", "type": "boolean", "primaryKey": false, "notNull": true, "default": false },
+        "created_at": { "name": "created_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": true, "default": "now()" },
+        "updated_at": { "name": "updated_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": true, "default": "now()" }
+      },
+      "indexes": {
+        "admin_section_grants_admin_user_id_idx": { "name": "admin_section_grants_admin_user_id_idx", "columns": [{ "expression": "admin_user_id", "isExpression": false, "asc": true, "nulls": "last" }], "isUnique": false, "concurrently": false, "method": "btree", "with": {} }
+      },
+      "foreignKeys": {
+        "admin_section_grants_admin_user_id_admin_users_id_fk": { "name": "admin_section_grants_admin_user_id_admin_users_id_fk", "tableFrom": "admin_section_grants", "columnsFrom": ["admin_user_id"], "tableTo": "admin_users", "columnsTo": ["id"], "onDelete": "cascade", "onUpdate": "no action" }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": { "admin_section_grants_user_section_unique": { "name": "admin_section_grants_user_section_unique", "nullsNotDistinct": false, "columns": ["admin_user_id", "section"] } },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": { "columns": {}, "schemas": {}, "tables": {} }
+}

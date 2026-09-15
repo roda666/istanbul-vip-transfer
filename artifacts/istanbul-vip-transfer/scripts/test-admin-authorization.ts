@@ -188,7 +188,7 @@ assert.equal(auditSuccess.ok, true);
 assert.equal(storedAuditRecords.length, 1);
 assert.deepEqual(
   Object.keys((storedAuditRecords[0].metadata ?? {}) as Record<string, unknown>).sort(),
-  ['auditAttemptId', 'method', 'permission', 'reason'],
+  ['auditAttemptId', 'method', 'permission', 'reason', 'section'],
 );
 const storageAuditFailure = await successfulAuditWriter({
   action: 'ADMIN_OPERATION_FAILED',

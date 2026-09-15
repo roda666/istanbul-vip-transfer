@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { AIWriteAssist } from '@/app/admin/_components/AIWriteAssist';
 import { AdminRecordActions } from '@/app/admin/_components/AdminRecordActions';
+import { AdminActionButton } from '@/app/admin/_components/AdminActionButton';
 
 type AIWritingLanguage = 'tr' | 'en' | 'de' | 'ru' | 'ar' | 'fr' | 'es' | 'it' | 'nl';
 
@@ -173,9 +174,7 @@ export default function ChatbotKnowledgeClient() {
     cursor: 'pointer', border: 'none', transition: 'all 0.2s',
   };
 
-  const primaryBtnStyle = { ...buttonBaseStyle, background: '#C99A32', color: '#fff' };
   const outlineBtnStyle = { ...buttonBaseStyle, background: '#fff', color: '#334155', border: '1px solid #E2E8F0' };
-  const dangerBtnStyle = { ...buttonBaseStyle, background: '#EF4444', color: '#fff' };
   
   const inputStyle = {
     width: '100%', padding: '10px 12px', borderRadius: '6px',
@@ -213,12 +212,7 @@ export default function ChatbotKnowledgeClient() {
             </select>
           </div>
         </div>
-        <button 
-          style={primaryBtnStyle}
-          onClick={() => setEditForm({ language: 'tr', isActive: true })}
-        >
-          <Plus size={16} /> Yeni Kayıt Ekle
-        </button>
+        <AdminActionButton label="Yeni Kayıt Ekle" icon={Plus} variant="new" onClick={() => setEditForm({ language: 'tr', isActive: true })} />
       </div>
 
       {/* Content */}
@@ -396,11 +390,8 @@ export default function ChatbotKnowledgeClient() {
             </form>
 
             <div style={{ padding: '16px 24px', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'flex-end', gap: '12px', background: '#F8FAFC' }}>
-              <button type="button" style={outlineBtnStyle} onClick={() => setEditForm(null)} disabled={saving}>İptal</button>
-              <button type="button" style={primaryBtnStyle} onClick={handleSave} disabled={saving}>
-                {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                {saving ? 'Kaydediliyor...' : 'Kaydet'}
-              </button>
+              <AdminActionButton type="button" label="İptal" variant="cancel" manage={false} onClick={() => setEditForm(null)} disabled={saving} />
+              <AdminActionButton type="button" label={saving ? 'Kaydediliyor...' : 'Kaydet'} icon={Save} variant="save" onClick={handleSave} loading={saving} />
             </div>
           </div>
         </div>
@@ -435,11 +426,8 @@ export default function ChatbotKnowledgeClient() {
               </div>
             </div>
             <div style={{ padding: '16px 24px', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'flex-end', gap: '12px', background: '#F8FAFC' }}>
-              <button type="button" style={outlineBtnStyle} onClick={() => { setTranslateId(null); setTargetLang(''); }} disabled={translating}>İptal</button>
-              <button type="button" style={primaryBtnStyle} onClick={handleTranslate} disabled={translating || !targetLang}>
-                {translating ? <Loader2 size={16} className="animate-spin" /> : <Globe size={16} />}
-                {translating ? 'Çevriliyor...' : 'Çevir ve Kaydet'}
-              </button>
+              <AdminActionButton type="button" label="İptal" variant="cancel" manage={false} onClick={() => { setTranslateId(null); setTargetLang(''); }} disabled={translating} />
+              <AdminActionButton type="button" label={translating ? 'Çevriliyor...' : 'Çevir ve Kaydet'} icon={Globe} variant="save" onClick={handleTranslate} loading={translating} disabled={!targetLang} />
             </div>
           </div>
         </div>
@@ -461,11 +449,8 @@ export default function ChatbotKnowledgeClient() {
               </div>
             </div>
             <div style={{ padding: '16px 24px', display: 'flex', justifyContent: 'center', gap: '12px', background: '#F8FAFC', borderRadius: '0 0 8px 8px' }}>
-              <button style={outlineBtnStyle} onClick={() => setDeleteId(null)} disabled={deleting}>İptal</button>
-              <button style={dangerBtnStyle} onClick={handleDelete} disabled={deleting}>
-                {deleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                Sil
-              </button>
+              <AdminActionButton label="İptal" variant="cancel" manage={false} onClick={() => setDeleteId(null)} disabled={deleting} />
+              <AdminActionButton label="Sil" icon={Trash2} variant="delete" onClick={handleDelete} loading={deleting} />
             </div>
           </div>
         </div>

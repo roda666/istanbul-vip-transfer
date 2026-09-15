@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import AdminSidebar from '../_components/AdminSidebar';
-import { ChatStaffGuard } from '../_components/ChatStaffGuard';
+import { AdminCapabilityProvider } from '../_components/AdminCapabilityContext';
+import type { AdminCapabilities } from '@/lib/auth/authorization';
 
 // All admin pages are dynamic — they require authenticated sessions via cookies.
 export const dynamic = 'force-dynamic';
@@ -20,7 +21,7 @@ export default async function ProtectedAdminLayout({
   try {
     const { requireAdminSession } = await import('@/lib/auth/session');
     const session = await requireAdminSession();
-    sessionData = { name: session.name, email: session.email, role: session.role };
+    sessionData = { name: session.name, email: session.email, role: session.role, capabilities: session.capabilities };
   } catch {
     // Middleware and this layout both enforce the current active session.
   }
@@ -42,12 +43,13 @@ export default async function ProtectedAdminLayout({
         background: '#F3F6FA',
       }}
     >
-      <ChatStaffGuard role={sessionData.role} />
-      <AdminSidebar
-        userName={sessionData.name}
-        userEmail={sessionData.email}
-        userRole={sessionData.role}
-      />
+      <AdminCapabilityProvider capabilities={sessionData.capabilities as AdminCapabilities}>
+        <AdminSidebar
+          userName={sessionData.name}
+          userEmail={sessionData.email}
+          userRole={sessionData.role}
+          capabilities={sessionData.capabilities as AdminCapabilities}
+        />
       {/* Main content area */}
       <div
         style={{
@@ -83,9 +85,10 @@ export default async function ProtectedAdminLayout({
            * a sticky sidebar with no fixed header).
            */}
           <div className="lg:hidden" style={{ height: '56px', flexShrink: 0 }} aria-hidden="true" />
-          {children}
+           {children}
         </main>
-      </div>
+        </div>
+      </AdminCapabilityProvider>
     </div>
   );
 }

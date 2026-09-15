@@ -11,6 +11,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { AdminActionButton } from '../../../_components/AdminActionButton';
 import { BookOpen, Wrench, ChevronRight, ChevronLeft, Plus, X, Search, Loader2 } from 'lucide-react';
 import AdminPageHeader from '../../../_components/AdminPageHeader';
 import Link from 'next/link';
@@ -397,9 +398,7 @@ export default function YeniStudioPage() {
               İleri <ChevronRight size={16} />
             </button>
           ) : (
-            <button onClick={handleSubmit} disabled={saving} style={btn(true)}>
-              {saving ? 'Oluşturuluyor…' : 'Projeyi Oluştur →'}
-            </button>
+            <AdminActionButton onClick={handleSubmit} disabled={saving} loading={saving} label={saving ? 'Oluşturuluyor…' : 'Projeyi Oluştur'} variant="new" />
           )}
         </div>
       </div>

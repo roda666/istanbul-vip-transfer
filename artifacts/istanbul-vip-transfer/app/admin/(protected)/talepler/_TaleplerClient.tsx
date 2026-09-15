@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Search, ChevronLeft, ChevronRight, RefreshCw, Phone, Download, FileText, Trash2 } from 'lucide-react';
 import { SOURCE_FILTER_OPTIONS, formatSource } from '@/lib/source-labels';
 import { AdminRecordActions } from '@/app/admin/_components/AdminRecordActions';
+import { AdminActionButton } from '@/app/admin/_components/AdminActionButton';
 
 interface RequestRow {
   id: string;
@@ -650,9 +651,7 @@ export default function TaleplerClient({ canDelete }: { canDelete: boolean }) {
           {selectedIds.size > 0 && <button onClick={() => setSelectedIds(new Set())} disabled={!!updating} style={{ ...inputStyle, cursor: 'pointer' }}>Seçimi kaldır</button>}
           <span style={{ color: '#475569', fontSize: 12, fontWeight: 600 }}>{selectedIds.size} talep seçili</span>
           {canDelete && (
-            <button onClick={deleteSelected} disabled={!selectedIds.size || !!updating} style={{ ...inputStyle, marginLeft: 'auto', cursor: selectedIds.size ? 'pointer' : 'not-allowed', color: '#BE123C', background: '#FFF1F2', borderColor: '#FECDD3', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Trash2 size={13} /> Seçilenleri sil
-            </button>
+            <AdminActionButton onClick={deleteSelected} disabled={!selectedIds.size || !!updating} label="Seçilenleri Sil" icon={Trash2} variant="delete" className="ml-auto" />
           )}
         </div>
       )}

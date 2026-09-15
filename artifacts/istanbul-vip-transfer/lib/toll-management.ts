@@ -3,7 +3,6 @@ import 'server-only';
 import { and, asc, desc, eq, inArray, isNull, lte, or, gte } from 'drizzle-orm';
 import { db } from '@/db';
 import {
-  adminUsers,
   routeTollAlternativeItems,
   routeTollAlternatives,
   tollPoints,
@@ -664,10 +663,59 @@ export async function assertNoActiveTariffOverlap(input: {
 }
 
 export async function getTollManagementData() {
-  const [points, tariffs, alternatives, routes, items, admins, settings] = await Promise.all([
-    db.select().from(tollPoints).orderBy(asc(tollPoints.displayOrder), asc(tollPoints.name), asc(tollPoints.id)),
-    db.select().from(tollTariffs).orderBy(asc(tollTariffs.vehicleClass), desc(tollTariffs.updatedAt)),
-    db.select().from(routeTollAlternatives).orderBy(
+  const [points, tariffs, alternatives, routes, items, settings] = await Promise.all([
+    db.select({
+      id: tollPoints.id,
+      name: tollPoints.name,
+      type: tollPoints.type,
+      active: tollPoints.active,
+      dayStartHour: tollPoints.dayStartHour,
+      nightStartHour: tollPoints.nightStartHour,
+      notes: tollPoints.notes,
+      classificationLabel: tollPoints.classificationLabel,
+      bannedVehicleClasses: tollPoints.bannedVehicleClasses,
+      bannedVehicleClassesSourceUrl: tollPoints.bannedVehicleClassesSourceUrl,
+      tollDirection: tollPoints.tollDirection,
+      tollDirectionSourceUrl: tollPoints.tollDirectionSourceUrl,
+      tollDirectionNotes: tollPoints.tollDirectionNotes,
+      pricingMode: tollPoints.pricingMode,
+      createdAt: tollPoints.createdAt,
+      updatedAt: tollPoints.updatedAt,
+    }).from(tollPoints).orderBy(asc(tollPoints.displayOrder), asc(tollPoints.name), asc(tollPoints.id)),
+    db.select({
+      id: tollTariffs.id,
+      tollPointId: tollTariffs.tollPointId,
+      vehicleClass: tollTariffs.vehicleClass,
+      displayOrder: tollTariffs.displayOrder,
+      amountKurus: tollTariffs.amountKurus,
+      automaticAmountKurus: tollTariffs.automaticAmountKurus,
+      manualAmountKurus: tollTariffs.manualAmountKurus,
+      sourceName: tollTariffs.sourceName,
+      sourceUrl: tollTariffs.sourceUrl,
+      sourceVerified: tollTariffs.sourceVerified,
+      sourceFetchedAt: tollTariffs.sourceFetchedAt,
+      manualUpdatedAt: tollTariffs.manualUpdatedAt,
+      queriedAt: tollTariffs.queriedAt,
+      timeBand: tollTariffs.timeBand,
+      validFrom: tollTariffs.validFrom,
+      validUntil: tollTariffs.validUntil,
+      active: tollTariffs.active,
+      entryGateName: tollTariffs.entryGateName,
+      exitGateName: tollTariffs.exitGateName,
+      direction: tollTariffs.direction,
+      createdAt: tollTariffs.createdAt,
+      updatedAt: tollTariffs.updatedAt,
+    }).from(tollTariffs).orderBy(asc(tollTariffs.vehicleClass), desc(tollTariffs.updatedAt)),
+    db.select({
+      id: routeTollAlternatives.id,
+      routeId: routeTollAlternatives.routeId,
+      name: routeTollAlternatives.name,
+      active: routeTollAlternatives.active,
+      isDefault: routeTollAlternatives.isDefault,
+      displayOrder: routeTollAlternatives.displayOrder,
+      needsReview: routeTollAlternatives.needsReview,
+      reviewNote: routeTollAlternatives.reviewNote,
+    }).from(routeTollAlternatives).orderBy(
       asc(routeTollAlternatives.routeId),
       desc(routeTollAlternatives.isDefault),
       asc(routeTollAlternatives.displayOrder),
@@ -676,25 +724,32 @@ export async function getTollManagementData() {
     ),
     db.select({ id: transferRoutes.id, name: transferRoutes.name, active: transferRoutes.active })
       .from(transferRoutes).orderBy(asc(transferRoutes.displayOrder), asc(transferRoutes.name), asc(transferRoutes.id)),
-    db.select().from(routeTollAlternativeItems).orderBy(asc(routeTollAlternativeItems.displayOrder)),
-    db.select({ id: adminUsers.id, name: adminUsers.name }).from(adminUsers),
+    db.select({
+      alternativeId: routeTollAlternativeItems.alternativeId,
+      tollPointId: routeTollAlternativeItems.tollPointId,
+      displayOrder: routeTollAlternativeItems.displayOrder,
+      entryGateName: routeTollAlternativeItems.entryGateName,
+      exitGateName: routeTollAlternativeItems.exitGateName,
+    }).from(routeTollAlternativeItems).orderBy(asc(routeTollAlternativeItems.displayOrder)),
     getTollPricingSettings(),
   ]);
-  const adminNames = new Map(admins.map((admin) => [admin.id, admin.name]));
+  const itemsByAlternativeId = new Map<string, typeof items>();
+  for (const item of items) {
+    const alternativeItems = itemsByAlternativeId.get(item.alternativeId);
+    if (alternativeItems) alternativeItems.push(item);
+    else itemsByAlternativeId.set(item.alternativeId, [item]);
+  }
+  for (const alternativeItems of itemsByAlternativeId.values()) {
+    alternativeItems.sort((left, right) => left.displayOrder - right.displayOrder);
+  }
   const now = new Date();
   return {
-    points: points.map((point) => ({
-      ...point,
-      createdByName: point.createdBy ? adminNames.get(point.createdBy) ?? null : null,
-      updatedByName: point.updatedBy ? adminNames.get(point.updatedBy) ?? null : null,
-    })),
+    points,
     tariffs: tariffs.map((tariff) => {
       const staleness = evaluateTollTariffStaleness(tariff, settings, now);
       return {
         ...tariff,
         sourceMode: tariff.manualAmountKurus != null ? 'MANUAL_OVERRIDE' : 'AUTOMATIC',
-        updatedByName: tariff.updatedBy ? adminNames.get(tariff.updatedBy) ?? null : null,
-        createdByName: tariff.createdBy ? adminNames.get(tariff.createdBy) ?? null : null,
         stale: staleness.stale,
         staleReasons: staleness.reasons,
         lastReviewedAt: staleness.lastReviewedAt,
@@ -702,22 +757,19 @@ export async function getTollManagementData() {
     }),
     alternatives: alternatives.map((alternative) => ({
       ...alternative,
-       ...(() => {
-         const alternativeItems = items
-           .filter((item) => item.alternativeId === alternative.id)
-           .sort((left, right) => left.displayOrder - right.displayOrder);
-         const gatePairs: Record<string, { entryGateName: string; exitGateName: string }> = {};
-         for (const item of alternativeItems) {
-           if (item.entryGateName && item.exitGateName) {
-             gatePairs[item.tollPointId] = { entryGateName: item.entryGateName, exitGateName: item.exitGateName };
-           }
+      ...(() => {
+        const alternativeItems = itemsByAlternativeId.get(alternative.id) ?? [];
+        const gatePairs: Record<string, { entryGateName: string; exitGateName: string }> = {};
+        for (const item of alternativeItems) {
+          if (item.entryGateName && item.exitGateName) {
+            gatePairs[item.tollPointId] = { entryGateName: item.entryGateName, exitGateName: item.exitGateName };
          }
-         return { gatePairs };
-       })(),
-       pointIds: items
-        .filter((item) => item.alternativeId === alternative.id)
-        .sort((left, right) => left.displayOrder - right.displayOrder)
-        .map((item) => item.tollPointId),
+        }
+        return {
+          gatePairs,
+          pointIds: alternativeItems.map((item) => item.tollPointId),
+        };
+      })(),
     })),
     routes,
     vehicleClasses: TOLL_VEHICLE_CLASSES,

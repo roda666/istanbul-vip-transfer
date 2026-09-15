@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect, Fragment, useId } from 'react';
 import { createPortal } from 'react-dom';
-import Link from 'next/link';
-import { ChevronUp, ChevronDown, Edit2, Power, PowerOff, Archive, ArchiveRestore, Trash2, MoreVertical, Info, Loader2, X, LucideIcon } from 'lucide-react';
+import { ChevronUp, ChevronDown, Edit2, Power, PowerOff, Archive, ArchiveRestore, Trash2, MoreVertical, Info, X } from 'lucide-react';
+import { AdminActionButton } from './AdminActionButton';
 
 interface ActionConfig {
   onClick?: () => Promise<void> | void;
@@ -23,7 +23,7 @@ export interface AdminRecordActionsProps {
   customActions?: Array<{
     id: string;
     label: string;
-    icon: LucideIcon | React.ElementType;
+    icon: React.ElementType;
     colorClass: string;
     mobileColorClass?: string;
     onClick?: () => Promise<void> | void;
@@ -195,76 +195,30 @@ export function AdminRecordActions({
       ? action.config.disabledReason
       : action.label;
 
-    const content = (
-      <>
-        {isBusy ? <Loader2 size={16} className="animate-spin shrink-0" /> : <action.icon size={16} className="shrink-0" />}
-        <span className="min-w-0">
-          <span className={isMobile ? 'block text-sm font-medium' : 'text-xs font-semibold'}>{action.label}</span>
-          {isMobile && action.config?.disabled && action.config.disabledReason && (
-            <span className="mt-0.5 block text-xs font-normal leading-snug text-slate-500">
-              {action.config.disabledReason}
-            </span>
-          )}
-        </span>
-        {!isMobile && action.config?.disabled && action.config.disabledReason && (
-          <Info size={14} className="shrink-0" aria-hidden="true" />
-        )}
-      </>
-    );
-
-    const baseClass = isMobile
-      ? `flex items-center gap-3 w-full px-4 py-3 min-h-[44px] text-left transition-colors ${
-          isDisabled 
-            ? 'opacity-50 cursor-not-allowed bg-slate-50 text-slate-500' 
-            : ('mobileColorClass' in action && action.mobileColorClass) ? action.mobileColorClass : action.id === 'delete' ? 'hover:bg-red-50 text-red-700' : 'hover:bg-slate-50 text-slate-700'
-        }`
-      : `inline-flex items-center gap-1.5 px-3 min-h-[44px] rounded-md transition-colors ${action.colorClass} ${
-          isDisabled ? 'opacity-40 cursor-not-allowed' : ''
-        }`;
-
-    const linkProps = {
-      title,
-      'aria-label': action.label,
-      'aria-disabled': isDisabled,
-      className: baseClass,
-    };
-
-    if (action.id === 'edit' && edit?.href) {
-      if (isDisabled) {
-        return (
-          <span {...linkProps}>
-            {content}
-          </span>
-        );
-      }
-      return (
-        <Link href={edit.href} {...linkProps} onClick={closeSheet}>
-          {content}
-        </Link>
-      );
-    }
-
-    const buttonProps = {
-      title,
-      'aria-label': action.label,
-      'aria-busy': isBusy,
-      'aria-disabled': isDisabled,
-      disabled: isDisabled,
-      className: baseClass,
-    };
-
     const onClick = action.id === 'archive' && archive?.isArchived
       ? archive.onRestore
       : action.config?.onClick;
 
     return (
-      <button
-        type="button"
-        onClick={wrapAction(action.id, onClick)}
-        {...buttonProps}
-      >
-        {content}
-      </button>
+      <AdminActionButton
+        label={action.label}
+        icon={action.icon}
+        variant={
+          action.id === 'delete' ? 'delete'
+            : action.id === 'edit' ? 'edit'
+            : action.id === 'activation' ? (activation?.isActive ? 'deactivate' : 'activate')
+            : action.id === 'archive' ? 'archive'
+            : action.id === 'up' || action.id === 'down' ? 'subtle'
+            : 'subtle'
+        }
+        href={action.id === 'edit' ? edit?.href : undefined}
+        onClick={action.id === 'edit' && edit?.href ? closeSheet : wrapAction(action.id, onClick)}
+        disabled={isDisabled}
+        loading={isBusy}
+        title={title}
+        ariaLabel={action.label}
+        className={isMobile ? 'w-full justify-start rounded-none border-0 bg-transparent px-4 py-3 text-left hover:bg-slate-50' : ''}
+      />
     );
   };
 

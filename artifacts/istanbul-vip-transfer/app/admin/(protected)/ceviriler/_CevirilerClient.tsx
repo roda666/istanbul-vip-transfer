@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Globe, Loader2, Brain, AlertTriangle, Send, Check, Rocket } from 'lucide-react';
 import { AdminRecordActions } from '../../_components/AdminRecordActions';
+import { AdminActionButton } from '../../_components/AdminActionButton';
 import type { Language } from '@/db/schema';
 import type { EntitySources } from './page';
 
@@ -436,20 +437,11 @@ export default function CevirilerClient({
 
       {/* Action buttons */}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-        <button type="button" disabled={bulkBusy || selectedLangs.length === 0 || currentSources.length === 0} onClick={() => runBulkTranslate(selectedLangs)}
-          style={{ padding: '8px 14px', borderRadius: '8px', border: 'none', background: '#2563EB', color: '#FFF', fontSize: '12px', fontWeight: 600, cursor: bulkBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif', opacity: bulkBusy || selectedLangs.length === 0 || currentSources.length === 0 ? 0.6 : 1 }}>
-          {bulkBusy ? 'Çevriliyor…' : `Seçili Dillere Çevir (${selectedLangs.length})`}
-        </button>
-        <button type="button" disabled={bulkBusy || enabledLangCodes.length === 0 || currentSources.length === 0} onClick={() => runBulkTranslate(enabledLangCodes)}
-          style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #2563EB', background: '#EFF6FF', color: '#1D4ED8', fontSize: '12px', fontWeight: 600, cursor: bulkBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif', opacity: bulkBusy || currentSources.length === 0 ? 0.6 : 1 }}>
-          Tüm Etkin Dillere Çevir ({enabledLangCodes.length})
-        </button>
+        <AdminActionButton type="button" disabled={selectedLangs.length === 0 || currentSources.length === 0} loading={bulkBusy} onClick={() => runBulkTranslate(selectedLangs)} label={bulkBusy ? 'Çevriliyor…' : `Seçili Dillere Çevir (${selectedLangs.length})`} icon={Brain} variant="new" />
+        <AdminActionButton type="button" disabled={enabledLangCodes.length === 0 || currentSources.length === 0} loading={bulkBusy} onClick={() => runBulkTranslate(enabledLangCodes)} label={`Tüm Etkin Dillere Çevir (${enabledLangCodes.length})`} icon={Globe} variant="edit" />
         {bulkBusy && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite', color: '#2563EB' }} />}
         {entityTypeFilter === 'service_page' && (
-          <button type="button" disabled={publishBusy || bulkBusy} onClick={() => void publishServiceTranslations()}
-            style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #16A36A', background: '#ECFDF5', color: '#166534', fontSize: '12px', fontWeight: 600, cursor: 'pointer', opacity: publishBusy ? 0.6 : 1 }}>
-            {publishBusy ? 'Yayınlanıyor…' : 'Uygun hizmet çevirilerini yayınla'}
-          </button>
+          <AdminActionButton type="button" disabled={bulkBusy} loading={publishBusy} onClick={() => void publishServiceTranslations()} label={publishBusy ? 'Yayınlanıyor…' : 'Uygun hizmet çevirilerini yayınla'} icon={Rocket} variant="activate" />
         )}
       </div>
       {bulkMsg && (
@@ -470,14 +462,8 @@ export default function CevirilerClient({
           AI çevirisiyle üzerine yazılsın mı? Bu işlem mevcut düzenlemeleri değiştirir.
         </p>
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-          <button onClick={() => setOverwriteConfirm(null)}
-            style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #D9E2EC', background: '#FFF', cursor: 'pointer', fontSize: '13px' }}>
-            Hayır, Koru
-          </button>
-          <button onClick={() => { const codes = overwriteConfirm.codes; setOverwriteConfirm(null); void runBulkTranslate(codes, true); }}
-            style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#DC2626', color: '#FFF', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
-            Evet, Üzerine Yaz
-          </button>
+          <AdminActionButton label="Hayır, Koru" variant="cancel" manage={false} onClick={() => setOverwriteConfirm(null)} />
+          <AdminActionButton label="Evet, Üzerine Yaz" variant="delete" onClick={() => { const codes = overwriteConfirm.codes; setOverwriteConfirm(null); void runBulkTranslate(codes, true); }} />
         </div>
       </div>
     </div>

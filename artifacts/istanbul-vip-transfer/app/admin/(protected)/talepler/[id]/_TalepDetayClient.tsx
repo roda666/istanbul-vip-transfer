@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Archive, MessageCircle, Save, Star } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { openWhatsAppChat } from '@/lib/whatsapp';
+import { AdminActionButton } from '../../../_components/AdminActionButton';
 
 // Statuses available for new selections (workflow)
 const WORKFLOW_STATUSES: Record<string, string> = {
@@ -178,19 +179,7 @@ export default function TalepDetayClient({
               Test Verisi
             </span>
           )}
-          <button
-            onClick={toggleTestData}
-            disabled={testDataSaving}
-            style={{
-              padding: '7px 14px', borderRadius: '8px', border: 'none',
-              background: isTestData ? '#FEF3C7' : '#F1F5F9',
-              color: isTestData ? '#92400E' : '#64748B',
-              fontSize: '12px', fontWeight: 600, fontFamily: 'Inter, sans-serif',
-              cursor: 'pointer',
-            }}
-          >
-            {testDataSaving ? 'Kaydediliyor…' : isTestData ? 'Test İşaretini Kaldır' : 'Test Verisi Olarak İşaretle'}
-          </button>
+          <AdminActionButton onClick={toggleTestData} disabled={testDataSaving} loading={testDataSaving} label={testDataSaving ? 'Kaydediliyor…' : isTestData ? 'Test İşaretini Kaldır' : 'Test Verisi Olarak İşaretle'} variant="subtle" />
         </div>
         <p style={{ fontSize: '11px', color: '#94A3B8', fontFamily: 'Inter, sans-serif', margin: '8px 0 0' }}>
           Bu talep gerçek bir müşteri talebi değil, geliştirme/test amaçlı gönderilmiş görünüyorsa işaretleyin. Kayıt silinmez, yalnızca listelerde ayrıştırılır.
@@ -249,18 +238,7 @@ export default function TalepDetayClient({
       {/* Archive / archived indicator */}
       {!archivedAt ? (
         <div>
-          <button
-            onClick={archive}
-            disabled={loading}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '6px',
-              padding: '8px 14px', borderRadius: '8px', border: '1px solid #E2E8F0',
-              background: '#F8FAFC', color: '#64748B', fontSize: '12px',
-              fontFamily: 'Inter, sans-serif', cursor: 'pointer',
-            }}
-          >
-            <Archive size={13} /> Arşivle
-          </button>
+          <AdminActionButton onClick={archive} disabled={loading} loading={loading} label="Arşivle" icon={Archive} variant="archive" />
         </div>
       ) : (
         <p style={{ fontSize: '12px', color: '#94A3B8', fontFamily: 'Inter, sans-serif', margin: 0 }}>
@@ -337,11 +315,11 @@ export default function TalepDetayClient({
       {/* Internal notes */}
       {status !== 'COMPLETED' && status !== 'CANCELLED' && !archivedAt && (
         <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: 16 }}>
-          <button type="button" onClick={() => setConversion(!conversion)} style={{ minHeight: 44 }}>Transfer operasyonuna dönüştür</button>
+          <AdminActionButton type="button" onClick={() => setConversion(!conversion)} label="Transfer operasyonuna dönüştür" variant="new" manage={false} />
           {conversion && <form onSubmit={convertToTransfer} style={{ display: 'grid', gap: 8, marginTop: 12 }}>
             <label>Planlanan alış zamanı<input required type="datetime-local" value={conversionData.plannedPickupAt} onChange={e => setConversionData({ ...conversionData, plannedPickupAt: e.target.value })} /></label>
             {(['pickupLocationSummary', 'dropoffLocationSummary', 'routeSummary', 'customerSummary'] as const).map(key => <label key={key}>{key === 'pickupLocationSummary' ? 'Alış konumu' : key === 'dropoffLocationSummary' ? 'Varış konumu' : key === 'routeSummary' ? 'Rota özeti' : 'Müşteri özeti'}<input required value={conversionData[key]} onChange={e => setConversionData({ ...conversionData, [key]: e.target.value })} /></label>)}
-            <button disabled={conversionSaving}>{conversionSaving ? 'Dönüştürülüyor…' : 'Transfer oluştur'}</button>
+            <AdminActionButton type="submit" disabled={conversionSaving} loading={conversionSaving} label={conversionSaving ? 'Dönüştürülüyor…' : 'Transfer oluştur'} variant="save" />
           </form>}
         </div>
       )}
@@ -362,19 +340,7 @@ export default function TalepDetayClient({
           }}
         />
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px' }}>
-          <button
-            onClick={saveNotes}
-            disabled={notesSaving}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '6px',
-              padding: '7px 14px', borderRadius: '8px',
-              background: '#2563EB', color: '#FFFFFF',
-              border: 'none', cursor: 'pointer',
-              fontSize: '12px', fontWeight: 600, fontFamily: 'Inter, sans-serif',
-            }}
-          >
-            <Save size={13} /> {notesSaving ? 'Kaydediliyor…' : 'Notu Kaydet'}
-          </button>
+          <AdminActionButton onClick={saveNotes} disabled={notesSaving} loading={notesSaving} label={notesSaving ? 'Kaydediliyor…' : 'Notu Kaydet'} icon={Save} variant="save" />
           {notesSaved && (
             <span style={{ fontSize: '12px', color: '#15803D', fontFamily: 'Inter, sans-serif' }}>✓ Not kaydedildi</span>
           )}

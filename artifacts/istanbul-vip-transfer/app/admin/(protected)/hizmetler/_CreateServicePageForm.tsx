@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { slugify } from '@/lib/ai/slugify';
 import type { PublicServiceCategory } from '@/lib/public-service-catalog-types';
+import { AdminActionButton } from '../../_components/AdminActionButton';
+import { Plus } from 'lucide-react';
 
 interface Props {
   categories: PublicServiceCategory[];
@@ -85,9 +87,7 @@ export default function CreateServicePageForm({ categories, initialSlug, initial
         </select>
       </label>
       {error && <p role="alert" style={{ margin: 0, color: '#B42318', fontSize: '13px' }}>{error}</p>}
-      <button disabled={saving || categories.length === 0} type="submit" style={{ width: 'fit-content', padding: '10px 18px', border: 0, borderRadius: '7px', background: '#C9A84C', color: '#102A43', fontWeight: 700, cursor: 'pointer' }}>
-        {saving ? 'Oluşturuluyor…' : 'Taslağı Oluştur ve Düzenle'}
-      </button>
+      <AdminActionButton disabled={categories.length === 0} type="submit" label={saving ? 'Oluşturuluyor…' : 'Taslağı Oluştur ve Düzenle'} icon={Plus} variant="new" loading={saving} />
     </form>
   );
 }

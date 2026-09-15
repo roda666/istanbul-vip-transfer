@@ -10,6 +10,7 @@ import type {
 } from '@/db/schema';
 import { AISeoGenerator } from '@/app/admin/_components/AISeoGenerator';
 import { AdminRecordActions } from '@/app/admin/_components/AdminRecordActions';
+import { AdminActionButton } from '@/app/admin/_components/AdminActionButton';
 import { groupManagedLocationOptions, type ManagedLocationOption } from '@/lib/admin-location-options';
 
 // ── Design tokens ────────────────────────────────────────────────────────────
@@ -29,9 +30,6 @@ const labelStyle: React.CSSProperties = {
   display: 'block', color: '#52697A', fontSize: '11px', fontFamily: 'Inter, sans-serif',
   marginBottom: '4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em',
 };
-
-const btnStyleDelete: React.CSSProperties = { border: '1px solid #FECACA', borderRadius: '6px', color: '#D64545', background: '#FFF', padding: '0 16px', minHeight: '44px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' };
-const btnStyleAdd: React.CSSProperties = { border: `1px solid ${BORDER}`, borderRadius: '6px', color: '#2563EB', background: '#FFF', padding: '0 16px', minHeight: '44px', cursor: 'pointer', fontSize: '13px', fontWeight: 700 };
 
 // ── Empty form ───────────────────────────────────────────────────────────────
 const EMPTY: Partial<TransferRoute> = {
@@ -148,7 +146,7 @@ function RouteContentFields({
         {transportOptions.map((option, index) => (
           <div key={index} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px', border: `1px solid ${BORDER}`, padding: '16px', borderRadius: '8px', background: '#FFF' }}>
             <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => onChange({ transportOptions: transportOptions.filter((_, itemIndex) => itemIndex !== index) })} style={btnStyleDelete}>Sil</button>
+              <AdminActionButton type="button" onClick={() => onChange({ transportOptions: transportOptions.filter((_, itemIndex) => itemIndex !== index) })} label="Sil" variant="delete" />
             </div>
             <div>
               <label style={labelStyle}>Seçenek</label>
@@ -164,7 +162,7 @@ function RouteContentFields({
             </div>
           </div>
         ))}
-        {transportOptions.length < 8 && <button type="button" onClick={() => onChange({ transportOptions: [...transportOptions, { name: '', summary: '', downside: '' }] })} style={btnStyleAdd}>+ Ulaşım seçeneği ekle</button>}
+        {transportOptions.length < 8 && <AdminActionButton type="button" onClick={() => onChange({ transportOptions: [...transportOptions, { name: '', summary: '', downside: '' }] })} label="Ulaşım Seçeneği Ekle" variant="new" />}
       </div>
 
       <div>
@@ -172,10 +170,10 @@ function RouteContentFields({
         {routeNotes.map((note, index) => (
           <div key={index} style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
             <input dir={direction} style={{ ...inputStyle, flex: '1 1 200px' }} value={note} placeholder="Örn: Akşam saatlerinde TEM bağlantılarında yoğunluk görülebilir." onChange={(event) => onChange({ routeNotes: routeNotes.map((item, itemIndex) => itemIndex === index ? event.target.value : item) })} />
-            <button type="button" onClick={() => onChange({ routeNotes: routeNotes.filter((_, itemIndex) => itemIndex !== index) })} style={{ ...btnStyleDelete, flex: '0 0 auto' }}>Sil</button>
+            <AdminActionButton type="button" onClick={() => onChange({ routeNotes: routeNotes.filter((_, itemIndex) => itemIndex !== index) })} label="Sil" variant="delete" />
           </div>
         ))}
-        {routeNotes.length < 12 && <button type="button" onClick={() => onChange({ routeNotes: [...routeNotes, ''] })} style={btnStyleAdd}>+ Not ekle</button>}
+        {routeNotes.length < 12 && <AdminActionButton type="button" onClick={() => onChange({ routeNotes: [...routeNotes, ''] })} label="Not Ekle" variant="new" />}
       </div>
 
       <div>
@@ -189,7 +187,7 @@ function RouteContentFields({
                 <input dir={direction} style={inputStyle} value={faq.question} placeholder="Soru" onChange={(event) => updateFaq(index, 'question', event.target.value)} />
               </div>
               <div style={{ marginTop: '19px', flex: '0 0 auto' }}>
-                <button type="button" onClick={() => onChange({ faqItems: faqItems.filter((_, itemIndex) => itemIndex !== index) })} style={btnStyleDelete}>Sil</button>
+                <AdminActionButton type="button" onClick={() => onChange({ faqItems: faqItems.filter((_, itemIndex) => itemIndex !== index) })} label="Sil" variant="delete" />
               </div>
             </div>
             <div>
@@ -198,7 +196,7 @@ function RouteContentFields({
             </div>
           </div>
         ))}
-        {faqItems.length < 12 && <button type="button" onClick={() => onChange({ faqItems: [...faqItems, { question: '', answer: '' }] })} style={btnStyleAdd}>+ SSS ekle</button>}
+        {faqItems.length < 12 && <AdminActionButton type="button" onClick={() => onChange({ faqItems: [...faqItems, { question: '', answer: '' }] })} label="SSS Ekle" variant="new" />}
       </div>
     </div>
   );
@@ -344,7 +342,7 @@ function RouteImageEditor({ imagePath, imageAlt, onImageChange, onImageCreated, 
               <input id="transfer-route-image-alt" style={inputStyle} value={imageAlt ?? ''} onChange={e => onImageChange(imagePath, e.target.value)} placeholder="Görseli açıklayan metin" />
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button type="button" onClick={() => onImageChange('', '')} style={{ minHeight: '44px', fontSize: '13px', color: '#D64545', background: 'none', border: `1px solid #FECACA`, borderRadius: '6px', cursor: 'pointer', padding: '0 16px', fontWeight: 600 }}>Kaldır / Değiştir</button>
+              <AdminActionButton type="button" onClick={() => onImageChange('', '')} label="Kaldır / Değiştir" variant="delete" />
             </div>
           </div>
         </div>
@@ -392,9 +390,7 @@ function RouteImageEditor({ imagePath, imageAlt, onImageChange, onImageCreated, 
         {activeTab === 'url' && (
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <input style={{ ...inputStyle, flex: '1 1 200px' }} placeholder="https://example.com/image.jpg" value={urlInput} onChange={e => setUrlInput(e.target.value)} disabled={loading} />
-             <button type="button" onClick={handleUrl} disabled={loading || !urlInput} style={{ minHeight: '44px', background: '#2563EB', color: '#FFF', border: 'none', borderRadius: '6px', padding: '0 20px', fontSize: '13px', fontWeight: 600, cursor: loading || !urlInput ? 'not-allowed' : 'pointer', opacity: loading || !urlInput ? 0.6 : 1, flex: '0 0 auto' }}>
-              {loading ? <Loader2 size={16} className="animate-spin" /> : 'Ekle'}
-            </button>
+             <AdminActionButton type="button" onClick={handleUrl} disabled={loading || !urlInput} loading={loading} label="Ekle" variant="new" />
           </div>
         )}
 
@@ -403,9 +399,7 @@ function RouteImageEditor({ imagePath, imageAlt, onImageChange, onImageCreated, 
             <p style={{ fontSize: '13px', color: MUTED, marginBottom: '16px', lineHeight: 1.5 }}>
               Girilen güzergâh bilgilerine (Kalkış ve Varış) uygun, özgün bir görsel oluşturulur. İşlem birkaç saniye sürebilir.
             </p>
-            <button type="button" onClick={handleAI} disabled={loading || !form.origin || !form.destination} style={{ minHeight: '44px', background: '#0EA5E9', color: '#FFF', border: 'none', borderRadius: '8px', padding: '10px 24px', fontSize: '13px', fontWeight: 600, cursor: loading || !form.origin || !form.destination ? 'not-allowed' : 'pointer', opacity: loading || !form.origin || !form.destination ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-              {loading ? <Loader2 size={16} className="animate-spin" /> : 'Görsel Oluştur'}
-            </button>
+            <AdminActionButton type="button" onClick={handleAI} disabled={loading || !form.origin || !form.destination} loading={loading} label="Görsel Oluştur" variant="new" />
             {(!form.origin || !form.destination) && <div style={{ fontSize: '12px', color: '#D64545', marginTop: '12px' }}>Önce Kalkış ve Varış bilgilerini doldurun.</div>}
           </div>
         )}
@@ -424,8 +418,8 @@ function ConfirmDialog({ title, message, onConfirm, onCancel }: {
         <h3 style={{ color: TEXT, fontSize: '15px', fontFamily: 'Inter, sans-serif', fontWeight: 600, margin: '0 0 10px' }}>{title}</h3>
         <p style={{ color: MUTED, fontSize: '13px', fontFamily: 'Inter, sans-serif', margin: '0 0 24px', lineHeight: 1.6 }}>{message}</p>
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-          <button onClick={onCancel} style={{ minHeight: '44px', background: BG, border: `1px solid ${BORDER}`, borderRadius: '8px', color: MUTED, cursor: 'pointer', padding: '8px 24px', fontSize: '13px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>Vazgeç</button>
-          <button onClick={onConfirm} style={{ minHeight: '44px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#D64545', cursor: 'pointer', padding: '8px 24px', fontSize: '13px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>Sil</button>
+          <AdminActionButton onClick={onCancel} label="Vazgeç" variant="cancel" manage={false} />
+          <AdminActionButton onClick={onConfirm} label="Sil" variant="delete" />
         </div>
       </div>
     </div>
@@ -836,7 +830,7 @@ function RouteModal({ route, locationOptions, vehicleOptions, serviceOptions, on
                    <input type="checkbox" checked={aiFillIncludeImage} onChange={e => setAiFillIncludeImage(e.target.checked)} disabled={aiFilling} style={{ width: '16px', height: '16px', cursor: aiFilling ? 'not-allowed' : 'pointer' }} />
                   Görseli de oluştur
                 </label>
-                 <button
+                 <AdminActionButton
                   type="button"
                   onClick={fillWithAI}
                     disabled={aiFilling || !form.name || !form.origin || !form.destination}
@@ -846,10 +840,7 @@ function RouteModal({ route, locationOptions, vehicleOptions, serviceOptions, on
                      opacity: aiFilling || !form.name || !form.origin || !form.destination ? 0.6 : 1,
                     display: 'flex', alignItems: 'center', gap: '8px'
                   }}
-                >
-                   {aiFilling && <Loader2 size={16} className="animate-spin" />}
-                  Otomatik Doldur
-                </button>
+                 label="Otomatik Doldur" variant="new" />
               </div>
             </div>
             {aiFillMessage && (
@@ -913,10 +904,7 @@ function RouteModal({ route, locationOptions, vehicleOptions, serviceOptions, on
             Rota yaka geçişi içeriyor
           </label>
           <div style={{ background: '#F8FAFC', border: `1px solid ${BORDER}`, borderRadius: '8px', padding: '16px', display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
-            <button type="button" onClick={resolveGoogleMapsDistance} disabled={resolvingDistance || !form.originLocationId || !form.destinationLocationId} style={{ minHeight: '44px', display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '7px', color: '#1D4ED8', padding: '0 20px', fontSize: '13px', fontWeight: 600, cursor: resolvingDistance ? 'wait' : 'pointer', opacity: !form.originLocationId || !form.destinationLocationId ? 0.55 : 1 }}>
-              {resolvingDistance ? <Loader2 size={16} className="animate-spin" /> : <MapPinned size={16} />}
-              Google Maps Yol Mesafesini Getir
-            </button>
+            <AdminActionButton type="button" onClick={resolveGoogleMapsDistance} disabled={resolvingDistance || !form.originLocationId || !form.destinationLocationId} loading={resolvingDistance} label="Google Maps Yol Mesafesini Getir" icon={MapPinned} variant="subtle" />
             {distanceMessage && <span style={{ width: '100%', color: MUTED, fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>{distanceMessage}</span>}
           </div>
           <div>
@@ -1023,15 +1011,12 @@ function RouteModal({ route, locationOptions, vehicleOptions, serviceOptions, on
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '16px', paddingTop: '16px', borderTop: `1px solid ${BORDER}`, flexWrap: 'wrap', flex: '0 0 auto', background: BG }}>
-          <button onClick={closeModal} disabled={saving || closing} style={{ minHeight: '44px', background: BG, border: `1px solid ${BORDER}`, borderRadius: '8px', color: MUTED, cursor: saving || closing ? 'wait' : 'pointer', padding: '0 24px', fontSize: '13px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>İptal</button>
-          <button
+          <AdminActionButton onClick={closeModal} disabled={saving || closing} label="İptal" variant="cancel" manage={false} />
+          <AdminActionButton
             onClick={() => onSave(form)}
              disabled={saving || closing || aiFilling || !form.name || !form.origin || !form.destination}
              style={{ minHeight: '44px', background: '#2563EB', border: 'none', borderRadius: '8px', color: '#FFFFFF', cursor: saving || closing || aiFilling ? 'wait' : 'pointer', padding: '0 24px', fontSize: '13px', fontFamily: 'Inter, sans-serif', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', opacity: saving || closing || aiFilling ? 0.7 : 1 }}
-          >
-            <Check size={16} />
-            {saving ? 'Kaydediliyor…' : 'Kaydet'}
-          </button>
+            label={saving ? 'Kaydediliyor…' : 'Kaydet'} icon={Check} variant="save" />
         </div>
       </div>
     </div>
@@ -1183,13 +1168,7 @@ export default function TransferRotalariList() {
       `}</style>
       {/* Add button */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-        <button
-          onClick={() => setModal({ ...EMPTY })}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', minHeight: '44px', padding: '0 20px', borderRadius: '8px', background: '#2563EB', color: '#FFFFFF', fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif', border: 'none', cursor: 'pointer' }}
-        >
-          <Plus size={16} />
-          Yeni Güzergah Ekle
-        </button>
+        <AdminActionButton onClick={() => setModal({ ...EMPTY })} label="Yeni Güzergah Ekle" icon={Plus} variant="new" />
       </div>
 
       {/* Action error */}

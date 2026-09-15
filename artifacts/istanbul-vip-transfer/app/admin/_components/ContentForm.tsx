@@ -2,10 +2,11 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, CheckCircle, Globe, Archive, Save, Loader2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Globe, Archive, Save } from 'lucide-react';
 import { STATUS_LABELS, type ContentStatus } from '@/lib/workflow';
 import { ImageUploadField } from './ImageUploadField';
 import { AISeoGenerator } from './AISeoGenerator';
+import { AdminActionButton } from './AdminActionButton';
 
 type ContentType = 'PAGE' | 'SERVICE' | 'BLOG_POST';
 
@@ -425,107 +426,21 @@ export default function ContentForm({ mode, contentType, initialData, backUrl }:
       {/* Action buttons */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '8px' }}>
         {/* Save */}
-        <button
-          type="submit"
-          disabled={saving}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '7px',
-            padding: '10px 20px',
-            borderRadius: '8px',
-            background: saving ? '#93C5FD' : '#2563EB',
-            color: '#FFFFFF',
-            fontWeight: 600,
-            fontSize: '13px',
-            fontFamily: 'Inter, sans-serif',
-            border: 'none',
-            cursor: saving ? 'not-allowed' : 'pointer',
-          }}
-        >
-          {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-          {saving ? 'Kaydediliyor...' : 'Kaydet'}
-        </button>
+        <AdminActionButton type="submit" label={saving ? 'Kaydediliyor...' : 'Kaydet'} icon={Save} variant="save" loading={saving} />
 
         {/* Approve */}
         {isEdit && ['DRAFT', 'RESEARCH', 'REVIEW'].includes(initialData?.status ?? '') && (
-          <button
-            type="button"
-            onClick={() => handleAction('approve')}
-            disabled={actionLoading === 'approve'}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '7px',
-              padding: '10px 20px',
-              borderRadius: '8px',
-              background: '#168C5B',
-              color: '#FFFFFF',
-              border: 'none',
-              fontWeight: 600,
-              fontSize: '13px',
-              fontFamily: 'Inter, sans-serif',
-              cursor: actionLoading === 'approve' ? 'not-allowed' : 'pointer',
-              opacity: actionLoading === 'approve' ? 0.6 : 1,
-            }}
-          >
-            <CheckCircle size={14} />
-            {actionLoading === 'approve' ? 'Onaylanıyor...' : 'Onayla'}
-          </button>
+          <AdminActionButton label={actionLoading === 'approve' ? 'Onaylanıyor...' : 'Onayla'} icon={CheckCircle} variant="activate" loading={actionLoading === 'approve'} onClick={() => handleAction('approve')} />
         )}
 
         {/* Publish */}
         {isEdit && initialData?.status === 'APPROVED' && (
-          <button
-            type="button"
-            onClick={() => handleAction('publish')}
-            disabled={actionLoading === 'publish'}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '7px',
-              padding: '10px 20px',
-              borderRadius: '8px',
-              background: '#2563EB',
-              color: '#FFFFFF',
-              border: 'none',
-              fontWeight: 600,
-              fontSize: '13px',
-              fontFamily: 'Inter, sans-serif',
-              cursor: actionLoading === 'publish' ? 'not-allowed' : 'pointer',
-              opacity: actionLoading === 'publish' ? 0.6 : 1,
-            }}
-          >
-            <Globe size={14} />
-            {actionLoading === 'publish' ? 'Yayınlanıyor...' : 'Yayınla'}
-          </button>
+          <AdminActionButton label={actionLoading === 'publish' ? 'Yayınlanıyor...' : 'Yayınla'} icon={Globe} variant="save" loading={actionLoading === 'publish'} onClick={() => handleAction('publish')} />
         )}
 
         {/* Archive */}
         {isEdit && ['PUBLISHED', 'APPROVED', 'SCHEDULED'].includes(initialData?.status ?? '') && (
-          <button
-            type="button"
-            onClick={() => handleAction('archive')}
-            disabled={actionLoading === 'archive'}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '7px',
-              padding: '10px 20px',
-              borderRadius: '8px',
-              background: '#FEF2F2',
-              color: '#D64545',
-              border: '1px solid #FECACA',
-              fontWeight: 600,
-              fontSize: '13px',
-              fontFamily: 'Inter, sans-serif',
-              cursor: actionLoading === 'archive' ? 'not-allowed' : 'pointer',
-              opacity: actionLoading === 'archive' ? 0.6 : 1,
-            }}
-          >
-            <Archive size={14} />
-            {actionLoading === 'archive' ? 'Arşivleniyor...' : 'Arşivle'}
-          </button>
+          <AdminActionButton label={actionLoading === 'archive' ? 'Arşivleniyor...' : 'Arşivle'} icon={Archive} variant="archive" loading={actionLoading === 'archive'} onClick={() => handleAction('archive')} />
         )}
       </div>
     </form>

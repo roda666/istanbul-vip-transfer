@@ -57,6 +57,7 @@ export type AdminSecurityAuditRecord = {
   pathname: string;
   method: string;
   permission?: string;
+  section?: string;
   reason?: AdminAuditReason;
   metadata: AuditMetadata;
 };
@@ -115,6 +116,7 @@ export function createAdminSecurityAuditWriter(
       auditAttemptId: attemptId,
       method,
       permission: input.permission,
+      section: input.section,
       reason: input.reason,
     };
     const record: AdminSecurityAuditRecord = {
@@ -123,6 +125,7 @@ export function createAdminSecurityAuditWriter(
       pathname,
       method,
       permission: input.permission,
+      section: input.section,
       reason: input.reason,
       metadata,
     };

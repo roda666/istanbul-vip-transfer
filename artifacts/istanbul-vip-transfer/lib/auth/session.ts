@@ -10,7 +10,9 @@ import { eq } from 'drizzle-orm';
 import {
   getCurrentAdminSessionStatus,
   type AdminRole,
+  type AdminCapabilities,
 } from './authorization';
+import { getAdminCapabilities } from './grants';
 
 export interface SessionData {
   adminId: string;
@@ -21,6 +23,8 @@ export interface SessionData {
   /** Incremented on every password change to invalidate other active sessions. */
   sessionVersion: number;
 }
+
+export type AdminRequestContext = SessionData & { capabilities: AdminCapabilities };
 
 export function getAdminSessionErrorStatus(error: unknown): 401 | 403 | 503 {
   const status = typeof error === 'object' && error !== null && 'status' in error
@@ -94,7 +98,7 @@ export async function getSession() {
  * Require an authenticated session.
  * Returns session data or throws a 401-style error.
  */
-export async function requireAdminSession(): Promise<SessionData> {
+export async function requireAdminSession(): Promise<AdminRequestContext> {
   let session;
   try {
     session = await getSession();
@@ -130,6 +134,13 @@ export async function requireAdminSession(): Promise<SessionData> {
     throw Object.assign(new Error(status === 401 ? 'Unauthorized' : 'Forbidden'), { status });
   }
 
+  let capabilities;
+  try {
+    capabilities = await getAdminCapabilities(user.id, user.role as AdminRole);
+  } catch {
+    throw Object.assign(new Error('Authentication service unavailable'), { status: 503 });
+  }
+
   return {
     adminId: user.id,
     email: user.email,
@@ -137,5 +148,6 @@ export async function requireAdminSession(): Promise<SessionData> {
     name: user.name,
     isLoggedIn: true,
     sessionVersion: user.sessionVersion,
+    capabilities,
   };
 }

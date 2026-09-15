@@ -13,6 +13,8 @@ import type {
   HomepageSeoData,
 } from '@/lib/homepage-types';
 import { HOMEPAGE_FALLBACK } from '@/lib/homepage-types';
+import { AdminActionButton } from '@/app/admin/_components/AdminActionButton';
+import { Check, Lock, LockOpen, RefreshCw, Rocket, Save, Unlock, X } from 'lucide-react';
 
 // ── Safe JSON fetch helper ─────────────────────────────────────────────────
 // Reads response.text() first so an empty body or HTML error page never throws
@@ -193,18 +195,7 @@ function HeroImagePresets({ currentPath, onSelect }: { currentPath: string; onSe
                   {preset.description}
                 </p>
                 {!isActive && (
-                  <button
-                    type="button"
-                    onClick={() => onSelect(preset.path)}
-                    style={{
-                      padding: '5px 12px', borderRadius: '6px',
-                      background: '#172B3A', color: '#FFFFFF',
-                      border: 'none', fontSize: '11px', fontWeight: 600,
-                      cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-                    }}
-                  >
-                    Bu Görseli Seç
-                  </button>
+                  <AdminActionButton type="button" label="Bu Görseli Seç" variant="subtle" manage={false} onClick={() => onSelect(preset.path)} className="text-xs" />
                 )}
                 {isActive && (
                   <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: '#C79A35', fontWeight: 600 }}>
@@ -376,8 +367,8 @@ function ReviewModerationList() {
   }
   return <section aria-label="Google yorum moderasyonu" style={{ marginTop: 18, borderTop: '1px solid #E2E8F0', paddingTop: 14 }}>
     <h3 style={{ fontSize: 13 }}>Google yorumları</h3>
-    {error && <p role="alert" style={{ color: '#B91C1C' }}>{error} <button type="button" onClick={() => void load()}>Yeniden dene</button></p>}
-    {loading ? <p aria-busy="true">Yorumlar yükleniyor…</p> : reviews.length === 0 ? <p>Henüz senkronlanmış yorum yok.</p> : reviews.map(review => <div key={review.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #F1F5F9' }}><span style={{ flex: 1 }}><strong>{review.reviewerName}</strong><br /><small>{review.reviewText}</small></span><span aria-label={review.reviewedAt ? 'İncelendi' : 'İnceleme bekliyor'}>{review.reviewedAt ? 'İncelendi' : 'İnceleme bekliyor'}</span><button type="button" disabled={busy === review.id} onClick={() => void mark(review)}>{busy === review.id ? 'Kaydediliyor…' : review.reviewedAt ? 'İnceleme işaretini kaldır' : 'İncelendi olarak işaretle'}</button></div>)}
+     {error && <p role="alert" style={{ color: '#B91C1C' }}>{error} <button type="button" onClick={() => void load()}>Yeniden dene</button></p>}
+    {loading ? <p aria-busy="true">Yorumlar yükleniyor…</p> : reviews.length === 0 ? <p>Henüz senkronlanmış yorum yok.</p> : reviews.map(review => <div key={review.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #F1F5F9' }}><span style={{ flex: 1 }}><strong>{review.reviewerName}</strong><br /><small>{review.reviewText}</small></span><span aria-label={review.reviewedAt ? 'İncelendi' : 'İnceleme bekliyor'}>{review.reviewedAt ? 'İncelendi' : 'İnceleme bekliyor'}</span><AdminActionButton type="button" disabled={busy === review.id} label={busy === review.id ? 'Kaydediliyor…' : review.reviewedAt ? 'İnceleme işaretini kaldır' : 'İncelendi olarak işaretle'} icon={Check} variant={review.reviewedAt ? 'subtle' : 'activate'} onClick={() => void mark(review)} /></div>)}
   </section>;
 }
 
@@ -496,21 +487,6 @@ function TranslationInfoPanel({
   const locked = record.isManuallyLocked;
   const lastAt = record.lastTranslatedAt;
 
-  const btn = (label: string, onClick: () => void, variant: 'primary' | 'danger' | 'ghost' = 'ghost') => {
-    const styles: Record<string, React.CSSProperties> = {
-      primary: { background: '#2563EB', color: '#FFF', border: 'none' },
-      danger:  { background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' },
-      ghost:   { background: '#F8FAFC', color: '#334155', border: '1px solid #CBD5E1' },
-    };
-    return (
-      <button onClick={onClick} disabled={busy} className="hpe-txpanel-btn" style={{
-        ...styles[variant], padding: '7px 14px', borderRadius: '7px',
-        fontSize: '12px', fontWeight: 600, cursor: busy ? 'wait' : 'pointer',
-        fontFamily: 'Inter, sans-serif', opacity: busy ? 0.7 : 1,
-      }}>{label}</button>
-    );
-  };
-
   return (
     <div style={{ padding: '14px 16px', background: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0', marginBottom: '16px' }}>
       {/* Status row */}
@@ -553,27 +529,27 @@ function TranslationInfoPanel({
         {/* Re-translate when unlocked and in a retriable state (includes DRAFT) */}
         {(status === 'FAILED' || status === 'OUTDATED' || status === 'NOT_STARTED' ||
           status === 'QUEUED' || status === 'DRAFT') && !locked && (
-          btn('🔄 Yeniden Çevir', onRetry, 'primary')
+          <AdminActionButton label="Yeniden Çevir" icon={RefreshCw} variant="new" onClick={onRetry} disabled={busy} />
         )}
         {/* Locked + OUTDATED: combined unlock-and-retranslate to reach a fresh DRAFT */}
         {status === 'OUTDATED' && locked && (
-          btn('🔓 Kilidi Kaldır ve Yeniden Çevir', onUnlockAndRetry, 'primary')
+          <AdminActionButton label="Kilidi Kaldır ve Yeniden Çevir" icon={Unlock} variant="new" onClick={onUnlockAndRetry} disabled={busy} />
         )}
         {/* PUBLISHED + locked (source changed): live content is preserved;
             combined unlock-and-retranslate produces a DRAFT for admin review before publish */}
         {status === 'PUBLISHED' && locked && record.failureReason && (
-          btn('🔓 Kilidi Kaldır ve Yeniden Çevir', onUnlockAndRetry, 'primary')
+          <AdminActionButton label="Kilidi Kaldır ve Yeniden Çevir" icon={Unlock} variant="new" onClick={onUnlockAndRetry} disabled={busy} />
         )}
         {/* Publish: available from DRAFT, REVIEW, or APPROVED */}
         {(status === 'DRAFT' || status === 'REVIEW' || status === 'APPROVED') && (
-          btn('🚀 Yayımla', onPublish, 'primary')
+          <AdminActionButton label="Yayımla" icon={Rocket} variant="activate" onClick={onPublish} disabled={busy} />
         )}
         {/* Unpublish */}
-        {status === 'PUBLISHED' && btn('Yayından Kaldır', onUnpublish, 'danger')}
+        {status === 'PUBLISHED' && <AdminActionButton label="Yayından Kaldır" icon={X} variant="deactivate" onClick={onUnpublish} disabled={busy} />}
         {/* Manual lock / unlock (ghost — secondary action) */}
         {locked
-          ? btn('🔓 Yalnızca Kilidi Kaldır', onUnlock, 'ghost')
-          : btn('🔒 Manuel Kilitli Yap', onLock, 'ghost')
+          ? <AdminActionButton label="Yalnızca Kilidi Kaldır" icon={LockOpen} variant="subtle" onClick={onUnlock} disabled={busy} />
+          : <AdminActionButton label="Manuel Kilitli Yap" icon={Lock} variant="subtle" onClick={onLock} disabled={busy} />
         }
       </div>
     </div>
@@ -1067,15 +1043,13 @@ export default function HomepageEditor({ initialTrRecord, locales }: { initialTr
         {/* TR tab: saves + AI-translates to enabled languages; publish is admin-controlled */}
         {isSource && (
           <>
-            <button onClick={saveAndPublish} disabled={saving}
-              style={{
-                padding: '9px 18px', borderRadius: '8px',
-                background: '#C79A35', border: 'none', color: '#102A43',
-                fontSize: '13px', fontWeight: 600, cursor: saving ? 'wait' : 'pointer',
-                opacity: saving ? 0.7 : 1, fontFamily: 'Inter, sans-serif',
-              }}>
-              {saving ? '⏳ İşleniyor…' : autoPublish ? '🌐 Kaydet ve Tüm Dillerde Yayımla' : '💾 Kaydet ve Taslak Çevir'}
-            </button>
+            <AdminActionButton
+              label={saving ? 'İşleniyor…' : autoPublish ? 'Kaydet ve Tüm Dillerde Yayımla' : 'Kaydet ve Taslak Çevir'}
+              icon={Save}
+              variant="save"
+              onClick={() => void saveAndPublish()}
+              disabled={saving}
+            />
             <label className="hpe-abar-autopub" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#334155', fontFamily: 'Inter, sans-serif', cursor: 'pointer', userSelect: 'none' }}>
               <input type="checkbox" checked={autoPublish} onChange={(e) => setAutoPublish(e.target.checked)} disabled={saving} />
               Otomatik yayınla
@@ -1085,10 +1059,7 @@ export default function HomepageEditor({ initialTrRecord, locales }: { initialTr
 
         {/* TR Yayından kaldır */}
         {isSource && currentRecord?.status === 'PUBLISHED' && (
-          <button onClick={() => publish('unpublish')} disabled={publishing}
-            style={{ padding: '9px 18px', borderRadius: '8px', background: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
-            Yayından Kaldır
-          </button>
+          <AdminActionButton label="Yayından Kaldır" icon={X} variant="deactivate" onClick={() => void publish('unpublish')} disabled={publishing} />
         )}
 
         {/* Translation log */}

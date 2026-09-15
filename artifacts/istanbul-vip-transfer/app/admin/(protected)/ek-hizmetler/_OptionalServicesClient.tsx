@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { AlertCircle, Check, Loader2, PackagePlus, Plus, RefreshCw, X } from 'lucide-react';
 import { AdminRecordActions } from '../../_components/AdminRecordActions';
+import { AdminActionButton } from '../../_components/AdminActionButton';
 
 type OptionalService = {
   id: string; key: string; name: string; shortDescription: string | null; currency: 'TRY' | 'EUR' | 'USD'; unitAmount: number;
@@ -41,11 +42,8 @@ function ConfirmDialog({ title, message, confirmLabel, danger, loading, onConfir
         <h3 style={{ color: '#172B3A', fontSize: '16px', fontFamily: 'Inter, sans-serif', fontWeight: 600, margin: '0 0 10px' }}>{title}</h3>
         <p style={{ color: '#52697A', fontSize: '13px', fontFamily: 'Inter, sans-serif', margin: '0 0 24px', lineHeight: 1.6 }}>{message}</p>
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-          <button disabled={loading} onClick={onCancel} style={{ background: '#F1F5F9', color: '#52697A', fontWeight: 400, border: 'none', borderRadius: '8px', padding: '8px 18px', fontSize: '13px', fontFamily: 'Inter, sans-serif', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}>Vazgeç</button>
-          <button aria-busy={loading} disabled={loading} onClick={onConfirm} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: danger ? '#FEF2F2' : '#2563EB', color: danger ? '#D64545' : '#fff', border: danger ? '1px solid #FECACA' : 'none', fontWeight: danger ? 500 : 600, borderRadius: '8px', padding: '8px 18px', fontSize: '13px', fontFamily: 'Inter, sans-serif', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}>
-            {loading && <Loader2 size={14} className="animate-spin" />}
-            {confirmLabel}
-          </button>
+          <AdminActionButton label="Vazgeç" variant="cancel" manage={false} onClick={onCancel} disabled={loading} />
+          <AdminActionButton label={confirmLabel} variant={danger ? 'delete' : 'save'} onClick={onConfirm} loading={loading} />
         </div>
       </div>
     </div>
@@ -180,12 +178,12 @@ export default function OptionalServicesClient() {
         </label>
         <div className="flex gap-2">
           <button type="button" onClick={() => void loadServices()} aria-label="Listeyi Yenile" className="inline-flex h-[44px] w-[44px] sm:w-auto items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white sm:px-3 text-sm font-bold text-slate-700 hover:bg-slate-50"><RefreshCw size={16} /><span className="hidden sm:inline">Yenile</span></button>
-          <button type="button" onClick={() => { setEditing(null); setForm(blankForm); }} className="inline-flex h-[44px] items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-bold text-white hover:bg-blue-700"><Plus size={17} />Yeni hizmet</button>
+           <AdminActionButton type="button" label="Yeni hizmet" icon={Plus} variant="new" onClick={() => { setEditing(null); setForm(blankForm); }} />
         </div>
       </div>
       {error && <div className="flex items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"><span className="flex gap-2"><AlertCircle size={18} />{error}</span><button onClick={() => setError(null)} aria-label="Hata mesajını kapat" className="flex h-11 w-11 items-center justify-center -mr-2 -mt-2"><X size={17} /></button></div>}
       {loading ? <div className="rounded-xl border border-slate-200 bg-white p-8 text-slate-600"><Loader2 size={20} className="inline animate-spin text-blue-600" /> <span className="ml-2 text-sm font-semibold">Ek hizmetler yükleniyor…</span></div>
-        : services.length === 0 ? <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center"><PackagePlus size={28} className="mx-auto text-slate-400" /><p className="mt-3 font-bold text-slate-900">{showArchived ? 'Arşivlenmiş hizmet yok' : 'Henüz ek hizmet tanımlanmadı'}</p><button type="button" onClick={() => { setEditing(null); setForm(blankForm); }} className="mt-4 text-sm font-bold text-blue-700 hover:underline min-h-[44px]">İlk hizmeti ekle</button></div>
+         : services.length === 0 ? <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center"><PackagePlus size={28} className="mx-auto text-slate-400" /><p className="mt-3 font-bold text-slate-900">{showArchived ? 'Arşivlenmiş hizmet yok' : 'Henüz ek hizmet tanımlanmadı'}</p><AdminActionButton type="button" label="İlk hizmeti ekle" icon={Plus} variant="new" onClick={() => { setEditing(null); setForm(blankForm); }} className="mt-4" /></div>
         : (
           <>
             <div className="hidden min-[481px]:block overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -322,7 +320,7 @@ function ServiceForm({ form, editing, serviceTypes, saving, onChange, onClose, o
             <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-medium text-slate-700"><input type="checkbox" checked={form.customerVisible} onChange={(e) => onChange('customerVisible', e.target.checked)} className="h-4 w-4" />Müşteriye görünür (yalnız ayrı ücretli hizmetlerde)</label>
           </div>
         </div>
-        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button type="button" onClick={onClose} className="min-h-11 rounded-lg border border-slate-200 px-4 text-sm font-bold text-slate-700">Vazgeç</button><button type="button" disabled={saving || !canSave} onClick={onSave} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-bold text-white disabled:opacity-60">{saving && <Loader2 size={16} className="animate-spin" />}{editing ? 'Kaydet' : 'Hizmet oluştur'}</button></div>
+         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><AdminActionButton type="button" label="Vazgeç" variant="cancel" manage={false} onClick={onClose} /><AdminActionButton type="button" label={editing ? 'Kaydet' : 'Hizmet oluştur'} variant={editing ? 'save' : 'new'} icon={editing ? undefined : Plus} loading={saving} disabled={!canSave} onClick={onSave} /></div>
       </div>
     </div>
   );

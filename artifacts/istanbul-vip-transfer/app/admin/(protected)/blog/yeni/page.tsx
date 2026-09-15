@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { AdminActionButton } from '../../../_components/AdminActionButton';
 
 function slugify(t: string) {
   return t.toLowerCase()
@@ -96,13 +97,7 @@ export default function YeniBlogPage() {
           </div>
         </div>
 
-        <button type="submit" disabled={loading || !title.trim()} style={{
-          padding: '10px 24px', background: loading ? '#93C5FD' : '#2563EB', color: '#FFFFFF',
-          border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer',
-          fontFamily: 'Inter, sans-serif',
-        }}>
-          {loading ? 'Oluşturuluyor…' : 'Oluştur ve Düzenle →'}
-        </button>
+        <AdminActionButton type="submit" label={loading ? 'Oluşturuluyor…' : 'Oluştur ve Düzenle'} variant="new" loading={loading} disabled={!title.trim()} />
       </form>
     </div>
   );

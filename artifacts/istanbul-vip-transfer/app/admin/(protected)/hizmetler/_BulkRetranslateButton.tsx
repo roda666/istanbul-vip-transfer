@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { AdminActionButton } from '../../_components/AdminActionButton';
+import { Languages } from 'lucide-react';
 
 type QueuedTask = { jobId: string; taskId: string };
 
@@ -73,27 +75,7 @@ export default function BulkRetranslateButton() {
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-      <button
-        type="button"
-        onClick={runAll}
-        disabled={isRunning}
-        style={{
-          minHeight: '44px',
-          border: '1px solid #7C3AED',
-          background: isRunning ? '#EDE9FE' : '#F5F3FF',
-          color: '#5B21B6',
-          borderRadius: '8px',
-          padding: '8px 14px',
-          fontSize: '12px',
-          fontWeight: 700,
-          fontFamily: 'Inter, sans-serif',
-          cursor: isRunning ? 'wait' : 'pointer',
-        }}
-      >
-        {isRunning
-          ? `Çevriliyor… ${progress?.done ?? 0}/${progress?.total ?? 0}`
-          : '↺ Tüm Hizmetleri Yeniden Çevir'}
-      </button>
+      <AdminActionButton type="button" onClick={runAll} loading={isRunning} label={isRunning ? `Çevriliyor… ${progress?.done ?? 0}/${progress?.total ?? 0}` : 'Tüm Hizmetleri Yeniden Çevir'} icon={Languages} variant="subtle" />
       {message && (
         <span role="status" style={{ fontSize: '11px', color: '#475569', fontFamily: 'Inter, sans-serif' }}>
           {message}

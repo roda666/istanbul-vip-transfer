@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Check, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { AdminActionButton } from '../../_components/AdminActionButton';
 
 const CARD = '#FFFFFF';
 const BORDER = '#D8E1E9';
 const NAVY = '#172B3A';
 const MUTED = '#52697A';
-const BLUE = '#2563EB';
 const RED = '#D64545';
 
 type RouteOption = { id: string; name: string; active: boolean };
@@ -70,9 +70,7 @@ function formatMoney(amountCents: number, currency: string) {
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (value: boolean) => void; label: string }) {
   return (
     <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none' }}>
-      <button type="button" aria-pressed={checked} onClick={() => onChange(!checked)} style={{ width: '42px', height: '23px', border: 'none', borderRadius: '14px', position: 'relative', cursor: 'pointer', background: checked ? BLUE : '#CBD5E0', padding: 0 }}>
-        <span style={{ position: 'absolute', top: '3px', left: checked ? '22px' : '3px', width: '17px', height: '17px', borderRadius: '50%', background: '#FFFFFF', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-      </button>
+      <AdminActionButton type="button" label={label} variant={checked ? 'activate' : 'subtle'} ariaLabel={label} onClick={() => onChange(!checked)} className="min-h-11 px-2 text-xs" />
       <span style={{ color: NAVY, fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>{label}</span>
     </label>
   );
@@ -184,8 +182,8 @@ function RuleModal({
         </div>
         <p style={{ margin: '16px 0 0', fontSize: '12px', color: MUTED, fontFamily: 'Inter, sans-serif', lineHeight: 1.55 }}>Kural kaydedildiği anda geçerli olur. Geçici olarak devre dışı bırakmak için etkinlik anahtarını kullanın.</p>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '22px' }}>
-          <button type="button" onClick={onClose} style={{ border: `1px solid ${BORDER}`, background: CARD, borderRadius: '8px', color: MUTED, padding: '9px 16px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>İptal</button>
-          <button type="button" disabled={saving} onClick={save} style={{ border: 'none', background: BLUE, borderRadius: '8px', color: '#FFFFFF', padding: '9px 16px', cursor: saving ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 700, opacity: saving ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: '6px' }}><Check size={15} />{saving ? 'Kaydediliyor…' : 'Kaydet'}</button>
+          <AdminActionButton label="İptal" variant="cancel" manage={false} onClick={onClose} />
+          <AdminActionButton label={saving ? 'Kaydediliyor…' : 'Kaydet'} icon={Check} variant="save" loading={saving} onClick={save} />
         </div>
       </div>
     </div>
@@ -253,7 +251,7 @@ export default function PriceRulesClient() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <p style={{ margin: 0, color: MUTED, fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>{activeRuleCount} etkin / {rules.length} toplam kural</p>
-        <button type="button" onClick={() => setModalRule(null)} style={{ border: 'none', borderRadius: '8px', background: BLUE, color: '#FFFFFF', padding: '9px 14px', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: '13px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}><Plus size={16} />Yeni fiyat kuralı</button>
+        <AdminActionButton type="button" onClick={() => setModalRule(null)} label="Yeni fiyat kuralı" icon={Plus} variant="new" />
         </div>
       </div>
       {error && <div role="alert" style={{ marginBottom: '14px', border: '1px solid #FECACA', background: '#FEF2F2', borderRadius: '8px', padding: '11px 13px', color: RED, fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>{error}</div>}
@@ -269,7 +267,7 @@ export default function PriceRulesClient() {
                 <td style={{ padding: '12px 13px', color: NAVY }}>{rule.vehicleName}</td>
                 <td style={{ padding: '12px 13px', color: NAVY, fontWeight: 700 }}>{formatMoney(rule.amountCents, rule.currency)}</td>
                 <td style={{ padding: '12px 13px' }}><span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 700, background: rule.active ? '#ECFDF5' : '#FEF2F2', color: rule.active ? '#166534' : RED }}>{rule.active ? 'Etkin' : 'Pasif'}</span></td>
-                <td style={{ padding: '12px 13px' }}><div style={{ display: 'flex', gap: '6px' }}><button type="button" onClick={() => setModalRule(rule)} aria-label="Düzenle" style={{ border: 'none', borderRadius: '6px', color: BLUE, background: '#EFF6FF', padding: '6px 8px', cursor: 'pointer' }}><Pencil size={14} /></button><button type="button" onClick={() => void removeRule(rule)} aria-label="Sil" style={{ border: '1px solid #FECACA', borderRadius: '6px', color: RED, background: '#FEF2F2', padding: '6px 8px', cursor: 'pointer' }}><Trash2 size={14} /></button></div></td>
+                <td style={{ padding: '12px 13px' }}><div style={{ display: 'flex', gap: '6px' }}><AdminActionButton type="button" label="Düzenle" icon={Pencil} variant="edit" manage={false} onClick={() => setModalRule(rule)} className="text-xs" /><AdminActionButton type="button" label="Sil" icon={Trash2} variant="delete" onClick={() => void removeRule(rule)} className="text-xs" /></div></td>
               </tr>
             ))}</tbody>
           </table>

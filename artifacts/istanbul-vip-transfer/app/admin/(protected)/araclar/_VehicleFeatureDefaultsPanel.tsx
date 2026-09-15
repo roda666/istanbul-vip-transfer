@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { VEHICLE_FEATURE_CATALOG, PUBLIC_VEHICLE_LOCALES } from '@/lib/vehicle-feature-catalog';
+import { AdminActionButton } from '@/app/admin/_components/AdminActionButton';
 
 const GOLD = '#C9A84C';
 const BORDER = '#D8E1E9';
@@ -86,20 +87,7 @@ export default function VehicleFeatureDefaultsPanel() {
         marginBottom: '20px',
       }}
     >
-      <button
-        onClick={() => setOpen((v) => !v)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          width: '100%',
-          background: 'transparent',
-          border: 'none',
-          cursor: 'pointer',
-          padding: 0,
-          minHeight: '44px',
-        }}
-      >
+      <AdminActionButton onClick={() => setOpen((v) => !v)} label={open ? 'Kapat' : 'Düzenle'} variant="edit" manage={false} className="w-full justify-between">
         <div style={{ textAlign: 'left' }}>
           <div style={{ color: TEXT, fontSize: '14px', fontWeight: 600, fontFamily: 'Inter, sans-serif' }}>
             Varsayılan Özellikler
@@ -108,10 +96,8 @@ export default function VehicleFeatureDefaultsPanel() {
             Kendi özelliği tanımlanmamış araçlarda gösterilecek ortak liste
           </div>
         </div>
-        <span style={{ color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>
-          {open ? 'Kapat ▲' : 'Düzenle ▼'}
-        </span>
-      </button>
+        <span style={{ color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>{open ? '▲' : '▼'}</span>
+      </AdminActionButton>
 
       {open && (
          <div style={{ marginTop: '14px' }}>
@@ -154,7 +140,7 @@ export default function VehicleFeatureDefaultsPanel() {
                   <div key={feature.code} style={{ border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '10px', marginBottom: '8px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: MUTED, fontSize: '11px' }}>
                       <span>{feature.code}</span>
-                       <button type="button" onClick={() => setCustomFeatures((prev) => prev.filter((_, i) => i !== index))} style={{ minHeight: '44px', padding: '8px 10px' }}>Kaldır</button>
+                       <AdminActionButton type="button" onClick={() => setCustomFeatures((prev) => prev.filter((_, i) => i !== index))} label="Kaldır" variant="delete" manage={false} />
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: '6px', marginTop: '6px' }}>
                       {PUBLIC_VEHICLE_LOCALES.map((locale) => (
@@ -173,28 +159,10 @@ export default function VehicleFeatureDefaultsPanel() {
                     </div>
                   </div>
                 ))}
-                 <button type="button" onClick={addCustomFeature} style={{ border: `1px solid ${BORDER}`, borderRadius: '7px', minHeight: '44px', padding: '7px 12px', color: TEXT }}>+ Özel özellik ekle</button>
+                 <AdminActionButton type="button" onClick={addCustomFeature} label="Özel Özellik Ekle" variant="new" manage={false} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '14px' }}>
-                <button
-                  onClick={save}
-                  disabled={saving}
-                  style={{
-                    background: '#2563EB',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    borderRadius: '7px',
-                    padding: '9px 18px',
-                    minHeight: '44px',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    fontFamily: 'Inter, sans-serif',
-                    cursor: saving ? 'default' : 'pointer',
-                    opacity: saving ? 0.6 : 1,
-                  }}
-                >
-                  {saving ? 'Kaydediliyor ve çevriliyor…' : 'Kaydet ve Çevir'}
-                </button>
+                <AdminActionButton onClick={save} disabled={saving} loading={saving} label={saving ? 'Kaydediliyor ve çevriliyor…' : 'Kaydet ve Çevir'} variant="save" />
                 {savedAt && !error && (
                   <span style={{ color: '#16A34A', fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>
                     Kaydedildi

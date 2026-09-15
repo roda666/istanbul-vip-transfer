@@ -28,8 +28,9 @@ import {
   getAdminApiPermission,
   getAdminAuthFailureStatus,
   getAdminPagePermission,
+  getAdminSectionForPath,
   getCurrentAdminSessionStatus,
-  hasAdminPermission,
+  hasAdminSectionCapability,
   hasValidAdminMutationOrigin,
   isCronAdminApi,
   isPublicAdminApi,
@@ -38,6 +39,7 @@ import {
   NON_SOURCE_LOCALES,
 } from '@/lib/i18n/locale-registry';
 import { localizedPublicPath } from '@/lib/localized-service-path';
+import { getAdminGrants } from '@/lib/auth/grants';
 
 const COOKIE_NAME      = 'ivt_admin_session';
 const LANG_PREF_COOKIE = 'ivt_lang_pref';
@@ -189,13 +191,30 @@ export async function middleware(request: NextRequest) {
       ? getAdminApiPermission(pathname, request.method)
       : getAdminPagePermission(pathname);
 
-    if (!permission || !hasAdminPermission(currentUser.role, permission)) {
+    let grants: Awaited<ReturnType<typeof getAdminGrants>> = [];
+    try {
+      grants = await getAdminGrants(currentUser.id);
+    } catch {
+      if (isAdminApi(pathname)) return adminApiError('unavailable', 'Authentication service unavailable');
+      return NextResponse.redirect(new URL('/admin/erisim-reddedildi', request.url));
+    }
+    const section = getAdminSectionForPath(pathname);
+    const isMutation = !['GET', 'HEAD', 'OPTIONS'].includes(request.method);
+    const allowed = !!permission && !!section && hasAdminSectionCapability(
+      currentUser.role,
+      section,
+      isMutation ? 'manage' : 'view',
+      grants,
+    );
+
+    if (!allowed) {
       await writeAdminSecurityAudit({
         adminUserId: currentUser.id,
         action: 'ADMIN_ACCESS_DENIED',
         pathname,
         method: request.method,
         permission,
+        section,
         reason: permission ? 'permission_denied' : 'unmapped_admin_route',
       });
       if (isAdminApi(pathname)) return adminApiError('forbidden', 'Forbidden');

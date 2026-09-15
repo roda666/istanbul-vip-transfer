@@ -129,6 +129,26 @@ export const adminUsers = pgTable('admin_users', {
   sessionVersion: integer('session_version').default(1).notNull(),
 });
 
+/** Per-person section grants. Missing rows are denied; SUPER_ADMIN bypasses grants. */
+export const adminSectionGrants = pgTable(
+  'admin_section_grants',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    adminUserId: uuid('admin_user_id')
+      .notNull()
+      .references(() => adminUsers.id, { onDelete: 'cascade' }),
+    section: text('section').notNull(),
+    canView: boolean('can_view').default(false).notNull(),
+    canManage: boolean('can_manage').default(false).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('admin_section_grants_user_section_unique').on(table.adminUserId, table.section),
+    index('admin_section_grants_admin_user_id_idx').on(table.adminUserId),
+  ],
+);
+
 /**
  * Single-use admin password reset links. Expired records are removed by the
  * server scheduler; tracked schema keeps clean deployments consistent.

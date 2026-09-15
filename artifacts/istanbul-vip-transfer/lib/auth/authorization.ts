@@ -37,6 +37,45 @@ export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
 
 export type AdminAuthFailure = 'unauthenticated' | 'forbidden' | 'unavailable';
 
+/**
+ * The grant vocabulary intentionally follows the labels used by the admin
+ * menu.  A grant is section-scoped (rather than a collection of ad-hoc route
+ * strings), so adding a route to an existing section cannot accidentally make
+ * it public.
+ */
+export const ADMIN_GRANT_SECTIONS = [
+  { key: 'dashboard', label: 'Dashboard', permissions: ['DASHBOARD_READ'] },
+  { key: 'requests', label: 'Talepler', permissions: ['RESERVATIONS_READ', 'RESERVATIONS_MANAGE'] },
+  { key: 'transfer_operations', label: 'Transfer Operasyonları', permissions: ['FLEET_MANAGE'] },
+  { key: 'analytics', label: 'İstatistikler', permissions: ['ANALYTICS_READ'] },
+  { key: 'reservation_settings', label: 'Rezervasyon Ayarları', permissions: ['SITE_SETTINGS_MANAGE'] },
+  { key: 'chat', label: 'Canlı Sohbet', permissions: ['CHAT_MANAGE'] },
+  { key: 'chatbot', label: 'Chatbot Bilgi Bankası', permissions: ['CHAT_MANAGE'] },
+  { key: 'newsletter', label: 'Bülten Aboneleri', permissions: ['NEWSLETTER_READ', 'NEWSLETTER_MANAGE'] },
+  { key: 'fleet_pricing', label: 'Araçlar ve Transferler', permissions: ['FLEET_MANAGE'] },
+  { key: 'content', label: 'İçerik', permissions: ['CONTENT_READ', 'CONTENT_WRITE', 'CONTENT_PUBLISH', 'CONTENT_DELETE'] },
+  { key: 'translations', label: 'Dil ve Çeviri', permissions: ['TRANSLATIONS_MANAGE'] },
+  { key: 'ai_content', label: 'AI İçerik Merkezi', permissions: ['AI_USE'] },
+  { key: 'site_navigation', label: 'Menü Yönetimi', permissions: ['CONTENT_READ', 'CONTENT_WRITE'] },
+  { key: 'site_settings', label: 'Site Ayarları', permissions: ['SITE_SETTINGS_MANAGE'] },
+  { key: 'security_settings', label: 'Form Güvenliği', permissions: ['SECURITY_SETTINGS_MANAGE'] },
+  { key: 'integrations', label: 'API Anahtarları / Entegrasyonlar', permissions: ['INTEGRATIONS_MANAGE'] },
+  { key: 'audit', label: 'İşlem Geçmişi', permissions: ['AUDIT_READ'] },
+  { key: 'database_backup', label: 'Veritabanı Yedeği', permissions: ['DATABASE_BACKUP'] },
+] as const satisfies ReadonlyArray<{ key: string; label: string; permissions: readonly AdminPermission[] }>;
+export type AdminSectionKey = (typeof ADMIN_GRANT_SECTIONS)[number]['key'];
+export const ADMIN_GRANT_SECTION_KEYS = [
+  'dashboard', 'requests', 'transfer_operations', 'analytics', 'reservation_settings',
+  'chat', 'chatbot', 'newsletter', 'fleet_pricing', 'content', 'translations',
+  'ai_content', 'site_navigation', 'site_settings', 'security_settings',
+  'integrations', 'audit', 'database_backup',
+] as [AdminSectionKey, ...AdminSectionKey[]];
+export type AdminGrant = { section: string; canView: boolean; canManage: boolean };
+export type AdminCapabilities = Readonly<Record<AdminSectionKey, { canView: boolean; canManage: boolean }>> & {
+  account: { canView: true; canManage: true };
+  personel: { canView: boolean; canManage: boolean };
+};
+
 const ALL_PERMISSIONS = new Set<AdminPermission>(ADMIN_PERMISSIONS);
 
 /** The only source of truth for role capabilities. Unknown roles get nothing. */
@@ -62,6 +101,124 @@ export function isAdminRole(value: unknown): value is AdminRole {
 
 export function hasAdminPermission(role: unknown, permission: AdminPermission): boolean {
   return isAdminRole(role) && ROLE_PERMISSIONS[role].has(permission);
+}
+
+export function getAdminSectionForPermission(permission: AdminPermission): AdminSectionKey | undefined {
+  return ADMIN_GRANT_SECTIONS.find(
+    (section) => (section.permissions as readonly AdminPermission[]).includes(permission),
+  )?.key;
+}
+
+export function resolveAdminCapabilities(role: unknown, grants: readonly AdminGrant[] = []): AdminCapabilities {
+  const result = Object.fromEntries(
+    ADMIN_GRANT_SECTIONS.map((section) => [section.key, { canView: false, canManage: false }]),
+  ) as Record<AdminSectionKey, { canView: boolean; canManage: boolean }>;
+  if (role === 'SUPER_ADMIN') {
+    for (const section of ADMIN_GRANT_SECTIONS) result[section.key] = { canView: true, canManage: true };
+  }
+  for (const grant of grants) {
+    if (!(grant.section in result)) continue;
+    const canManage = !!grant.canManage;
+    result[grant.section as AdminSectionKey] = {
+      canView: !!grant.canView || canManage,
+      canManage,
+    };
+  }
+  return {
+    ...result,
+    account: { canView: true as const, canManage: true as const },
+    personel: { canView: role === 'SUPER_ADMIN', canManage: role === 'SUPER_ADMIN' },
+  };
+}
+
+export function hasAdminCapability(
+  role: unknown,
+  permission: AdminPermission,
+  mode: 'view' | 'manage',
+  grants: readonly AdminGrant[] = [],
+): boolean {
+  if (role === 'SUPER_ADMIN') return true;
+  const section = getAdminSectionForPermission(permission);
+  if (!section) return false;
+  if (grants.length === 0) return false;
+  const capability = resolveAdminCapabilities(role, grants)[section];
+  return mode === 'manage' ? capability.canManage : capability.canView;
+}
+
+export function hasAdminSectionCapability(
+  role: unknown,
+  section: AdminSectionKey | 'account' | 'personel',
+  mode: 'view' | 'manage',
+  grants: readonly AdminGrant[] = [],
+): boolean {
+  if (role === 'SUPER_ADMIN') return true;
+  if (section === 'account') return true;
+  if (section === 'personel') return role === 'SUPER_ADMIN';
+  const capability = resolveAdminCapabilities(role, grants)[section];
+  return mode === 'manage' ? capability.canManage : capability.canView;
+}
+
+/** Resolve a route to its menu section without relying on overlapping permissions. */
+export function getAdminSectionForPath(pathname: string): AdminSectionKey | 'account' | 'personel' | undefined {
+  if (pathname.startsWith('/admin/api/logout') || pathname.startsWith('/admin/api/change-password') ||
+      pathname.startsWith('/admin/hesabim') || pathname.startsWith('/admin/erisim-reddedildi')) return 'account';
+  if (pathname.startsWith('/admin/api/staff') || pathname.startsWith('/admin/personel')) return 'personel';
+  if (pathname.startsWith('/admin/api/chatbot/unread-count') ||
+      pathname.startsWith('/admin/api/chatbot/messages') ||
+      pathname.startsWith('/admin/api/chatbot/sessions') ||
+      /^\/admin\/api\/chatbot\/[^/]+\/(?:messages|reply|resolve|takeover)(?:\/|$)/.test(pathname)) return 'chat';
+  if (pathname.startsWith('/admin/api/chatbot') || pathname.startsWith('/admin/chatbot-bilgi-bankasi')) return 'chatbot';
+  if (pathname.startsWith('/admin/api/newsletter') || pathname.startsWith('/admin/api/newsletter-export') ||
+      pathname.startsWith('/admin/bulten-aboneleri')) return 'newsletter';
+  if (pathname.startsWith('/admin/api/requests') || pathname.startsWith('/admin/talepler')) return 'requests';
+  if (pathname.startsWith('/admin/api/analytics') || pathname.startsWith('/admin/istatistikler')) return 'analytics';
+  if (pathname.startsWith('/admin/transferler')) return 'transfer_operations';
+  if (pathname.startsWith('/admin/rezervasyon-ayarlari') || pathname.startsWith('/admin/api/reservation-settings') ||
+      pathname.startsWith('/admin/api/custom-fields') || pathname.startsWith('/admin/api/service-types') ||
+      pathname.startsWith('/admin/api/ek-hizmetler')) return 'reservation_settings';
+  if (pathname.startsWith('/admin/sohbet')) return 'chat';
+  if (pathname.startsWith('/admin/api/vehicles') || pathname.startsWith('/admin/api/vehicle-feature-defaults') ||
+      pathname.startsWith('/admin/api/drivers') ||
+      pathname.startsWith('/admin/api/transfers') || pathname.startsWith('/admin/api/transfer-routes') ||
+      pathname.startsWith('/admin/api/locations') || pathname.startsWith('/admin/api/price-rules') ||
+      pathname.startsWith('/admin/api/price-calculator') || pathname.startsWith('/admin/api/location-distance') ||
+      pathname.startsWith('/admin/api/pricing/profiles') || pathname.startsWith('/admin/api/pricing/tolls') ||
+      pathname.startsWith('/admin/araclar') || pathname.startsWith('/admin/soforler') ||
+      pathname.startsWith('/admin/transfer-rotalari') || pathname.startsWith('/admin/fiyat-kurallari') ||
+      pathname.startsWith('/admin/yol-gecis-ucretleri')) return 'fleet_pricing';
+  if (pathname === '/admin' || pathname.startsWith('/admin/dashboard')) return 'dashboard';
+  if (pathname.startsWith('/admin/api/pricing/quote')) return 'requests';
+  if (pathname.startsWith('/admin/api/pricing/settings') || pathname.startsWith('/admin/api/pricing/exchange-rates') ||
+      pathname.startsWith('/admin/api/flight-meet-greet') || pathname.startsWith('/admin/ucus-karsilama')) return 'reservation_settings';
+  if (pathname.startsWith('/admin/api/content') || pathname.startsWith('/admin/api/blog') ||
+      pathname.startsWith('/admin/api/categories') || pathname.startsWith('/admin/api/faqs') ||
+      pathname.startsWith('/admin/api/homepage') ||
+      pathname.startsWith('/admin/api/storage') ||
+      pathname.startsWith('/admin/api/service-pages') || pathname.startsWith('/admin/api/topic-clusters') ||
+      pathname.startsWith('/admin/blog') || pathname.startsWith('/admin/sayfalar') ||
+      pathname.startsWith('/admin/hizmetler') || pathname.startsWith('/admin/kategoriler') ||
+      pathname.startsWith('/admin/sss')) return 'content';
+  if (pathname.startsWith('/admin/api/nav') || pathname.startsWith('/admin/menu')) return 'site_navigation';
+  if (pathname.startsWith('/admin/api/translations') || pathname.startsWith('/admin/api/languages') ||
+      pathname.startsWith('/admin/ceviriler') ||
+      pathname.startsWith('/admin/dil-ve-ceviri')) return 'translations';
+  if (pathname.startsWith('/admin/api/ai-content') || pathname.startsWith('/admin/api/ai-suggestions') ||
+      pathname.startsWith('/admin/api/ai-writing') ||
+      pathname.startsWith('/admin/api/studio') || pathname.startsWith('/admin/api/competitors') ||
+      pathname.startsWith('/admin/ai-studio') || pathname.startsWith('/admin/ai-oneriler') ||
+      pathname.startsWith('/admin/rakipler')) return 'ai_content';
+  if (pathname.startsWith('/admin/api/database-backup') || pathname.startsWith('/admin/veritabani-yedegi')) return 'database_backup';
+  if (pathname.startsWith('/admin/api/integration-secrets') || pathname.startsWith('/admin/api/social-platforms') ||
+      pathname.startsWith('/admin/api/google-ads') || pathname.startsWith('/admin/api/gsc') ||
+      pathname.startsWith('/admin/ayarlar/api-anahtarlari') ||
+      pathname.startsWith('/admin/ayarlar/icerik-entegrasyonlari')) return 'integrations';
+  if (pathname.startsWith('/admin/api/turnstile-settings') || pathname.startsWith('/admin/api/email-settings') ||
+      pathname.startsWith('/admin/diller') || pathname.startsWith('/admin/e-posta-ayarlari') ||
+      pathname.startsWith('/admin/ayarlar/guvenlik')) return 'security_settings';
+  if (pathname.startsWith('/admin/api/settings')) return 'security_settings';
+  if (pathname.startsWith('/admin/ayarlar')) return 'site_settings';
+  if (pathname.startsWith('/admin/gecmis')) return 'audit';
+  return undefined;
 }
 
 export type CurrentAdminRecord = {
@@ -222,6 +379,7 @@ export function getAdminPagePermission(pathname: string): AdminPermission | unde
     return 'SECURITY_SETTINGS_MANAGE';
   }
   if (pathname.startsWith('/admin/ayarlar/api-anahtarlari')) return 'INTEGRATIONS_MANAGE';
+  if (pathname.startsWith('/admin/ayarlar/icerik-entegrasyonlari')) return 'INTEGRATIONS_MANAGE';
   if (pathname.startsWith('/admin/ayarlar/guvenlik')) return 'SECURITY_SETTINGS_MANAGE';
   if (pathname.startsWith('/admin/veritabani-yedegi')) return 'DATABASE_BACKUP';
   if (pathname.startsWith('/admin/ayarlar') || pathname.startsWith('/admin/rezervasyon-ayarlari')) {

@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lock, Eye, EyeOff, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { Lock, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
+import { AdminActionButton } from '../../_components/AdminActionButton';
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -170,39 +171,7 @@ export default function PasswordChangeForm() {
         Minimum 8 karakter. Şifre değiştirildikten sonra oturumunuz kapatılır.
       </p>
 
-      <button
-        type="submit"
-        disabled={loading}
-        style={{
-          marginTop: '4px',
-          padding: '11px',
-          borderRadius: '8px',
-          background: loading ? '#93C5FD' : '#2563EB',
-          color: '#FFFFFF',
-          fontWeight: 700,
-          fontSize: '14px',
-          fontFamily: 'Inter, sans-serif',
-          letterSpacing: '0.05em',
-          border: 'none',
-          cursor: loading ? 'not-allowed' : 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '8px',
-        }}
-      >
-        {loading ? (
-          <>
-            <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} aria-hidden="true" />
-            Değiştiriliyor…
-          </>
-        ) : (
-          <>
-            <CheckCircle size={16} aria-hidden="true" />
-            Şifreyi Değiştir
-          </>
-        )}
-      </button>
+      <AdminActionButton type="submit" label={loading ? 'Değiştiriliyor…' : 'Şifreyi Değiştir'} icon={CheckCircle} variant="save" loading={loading} className="mt-1 w-full" />
     </form>
   );
 }

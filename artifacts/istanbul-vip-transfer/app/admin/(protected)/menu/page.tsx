@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Plus, X, Check, Loader2, ToggleLeft, ToggleRight } from 'lucide-react';
 import AdminPageHeader from '../../_components/AdminPageHeader';
 import { AdminRecordActions } from '../../_components/AdminRecordActions';
+import { AdminActionButton } from '../../_components/AdminActionButton';
 
 interface NavItem {
   id: string;
@@ -130,7 +131,7 @@ export default function MenuPage() {
   return (
     <div style={{ padding: '28px 24px' }}>
       <AdminPageHeader title="Menü Yönetimi" description="Site navigasyon öğelerini yönetin"
-        action={<button onClick={openCreate} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px', gap: '8px', padding: '8px 20px', borderRadius: '8px', background: '#2563EB', color: '#FFFFFF', fontSize: '14px', fontWeight: 600, border: 'none', cursor: 'pointer' }}><Plus size={18} /> Yeni Öğe</button>}
+        action={<AdminActionButton onClick={openCreate} label="Yeni Öğe" icon={Plus} variant="new" />}
       />
 
       {showForm && (
@@ -167,16 +168,12 @@ export default function MenuPage() {
               <input type="number" value={sortOrder} onChange={(e) => setSortOrder(parseInt(e.target.value))} style={{ ...inputStyle, width: '80px' }} min={0} />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '20px' }}>
-              <button type="button" aria-label="Aktifliği değiştir" onClick={() => setActive(v => !v)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px', background: 'none', border: 'none', cursor: 'pointer', color: active ? '#2563EB' : '#A0B0BC', padding: 0 }}>
-                {active ? <ToggleRight size={36} /> : <ToggleLeft size={36} />}
-              </button>
+              <AdminActionButton type="button" label={active ? 'Aktif' : 'Pasif'} icon={active ? ToggleRight : ToggleLeft} variant={active ? 'activate' : 'subtle'} ariaLabel="Aktifliği değiştir" onClick={() => setActive(v => !v)} className="text-xs" />
               <span style={{ color: '#52697A', fontSize: '14px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>Aktif</span>
             </div>
             <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '8px' }}>
-              <button type="submit" disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px', gap: '8px', padding: '8px 24px', borderRadius: '8px', background: saving ? '#93C5FD' : '#2563EB', color: '#FFFFFF', fontWeight: 600, fontSize: '14px', border: 'none', cursor: saving ? 'not-allowed' : 'pointer' }}>
-                {saving ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />} Kaydet
-              </button>
-              <button type="button" onClick={() => setShowForm(false)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px', padding: '8px 24px', borderRadius: '8px', background: '#FFFFFF', color: '#52697A', fontSize: '14px', fontWeight: 600, border: '1px solid #D8E1E9', cursor: 'pointer' }}>İptal</button>
+              <AdminActionButton type="submit" label="Kaydet" icon={Check} variant="save" loading={saving} />
+              <AdminActionButton type="button" label="İptal" variant="cancel" manage={false} onClick={() => setShowForm(false)} />
             </div>
           </form>
         </div>

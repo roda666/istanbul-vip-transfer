@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Plus, RefreshCw, UserCheck, UserX } from 'lucide-react';
+import { useState, useEffect, useCallback, useId } from 'react';
+import { Plus, RefreshCw, UserCheck, UserX, Pencil, KeyRound, Save, X } from 'lucide-react';
 import AdminPageHeader from '../../_components/AdminPageHeader';
 import { AdminRecordActions } from '../../_components/AdminRecordActions';
+import { AdminActionButton } from '../../_components/AdminActionButton';
 
 const GOLD = '#C99A32';
 const NAVY = '#172B3A';
@@ -12,7 +13,6 @@ const BORDER = '#D8E1E9';
 const CARD = '#FFFFFF';
 const RED = '#D64545';
 const GREEN = '#065F46';
-const BLUE = '#2563EB';
 
 interface StaffUser {
   id: string;
@@ -22,7 +22,20 @@ interface StaffUser {
   active: boolean;
   createdAt: string;
   lastLoginAt: string | null;
+  grants: Grant[];
 }
+interface Grant { section: string; canView: boolean; canManage: boolean }
+const SECTIONS = [
+  ['dashboard', 'Dashboard'], ['requests', 'Talepler'],
+  ['transfer_operations', 'Transfer Operasyonları'], ['analytics', 'İstatistikler'],
+  ['reservation_settings', 'Rezervasyon Ayarları'], ['chat', 'Canlı Sohbet'],
+  ['chatbot', 'Chatbot Bilgi Bankası'], ['newsletter', 'Bülten Aboneleri'],
+  ['fleet_pricing', 'Araçlar ve Transferler'], ['content', 'İçerik'],
+  ['translations', 'Dil ve Çeviri'], ['ai_content', 'AI İçerik Merkezi'],
+  ['site_navigation', 'Menü Yönetimi'], ['site_settings', 'Site Ayarları'],
+  ['security_settings', 'Form Güvenliği'], ['integrations', 'API Anahtarları / Entegrasyonlar'],
+  ['audit', 'İşlem Geçmişi'], ['database_backup', 'Veritabanı Yedeği'],
+] as const;
 
 function fmtDate(iso: string | null): string {
   if (!iso) return '—';
@@ -30,45 +43,18 @@ function fmtDate(iso: string | null): string {
   return d.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-function Btn({ children, onClick, variant = 'primary', loading = false, disabled = false, type = 'button' }: {
-  children: React.ReactNode;
-  onClick?: () => void;
-  variant?: 'primary' | 'ghost' | 'danger';
-  loading?: boolean;
-  disabled?: boolean;
-  type?: 'button' | 'submit';
-}) {
-  const bg = variant === 'primary' ? BLUE : variant === 'danger' ? RED : 'transparent';
-  const color = variant === 'ghost' ? NAVY : '#fff';
-  const border = variant === 'ghost' ? `1px solid ${BORDER}` : 'none';
-  return (
-    <button
-      type={type}
-      onClick={onClick}
-      disabled={loading || disabled}
-      style={{
-        background: bg, color, border, padding: '8px 16px', borderRadius: '8px', minHeight: '44px', minWidth: '44px',
-        fontSize: '14px', fontFamily: 'Inter, sans-serif', fontWeight: 600,
-        cursor: loading || disabled ? 'not-allowed' : 'pointer',
-        opacity: loading || disabled ? 0.6 : 1,
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
 function FieldInput({ label, value, onChange, type = 'text', placeholder = '', required = false }: {
   label: string; value: string; onChange: (v: string) => void;
   type?: string; placeholder?: string; required?: boolean;
 }) {
+  const id = useId();
   return (
     <div>
-      <label style={{ display: 'block', color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif', marginBottom: '5px', fontWeight: 600 }}>
+      <label htmlFor={id} style={{ display: 'block', color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif', marginBottom: '5px', fontWeight: 600 }}>
         {label}{required && <span style={{ color: RED, marginLeft: '3px' }}>*</span>}
       </label>
       <input
+        id={id}
         type={type}
         value={value}
         onChange={e => onChange(e.target.value)}
@@ -88,7 +74,8 @@ export default function PersonelClient() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', grants: [] as Grant[] });
+  const [editing, setEditing] = useState<StaffUser | null>(null);
   const [formError, setFormError] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -129,12 +116,12 @@ export default function PersonelClient() {
       const res = await fetch('/admin/api/staff', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+         body: JSON.stringify(form),
       });
       const json = await res.json() as { staff?: StaffUser; error?: string };
       if (!res.ok) throw new Error(json.error ?? 'Hata');
       showToast('Personel hesabı oluşturuldu.');
-      setForm({ name: '', email: '', password: '' });
+       setForm({ name: '', email: '', password: '', grants: [] });
       setShowCreate(false);
       fetchStaff();
     } catch (e) {
@@ -142,6 +129,49 @@ export default function PersonelClient() {
     } finally {
       setCreating(false);
     }
+  }
+
+  function toggleGrant(section: string, field: 'canView' | 'canManage', editingUser = false) {
+    const setter = editingUser ? (value: Grant[]) => setEditing((user) => user && ({ ...user, grants: value })) : (value: Grant[]) => setForm((current) => ({ ...current, grants: value }));
+    const current = editingUser ? (editing?.grants ?? []) : form.grants;
+    const previous = current.find((grant) => grant.section === section) ?? { section, canView: false, canManage: false };
+    const next = { ...previous, [field]: !previous[field] };
+    if (field === 'canView' && !next.canView) next.canManage = false;
+    if (field === 'canManage' && next.canManage) next.canView = true;
+    setter([...current.filter((grant) => grant.section !== section), next].filter((grant) => grant.canView || grant.canManage));
+  }
+
+  async function saveEdit() {
+    if (!editing) return;
+    setActionLoading(editing.id + '-edit');
+    try {
+      const res = await fetch(`/admin/api/staff/${editing.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: editing.name, active: editing.active, grants: editing.grants }) });
+      const json = await res.json() as { error?: string };
+      if (!res.ok) throw new Error(json.error ?? 'Güncellenemedi');
+      showToast('Personel güncellendi.'); setEditing(null); fetchStaff();
+    } catch (error) { showToast(error instanceof Error ? error.message : 'İşlem başarısız', 'error'); }
+    finally { setActionLoading(null); }
+  }
+
+  async function resetPassword(user: StaffUser) {
+    const password = prompt(`${user.name} için yeni şifre (en az 8 karakter):`);
+    if (!password) return;
+    const res = await fetch(`/admin/api/staff/${user.id}/password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
+    if (!res.ok) { const json = await res.json() as { error?: string }; showToast(json.error ?? 'Şifre sıfırlanamadı', 'error'); return; }
+    showToast('Şifre güvenli şekilde yenilendi.');
+  }
+
+  function GrantEditor({ user, editingUser = false }: { user: { grants: Grant[] }; editingUser?: boolean }) {
+    return <div style={{ gridColumn: '1/-1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: '8px', marginTop: '8px' }}>
+      {SECTIONS.map(([key, label]) => {
+        const grant = user.grants.find((item) => item.section === key) ?? { section: key, canView: false, canManage: false };
+        return <div key={key} style={{ border: `1px solid ${BORDER}`, borderRadius: 8, padding: '8px 10px', color: NAVY, fontSize: 12 }}>
+          <strong>{label}</strong>
+          <label style={{ marginLeft: 10 }}><input type="checkbox" checked={grant.canView} onChange={() => toggleGrant(key, 'canView', editingUser)} /> Görüntüle</label>
+          <label style={{ marginLeft: 8 }}><input type="checkbox" checked={grant.canManage} onChange={() => toggleGrant(key, 'canManage', editingUser)} /> Yönet</label>
+        </div>;
+      })}
+    </div>;
   }
 
   async function handleToggleActive(user: StaffUser) {
@@ -181,7 +211,7 @@ export default function PersonelClient() {
     <div style={{ padding: '28px 24px', maxWidth: '900px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
       <AdminPageHeader
         title="Personel Yönetimi"
-        description="Canlı sohbet panelini kullanacak sohbet personellerini yönetin."
+         description="Personel hesaplarını, bölüm erişimlerini ve şifre yenilemelerini yönetin."
       />
 
       {/* Toast */}
@@ -201,15 +231,11 @@ export default function PersonelClient() {
       {/* Header actions */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <span style={{ fontSize: '13px', color: MUTED }}>
-          {loading ? 'Yükleniyor…' : `${staff.length} sohbet personeli`}
+           {loading ? 'Yükleniyor…' : `${staff.length} personel`}
         </span>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <Btn variant="ghost" onClick={fetchStaff} loading={loading}>
-            <RefreshCw size={14} /> Yenile
-          </Btn>
-          <Btn onClick={() => setShowCreate(s => !s)}>
-            <Plus size={14} /> Yeni Personel Ekle
-          </Btn>
+          <AdminActionButton label="Yenile" icon={RefreshCw} variant="subtle" onClick={fetchStaff} loading={loading} manage={false} />
+          <AdminActionButton label="Yeni Personel Ekle" icon={Plus} variant="new" onClick={() => setShowCreate(s => !s)} />
         </div>
       </div>
 
@@ -217,7 +243,7 @@ export default function PersonelClient() {
       {showCreate && (
         <form onSubmit={(e) => { e.preventDefault(); handleCreate(); }} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px', padding: '24px', marginBottom: '20px', boxShadow: '0 2px 12px rgba(23,43,58,0.07)' }}>
           <h3 style={{ color: GOLD, fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 16px', paddingBottom: '12px', borderBottom: `1px solid ${BORDER}` }}>
-            Yeni Sohbet Personeli
+            Yeni Personel
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
             <FieldInput label="Ad Soyad" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} placeholder="Ali Yılmaz" required />
@@ -225,6 +251,7 @@ export default function PersonelClient() {
             <div style={{ gridColumn: '1/-1' }}>
               <FieldInput label="Şifre" type="password" value={form.password} onChange={v => setForm(f => ({ ...f, password: v }))} placeholder="En az 8 karakter" required />
             </div>
+             <GrantEditor user={form} />
           </div>
           {formError && (
             <div style={{ marginTop: '12px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '7px', padding: '9px 13px', color: RED, fontSize: '12px' }}>
@@ -232,11 +259,11 @@ export default function PersonelClient() {
             </div>
           )}
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '16px' }}>
-            <Btn variant="ghost" onClick={() => { setShowCreate(false); setFormError(''); }}>İptal</Btn>
-            <Btn type="submit" loading={creating}>Oluştur</Btn>
+            <AdminActionButton label="İptal" icon={X} variant="cancel" onClick={() => { setShowCreate(false); setFormError(''); }} manage={false} />
+            <AdminActionButton label="Personel Oluştur" icon={Plus} variant="save" type="submit" loading={creating} />
           </div>
           <p style={{ marginTop: '10px', fontSize: '11px', color: MUTED }}>
-            Bu hesap yalnızca <strong>/admin/sohbet</strong> sayfasına erişebilir. Diğer admin sayfalarına erişimi yoktur.
+            Erişimler aşağıdaki bölüm izinleriyle sınırlanır.
           </p>
         </form>
       )}
@@ -247,7 +274,7 @@ export default function PersonelClient() {
           <div style={{ padding: '32px', textAlign: 'center', color: MUTED, fontSize: '13px' }}>Yükleniyor…</div>
         ) : staff.length === 0 ? (
           <div style={{ padding: '40px', textAlign: 'center', color: MUTED }}>
-            <p style={{ fontSize: '14px', marginBottom: '8px' }}>Henüz sohbet personeli eklenmemiş.</p>
+            <p style={{ fontSize: '14px', marginBottom: '8px' }}>Henüz personel eklenmemiş.</p>
             <p style={{ fontSize: '12px' }}>Yukarıdaki &ldquo;Yeni Personel Ekle&rdquo; butonunu kullanın.</p>
           </div>
         ) : (
@@ -282,7 +309,11 @@ export default function PersonelClient() {
                       <td style={{ padding: '12px 16px', color: MUTED, fontSize: '12px' }}>{fmtDate(u.lastLoginAt)}</td>
                       <td style={{ padding: '12px 16px', color: MUTED, fontSize: '12px' }}>{fmtDate(u.createdAt)}</td>
                       <td style={{ padding: '12px 16px' }}>
-                        <AdminRecordActions
+             <div style={{ display: 'flex', gap: 6 }}>
+               <AdminActionButton label="Düzenle" icon={Pencil} variant="edit" onClick={() => setEditing(u)} />
+               <AdminActionButton label="Şifre Yenile" icon={KeyRound} variant="edit" onClick={() => resetPassword(u)} />
+             </div>
+             <AdminRecordActions
                           activation={{
                             isActive: u.active,
                             onClick: () => handleToggleActive(u),
@@ -331,7 +362,11 @@ export default function PersonelClient() {
                   </div>
 
                   <div className="mt-2 flex border-t border-slate-100 pt-3 justify-end">
-                    <AdminRecordActions
+                     <div style={{ display: 'flex', gap: 6 }}>
+                       <AdminActionButton label="Düzenle" icon={Pencil} variant="edit" onClick={() => setEditing(u)} />
+                       <AdminActionButton label="Şifre Yenile" icon={KeyRound} variant="edit" onClick={() => resetPassword(u)} />
+                     </div>
+                     <AdminRecordActions
                       activation={{
                         isActive: u.active,
                         onClick: () => handleToggleActive(u),
@@ -350,8 +385,26 @@ export default function PersonelClient() {
         )}
       </div>
 
+      {editing && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(15,23,42,.45)', display: 'grid', placeItems: 'center', padding: 20 }}>
+          <div style={{ width: 'min(720px,100%)', maxHeight: '90vh', overflowY: 'auto', background: CARD, borderRadius: 12, padding: 24 }}>
+            <h2 style={{ margin: '0 0 18px', color: NAVY, fontSize: 18 }}>Personeli Düzenle</h2>
+            <div style={{ display: 'grid', gap: 14 }}>
+              <FieldInput label="Ad Soyad" value={editing.name} onChange={name => setEditing({ ...editing, name })} required />
+              <div style={{ color: MUTED, fontSize: 13 }}>{editing.email}</div>
+              <label style={{ color: NAVY, fontSize: 13 }}><input type="checkbox" checked={editing.active} onChange={e => setEditing({ ...editing, active: e.target.checked })} /> Aktif</label>
+              <GrantEditor user={editing} editingUser />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
+              <AdminActionButton label="İptal" icon={X} variant="cancel" onClick={() => setEditing(null)} manage={false} />
+              <AdminActionButton label="Kaydet" icon={Save} variant="save" onClick={saveEdit} loading={actionLoading === editing.id + '-edit'} />
+            </div>
+          </div>
+        </div>
+      )}
+
       <p style={{ marginTop: '14px', fontSize: '11px', color: MUTED }}>
-        Sohbet personeli yalnızca Canlı Sohbet paneline erişebilir. Giriş şifresi değiştirme için hesabı silin ve yeniden oluşturun.
+        Şifreler hiçbir zaman görüntülenmez; şifre yenileme ayrı ve güvenli bir işlem olarak yapılır.
       </p>
     </div>
   );

@@ -5,6 +5,7 @@ import { Plus, Pencil, Trash2, Search, RefreshCw, Check, X, GripVertical, MapPin
 import AdminPageHeader from '../../_components/AdminPageHeader';
 import { applyGeocodingResultToForm, type LocationGeocodingResult } from '@/lib/location-geocoding';
 import { AdminRecordActions } from '../../_components/AdminRecordActions';
+import { AdminActionButton } from '../../_components/AdminActionButton';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const GOLD = '#C99A32';
@@ -141,10 +142,7 @@ function FieldInput({ value, onChange, placeholder, type = 'text', disabled }: {
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
     <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none', minHeight: '44px' }}>
-      <div onClick={() => onChange(!checked)} style={{ width: '40px', height: '22px', borderRadius: '11px', position: 'relative', flexShrink: 0, cursor: 'pointer', background: checked ? BLUE : '#CBD5E0', transition: 'background 0.2s' }}>
-        <div style={{ position: 'absolute', top: '3px', left: checked ? '21px' : '3px', width: '16px', height: '16px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-      </div>
-      <span style={{ color: NAVY, fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>{label}</span>
+      <AdminActionButton label={label} variant={checked ? 'activate' : 'subtle'} ariaLabel={`${label} değiştir`} onClick={() => onChange(!checked)} className="text-xs" />
     </label>
   );
 }
@@ -152,17 +150,9 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
 function Btn({ onClick, loading, disabled, variant, children, small }: {
   onClick?: () => void; loading?: boolean; disabled?: boolean; variant: 'primary' | 'secondary' | 'danger' | 'ghost'; children: React.ReactNode; small?: boolean;
 }) {
-  const styles: Record<string, React.CSSProperties> = {
-    primary: { background: BLUE, color: '#fff', fontWeight: 600 },
-    secondary: { background: 'transparent', color: BLUE, border: `1px solid ${BLUE}`, fontWeight: 500 },
-    danger: { background: '#FEF2F2', color: RED, border: '1px solid #FECACA', fontWeight: 500 },
-    ghost: { background: '#F1F5F9', color: MUTED, fontWeight: 400 },
-  };
+  const variants = { primary: 'save', secondary: 'edit', danger: 'delete', ghost: 'cancel' } as const;
   return (
-      <button onClick={onClick} disabled={disabled || loading}
-       style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', minHeight: '44px', padding: small ? '5px 12px' : '8px 18px', borderRadius: '8px', border: 'none', fontSize: small ? '12px' : '13px', fontFamily: 'Inter, sans-serif', cursor: disabled || loading ? 'not-allowed' : 'pointer', opacity: disabled || loading ? 0.6 : 1, transition: 'opacity 0.15s', ...styles[variant] }}>
-      {children}
-    </button>
+      <AdminActionButton label={String(children)} onClick={onClick} disabled={disabled} loading={loading} variant={variants[variant]} className={small ? 'text-xs' : ''}>{children}</AdminActionButton>
   );
 }
 
@@ -441,10 +431,12 @@ function ServiceTypeRow({ st, onSaved }: { st: ServiceTypeItem; onSaved: () => v
           </div>
           {st.description && <p style={{ color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif', marginTop: '4px', marginBottom: 0 }}>{st.description}</p>}
         </div>
-        <button type="button" onClick={() => { setEditing(e => !e); setMsg(''); }}
-          style={{ background: editing ? '#EEF3F9' : '#F8FAFC', border: `1px solid ${BORDER}`, borderRadius: '8px', minHeight: '44px', padding: '6px 12px', cursor: 'pointer', color: BLUE, fontSize: '12px', fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
-          <Pencil size={12} /> {editing ? 'Kapat' : 'Düzenle'}
-        </button>
+        <AdminActionButton
+          label={editing ? 'Kapat' : 'Düzenle'}
+          icon={editing ? X : Pencil}
+          variant={editing ? 'cancel' : 'edit'}
+          onClick={() => { setEditing(e => !e); setMsg(''); }}
+        />
       </div>
 
       {editing && (
@@ -1159,23 +1151,27 @@ export default function ReservasyonAyarlariClient() {
                         {field.appliesToSlugs?.length ? field.appliesToSlugs.join(', ') : <em style={{ color: '#9CA3AF' }}>Hepsi</em>}
                       </td>
                       <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                        <button type="button" onClick={() => toggleCustomFieldActive(field)} title={field.isActive ? 'Pasife Al' : 'Aktife Al'}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, minHeight: '44px', minWidth: '44px' }}>
-                          {field.isActive
-                            ? <span style={{ background: '#ECFDF5', color: '#065F46', fontSize: '11px', padding: '2px 8px', borderRadius: '12px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>Aktif</span>
-                            : <span style={{ background: '#F1F5F9', color: MUTED, fontSize: '11px', padding: '2px 8px', borderRadius: '12px', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>Pasif</span>}
-                        </button>
+                        <AdminActionButton
+                          label={field.isActive ? 'Pasifleştir' : 'Aktifleştir'}
+                          variant={field.isActive ? 'deactivate' : 'activate'}
+                          onClick={() => toggleCustomFieldActive(field)}
+                        />
                       </td>
                       <td style={{ padding: '10px 14px' }}>
                         <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-                          <button type="button" onClick={() => { setCfEditId(field.id); setCfForm({ label: field.label, appliesToSlugs: field.appliesToSlugs ?? [], fieldType: field.fieldType }); setCfMsg(null); }} title="Düzenle"
-                            style={{ background: '#EEF3F9', border: 'none', borderRadius: '6px', minHeight: '44px', minWidth: '44px', justifyContent: 'center', cursor: 'pointer', color: BLUE, display: 'flex', alignItems: 'center' }}>
-                            <Pencil size={16} />
-                          </button>
-                          <button type="button" onClick={() => deleteCustomField(field.id)} disabled={cfSaving === field.id} title="Sil"
-                            style={{ background: '#FEF2F2', border: 'none', borderRadius: '6px', minHeight: '44px', minWidth: '44px', justifyContent: 'center', cursor: cfSaving === field.id ? 'not-allowed' : 'pointer', color: RED, display: 'flex', alignItems: 'center', opacity: cfSaving === field.id ? 0.5 : 1 }}>
-                            <Trash2 size={16} />
-                          </button>
+                          <AdminActionButton
+                            label="Düzenle"
+                            icon={Pencil}
+                            variant="edit"
+                            onClick={() => { setCfEditId(field.id); setCfForm({ label: field.label, appliesToSlugs: field.appliesToSlugs ?? [], fieldType: field.fieldType }); setCfMsg(null); }}
+                          />
+                          <AdminActionButton
+                            label="Sil"
+                            icon={Trash2}
+                            variant="delete"
+                            onClick={() => deleteCustomField(field.id)}
+                            disabled={cfSaving === field.id}
+                          />
                         </div>
                       </td>
                     </tr>

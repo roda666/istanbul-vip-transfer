@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, X, Check, Loader2 } from 'lucide-react';
+import { Plus, X, Check } from 'lucide-react';
 import AdminPageHeader from '../../_components/AdminPageHeader';
 import { AdminRecordActions } from '../../_components/AdminRecordActions';
 import { AIWriteAssist } from '../../_components/AIWriteAssist';
+import { AdminActionButton } from '../../_components/AdminActionButton';
 
 interface FAQ {
   id: string;
@@ -131,9 +132,7 @@ export default function SssPage() {
         title="SSS Yönetimi"
         description="Sıkça sorulan soruları yönetin"
         action={
-          <button onClick={openCreate} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '8px', background: '#2563EB', color: '#FFFFFF', fontSize: '13px', fontWeight: 600, border: 'none', cursor: 'pointer' }}>
-            <Plus size={15} /> Yeni SSS
-          </button>
+          <AdminActionButton onClick={openCreate} label="Yeni SSS" icon={Plus} variant="new" />
         }
       />
 
@@ -168,10 +167,8 @@ export default function SssPage() {
               <input type="number" value={sortOrder} onChange={(e) => setSortOrder(parseInt(e.target.value))} style={{ ...inputStyle, width: '80px' }} min={0} />
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button type="submit" disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '8px', background: saving ? '#93C5FD' : '#2563EB', color: '#FFFFFF', fontWeight: 600, fontSize: '13px', border: 'none', cursor: saving ? 'not-allowed' : 'pointer' }}>
-                {saving ? <Loader2 size={13} /> : <Check size={13} />} Kaydet
-              </button>
-              <button type="button" onClick={() => setShowForm(false)} style={{ padding: '8px 16px', borderRadius: '8px', background: '#FFFFFF', color: '#52697A', fontSize: '13px', border: '1px solid #D8E1E9', cursor: 'pointer' }}>İptal</button>
+              <AdminActionButton type="submit" label="Kaydet" icon={Check} variant="save" loading={saving} />
+              <AdminActionButton type="button" label="İptal" variant="cancel" manage={false} onClick={() => setShowForm(false)} />
             </div>
           </form>
         </div>

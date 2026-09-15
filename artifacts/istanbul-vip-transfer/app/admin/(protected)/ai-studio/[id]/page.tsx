@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useCallback, use } from 'react';
 import { useRouter } from 'next/navigation';
+import { AdminActionButton } from '../../../_components/AdminActionButton';
 import Link from 'next/link';
 import {
   RefreshCw, Sparkles, CheckCircle2, AlertTriangle,
@@ -246,11 +247,7 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
         </Alert>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button style={btn('primary')} disabled={working}
-            onClick={() => run(() => api('/research').then(() => setActiveStage('research')), 'Araştırma tamamlandı!')}
-          >
-            {working ? <Spin /> : <Sparkles size={16} />} Araştırma Yap
-          </button>
+          <AdminActionButton label="Araştırma Yap" icon={Sparkles} variant="new" loading={working} onClick={() => run(() => api('/research').then(() => setActiveStage('research')), 'Araştırma tamamlandı!')} />
         </div>
       </div>
     );
@@ -296,16 +293,8 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
         )}
 
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-          <button style={btn()} disabled={working}
-            onClick={() => run(() => api('/research').then(() => setActiveStage('research')), 'Araştırma yenilendi!')}
-          >
-            {working ? <Spin /> : <RefreshCw size={15} />} Yeniden Araştır
-          </button>
-          <button style={btn('primary')} disabled={working}
-            onClick={() => run(() => api('/draft').then(() => setActiveStage('draft')), 'Türkçe taslak oluşturuldu!')}
-          >
-            {working ? <Spin /> : <FileText size={16} />} Türkçe Taslak Üret
-          </button>
+          <AdminActionButton label="Yeniden Araştır" icon={RefreshCw} variant="subtle" loading={working} onClick={() => run(() => api('/research').then(() => setActiveStage('research')), 'Araştırma yenilendi!')} />
+          <AdminActionButton label="Türkçe Taslak Üret" icon={FileText} variant="new" loading={working} onClick={() => run(() => api('/draft').then(() => setActiveStage('draft')), 'Türkçe taslak oluşturuldu!')} />
         </div>
       </div>
     );
@@ -317,11 +306,7 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <Alert type="warn">Türkçe taslak henüz oluşturulmamış.</Alert>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button style={btn('primary')} disabled={working}
-            onClick={() => run(() => api('/draft').then(() => setActiveStage('draft')), 'Türkçe taslak oluşturuldu!')}
-          >
-            {working ? <Spin /> : <Sparkles size={16} />} Taslak Oluştur
-          </button>
+          <AdminActionButton label="Taslak Oluştur" icon={Sparkles} variant="new" loading={working} onClick={() => run(() => api('/draft').then(() => setActiveStage('draft')), 'Türkçe taslak oluşturuldu!')} />
         </div>
       </div>
     );
@@ -347,9 +332,7 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
         <div style={card}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
             <h3 style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', fontWeight: 700, color: C.text, margin: 0 }}>İçerik Gövdesi (Markdown)</h3>
-            <button style={btn(editingDraft ? 'primary' : 'secondary')} onClick={() => setEditingDraft(e => !e)}>
-              {editingDraft ? 'Görüntüle' : 'Düzenle'}
-            </button>
+            <AdminActionButton label={editingDraft ? 'Görüntüle' : 'Düzenle'} variant={editingDraft ? 'save' : 'edit'} manage={false} onClick={() => setEditingDraft(e => !e)} />
           </div>
           {editingDraft ? (
             <textarea
@@ -383,28 +366,17 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
 
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           {editingDraft && (
-            <button style={btn()} disabled={working} onClick={() => run(async () => {
+            <AdminActionButton label="Kaydet" variant="save" loading={working} onClick={() => run(async () => {
               const updated = { ...(trContent as object), bodyMd: draftText };
               await api('', 'PATCH', { trContent: updated });
               setEditingDraft(false);
-            }, 'Taslak kaydedildi. (Onay sıfırlandı)')}>
-              {working ? <Spin /> : null} Kaydet
-            </button>
+            }, 'Taslak kaydedildi. (Onay sıfırlandı)')} />
           )}
-          <button style={btn()} disabled={working}
-            onClick={() => run(() => api('/seo').then(() => setActiveStage('seo_check')), 'SEO kontrolü tamamlandı!')}>
-            {working ? <Spin /> : null} SEO Kontrol
-          </button>
+          <AdminActionButton label="SEO Kontrol" variant="subtle" loading={working} onClick={() => run(() => api('/seo').then(() => setActiveStage('seo_check')), 'SEO kontrolü tamamlandı!')} />
           {!p.trApprovedAt ? (
-            <button style={btn('primary')} disabled={working}
-              onClick={() => run(() => api('/approve', 'POST', { action: 'approve' }), 'Türkçe taslak onaylandı!')}>
-              {working ? <Spin /> : <CheckCircle2 size={16} />} Taslağı Onayla
-            </button>
+            <AdminActionButton label="Taslağı Onayla" icon={CheckCircle2} variant="activate" loading={working} onClick={() => run(() => api('/approve', 'POST', { action: 'approve' }), 'Türkçe taslak onaylandı!')} />
           ) : (
-            <button style={btn()} disabled={working}
-              onClick={() => run(() => api('/approve', 'POST', { action: 'reject' }), 'Onay geri alındı.')}>
-              Onayı Geri Al
-            </button>
+            <AdminActionButton label="Onayı Geri Al" variant="deactivate" loading={working} onClick={() => run(() => api('/approve', 'POST', { action: 'reject' }), 'Onay geri alındı.')} />
           )}
         </div>
       </div>
@@ -419,10 +391,7 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <Alert type="warn">SEO analizi henüz çalıştırılmamış.</Alert>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button style={btn('primary')} disabled={working}
-            onClick={() => run(() => api('/seo').then(() => setActiveStage('seo_check')), 'SEO analizi tamamlandı!')}>
-            {working ? <Spin /> : <Sparkles size={16} />} SEO Analizi Çalıştır
-          </button>
+          <AdminActionButton label="SEO Analizi Çalıştır" icon={Sparkles} variant="new" loading={working} onClick={() => run(() => api('/seo').then(() => setActiveStage('seo_check')), 'SEO analizi tamamlandı!')} />
         </div>
       </div>
     );
@@ -482,13 +451,8 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
         {canni && !canni.hasConflict && <Alert type="success">✓ Slug çakışması yok.</Alert>}
 
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-          <button style={btn()} disabled={working}
-            onClick={() => run(() => api('/seo').then(() => setActiveStage('seo_check')), 'SEO yenilendi!')}>
-            {working ? <Spin /> : <RefreshCw size={15} />} Yenile
-          </button>
-          <button style={btn('primary')} onClick={() => setActiveStage('visual')}>
-            Görsel Aşamasına Geç →
-          </button>
+          <AdminActionButton label="Yenile" icon={RefreshCw} variant="subtle" loading={working} onClick={() => run(() => api('/seo').then(() => setActiveStage('seo_check')), 'SEO yenilendi!')} />
+          <AdminActionButton label="Görsel Aşamasına Geç" variant="new" manage={false} onClick={() => setActiveStage('visual')} />
         </div>
       </div>
     );
@@ -536,17 +500,11 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
                   style={{ width: '100%', padding: '7px 10px', fontSize: '12px', fontFamily: 'Inter, sans-serif', border: `1px solid ${C.border}`, borderRadius: '7px', color: C.text, resize: 'vertical', outline: 'none', boxSizing: 'border-box', marginBottom: '8px' }}
                 />
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <button style={btn('primary')} disabled={working}
-                    onClick={() => run(() => api('/image', 'PATCH', { imageId: img.id, action: 'approve', altText: img.altText }), 'Görsel onaylandı!')}>
-                    {working ? <Spin /> : <CheckCircle2 size={15} />} Onayla
-                  </button>
-                  <button style={btn('danger')} disabled={working}
-                    onClick={() => {
+                  <AdminActionButton label="Onayla" icon={CheckCircle2} variant="activate" loading={working} onClick={() => run(() => api('/image', 'PATCH', { imageId: img.id, action: 'approve', altText: img.altText }), 'Görsel onaylandı!')} />
+                  <AdminActionButton label="Reddet" variant="delete" loading={working} onClick={() => {
                       const reason = rejectReasons[img.id]?.trim() || 'Görsel reddedildi.';
                       run(() => api('/image', 'PATCH', { imageId: img.id, action: 'reject', rejectionReason: reason }), 'Görsel reddedildi.');
-                    }}>
-                    Reddet
-                  </button>
+                    }} />
                 </div>
               </div>
             ))}
@@ -557,10 +515,7 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
         <div style={card}>
           <h3 style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', fontWeight: 700, color: C.text, margin: '0 0 16px' }}>Görsel Ekle</h3>
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '16px' }}>
-            <button style={btn('primary')} disabled={working}
-              onClick={handleGenerate}>
-              <Sparkles size={16} /> GPT Image 2 Görsel Aracını Aç
-            </button>
+            <AdminActionButton label="GPT Image 2 Görsel Aracını Aç" icon={Sparkles} variant="new" manage={false} disabled={working} onClick={handleGenerate} />
           </div>
           <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: C.muted, margin: 0 }}>
             Eski proje görseli üretme ve yükleme akışı kalıcı hedefi olmayan URL’ler kaydetmemek için devre dışı bırakıldı.
@@ -569,9 +524,7 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
 
         {approvedImage && (
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button style={btn('primary')} onClick={() => setActiveStage('translations')}>
-              Çevirilere Geç →
-            </button>
+            <AdminActionButton label="Çevirilere Geç" variant="new" manage={false} onClick={() => setActiveStage('translations')} />
           </div>
         )}
       </div>
@@ -624,10 +577,7 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
               );
             })}
           </div>
-          <button style={btn('primary')} disabled={!canStart || working || selectedLangs.length === 0}
-            onClick={() => run(() => api('/translations', 'POST', { langs: selectedLangs }), `${selectedLangs.length} dil için çeviri başlatıldı!`)}>
-            {working ? <Spin /> : <Globe size={16} />} Seçili Dilleri Çevir ({selectedLangs.length})
-          </button>
+          <AdminActionButton label={`Seçili Dilleri Çevir (${selectedLangs.length})`} icon={Globe} variant="new" loading={working} disabled={!canStart || selectedLangs.length === 0} onClick={() => run(() => api('/translations', 'POST', { langs: selectedLangs }), `${selectedLangs.length} dil için çeviri başlatıldı!`)} />
         </div>
 
         {/* Translation status grid */}
@@ -645,16 +595,10 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
                       {trans.status === 'pending' ? 'Bekliyor' : trans.status === 'generating' ? 'Üretiliyor' : trans.status === 'draft' ? 'Taslak' : trans.status === 'approved' ? 'Onaylı' : 'Yayında'}
                     </span>
                     {trans.status === 'draft' && (
-                      <button style={btn('primary')} disabled={working}
-                        onClick={() => run(() => api(`/translations/${trans.lang}`, 'PATCH', { action: 'approve' }), `${trans.lang.toUpperCase()} onaylandı!`)}>
-                        {working ? <Spin /> : <CheckCircle2 size={14} />} Onayla
-                      </button>
+                      <AdminActionButton label="Onayla" icon={CheckCircle2} variant="activate" loading={working} onClick={() => run(() => api(`/translations/${trans.lang}`, 'PATCH', { action: 'approve' }), `${trans.lang.toUpperCase()} onaylandı!`)} />
                     )}
                     {trans.status === 'approved' && (
-                      <button style={btn('ghost')} disabled={working}
-                        onClick={() => run(() => api(`/translations/${trans.lang}`, 'PATCH', { action: 'reject' }), `${trans.lang.toUpperCase()} onayı kaldırıldı.`)}>
-                        Geri Al
-                      </button>
+                      <AdminActionButton label="Geri Al" variant="deactivate" loading={working} onClick={() => run(() => api(`/translations/${trans.lang}`, 'PATCH', { action: 'reject' }), `${trans.lang.toUpperCase()} onayı kaldırıldı.`)} />
                     )}
                     {trans.aiModel && <span style={{ fontSize: '10px', color: C.light, fontFamily: 'Inter, sans-serif' }}>{trans.aiModel}</span>}
                   </div>
@@ -710,21 +654,12 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
 
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           {!p.cmsEntityId && p.trApprovedAt && (
-            <button style={btn('primary')} disabled={working}
-              onClick={() => run(() => api('/export'), "CMS'e aktarıldı!")}>
-              {working ? <Spin /> : <Download size={16} />} CMS&apos;e TASLAK Aktar
-            </button>
+            <AdminActionButton label="CMS'e TASLAK Aktar" icon={Download} variant="save" loading={working} onClick={() => run(() => api('/export'), "CMS'e aktarıldı!")} />
           )}
           {p.cmsEntityId && (
-            <Link href={`/admin/${p.contentType === 'blog' ? 'blog' : 'hizmetler'}/${p.cmsEntityId}`} target="_blank">
-              <button style={btn()}>
-                <ExternalLink size={15} /> CMS&apos;de Görüntüle
-              </button>
-            </Link>
+            <AdminActionButton href={`/admin/${p.contentType === 'blog' ? 'blog' : 'hizmetler'}/${p.cmsEntityId}`} label="CMS'de Görüntüle" icon={ExternalLink} variant="edit" manage={false} />
           )}
-          <button style={btn('primary')} onClick={() => setActiveStage('approval')}>
-            Onay Aşamasına Geç →
-          </button>
+          <AdminActionButton label="Onay Aşamasına Geç" variant="new" manage={false} onClick={() => setActiveStage('approval')} />
         </div>
       </div>
     );
@@ -755,14 +690,8 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
             onChange={e => setNotes(e.target.value)}
           />
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            <button style={btn('primary')} disabled={working}
-              onClick={() => run(() => api('/approve', 'POST', { action: 'approve', notes }), 'Türkçe içerik onaylandı!')}>
-              {working ? <Spin /> : <CheckCircle2 size={16} />} Türkçe Taslağı Onayla
-            </button>
-            <button style={btn('danger')} disabled={working}
-              onClick={() => run(() => api('/approve', 'POST', { action: 'reject', notes }), 'Taslak reddedildi; düzenleme gerekli.')}>
-              Reddet — Düzeltme Gerekli
-            </button>
+            <AdminActionButton label="Türkçe Taslağı Onayla" icon={CheckCircle2} variant="activate" loading={working} onClick={() => run(() => api('/approve', 'POST', { action: 'approve', notes }), 'Türkçe içerik onaylandı!')} />
+            <AdminActionButton label="Reddet — Düzeltme Gerekli" variant="delete" loading={working} onClick={() => run(() => api('/approve', 'POST', { action: 'reject', notes }), 'Taslak reddedildi; düzenleme gerekli.')} />
           </div>
         </div>
       </div>
@@ -801,10 +730,7 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
               );
             })}
           </div>
-          <button style={btn('primary')} disabled={working || publishLangs.length === 0}
-            onClick={() => run(() => api('/publish', 'POST', { langs: publishLangs }), `${publishLangs.join(', ').toUpperCase()} yayınlandı!`)}>
-            {working ? <Spin /> : <Send size={16} />} Seçili Dilleri Yayınla ({publishLangs.length})
-          </button>
+          <AdminActionButton label={`Seçili Dilleri Yayınla (${publishLangs.length})`} icon={Send} variant="activate" loading={working} disabled={publishLangs.length === 0} onClick={() => run(() => api('/publish', 'POST', { langs: publishLangs }), `${publishLangs.join(', ').toUpperCase()} yayınlandı!`)} />
         </div>
 
         <div style={card}>
@@ -838,10 +764,7 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
                 })}
               </div>
             </div>
-            <button style={btn('primary')} disabled={working || !scheduleDate || scheduleLangs.length === 0}
-              onClick={() => run(() => api('/schedule', 'POST', { scheduledFor: scheduleDate, langs: scheduleLangs }), 'Zamanlanmış yayın oluşturuldu!')}>
-              {working ? <Spin /> : <Calendar size={16} />} Zamanla
-            </button>
+            <AdminActionButton label="Zamanla" icon={Calendar} variant="save" loading={working} disabled={!scheduleDate || scheduleLangs.length === 0} onClick={() => run(() => api('/schedule', 'POST', { scheduledFor: scheduleDate, langs: scheduleLangs }), 'Zamanlanmış yayın oluşturuldu!')} />
           </div>
         </div>
       </div>
@@ -857,10 +780,7 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
           Dağıtım taslakları yönetici onayı olmadan yayımlanmaz. Google Business gönderisi yalnızca onaylı ve CMS’te yayınlanmış makale için, aşağıdaki açık onayla paylaşılır.
         </Alert>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button style={btn('primary')} disabled={working || !p.trContent}
-            onClick={() => run(() => api('/distribution'), 'Dağıtım taslakları oluşturuldu!')}>
-            {working ? <Spin /> : <Sparkles size={16} />} Taslakları Üret
-          </button>
+          <AdminActionButton label="Taslakları Üret" icon={Sparkles} variant="new" loading={working} disabled={!p.trContent} onClick={() => run(() => api('/distribution'), 'Dağıtım taslakları oluşturuldu!')} />
         </div>
         {drafts.map(d => (
           <div key={d.id} style={card}>
@@ -870,16 +790,17 @@ export default function StudioProjectPage({ params }: { params: Promise<{ id: st
             <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: C.muted, whiteSpace: 'pre-wrap', margin: 0, lineHeight: 1.6 }}>{d.content}</p>
             {d.platform === 'google_business' && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
-                <button
-                  style={btn('primary')}
-                  disabled={working || !p.trApprovedAt || d.status === 'published'}
+                <AdminActionButton
+                  label={d.status === 'published' ? 'Yayımlandı' : 'Google’da Yayımla'}
+                  icon={Send}
+                  variant="activate"
+                  loading={working}
+                  disabled={!p.trApprovedAt || d.status === 'published'}
                   onClick={() => run(
                     () => api('/distribution/google-business/publish', 'POST'),
                     d.status === 'published' ? 'Google Business gönderisi zaten yayımlandı.' : 'Google Business gönderisi yayımlandı!',
                   )}
-                >
-                  {working ? <Spin /> : <Send size={15} />} {d.status === 'published' ? 'Yayımlandı' : 'Google’da Yayımla'}
-                </button>
+                />
                 {d.status === 'failed' && (
                   <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: '#B91C1C' }}>
                     Yayın başarısız. Bağlantı ve işletme konumunu kontrol edin.

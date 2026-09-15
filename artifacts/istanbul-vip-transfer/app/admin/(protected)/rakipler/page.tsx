@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Globe2, Loader2, X, Check, AlertTriangle } from 'lucide-react';
 import AdminPageHeader from '@/app/admin/_components/AdminPageHeader';
 import { AdminRecordActions } from '@/app/admin/_components/AdminRecordActions';
+import { AdminActionButton } from '@/app/admin/_components/AdminActionButton';
 
 type Competitor = { id: number; domain: string; label: string; notes: string | null; active: boolean };
 type Analysis = {
@@ -13,8 +14,6 @@ type Analysis = {
   note: string;
 };
 const field: React.CSSProperties = { width: '100%', minHeight: 44, boxSizing: 'border-box', padding: '9px 12px', border: '1px solid #D8E1E9', borderRadius: 7, fontSize: 13, color: '#172B3A' };
-const button: React.CSSProperties = { display: 'inline-flex', minHeight: 44, minWidth: 44, justifyContent: 'center', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700 };
-
 export default function RakiplerPage() {
   const [items, setItems] = useState<Competitor[] | null>(null);
   const [message, setMessage] = useState('');
@@ -96,7 +95,7 @@ export default function RakiplerPage() {
     <section style={{ marginBottom: 18, padding: 16, borderRadius: 10, border: '1px solid #BFDBFE', background: '#F8FBFF' }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
         <div><strong style={{ fontSize: 14, color: '#172B3A' }}>Rakip konu boşluğu analizi</strong><p style={{ color: '#52697A', fontSize: 12, margin: '5px 0 0' }}>Yalnızca aktif alan adlarının açık sitemap’leri ve erişilebilen sayfa başlıkları kullanılır. En fazla 24 URL/alan adı taranır.</p></div>
-        <button onClick={analyze} disabled={analyzing || !items || items.filter(item => item.active).length === 0} style={{ ...button, background: '#2563EB', color: '#fff', opacity: analyzing || !items ? .7 : 1 }}>{analyzing ? <Loader2 size={18} className="animate-spin" /> : <Globe2 size={18} />}{analyzing ? 'Analiz ediliyor…' : 'Konu boşluklarını analiz et'}</button>
+        <AdminActionButton onClick={analyze} disabled={!items || items.filter(item => item.active).length === 0} loading={analyzing} label={analyzing ? 'Analiz ediliyor…' : 'Konu boşluklarını analiz et'} icon={Globe2} variant="new" />
       </div>
       {analysis && <div style={{ marginTop: 16, fontSize: 12 }}>
         <p style={{ color: '#52697A', margin: '0 0 10px' }}>{analysis.note} Sitede karşılaştırılan yayımlı blog: {analysis.ownPublishedPostCount}.</p>
@@ -125,7 +124,7 @@ export default function RakiplerPage() {
           <label style={{ fontSize: 12, color: '#52697A' }}>Alan adı<input required disabled={editing !== null} placeholder="ornek.com" value={form.domain} onChange={e => setForm(current => ({ ...current, domain: e.target.value }))} style={{ ...field, marginTop: 4, background: editing ? '#F8FAFC' : '#fff' }} /></label>
           <label style={{ fontSize: 12, color: '#52697A' }}>Notlar (opsiyonel)<textarea value={form.notes} onChange={e => setForm(current => ({ ...current, notes: e.target.value }))} maxLength={2000} rows={3} style={{ ...field, marginTop: 4, resize: 'vertical' }} /></label>
           <label style={{ display: 'flex', gap: 7, fontSize: 12, color: '#52697A', alignItems: 'center' }}><input type="checkbox" checked={form.active} onChange={e => setForm(current => ({ ...current, active: e.target.checked }))} /> Aktif</label>
-          <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}><button type="submit" disabled={saving} style={{ ...button, background: '#2563EB', color: '#fff' }}>{saving ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}{saving ? 'Kaydediliyor' : 'Kaydet'}</button>{editing !== null && <button type="button" onClick={reset} style={{ ...button, background: '#F1F5F9', color: '#52697A' }}><X size={18} /> İptal</button>}</div>
+          <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}><AdminActionButton type="submit" disabled={saving} loading={saving} label={saving ? 'Kaydediliyor' : 'Kaydet'} icon={Check} variant="save" />{editing !== null && <AdminActionButton type="button" onClick={reset} label="İptal" icon={X} variant="cancel" manage={false} />}</div>
         </form>
       </section>
     </div>

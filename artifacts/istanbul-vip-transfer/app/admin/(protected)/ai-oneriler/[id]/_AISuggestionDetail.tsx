@@ -14,6 +14,7 @@ import {
 import AdminPageHeader from '../../../_components/AdminPageHeader';
 import { safeResearchSourceHref } from '@/lib/research-source-url';
 import { searchResearchDisplay } from '@/lib/search-research';
+import { AdminActionButton } from '../../../_components/AdminActionButton';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -86,14 +87,6 @@ const labelSt: React.CSSProperties = {
   letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '4px', fontWeight: 700,
 };
 const valSt: React.CSSProperties = { color: '#172B3A', fontSize: '13px', fontFamily: 'Inter, sans-serif', margin: 0 };
-const btn = (primary?: boolean, danger?: boolean): React.CSSProperties => ({
-  display: 'inline-flex', alignItems: 'center', gap: '6px',
-  padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
-  fontFamily: 'Inter, sans-serif', border: danger ? '1px solid #FECACA' : primary ? 'none' : '1px solid #D8E1E9',
-  background: danger ? '#FEF2F2' : primary ? '#2563EB' : '#F3F6FA',
-  color: danger ? '#D64545' : primary ? '#FFFFFF' : '#172B3A', cursor: 'pointer',
-});
-
 function ScoreBar({ label, value, max = 100 }: { label: string; value: number; max?: number }) {
   const pct   = Math.min(100, Math.round((value / max) * 100));
   const color = pct >= 75 ? '#168C5B' : pct >= 50 ? '#D97706' : '#D64545';
@@ -118,10 +111,7 @@ function CopyButton({ text }: { text: string }) {
     setTimeout(() => setCopied(false), 1800);
   }
   return (
-    <button onClick={doCopy} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#718596', display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', padding: '2px 4px' }}>
-      {copied ? <Check size={12} style={{ color: '#168C5B' }} /> : <Copy size={12} />}
-      {copied ? 'Kopyalandı' : 'Kopyala'}
-    </button>
+    <AdminActionButton label={copied ? 'Kopyalandı' : 'Kopyala'} icon={copied ? Check : Copy} variant="subtle" manage={false} onClick={doCopy} className="text-xs" />
   );
 }
 
@@ -221,9 +211,7 @@ export default function AISuggestionDetail({
         description={`Durum: ${sug.status}${sug.timeSensitive ? ' · ⚡ Zaman Duyarlı' : ''}`}
         action={
           hasDraft && sug.draftBlogPostId ? (
-            <Link href={`/admin/blog/${sug.draftBlogPostId}`} style={btn(true)}>
-              <ExternalLink size={13} /> Blog Editöründe Aç
-            </Link>
+            <AdminActionButton href={`/admin/blog/${sug.draftBlogPostId}`} label="Blog Editöründe Aç" icon={ExternalLink} variant="edit" manage={false} />
           ) : null
         }
       />
@@ -358,20 +346,13 @@ export default function AISuggestionDetail({
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '12px', color: '#168C5B', fontFamily: 'Inter, sans-serif' }}>✓ Taslak oluşturuldu</span>
               {sug.draftBlogPostId && (
-                <Link href={`/admin/blog/${sug.draftBlogPostId}`} style={btn(true)}>
-                  <ExternalLink size={12} /> Blog Editöründe Aç
-                </Link>
+                <AdminActionButton href={`/admin/blog/${sug.draftBlogPostId}`} label="Blog Editöründe Aç" icon={ExternalLink} variant="edit" manage={false} />
               )}
-              <button onClick={handleGenerate} disabled={generating} style={btn()}>
-                <RefreshCw size={12} /> Yeniden Üret
-              </button>
+              <AdminActionButton onClick={handleGenerate} disabled={generating} loading={generating} label="Yeniden Üret" icon={RefreshCw} variant="new" />
             </div>
           ) : (
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <button onClick={handleGenerate} disabled={generating} style={btn(true)}>
-                {generating ? <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={13} />}
-                {generating ? 'Makale Üretiliyor...' : 'Makale Taslağı Üret'}
-              </button>
+              <AdminActionButton onClick={handleGenerate} disabled={generating} loading={generating} label={generating ? 'Makale Üretiliyor...' : 'Makale Taslağı Üret'} icon={Sparkles} variant="new" />
               <p style={{ fontSize: '11px', color: '#718596', fontFamily: 'Inter, sans-serif', margin: 0 }}>
                 Taslak DRAFT olarak Blog CMS&apos;e kaydedilir. Tek tıkla yayınlama yok.
               </p>
@@ -509,10 +490,7 @@ export default function AISuggestionDetail({
               </div>
             )}
             {!socialDrafts ? (
-              <button onClick={handleSocial} disabled={socialLoading} style={btn(true)}>
-                {socialLoading ? <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Share2 size={13} />}
-                {socialLoading ? 'Oluşturuluyor...' : 'Sosyal Medya Taslakları Üret'}
-              </button>
+              <AdminActionButton onClick={handleSocial} disabled={socialLoading} loading={socialLoading} label={socialLoading ? 'Oluşturuluyor...' : 'Sosyal Medya Taslakları Üret'} icon={Share2} variant="new" />
             ) : (
               <div style={{ display: 'grid', gap: '14px' }}>
                 {([
@@ -531,9 +509,7 @@ export default function AISuggestionDetail({
                     </div>
                   </div>
                 ))}
-                <button onClick={() => setSocialDrafts(null)} style={{ ...btn(), width: 'fit-content' }}>
-                  <RefreshCw size={11} /> Yeniden Oluştur
-                </button>
+                <AdminActionButton onClick={() => setSocialDrafts(null)} label="Yeniden Oluştur" icon={RefreshCw} variant="new" manage={false} />
               </div>
             )}
           </div>
@@ -557,10 +533,7 @@ export default function AISuggestionDetail({
                 <option key={c.id} value={c.id}>{c.pillarTitle} (/{c.pillarSlug})</option>
               ))}
             </select>
-            <button onClick={handleLinkCluster} disabled={linkingCluster} style={btn(true)}>
-              {linkingCluster ? <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} /> : null}
-              Kaydet
-            </button>
+            <AdminActionButton onClick={handleLinkCluster} disabled={linkingCluster} loading={linkingCluster} label="Kaydet" variant="save" />
           </div>
           <p style={{ fontSize: '11px', color: '#718596', fontFamily: 'Inter, sans-serif', margin: '8px 0 0' }}>
             Yeni küme oluşturmak için <Link href="/admin/ai-oneriler/kumeler" style={{ color: '#2563EB' }}>Konu Kümeleri</Link> sayfasına gidin.
@@ -579,9 +552,7 @@ export default function AISuggestionDetail({
             <p style={{ fontSize: '12px', color: '#52697A', fontFamily: 'Inter, sans-serif', margin: '0 0 12px' }}>
               Makale Blog Editöründe onaylandıktan sonra, Dil ve Çeviri panelinden çeviri kuyruğuna ekleyebilirsiniz.
             </p>
-            <Link href={`/admin/blog/${sug.draftBlogPostId}`} style={btn(true)}>
-              <ExternalLink size={12} /> Blog Editöründe Çeviriyi Yönet
-            </Link>
+            <AdminActionButton href={`/admin/blog/${sug.draftBlogPostId}`} label="Blog Editöründe Çeviriyi Yönet" icon={ExternalLink} variant="edit" manage={false} />
           </div>
         </div>
       )}

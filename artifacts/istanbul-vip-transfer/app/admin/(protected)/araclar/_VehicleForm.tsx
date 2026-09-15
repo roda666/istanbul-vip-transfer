@@ -12,6 +12,8 @@ import { AISeoGenerator } from '../../_components/AISeoGenerator';
 import { normalizeVehicleType, VEHICLE_TYPE_OPTIONS } from '@/lib/vehicle-options';
 import { VEHICLE_FEATURE_CATALOG } from '@/lib/vehicle-feature-catalog';
 import { TOLL_VEHICLE_CLASSES, TOLL_VEHICLE_CLASS_DESCRIPTIONS, TOLL_VEHICLE_CLASS_LABELS, TOLL_VEHICLE_CLASS_SELECTION_WARNING } from '@/lib/toll-vehicle-classes';
+import { AdminActionButton } from '../../_components/AdminActionButton';
+import { Archive, Plus, Trash2, Save, X, Send } from 'lucide-react';
 
 /** Active toll point, as needed for per-point class assignment. */
 export interface TollPointOption {
@@ -303,67 +305,6 @@ function ErrorBanner({ msg }: { msg: string }) {
   );
 }
 
-function ActionButton({
-  onClick,
-  loading,
-  disabled,
-  variant,
-  children,
-  testId,
-}: {
-  onClick: () => void;
-  loading?: boolean;
-  disabled?: boolean;
-  variant: 'primary' | 'secondary' | 'danger' | 'ghost';
-  children: React.ReactNode;
-  testId?: string;
-}) {
-  const styles: Record<string, React.CSSProperties> = {
-    primary: { background: '#2563EB', color: '#FFFFFF', fontWeight: 600 },
-    secondary: {
-      background: 'transparent',
-      color: '#2563EB',
-      border: '1px solid #2563EB',
-      fontWeight: 500,
-    },
-    danger: {
-      background: '#FEF2F2',
-      color: '#D64545',
-      border: '1px solid #FECACA',
-      fontWeight: 500,
-    },
-    ghost: {
-      background: '#F1F5F9',
-      color: '#52697A',
-      fontWeight: 400,
-    },
-  };
-
-  return (
-    <button
-      data-testid={testId}
-      onClick={onClick}
-      disabled={disabled || loading}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '6px',
-        padding: '8px 18px',
-        borderRadius: '8px',
-        border: 'none',
-        fontSize: '13px',
-        fontFamily: 'Inter, sans-serif',
-        cursor: disabled || loading ? 'not-allowed' : 'pointer',
-        opacity: disabled || loading ? 0.6 : 1,
-        transition: 'opacity 0.15s',
-        ...styles[variant],
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
 // ── Confirmation Dialog ───────────────────────────────────────────────────────
 function ConfirmDialog({
   title,
@@ -428,12 +369,8 @@ function ConfirmDialog({
           {message}
         </p>
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-          <ActionButton variant="ghost" onClick={onCancel}>
-            Vazgeç
-          </ActionButton>
-          <ActionButton variant={danger ? 'danger' : 'primary'} onClick={onConfirm}>
-            {confirmLabel}
-          </ActionButton>
+          <AdminActionButton variant="cancel" icon={X} manage={false} onClick={onCancel} label="Vazgeç" />
+          <AdminActionButton variant={danger ? 'delete' : 'save'} icon={danger ? Trash2 : Save} onClick={onConfirm} label={confirmLabel} />
         </div>
       </div>
     </div>
@@ -871,19 +808,7 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [] }: Prop
               Görsel {i + 1}
             </span>
             {form.gallery.length > 1 && (
-              <button
-                onClick={() => removeGalleryItem(i)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#f87171',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontFamily: 'Inter, sans-serif',
-                }}
-              >
-                Kaldır
-              </button>
+              <AdminActionButton variant="delete" icon={Trash2} label="Kaldır" onClick={() => removeGalleryItem(i)} />
             )}
           </div>
           <div style={{ marginBottom: '8px' }}>
@@ -900,22 +825,7 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [] }: Prop
           </div>
         </div>
       ))}
-      <button
-        onClick={addGalleryItem}
-        style={{
-          background: 'transparent',
-          border: `1px dashed ${BORDER}`,
-          borderRadius: '6px',
-          color: '#666',
-          cursor: 'pointer',
-          padding: '8px 16px',
-          fontSize: '12px',
-          fontFamily: 'Inter, sans-serif',
-          marginTop: '4px',
-        }}
-      >
-        + Galeri Görseli Ekle
-      </button>
+      <AdminActionButton variant="new" icon={Plus} label="Galeri Görseli Ekle" onClick={addGalleryItem} className="mt-1" />
 
       {/* ── Yayın Ayarları ──────────────────────────────── */}
       <SectionTitle>Yayın Ayarları</SectionTitle>
@@ -1067,33 +977,16 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [] }: Prop
           borderTop: `1px solid ${BORDER}`,
         }}
       >
-        <ActionButton variant="ghost" onClick={() => router.push('/admin/araclar')} disabled={saving}>
-          İptal Et
-        </ActionButton>
-
-        <ActionButton
-          testId="vehicle-save-draft"
-          variant="secondary"
-          onClick={() => handleSave('DRAFT')}
-          loading={saving}
-          disabled={!!actionLoading}
-        >
-          {saving ? 'Kaydediliyor...' : 'Taslağa Kaydet'}
-        </ActionButton>
-
-        <ActionButton
-          variant="primary"
-          onClick={() => handlePublish()}
-          loading={saving}
-          disabled={!!actionLoading}
-        >
-          Yayınla
-        </ActionButton>
+        <AdminActionButton variant="cancel" icon={X} manage={false} label="İptal Et" onClick={() => router.push('/admin/araclar')} disabled={saving} />
+        <AdminActionButton variant="save" icon={Save} label="Taslağa Kaydet" testId="vehicle-save-draft" onClick={() => handleSave('DRAFT')} loading={saving} disabled={!!actionLoading} />
+        <AdminActionButton variant="activate" icon={Send} label="Yayınla" onClick={handlePublish} loading={saving} disabled={!!actionLoading} />
 
         {/* Archive */}
         {showArchiveBtn && (
-          <ActionButton
-            variant="danger"
+          <AdminActionButton
+            variant="archive"
+            icon={Archive}
+            label="Arşivle"
             onClick={() =>
               setConfirm({
                 title: 'Aracı Arşivle',
@@ -1106,14 +999,10 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [] }: Prop
             }
             loading={actionLoading === 'archive'}
             disabled={saving}
-          >
-            Arşivle
-          </ActionButton>
+          />
         )}
         {isEdit && (
-          <ActionButton variant="danger" onClick={() => setConfirm({ title: 'Aracı Sil', message: 'Bu işlem geri alınamaz. Backend güvenlik kontrolleri uygulanacaktır.', confirmLabel: 'Sil', danger: true, onConfirm: () => { setConfirm(null); deleteVehicle(); } })} loading={actionLoading === 'delete'} disabled={saving}>
-            Sil
-          </ActionButton>
+          <AdminActionButton variant="delete" icon={Trash2} label="Sil" onClick={() => setConfirm({ title: 'Aracı Sil', message: 'Bu işlem geri alınamaz. Backend güvenlik kontrolleri uygulanacaktır.', confirmLabel: 'Sil', danger: true, onConfirm: () => { setConfirm(null); deleteVehicle(); } })} loading={actionLoading === 'delete'} disabled={saving} />
         )}
       </div>
 

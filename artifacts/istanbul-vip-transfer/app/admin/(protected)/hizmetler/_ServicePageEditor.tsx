@@ -16,6 +16,8 @@ import { AISeoGenerator } from '@/app/admin/_components/AISeoGenerator';
 import FacebookShareButton from '@/app/admin/_components/FacebookShareButton';
 import XShareButton from '@/app/admin/_components/XShareButton';
 import { SITE } from '@/lib/site-config';
+import { AdminActionButton } from '@/app/admin/_components/AdminActionButton';
+import { Archive, CheckCircle, Globe, Plus, Save, Trash2 } from 'lucide-react';
 
 // ── Safe JSON fetch ────────────────────────────────────────────────────────
 async function safeJson<T = Record<string, unknown>>(res: Response): Promise<T> {
@@ -68,10 +70,6 @@ const ta = (dir?: string, rows = 3): React.CSSProperties => ({
 const lbl: React.CSSProperties = {
   fontSize: '12px', fontWeight: 600, color: '#374151',
   fontFamily: 'Inter, sans-serif', marginBottom: '4px', display: 'block',
-};
-const btnPrimary: React.CSSProperties = {
-  background: '#C9A84C', color: '#0A0A0A', border: 'none', borderRadius: '8px',
-  padding: '10px 24px', fontSize: '13px', fontWeight: 700, cursor: 'pointer',
 };
 const btnSecondary: React.CSSProperties = {
   background: '#F1F5F9', color: '#374151', border: '1px solid #D1D5DB',
@@ -176,17 +174,12 @@ function FeaturesEditor({ features, onChange, dir, readOnly }: {
           <input style={{ ...inp(dir), flex: 1, opacity: readOnly ? 0.6 : 1 }}
             value={f} onChange={e => set(i, e.target.value)} dir={dir} readOnly={readOnly} />
           {!readOnly && (
-            <button onClick={() => remove(i)} style={{ border: 'none', background: '#FEE2E2', color: '#DC2626',
-              borderRadius: '6px', padding: '8px', cursor: 'pointer', flexShrink: 0 }}>✕</button>
+            <AdminActionButton label="Sil" icon={Trash2} variant="delete" onClick={() => remove(i)} className="px-2" />
           )}
         </div>
       ))}
       {!readOnly && (
-        <button onClick={add} style={{ border: '1px dashed #D1D5DB', background: 'transparent',
-          color: '#6B7280', borderRadius: '6px', padding: '6px 14px', cursor: 'pointer',
-          fontSize: '12px', fontFamily: 'Inter, sans-serif', marginTop: '4px' }}>
-          + Özellik Ekle
-        </button>
+        <AdminActionButton label="Özellik Ekle" icon={Plus} variant="subtle" onClick={add} className="mt-1" />
       )}
     </div>
   );
@@ -232,11 +225,7 @@ function ContentSectionsEditor({ sections, onChange, dir, readOnly }: {
               </select>
             </div>
             {!readOnly && (
-              <button onClick={() => remove(s.id)} style={{ border: 'none', background: '#FEE2E2',
-                color: '#DC2626', borderRadius: '6px', padding: '8px 10px', cursor: 'pointer',
-                fontSize: '12px', fontFamily: 'Inter, sans-serif', marginTop: '20px' }}>
-                Sil
-              </button>
+              <AdminActionButton label="Sil" icon={Trash2} variant="delete" onClick={() => remove(s.id)} className="mt-5" />
             )}
           </div>
           <div style={{ marginBottom: '10px' }}>
@@ -256,11 +245,7 @@ function ContentSectionsEditor({ sections, onChange, dir, readOnly }: {
         </div>
       ))}
       {!readOnly && (
-        <button onClick={add} style={{ border: '1px dashed #D1D5DB', background: 'transparent',
-          color: '#6B7280', borderRadius: '6px', padding: '6px 14px', cursor: 'pointer',
-          fontSize: '12px', fontFamily: 'Inter, sans-serif', marginTop: '4px' }}>
-          + İçerik Bölümü Ekle
-        </button>
+        <AdminActionButton label="İçerik Bölümü Ekle" icon={Plus} variant="subtle" onClick={add} className="mt-1" />
       )}
     </div>
   );
@@ -295,11 +280,7 @@ function FaqsEditor({ faqs, onChange, dir, readOnly }: {
               Soru {i + 1}
             </span>
             {!readOnly && (
-              <button onClick={() => remove(f.id)} style={{ border: 'none', background: '#FEE2E2',
-                color: '#DC2626', borderRadius: '6px', padding: '5px 10px', cursor: 'pointer',
-                fontSize: '11px', fontFamily: 'Inter, sans-serif' }}>
-                Sil
-              </button>
+              <AdminActionButton label="Sil" icon={Trash2} variant="delete" onClick={() => remove(f.id)} className="text-xs" />
             )}
           </div>
           <div style={{ marginBottom: '10px' }}>
@@ -319,11 +300,7 @@ function FaqsEditor({ faqs, onChange, dir, readOnly }: {
         </div>
       ))}
       {!readOnly && (
-        <button onClick={add} style={{ border: '1px dashed #D1D5DB', background: 'transparent',
-          color: '#6B7280', borderRadius: '6px', padding: '6px 14px', cursor: 'pointer',
-          fontSize: '12px', fontFamily: 'Inter, sans-serif', marginTop: '4px' }}>
-          + SSS Ekle
-        </button>
+        <AdminActionButton label="SSS Ekle" icon={Plus} variant="subtle" onClick={add} className="mt-1" />
       )}
     </div>
   );
@@ -502,48 +479,28 @@ function TranslationPanel({
   const canPublish   = ['APPROVED', 'DRAFT', 'REVIEW'].includes(status);
   const canUnpublish = status === 'PUBLISHED';
 
-  const btnStyle = (color: string, bg: string): React.CSSProperties => ({
-    border: 'none', background: bg, color, borderRadius: '6px', padding: '6px 14px',
-    cursor: 'pointer', fontSize: '12px', fontWeight: 600, fontFamily: 'Inter, sans-serif',
-    opacity: actionLoading ? 0.5 : 1,
-  });
-
   return (
     <div>
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px', alignItems: 'center' }}>
         <StatusBadge status={status} />
-        <button onClick={() => doAction('translate')} style={btnStyle('#1E293B', '#E2E8F0')} disabled={!!actionLoading}>
-          {actionLoading === 'translate' ? 'Çevriliyor…' : '↺ Yeniden Çevir'}
-        </button>
+        <AdminActionButton label={actionLoading === 'translate' ? 'Çevriliyor…' : 'Yeniden Çevir'} variant="subtle" loading={actionLoading === 'translate'} disabled={!!actionLoading && actionLoading !== 'translate'} onClick={() => doAction('translate')} />
         {body && !editing && (
-          <button onClick={() => setEditing(true)} style={btnStyle('#FFFFFF', '#4F46E5')} disabled={!!actionLoading}>
-            Düzenle
-          </button>
+          <AdminActionButton label="Düzenle" variant="edit" manage={false} disabled={!!actionLoading} onClick={() => setEditing(true)} />
         )}
         {body && editing && (
           <>
-            <button onClick={save} style={btnStyle('#FFFFFF', '#4F46E5')} disabled={!!actionLoading}>
-              {actionLoading === 'save' ? 'Kaydediliyor…' : 'Çeviriyi Kaydet'}
-            </button>
-            <button onClick={() => { setEditing(false); setEditedBody(tx?.body ?? null); }} style={btnStyle('#475569', '#F1F5F9')} disabled={!!actionLoading}>
-              Vazgeç
-            </button>
+            <AdminActionButton label={actionLoading === 'save' ? 'Kaydediliyor…' : 'Çeviriyi Kaydet'} icon={Save} variant="save" loading={actionLoading === 'save'} disabled={!!actionLoading && actionLoading !== 'save'} onClick={save} />
+            <AdminActionButton label="Vazgeç" variant="cancel" manage={false} disabled={!!actionLoading} onClick={() => { setEditing(false); setEditedBody(tx?.body ?? null); }} />
           </>
         )}
         {canApprove && (
-          <button onClick={() => doAction('approve')} style={btnStyle('#FFFFFF', '#0891B2')} disabled={!!actionLoading}>
-            {actionLoading === 'approve' ? '…' : '✓ Onayla'}
-          </button>
+          <AdminActionButton label={actionLoading === 'approve' ? 'Onaylanıyor…' : 'Onayla'} icon={CheckCircle} variant="activate" loading={actionLoading === 'approve'} disabled={!!actionLoading && actionLoading !== 'approve'} onClick={() => doAction('approve')} />
         )}
         {canPublish && (
-          <button onClick={() => doAction('publish')} style={btnStyle('#FFFFFF', '#059669')} disabled={!!actionLoading}>
-            {actionLoading === 'publish' ? '…' : '▶ Yayımla'}
-          </button>
+          <AdminActionButton label={actionLoading === 'publish' ? 'Yayınlanıyor…' : 'Yayınla'} icon={Globe} variant="activate" loading={actionLoading === 'publish'} disabled={!!actionLoading && actionLoading !== 'publish'} onClick={() => doAction('publish')} />
         )}
         {canUnpublish && (
-          <button onClick={() => doAction('unpublish')} style={btnStyle('#92400E', '#FEF3C7')} disabled={!!actionLoading}>
-            {actionLoading === 'unpublish' ? '…' : '⏸ Yayından Al'}
-          </button>
+          <AdminActionButton label={actionLoading === 'unpublish' ? 'Yayından Alınıyor…' : 'Yayından Al'} icon={Archive} variant="deactivate" loading={actionLoading === 'unpublish'} disabled={!!actionLoading && actionLoading !== 'unpublish'} onClick={() => doAction('unpublish')} />
         )}
         <a
           href={`/${locale}/${slug}`}
@@ -900,12 +857,8 @@ export default function ServicePageEditor({ initialRecord }: Props) {
               disabled={record.status !== 'PUBLISHED' || !record.isActive}
               style={{ background: '#172B3A', borderColor: '#172B3A', padding: '10px 16px', fontSize: 13 }}
             />
-            <button onClick={() => doSave(true)} disabled={saving} style={{ ...btnSecondary, opacity: saving ? 0.5 : 1 }}>
-              {saving ? 'Kaydediliyor…' : (record.status === 'PUBLISHED' ? 'Taslak Kaydet' : 'Taslak Kaydet ve Çevir')}
-            </button>
-            <button onClick={() => doSave(false)} disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.5 : 1 }}>
-              {saving ? 'Kaydediliyor…' : '▶ Kaydet ve Yayımla'}
-            </button>
+            <AdminActionButton label={saving ? 'Kaydediliyor…' : (record.status === 'PUBLISHED' ? 'Taslak Kaydet' : 'Taslak Kaydet ve Çevir')} icon={Save} variant="save" loading={saving} onClick={() => doSave(true)} />
+            <AdminActionButton label={saving ? 'Kaydediliyor…' : 'Kaydet ve Yayımla'} icon={Globe} variant="activate" loading={saving} onClick={() => doSave(false)} />
           </div>
         )}
       </div>
@@ -952,7 +905,11 @@ export default function ServicePageEditor({ initialRecord }: Props) {
             })}
           </div>
           {publishableTranslations.length > 0 ? (
-            <button
+            <AdminActionButton
+              label={`Hazır Çevirileri Toplu Yayımla (${publishableTranslations.length})`}
+              icon={Globe}
+              variant="activate"
+              loading={saving}
               onClick={async () => {
                 setSaving(true);
                 try {
@@ -962,11 +919,8 @@ export default function ServicePageEditor({ initialRecord }: Props) {
                   showToast('success', `${publishableTranslations.length} çeviri yayımlandı.`);
                 } finally { setSaving(false); }
               }}
-              disabled={saving}
-              style={{ ...btnPrimary, fontSize: '12px', padding: '8px 18px', flexShrink: 0, opacity: saving ? 0.5 : 1 }}
-            >
-              ▶ Hazır Çevirileri Toplu Yayımla ({publishableTranslations.length})
-            </button>
+              className="shrink-0 text-xs"
+            />
           ) : (
             <span style={{ fontSize: '11px', color: '#94A3B8', fontFamily: 'Inter, sans-serif', flexShrink: 0 }}>
               {record.translations.every(t => t.status === 'PUBLISHED')

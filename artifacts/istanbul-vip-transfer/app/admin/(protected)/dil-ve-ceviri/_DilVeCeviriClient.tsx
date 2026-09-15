@@ -24,6 +24,7 @@ import {
 import { safeFetch, safeJson } from '@/lib/safe-fetch-json';
 import { LOCALE_FLAG_EMOJIS } from '@/lib/i18n/locale-registry';
 import { AdminRecordActions } from '../../_components/AdminRecordActions';
+import { AdminActionButton } from '../../_components/AdminActionButton';
 import type {
   LangTranslationStats, CoverageStats, EntitySources, Job, DbLang,
 } from './page';
@@ -290,22 +291,13 @@ function DillerTab({ langs, stats }: { langs: Lang[]; stats: LangTranslationStat
               <strong>{confirm.lang.code.toUpperCase()}</strong> ({confirm.lang.nativeName || confirm.lang.name}) dili için bu işlemi onaylıyor musunuz?
             </p>
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => setConfirm(null)}
-                style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #D0D9E0', background: '#fff', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px', color: '#4B6375' }}
-              >
-                İptal
-              </button>
-              <button
+              <AdminActionButton label="İptal" variant="cancel" manage={false} onClick={() => setConfirm(null)} />
+              <AdminActionButton
+                label="Onayla"
+                variant={confirm.action === 'disable' || confirm.action === 'unpublish' ? 'deactivate' : 'activate'}
+                loading={loadingCode === confirm.lang.code}
                 onClick={() => doAction(confirm.lang, confirm.action)}
-                style={{
-                  padding: '8px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-                  fontFamily: 'Inter, sans-serif', fontSize: '13px', color: '#fff',
-                  background: confirm.action === 'disable' || confirm.action === 'unpublish' ? '#DC2626' : '#16A34A',
-                }}
-              >
-                {loadingCode === confirm.lang.code ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : 'Onayla'}
-              </button>
+              />
             </div>
           </div>
         </div>
@@ -648,18 +640,10 @@ function CevirilerIsleriTab({ langs, entitySources }: { langs: Lang[]; entitySou
 
         {/* Action buttons */}
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-          <button onClick={runTranslate} disabled={!canStart}
-            style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: !canStart ? '#93C5FD' : '#3B82F6', color: '#fff', cursor: !canStart ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '8px' }}
-          >
-            {running
-              ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Çevriliyor&hellip;</>
-              : <><Sparkles size={14} /> Yapay Zeka ile Çevir</>}
-          </button>
+          <AdminActionButton label={running ? 'Çevriliyor…' : 'Yapay Zeka ile Çevir'} icon={Sparkles} variant="new" loading={running} disabled={!canStart} onClick={runTranslate} />
 
           {running && pendingCnt > 0 && (
-            <button onClick={cancelJob} style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #FCA5A5', background: '#FFF', color: '#DC2626', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-              <XIcon size={13} /> Durdur
-            </button>
+            <AdminActionButton label="Durdur" icon={XIcon} variant="deactivate" onClick={cancelJob} />
           )}
 
           {isDone && failedCnt > 0 && (

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle2, DatabaseBackup, Download, Loader2 } from 'lucide-react';
+import { CheckCircle2, DatabaseBackup, Download } from 'lucide-react';
+import { AdminActionButton } from '../../_components/AdminActionButton';
 
 type BackupMetadata = {
   format: string;
@@ -96,15 +97,7 @@ export default function DatabaseBackupClient() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={downloadBackup}
-        disabled={busy}
-        style={{ minHeight: '44px', display: 'inline-flex', alignItems: 'center', gap: '8px', background: busy ? '#93C5FD' : '#2563EB', color: '#FFFFFF', border: 0, textDecoration: 'none', borderRadius: '8px', padding: '10px 16px', fontSize: '13px', fontWeight: 700, cursor: busy ? 'wait' : 'pointer' }}
-      >
-        {busy ? <Loader2 size={16} /> : <DatabaseBackup size={16} />}
-        {busy ? 'Yedek hazırlanıyor…' : 'Yedeği indir ve doğrula'}
-      </button>
+      <AdminActionButton type="button" onClick={downloadBackup} loading={busy} label={busy ? 'Yedek hazırlanıyor…' : 'Yedeği indir ve doğrula'} icon={DatabaseBackup} variant="new" manage={false} />
       {error && <p role="alert" style={{ margin: '12px 0 0', color: '#B91C1C', fontSize: '13px' }}>{error}</p>}
       {result && (
         <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', marginTop: '14px', color: '#166534', fontSize: '12px', lineHeight: 1.5 }}>
@@ -125,7 +118,7 @@ export default function DatabaseBackupClient() {
           <label style={{ fontSize: 12 }}>Yedek (.dump)<input type="file" accept=".dump,application/octet-stream" onChange={(event) => setRestoreFile(event.target.files?.[0] ?? null)} /></label>
           <label style={{ fontSize: 12 }}>JSON manifest (.sha256.txt)<input type="file" accept=".txt,.json,application/json" onChange={(event) => setManifestFile(event.target.files?.[0] ?? null)} /></label>
           <div style={{ display: 'flex', gap: 8 }}>
-             <button type="button" disabled={restoreBusy} onClick={validateBackup} style={{ minHeight: '44px', padding: '8px 14px' }}>Dry-run doğrula</button>
+              <AdminActionButton type="button" disabled={!restoreFile || !manifestFile} loading={restoreBusy} onClick={validateBackup} label="Dry-run doğrula" icon={CheckCircle2} variant="save" />
           </div>
         </div>
         {restoreMessage && <p role="status" style={{ fontSize: 12 }}>{restoreMessage}</p>}

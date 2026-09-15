@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { Plus } from 'lucide-react';
+import { AdminActionButton } from '../../_components/AdminActionButton';
 import { db } from '@/db';
 import { content } from '@/db/schema';
 import { and, eq, desc, count } from 'drizzle-orm';
@@ -49,9 +49,7 @@ export default async function SayfalarPage({
         title="Sayfalar"
         description="Statik site sayfalarını yönetin"
         action={
-          <Link href="/admin/sayfalar/yeni" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '8px', background: '#2563EB', color: '#FFFFFF', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
-            <Plus size={15} /> Yeni Sayfa
-          </Link>
+          <AdminActionButton href="/admin/sayfalar/yeni" label="Yeni Sayfa" icon={Plus} variant="new" manage={false} />
         }
       />
       {dbError ? (

@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AlertTriangle, CheckCircle, Loader2, Save, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Save, ShieldCheck } from 'lucide-react';
 import AdminPageHeader from '../../../_components/AdminPageHeader';
+import { AdminActionButton } from '../../../_components/AdminActionButton';
 
 type Config = {
   encryptionReady: boolean;
@@ -176,10 +177,7 @@ export default function TurnstileSettingsClient() {
             </label>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px' }}>
-            <button type="submit" disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '10px 18px', border: 0, borderRadius: '8px', cursor: saving ? 'wait' : 'pointer', background: '#C99A32', color: '#FFFFFF', fontWeight: 700 }}>
-              {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-              {saving ? 'Kaydediliyor…' : 'Kaydet'}
-            </button>
+            <AdminActionButton type="submit" label={saving ? 'Kaydediliyor…' : 'Kaydet'} icon={Save} variant="save" loading={saving} />
           </div>
         </section>
         {message && (

@@ -554,16 +554,17 @@ export function assertVerifiedSourceForBan(bannedVehicleClasses: string[] | null
 
 /**
  * Mirrors assertPricingModeMatchesGatePair at the point level: the owner's
- * rule is that bridges/tunnels are always a flat per-crossing fee (open
+ * rule is that bridges/tunnels/ferries are always a flat per-crossing fee (open
  * system, summed across genuinely distinct crossings) while highway
  * segments are always priced by entry+exit gate pair (closed system,
  * intermediate stations never separately summed). Enforced at write time so
  * the type/pricingMode pairing can never drift apart, even though existing
- * data already happens to be consistent.
+ * data already happens to be consistent. FERRY points are open-system
+ * crossings and use the same flat tariff model as bridges and tunnels.
  */
-export function assertTypeMatchesPricingMode(type: 'BRIDGE' | 'TUNNEL' | 'HIGHWAY', pricingMode: TollPricingMode): void {
-  if ((type === 'BRIDGE' || type === 'TUNNEL') && pricingMode !== 'FLAT') {
-    throw new Error('Köprü/tünel noktaları her zaman sabit ücretli (FLAT) olmalıdır — açık sistemde her geçiş kendi başına ücretlendirilir.');
+export function assertTypeMatchesPricingMode(type: 'BRIDGE' | 'TUNNEL' | 'HIGHWAY' | 'FERRY', pricingMode: TollPricingMode): void {
+  if ((type === 'BRIDGE' || type === 'TUNNEL' || type === 'FERRY') && pricingMode !== 'FLAT') {
+    throw new Error('Köprü/tünel/feribot noktaları her zaman sabit ücretli (FLAT) olmalıdır — açık sistemde her geçiş kendi başına ücretlendirilir.');
   }
   if (type === 'HIGHWAY' && pricingMode !== 'GATE_PAIR') {
     throw new Error('Otoyol kesimleri her zaman giriş/çıkış gişe çiftiyle (GATE_PAIR) ücretlendirilmelidir — kapalı sistemde ara istasyonlar ayrı ayrı toplanmaz.');
@@ -584,7 +585,7 @@ export function assertVerifiedSourceForDirection(tollDirection: string | null, s
 }
 
 /**
- * Enforces the two-system separation the owner requires: a bridge/tunnel
+ * Enforces the two-system separation the owner requires: a bridge/tunnel/ferry
  * (pricingMode FLAT) is charged one fixed amount per crossing and must never
  * carry an entry/exit gate pair; a highway segment (pricingMode GATE_PAIR)
  * is priced by its specific entry+exit gate pair and must never be assigned
@@ -598,7 +599,7 @@ export function assertPricingModeMatchesGatePair(
 ): void {
   const hasGatePair = !!entryGateName && !!exitGateName;
   if (pricingMode === 'FLAT' && hasGatePair) {
-    throw new Error('Bu bir sabit ücretli (köprü/tünel) geçiş noktasıdır — giriş/çıkış gişe çifti girilemez, tek bir tutar geçerlidir.');
+    throw new Error('Bu bir sabit ücretli (köprü/tünel/feribot) geçiş noktasıdır — giriş/çıkış gişe çifti girilemez, tek bir tutar geçerlidir.');
   }
   if (pricingMode === 'GATE_PAIR' && !hasGatePair) {
     throw new Error('Bu bir otoyol kesimidir — tek bir sabit tutar girilemez, giriş ve çıkış gişesi birlikte seçilmelidir.');

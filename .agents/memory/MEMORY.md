@@ -142,3 +142,4 @@
 - [Gate-pair acceptance test timing](gate-pair-acceptance-test-timing.md) — same-origin mutation fetches and controlled-select re-render waits prevent false 403/stale-pair browser failures.
 - [PostgreSQL advisory text keys](postgres-advisory-text-keys.md) — text hashed for advisory locks must exclude NUL bytes, and hashtextextended’s seed must be explicitly bigint.
 - [Google review continuity](google-review-continuity.md) — verified selected-location reviews stay public during OAuth repair; sync remains connection-gated, leased and cache-invalidating.
+- [Admin async loader races](admin-async-loader-races.md) — discard stale settings-load responses so dev Strict Mode or overlapping requests cannot erase user edits.

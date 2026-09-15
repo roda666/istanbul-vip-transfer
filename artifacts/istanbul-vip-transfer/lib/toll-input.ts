@@ -19,7 +19,7 @@ const nullableGateName = z.string().trim().min(1).max(160).nullable().optional()
 
 export const tollPointInputSchema = z.object({
   name: z.string().trim().min(2, 'Geçiş noktası adı en az 2 karakter olmalıdır.').max(160),
-  type: z.enum(['BRIDGE', 'TUNNEL', 'HIGHWAY']),
+  type: z.enum(['BRIDGE', 'TUNNEL', 'HIGHWAY', 'FERRY']),
   active: z.boolean().default(true),
   /** Only meaningful for points with real DAY/NIGHT-banded tariffs (e.g. Avrasya Tüneli); leave both null otherwise. */
   dayStartHour: nullableHour,
@@ -37,7 +37,7 @@ export const tollPointInputSchema = z.object({
   tollDirection: z.enum(TOLL_DIRECTIONS).nullable().optional(),
   tollDirectionSourceUrl: nullableSourceUrl,
   tollDirectionNotes: nullableText,
-  /** FLAT (default) or GATE_PAIR — see toll-management.ts for what each means. */
+  /** FLAT (default) or GATE_PAIR — see toll-management.ts; ferry points, like bridges/tunnels, must be FLAT. */
   pricingMode: z.enum(TOLL_PRICING_MODES).default('FLAT'),
 }).superRefine((value, context) => {
   const hasDay = value.dayStartHour != null;
@@ -53,7 +53,7 @@ export const tollPointInputSchema = z.object({
   // Same pattern again for the separate vehicle-TYPE ban axis (e.g. a
   // categorical "Otobüs" ban, independent of the axle-based class ban above).
   // Same pattern again for the tolling-direction claim.
-  // Bridges/tunnels (açık sistem, tek fiyat) must always be FLAT; highway
+   // Bridges/tunnels/ferries (açık sistem, tek fiyat) must always be FLAT; highway
   // segments (kapalı sistem, giriş+çıkış) must always be GATE_PAIR — this can
   // never drift apart, enforced here so both the point form and any future
   // API caller are covered by the same schema.

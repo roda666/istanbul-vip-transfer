@@ -13,7 +13,7 @@ export default function TollManagementPage() {
     <div style={{ padding: '28px 24px' }}>
       <AdminPageHeader
         title="Yol & Geçiş Ücretleri"
-        description="Köprü, tünel ve otoyol maliyetlerini araç sınıfı ile rota alternatifine göre yönetin"
+        description="Köprü, tünel, otoyol ve feribot maliyetlerini araç sınıfı ile rota alternatifine göre yönetin"
         action={null}
       />
       <div
@@ -32,7 +32,7 @@ export default function TollManagementPage() {
         }}
       >
         <Navigation size={14} />
-        Eksik araç sınıfı tarifesi olan geçişler fiyattan hiç etkilenmez (asla 0 TL varsayılmaz); teklif yine üretilir ama &quot;eksik veri&quot; olarak işaretlenir ve panelde vurgulanır. Manuel değerler her zaman otomatik kaynaktan önceliklidir. Belirlenen eşiği aşan veya yeni takvim yılına giren tarifeler &quot;bayat&quot; olarak uyarılır (Ayarlar sekmesinden yapılandırılabilir).
+        Eksik araç sınıfı tarifesi olan geçişler fiyattan hiç etkilenmez (asla 0 TL varsayılmaz); teklif yine üretilir ama &quot;eksik veri&quot; olarak işaretlenir ve panelde vurgulanır. Manuel değerler her zaman otomatik kaynaktan önceliklidir.
       </div>
       <TollManagementClient />
     </div>

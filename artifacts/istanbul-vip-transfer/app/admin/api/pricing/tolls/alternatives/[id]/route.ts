@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, ne } from 'drizzle-orm';
 import { requireAdminSession } from '@/lib/auth/session';
 import { db } from '@/db';
 import { auditLogs, routeTollAlternativeItems, routeTollAlternatives, tollPoints, tollTariffs, transferRoutes } from '@/db/schema';
@@ -103,5 +103,67 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ alternative: { ...alternative, pointIds: payload.data.pointIds, gatePairs: payload.data.gatePairs ?? {} } });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Rota alternatifi güncellenemedi.' }, { status: 422 });
+  }
+}
+
+/** DELETE /admin/api/pricing/tolls/alternatives/[id] — remove only this alternative and its items. */
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  let session;
+  try {
+    session = await requireAdminSession();
+  } catch {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const { id } = await params;
+  try {
+    const deleted = await db.transaction(async (tx) => {
+      const [existing] = await tx.select({
+        id: routeTollAlternatives.id,
+        routeId: routeTollAlternatives.routeId,
+        active: routeTollAlternatives.active,
+        isDefault: routeTollAlternatives.isDefault,
+      }).from(routeTollAlternatives).where(eq(routeTollAlternatives.id, id)).limit(1);
+      if (!existing) return null;
+
+      if (existing.active && existing.isDefault) {
+        const [replacement] = await tx.select({ id: routeTollAlternatives.id })
+          .from(routeTollAlternatives)
+          .where(and(
+            eq(routeTollAlternatives.routeId, existing.routeId),
+            eq(routeTollAlternatives.active, true),
+            ne(routeTollAlternatives.id, existing.id),
+          ))
+          .orderBy(routeTollAlternatives.displayOrder, routeTollAlternatives.id)
+          .limit(1);
+        if (replacement) {
+          await tx.update(routeTollAlternatives)
+            .set({ isDefault: false, updatedAt: new Date() })
+            .where(eq(routeTollAlternatives.id, existing.id));
+          await tx.update(routeTollAlternatives)
+            .set({ isDefault: true, updatedAt: new Date() })
+            .where(eq(routeTollAlternatives.id, replacement.id));
+        }
+      }
+
+      // Delete children explicitly before the parent so this remains clear
+      // and transactional even if the FK cascade is changed in the future.
+      await tx.delete(routeTollAlternativeItems).where(eq(routeTollAlternativeItems.alternativeId, id));
+      const [removed] = await tx.delete(routeTollAlternatives)
+        .where(eq(routeTollAlternatives.id, id))
+        .returning({ id: routeTollAlternatives.id, routeId: routeTollAlternatives.routeId });
+      return removed ?? null;
+    });
+    if (!deleted) return NextResponse.json({ error: 'Rota alternatifi bulunamadı.' }, { status: 404 });
+
+    await db.insert(auditLogs).values({
+      adminUserId: session.adminId,
+      action: 'DELETE',
+      entityType: 'RouteTollAlternative',
+      entityId: deleted.id,
+      metadata: { routeId: deleted.routeId, action: 'deleted' },
+    }).catch(() => {});
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Rota alternatifi silinemedi.' }, { status: 422 });
   }
 }

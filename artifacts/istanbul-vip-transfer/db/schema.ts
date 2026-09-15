@@ -75,7 +75,7 @@ export const pricingModeEnum = pgEnum('pricing_mode', ['DISTANCE', 'HOURLY']);
 export const includedKmModeEnum = pgEnum('included_km_mode', ['PER_HOUR', 'PACKAGE']);
 export const fxModeEnum = pgEnum('fx_mode', ['LIVE', 'MANUAL']);
 export const vatDisplayModeEnum = pgEnum('vat_display_mode', ['EXCLUDED', 'INCLUDED']);
-export const tollPointTypeEnum = pgEnum('toll_point_type', ['BRIDGE', 'TUNNEL', 'HIGHWAY']);
+export const tollPointTypeEnum = pgEnum('toll_point_type', ['BRIDGE', 'TUNNEL', 'HIGHWAY', 'FERRY']);
 /**
  * How many times a round trip is actually charged at this point:
  * ONE_WAY = only ever charged in one direction (a round trip still only pays it once);
@@ -1201,6 +1201,22 @@ export const integrationSecretsEncryptionKeys = pgTable('integration_secrets_enc
 
 export type IntegrationSecret = typeof integrationSecrets.$inferSelect;
 
+/**
+ * Singleton settings for the toll institution's future API integration.
+ * The API code is envelope-encrypted with the same data-key/root-key
+ * mechanism as integrationSecrets and is never exposed as plaintext.
+ */
+export const tollInstitutionApiSettings = pgTable('toll_institution_api_settings', {
+  id: integer('id').primaryKey().default(1),
+  organizationName: text('organization_name').notNull(),
+  serviceUrl: text('service_url').notNull(),
+  apiCodeCiphertext: text('api_code_ciphertext').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+});
+
+export type TollInstitutionApiSettings = typeof tollInstitutionApiSettings.$inferSelect;
+
 // ── Translation Jobs ──────────────────────────────────────────────────────────
 
 /**
@@ -1713,7 +1729,8 @@ export const tollPoints = pgTable('toll_points', {
   /** Free-text note on what the source actually said (e.g. "iki yönlü ücretlendirme 1 Ocak 2022'den itibaren başladı"). */
   tollDirectionNotes: text('toll_direction_notes'),
   /**
-   * FLAT (default) = normal single-amount-per-class tariff rows. GATE_PAIR =
+   * FLAT (default) = normal single-amount-per-class tariff rows (including
+   * bridges, tunnels, and ferries). GATE_PAIR =
    * this point's real fee only exists as an entry-gate/exit-gate calculator
    * result (e.g. an otoyol operator's fee tool) — toll_tariffs rows for this
    * point must carry entryGateName/exitGateName and mean "this exact gate

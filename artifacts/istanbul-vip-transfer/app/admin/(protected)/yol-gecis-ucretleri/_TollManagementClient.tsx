@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useCallback, useId, useRef } from 'react';
 import { 
   MapPin, Navigation, Plus, Save, Edit2, 
-  RefreshCw, Check, X, AlertCircle, Loader2, Car, ShieldCheck, Settings2
+  RefreshCw, Check, X, AlertCircle, Loader2, Car, ShieldCheck, Settings2,
+  ArrowUp, ArrowDown, Trash2, KeyRound
 } from 'lucide-react';
 import { AdminRecordActions } from '@/app/admin/_components/AdminRecordActions';
 import { TOLL_VEHICLE_CLASS_LABELS, TOLL_VEHICLE_CLASS_SELECTION_WARNING } from '@/lib/toll-vehicle-classes';
@@ -14,7 +15,7 @@ import { availableGatePairs, gatePairKey, isExactGatePair } from '@/lib/toll-gat
 type TollPoint = {
   id: string;
   name: string;
-  type: 'BRIDGE' | 'TUNNEL' | 'HIGHWAY';
+  type: 'BRIDGE' | 'TUNNEL' | 'HIGHWAY' | 'FERRY';
   active: boolean;
   // Per-point day/night cutover hours (0-23); null on both means this point
   // has no day/night differentiation (its tariffs are entered as ALL/DAY).
@@ -89,6 +90,13 @@ type TollTariff = {
 type TollSettings = {
   staleAfterDays: number;
   warnOnNewYearRollover: boolean;
+};
+
+type TollIntegrationSettings = {
+  organizationName: string;
+  serviceUrl: string;
+  apiCodeConfigured: boolean;
+  maskedApiCode: string | null;
 };
 
 const TIME_BAND_LABELS: Record<TollTimeBand, string> = { ALL: 'Tüm Gün', DAY: 'Gündüz', NIGHT: 'Gece' };
@@ -425,7 +433,7 @@ function PointForm({ onSave, onClose }: { onSave: (point: TollPoint) => void, on
         <div>
           <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Geçiş Tipi</label>
           <select value={formData.type} onChange={e => setFormData(f => ({...f, type: e.target.value}))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all">
-             <option value="BRIDGE">Köprü</option><option value="TUNNEL">Tünel</option><option value="HIGHWAY">Otoyol</option>
+             <option value="BRIDGE">Köprü</option><option value="TUNNEL">Tünel</option><option value="HIGHWAY">Otoyol</option><option value="FERRY">Feribot</option>
           </select>
         </div>
       </div>
@@ -766,7 +774,25 @@ function SyncModal({ tariff, onClose, onRefresh }: { tariff: TollTariff, onClose
   );
 }
 
-function AlternativeForm({ routeId, routes, points, tariffs, initialData, onSave, onClose }: { routeId: string, routes: Route[], points: TollPoint[], tariffs: TollTariff[], initialData?: TollAlternative, onSave: () => void, onClose: () => void }) {
+function AlternativeForm({
+  routeId,
+  routes,
+  points,
+  tariffs,
+  initialData,
+  inline = false,
+  onSave,
+  onClose,
+}: {
+  routeId: string;
+  routes: Route[];
+  points: TollPoint[];
+  tariffs: TollTariff[];
+  initialData?: TollAlternative;
+  inline?: boolean;
+  onSave: (alternative: TollAlternative) => void;
+  onClose: () => void;
+}) {
   const [formData, setFormData] = useState({
      name: initialData?.name ?? '',
      active: initialData?.active ?? true,
@@ -774,11 +800,24 @@ function AlternativeForm({ routeId, routes, points, tariffs, initialData, onSave
      displayOrder: initialData?.displayOrder ?? 0,
      pointIds: initialData?.pointIds ?? [],
      gatePairs: (initialData?.gatePairs ?? {}) as Record<string, { entryGateName: string, exitGateName: string }>,
-     needsReview: initialData?.needsReview ?? false,
-     reviewNote: initialData?.reviewNote ?? '',
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const requestInFlightRef = useRef(false);
   const routeName = routes.find(r => r.id === routeId)?.name || 'Bilinmeyen Rota';
+  const initialComparable = JSON.stringify({
+    name: initialData?.name ?? '',
+    active: initialData?.active ?? true,
+    isDefault: initialData?.isDefault ?? false,
+    displayOrder: initialData?.displayOrder ?? 0,
+    pointIds: initialData?.pointIds ?? [],
+    gatePairs: initialData?.gatePairs ?? {},
+  });
+  const isDirty = JSON.stringify(formData) !== initialComparable;
+  const orderedFormPoints = [
+    ...formData.pointIds.map(id => points.find(point => point.id === id)).filter((point): point is TollPoint => !!point),
+    ...points.filter(point => !formData.pointIds.includes(point.id)),
+  ];
 
   const togglePoint = (pid: string) => {
     setFormData(f => ({
@@ -787,7 +826,19 @@ function AlternativeForm({ routeId, routes, points, tariffs, initialData, onSave
     }));
   };
 
+  const movePoint = (pid: string, direction: 'up' | 'down') => {
+    setFormData(current => {
+      const index = current.pointIds.indexOf(pid);
+      const nextIndex = direction === 'up' ? index - 1 : index + 1;
+      if (index < 0 || nextIndex < 0 || nextIndex >= current.pointIds.length) return current;
+      const pointIds = [...current.pointIds];
+      [pointIds[index], pointIds[nextIndex]] = [pointIds[nextIndex], pointIds[index]];
+      return { ...current, pointIds };
+    });
+  };
+
   const handleSubmit = async () => {
+    if (requestInFlightRef.current || (initialData && !isDirty)) return;
     const invalidGatePair = formData.pointIds.some((pid) => {
       const point = points.find(p => p.id === pid);
       if (point?.pricingMode !== 'GATE_PAIR') return false;
@@ -796,10 +847,12 @@ function AlternativeForm({ routeId, routes, points, tariffs, initialData, onSave
       return pairs.length === 0 || !isExactGatePair(pair, pairs);
     });
     if (invalidGatePair) {
-      alert(GATE_PAIR_MISSING_WARNING);
+      setError(GATE_PAIR_MISSING_WARNING);
       return;
     }
+    requestInFlightRef.current = true;
     setLoading(true);
+    setError('');
     try {
       const url = initialData 
         ? `/admin/api/pricing/tolls/alternatives/${initialData.id}` 
@@ -826,27 +879,30 @@ function AlternativeForm({ routeId, routes, points, tariffs, initialData, onSave
          displayOrder: formData.displayOrder,
          pointIds: formData.pointIds,
          gatePairs,
-         needsReview: formData.needsReview,
-         reviewNote: formData.reviewNote.trim() || null,
+          needsReview: initialData?.needsReview ?? false,
+          reviewNote: initialData?.reviewNote ?? null,
       };
 
       const res = await fetch(url, { method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Kaydedilemedi');
-      onSave();
+       onSave(data.alternative);
     } catch (error: unknown) {
-      alert(errorMessage(error, 'Kaydedilemedi'));
+       setError(errorMessage(error, 'Kaydedilemedi'));
     } finally {
+       requestInFlightRef.current = false;
       setLoading(false);
     }
   };
 
   return (
     <div className="space-y-5">
-      <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-200 mb-2">
+      {!inline && <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-200 mb-2">
          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Bağlı Rota</div>
          <div className="font-bold text-slate-900 text-sm">{routeName}</div>
-       </div>
+       </div>}
+
+       {error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700">{error}</div>}
        
        <div>
          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Alternatif Adı</label>
@@ -856,16 +912,27 @@ function AlternativeForm({ routeId, routes, points, tariffs, initialData, onSave
        <div>
          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Kapsanan Geçiş Noktaları</label>
          <div className="border border-slate-200 rounded-lg max-h-[360px] overflow-y-auto divide-y divide-slate-100 bg-white">
-            {points.map(p => (
+             {orderedFormPoints.map(p => {
+               const selectedIndex = formData.pointIds.indexOf(p.id);
+               const selected = selectedIndex >= 0;
+               return (
               <div key={p.id} className="p-3 hover:bg-slate-50 transition-colors">
-                <label className="flex items-center gap-3 cursor-pointer min-h-[44px]">
-                   <input type="checkbox" checked={formData.pointIds.includes(p.id)} onChange={() => togglePoint(p.id)} className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                   <div>
+                 <div className="flex min-w-0 items-start gap-2">
+                   <label className="flex min-h-[44px] min-w-0 flex-1 cursor-pointer items-center gap-3">
+                    <input type="checkbox" checked={selected} disabled={!p.active && !selected} onChange={() => togglePoint(p.id)} className="w-5 h-5 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50" />
+                    <div className="min-w-0">
                      <div className="font-bold text-sm text-slate-900 leading-none">{p.name}</div>
-                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{p.type}{p.pricingMode === 'GATE_PAIR' ? ' • GİŞE BAZLI' : ''}</div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{p.type}{p.pricingMode === 'GATE_PAIR' ? ' • GİŞE BAZLI' : ''}{!p.active ? ' • PASİF' : ''}</div>
                    </div>
-                </label>
-                {formData.pointIds.includes(p.id) && p.pricingMode === 'GATE_PAIR' && (
+                   </label>
+                   {selected && (
+                     <div className="flex shrink-0 gap-1">
+                       <button type="button" aria-label={`${p.name} yukarı taşı`} disabled={selectedIndex === 0} onClick={() => movePoint(p.id, 'up')} className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 disabled:opacity-30"><ArrowUp size={16} /></button>
+                       <button type="button" aria-label={`${p.name} aşağı taşı`} disabled={selectedIndex === formData.pointIds.length - 1} onClick={() => movePoint(p.id, 'down')} className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 disabled:opacity-30"><ArrowDown size={16} /></button>
+                     </div>
+                   )}
+                 </div>
+                 {selected && p.pricingMode === 'GATE_PAIR' && (
                    (() => {
                      const pairs = availableGatePairs(p.id, tariffs);
                      const current = formData.gatePairs[p.id];
@@ -905,7 +972,7 @@ function AlternativeForm({ routeId, routes, points, tariffs, initialData, onSave
                    })()
                 )}
               </div>
-            ))}
+             )})}
             {points.length === 0 && <div className="p-6 text-center text-sm text-slate-500 font-medium">Sistemde hiç geçiş noktası bulunamadı.</div>}
          </div>
        </div>
@@ -931,25 +998,9 @@ function AlternativeForm({ routeId, routes, points, tariffs, initialData, onSave
          </label>
        </div>
 
-       <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
-         <label className="flex items-center gap-3 cursor-pointer min-h-[44px]">
-           <input type="checkbox" checked={formData.needsReview} onChange={e => setFormData(f => ({...f, needsReview: e.target.checked}))} className="w-5 h-5 rounded border-amber-400 text-amber-600 focus:ring-amber-500" />
-           <div>
-             <div className="font-bold text-sm text-amber-900">Sahibi Onayı Bekliyor</div>
-             <div className="text-[10px] text-amber-700 leading-relaxed mt-0.5">Bu alternatif spekülatif/teyit edilmemiş — kullanım ve gişe/durak bilgisi sahibi tarafından onaylanana kadar liste ve karşılaştırmalarda uyarı rozetiyle gösterilir.</div>
-           </div>
-         </label>
-         {formData.needsReview && (
-           <div>
-             <label className="block text-xs font-bold text-amber-700 uppercase tracking-wider mb-1.5">İnceleme Notu (sahibine sorulacak soru)</label>
-             <textarea value={formData.reviewNote} onChange={e => setFormData(f => ({...f, reviewNote: e.target.value}))} rows={2} className="w-full bg-white border border-amber-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 shadow-sm transition-all" placeholder="Örn: Bu güzergahta YSS Köprüsü + Kuzey Marmara Otoyolu kullanılıyor mu? Kullanılan giriş/çıkış gişesi (örn. S5 Fenertepe) hangisi?" />
-           </div>
-         )}
-       </div>
-
        <div className="flex gap-3 pt-3 border-t border-slate-100">
-         <button onClick={onClose} className="flex-1 min-h-[44px] py-2 text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">İptal</button>
-         <button onClick={handleSubmit} disabled={loading || !formData.name.trim()} className="flex-1 min-h-[44px] py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm">
+         <button onClick={onClose} className="flex-1 min-h-[44px] py-2 text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">{inline ? 'Vazgeç' : 'İptal'}</button>
+         <button onClick={handleSubmit} disabled={loading || !formData.name.trim() || (!!initialData && !isDirty)} className="flex-1 min-h-[44px] py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm">
             {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
             Kaydet
          </button>
@@ -1376,7 +1427,7 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onAddTariff, o
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Kaydedilemedi');
       setSaved(true);
-      onRefresh();
+      await onRefresh();
       setTimeout(() => setSaved(false), 2000);
     } catch (error: unknown) {
       alert(errorMessage(error, 'Kaydedilemedi'));
@@ -1412,6 +1463,7 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onAddTariff, o
                 <option value="BRIDGE">Köprü (Bridge)</option>
                 <option value="TUNNEL">Tünel (Tunnel)</option>
                 <option value="HIGHWAY">Otoyol (Highway)</option>
+                 <option value="FERRY">Feribot (Ferry)</option>
              </select>
            </div>
         </div>
@@ -1658,9 +1710,12 @@ type AlternativeComparison = {
   reviewNote?: string | null;
 };
 
-function AlternativesManager({ data, onRefresh }: { data: DataPayload, onRefresh: () => void }) {
+function AlternativesManager({ data, onRefresh }: { data: DataPayload, onRefresh: () => Promise<void> }) {
   const [selectedRouteId, setSelectedRouteId] = useState<string>('');
-  const [editAltModal, setEditAltModal] = useState<{alt?: TollAlternative, routeId: string} | null>(null);
+  const [newAltModal, setNewAltModal] = useState<{ routeId: string } | null>(null);
+  const [editingAlternativeId, setEditingAlternativeId] = useState<string | null>(null);
+  const [deletingAlternativeId, setDeletingAlternativeId] = useState<string | null>(null);
+  const deleteRequestInFlightRef = useRef(false);
   const [compareVehicles, setCompareVehicles] = useState<{ id: string, name: string }[]>([]);
   const [compareVehicleId, setCompareVehicleId] = useState<string>('');
   const [comparison, setComparison] = useState<Record<string, AlternativeComparison>>({});
@@ -1677,6 +1732,25 @@ function AlternativesManager({ data, onRefresh }: { data: DataPayload, onRefresh
   }, []);
 
   const routeAlts = data.alternatives.filter(a => a.routeId === selectedRouteId).sort((a,b) => a.displayOrder - b.displayOrder);
+
+  const deleteAlternative = async (alternative: TollAlternative) => {
+    if (deleteRequestInFlightRef.current) return;
+    if (!window.confirm(`“${alternative.name}” alternatifini silmek istediğinize emin misiniz? Yalnız bu alternatif silinecektir.`)) return;
+    deleteRequestInFlightRef.current = true;
+    setDeletingAlternativeId(alternative.id);
+    try {
+      const response = await fetch(`/admin/api/pricing/tolls/alternatives/${alternative.id}`, { method: 'DELETE' });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error ?? 'Alternatif silinemedi.');
+      if (editingAlternativeId === alternative.id) setEditingAlternativeId(null);
+      await onRefresh();
+    } catch (error: unknown) {
+      alert(errorMessage(error, 'Alternatif silinemedi.'));
+    } finally {
+      deleteRequestInFlightRef.current = false;
+      setDeletingAlternativeId(null);
+    }
+  };
 
   useEffect(() => {
     setComparison({});
@@ -1715,7 +1789,7 @@ function AlternativesManager({ data, onRefresh }: { data: DataPayload, onRefresh
                <Navigation className="text-blue-600" size={22} /> Geçiş Alternatifleri
             </h3>
             <button 
-              onClick={() => setEditAltModal({ routeId: selectedRouteId })} 
+              onClick={() => setNewAltModal({ routeId: selectedRouteId })}
               className="min-h-[44px] px-5 py-2 bg-slate-900 text-white rounded-lg font-bold text-sm hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 shadow-sm"
             >
                <Plus size={16} /> Yeni Alternatif
@@ -1745,22 +1819,31 @@ function AlternativesManager({ data, onRefresh }: { data: DataPayload, onRefresh
              </div>
           ) : (
              <div className="flex flex-col gap-4">
-                {routeAlts.map(alt => (
-                   <div key={alt.id} className="p-5 border border-slate-200 rounded-xl flex flex-col sm:flex-row gap-5 justify-between bg-white hover:border-blue-300 transition-all shadow-sm">
+                 {routeAlts.map(alt => editingAlternativeId === alt.id ? (
+                    <div key={alt.id} data-testid={`alternative-editor-${alt.id}`} className="rounded-xl border border-blue-300 bg-blue-50/30 p-4 shadow-sm sm:p-5">
+                      <AlternativeForm
+                        inline
+                        routeId={selectedRouteId}
+                        routes={data.routes}
+                        points={data.points}
+                        tariffs={data.tariffs}
+                        initialData={alt}
+                        onSave={async () => {
+                          await onRefresh();
+                          setEditingAlternativeId(null);
+                        }}
+                        onClose={() => setEditingAlternativeId(null)}
+                      />
+                    </div>
+                 ) : (
+                    <div key={alt.id} data-testid={`alternative-card-${alt.id}`} className="p-5 border border-slate-200 rounded-xl flex flex-col sm:flex-row gap-5 justify-between bg-white hover:border-blue-300 transition-all shadow-sm">
                      <div className="flex-1">
                         <div className="flex flex-wrap items-center gap-3 mb-3.5">
                            <div className="font-black text-slate-900 text-base">{alt.name}</div>
                            {alt.isDefault && <span className="bg-emerald-100 text-emerald-900 text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-widest">Varsayılan Alternatif</span>}
                            {!alt.active && <span className="bg-red-100 text-red-800 text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-widest">Pasif</span>}
-                           {alt.needsReview && <span className="bg-amber-100 text-amber-900 text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-widest flex items-center gap-1"><AlertCircle size={12} /> Sahibi Onayı Bekliyor</span>}
                            <span className="bg-slate-100 text-slate-600 text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-widest sm:ml-auto">Gösterim: {alt.displayOrder}</span>
                         </div>
-
-                        {alt.needsReview && alt.reviewNote && (
-                          <div className="mb-3.5 text-xs font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 leading-relaxed">
-                            {alt.reviewNote}
-                          </div>
-                        )}
 
                         {compareVehicleId && (
                           <div className="mb-3.5 text-sm font-black">
@@ -1796,13 +1879,20 @@ function AlternativesManager({ data, onRefresh }: { data: DataPayload, onRefresh
                            )}
                         </div>
                      </div>
-                     <div className="flex items-center gap-2 sm:self-start mt-2 sm:mt-0">
+                      <div className="grid grid-cols-2 gap-2 sm:self-start mt-2 sm:mt-0">
                         <button 
-                          onClick={() => setEditAltModal({ alt, routeId: selectedRouteId })} 
+                           onClick={() => setEditingAlternativeId(alt.id)}
                           className="min-h-[44px] px-5 py-2 bg-blue-50 border border-blue-100 text-blue-700 hover:bg-blue-100 hover:border-blue-200 hover:text-blue-800 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm"
                         >
                            <Edit2 size={16} /> Düzenle
                         </button>
+                         <button
+                           onClick={() => deleteAlternative(alt)}
+                           disabled={deletingAlternativeId === alt.id}
+                           className="min-h-[44px] px-5 py-2 bg-red-600 border border-red-600 text-white hover:bg-red-700 disabled:opacity-50 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm"
+                         >
+                           {deletingAlternativeId === alt.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />} Sil
+                         </button>
                      </div>
                    </div>
                 ))}
@@ -1817,16 +1907,15 @@ function AlternativesManager({ data, onRefresh }: { data: DataPayload, onRefresh
         </div>
       )}
 
-      {editAltModal && (
-        <Modal title={editAltModal.alt ? 'Alternatifi Düzenle' : 'Yeni Alternatif Ekle'} onClose={() => setEditAltModal(null)}>
+      {newAltModal && (
+        <Modal title="Yeni Alternatif Ekle" onClose={() => setNewAltModal(null)}>
            <AlternativeForm 
-             routeId={editAltModal.routeId}
+              routeId={newAltModal.routeId}
              routes={data.routes}
              points={data.points}
              tariffs={data.tariffs}
-             initialData={editAltModal.alt}
-             onSave={() => { setEditAltModal(null); onRefresh(); }}
-             onClose={() => setEditAltModal(null)}
+              onSave={() => { setNewAltModal(null); onRefresh(); }}
+              onClose={() => setNewAltModal(null)}
            />
         </Modal>
       )}
@@ -1834,67 +1923,142 @@ function AlternativesManager({ data, onRefresh }: { data: DataPayload, onRefresh
   );
 }
 
-function SettingsPanel({ settings, onSaved }: { settings: TollSettings, onSaved: (s: TollSettings) => void }) {
-  const [formData, setFormData] = useState(settings);
+function SettingsPanel() {
+  const [settings, setSettings] = useState<TollIntegrationSettings | null>(null);
+  const [formData, setFormData] = useState({ organizationName: '', serviceUrl: '', apiCode: '' });
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const requestInFlightRef = useRef(false);
+  const loadSequenceRef = useRef(0);
 
-  useEffect(() => { setFormData(settings); }, [settings]);
+  const loadSettings = useCallback(async () => {
+    const loadSequence = ++loadSequenceRef.current;
+    setInitialLoading(true);
+    try {
+      const response = await fetch('/admin/api/pricing/tolls/integration-settings');
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error ?? 'API ayarları yüklenemedi.');
+      if (loadSequence !== loadSequenceRef.current) return;
+      setSettings(result.settings);
+      setFormData({ organizationName: result.settings.organizationName, serviceUrl: result.settings.serviceUrl, apiCode: '' });
+      setError('');
+    } catch (cause: unknown) {
+      if (loadSequence !== loadSequenceRef.current) return;
+      setError(errorMessage(cause, 'API ayarları yüklenemedi.'));
+    } finally {
+      if (loadSequence === loadSequenceRef.current) setInitialLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadSettings(); }, [loadSettings]);
+
+  const hasMetadataChanges = !!settings && (
+    formData.organizationName.trim() !== settings.organizationName
+    || formData.serviceUrl.trim() !== settings.serviceUrl
+  );
+  const hasSecretChange = !!formData.apiCode.trim();
+  const canSave = !!formData.organizationName.trim()
+    && /^https:\/\/[^/\s]+/i.test(formData.serviceUrl.trim())
+    && (hasMetadataChanges || hasSecretChange)
+    && (settings?.apiCodeConfigured || hasSecretChange);
 
   const handleSave = async () => {
+    if (requestInFlightRef.current || !canSave) return;
+    requestInFlightRef.current = true;
     setLoading(true);
     setError('');
     setSaved(false);
     try {
-      const res = await fetch('/admin/api/pricing/tolls/settings', {
+      const payload: { organizationName: string; serviceUrl: string; apiCode?: string } = {
+        organizationName: formData.organizationName.trim(),
+        serviceUrl: formData.serviceUrl.trim(),
+      };
+      if (formData.apiCode.trim()) payload.apiCode = formData.apiCode.trim();
+      const res = await fetch('/admin/api/pricing/tolls/integration-settings', {
         method: 'PUT',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Kaydedilemedi');
-      onSaved(data.settings);
+      setSettings(data.settings);
+      setFormData(current => ({ ...current, apiCode: '' }));
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (error: unknown) {
       setError(errorMessage(error, 'Kaydedilemedi'));
     } finally {
+      requestInFlightRef.current = false;
+      setLoading(false);
+    }
+  };
+
+  const handleClear = async () => {
+    if (requestInFlightRef.current || !settings) return;
+    const confirmed = window.confirm(`“${settings.organizationName || 'API Entegrasyonu'}” ayarlarını ve şifreli API kodunu temizlemek istediğinize emin misiniz?`);
+    if (!confirmed) return;
+    requestInFlightRef.current = true;
+    setLoading(true);
+    setError('');
+    try {
+      const response = await fetch('/admin/api/pricing/tolls/integration-settings', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmation: 'API AYARLARINI TEMİZLE' }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error ?? 'API ayarları temizlenemedi.');
+      setSettings(result.settings);
+      setFormData({ organizationName: '', serviceUrl: '', apiCode: '' });
+      setSaved(false);
+    } catch (cause: unknown) {
+      setError(errorMessage(cause, 'API ayarları temizlenemedi.'));
+    } finally {
+      requestInFlightRef.current = false;
       setLoading(false);
     }
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-5 md:p-8 shadow-sm max-w-2xl">
+    <div className="bg-white border border-slate-200 rounded-2xl p-5 md:p-8 shadow-sm max-w-3xl">
       <h3 className="font-black text-slate-900 text-lg flex items-center gap-2.5 mb-1.5">
-        <Settings2 className="text-blue-600" size={22} /> Bayat Tarife Ayarları
+        <KeyRound className="text-blue-600" size={22} /> API Entegrasyonu
       </h3>
-      <p className="text-sm font-medium text-slate-500 mb-6">Bu eşik, geçiş ücretlerinin ne zaman &quot;bayat&quot; (güncellenmesi gereken) olarak işaretleneceğini belirler. Gündüz/gece geçiş saatleri artık her geçiş noktasının kendi sayfasında ayrı ayrı tanımlanır (örn. Avrasya Tüneli), çünkü farklı köprü/tünellerin farklı saatleri olabilir.</p>
+      <p className="text-sm font-medium text-slate-500 mb-6">Kurumun resmî tarife servisi hazır olduğunda kullanılacak bağlantı bilgilerini güvenli biçimde saklayın. Bu ekran bağlantı kurmaz ve otomatik veri çekmez.</p>
 
       {error && (
         <div className="mb-5 bg-red-50 text-red-700 p-3 rounded-lg border border-red-100 text-xs font-bold">{error}</div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
+      {initialLoading ? (
+        <div className="flex min-h-[180px] items-center justify-center"><Loader2 size={28} className="animate-spin text-blue-600" /></div>
+      ) : <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
         <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Bayatlama Eşiği (Gün)</label>
-          <input type="number" min="1" max="3650" value={formData.staleAfterDays} onChange={e => setFormData(f => ({...f, staleAfterDays: parseInt(e.target.value) || 1}))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm" />
-          <p className="text-[10px] font-medium text-slate-500 mt-1.5">Son güncellemeden bu yana bu kadar gün geçtiyse tarife bayat sayılır.</p>
+           <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kurum Adı</label>
+           <input type="text" maxLength={160} value={formData.organizationName} onChange={e => setFormData(f => ({...f, organizationName: e.target.value}))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm" placeholder="Kurum adını girin" />
         </div>
-      </div>
+         <div>
+           <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kurum API/Servis Linki</label>
+           <input type="url" value={formData.serviceUrl} onChange={e => setFormData(f => ({...f, serviceUrl: e.target.value}))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm" placeholder="https://..." />
+         </div>
+         <div className="md:col-span-2">
+           <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">API Kodu/Anahtarı</label>
+           <input type="password" autoComplete="new-password" value={formData.apiCode} onChange={e => setFormData(f => ({...f, apiCode: e.target.value}))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm" placeholder={settings?.apiCodeConfigured ? settings.maskedApiCode ?? 'Kayıtlı gizli anahtar' : 'API kodunu girin'} />
+           <p className="text-[11px] font-medium text-slate-500 mt-1.5">{settings?.apiCodeConfigured ? `Kayıtlı anahtar: ${settings.maskedApiCode}. Değiştirmeyecekseniz boş bırakın.` : 'API kodu şifrelenerek saklanır ve tekrar düz metin olarak gösterilmez.'}</p>
+         </div>
+      </div>}
 
-      <label className="flex items-center gap-3 cursor-pointer min-h-[44px] p-3 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors mb-6">
-        <input type="checkbox" checked={formData.warnOnNewYearRollover} onChange={e => setFormData(f => ({...f, warnOnNewYearRollover: e.target.checked}))} className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-        <div>
-          <div className="font-bold text-sm text-slate-900">Yeni Yıla Girişte Uyar</div>
-          <div className="text-[10px] text-slate-500 leading-relaxed mt-0.5">Takvim yılı değiştiğinde, o tarihten sonra teyit edilmemiş her tarife de bayat olarak işaretlenir (yıllık zam ihtimaline karşı).</div>
-        </div>
-      </label>
-
-      <button onClick={handleSave} disabled={loading} className="min-h-[44px] px-6 py-2 bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm">
+      <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
+      {settings?.apiCodeConfigured && <button onClick={handleClear} disabled={loading} className="min-h-[44px] px-6 py-2 bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 disabled:opacity-50 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2">
+        <Trash2 size={16} /> Temizle
+      </button>}
+      <button onClick={handleSave} disabled={loading || initialLoading || !canSave} className="min-h-[44px] px-6 py-2 bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm">
         {loading ? <Loader2 size={16} className="animate-spin" /> : saved ? <Check size={16} className="text-emerald-400" /> : <Save size={16} />}
-        {saved ? 'Ayarlar Kaydedildi' : 'Ayarları Kaydet'}
+        {saved ? 'Kaydedildi' : 'Kaydet'}
       </button>
+      </div>
     </div>
   );
 }
@@ -1990,7 +2154,7 @@ export default function TollManagementClient() {
         ) : activeTab === 'ALTERNATIVES' ? (
           <AlternativesManager data={data} onRefresh={loadData} />
         ) : (
-          <SettingsPanel settings={data.settings} onSaved={(s) => setData(d => d ? { ...d, settings: s } : d)} />
+           <SettingsPanel />
         )}
       </div>
     </div>

@@ -1222,18 +1222,25 @@ export const integrationSecretsEncryptionKeys = pgTable('integration_secrets_enc
 export type IntegrationSecret = typeof integrationSecrets.$inferSelect;
 
 /**
- * Singleton settings for the toll institution's future API integration.
+ * Institution API integrations stored for future use (no automatic calls).
  * The API code is envelope-encrypted with the same data-key/root-key
  * mechanism as integrationSecrets and is never exposed as plaintext.
  */
 export const tollInstitutionApiSettings = pgTable('toll_institution_api_settings', {
-  id: integer('id').primaryKey().default(1),
+  id: serial('id').primaryKey(),
   organizationName: text('organization_name').notNull(),
+  organizationNameNormalized: text('organization_name_normalized').notNull(),
   serviceUrl: text('service_url').notNull(),
   apiCodeCiphertext: text('api_code_ciphertext').notNull(),
+  active: boolean('active').default(true).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  createdBy: uuid('created_by').references(() => adminUsers.id, { onDelete: 'set null' }),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
-});
+}, (table) => ({
+  organizationServiceUnique: uniqueIndex('toll_institution_api_org_service_unique')
+    .on(table.organizationNameNormalized, table.serviceUrl),
+}));
 
 export type TollInstitutionApiSettings = typeof tollInstitutionApiSettings.$inferSelect;
 

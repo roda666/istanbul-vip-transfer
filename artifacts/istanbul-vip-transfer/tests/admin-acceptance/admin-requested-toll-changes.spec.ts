@@ -63,6 +63,7 @@ test('covers the admin toll point, route alternative, and API settings workflows
   const routeName = `__qa_requested_route_${suffix}`;
   const primaryName = `__qa_requested_primary_${suffix}`;
   const secondaryName = `__qa_requested_secondary_${suffix}`;
+  let apiSettingsId: number | null = null;
   const editedPrimaryName = `${primaryName}_saved`;
   const failedPrimaryName = `${primaryName}_failed`;
   const apiOrganization = `__qa_requested_org_${suffix}`;
@@ -241,6 +242,7 @@ test('covers the admin toll point, route alternative, and API settings workflows
       eq(tollTariffs.vehicleClass, 'class_1'),
     ))).toHaveLength(1);
     await checkResponsiveControls();
+    await adminPage.setViewportSize({ width: 1280, height: 900 });
 
     // Select the temporary route and create two alternatives through the UI.
     await adminPage.getByRole('button', { name: 'Rota Kombinasyonları', exact: true }).click();
@@ -372,35 +374,32 @@ test('covers the admin toll point, route alternative, and API settings workflows
     expect(await db.select().from(tollTariffs).where(eq(tollTariffs.tollPointId, gatePointId))).toHaveLength(3);
     expect(await db.select().from(tollTariffs).where(eq(tollTariffs.tollPointId, ferryPointId))).toHaveLength(1);
 
-    // Settings is a separate card with no stale tariff controls. Save and
-    // reload the encrypted institution secret without exposing its plaintext.
+    // Settings is a separate multi-record list. Add one isolated record,
+    // reload it masked, and delete only that record.
     await adminPage.getByRole('main').getByRole('button', { name: 'Ayarlar', exact: true }).click();
     await expect(adminPage.getByText('API Entegrasyonu', { exact: true })).toBeVisible();
     await expect(adminPage.getByText(/Bayat Tarife|Bayatlama Eşiği|Yeni Yıla Girişte Uyar/i)).toHaveCount(0);
     await expect(adminPage.getByText('Araç Sınıfı Tarifeleri', { exact: true })).toHaveCount(0);
     await expect(adminPage.locator('[data-testid^="prepare-quick-tariff-"]')).toHaveCount(0);
-    const settingsCard = adminPage.getByText('API Entegrasyonu', { exact: true })
-      .locator('xpath=ancestor::div[contains(@class,"max-w-3xl")][1]');
-    const settingsInputs = settingsCard.locator('input');
-    await settingsInputs.nth(0).fill(apiOrganization);
-    await settingsInputs.nth(1).fill(apiUrl);
-    await settingsInputs.nth(2).fill(apiSecret);
-    const settingsSaveButton = settingsCard.getByRole('button', { name: 'Kaydet', exact: true });
+    await adminPage.getByRole('button', { name: 'Yeni API Ekle', exact: true }).click();
+    await adminPage.getByTestId('integration-organization').fill(apiOrganization);
+    await adminPage.getByTestId('integration-service-url').fill(apiUrl);
+    await adminPage.getByTestId('integration-api-code').fill(apiSecret);
+    const settingsSaveButton = adminPage.getByTestId('integration-save');
     await expect(settingsSaveButton).toBeEnabled();
-    const settingsPut = adminPage.waitForResponse((response) =>
+    const settingsPost = adminPage.waitForResponse((response) =>
       response.url().endsWith('/admin/api/pricing/tolls/integration-settings') &&
-      response.request().method() === 'PUT');
+      response.request().method() === 'POST');
     await settingsSaveButton.click();
-    const settingsPutResponse = await settingsPut;
-    expect(settingsPutResponse.status()).toBe(200);
-    const settingsPutBody = await settingsPutResponse.text();
-    expect(settingsPutBody).not.toContain(apiSecret);
-    await expect(settingsInputs.nth(0)).toHaveValue(apiOrganization);
-    await expect(settingsInputs.nth(1)).toHaveValue(apiUrl);
-    await expect(settingsInputs.nth(2)).toHaveValue('');
+    const settingsPostResponse = await settingsPost;
+    expect(settingsPostResponse.status()).toBe(201);
+    const settingsPostBody = await settingsPostResponse.json();
+    apiSettingsId = settingsPostBody.integration.id;
+    expect(JSON.stringify(settingsPostBody)).not.toContain(apiSecret);
+    const settingsCard = adminPage.getByTestId(`integration-card-${apiSettingsId}`);
     await expect(settingsCard).toContainText('••••');
     await expect(adminPage.locator('body')).not.toContainText(apiSecret);
-    const storedSettings = await db.select().from(tollInstitutionApiSettings).where(eq(tollInstitutionApiSettings.id, 1));
+    const storedSettings = await db.select().from(tollInstitutionApiSettings).where(eq(tollInstitutionApiSettings.id, apiSettingsId!));
     expect(storedSettings).toHaveLength(1);
     expect(storedSettings[0]).toMatchObject({ organizationName: apiOrganization, serviceUrl: apiUrl });
     expect(storedSettings[0].apiCodeCiphertext).not.toContain(apiSecret);
@@ -413,31 +412,30 @@ test('covers the admin toll point, route alternative, and API settings workflows
     await adminPage.reload();
     await waitForSettledAdminPage(adminPage);
     await adminPage.getByRole('main').getByRole('button', { name: 'Ayarlar', exact: true }).click();
-    const reloadedSettingsCard = adminPage.getByText('API Entegrasyonu', { exact: true })
-      .locator('xpath=ancestor::div[contains(@class,"max-w-3xl")][1]');
+    const reloadedSettingsCard = adminPage.getByTestId(`integration-card-${apiSettingsId}`);
     await expect(reloadedSettingsCard).toContainText('••••');
-    await expect(reloadedSettingsCard.locator('input').nth(0)).toHaveValue(apiOrganization);
-    await expect(reloadedSettingsCard.locator('input').nth(1)).toHaveValue(apiUrl);
+    await expect(reloadedSettingsCard).toContainText(apiOrganization);
+    await expect(reloadedSettingsCard).toContainText(apiUrl);
     await expect(adminPage.locator('body')).not.toContainText(apiSecret);
     await checkResponsiveControls();
 
     let settingsDeleteCount = 0;
     adminPage.on('request', (request) => {
-      if (request.method() === 'DELETE' && request.url().endsWith('/admin/api/pricing/tolls/integration-settings')) settingsDeleteCount += 1;
+      if (request.method() === 'DELETE' && request.url().endsWith(`/admin/api/pricing/tolls/integration-settings/${apiSettingsId}`)) settingsDeleteCount += 1;
     });
     await adminPage.once('dialog', async (dialog) => dialog.dismiss());
-    await reloadedSettingsCard.getByRole('button', { name: 'Temizle', exact: true }).click();
-    await expect(reloadedSettingsCard.getByRole('button', { name: 'Temizle', exact: true })).toBeVisible();
+    await reloadedSettingsCard.getByRole('button', { name: 'Sil', exact: true }).click();
+    await expect(reloadedSettingsCard.getByRole('button', { name: 'Sil', exact: true })).toBeVisible();
     expect(settingsDeleteCount).toBe(0);
     adminPage.once('dialog', async (dialog) => dialog.accept());
     const settingsDelete = adminPage.waitForResponse((response) =>
-      response.url().endsWith('/admin/api/pricing/tolls/integration-settings') &&
+      response.url().endsWith(`/admin/api/pricing/tolls/integration-settings/${apiSettingsId}`) &&
       response.request().method() === 'DELETE');
-    await reloadedSettingsCard.getByRole('button', { name: 'Temizle', exact: true }).dblclick();
+    await reloadedSettingsCard.getByRole('button', { name: 'Sil', exact: true }).click();
     expect((await settingsDelete).status()).toBe(200);
     expect(settingsDeleteCount).toBe(1);
-    await expect(adminPage.getByRole('button', { name: 'Temizle', exact: true })).toHaveCount(0);
-    expect(await db.select().from(tollInstitutionApiSettings).where(eq(tollInstitutionApiSettings.id, 1))).toHaveLength(0);
+    await expect(reloadedSettingsCard).toHaveCount(0);
+    expect(await db.select().from(tollInstitutionApiSettings).where(eq(tollInstitutionApiSettings.id, apiSettingsId!))).toHaveLength(0);
   } finally {
     // Remove dependent rows first, then restore the singleton settings row
     // byte-for-byte. Never delete or mutate unrelated production records.
@@ -472,10 +470,7 @@ test('covers the admin toll point, route alternative, and API settings workflows
       temporaryAuditEntityIds.length > 0 ? inArray(auditLogs.entityId, temporaryAuditEntityIds) : eq(auditLogs.entityId, crypto.randomUUID()),
     )).catch(() => {});
 
-    await db.delete(tollInstitutionApiSettings).where(eq(tollInstitutionApiSettings.id, 1)).catch(() => {});
-    if (before.settingsRows.length > 0) {
-      await db.insert(tollInstitutionApiSettings).values(before.settingsRows[0]).catch(() => {});
-    }
+    if (apiSettingsId) await db.delete(tollInstitutionApiSettings).where(eq(tollInstitutionApiSettings.id, apiSettingsId)).catch(() => {});
 
     try {
       const after = await snapshot(adminIdentity.id);

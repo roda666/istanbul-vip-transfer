@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { eq } from 'drizzle-orm';
+import { asc } from 'drizzle-orm';
 import { requireAdminSession } from '@/lib/auth/session';
 import { rateLimit } from '@/lib/auth/rate-limit';
 import { db } from '@/db';
@@ -10,165 +10,101 @@ import { maskSecret } from '@/lib/integration-secrets';
 
 export const dynamic = 'force-dynamic';
 
-const CONFIRMATION = 'API AYARLARINI TEMİZLE';
-
 const serviceUrl = z.string().trim().min(1).max(500).refine((value) => {
   try {
     const url = new URL(value);
     return url.protocol === 'https:' && !!url.hostname && !url.username && !url.password;
-  } catch {
-    return false;
-  }
+  } catch { return false; }
 }, 'Servis adresi kimlik bilgisi içermeyen geçerli bir HTTPS URL olmalıdır.');
+const normalizeOrganizationName = (value: string) => value.trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr-TR');
 
-const settingsSchema = z.object({
-  organizationName: z.string().trim().min(2).max(200),
+const integrationCreateSchema = z.object({
+  organizationName: z.string().trim().min(2, 'Kurum adı zorunludur.').max(200),
   serviceUrl,
-  /** Omitted means retain the existing encrypted code; it is never a plaintext response field. */
-  apiCode: z.string().trim().min(1).max(4096).optional(),
+  apiCode: z.string().trim().min(1, 'API kodu/anahtarı zorunludur.').max(4096),
+  active: z.boolean(),
 });
 
-async function superAdmin() {
+async function sessionFor(mode: 'view' | 'manage') {
   try {
     const session = await requireAdminSession();
-    return session.role === 'SUPER_ADMIN' ? session : null;
-  } catch {
-    return null;
-  }
+    if (mode === 'view' && session.capabilities.fleet_pricing.canView) return session;
+    if (mode === 'manage' && session.role === 'SUPER_ADMIN' && session.capabilities.fleet_pricing.canManage) return session;
+  } catch {}
+  return null;
 }
 
 async function limited(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
-  return rateLimit(`${ip}:toll-institution-api-settings`, { maxAttempts: 30 });
+  return rateLimit(`${ip}:toll-institution-api-integrations`, { maxAttempts: 30 });
 }
 
-/** GET /admin/api/pricing/tolls/integration-settings — safe institution API metadata only. */
+async function safeRow(row: typeof tollInstitutionApiSettings.$inferSelect) {
+  const secret = await decryptIntegrationSecret(row.apiCodeCiphertext);
+  if (!secret) throw new Error('decrypt');
+  return {
+    id: row.id,
+    organizationName: row.organizationName,
+    serviceUrl: row.serviceUrl,
+    active: row.active,
+    apiCodeConfigured: true,
+    maskedApiCode: maskSecret(secret),
+    updatedAt: row.updatedAt,
+  };
+}
+
+/** Safe masked list; never selects a plaintext value because none is stored. */
 export async function GET() {
-  if (!await superAdmin()) return NextResponse.json({ error: 'Yetersiz yetki.' }, { status: 403 });
+  const session = await sessionFor('view');
+  if (!session) return NextResponse.json({ error: 'Yetersiz yetki.' }, { status: 403 });
   try {
-    const [stored] = await db.select().from(tollInstitutionApiSettings).where(
-      // The table is a singleton; explicitly constrain the sentinel row.
-      eq(tollInstitutionApiSettings.id, 1),
-    ).limit(1);
-    if (!stored) {
-      return NextResponse.json({ settings: { organizationName: '', serviceUrl: '', apiCodeConfigured: false, maskedApiCode: null } });
-    }
-    const apiCode = await decryptIntegrationSecret(stored.apiCodeCiphertext);
-    if (!apiCode) return NextResponse.json({ error: 'API ayarları güvenli olarak okunamadı.' }, { status: 503 });
+    const rows = await db.select().from(tollInstitutionApiSettings)
+      .orderBy(asc(tollInstitutionApiSettings.organizationName), asc(tollInstitutionApiSettings.id));
     return NextResponse.json({
-      settings: {
-        organizationName: stored.organizationName,
-        serviceUrl: stored.serviceUrl,
-        apiCodeConfigured: true,
-        maskedApiCode: maskSecret(apiCode),
-      },
+      integrations: await Promise.all(rows.map(safeRow)),
+      canManage: session.role === 'SUPER_ADMIN' && session.capabilities.fleet_pricing.canManage,
     });
   } catch {
-    return NextResponse.json({ error: 'API ayarları yüklenemedi.' }, { status: 503 });
+    return NextResponse.json({ error: 'API entegrasyonları güvenli olarak yüklenemedi.' }, { status: 503 });
   }
 }
 
-/** PUT /admin/api/pricing/tolls/integration-settings — replace institution metadata and optionally its encrypted code. */
-export async function PUT(request: NextRequest) {
+export async function POST(request: NextRequest) {
   const limit = await limited(request);
   if (!limit.success) return NextResponse.json({ error: 'Çok fazla deneme. Lütfen bekleyin.' }, { status: 429 });
-  const session = await superAdmin();
+  const session = await sessionFor('manage');
   if (!session) return NextResponse.json({ error: 'Yetersiz yetki.' }, { status: 403 });
-  if (!(request.headers.get('content-type') ?? '').includes('application/json')) {
-    return NextResponse.json({ error: 'Geçersiz istek.' }, { status: 400 });
-  }
-  const parsed = settingsSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Geçersiz API ayarları.' }, { status: 422 });
+  const parsed = integrationCreateSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Geçersiz API entegrasyonu.' }, { status: 422 });
   try {
-    const [existing] = await db.select({ apiCodeCiphertext: tollInstitutionApiSettings.apiCodeCiphertext })
-      .from(tollInstitutionApiSettings)
-      .where(eq(tollInstitutionApiSettings.id, 1))
-      .limit(1);
-    let apiCodeCiphertext = existing?.apiCodeCiphertext;
-    if (parsed.data.apiCode !== undefined) {
-      const newApiCode = parsed.data.apiCode;
-      const encrypted = await encryptIntegrationSecret(newApiCode);
-      if (!encrypted || await decryptIntegrationSecret(encrypted) !== newApiCode) {
-        return NextResponse.json({ error: 'API kodu güvenli olarak kaydedilemedi.' }, { status: 503 });
-      }
-      apiCodeCiphertext = encrypted;
-    } else if (!existing?.apiCodeCiphertext || !await decryptIntegrationSecret(existing.apiCodeCiphertext)) {
-      return NextResponse.json({ error: 'Mevcut API kodu güvenli olarak okunamadı; yeni bir API kodu girin.' }, { status: 422 });
+    const encrypted = await encryptIntegrationSecret(parsed.data.apiCode);
+    if (!encrypted || await decryptIntegrationSecret(encrypted) !== parsed.data.apiCode) {
+      return NextResponse.json({ error: 'API kodu güvenli olarak kaydedilemedi.' }, { status: 503 });
     }
-    if (!apiCodeCiphertext) {
-      return NextResponse.json({ error: 'İlk kayıtta API kodu gereklidir.' }, { status: 422 });
-    }
-    await db.transaction(async (tx) => {
-      await tx.insert(tollInstitutionApiSettings).values({
-        id: 1,
+    const created = await db.transaction(async (tx) => {
+      const [row] = await tx.insert(tollInstitutionApiSettings).values({
         organizationName: parsed.data.organizationName,
+        organizationNameNormalized: normalizeOrganizationName(parsed.data.organizationName),
         serviceUrl: parsed.data.serviceUrl,
-        apiCodeCiphertext,
-        updatedAt: new Date(),
+        apiCodeCiphertext: encrypted,
+        active: parsed.data.active,
+        createdBy: session.adminId,
         updatedBy: session.adminId,
-      }).onConflictDoUpdate({
-        target: tollInstitutionApiSettings.id,
-        set: {
-          organizationName: parsed.data.organizationName,
-          serviceUrl: parsed.data.serviceUrl,
-          apiCodeCiphertext,
-          updatedAt: new Date(),
-          updatedBy: session.adminId,
-        },
-      });
+      }).returning();
       await tx.insert(auditLogs).values({
         adminUserId: session.adminId,
-        action: 'TOLL_INSTITUTION_API_SETTINGS_UPDATED',
+        action: 'TOLL_INSTITUTION_API_CREATED',
         entityType: 'TollInstitutionApiSettings',
-        entityId: '1',
-        metadata: { action: 'updated' },
+        entityId: String(row.id),
+        metadata: { organizationName: row.organizationName },
       });
+      return row;
     });
-    const apiCode = await decryptIntegrationSecret(apiCodeCiphertext);
-    if (!apiCode) return NextResponse.json({ error: 'API ayarları güvenli olarak okunamadı.' }, { status: 503 });
-    return NextResponse.json({
-      success: true,
-      settings: {
-        organizationName: parsed.data.organizationName,
-        serviceUrl: parsed.data.serviceUrl,
-        apiCodeConfigured: true,
-        maskedApiCode: maskSecret(apiCode),
-      },
-    });
-  } catch {
-    return NextResponse.json({ error: 'API ayarları güvenli olarak kaydedilemedi.' }, { status: 503 });
-  }
-}
-
-/** DELETE /admin/api/pricing/tolls/integration-settings — clear only the institution API settings. */
-export async function DELETE(request: NextRequest) {
-  const limit = await limited(request);
-  if (!limit.success) return NextResponse.json({ error: 'Çok fazla deneme. Lütfen bekleyin.' }, { status: 429 });
-  const session = await superAdmin();
-  if (!session) return NextResponse.json({ error: 'Yetersiz yetki.' }, { status: 403 });
-  if (!(request.headers.get('content-type') ?? '').includes('application/json')) {
-    return NextResponse.json({ error: 'Onay metni gereklidir.' }, { status: 400 });
-  }
-  const body = await request.json().catch(() => null);
-  if (!body || body.confirmation !== CONFIRMATION) {
-    return NextResponse.json({ error: `Silmek için "${CONFIRMATION}" onayı gereklidir.` }, { status: 422 });
-  }
-  try {
-    await db.transaction(async (tx) => {
-      await tx.delete(tollInstitutionApiSettings).where(eq(tollInstitutionApiSettings.id, 1));
-      await tx.insert(auditLogs).values({
-        adminUserId: session.adminId,
-        action: 'TOLL_INSTITUTION_API_SETTINGS_CLEARED',
-        entityType: 'TollInstitutionApiSettings',
-        entityId: '1',
-        metadata: { action: 'cleared' },
-      });
-    });
-    return NextResponse.json({
-      success: true,
-      settings: { organizationName: '', serviceUrl: '', apiCodeConfigured: false, maskedApiCode: null },
-    });
-  } catch {
-    return NextResponse.json({ error: 'API ayarları temizlenemedi.' }, { status: 503 });
+    return NextResponse.json({ integration: await safeRow(created) }, { status: 201 });
+  } catch (error) {
+    if (typeof error === 'object' && error && 'code' in error && error.code === '23505') {
+      return NextResponse.json({ error: 'Aynı kurum adı ve servis linki zaten kayıtlı.' }, { status: 409 });
+    }
+    return NextResponse.json({ error: 'API entegrasyonu güvenli olarak kaydedilemedi.' }, { status: 503 });
   }
 }

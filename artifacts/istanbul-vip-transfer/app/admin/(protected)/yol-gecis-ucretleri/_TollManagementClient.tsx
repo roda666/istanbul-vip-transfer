@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useId, useRef } from 'react';
 import { 
   MapPin, Navigation, Plus, Save,
   RefreshCw, Check, X, AlertCircle, Loader2, Car, ShieldCheck, Settings2,
-  Trash2, KeyRound
+  Trash2, KeyRound, Edit2, PowerOff, Power
 } from 'lucide-react';
 import { AdminActionButton } from '@/app/admin/_components/AdminActionButton';
 import { AdminRecordActions } from '@/app/admin/_components/AdminRecordActions';
@@ -94,10 +94,13 @@ type TollSettings = {
 };
 
 type TollIntegrationSettings = {
+  id: number;
   organizationName: string;
   serviceUrl: string;
+  active: boolean;
   apiCodeConfigured: boolean;
   maskedApiCode: string | null;
+  updatedAt: string;
 };
 
 const TIME_BAND_LABELS: Record<TollTimeBand, string> = { ALL: 'Tüm Gün', DAY: 'Gündüz', NIGHT: 'Gece' };
@@ -1983,11 +1986,14 @@ function AlternativesManager({ data, onRefresh }: { data: DataPayload, onRefresh
 }
 
 function SettingsPanel() {
-  const [settings, setSettings] = useState<TollIntegrationSettings | null>(null);
-  const [formData, setFormData] = useState({ organizationName: '', serviceUrl: '', apiCode: '' });
-  const [loading, setLoading] = useState(false);
+  const emptyForm = { organizationName: '', serviceUrl: '', apiCode: '', active: true };
+  const [integrations, setIntegrations] = useState<TollIntegrationSettings[]>([]);
+  const [canManage, setCanManage] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [formData, setFormData] = useState(emptyForm);
+  const [loadingKey, setLoadingKey] = useState<string | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
-  const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const requestInFlightRef = useRef(false);
   const loadSequenceRef = useRef(0);
@@ -1998,14 +2004,14 @@ function SettingsPanel() {
     try {
       const response = await fetch('/admin/api/pricing/tolls/integration-settings');
       const result = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(result?.error ?? 'API ayarları yüklenemedi.');
+      if (!response.ok) throw new Error(result?.error ?? 'API entegrasyonları yüklenemedi.');
       if (loadSequence !== loadSequenceRef.current) return;
-      setSettings(result.settings);
-      setFormData({ organizationName: result.settings.organizationName, serviceUrl: result.settings.serviceUrl, apiCode: '' });
+      setIntegrations(Array.isArray(result.integrations) ? result.integrations : []);
+      setCanManage(result.canManage === true);
       setError('');
     } catch (cause: unknown) {
       if (loadSequence !== loadSequenceRef.current) return;
-      setError(errorMessage(cause, 'API ayarları yüklenemedi.'));
+      setError(errorMessage(cause, 'API entegrasyonları yüklenemedi.'));
     } finally {
       if (loadSequence === loadSequenceRef.current) setInitialLoading(false);
     }
@@ -2013,121 +2019,178 @@ function SettingsPanel() {
 
   useEffect(() => { loadSettings(); }, [loadSettings]);
 
-  const hasMetadataChanges = !!settings && (
-    formData.organizationName.trim() !== settings.organizationName
-    || formData.serviceUrl.trim() !== settings.serviceUrl
-  );
-  const hasSecretChange = !!formData.apiCode.trim();
-  const canSave = !!formData.organizationName.trim()
-    && /^https:\/\/[^/\s]+/i.test(formData.serviceUrl.trim())
-    && (hasMetadataChanges || hasSecretChange)
-    && (settings?.apiCodeConfigured || hasSecretChange);
+  const validHttps = (value: string) => {
+    try {
+      const url = new URL(value);
+      return url.protocol === 'https:' && !!url.hostname && !url.username && !url.password;
+    } catch { return false; }
+  };
+  const editing = integrations.find(item => item.id === editingId) ?? null;
+  const canSave = formData.organizationName.trim().length >= 2
+    && validHttps(formData.serviceUrl.trim())
+    && (!!editing || !!formData.apiCode.trim());
 
-  const handleSave = async () => {
+  const closeForm = () => {
+    setCreateOpen(false);
+    setEditingId(null);
+    setFormData(emptyForm);
+    setError('');
+  };
+
+  const beginEdit = (item: TollIntegrationSettings) => {
+    setCreateOpen(false);
+    setEditingId(item.id);
+    setFormData({ organizationName: item.organizationName, serviceUrl: item.serviceUrl, apiCode: '', active: item.active });
+    setError('');
+  };
+
+  const handleSave = async (id?: number) => {
     if (requestInFlightRef.current || !canSave) return;
     requestInFlightRef.current = true;
-    setLoading(true);
+    setLoadingKey(id ? `save-${id}` : 'create');
     setError('');
-    setSaved(false);
     try {
-      const payload: { organizationName: string; serviceUrl: string; apiCode?: string } = {
+      const payload: { organizationName: string; serviceUrl: string; active: boolean; apiCode?: string } = {
         organizationName: formData.organizationName.trim(),
         serviceUrl: formData.serviceUrl.trim(),
+        active: formData.active,
       };
       if (formData.apiCode.trim()) payload.apiCode = formData.apiCode.trim();
-      const res = await fetch('/admin/api/pricing/tolls/integration-settings', {
-        method: 'PUT',
+      const res = await fetch(id
+        ? `/admin/api/pricing/tolls/integration-settings/${id}`
+        : '/admin/api/pricing/tolls/integration-settings', {
+        method: id ? 'PATCH' : 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data.error || 'Kaydedilemedi');
-      setSettings(data.settings);
-      setFormData(current => ({ ...current, apiCode: '' }));
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      await loadSettings();
+      closeForm();
     } catch (error: unknown) {
       setError(errorMessage(error, 'Kaydedilemedi'));
     } finally {
       requestInFlightRef.current = false;
-      setLoading(false);
+      setLoadingKey(null);
     }
   };
 
-  const handleClear = async () => {
-    if (requestInFlightRef.current || !settings) return;
-    const confirmed = window.confirm(`“${settings.organizationName || 'API Entegrasyonu'}” ayarlarını ve şifreli API kodunu temizlemek istediğinize emin misiniz?`);
-    if (!confirmed) return;
+  const handleToggle = async (item: TollIntegrationSettings) => {
+    if (requestInFlightRef.current) return;
     requestInFlightRef.current = true;
-    setLoading(true);
+    setLoadingKey(`toggle-${item.id}`);
     setError('');
     try {
-      const response = await fetch('/admin/api/pricing/tolls/integration-settings', {
-        method: 'DELETE',
+      const response = await fetch(`/admin/api/pricing/tolls/integration-settings/${item.id}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ confirmation: 'API AYARLARINI TEMİZLE' }),
+        body: JSON.stringify({ organizationName: item.organizationName, serviceUrl: item.serviceUrl, active: !item.active }),
       });
       const result = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(result?.error ?? 'API ayarları temizlenemedi.');
-      setSettings(result.settings);
-      setFormData({ organizationName: '', serviceUrl: '', apiCode: '' });
-      setSaved(false);
+      if (!response.ok) throw new Error(result?.error ?? 'Durum değiştirilemedi.');
+      await loadSettings();
     } catch (cause: unknown) {
-      setError(errorMessage(cause, 'API ayarları temizlenemedi.'));
+      setError(errorMessage(cause, 'Durum değiştirilemedi.'));
     } finally {
       requestInFlightRef.current = false;
-      setLoading(false);
+      setLoadingKey(null);
     }
   };
 
+  const handleDelete = async (item: TollIntegrationSettings) => {
+    if (requestInFlightRef.current) return;
+    const confirmed = window.confirm(`“${item.organizationName}” API entegrasyonunu silmek istediğinize emin misiniz?`);
+    if (!confirmed) return;
+    requestInFlightRef.current = true;
+    setLoadingKey(`delete-${item.id}`);
+    setError('');
+    try {
+      const response = await fetch(`/admin/api/pricing/tolls/integration-settings/${item.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationName: item.organizationName }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error ?? 'API entegrasyonu silinemedi.');
+      if (editingId === item.id) closeForm();
+      await loadSettings();
+    } catch (cause: unknown) {
+      setError(errorMessage(cause, 'API entegrasyonu silinemedi.'));
+    } finally {
+      requestInFlightRef.current = false;
+      setLoadingKey(null);
+    }
+  };
+
+  const form = (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div>
+        <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500">Kurum Adı</label>
+        <input data-testid="integration-organization" type="text" maxLength={200} value={formData.organizationName} onChange={e => setFormData(f => ({ ...f, organizationName: e.target.value }))} className="min-h-[44px] w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+      </div>
+      <div>
+        <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500">Kurum API/Servis Linki</label>
+        <input data-testid="integration-service-url" type="url" value={formData.serviceUrl} onChange={e => setFormData(f => ({ ...f, serviceUrl: e.target.value }))} className="min-h-[44px] w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" placeholder="https://..." />
+      </div>
+      <div className="md:col-span-2">
+        <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500">API Kodu/Anahtarı</label>
+        <input data-testid="integration-api-code" type="password" autoComplete="new-password" value={formData.apiCode} onChange={e => setFormData(f => ({ ...f, apiCode: e.target.value }))} className="min-h-[44px] w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" placeholder={editing ? 'Değiştirmeyecekseniz boş bırakın' : 'API kodunu girin'} />
+        <p className="mt-1.5 text-[11px] font-medium text-slate-500">{editing ? `Mevcut anahtar ${editing.maskedApiCode}; açık değer forma yüklenmez.` : 'Anahtar şifreli saklanır ve açık değer tekrar gösterilmez.'}</p>
+      </div>
+      <label className="flex min-h-[44px] items-center gap-3 rounded-lg p-2 text-sm font-bold text-slate-800">
+        <input type="checkbox" checked={formData.active} onChange={e => setFormData(f => ({ ...f, active: e.target.checked }))} className="h-5 w-5" />
+        Aktif
+      </label>
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end md:col-span-2">
+        <AdminActionButton label="Vazgeç" icon={X} variant="cancel" onClick={closeForm} disabled={loadingKey !== null} />
+        <AdminActionButton testId="integration-save" label="Kaydet" icon={Save} variant="save" onClick={() => handleSave(editing?.id)} disabled={!canSave || loadingKey !== null} loading={loadingKey === (editing ? `save-${editing.id}` : 'create')} />
+      </div>
+    </div>
+  );
+
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-5 md:p-8 shadow-sm max-w-3xl">
-      <h3 className="font-black text-slate-900 text-lg flex items-center gap-2.5 mb-1.5">
-        <KeyRound className="text-blue-600" size={22} /> API Entegrasyonu
-      </h3>
-      <p className="text-sm font-medium text-slate-500 mb-6">Kurumun resmî tarife servisi hazır olduğunda kullanılacak bağlantı bilgilerini güvenli biçimde saklayın. Bu ekran bağlantı kurmaz ve otomatik veri çekmez.</p>
+    <div className="max-w-5xl rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-8">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h3 className="mb-1.5 flex items-center gap-2.5 text-lg font-black text-slate-900"><KeyRound className="text-blue-600" size={22} /> API Entegrasyonu</h3>
+          <p className="max-w-2xl text-sm font-medium text-slate-500">Kurum servislerini ileride kullanılmak üzere güvenli biçimde saklayın. Bu ekran bağlantı kurmaz ve otomatik veri çekmez.</p>
+        </div>
+        {canManage && <AdminActionButton label="Yeni API Ekle" icon={Plus} variant="new" onClick={() => { setEditingId(null); setFormData(emptyForm); setCreateOpen(true); setError(''); }} disabled={loadingKey !== null || createOpen} />}
+      </div>
 
       {error && (
-        <div className="mb-5 bg-red-50 text-red-700 p-3 rounded-lg border border-red-100 text-xs font-bold">{error}</div>
+        <div role="alert" className="mb-5 rounded-lg border border-red-100 bg-red-50 p-3 text-xs font-bold text-red-700">{error}</div>
       )}
 
       {initialLoading ? (
         <div className="flex min-h-[180px] items-center justify-center"><Loader2 size={28} className="animate-spin text-blue-600" /></div>
-      ) : <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
-        <div>
-           <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kurum Adı</label>
-           <input type="text" maxLength={160} value={formData.organizationName} onChange={e => setFormData(f => ({...f, organizationName: e.target.value}))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm" placeholder="Kurum adını girin" />
+      ) : (
+        <div className="space-y-4">
+          {createOpen && <div data-testid="integration-create-form" className="rounded-xl border border-blue-200 bg-blue-50/40 p-4 md:p-5">{form}</div>}
+          {integrations.length === 0 && !createOpen && <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm font-medium text-slate-500">Kayıtlı API entegrasyonu yok.</div>}
+          {integrations.map(item => (
+            <div key={item.id} data-testid={`integration-card-${item.id}`} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              {editingId === item.id ? form : (
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      <h4 className="break-words text-sm font-black text-slate-900">{item.organizationName}</h4>
+                      <span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${item.active ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{item.active ? 'Aktif' : 'Pasif'}</span>
+                    </div>
+                    <a href={item.serviceUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-[44px] max-w-full items-center break-all py-2 text-xs font-bold text-blue-700 hover:underline">{item.serviceUrl}</a>
+                    <div className="mt-2 text-xs font-bold text-slate-500">API anahtarı: <span data-testid={`integration-mask-${item.id}`} className="font-mono text-slate-800">{item.maskedApiCode}</span></div>
+                  </div>
+                  {canManage && <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:flex lg:shrink-0">
+                    <AdminActionButton label="Düzenle" icon={Edit2} variant="edit" onClick={() => beginEdit(item)} disabled={loadingKey !== null} />
+                    <AdminActionButton label={item.active ? 'Pasifleştir' : 'Aktifleştir'} icon={item.active ? PowerOff : Power} variant={item.active ? 'deactivate' : 'activate'} onClick={() => handleToggle(item)} disabled={loadingKey !== null} loading={loadingKey === `toggle-${item.id}`} />
+                    <AdminActionButton label="Sil" icon={Trash2} variant="delete" onClick={() => handleDelete(item)} disabled={loadingKey !== null} loading={loadingKey === `delete-${item.id}`} />
+                  </div>}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
-         <div>
-           <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kurum API/Servis Linki</label>
-           <input type="url" value={formData.serviceUrl} onChange={e => setFormData(f => ({...f, serviceUrl: e.target.value}))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm" placeholder="https://..." />
-         </div>
-         <div className="md:col-span-2">
-           <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">API Kodu/Anahtarı</label>
-           <input type="password" autoComplete="new-password" value={formData.apiCode} onChange={e => setFormData(f => ({...f, apiCode: e.target.value}))} className="w-full min-h-[44px] bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm" placeholder={settings?.apiCodeConfigured ? settings.maskedApiCode ?? 'Kayıtlı gizli anahtar' : 'API kodunu girin'} />
-           <p className="text-[11px] font-medium text-slate-500 mt-1.5">{settings?.apiCodeConfigured ? `Kayıtlı anahtar: ${settings.maskedApiCode}. Değiştirmeyecekseniz boş bırakın.` : 'API kodu şifrelenerek saklanır ve tekrar düz metin olarak gösterilmez.'}</p>
-         </div>
-      </div>}
-
-      <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
-       {settings?.apiCodeConfigured && (
-         <AdminActionButton
-           label="Temizle"
-           icon={Trash2}
-           variant="delete"
-           onClick={handleClear}
-           disabled={loading}
-         />
-       )}
-       <AdminActionButton
-         label={saved ? 'Kaydedildi' : 'Kaydet'}
-         icon={saved ? Check : Save}
-         variant="save"
-         onClick={handleSave}
-         disabled={initialLoading || !canSave}
-         loading={loading}
-       />
-      </div>
+      )}
     </div>
   );
 }

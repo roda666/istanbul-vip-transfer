@@ -22,7 +22,7 @@ test('adds quick gate-pair tariffs without changing gates or real pricing data',
   const suffix = crypto.randomUUID();
   const pointId = crypto.randomUUID();
   const routeId = crypto.randomUUID();
-  const pointName = `__qa_quick_tariff_point_${suffix}`;
+  const pointName = `__qa_quick_tariff_point_${suffix} — 1915 Çanakkale Otoyolu ve Köprüsü Malkara Kavakköy Gelibolu Giriş Çıkış Bazlı Birleşik Tarife`;
   const routeName = `__qa_quick_tariff_route_${suffix}`;
   const before = {
     points: await db.select().from(tollPoints),
@@ -67,6 +67,12 @@ test('adds quick gate-pair tariffs without changing gates or real pricing data',
     const amount = adminPage.getByTestId('quick-tariff-amount');
     const vehicleClass = adminPage.getByTestId('quick-tariff-class');
     const add = adminPage.getByTestId('quick-tariff-add');
+    let quickCreateRequests = 0;
+    adminPage.on('request', (request) => {
+      if (request.method() === 'POST' && request.url().endsWith('/admin/api/pricing/tolls/tariffs/quick')) {
+        quickCreateRequests += 1;
+      }
+    });
 
     expect(await db.select().from(tollTariffs).where(eq(tollTariffs.tollPointId, pointId))).toHaveLength(0);
     await add.click();
@@ -87,8 +93,13 @@ test('adds quick gate-pair tariffs without changing gates or real pricing data',
     const firstResponse = adminPage.waitForResponse((response) =>
       response.url().endsWith('/admin/api/pricing/tolls/tariffs/quick')
       && response.request().method() === 'POST');
-    await add.click();
+    await add.evaluate((element) => {
+      const button = element as HTMLButtonElement;
+      button.click();
+      button.click();
+    });
     expect((await firstResponse).status()).toBe(201);
+    expect(quickCreateRequests).toBe(1);
     await expect(adminPage.getByText('₺1.234,56', { exact: true }).first()).toBeVisible();
     await expect(amount).toHaveValue('');
     await expect(entry).toHaveValue('Odayeri');
@@ -120,6 +131,10 @@ test('adds quick gate-pair tariffs without changing gates or real pricing data',
       'Bu sınıf için bu gişe çiftinin tarifesi zaten var; mevcut tarifeyi Düzenle ile güncelleyin',
       { exact: true },
     )).toBeVisible();
+    await expect(entry).toHaveValue('  ODAYERİ  ');
+    await expect(exit).toHaveValue('  KURNAKÖY  ');
+    await expect(amount).toHaveValue('1500');
+    await expect(vehicleClass).toHaveValue('class_1');
     const createdRows = await db.select().from(tollTariffs).where(eq(tollTariffs.tollPointId, pointId));
     expect(createdRows).toHaveLength(2);
     expect(createdRows.map((row) => row.vehicleClass).sort()).toEqual(['class_1', 'class_2']);
@@ -143,8 +158,22 @@ test('adds quick gate-pair tariffs without changing gates or real pricing data',
     await expect(adminPage.getByTestId('tariff-row-class_1')).toHaveCount(1);
     await expect(adminPage.getByTestId('tariff-row-class_2')).toHaveCount(1);
     await expect(adminPage.getByTestId('tariff-row-class_3')).toHaveCount(0);
+    const firstTariffRow = adminPage.getByTestId('tariff-row-class_1');
+    await expect(firstTariffRow.getByText('Giriş Gişesi', { exact: true })).toBeVisible();
+    await expect(firstTariffRow.getByText('Çıkış Gişesi', { exact: true })).toBeVisible();
+    await expect(firstTariffRow.getByText('Fiyat', { exact: true })).toBeVisible();
+    await expect(firstTariffRow.getByText('₺1.234,56', { exact: true })).toHaveCount(1);
+    await expect(firstTariffRow.getByRole('button', { name: 'Yukarı' })).toHaveCount(0);
+    await expect(firstTariffRow.getByRole('button', { name: 'Aşağı' })).toHaveCount(0);
+    await expect(adminPage.getByText('Araç Sınıfı Yasağı', { exact: true })).toHaveCount(0);
+    await expect(adminPage.getByText('Gelişmiş: kaynak kanıtı, kurallar ve zamanlama', { exact: true })).toHaveCount(0);
+    await expect(adminPage.getByText(/Kısıtlama notu:/)).toHaveCount(0);
+    await expect(adminPage.getByText(/Bayat tarife.*yeniden gözden geçirme uyarısıdır/)).toHaveCount(0);
+    await expect(firstTariffRow.getByText('Tüm Gün', { exact: true })).toHaveCount(0);
+    await expect(firstTariffRow.getByText('Efektif Ücret', { exact: true })).toHaveCount(0);
+    await expect(firstTariffRow.getByText('Manuel Geçersiz Kılma', { exact: true })).toHaveCount(0);
 
-    for (const width of [390, 768]) {
+    for (const width of [1440, 1280, 768, 390]) {
       await adminPage.setViewportSize({ width, height: 900 });
       expect(await adminPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       for (const control of await adminPage.locator('[data-testid^="quick-tariff-"]').evaluateAll((elements) =>
@@ -155,13 +184,31 @@ test('adds quick gate-pair tariffs without changing gates or real pricing data',
         elements.map((element) => ({ id: element.getAttribute('data-testid'), height: element.getBoundingClientRect().height })))) {
         expect(button.height, `${button.id} at ${width}px`).toBeGreaterThanOrEqual(44);
       }
+      const pointNameBox = await adminPage.getByText(pointName, { exact: true }).boundingBox();
+      expect(pointNameBox, `long point name at ${width}px`).not.toBeNull();
+      expect(await adminPage.getByText(pointName, { exact: true }).evaluate((element) =>
+        element.scrollWidth <= element.clientWidth && element.scrollHeight <= element.clientHeight)).toBe(true);
+      const quickControls = await Promise.all([entry, exit, amount, vehicleClass, add].map((control) => control.boundingBox()));
+      expect(quickControls.every(Boolean)).toBe(true);
+      if (width >= 1024) {
+        const tops = quickControls.map((box) => Math.round(box?.y ?? 0));
+        expect(Math.max(...tops) - Math.min(...tops)).toBeLessThanOrEqual(1);
+      }
+      if (width === 390) {
+        const formWidth = await add.evaluate((element) => element.parentElement?.parentElement?.getBoundingClientRect().width ?? 0);
+        expect((quickControls[4]?.width ?? 0) / formWidth).toBeGreaterThan(0.95);
+      }
+      const tariffRowBox = await firstTariffRow.boundingBox();
+      expect(tariffRowBox?.height ?? 999, `compact tariff row at ${width}px`).toBeLessThan(120);
       const sectionBoxes = await classSections.evaluateAll((elements) =>
         elements.map((element) => {
           const box = element.getBoundingClientRect();
           return { top: box.top, bottom: box.bottom };
         }));
       for (let index = 1; index < sectionBoxes.length; index += 1) {
-        expect(sectionBoxes[index].top - sectionBoxes[index - 1].bottom).toBeGreaterThanOrEqual(20);
+        const gap = sectionBoxes[index].top - sectionBoxes[index - 1].bottom;
+        expect(gap).toBeGreaterThanOrEqual(8);
+        expect(gap).toBeLessThanOrEqual(16);
       }
     }
 

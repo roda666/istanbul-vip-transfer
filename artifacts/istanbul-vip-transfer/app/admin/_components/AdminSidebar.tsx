@@ -122,14 +122,6 @@ function getNavGroups(role: string, capabilities?: AdminCapabilities): NavGroup[
         { href: '/admin/yol-gecis-ucretleri', label: 'Yol & Geçiş Ücretleri', icon: <MapPin size={18} /> },
       ],
     },
-    ...(role === 'SUPER_ADMIN' ? [{
-      key: 'personel',
-      label: 'Personel',
-      icon: <Users size={16} />,
-      items: [
-        { href: '/admin/personel', label: 'Personel Yönetimi', icon: <Users size={18} /> },
-      ],
-    }] : []),
     {
       key: 'icerik',
       label: 'İçerik',
@@ -489,6 +481,13 @@ export default function AdminSidebar({ userName, userEmail, userRole, capabiliti
         </>
       </nav>
 
+      {/* Personel (standalone above footer) */}
+      {userRole === 'SUPER_ADMIN' && (
+        <div style={{ padding: '0 8px 12px', flexShrink: 0 }}>
+          {renderNavItem({ href: '/admin/personel', label: 'Personel Yönetimi', icon: <Users size={18} /> })}
+        </div>
+      )}
+
       {/* User footer */}
       <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', padding: collapsed ? '12px 8px' : '12px 14px', flexShrink: 0 }}>
         {!collapsed && (
@@ -664,6 +663,13 @@ export default function AdminSidebar({ userName, userEmail, userRole, capabiliti
                 ))}
               </>
             </nav>
+
+            {/* Personel (standalone above footer) */}
+            {userRole === 'SUPER_ADMIN' && (
+              <div style={{ padding: '0 8px 12px', flexShrink: 0 }}>
+                {renderNavItem({ href: '/admin/personel', label: 'Personel Yönetimi', icon: <Users size={18} /> })}
+              </div>
+            )}
 
             {/* ③ FOOTER — always visible, safe bottom inset */}
             <div style={{

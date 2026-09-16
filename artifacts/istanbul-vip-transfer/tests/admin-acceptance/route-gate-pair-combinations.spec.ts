@@ -15,7 +15,7 @@ import { expect, test, waitForSettledAdminPage } from './fixtures';
 
 const MISSING_PAIR_WARNING =
   'Önce Geçiş Noktaları ve Maliyetler bölümünde bu nokta için gişe çifti tarifesi ekleyin';
-const MISSING_COMPARISON = 'Eksik veya yasaklı — hesaplanamadı';
+const MISSING_COMPARISON = 'Eksik tarife — hesaplanamadı';
 
 test('route combinations use exact active tariff-backed gate pairs', async ({
   adminPage,
@@ -84,11 +84,15 @@ test('route combinations use exact active tariff-backed gate pairs', async ({
     return json.alternative.id;
   };
 
-  const editAlternativePair = async (name: string, pair: string) => {
-    const card = adminPage
-      .getByText(name, { exact: true })
-      .locator('xpath=ancestor::div[contains(@class,"border-slate-200")][1]');
-    await card.getByRole('button', { name: 'Düzenle', exact: true }).click();
+  const editAlternativePair = async (alternativeId: string, pair: string) => {
+    const card = adminPage.getByTestId(`alternative-card-${alternativeId}`);
+    const mobileActions = card.getByRole('button', { name: 'İşlemler', exact: true });
+    if (await mobileActions.isVisible()) {
+      await mobileActions.click();
+      await adminPage.getByRole('dialog').getByRole('button', { name: 'Düzenle', exact: true }).click();
+    } else {
+      await card.getByRole('button', { name: 'Düzenle', exact: true }).click();
+    }
     const selector = adminPage.getByLabel(`${names.point} gişe çifti`, { exact: true });
     const [selectedValue] = await selector.selectOption({ label: pair });
     await expect(selector).toHaveValue(selectedValue);
@@ -182,7 +186,7 @@ test('route combinations use exact active tariff-backed gate pairs', async ({
         id: ids.missingVehicle,
         name: names.missingVehicle,
         slug: `qa-gate-pair-missing-vehicle-${suffix}`,
-        tollClass: 'class_1',
+        tollClass: null,
         pricingClass: 'minivan',
         priceCalculationEligible: true,
         isActive: true,
@@ -240,13 +244,21 @@ test('route combinations use exact active tariff-backed gate pairs', async ({
     const primaryId = await createAlternative(names.primary, 'Odayeri → Kurnaköy');
     const primaryCard = adminPage
       .getByText(names.primary, { exact: true })
-      .locator('xpath=ancestor::div[contains(@class,"border-slate-200")][1]');
+      .locator('xpath=ancestor::div[starts-with(@data-testid,"alternative-card-")][1]');
     await expect(primaryCard).toContainText('Odayeri → Kurnaköy');
-    await editAlternativePair(names.primary, 'Riva → Kurnaköy');
+    // The modal closes before its parent data refresh has necessarily settled.
+    // Reload from the committed database row so a late stale refresh cannot
+    // remove the just-created card between this assertion and the edit click.
+    await adminPage.reload();
+    await waitForSettledAdminPage(adminPage);
+    await adminPage.getByRole('button', { name: 'Rota Kombinasyonları', exact: true }).click();
+    await adminPage.locator('select').first().selectOption(ids.route);
+    await expect(adminPage.getByTestId(`alternative-card-${primaryId}`)).toBeVisible();
+    await editAlternativePair(primaryId, 'Riva → Kurnaköy');
     await expect(
       adminPage
         .getByText(names.primary, { exact: true })
-        .locator('xpath=ancestor::div[contains(@class,"border-slate-200")][1]'),
+        .locator('xpath=ancestor::div[starts-with(@data-testid,"alternative-card-")][1]'),
     ).toContainText('Riva → Kurnaköy');
 
     const secondaryId = await createAlternative(names.secondary, 'Odayeri → Kurnaköy');
@@ -311,20 +323,17 @@ test('route combinations use exact active tariff-backed gate pairs', async ({
     await adminPage.locator('select').first().selectOption(ids.route);
     const oldCard = adminPage
       .getByText(names.primary, { exact: true })
-      .locator('xpath=ancestor::div[contains(@class,"border-slate-200")][1]');
-    await oldCard.getByRole('button', { name: 'Düzenle', exact: true }).click();
+      .locator('xpath=ancestor::div[starts-with(@data-testid,"alternative-card-")][1]');
+    await oldCard.getByRole('button', { name: 'İşlemler', exact: true }).click();
+    await adminPage.getByRole('dialog').getByRole('button', { name: 'Düzenle', exact: true }).click();
     await expect(adminPage.getByText('Eşleştirme gerekli', { exact: true })).toBeVisible();
     const oldPairSelector = adminPage.getByLabel(`${names.point} gişe çifti`, { exact: true });
     await expect(oldPairSelector).toContainText('Old Gate → Old Exit · Eşleştirme gerekli');
     let patchCalled = false;
-    adminPage.on('dialog', async (dialog) => {
-      expect(dialog.message()).toBe(MISSING_PAIR_WARNING);
-      await dialog.dismiss();
-    });
     adminPage.on('request', (request) => {
       if (request.method() === 'PATCH' && request.url().includes('/admin/api/pricing/tolls/alternatives/')) patchCalled = true;
     });
-    await adminPage.getByRole('button', { name: 'Kaydet', exact: true }).last().click();
+    await expect(adminPage.getByRole('button', { name: 'Kaydet', exact: true }).last()).toBeDisabled();
     expect(patchCalled).toBe(false);
     await expect(oldPairSelector).toBeVisible();
     const [unchangedOldPair] = await db.select({
@@ -335,11 +344,14 @@ test('route combinations use exact active tariff-backed gate pairs', async ({
 
     // Check the same controls at the tablet breakpoint; no second selector
     // or horizontal overflow may be introduced by the compact layout.
-    await adminPage.getByRole('button', { name: 'İptal', exact: true }).last().click();
     await adminPage.setViewportSize({ width: 768, height: 1024 });
+    await adminPage.reload();
+    await waitForSettledAdminPage(adminPage);
+    await adminPage.getByRole('button', { name: 'Rota Kombinasyonları', exact: true }).click();
+    await adminPage.locator('select').first().selectOption(ids.route);
     const secondaryCard = adminPage
       .getByText(names.secondary, { exact: true })
-      .locator('xpath=ancestor::div[contains(@class,"border-slate-200")][1]');
+      .locator('xpath=ancestor::div[starts-with(@data-testid,"alternative-card-")][1]');
     await secondaryCard.getByRole('button', { name: 'Düzenle', exact: true }).click();
     const tabletSelector = adminPage.getByLabel(`${names.point} gişe çifti`, { exact: true });
     await expect(tabletSelector).toBeVisible();

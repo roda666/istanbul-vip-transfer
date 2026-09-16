@@ -1830,6 +1830,8 @@ function PointsManager({ data, onRefresh, onTariffUpdated }: { data: DataPayload
 type AlternativeComparison = {
   id: string;
   totalKurus: number | null;
+  missingTariffPointNames?: string[];
+  bannedPointNames?: string[];
   needsReview?: boolean;
   reviewNote?: string | null;
 };
@@ -1974,8 +1976,20 @@ function AlternativesManager({ data, onRefresh }: { data: DataPayload, onRefresh
                               <span className="text-slate-400 flex items-center gap-1.5"><Loader2 size={14} className="animate-spin" /> Hesaplanıyor…</span>
                             ) : comparison[alt.id]?.totalKurus != null ? (
                               <span className="text-slate-900">Toplam geçiş ücreti: <span className="text-blue-700">{formatTRY(comparison[alt.id].totalKurus)}</span></span>
+                            ) : comparison[alt.id]?.bannedPointNames?.length ? (
+                              <div className="rounded border border-red-200 bg-red-50 px-2.5 py-2 text-xs text-red-700">
+                                <span className="font-black uppercase tracking-widest">Araç için yasaklı — hesaplanamadı</span>
+                                <span className="mt-1 block font-bold normal-case tracking-normal">{comparison[alt.id].bannedPointNames!.join(', ')}</span>
+                              </div>
                             ) : (
-                              <span className="text-red-700 bg-red-50 border border-red-200 px-2.5 py-1 rounded text-xs uppercase tracking-widest">Eksik veya yasaklı — hesaplanamadı</span>
+                              <div className="rounded border border-red-200 bg-red-50 px-2.5 py-2 text-xs text-red-700">
+                                <span className="font-black uppercase tracking-widest">Eksik tarife — hesaplanamadı</span>
+                                {comparison[alt.id]?.missingTariffPointNames?.length ? (
+                                  <span className="mt-1 block font-bold normal-case tracking-normal">
+                                    Eksik: {comparison[alt.id].missingTariffPointNames!.join('; ')}. Geçiş Noktaları ve Maliyetler bölümündeki Hızlı Tarife Ekle alanından tamamlayın.
+                                  </span>
+                                ) : null}
+                              </div>
                             )}
                           </div>
                         )}

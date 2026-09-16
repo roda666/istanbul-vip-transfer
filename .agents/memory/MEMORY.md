@@ -145,3 +145,4 @@
 - [Admin async loader races](admin-async-loader-races.md) — discard stale settings-load responses so dev Strict Mode or overlapping requests cannot erase user edits.
 - [Per-person admin grants](per-person-admin-grants.md) — section grants supersede legacy roles; keep every page/API/menu route in one matching section, with chat operations separate from chatbot content.
 - [Ferry single-price gate-pair compatibility](ferry-day-night-gate-pairs.md) — ferries use one ALL price per class and ordered gate pair; tariff-free legacy points convert only on first compact save.
+- [Responsive admin record-action tests](responsive-admin-record-action-tests.md) — at mobile width, edit/delete actions move from the card into the portaled İşlemler sheet.

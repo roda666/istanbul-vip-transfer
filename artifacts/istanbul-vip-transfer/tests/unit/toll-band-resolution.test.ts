@@ -3,6 +3,7 @@ import {
   assertTariffTimeBandForPointType,
   assertTypeMatchesPricingMode,
   resolveTariffBandForPoint,
+  resolveVehicleTollClass,
   tariffAppliesToBand,
 } from '@/lib/toll-management';
 import {
@@ -22,6 +23,12 @@ const dayNightTariffs = [
 ];
 
 describe('toll point pricing invariants', () => {
+  it('uses a point exception when present and otherwise falls back to the selected vehicle class', () => {
+    expect(resolveVehicleTollClass('class_3', 'class_2')).toBe('class_3');
+    expect(resolveVehicleTollClass(null, 'class_2')).toBe('class_2');
+    expect(resolveVehicleTollClass(undefined, null)).toBeNull();
+  });
+
   it('uses GATE_PAIR for ferries and highways but FLAT for bridges and tunnels', () => {
     expect(() => assertTypeMatchesPricingMode('FERRY', 'GATE_PAIR')).not.toThrow();
     expect(() => assertTypeMatchesPricingMode('HIGHWAY', 'GATE_PAIR')).not.toThrow();

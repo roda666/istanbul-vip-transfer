@@ -34,6 +34,7 @@ import {
   resolveBosphorusToll,
   resolveIntercityCorridorToll,
   resolveTariffBandForPoint,
+  resolveVehicleTollClass,
   tariffAppliesToBand,
   assertBosphorusSelectionRequirement,
 } from '@/lib/toll-management';
@@ -356,9 +357,9 @@ async function resolveServices(
  * matching active tariff is returned with `amountKurus: null, missing: true`
  * instead of throwing — a missing tariff must never silently price as zero,
  * but it also must not block the entire quote. This also covers a point
- * where the vehicle has no admin-assigned class yet (per toll point, since
- * classification systems differ by operator): it resolves as "missing" for
- * that point, since the class was never manually chosen there.
+ * where the vehicle has neither an operator-specific point assignment nor a
+ * verified selected toll class: it resolves as "missing" for that point.
+ * Point assignments remain explicit overrides for operator exceptions.
  *
  * A point where the vehicle's assigned class is on that point's confirmed
  * ban list is a different, harder case: the vehicle genuinely cannot use
@@ -388,6 +389,11 @@ async function resolveTolls(routeId: string, alternativeId: string, vehicleId: s
     inArray(tollPoints.id, pointIds), eq(tollPoints.active, true),
   ));
   if (points.length !== pointIds.length) throw new Error('Geçiş noktası artık aktif değil.');
+  const [vehicle] = await db.select({
+    tollClass: vehicles.tollClass,
+    pricingClass: vehicles.pricingClass,
+  }).from(vehicles).where(eq(vehicles.id, vehicleId)).limit(1);
+  if (!vehicle) throw new Error('Araç bulunamadı.');
   const pointClasses = new Map<string, string>();
   const assignments = await db.select({
     tollPointId: vehicleTollPointClasses.tollPointId,
@@ -397,7 +403,9 @@ async function resolveTolls(routeId: string, alternativeId: string, vehicleId: s
     inArray(vehicleTollPointClasses.tollPointId, pointIds),
   ));
   for (const assignment of assignments) pointClasses.set(assignment.tollPointId, assignment.vehicleClass);
-  const tariffClasses = [...new Set(pointIds.map((pointId) => pointClasses.get(pointId)).filter((value): value is string => !!value))];
+  const tariffClasses = [...new Set(pointIds.map((pointId) =>
+    resolveVehicleTollClass(pointClasses.get(pointId), vehicle.tollClass),
+  ).filter((value): value is string => !!value))];
   const settings = await getTollPricingSettings();
 
   const allTariffs = tariffClasses.length
@@ -412,13 +420,14 @@ async function resolveTolls(routeId: string, alternativeId: string, vehicleId: s
 
   return items.map((item) => {
     const point = points.find((candidate) => candidate.id === item.tollPointId)!;
-    const pointClass = pointClasses.get(point.id);
+    const pointClass = resolveVehicleTollClass(pointClasses.get(point.id), vehicle.tollClass);
     const bannedClasses = (point.bannedVehicleClasses ?? []) as string[];
-    if (pointClass && bannedClasses.includes(pointClass)) {
+    const bannedTypes = (point.bannedVehicleTypes ?? []) as string[];
+    if (pointClass && (bannedClasses.includes(pointClass) || bannedTypes.includes(vehicle.pricingClass))) {
       throw new Error(`${point.name} bu araç sınıfı (${pointClass}) için geçişe kapalıdır. Fiyat üretimi güvenle durduruldu — lütfen bu geçiş noktasını içermeyen başka bir alternatif seçin.`);
     }
     if (!pointClass) {
-      return { id: point.id, name: point.name, amountKurus: null as number | null, missing: true as const, stale: false, directionUnconfirmed: point.tollDirection == null };
+      return { id: point.id, name: `${point.name} (araç sınıfı seçilmedi)`, amountKurus: null as number | null, missing: true as const, stale: false, directionUnconfirmed: point.tollDirection == null };
     }
     const isGatePair = point.pricingMode === 'GATE_PAIR';
     if (isGatePair && (!item.entryGateName || !item.exitGateName)) {
@@ -453,7 +462,8 @@ async function resolveTolls(routeId: string, alternativeId: string, vehicleId: s
     }
     const forwardAmountKurus = forwardCandidates[0]?.amountKurus ?? null;
     if (forwardCandidates.length === 0 || forwardAmountKurus == null) {
-      return { id: point.id, name: point.name, amountKurus: null as number | null, missing: true as const, stale: false, directionUnconfirmed: point.tollDirection == null };
+      const pair = isGatePair ? `, ${item.entryGateName} → ${item.exitGateName}` : '';
+      return { id: point.id, name: `${point.name}${pair}, ${pointClass}`, amountKurus: null as number | null, missing: true as const, stale: false, directionUnconfirmed: point.tollDirection == null };
     }
     const forwardTariff = forwardCandidates[0];
     const forwardStaleness = evaluateTollTariffStaleness(forwardTariff, settings, now);

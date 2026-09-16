@@ -32,7 +32,30 @@ export {
   TOLL_VEHICLE_CLASS_DESCRIPTIONS,
   TOLL_VEHICLE_CLASS_SELECTION_WARNING,
 } from '@/lib/toll-vehicle-classes';
-import { TOLL_VEHICLE_CLASSES, type TollVehicleClass } from '@/lib/toll-vehicle-classes';
+import { TOLL_VEHICLE_CLASSES, TOLL_VEHICLE_CLASS_LABELS, type TollVehicleClass } from '@/lib/toll-vehicle-classes';
+
+/**
+ * A point-specific assignment can document an operator exception. When no
+ * exception exists, use the vehicle's verified selected toll class instead of
+ * treating a valid GATE_PAIR/FERRY tariff as missing.
+ */
+export function resolveVehicleTollClass(
+  pointSpecificClass: string | null | undefined,
+  vehicleTollClass: string | null | undefined,
+): string | null {
+  return pointSpecificClass ?? vehicleTollClass ?? null;
+}
+
+function describeMissingRouteTariff(
+  pointName: string,
+  vehicleClass: string,
+  entryGateName?: string | null,
+  exitGateName?: string | null,
+): string {
+  const classLabel = TOLL_VEHICLE_CLASS_LABELS[vehicleClass as TollVehicleClass] ?? vehicleClass;
+  const gatePair = entryGateName && exitGateName ? `, ${entryGateName} → ${exitGateName}` : '';
+  return `${pointName}${gatePair}, ${classLabel}`;
+}
 
 /**
  * How many times a round trip actually pays a given point. Every existing
@@ -942,7 +965,11 @@ export async function getRouteTollAlternatives(routeId: string, vehicleId?: stri
   if (!route) throw new Error('Güzergâh bulunamadı.');
 
   const [vehicle] = vehicleId
-    ? await db.select({ id: vehicles.id }).from(vehicles).where(eq(vehicles.id, vehicleId)).limit(1)
+    ? await db.select({
+      id: vehicles.id,
+      tollClass: vehicles.tollClass,
+      pricingClass: vehicles.pricingClass,
+    }).from(vehicles).where(eq(vehicles.id, vehicleId)).limit(1)
     : [null];
   if (vehicleId && !vehicle) throw new Error('Araç bulunamadı.');
 
@@ -976,7 +1003,9 @@ export async function getRouteTollAlternatives(routeId: string, vehicleId?: stri
     ));
     for (const assignment of assignments) pointClasses.set(assignment.tollPointId, assignment.vehicleClass);
   }
-  const tariffClasses = [...new Set(pointIds.map((pointId) => pointClasses.get(pointId)).filter((value): value is string => !!value))] as TollVehicleClass[];
+  const tariffClasses = [...new Set(pointIds.map((pointId) =>
+    resolveVehicleTollClass(pointClasses.get(pointId), vehicle?.tollClass),
+  ).filter((value): value is string => !!value))] as TollVehicleClass[];
   const allTariffs = tariffClasses.length && pointIds.length
     ? await db.select().from(tollTariffs).where(and(
       inArray(tollTariffs.tollPointId, pointIds),
@@ -999,13 +1028,14 @@ export async function getRouteTollAlternatives(routeId: string, vehicleId?: stri
         if (!point) { missingTariffPointNames.push('Bilinmeyen geçiş noktası'); hasPricedAmount = false; continue; }
         if (!point.active) { missingTariffPointNames.push(`${point.name} (pasif)`); hasPricedAmount = false; continue; }
         if (!vehicle) { hasPricedAmount = false; continue; }
-         const pointClass = pointClasses.get(point.id);
+         const pointClass = resolveVehicleTollClass(pointClasses.get(point.id), vehicle.tollClass);
          const bannedClasses = (point.bannedVehicleClasses ?? []) as string[];
-         if (pointClass && bannedClasses.includes(pointClass)) {
+         const bannedTypes = (point.bannedVehicleTypes ?? []) as string[];
+         if (pointClass && (bannedClasses.includes(pointClass) || bannedTypes.includes(vehicle.pricingClass))) {
           bannedPointNames.push(point.name);
           continue;
         }
-         if (!pointClass) { missingTariffPointNames.push(point.name); hasPricedAmount = false; continue; }
+         if (!pointClass) { missingTariffPointNames.push(`${point.name} (araç sınıfı seçilmedi)`); hasPricedAmount = false; continue; }
         // A GATE_PAIR point (e.g. Osmangazi Köprüsü / O-5) has no single
         // "the" tariff for the point — a matching tariff must also carry the
         // exact entry/exit gate pair configured on this route item.
@@ -1030,9 +1060,27 @@ export async function getRouteTollAlternatives(routeId: string, vehicleId?: stri
         // Exactly one match is required for a usable amount — zero is a
         // missing tariff, and more than one is a data-integrity problem
         // (duplicate overlapping rows); neither can be safely summed.
-        if (matchingTariffs.length !== 1) { missingTariffPointNames.push(point.name); hasPricedAmount = false; continue; }
+        if (matchingTariffs.length !== 1) {
+          missingTariffPointNames.push(describeMissingRouteTariff(
+            point.name,
+            pointClass,
+            item.entryGateName,
+            item.exitGateName,
+          ));
+          hasPricedAmount = false;
+          continue;
+        }
         const amount = effectiveTollAmount(matchingTariffs[0]);
-        if (amount == null) { missingTariffPointNames.push(point.name); hasPricedAmount = false; continue; }
+        if (amount == null) {
+          missingTariffPointNames.push(`${describeMissingRouteTariff(
+            point.name,
+            pointClass,
+            item.entryGateName,
+            item.exitGateName,
+          )} (tutar eksik)`);
+          hasPricedAmount = false;
+          continue;
+        }
         totalKurus += amount;
       }
       return {

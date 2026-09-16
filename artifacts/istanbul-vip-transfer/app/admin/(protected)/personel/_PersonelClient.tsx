@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useId } from 'react';
-import { Plus, RefreshCw, UserCheck, UserX, Pencil, KeyRound, Save, X } from 'lucide-react';
+import { Plus, RefreshCw, UserCheck, UserX, KeyRound, Save, X } from 'lucide-react';
 import AdminPageHeader from '../../_components/AdminPageHeader';
 import { AdminRecordActions } from '../../_components/AdminRecordActions';
 import { AdminActionButton } from '../../_components/AdminActionButton';
@@ -85,8 +85,8 @@ export default function PersonelClient() {
     setTimeout(() => setToastMsg(null), 3500);
   };
 
-  const fetchStaff = useCallback(async () => {
-    setLoading(true);
+  const fetchStaff = useCallback(async (isInitial = false) => {
+    if (isInitial) setLoading(true);
     try {
       const res = await fetch('/admin/api/staff');
       const json = await res.json() as { staff?: StaffUser[]; error?: string };
@@ -95,11 +95,11 @@ export default function PersonelClient() {
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Sunucu hatası', 'error');
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetchStaff(); }, [fetchStaff]);
+  useEffect(() => { fetchStaff(true); }, [fetchStaff]);
 
   async function handleCreate() {
     if (!form.name.trim() || !form.email.trim() || !form.password.trim()) {
@@ -208,7 +208,7 @@ export default function PersonelClient() {
   }
 
   return (
-    <div style={{ padding: '28px 24px', maxWidth: '900px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
+    <div className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8" style={{ fontFamily: 'Inter, sans-serif' }}>
       <AdminPageHeader
         title="Personel Yönetimi"
          description="Personel hesaplarını, bölüm erişimlerini ve şifre yenilemelerini yönetin."
@@ -229,12 +229,12 @@ export default function PersonelClient() {
       )}
 
       {/* Header actions */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <span style={{ fontSize: '13px', color: MUTED }}>
            {loading ? 'Yükleniyor…' : `${staff.length} personel`}
         </span>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <AdminActionButton label="Yenile" icon={RefreshCw} variant="subtle" onClick={fetchStaff} loading={loading} manage={false} />
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
+          <AdminActionButton label="Yenile" icon={RefreshCw} variant="subtle" onClick={() => void fetchStaff()} loading={loading} manage={false} />
           <AdminActionButton label="Yeni Personel Ekle" icon={Plus} variant="new" onClick={() => setShowCreate(s => !s)} />
         </div>
       </div>
@@ -279,23 +279,24 @@ export default function PersonelClient() {
           </div>
         ) : (
           <>
-            <div className="hidden lg:block overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', minWidth: '700px' }}>
+            <div className="hidden lg:block">
+              <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: '14px' }}>
                 <thead>
                   <tr style={{ borderBottom: `1px solid ${BORDER}`, background: '#F8FAFC' }}>
-                    {['Ad Soyad', 'E-posta', 'Durum', 'Son Giriş', 'Oluşturulma', 'İşlem'].map(h => (
-                      <th key={h} style={{ padding: '10px 16px', textAlign: 'left', color: MUTED, fontWeight: 600, fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                        {h}
-                      </th>
-                    ))}
+                    <th style={{ padding: '10px 14px', textAlign: 'left', color: MUTED, fontWeight: 600, fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase', width: '15%' }}>Ad Soyad</th>
+                    <th style={{ padding: '10px 14px', textAlign: 'left', color: MUTED, fontWeight: 600, fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase', width: '22%' }}>E-posta</th>
+                    <th style={{ padding: '10px 14px', textAlign: 'left', color: MUTED, fontWeight: 600, fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase', width: '8%' }}>Durum</th>
+                    <th style={{ padding: '10px 14px', textAlign: 'left', color: MUTED, fontWeight: 600, fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase', width: '11%' }}>Son Giriş</th>
+                    <th style={{ padding: '10px 14px', textAlign: 'left', color: MUTED, fontWeight: 600, fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase', width: '11%' }}>Oluşturulma</th>
+                    <th style={{ padding: '10px 14px', textAlign: 'right', color: MUTED, fontWeight: 600, fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase', width: '33%' }}>İşlemler</th>
                   </tr>
                 </thead>
                 <tbody>
                   {staff.map((u, i) => (
                     <tr key={u.id} style={{ borderBottom: i < staff.length - 1 ? `1px solid ${BORDER}` : 'none', background: u.active ? 'transparent' : '#FAFAFA' }}>
-                      <td style={{ padding: '12px 16px', color: NAVY, fontWeight: 600 }}>{u.name}</td>
-                      <td style={{ padding: '12px 16px', color: MUTED }}>{u.email}</td>
-                      <td style={{ padding: '12px 16px' }}>
+                      <td style={{ padding: '12px 14px', color: NAVY, fontWeight: 600, overflowWrap: 'anywhere' }}>{u.name}</td>
+                      <td style={{ padding: '12px 14px', color: MUTED, overflowWrap: 'anywhere' }}>{u.email}</td>
+                      <td style={{ padding: '12px 14px' }}>
                         <span style={{
                           display: 'inline-flex', alignItems: 'center', gap: '4px',
                           padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 700,
@@ -306,14 +307,13 @@ export default function PersonelClient() {
                           {u.active ? 'Aktif' : 'Pasif'}
                         </span>
                       </td>
-                      <td style={{ padding: '12px 16px', color: MUTED, fontSize: '12px' }}>{fmtDate(u.lastLoginAt)}</td>
-                      <td style={{ padding: '12px 16px', color: MUTED, fontSize: '12px' }}>{fmtDate(u.createdAt)}</td>
-                      <td style={{ padding: '12px 16px' }}>
-             <div style={{ display: 'flex', gap: 6 }}>
-               <AdminActionButton label="Düzenle" icon={Pencil} variant="edit" onClick={() => setEditing(u)} />
-               <AdminActionButton label="Şifre Yenile" icon={KeyRound} variant="edit" onClick={() => resetPassword(u)} />
-             </div>
-             <AdminRecordActions
+                      <td style={{ padding: '12px 14px', color: MUTED, fontSize: '12px', lineHeight: 1.4 }}>{fmtDate(u.lastLoginAt)}</td>
+                      <td style={{ padding: '12px 14px', color: MUTED, fontSize: '12px', lineHeight: 1.4 }}>{fmtDate(u.createdAt)}</td>
+                      <td style={{ padding: '12px 14px', textAlign: 'right' }}>
+                        <AdminRecordActions
+                          edit={{
+                            onClick: () => setEditing(u),
+                          }}
                           activation={{
                             isActive: u.active,
                             onClick: () => handleToggleActive(u),
@@ -323,6 +323,15 @@ export default function PersonelClient() {
                             onClick: () => handleDelete(u),
                             disabled: actionLoading === u.id + '-delete',
                           }}
+                          customActions={[
+                            {
+                              id: 'reset-password',
+                              label: 'Şifre Yenile',
+                              icon: KeyRound,
+                              colorClass: 'text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100',
+                              onClick: () => resetPassword(u),
+                            }
+                          ]}
                         />
                       </td>
                     </tr>
@@ -331,19 +340,20 @@ export default function PersonelClient() {
               </table>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 lg:hidden p-4">
+            <div className="grid grid-cols-1 gap-4 p-3 sm:p-4 lg:hidden">
               {staff.map((u) => (
                 <div key={u.id} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-4 shadow-sm" style={{ background: u.active ? CARD : '#FAFAFA' }}>
                   <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h3 className="text-base font-bold text-slate-900 m-0">{u.name}</h3>
-                      <p className="mt-1 text-sm font-medium text-slate-600 m-0">{u.email}</p>
+                    <div className="min-w-0">
+                      <h3 className="text-base font-bold text-slate-900 m-0 truncate">{u.name}</h3>
+                      <p className="mt-1 text-sm font-medium text-slate-600 m-0 break-all">{u.email}</p>
                     </div>
                     <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: '4px',
                         padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 700,
                         background: u.active ? '#ECFDF5' : '#F1F5F9',
                         color: u.active ? GREEN : MUTED,
+                        flexShrink: 0,
                       }}>
                         {u.active ? <UserCheck size={14} /> : <UserX size={14} />}
                         {u.active ? 'Aktif' : 'Pasif'}
@@ -362,11 +372,10 @@ export default function PersonelClient() {
                   </div>
 
                   <div className="mt-2 flex border-t border-slate-100 pt-3 justify-end">
-                     <div style={{ display: 'flex', gap: 6 }}>
-                       <AdminActionButton label="Düzenle" icon={Pencil} variant="edit" onClick={() => setEditing(u)} />
-                       <AdminActionButton label="Şifre Yenile" icon={KeyRound} variant="edit" onClick={() => resetPassword(u)} />
-                     </div>
-                     <AdminRecordActions
+                    <AdminRecordActions
+                      edit={{
+                        onClick: () => setEditing(u),
+                      }}
                       activation={{
                         isActive: u.active,
                         onClick: () => handleToggleActive(u),
@@ -376,6 +385,15 @@ export default function PersonelClient() {
                         onClick: () => handleDelete(u),
                         disabled: actionLoading === u.id + '-delete',
                       }}
+                      customActions={[
+                        {
+                          id: 'reset-password',
+                          label: 'Şifre Yenile',
+                          icon: KeyRound,
+                          colorClass: 'text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100',
+                          onClick: () => resetPassword(u),
+                        }
+                      ]}
                     />
                   </div>
                 </div>

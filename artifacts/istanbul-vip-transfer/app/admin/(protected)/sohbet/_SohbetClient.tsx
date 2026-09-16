@@ -35,6 +35,18 @@ interface Message {
   createdAt: string;
 }
 
+interface TranslationPreviewResponse {
+  sourceContent?: string;
+  targetLanguage?: string;
+  targetLanguageName?: string;
+  direction?: 'ltr' | 'rtl';
+  translatedContent?: string;
+  previewToken?: string;
+  expiresInSeconds?: number;
+  error?: string;
+  code?: string;
+}
+
 import { LOCALE_REGISTRY } from '@/lib/i18n/locale-registry';
 import { AdminActionButton } from '../../_components/AdminActionButton';
 
@@ -84,6 +96,16 @@ export default function SohbetClient() {
   const [toast,           setToast]           = useState<string | null>(null);
   const [unreadIds,       setUnreadIds]       = useState<Set<string>>(new Set());
   const [showArchived,    setShowArchived]    = useState(false);
+  const [translatedPreview, setTranslatedPreview] = useState('');
+  const [previewToken, setPreviewToken] = useState('');
+  const [previewing, setPreviewing] = useState(false);
+  const [previewMeta, setPreviewMeta] = useState<{
+    targetLanguage: string;
+    targetLanguageName: string;
+    direction: 'ltr' | 'rtl';
+    expiresInSeconds: number;
+  } | null>(null);
+  const clientMessageIdRef = useRef<string | null>(null);
 
   // Mobile layout: 'list' shows session list, 'thread' shows message thread
   const [isMobile,    setIsMobile]    = useState(false);
@@ -192,6 +214,12 @@ export default function SohbetClient() {
     setMessages([]);
     setUnreadIds(prev => { const next = new Set(prev); next.delete(sid); return next; });
     stopBlink();
+    setTranslatedPreview('');
+    setPreviewToken('');
+    setPreviewMeta(null);
+    setReplyText('');
+    setError(null);
+    clientMessageIdRef.current = null;
     if (isMobile) setMobileView('thread');
   };
 
@@ -201,22 +229,68 @@ export default function SohbetClient() {
     : false;
 
   // ── Send reply ───────────────────────────────────────────────────────────────
+  const previewReply = async () => {
+    if (!replyText.trim() || !selectedId || previewing) return;
+    setPreviewing(true);
+    setError(null);
+    try {
+      const res = await fetch(`/admin/api/chatbot/${selectedId}/preview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceContent: replyText.trim() }),
+      });
+      const data = await res.json() as TranslationPreviewResponse;
+      if (!res.ok || !data.previewToken) throw new Error(data.error ?? 'Çeviri doğrulanamadı.');
+      setTranslatedPreview(data.translatedContent || '');
+      setPreviewToken(data.previewToken);
+      setPreviewMeta({
+        targetLanguage: data.targetLanguage || 'tr',
+        targetLanguageName: data.targetLanguageName || 'Türkçe',
+        direction: data.direction === 'rtl' ? 'rtl' : 'ltr',
+        expiresInSeconds: data.expiresInSeconds || 300,
+      });
+      clientMessageIdRef.current = crypto.randomUUID();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Çeviri doğrulanamadı. Türkçe mesaj gönderilmedi.');
+      setTranslatedPreview('');
+      setPreviewToken('');
+      setPreviewMeta(null);
+    } finally {
+      setPreviewing(false);
+    }
+  };
+
   const sendReply = async () => {
-    if (!replyText.trim() || !selectedId || sending) return;
+    if (!replyText.trim() || !selectedId || sending || !previewToken || !translatedPreview.trim()) return;
     setSending(true);
     setError(null);
     try {
       const res = await fetch(`/admin/api/chatbot/${selectedId}/reply`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ content: replyText.trim() }),
+        body: JSON.stringify({
+          sourceContent: replyText.trim(),
+          translatedContent: translatedPreview.trim(),
+          previewToken,
+          clientMessageId: clientMessageIdRef.current ?? crypto.randomUUID(),
+        }),
       });
-      if (!res.ok) throw new Error('failed');
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 422) {
+          throw new Error(data.error ?? 'Çeviri süresi doldu veya geçersiz. Lütfen tekrar önizleme alın.');
+        }
+        throw new Error(data.error ?? 'Gönderim başarısız.');
+      }
       setReplyText('');
+      setTranslatedPreview('');
+      setPreviewToken('');
+      setPreviewMeta(null);
+      clientMessageIdRef.current = null;
       await fetchMessages(selectedId);
       await fetchSessions();
-    } catch {
-      setError('Gönderim başarısız. Tekrar deneyin.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gönderim başarısız. Tekrar deneyin.');
     } finally {
       setSending(false);
     }
@@ -265,7 +339,14 @@ export default function SohbetClient() {
   };
 
   const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply(); }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (previewToken) {
+        sendReply();
+      } else {
+        previewReply();
+      }
+    }
   };
 
   // ── Styles ───────────────────────────────────────────────────────────────────
@@ -530,36 +611,12 @@ export default function SohbetClient() {
                         {new Date(msg.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
                       </span>
                       <div style={msgBubble(msg.role)}>
-                        {msg.role === 'user' ? (
-                          /* Show Turkish translation prominently; original below if different */
-                          <>
-                            <span>{msg.contentTr ?? msg.content}</span>
-                            {msg.contentTr && msg.contentTr !== msg.content && (
-                              <div style={{ marginTop: '0.35rem', paddingTop: '0.35rem', borderTop: '1px solid rgba(16,42,67,0.1)', fontSize: '0.75rem', color: '#50677A', fontStyle: 'italic' }}>
-                                Orijinal: {msg.content}
-                              </div>
-                            )}
-                          </>
-                        ) : msg.role === 'admin' ? (
-                          /* Show what admin typed (Turkish); visitor translation below */
-                          <>
-                            <span>{msg.contentTr ?? msg.content}</span>
-                            {msg.contentTr && msg.contentTr !== msg.content && (
-                              <div style={{ marginTop: '0.35rem', paddingTop: '0.35rem', borderTop: '1px solid rgba(255,255,255,0.25)', fontSize: '0.75rem', color: 'rgba(255,255,255,0.8)', fontStyle: 'italic' }}>
-                                Çeviri: {msg.content}
-                              </div>
-                            )}
-                          </>
-                        ) : (
-                          /* AI: show Turkish translation; original below if different */
-                          <>
-                            <span>{msg.contentTr ?? msg.content}</span>
-                            {msg.contentTr && msg.contentTr !== msg.content && (
-                              <div style={{ marginTop: '0.35rem', paddingTop: '0.35rem', borderTop: '1px solid rgba(16,42,67,0.1)', fontSize: '0.75rem', color: '#50677A', fontStyle: 'italic' }}>
-                                Orijinal: {msg.content}
-                              </div>
-                            )}
-                          </>
+                        <div dir={msg.contentTr ? 'ltr' : 'auto'} style={{ unicodeBidi: 'isolate' }}>{msg.contentTr ?? msg.content}</div>
+                        {msg.contentTr && msg.contentTr !== msg.content && (
+                          <div dir="auto" style={{ marginTop: '0.35rem', paddingTop: '0.35rem', borderTop: msg.role === 'admin' ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(16,42,67,0.1)', fontSize: '0.75rem', color: msg.role === 'admin' ? 'rgba(255,255,255,0.8)' : '#50677A', fontStyle: 'italic', unicodeBidi: 'isolate' }}>
+                            {msg.role === 'admin' ? 'Çeviri: ' : 'Orijinal: '}
+                            {msg.content}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -572,11 +629,27 @@ export default function SohbetClient() {
 
                 {/* Reply input — hidden for archived sessions */}
                 {!isArchived && (
-                  <div style={{ borderTop: '1px solid #D9E2EC', padding: '0.75rem 1rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexShrink: 0 }}>
+                  <div style={{
+                    borderTop: '1px solid #D9E2EC',
+                    padding: '0.75rem 1rem',
+                    display: 'flex',
+                    flexDirection: isMobile ? 'column' : 'row',
+                    gap: '0.5rem',
+                    alignItems: isMobile ? 'stretch' : 'flex-end',
+                    flexShrink: 0,
+                  }}>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                      <span style={{ fontSize: '0.7rem', color: '#50677A', fontWeight: 600, paddingInline: '0.25rem' }}>
+                        Türkçe kaynak
+                      </span>
                       <textarea
                         value={replyText}
-                        onChange={e => setReplyText(e.target.value)}
+                        onChange={e => {
+                          setReplyText(e.target.value);
+                          setPreviewToken('');
+                          setTranslatedPreview('');
+                          setPreviewMeta(null);
+                        }}
                         onKeyDown={handleKey}
                         placeholder={isMobile ? 'Türkçe yazın — çevrilir' : 'Türkçe yazın — müşteriye otomatik çevrilir (Enter ile gönder)'}
                         rows={2}
@@ -584,7 +657,31 @@ export default function SohbetClient() {
                       />
                       {error && <span style={{ fontSize: '0.75rem', color: '#c0392b' }}>{error}</span>}
                     </div>
-                    <AdminActionButton onClick={sendReply} disabled={!replyText.trim() || sending} loading={sending} label="Gönder" variant="save" />
+                      {previewToken && previewMeta ? (
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                          <span style={{ fontSize: '0.7rem', color: '#16A36A', fontWeight: 600, paddingInline: '0.25rem' }}>
+                            {previewMeta?.targetLanguage === 'tr' ? 'Çeviri Gerekmiyor (Türkçe)' : `✓ ${previewMeta?.targetLanguageName || 'Çeviri'} (${previewMeta?.targetLanguage?.toUpperCase()})`}
+                          </span>
+                          <textarea
+                            value={translatedPreview}
+                            onChange={e => setTranslatedPreview(e.target.value)}
+                            dir={previewMeta?.direction || 'ltr'}
+                            placeholder="Müşteriye gidecek metin"
+                            rows={2}
+                            style={{ width: '100%', border: '1px solid #16A36A', borderRadius: '0.5rem', padding: '0.5rem 0.75rem', fontSize: isMobile ? '1rem' : '0.875rem', resize: 'none', outline: 'none', color: '#102A43', background: '#F0FDF4', boxSizing: 'border-box', unicodeBidi: 'isolate' }}
+                          />
+                        </div>
+                      ) : null}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', flexShrink: 0, width: isMobile ? '100%' : undefined }}>
+                      <AdminActionButton
+                        onClick={previewToken ? sendReply : previewReply}
+                        disabled={!replyText.trim() || sending || previewing || Boolean(previewToken && !translatedPreview.trim())}
+                        loading={sending || previewing}
+                        label={previewToken ? 'Gönder' : 'Çevir'}
+                        variant={previewToken ? 'activate' : 'subtle'}
+                        style={{ minWidth: isMobile ? 80 : 100, width: isMobile ? '100%' : undefined, height: 44, margin: 0 }}
+                      />
+                    </div>
                   </div>
                 )}
               </>

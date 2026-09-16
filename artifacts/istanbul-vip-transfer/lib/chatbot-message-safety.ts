@@ -9,7 +9,7 @@ const UNRESOLVED_PATTERNS = [
   /<%\s*[^%]*\s*%>/g,
 ] as const;
 
-const FALLBACKS: Record<string, (url: string | null) => string> = {
+export const FALLBACKS: Record<string, (url: string | null) => string> = {
   tr: (url) => url
     ? `Rezervasyon formuna buradan ulaşabilirsiniz: ${url}`
     : 'Rezervasyon formuna ana sayfadaki “Fiyat Al / Rezervasyon” bölümünden ulaşabilirsiniz.',
@@ -25,7 +25,23 @@ const FALLBACKS: Record<string, (url: string | null) => string> = {
   ar: (url) => url
     ? `يمكنك الوصول إلى نموذج الحجز هنا: ${url}`
     : 'يمكنك الوصول إلى نموذج الحجز من قسم طلب السعر / الحجز في الصفحة الرئيسية.',
+  fr: (url) => url
+    ? `Vous pouvez accéder au formulaire de réservation ici : ${url}`
+    : 'Vous pouvez accéder au formulaire de réservation depuis la section « Demander un devis / Réservation » de la page d’accueil.',
+  es: (url) => url
+    ? `Puede acceder al formulario de reserva aquí: ${url}`
+    : 'Puede acceder al formulario de reserva desde la sección « Solicitar presupuesto / Reserva » de la página de inicio.',
+  it: (url) => url
+    ? `Puoi accedere al modulo di prenotazione qui: ${url}`
+    : 'Puoi accedere al modulo di prenotazione dalla sezione « Richiedi un preventivo / Prenotazione » della home page.',
+  nl: (url) => url
+    ? `U vindt het boekingsformulier hier: ${url}`
+    : 'U vindt het boekingsformulier in het gedeelte “Offerte aanvragen / Boeken” op de homepage.',
 };
+
+export function getChatbotFallback(visitorLang: string, reservationFormUrl: string | null): string {
+  return (FALLBACKS[visitorLang] ?? FALLBACKS.en)(reservationFormUrl);
+}
 
 export function findUnresolvedMessagePlaceholders(text: string): string[] {
   const matches = new Set<string>();
@@ -54,7 +70,7 @@ export function sanitizeChatbotReply(
     || findUnresolvedMessagePlaceholders(repaired).length > 0
     || (hadLinkPlaceholder && !reservationFormUrl)
   ) {
-    return (FALLBACKS[visitorLang] ?? FALLBACKS.en)(reservationFormUrl);
+    return getChatbotFallback(visitorLang, reservationFormUrl);
   }
   return repaired;
 }

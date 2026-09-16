@@ -33,7 +33,7 @@ export async function GET(
     .limit(1);
 
   if (!session) {
-    return Response.json({ messages: [], aiModeRestored: false });
+    return Response.json({ messages: [], aiModeRestored: false, language: 'tr' });
   }
 
   let aiModeRestored = false;
@@ -109,5 +109,5 @@ export async function GET(
     )
     .orderBy(asc(chatbotMessages.createdAt));
 
-  return Response.json({ messages, aiModeRestored });
+  return Response.json({ messages, aiModeRestored, language: session.visitorLang });
 }

@@ -12,7 +12,9 @@ import { db } from '@/db';
 import { chatbotSessions, chatbotMessages } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { requireChatbotManagement } from '@/lib/chatbot-admin-auth';
-import { translateFromTurkish } from '@/lib/chatbot-translate';
+import { normalizeChatbotLanguage } from '@/lib/chatbot-language';
+import { verifyTranslationToken } from '@/lib/chatbot-translation-token';
+import { validateCustomerTranslation } from '@/lib/chatbot-translate';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,9 +26,17 @@ export async function POST(
   if (access.error) return access.error;
 
   const { sessionId } = await params;
-  const { content } = await request.json() as { content: string };
+  const body = await request.json() as {
+    content?: string;
+    sourceContent?: string;
+    translatedContent?: string;
+    previewToken?: string;
+    clientMessageId?: string;
+  };
+  const sourceContent = (body.sourceContent ?? body.content ?? '').trim();
+  const clientMessageId = body.clientMessageId?.trim() || crypto.randomUUID();
 
-  if (!content?.trim()) {
+  if (!sourceContent) {
     return Response.json({ error: 'content required' }, { status: 400 });
   }
 
@@ -40,28 +50,57 @@ export async function POST(
     return Response.json({ error: 'Session not found' }, { status: 404 });
   }
 
-  // Translate Turkish admin reply → visitor language
-  const translated = await translateFromTurkish(content.trim(), chatSession.visitorLang);
+  const target = normalizeChatbotLanguage(chatSession.visitorLang, 'tr');
+  let translated = sourceContent;
+  if (target !== 'tr') {
+    const token = verifyTranslationToken(body.previewToken);
+    const editedTranslation = body.translatedContent?.trim() ?? '';
+    if (!token || token.sid !== sessionId || token.target !== target
+      || token.source !== sourceContent || !editedTranslation
+      || !validateCustomerTranslation(sourceContent, editedTranslation, target).valid) {
+      return Response.json({
+        error: 'Çeviri önizlemesi geçersiz veya hedef dil doğrulanamadı. Türkçe mesaj gönderilmedi.',
+        code: 'TRANSLATION_CONFIRMATION_REQUIRED',
+      }, { status: 422 });
+    }
+    translated = editedTranslation;
+  } else if (body.translatedContent?.trim()) {
+    translated = body.translatedContent.trim();
+  }
 
   // 5-minute active window + permanent human takeover + cancel AI countdown
   const adminActiveUntil = new Date(Date.now() + 5 * 60 * 1000);
 
-  await Promise.all([
-    db.insert(chatbotMessages).values({
+  const inserted = await db.transaction(async (tx) => {
+    const rows = await tx.insert(chatbotMessages).values({
       sessionId,
+      clientMessageId,
       role:      'admin',
-      content:   translated,         // what the visitor sees (their language)
-      contentTr: content.trim(),     // what the admin typed (Turkish)
-    }),
-    db.update(chatbotSessions)
-      .set({
-        adminActiveUntil,
-        humanTakenOver: true,        // permanent — AI will no longer auto-respond
-        pendingAiAfter: null,        // cancel any pending 2-minute AI countdown
-        lastMessageAt:  new Date(),
-      })
-      .where(eq(chatbotSessions.id, sessionId)),
-  ]);
+      content:   translated,
+      contentTr: sourceContent,
+      processingStatus: 'completed',
+      responseMode: 'admin',
+    }).onConflictDoNothing({
+      target: [chatbotMessages.sessionId, chatbotMessages.clientMessageId],
+    }).returning({ id: chatbotMessages.id });
+    if (rows.length) {
+      await tx.update(chatbotSessions)
+        .set({
+          adminActiveUntil,
+          humanTakenOver: true,
+          pendingAiAfter: null,
+          lastMessageAt:  new Date(),
+        })
+        .where(eq(chatbotSessions.id, sessionId));
+    }
+    return rows[0] ?? null;
+  });
 
-  return Response.json({ ok: true, translatedContent: translated, adminActiveUntil });
+  return Response.json({
+    ok: true,
+    duplicate: !inserted,
+    translatedContent: translated,
+    adminActiveUntil,
+    clientMessageId,
+  });
 }

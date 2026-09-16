@@ -28,6 +28,28 @@ type ChatAction = { type: 'whatsapp_booking'; url: string };
 
 const SESSION_KEY = 'ivt_chat_sid';
 const ADMIN_POLL_INTERVAL = 3000; // ms
+const WHATSAPP_CTA: Record<string, string> = {
+  tr: 'WhatsApp ile rezervasyon yap',
+  en: 'Book via WhatsApp',
+  de: 'Über WhatsApp buchen',
+  ru: 'Забронировать через WhatsApp',
+  ar: 'احجز عبر WhatsApp',
+  fr: 'Réserver via WhatsApp',
+  es: 'Reservar por WhatsApp',
+  it: 'Prenota tramite WhatsApp',
+  nl: 'Boek via WhatsApp',
+};
+const RETRY_LABEL: Record<string, string> = {
+  tr: 'Tekrar dene',
+  en: 'Try again',
+  de: 'Erneut versuchen',
+  ru: 'Повторить',
+  ar: 'حاول مرة أخرى',
+  fr: 'Réessayer',
+  es: 'Reintentar',
+  it: 'Riprova',
+  nl: 'Opnieuw proberen',
+};
 
 function renderChatMessageContent(content: string) {
   return content.split(/(https:\/\/[^\s]+)/g).map((part, index) => {
@@ -40,7 +62,8 @@ function renderChatMessageContent(content: string) {
           href={url.href}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ color: 'inherit', textDecoration: 'underline', overflowWrap: 'anywhere' }}
+          dir="ltr"
+          style={{ color: 'inherit', textDecoration: 'underline', overflowWrap: 'anywhere', unicodeBidi: 'isolate' }}
         >
           {part}
         </a>
@@ -73,6 +96,7 @@ export default function ChatWidget({
   const [error, setError]       = useState<string | null>(null);
   const [retryText, setRetryText] = useState<string | null>(null);
   const [bookingAction, setBookingAction] = useState<ChatAction | null>(null);
+  const [effectiveLang, setEffectiveLang] = useState(lang);
 
   const sessionIdRef  = useRef<string | null>(null);
   const bottomRef     = useRef<HTMLDivElement>(null);
@@ -105,7 +129,8 @@ export default function ChatWidget({
     // Load full conversation history so page-refresh doesn't wipe the chat
     fetch(`/data/chatbot/${sid}/poll?after=${encodeURIComponent('1970-01-01T00:00:00.000Z')}`)
       .then(r => r.ok ? r.json() : null)
-      .then((data: { messages: Array<{ id: string; role: string; content: string; createdAt: string }> } | null) => {
+      .then((data: { messages: Array<{ id: string; role: string; content: string; createdAt: string }>; language?: string } | null) => {
+        if (data?.language) setEffectiveLang(data.language);
         if (!data?.messages?.length) return;
         const lastMsg = data.messages[data.messages.length - 1];
         // Advance 1 ms past the last loaded message so the live poll
@@ -150,7 +175,9 @@ export default function ChatWidget({
             const data = await res.json() as {
               messages: Array<{ id: string; role: string; content: string; createdAt: string }>;
               aiModeRestored?: boolean;
+              language?: string;
             };
+            if (data.language) setEffectiveLang(data.language);
             if (data.messages.length > 0) {
               // Advance 1 ms past the last returned message to prevent the
               // boundary record from being re-fetched on the next poll.
@@ -247,11 +274,18 @@ export default function ChatWidget({
 
       // ── Admin mode: JSON response ────────────────────────────────────────
       if (contentType.includes('application/json')) {
-         const data = await res.json() as { mode?: string; status?: string; sessionId?: string; retryable?: boolean };
+         const data = await res.json() as {
+           mode?: string;
+           status?: string;
+           sessionId?: string;
+           retryable?: boolean;
+           language?: string;
+         };
         if (data.sessionId) {
           sessionIdRef.current = data.sessionId;
           sessionStorage.setItem(SESSION_KEY, data.sessionId);
         }
+        if (data.language) setEffectiveLang(data.language);
          if (data.status === 'processing') {
            setAdminMode(false);
            setRetryText(text);
@@ -301,11 +335,14 @@ export default function ChatWidget({
               type?: string; sessionId?: string; content?: string; done?: boolean;
               error?: boolean; retryable?: boolean;
               action?: ChatAction;
+              language?: string;
+              direction?: 'ltr' | 'rtl';
             };
 
             if (payload.type === 'session' && payload.sessionId) {
               sessionIdRef.current = payload.sessionId;
               sessionStorage.setItem(SESSION_KEY, payload.sessionId);
+              if (payload.language) setEffectiveLang(payload.language);
             } else if (payload.error) {
               terminalError = true;
               break;
@@ -318,6 +355,7 @@ export default function ChatWidget({
             } else if (payload.action?.type === 'whatsapp_booking') {
               setBookingAction(payload.action);
             } else if (payload.content) {
+              if (payload.language) setEffectiveLang(payload.language);
               setMessages(prev => {
                 const updated = [...prev];
                 const index = updated.findIndex(msg => msg.id === messageId);
@@ -387,7 +425,7 @@ export default function ChatWidget({
     }
   };
 
-  const isRtl = lang === 'ar';
+  const isRtl = effectiveLang === 'ar';
 
   // Remove pending bubble when real admin message arrives
   useEffect(() => {
@@ -525,10 +563,10 @@ export default function ChatWidget({
               <a href={bookingAction.url} target="_blank" rel="noopener noreferrer"
                 onClick={() => trackEvent('chatbot_whatsapp_click', {
                   source: 'chatbot',
-                  language: lang,
+                   language: effectiveLang,
                 })}
                 style={{ alignSelf: 'flex-start', background: '#16A36A', color: '#fff', borderRadius: '0.5rem', padding: '0.6rem 0.8rem', textDecoration: 'none', fontWeight: 600, fontSize: '0.8rem' }}>
-                {cb.whatsappCta}
+                {WHATSAPP_CTA[effectiveLang] ?? WHATSAPP_CTA.en}
               </a>
             )}
 
@@ -538,7 +576,7 @@ export default function ChatWidget({
                 {retryText && (
                   <button type="button" onClick={() => sendMessage(true)} disabled={streaming}
                     style={{ color: '#102A43', background: 'transparent', border: '1px solid #C99A32', borderRadius: '0.35rem', padding: '0.25rem 0.55rem', cursor: streaming ? 'not-allowed' : 'pointer' }}>
-                    {({ tr: 'Tekrar dene', en: 'Try again', de: 'Erneut versuchen', fr: 'Réessayer', es: 'Reintentar', it: 'Riprova', nl: 'Opnieuw proberen', ru: 'Повторить', ar: 'حاول مرة أخرى' } as Record<string, string>)[lang] ?? 'Try again'}
+                    {RETRY_LABEL[effectiveLang] ?? RETRY_LABEL.en}
                   </button>
                 )}
               </div>

@@ -4,6 +4,7 @@
  */
 import OpenAI from 'openai';
 import { resolveEnvironmentOnlyIntegrationConfig, resolveIntegrationSecret } from '@/lib/integration-secrets';
+import { isLikelyLanguage, normalizeChatbotLanguage, type ChatbotLanguage } from '@/lib/chatbot-language';
 
 async function getClient() {
   return new OpenAI({
@@ -35,6 +36,7 @@ export async function translateToTurkish(text: string): Promise<string> {
         content:
           'Translate the following text to Turkish. ' +
           'If the text is already in Turkish, return it exactly as-is. ' +
+          'Keep proper names, company names, airport names and codes, route and location names, URLs, phone numbers, dates, and times exactly unchanged. ' +
           'Return only the translation — no explanations.',
       },
       { role: 'user', content: text },
@@ -62,10 +64,49 @@ export async function translateFromTurkish(text: string, targetLang: string): Pr
         content:
           `Translate the following text to ${targetName}. ` +
           `If the text is already in ${targetName}, return it exactly as-is. ` +
+          'Keep proper names, company names, airport names and codes, route and location names, URLs, phone numbers, dates, and times exactly unchanged. ' +
           `Return only the translation — no explanations.`,
       },
       { role: 'user', content: text },
     ],
   });
   return res.choices[0]?.message?.content?.trim() ?? text;
+}
+
+export function validateCustomerTranslation(
+  sourceText: string,
+  translatedText: string,
+  targetLang: string,
+): { valid: boolean; language: ChatbotLanguage } {
+  const source = sourceText.trim();
+  const translated = translatedText.trim();
+  const target = normalizeChatbotLanguage(targetLang, 'tr');
+  if (!source || !translated) return { valid: false, language: target };
+  if (target === 'tr') {
+    return { valid: translated === source, language: target };
+  }
+  if (translated.toLocaleLowerCase('tr-TR') === source.toLocaleLowerCase('tr-TR')) {
+    return { valid: false, language: target };
+  }
+  return { valid: isLikelyLanguage(translated, target), language: target };
+}
+
+/**
+ * Customer-facing translation. Unlike the legacy knowledge translation helper,
+ * this never returns the Turkish source as a silent fallback for a foreign
+ * customer.
+ */
+export async function translateFromTurkishStrict(
+  text: string,
+  targetLang: string,
+): Promise<{ translated: string; language: ChatbotLanguage }> {
+  const source = text.trim();
+  const target = normalizeChatbotLanguage(targetLang, 'tr');
+  if (!source) throw new Error('translation_source_required');
+  if (target === 'tr') return { translated: source, language: target };
+  const translated = (await translateFromTurkish(source, target)).trim();
+  if (!validateCustomerTranslation(source, translated, target).valid) {
+    throw new Error('translation_language_validation_failed');
+  }
+  return { translated, language: target };
 }

@@ -11,6 +11,8 @@ import { formatChatbotFareRangeContext, getChatbotFareRangeMatches } from '@/lib
 import { resolveEmailLinkOrigin } from '@/lib/email-link-url';
 import { sanitizeChatbotReply } from '@/lib/chatbot-message-safety';
 import { resolveEnvironmentOnlyIntegrationConfig, resolveIntegrationSecret } from '@/lib/integration-secrets';
+import { getChatbotFallback } from '@/lib/chatbot-message-safety';
+import { isLikelyLanguage, normalizeChatbotLanguage, type ChatbotLanguage } from '@/lib/chatbot-language';
 
 /** Configurable via env var; defaults to gpt-5.4-mini. */
 export const CHATBOT_MODEL = process.env.OPENAI_CHATBOT_MODEL ?? 'gpt-5.4-mini';
@@ -45,6 +47,18 @@ function getReservationLinkRule(lang: string, reservationFormUrl: string | null)
     ar: url
       ? `رابط نموذج الحجز المعتمد: ${url}\nعند طلب النموذج أو رابطه، اكتب هذا الرابط نفسه كنص واضح. لا تستخدم نصًا نائبًا أو متغيرًا فارغًا أو رابطًا مخترعًا.`
       : 'رابط نموذج الحجز غير متاح حاليًا. لا تخترع رابطًا ولا تستخدم نصًا نائبًا؛ وجّه الزائر إلى قسم الحجز في الصفحة الرئيسية.',
+    fr: url
+      ? `URL approuvée du formulaire de réservation : ${url}\nSi le visiteur demande le formulaire, écrivez exactement cette URL. N’utilisez jamais de variable ou d’adresse inventée.`
+      : 'L’URL du formulaire de réservation est indisponible. N’inventez aucune URL et orientez le visiteur vers la section réservation.',
+    es: url
+      ? `URL aprobada del formulario de reserva: ${url}\nSi el visitante pide el formulario, escriba exactamente esta URL. Nunca use marcadores ni invente direcciones.`
+      : 'La URL del formulario de reserva no está disponible. No invente ninguna URL y dirija al visitante a la sección de reservas.',
+    it: url
+      ? `URL approvato del modulo di prenotazione: ${url}\nSe il visitatore chiede il modulo, scriva esattamente questo URL. Non usi segnaposto né indirizzi inventati.`
+      : 'L’URL del modulo di prenotazione non è disponibile. Non inventi URL e indirizzi il visitatore alla sezione prenotazioni.',
+    nl: url
+      ? `Goedgekeurde URL van het boekingsformulier: ${url}\nGeef exact deze URL als de bezoeker om het formulier vraagt. Gebruik nooit plaatsaanduidingen of verzonnen adressen.`
+      : 'De URL van het boekingsformulier is niet beschikbaar. Verzin geen URL en verwijs naar het boekingsgedeelte.',
   };
   return rules[lang] ?? rules.en;
 }
@@ -123,8 +137,41 @@ Absolute Regel: Erwähne niemals Brücken-, Tunnel-, Autobahn- oder Mautgebühre
 قاعدة السعر: إذا تضمّنت كتلة FARE_RANGE_DATA بيانات حقيقية لهذا المسار بالضبط، قدّمها كـ"نطاق تقديري" ووجّه الزائر مع ذلك إلى WhatsApp أو نموذج الحجز للسعر الدقيق. بدون هذه البيانات، لا تخترع سعرًا تقديريًا أبدًا — وجّه فقط إلى النموذج أو WhatsApp.
 
 قاعدة مطلقة: لا تذكر أبدًا الجسور أو الأنفاق أو الطرق السريعة أو أي رسوم عبور — لا كجزء من السعر ولا كمستثناة منه. هذا الموضوع ممنوع تمامًا.`,
+    fr: `Vous êtes l’assistant IA d’Istanbul VIP Transfer, service de transport de luxe à Istanbul.
+Services : transferts aéroportuaires, transferts interurbains, transferts VIP, hôtels, tourisme médical, entreprises et excursions privées.
+Répondez brièvement et professionnellement. Répondez exclusivement en français, même si l’historique contient une autre langue.
+Demandez le nom avec tact uniquement lors du premier message si aucun nom n’a encore été demandé. N’inventez jamais de prix, de lien ou de détail.`,
+    es: `Usted es el asistente de IA de Istanbul VIP Transfer, un servicio de transporte de lujo en Estambul.
+Servicios: traslados al aeropuerto, traslados entre ciudades, traslados VIP, hoteles, turismo médico, empresas y excursiones privadas.
+Responda de forma breve y profesional. Responda exclusivamente en español, aunque el historial contenga otro idioma.
+Pregunte el nombre con tacto solo en el primer mensaje si aún no se ha preguntado. Nunca invente precios, enlaces ni datos.`,
+    it: `Sei l’assistente AI di Istanbul VIP Transfer, un servizio di trasporto di lusso a Istanbul.
+Servizi: trasferimenti aeroportuali, interurbani, VIP, hotel, turismo medico, aziende ed escursioni private.
+Rispondi in modo breve e professionale. Rispondi esclusivamente in italiano, anche se la cronologia contiene un’altra lingua.
+Chiedi il nome con tatto solo al primo messaggio se non è mai stato chiesto. Non inventare prezzi, link o dati.`,
+    nl: `U bent de AI-assistent van Istanbul VIP Transfer, een luxe vervoersdienst in Istanbul.
+Diensten: luchthavenvervoer, intercityvervoer, VIP-vervoer, hotels, medisch toerisme, bedrijven en privérondritten.
+Antwoord kort en professioneel. Antwoord uitsluitend in het Nederlands, ook als de geschiedenis een andere taal bevat.
+Vraag alleen in het eerste bericht tactvol naar de naam als dat nog niet is gedaan. Verzin nooit prijzen, links of gegevens.`,
   };
-  return `${prompts[lang] ?? prompts.en}\n\n${getReservationLinkRule(lang, reservationFormUrl)}`;
+  const outputOnly: Record<string, string> = {
+    tr: 'Yanıtı yalnızca Türkçe ver.',
+    en: 'Respond only in English.',
+    de: 'Antworte ausschließlich auf Deutsch.',
+    ru: 'Отвечайте только на русском языке.',
+    ar: 'أجب باللغة العربية فقط.',
+    fr: 'Répondez uniquement en français.',
+    es: 'Responda únicamente en español.',
+    it: 'Rispondi esclusivamente in italiano.',
+    nl: 'Antwoord uitsluitend in het Nederlands.',
+  };
+  return `${prompts[lang] ?? prompts.en}\n${outputOnly[lang] ?? outputOnly.en}\n\n${getReservationLinkRule(lang, reservationFormUrl)}`;
+}
+
+export function validateChatbotReplyLanguage(reply: string, lang: ChatbotLanguage): string | null {
+  const cleaned = reply.trim();
+  if (!cleaned) return null;
+  return isLikelyLanguage(cleaned, lang) ? cleaned : null;
 }
 
 export async function buildChatbotAiContext(
@@ -175,20 +222,23 @@ export async function generateAIReply(
   history: Array<{ role: 'user' | 'assistant'; content: string }>,
   request?: Request,
 ): Promise<string | null> {
+  const effectiveLanguage = normalizeChatbotLanguage(visitorLang, 'tr');
   try {
-    const { messages, reservationFormUrl } = await buildChatbotAiContext(visitorLang, history, request);
+    const { messages, reservationFormUrl } = await buildChatbotAiContext(effectiveLanguage, history, request);
     const res = await (await getOpenAIChatbot()).chat.completions.create({
       model: CHATBOT_MODEL,
       max_completion_tokens: 512,
       messages,
     });
     const reply = res.choices[0]?.message?.content?.trim();
-    if (!reply) return null;
-    const safeReply = sanitizeChatbotReply(reply, reservationFormUrl, visitorLang);
+    if (!reply) return getChatbotFallback(effectiveLanguage, reservationFormUrl);
+    const safeReply = sanitizeChatbotReply(reply, reservationFormUrl, effectiveLanguage);
+    const validated = validateChatbotReplyLanguage(safeReply, effectiveLanguage);
+    if (!validated) return getChatbotFallback(effectiveLanguage, reservationFormUrl);
     if (safeReply !== reply) console.warn('[chatbot-ai] Repaired an unresolved response placeholder.');
-    return safeReply;
+    return validated;
   } catch (err) {
     console.error('[chatbot-ai] generateAIReply error:', err instanceof Error ? err.message : 'unknown');
-    return null;
+    return getChatbotFallback(effectiveLanguage, null);
   }
 }

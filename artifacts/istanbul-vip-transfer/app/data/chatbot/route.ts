@@ -1,11 +1,17 @@
 import { NextRequest } from 'next/server';
 import { translateToTurkish } from '@/lib/chatbot-translate';
 import { getOpenAIChatbot, buildChatbotAiContext, CHATBOT_MODEL } from '@/lib/chatbot-ai';
-import { sanitizeChatbotReply } from '@/lib/chatbot-message-safety';
+import { sanitizeChatbotReply, getChatbotFallback } from '@/lib/chatbot-message-safety';
+import { validateChatbotReplyLanguage } from '@/lib/chatbot-ai';
 import { persistAssistantReplyForAdmin } from '@/lib/chatbot-response-storage';
 import { detectBookingIntent, formatBookingWhatsAppMessage } from '@/lib/chatbot-booking-intent';
 import { buildWhatsAppChatUrl } from '@/lib/whatsapp';
 import { getContactSettings } from '@/lib/site-settings-server';
+import {
+  chooseChatbotLanguage,
+  normalizeChatbotLanguage,
+  getChatbotDirection,
+} from '@/lib/chatbot-language';
 
 export const dynamic = 'force-dynamic';
 
@@ -124,10 +130,11 @@ export async function POST(request: NextRequest) {
 
     if (!session) {
       sid = crypto.randomUUID();
-      await db.insert(chatbotSessions).values({ id: sid, visitorLang: body.lang ?? 'tr' });
+      const initialLang = normalizeChatbotLanguage(body.lang, 'tr');
+      await db.insert(chatbotSessions).values({ id: sid, visitorLang: initialLang });
       session = {
         id: sid,
-        visitorLang:      body.lang ?? 'tr',
+        visitorLang:      initialLang,
         adminActiveUntil: null,
         humanTakenOver:   false,
         pendingAiAfter:   null,
@@ -255,6 +262,27 @@ export async function POST(request: NextRequest) {
         )).limit(1))[0]
       : undefined;
 
+    // Language detection is deliberately inside the durable claim: retries and
+    // concurrent transports cannot race to change the session language.
+    if (ownsAiWork && lastUserMsg) {
+      const currentLanguage = normalizeChatbotLanguage(session.visitorLang, 'tr');
+      const previousMeaningful = messages
+        .slice(0, -1)
+        .some(message => message.role === 'user' && message.content.trim().length >= 8);
+      const effectiveLanguage = chooseChatbotLanguage(
+        currentLanguage,
+        body.lang,
+        lastUserMsg.content,
+        previousMeaningful,
+      );
+      if (effectiveLanguage !== currentLanguage) {
+        await db.update(chatbotSessions)
+          .set({ visitorLang: effectiveLanguage })
+          .where(eq(chatbotSessions.id, sid));
+        session = { ...session, visitorLang: effectiveLanguage };
+      }
+    }
+
     // Completed outcomes are durable and replayed as SSE, including the safe
     // booking action. This path never contacts a model or translator.
     const storedAssistant = await db.select().from(chatbotMessages)
@@ -266,7 +294,13 @@ export async function POST(request: NextRequest) {
     if (!ownsAiWork && storedAssistant[0]) {
       const outcome = storedAssistant[0];
       const encoder = new TextEncoder();
-      const replay = `data: ${JSON.stringify({ type: 'session', sessionId: sid })}\n\n` +
+      const replayLanguage = normalizeChatbotLanguage(session.visitorLang, 'tr');
+      const replay = `data: ${JSON.stringify({
+        type: 'session',
+        sessionId: sid,
+        language: replayLanguage,
+        direction: getChatbotDirection(replayLanguage),
+      })}\n\n` +
         `data: ${JSON.stringify({ content: outcome.content })}\n\n` +
         (outcome.action ? `data: ${JSON.stringify({ action: outcome.action })}\n\n` : '') +
         'data: {"done":true}\n\n';
@@ -286,7 +320,12 @@ export async function POST(request: NextRequest) {
     if (!ownsAiWork && claimedMessage?.processingStatus === 'completed' &&
         claimedMessage.responseMode === 'admin') {
       return Response.json(
-        { mode: 'admin', sessionId: sid },
+        {
+          mode: 'admin',
+          sessionId: sid,
+          language: session.visitorLang,
+          direction: getChatbotDirection(normalizeChatbotLanguage(session.visitorLang, 'tr')),
+        },
         { headers: { 'Set-Cookie': makeSessionCookie(sid) } },
       );
     }
@@ -297,7 +336,12 @@ export async function POST(request: NextRequest) {
     if (adminWindowActive) {
       await resolveOwnedClaim('completed', 'admin');
       return Response.json(
-        { mode: 'admin', sessionId: sid },
+        {
+          mode: 'admin',
+          sessionId: sid,
+          language: session.visitorLang,
+          direction: getChatbotDirection(normalizeChatbotLanguage(session.visitorLang, 'tr')),
+        },
         { headers: { 'Set-Cookie': makeSessionCookie(sid) } },
       );
     }
@@ -306,7 +350,13 @@ export async function POST(request: NextRequest) {
     // outcome. Never race it or call OpenAI a second time.
     if (!ownsAiWork) {
       return Response.json(
-        { status: 'processing', sessionId: sid, retryable: true },
+        {
+          status: 'processing',
+          sessionId: sid,
+          retryable: true,
+          language: session.visitorLang,
+          direction: getChatbotDirection(normalizeChatbotLanguage(session.visitorLang, 'tr')),
+        },
         { status: 202, headers: { 'Set-Cookie': makeSessionCookie(sid) } },
       );
     }
@@ -349,25 +399,28 @@ export async function POST(request: NextRequest) {
           .where(eq(chatbotSessions.id, sid));
         await resolveOwnedClaim('completed', 'admin');
         return Response.json(
-          { mode: 'admin', sessionId: sid },
+          {
+            mode: 'admin',
+            sessionId: sid,
+            language: session.visitorLang,
+            direction: getChatbotDirection(normalizeChatbotLanguage(session.visitorLang, 'tr')),
+          },
           { headers: { 'Set-Cookie': makeSessionCookie(sid) } },
         );
       }
     }
 
     // ── Stream AI response ─────────────────────────────────────────────────────
-    let aiMessages: Awaited<ReturnType<typeof buildChatbotAiContext>>['messages'];
-    let reservationFormUrl: string | null;
+    let aiMessages: Awaited<ReturnType<typeof buildChatbotAiContext>>['messages'] | null = null;
+    let reservationFormUrl: string | null = null;
     try {
       ({ messages: aiMessages, reservationFormUrl } =
         await buildChatbotAiContext(session.visitorLang, messages, request));
     } catch (error) {
-      await resolveOwnedClaim('retryable');
       console.error('[chatbot] context failed:', error instanceof Error ? error.message : 'unknown');
-      return terminalFailure(sid);
     }
     let aiStream: AsyncIterable<{ choices: Array<{ delta?: { content?: string | null } }> }>;
-    try {
+    if (aiMessages) try {
       aiStream = await (await getOpenAIChatbot()).chat.completions.create({
         model: CHATBOT_MODEL,
         max_completion_tokens: 512,
@@ -375,9 +428,16 @@ export async function POST(request: NextRequest) {
         stream: true,
       });
     } catch (error) {
-      await resolveOwnedClaim('retryable');
       console.error('[chatbot] provider failed:', error instanceof Error ? error.message : 'unknown');
-      return terminalFailure(sid);
+      const fallback = getChatbotFallback(session.visitorLang, reservationFormUrl);
+      aiStream = (async function* fallbackStream() {
+        yield { choices: [{ delta: { content: fallback } }] };
+      })();
+    } else {
+      const fallback = getChatbotFallback(session.visitorLang, reservationFormUrl);
+      aiStream = (async function* fallbackStream() {
+        yield { choices: [{ delta: { content: fallback } }] };
+      })();
     }
 
     const encoder    = new TextEncoder();
@@ -388,25 +448,46 @@ export async function POST(request: NextRequest) {
     const readable = new ReadableStream({
       async start(controller) {
         controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ type: 'session', sessionId: sid })}\n\n`),
+          encoder.encode(`data: ${JSON.stringify({
+            type: 'session',
+            sessionId: sid,
+            language: normalizeChatbotLanguage(session.visitorLang, 'tr'),
+            direction: getChatbotDirection(normalizeChatbotLanguage(session.visitorLang, 'tr')),
+          })}\n\n`),
         );
         try {
-          for await (const chunk of aiStream) {
-            const content = chunk.choices[0]?.delta?.content;
-            if (content) fullResponse += content;
+          try {
+            for await (const chunk of aiStream) {
+              const content = chunk.choices[0]?.delta?.content;
+              if (content) fullResponse += content;
+            }
+          } catch (error) {
+            console.error('[chatbot] provider stream failed:', error instanceof Error ? error.message : 'unknown');
           }
-           if (!fullResponse) throw new Error('chatbot_empty_provider_response');
+          if (!fullResponse) {
+            fullResponse = getChatbotFallback(session.visitorLang, reservationFormUrl);
+          }
           if (fullResponse) {
             safeResponse = sanitizeChatbotReply(
               fullResponse,
               reservationFormUrl,
               session.visitorLang,
             );
+            if (!validateChatbotReplyLanguage(
+              safeResponse,
+              normalizeChatbotLanguage(session.visitorLang, 'tr'),
+            )) {
+              safeResponse = getChatbotFallback(session.visitorLang, reservationFormUrl);
+            }
             if (safeResponse !== fullResponse) {
               console.warn('[chatbot] Repaired an unresolved response placeholder.');
             }
             controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ content: safeResponse })}\n\n`),
+               encoder.encode(`data: ${JSON.stringify({
+                 content: safeResponse,
+                 language: session.visitorLang,
+                 direction: getChatbotDirection(normalizeChatbotLanguage(session.visitorLang, 'tr')),
+               })}\n\n`),
             );
             const intent = detectBookingIntent(messages);
             if (intent.ready) {

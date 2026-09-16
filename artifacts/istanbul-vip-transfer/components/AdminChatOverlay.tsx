@@ -34,6 +34,18 @@ interface Message {
   createdAt: string;
 }
 
+interface TranslationPreviewResponse {
+  sourceContent?: string;
+  targetLanguage?: string;
+  targetLanguageName?: string;
+  direction?: 'ltr' | 'rtl';
+  translatedContent?: string;
+  previewToken?: string;
+  expiresInSeconds?: number;
+  error?: string;
+  code?: string;
+}
+
 type AuthState = 'unknown' | 'in' | 'out';
 
 const LANG_FLAGS: Record<string, string> = {
@@ -80,6 +92,18 @@ export default function AdminChatOverlay() {
   const [selSess,  setSelSess] = useState<Session | null>(null);
   const [reply,    setReply]   = useState('');
   const [sending,  setSending] = useState(false);
+  const [translatedPreview, setTranslatedPreview] = useState('');
+  const [previewToken, setPreviewToken] = useState('');
+  const [previewing, setPreviewing] = useState(false);
+  const [previewMeta, setPreviewMeta] = useState<{
+    targetLanguage: string;
+    targetLanguageName: string;
+    direction: 'ltr' | 'rtl';
+    expiresInSeconds: number;
+  } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const clientMessageIdRef = useRef<string | null>(null);
+
   const [loginErr, setLoginErr] = useState('');
   const [email,    setEmail]   = useState('');
   const [password, setPassword] = useState('');
@@ -229,6 +253,12 @@ export default function AdminChatOverlay() {
     setMessages([]);
     stopBlink();
     setUnread(false);
+    setTranslatedPreview('');
+    setPreviewToken('');
+    setPreviewMeta(null);
+    setReply('');
+    setError(null);
+    clientMessageIdRef.current = null;
     // Auto-activate admin
     await fetch(`/admin/api/chatbot/${sid}/takeover`, { method: 'POST' }).catch(() => null);
   }, [stopBlink]);
@@ -256,17 +286,81 @@ export default function AdminChatOverlay() {
   };
 
   // ── Send reply ────────────────────────────────────────────────────────────
+  const previewReply = async () => {
+    if (!reply.trim() || !selId || previewing) return;
+    setPreviewing(true);
+    setError(null);
+    try {
+      const res = await fetch(`/admin/api/chatbot/${selId}/preview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceContent: reply.trim() }),
+      });
+      const data = await res.json() as TranslationPreviewResponse;
+      if (!res.ok || !data.previewToken) throw new Error(data.error ?? 'Çeviri doğrulanamadı.');
+      setTranslatedPreview(data.translatedContent || '');
+      setPreviewToken(data.previewToken);
+      setPreviewMeta({
+        targetLanguage: data.targetLanguage || 'tr',
+        targetLanguageName: data.targetLanguageName || 'Türkçe',
+        direction: data.direction === 'rtl' ? 'rtl' : 'ltr',
+        expiresInSeconds: data.expiresInSeconds || 300,
+      });
+      clientMessageIdRef.current = crypto.randomUUID();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Çeviri doğrulanamadı. Türkçe mesaj gönderilmedi.');
+      setTranslatedPreview('');
+      setPreviewToken('');
+      setPreviewMeta(null);
+    } finally {
+      setPreviewing(false);
+    }
+  };
+
   const sendReply = async () => {
-    if (!reply.trim() || !selId || sending) return;
+    if (!reply.trim() || !selId || sending || !previewToken || !translatedPreview.trim()) return;
     setSending(true);
-    await fetch(`/admin/api/chatbot/${selId}/reply`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: reply.trim() }),
-    }).catch(() => null);
-    setReply('');
-    setSending(false);
-    await fetchMessages(selId);
+    setError(null);
+    try {
+      const res = await fetch(`/admin/api/chatbot/${selId}/reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceContent: reply.trim(),
+          translatedContent: translatedPreview.trim(),
+          previewToken,
+          clientMessageId: clientMessageIdRef.current ?? crypto.randomUUID(),
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 422) {
+          throw new Error(data.error ?? 'Çeviri süresi doldu veya geçersiz. Lütfen tekrar önizleme alın.');
+        }
+        throw new Error(data.error ?? 'Gönderim başarısız.');
+      }
+      setReply('');
+      setTranslatedPreview('');
+      setPreviewToken('');
+      setPreviewMeta(null);
+      clientMessageIdRef.current = null;
+      await fetchMessages(selId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gönderim başarısız. Tekrar deneyin.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (previewToken) {
+        sendReply();
+      } else {
+        previewReply();
+      }
+    }
   };
 
   const adminIsActive = selSess?.adminActiveUntil
@@ -485,7 +579,13 @@ export default function AdminChatOverlay() {
                         background: msg.role === 'admin' ? '#C99A32' : msg.role === 'user' ? '#EEF3F9' : '#F0F7F4',
                         color: msg.role === 'admin' ? '#fff' : '#263F55',
                       }}>
-                        {msg.role === 'user' ? (msg.contentTr ?? msg.content) : msg.role === 'admin' ? (msg.contentTr ?? msg.content) : msg.content}
+                        <div dir={msg.contentTr ? 'ltr' : 'auto'} style={{ unicodeBidi: 'isolate' }}>{msg.contentTr ?? msg.content}</div>
+                        {msg.contentTr && msg.contentTr !== msg.content && (
+                          <div dir="auto" style={{ marginTop: '0.35rem', paddingTop: '0.35rem', borderTop: msg.role === 'admin' ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(16,42,67,0.1)', fontSize: '0.75rem', color: msg.role === 'admin' ? 'rgba(255,255,255,0.8)' : '#50677A', fontStyle: 'italic', unicodeBidi: 'isolate' }}>
+                            {msg.role === 'admin' ? 'Çeviri: ' : 'Orijinal: '}
+                            {msg.content}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -496,33 +596,69 @@ export default function AdminChatOverlay() {
                 </div>
 
                 {/* Reply input */}
-                <div style={{ borderTop: '1px solid #D9E2EC', padding: '0.6rem 0.75rem', display: 'flex', gap: '0.5rem', background: '#fff', flexShrink: 0 }}>
-                  <textarea
-                    value={reply}
-                    onChange={e => setReply(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply(); } }}
-                    placeholder="Türkçe yazın — müşteriye otomatik çevrilir"
-                    rows={2}
-                    style={{
-                      flex: 1, border: '1px solid #D9E2EC', borderRadius: '0.5rem',
-                      padding: '0.45rem 0.65rem', fontSize: '0.82rem', resize: 'none',
-                      outline: 'none', color: '#102A43', background: '#FAFBFC',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                  <button
-                    onClick={sendReply}
-                    disabled={!reply.trim() || sending}
-                    style={{
-                      background: '#C99A32', color: '#fff', border: 'none',
-                      borderRadius: '0.5rem', padding: '0 0.875rem',
-                      fontWeight: 600, fontSize: '0.82rem',
-                      cursor: !reply.trim() || sending ? 'not-allowed' : 'pointer',
-                      opacity: !reply.trim() || sending ? 0.5 : 1,
-                      alignSelf: 'flex-end', height: 38, flexShrink: 0,
-                    }}>
-                    {sending ? '…' : 'Gönder'}
-                  </button>
+                <div style={{ borderTop: '1px solid #D9E2EC', padding: '0.6rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', background: '#fff', flexShrink: 0 }}>
+                  <div className="ivt-admin-chat-reply-columns" style={{ display: 'flex', gap: '0.5rem' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                      <span style={{ fontSize: '0.65rem', color: '#50677A', fontWeight: 600, paddingInline: '0.25rem' }}>
+                        Türkçe kaynak
+                      </span>
+                      <textarea
+                        value={reply}
+                        onChange={e => {
+                          setReply(e.target.value);
+                          setPreviewToken('');
+                          setTranslatedPreview('');
+                          setPreviewMeta(null);
+                        }}
+                        onKeyDown={handleKey}
+                        placeholder="Türkçe yazın — müşteriye otomatik çevrilir"
+                        rows={2}
+                        style={{
+                          width: '100%', border: '1px solid #D9E2EC', borderRadius: '0.5rem',
+                          padding: '0.45rem 0.65rem', fontSize: '0.82rem', resize: 'none',
+                          outline: 'none', color: '#102A43', background: '#FAFBFC',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                      {error && <span style={{ fontSize: '0.7rem', color: '#c0392b' }}>{error}</span>}
+                    </div>
+                    {previewToken && previewMeta ? (
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        <span style={{ fontSize: '0.65rem', color: '#16A36A', fontWeight: 600, paddingInline: '0.25rem' }}>
+                          {previewMeta?.targetLanguage === 'tr' ? 'Çeviri Gerekmiyor (TR)' : `✓ ${previewMeta?.targetLanguageName || 'Çeviri'} (${previewMeta?.targetLanguage?.toUpperCase()})`}
+                        </span>
+                        <textarea
+                          value={translatedPreview}
+                          onChange={e => setTranslatedPreview(e.target.value)}
+                          dir={previewMeta?.direction || 'ltr'}
+                          placeholder="Müşteriye gidecek metin"
+                          rows={2}
+                          style={{
+                            width: '100%', border: '1px solid #16A36A', borderRadius: '0.5rem',
+                            padding: '0.45rem 0.65rem', fontSize: '0.82rem', resize: 'none',
+                            outline: 'none', color: '#102A43', background: '#F0FDF4',
+                            boxSizing: 'border-box', unicodeBidi: 'isolate'
+                          }}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={previewToken ? sendReply : previewReply}
+                      disabled={!reply.trim() || sending || previewing || Boolean(previewToken && !translatedPreview.trim())}
+                      style={{
+                        background: previewToken ? '#16A36A' : '#C99A32',
+                        color: '#fff', border: 'none',
+                        borderRadius: '0.5rem', padding: '0 0.875rem',
+                        fontWeight: 600, fontSize: '0.82rem',
+                        cursor: (!reply.trim() || sending || previewing || Boolean(previewToken && !translatedPreview.trim())) ? 'not-allowed' : 'pointer',
+                        opacity: (!reply.trim() || sending || previewing || Boolean(previewToken && !translatedPreview.trim())) ? 0.5 : 1,
+                        minHeight: 44, flexShrink: 0,
+                      }}>
+                      {sending || previewing ? '…' : (previewToken ? 'Gönder' : 'Çevir')}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -549,6 +685,9 @@ export default function AdminChatOverlay() {
             max-height: 34dvh;
             border-right: 0 !important;
             border-bottom: 1px solid #D9E2EC;
+          }
+          .ivt-admin-chat-reply-columns {
+            flex-direction: column !important;
           }
         }
       `}</style>

@@ -25,4 +25,36 @@ describe('chatbot booking intent', () => {
       .toBe('Hello, I would like to make a booking.\nRoute: IST - Kadıköy');
     expect(formatBookingWhatsAppMessage({}, 'de')).toBe('Hallo, ich möchte eine Buchung vornehmen.');
   });
+
+  it('preserves an Arabic visitor route and relative date without translating values', () => {
+    const result = detectBookingIntent([{
+      role: 'user',
+      content: 'أريد حجز نقل من Istanbul Airport إلى Taksim غدًا الساعة 10:00 لشخصين',
+    }]);
+    expect(result).toEqual({
+      ready: true,
+      details: {
+        route: 'Istanbul Airport - Taksim',
+        date: 'غدًا 10:00',
+      },
+    });
+    expect(formatBookingWhatsAppMessage(result.details, 'ar')).toContain(
+      'المسار: Istanbul Airport - Taksim',
+    );
+    expect(formatBookingWhatsAppMessage(result.details, 'ar')).toContain('التاريخ: غدًا 10:00');
+  });
+
+  it.each([
+    ['tr', 'Rezervasyon yapmak istiyorum'],
+    ['en', 'I want to book a transfer'],
+    ['de', 'Ich möchte einen Transfer buchen'],
+    ['ru', 'Я хочу забронировать трансфер'],
+    ['ar', 'أريد حجز نقل'],
+    ['fr', 'Je veux réserver un transfert'],
+    ['es', 'Quiero reservar un traslado'],
+    ['it', 'Vorrei prenotare un trasferimento'],
+    ['nl', 'Ik wil een transfer boeken'],
+  ])('detects booking intent in %s', (_lang, text) => {
+    expect(detectBookingIntent([{ role: 'user', content: text }]).ready).toBe(true);
+  });
 });

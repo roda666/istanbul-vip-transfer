@@ -408,19 +408,23 @@ export default function BlogEditor({ blogId, initial }: Props) {
   }, []);
 
   const processPublishTasks = useCallback(async (jobId: string, tasks: PublishTask[]) => {
-    await concurrentForEach(
-      tasks.filter(task => ['QUEUED', 'RETRYING'].includes(task.status)),
-      2,
-      async task => {
-        setPublishTasks(prev => prev.map(item => item.id === task.id ? { ...item, status: 'RUNNING' } : item));
-        const res = await fetch(`/admin/api/translations/jobs/${jobId}/tasks/${task.id}/run`, { method: 'POST' });
-        const json = await safeJson<{ status?: string; error?: string }>(res);
-        setPublishTasks(prev => prev.map(item => item.id === task.id
-          ? { ...item, status: json.status === 'completed' ? 'COMPLETED' : json.status === 'failed' ? 'FAILED' : item.status, errorMessage: json.error ?? null }
-          : item));
-      },
-    );
-    return refreshPublishJob(jobId);
+    let currentTasks = tasks;
+    let finalState: Awaited<ReturnType<typeof refreshPublishJob>> | null = null;
+    for (let pass = 0; pass < 2; pass += 1) {
+      const runnable = currentTasks.filter(task => ['QUEUED', 'RETRYING'].includes(task.status));
+      if (runnable.length === 0) break;
+      await concurrentForEach(runnable, 2, async task => {
+          setPublishTasks(prev => prev.map(item => item.id === task.id ? { ...item, status: 'RUNNING' } : item));
+          const res = await fetch(`/admin/api/translations/jobs/${jobId}/tasks/${task.id}/run`, { method: 'POST' });
+          const json = await safeJson<{ status?: string; error?: string }>(res);
+          setPublishTasks(prev => prev.map(item => item.id === task.id
+            ? { ...item, status: json.status === 'completed' ? 'COMPLETED' : json.status === 'failed' ? 'FAILED' : item.status, errorMessage: json.error ?? null }
+            : item));
+        });
+      finalState = await refreshPublishJob(jobId);
+      currentTasks = finalState.tasks ?? [];
+    }
+    return finalState ?? refreshPublishJob(jobId);
   }, [refreshPublishJob]);
 
   async function finishPublishRun(jobId: string, tasks: PublishTask[]) {

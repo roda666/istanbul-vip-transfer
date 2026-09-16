@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
 import { AdminActionButton } from '../../_components/AdminActionButton';
 import { db } from '@/db';
 import { blogHealthRuns, content, contentTranslations } from '@/db/schema';
@@ -115,7 +114,7 @@ export default async function BlogPage({ searchParams }: { searchParams: Promise
       <AdminPageHeader
         title="Blog"
         description="Blog yazılarını yönetin"
-        action={<AdminActionButton href="/admin/blog/yeni" label="Yeni Yazı" icon={Plus} variant="new" manage={false} />}
+        action={<AdminActionButton href="/admin/blog/yeni" label="Yeni Yazı" iconName="plus" variant="new" manage={false} />}
       />
 
       <BlogHealthStatus

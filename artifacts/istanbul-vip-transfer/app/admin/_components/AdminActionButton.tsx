@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import type { CSSProperties, ElementType, MouseEventHandler, ReactNode } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Plus } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { getAdminSectionForPath } from '@/lib/auth/authorization';
 import { useOptionalAdminCapabilities } from './AdminCapabilityContext';
@@ -19,9 +19,13 @@ export type AdminActionVariant =
   | 'subtle';
 
 type Icon = ElementType;
+export type AdminActionIconName = 'plus';
 
 export interface AdminActionButtonProps {
   label: string;
+  /** Use this serializable icon identifier when rendering from a Server Component. */
+  iconName?: AdminActionIconName;
+  /** Client Component callers may continue to provide a local icon component. */
   icon?: Icon;
   variant?: AdminActionVariant;
   onClick?: MouseEventHandler<HTMLButtonElement>;
@@ -57,6 +61,7 @@ const variantClasses: Record<AdminActionVariant, string> = {
  */
 export function AdminActionButton({
   label,
+  iconName,
   icon: Icon,
   variant = 'subtle',
   onClick,
@@ -77,6 +82,7 @@ export function AdminActionButton({
   const section = pathname ? getAdminSectionForPath(pathname) : undefined;
   if (manage && capabilities && section && !capabilities[section].canManage) return null;
   const unavailable = disabled || loading;
+  const NamedIcon = iconName === 'plus' ? Plus : undefined;
   const classes = [
     'inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold',
     'whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
@@ -87,7 +93,13 @@ export function AdminActionButton({
   ].filter(Boolean).join(' ');
   const content = (
     <>
-      {loading ? <Loader2 size={16} className="shrink-0 animate-spin" aria-hidden={true} /> : Icon ? <Icon size={16} className="shrink-0" aria-hidden={true} /> : null}
+      {loading
+        ? <Loader2 size={16} className="shrink-0 animate-spin" aria-hidden={true} />
+        : NamedIcon
+          ? <NamedIcon size={16} className="shrink-0" aria-hidden={true} />
+          : Icon
+            ? <Icon size={16} className="shrink-0" aria-hidden={true} />
+            : null}
       <span>{children ?? label}</span>
     </>
   );

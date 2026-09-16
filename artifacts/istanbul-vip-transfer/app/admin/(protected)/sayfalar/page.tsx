@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { Plus } from 'lucide-react';
 import { AdminActionButton } from '../../_components/AdminActionButton';
 import { db } from '@/db';
 import { content } from '@/db/schema';
@@ -49,7 +48,7 @@ export default async function SayfalarPage({
         title="Sayfalar"
         description="Statik site sayfalarını yönetin"
         action={
-          <AdminActionButton href="/admin/sayfalar/yeni" label="Yeni Sayfa" icon={Plus} variant="new" manage={false} />
+          <AdminActionButton href="/admin/sayfalar/yeni" label="Yeni Sayfa" iconName="plus" variant="new" manage={false} />
         }
       />
       {dbError ? (

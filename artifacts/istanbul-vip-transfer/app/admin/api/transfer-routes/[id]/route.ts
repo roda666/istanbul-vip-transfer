@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  computeCustomerContentSourceHash,
+  enqueueCustomerContentTranslations,
+} from '@/lib/customer-content-translation';
 import { requireAdminSession } from '@/lib/auth/session';
 import { db } from '@/db';
 import { locations, transferRoutes, transferRouteTranslations, vehicles } from '@/db/schema';
 import type { NewTransferRoute } from '@/db/schema';
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { revalidateAllHomepages } from '@/lib/homepage-revalidation';
 import {
@@ -277,6 +281,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       }
     }
 
+    /* Legacy inline translation is intentionally disabled: route writes must
+       return after durable queue creation, never after provider calls. */
+    if (false) {
     const { fillMissingTranslations, AUTO_TRANSLATION_LOCALES } = await import('@/lib/ai/fill-missing-translations');
     const existingRows = await db.select().from(transferRouteTranslations)
       .where(eq(transferRouteTranslations.routeId, row.id));
@@ -323,12 +330,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       if (current?.isManuallyLocked) continue;
       const fields = completed[locale];
       if (!fields?.title || !fields.description) continue;
-      if (!nameTranslations[locale]) nameTranslations[locale] = fields.title;
-      if (!originTranslations[locale] && fields.origin) originTranslations[locale] = fields.origin;
-      if (!destinationTranslations[locale] && fields.destination) destinationTranslations[locale] = fields.destination;
+       if (!nameTranslations[locale]) nameTranslations[locale] = fields.title!;
+       if (!originTranslations[locale] && fields.origin) originTranslations[locale] = fields.origin!;
+       if (!destinationTranslations[locale] && fields.destination) destinationTranslations[locale] = fields.destination!;
       const values = {
-        title: current?.title || fields.title,
-        description: current?.description || fields.description,
+         title: current?.title || fields.title!,
+         description: current?.description || fields.description!,
         seoTitle: current?.seoTitle || fields.seoTitle || null,
         seoDescription: current?.seoDescription || fields.seoDescription || null,
         ogTitle: current?.ogTitle || fields.ogTitle || null,
@@ -337,7 +344,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         updatedAt: new Date(),
       };
       if (current) {
-        await db.update(transferRouteTranslations).set(values).where(eq(transferRouteTranslations.id, current.id));
+         await db.update(transferRouteTranslations).set(values as never).where(eq(transferRouteTranslations.id, current!.id));
       } else {
         await db.insert(transferRouteTranslations).values({
           routeId: row.id,
@@ -345,7 +352,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           status: 'DRAFT',
           isManuallyLocked: false,
           ...values,
-        });
+        } as never);
       }
     }
     await db.update(transferRoutes).set({
@@ -354,6 +361,21 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       destinationTranslations,
       updatedAt: new Date(),
     }).where(eq(transferRoutes.id, row.id));
+    }
+
+    await enqueueCustomerContentTranslations({
+      entityType: 'transfer_route',
+      entityId: row.id,
+      sourceHash: computeCustomerContentSourceHash({
+        name: row.name, slug: row.slug, origin: row.origin, destination: row.destination,
+        description: row.description, introParagraph: row.introParagraph,
+        transportOptions: row.transportOptions, routeNotes: row.routeNotes, faqItems: row.faqItems,
+        seoTitle: row.seoTitle, seoDescription: row.seoDescription,
+        ogTitle: row.ogTitle, ogDescription: row.ogDescription,
+        imageAltText: row.imageAltText,
+      }),
+      adminId: session.adminId,
+    });
 
     revalidatePath(`/guzergah/${row.slug}`);
     for (const locale of ['en', 'de', 'ru', 'ar', 'fr', 'es', 'it', 'nl']) {
@@ -423,7 +445,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 /** DELETE /admin/api/transfer-routes/[id] — delete a route */
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try { await requireAdminSession(); } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
+  let session;
+  try { session = await requireAdminSession(); } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
+  if (!session.capabilities.fleet_pricing.canManage) {
+    return NextResponse.json({ error: 'Bu güzergâh için yönetim yetkisi gerekli.' }, { status: 403 });
+  }
 
   const { id } = await params;
 
@@ -431,7 +457,35 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     const [existing] = await db.select({
       slug: transferRoutes.slug,
       imagePath: transferRoutes.imagePath,
+      active: transferRoutes.active,
     }).from(transferRoutes).where(eq(transferRoutes.id, id));
+    if (existing?.active) {
+      return NextResponse.json({
+        error: 'Aktif güzergâh doğrudan silinemez. Önce pasifleştirin; bağlı fiyat ve geçiş ücreti kayıtları korunur.',
+        dependencies: [{ type: 'publication', label: 'Aktif güzergâh', count: 1 }],
+      }, { status: 409 });
+    }
+    const dependencies = await db.execute(sql`
+      SELECT
+        (SELECT COUNT(*)::int FROM route_price_rules WHERE route_id = ${id}) AS price_rules,
+        (SELECT COUNT(*)::int FROM fixed_price_overrides WHERE route_id = ${id}) AS fixed_overrides,
+        (SELECT COUNT(*)::int FROM route_toll_alternatives WHERE route_id = ${id}) AS toll_alternatives
+    `);
+    const dependencyCounts = (Array.from(dependencies)[0] ?? {}) as Record<string, number | string>;
+    const dependencyLabels = [
+      ['price_rules', 'Fiyat kuralları'],
+      ['fixed_overrides', 'Sabit fiyat kayıtları'],
+      ['toll_alternatives', 'Geçiş ücreti alternatifleri'],
+    ].flatMap(([key, label]) => {
+      const count = Number(dependencyCounts[key] ?? 0);
+      return count > 0 ? [{ type: key, label, count }] : [];
+    });
+    if (dependencyLabels.length > 0) {
+      return NextResponse.json({
+        error: 'Bu güzergâh bağlı fiyat veya geçiş ücreti kayıtları içeriyor; önce bunları taşıyın veya pasifleştirin.',
+        dependencies: dependencyLabels,
+      }, { status: 409 });
+    }
     await db.delete(transferRoutes).where(eq(transferRoutes.id, id));
     if (existing?.imagePath && isStrictTransferRouteImagePath(existing.imagePath)) {
       const stillReferenced = await db.select({ id: transferRoutes.id })
@@ -446,6 +500,14 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
         revalidatePath(`/${locale}/guzergah/${existing.slug}`);
       }
     }
+    const { auditLogs } = await import('@/db/schema');
+    await db.insert(auditLogs).values({
+      adminUserId: session.adminId,
+      action: 'DELETE',
+      entityType: 'TransferRoute',
+      entityId: id,
+      metadata: { slug: existing?.slug ?? null },
+    }).catch(() => {});
     revalidateAllHomepages();
     return NextResponse.json({ ok: true });
   } catch (err) {

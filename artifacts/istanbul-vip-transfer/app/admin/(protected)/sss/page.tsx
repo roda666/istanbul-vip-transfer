@@ -6,6 +6,7 @@ import AdminPageHeader from '../../_components/AdminPageHeader';
 import { AdminRecordActions } from '../../_components/AdminRecordActions';
 import { AIWriteAssist } from '../../_components/AIWriteAssist';
 import { AdminActionButton } from '../../_components/AdminActionButton';
+import { AdminCmsRecordCard } from '../../_components/AdminCmsRecordCard';
 
 interface FAQ {
   id: string;
@@ -13,6 +14,7 @@ interface FAQ {
   answer: string;
   sortOrder: number;
   contentId: string;
+  translations: Record<string, { question?: string; answer?: string }>;
 }
 
 interface ContentOption {
@@ -100,7 +102,9 @@ export default function SssPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Bu SSS öğesini silmek istediğinizden emin misiniz?')) return;
+    if (deleting) return;
+    const faq = faqs.find(item => item.id === id);
+    if (!faq || !confirm(`"${faq.question}" SSS kaydını silmek istediğinizden emin misiniz? İlişkili çeviri kayıtları da kaldırılır; bu işlem geri alınamaz.`)) return;
     setDeleting(id);
     try {
       const res = await fetch(`/admin/api/faqs/${id}`, { method: 'DELETE' });
@@ -185,23 +189,30 @@ export default function SssPage() {
         </div>
       ) : (
         <div style={{ background: '#FFFFFF', border: '1px solid #D8E1E9', borderRadius: '12px', overflow: 'hidden' }}>
-          {faqs.map((faq, i) => (
-            <div key={faq.id} style={{ padding: '14px 16px', borderBottom: i < faqs.length - 1 ? '1px solid #EDF2F7' : 'none', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ color: '#172B3A', fontSize: '13px', fontFamily: 'Inter, sans-serif', fontWeight: 500, margin: '0 0 4px' }}>{faq.question}</p>
-                <p style={{ color: '#718596', fontSize: '12px', fontFamily: 'Inter, sans-serif', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{faq.answer}</p>
-              </div>
-              <span style={{ color: '#A0B0BC', fontSize: '11px', fontFamily: 'monospace', flexShrink: 0 }}>#{faq.sortOrder}</span>
-              <div style={{ flexShrink: 0 }}>
-                <AdminRecordActions
-                  up={{ onClick: () => moveFaq(faq.id, 'up'), disabled: i === 0 }}
-                  down={{ onClick: () => moveFaq(faq.id, 'down'), disabled: i === faqs.length - 1 }}
-                  edit={{ onClick: () => openEdit(faq) }}
-                  delete={{ onClick: () => handleDelete(faq.id), disabled: deleting === faq.id }}
-                />
-              </div>
-            </div>
-          ))}
+          {faqs.map((faq, i) => {
+            const languageStatuses = Object.fromEntries([
+              ['tr', 'current'],
+              ...Object.entries(faq.translations ?? {}).map(([locale, translated]) => [
+                locale,
+                translated.question?.trim() && translated.answer?.trim() ? 'PUBLISHED' : 'DRAFT',
+              ]),
+            ]);
+            return (
+            <AdminCmsRecordCard
+              key={faq.id}
+              title={faq.question}
+              description={faq.answer}
+              languageStatuses={languageStatuses}
+            >
+              <AdminRecordActions
+                up={{ onClick: () => moveFaq(faq.id, 'up'), disabled: i === 0 }}
+                down={{ onClick: () => moveFaq(faq.id, 'down'), disabled: i === faqs.length - 1 }}
+                edit={{ onClick: () => openEdit(faq) }}
+                delete={{ onClick: () => handleDelete(faq.id), disabled: deleting === faq.id }}
+              />
+            </AdminCmsRecordCard>
+            );
+          })}
         </div>
       )}
     </div>

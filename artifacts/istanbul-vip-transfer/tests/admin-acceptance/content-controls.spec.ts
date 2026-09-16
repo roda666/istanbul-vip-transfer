@@ -18,6 +18,7 @@ const viewports = [
 const routes = [
   { path: '/admin/transfer-rotalari', heading: /Transfer Rotaları/i, affordanceRole: 'button', affordance: /Yeni Güzergah Ekle/i },
   { path: '/admin/blog', heading: /Blog/i, affordanceRole: 'link', affordance: /Yeni Yazı/i },
+  { path: '/admin/sayfalar', heading: /Sayfalar/i, affordanceRole: 'link', affordance: /Yeni Sayfa/i },
   { path: '/admin/sss', heading: /SSS|Sıkça Sorulan/i, affordanceRole: 'button', affordance: /Yeni SSS/i },
 ] as const;
 

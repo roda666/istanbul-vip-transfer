@@ -5,11 +5,14 @@ import { createPortal } from 'react-dom';
 import { ChevronUp, ChevronDown, Edit2, Power, PowerOff, Archive, ArchiveRestore, Trash2, MoreVertical, Info, X } from 'lucide-react';
 import { AdminActionButton } from './AdminActionButton';
 
+export const ADMIN_RECORD_ACTION_ORDER = ['up', 'down', 'edit', 'activation', 'archive', 'custom', 'delete'] as const;
+
 interface ActionConfig {
   onClick?: () => Promise<void> | void;
   disabled?: boolean;
   disabledReason?: string;
   hidden?: boolean;
+  confirmMessage?: string;
 }
 
 export interface AdminRecordActionsProps {
@@ -173,12 +176,15 @@ export function AdminRecordActions({
     }
   ];
 
+  const standardActions = actions.filter(a => a.id !== 'delete' && a.config && !a.config.hidden);
+  const deleteAction = actions.find(a => a.id === 'delete');
   const visibleActions = [
-    ...actions.filter(a => a.config && !a.config.hidden),
+    ...standardActions,
     ...(customActions || []).filter(a => !a.hidden).map(a => ({
       ...a,
       config: { onClick: a.onClick, disabled: a.disabled, disabledReason: a.disabledReason }
-    }))
+    })),
+    ...(deleteAction?.config && !deleteAction.config.hidden ? [deleteAction] : []),
   ];
 
   const renderButton = (action: {
@@ -198,6 +204,12 @@ export function AdminRecordActions({
     const onClick = action.id === 'archive' && archive?.isArchived
       ? archive.onRestore
       : action.config?.onClick;
+    const guardedOnClick = action.id === 'delete' && action.config?.confirmMessage
+      ? async () => {
+          if (!window.confirm(action.config?.confirmMessage)) return;
+          await onClick?.();
+        }
+      : onClick;
 
     return (
       <AdminActionButton
@@ -212,7 +224,7 @@ export function AdminRecordActions({
             : 'subtle'
         }
         href={action.id === 'edit' ? edit?.href : undefined}
-        onClick={action.id === 'edit' && edit?.href ? closeSheet : wrapAction(action.id, onClick)}
+         onClick={action.id === 'edit' && edit?.href ? closeSheet : wrapAction(action.id, guardedOnClick)}
         disabled={isDisabled}
         loading={isBusy}
         title={title}

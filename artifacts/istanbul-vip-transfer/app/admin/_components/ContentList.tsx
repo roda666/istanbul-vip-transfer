@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 import { AdminRecordActions } from './AdminRecordActions';
+import { AdminCmsRecordCard } from './AdminCmsRecordCard';
 import type { ContentStatus } from '@/lib/workflow';
 
 interface ContentItem {
@@ -16,6 +17,7 @@ interface ContentItem {
   updatedAt: Date;
   publishedAt: Date | null;
   displayOrder: number;
+  translations?: Record<string, unknown>;
 }
 
 interface Props {
@@ -43,8 +45,7 @@ export default function ContentList({ items, baseUrl, page, total, limit }: Prop
   const [moving, setMoving] = useState<string | null>(null);
   const totalPages = Math.ceil(total / limit);
 
-  async function handleDelete(id: string, title: string) {
-    if (!confirm(`"${title}" içeriğini kalıcı olarak silmek istediğinizden emin misiniz?`)) return;
+  async function handleDelete(id: string) {
     setDeleting(id);
     try {
       const res = await fetch(`/admin/api/content/${id}`, { method: 'DELETE' });
@@ -92,129 +93,42 @@ export default function ContentList({ items, baseUrl, page, total, limit }: Prop
   }
 
   return (
-    <div>
-      <div
-        style={{
-          background: '#FFFFFF',
-          border: '1px solid #D8E1E9',
-          borderRadius: '12px',
-          overflow: 'hidden',
-        }}
-      >
-        {/* Table header */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 180px 100px 140px minmax(280px, auto)',
-            gap: '12px',
-            padding: '10px 16px',
-            borderBottom: '1px solid #D8E1E9',
-            background: '#F8FAFC',
-          }}
-        >
-          {['Başlık', 'Slug', 'Durum', 'Güncellendi', 'İşlemler'].map((h) => (
-            <span
-              key={h}
-              style={{
-                color: '#718596',
-                fontSize: '11px',
-                fontFamily: 'Inter, sans-serif',
-                fontWeight: 600,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-              }}
-            >
-              {h}
-            </span>
-          ))}
-        </div>
-
-        {/* Rows */}
-        {items.map((item) => {
+    <div className="space-y-3">
+      {items.map((item, index) => {
           const isSafeToDelete = ['IDEA', 'DRAFT', 'RESEARCH'].includes(item.status);
           const deleteOmittedReason = isSafeToDelete
             ? undefined
             : 'Yayında, onayda veya arşivlenmiş içerikler doğrudan silinemez. Önce taslağa alın.';
 
           return (
-          <div
+          <AdminCmsRecordCard
             key={item.id}
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 180px 100px 140px minmax(280px, auto)',
-              gap: '12px',
-              padding: '12px 16px',
-              alignItems: 'center',
-              borderBottom: '1px solid #EDF2F7',
-              transition: 'background 0.1s',
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = '#F8FAFC'; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+            title={item.title}
+            description={<><span className="font-mono">/{item.slug}</span><span className="ml-2">{formatDate(item.updatedAt)}</span></>}
+            status={<StatusBadge status={item.status as ContentStatus} size="sm" />}
+            languageStatuses={{ tr: item.status, ...(item.translations ?? {}) }}
           >
-            <div style={{ minWidth: 0 }}>
-              <p
-                style={{
-                  color: '#172B3A',
-                  fontSize: '13px',
-                  fontFamily: 'Inter, sans-serif',
-                  fontWeight: 500,
-                  margin: 0,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {item.title}
-              </p>
-            </div>
-
-            <div style={{ minWidth: 0 }}>
-              <span
-                style={{
-                  color: '#718596',
-                  fontSize: '12px',
-                  fontFamily: 'monospace',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  display: 'block',
-                }}
-              >
-                /{item.slug}
-              </span>
-            </div>
-
-            <div>
-              <StatusBadge status={item.status as ContentStatus} size="sm" />
-            </div>
-
-            <span style={{ color: '#718596', fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>
-              {formatDate(item.updatedAt)}
-            </span>
-
-            <div>
               <AdminRecordActions
                 up={{
                   onClick: () => move(item.id, 'up'),
-                  disabled: moving === item.id,
+                  disabled: moving === item.id || index === 0,
                 }}
                 down={{
                   onClick: () => move(item.id, 'down'),
-                  disabled: moving === item.id,
+                  disabled: moving === item.id || index === items.length - 1,
                 }}
                 edit={{
                   href: `${baseUrl}/${item.id}`,
                 }}
                 delete={isSafeToDelete ? {
-                  onClick: () => handleDelete(item.id, item.title),
+                  onClick: () => handleDelete(item.id),
                   disabled: deleting === item.id,
+                  confirmMessage: `"${item.title}" içeriğini kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem ilişkili çevirileri de kaldırabilir ve geri alınamaz.`,
                 } : undefined}
                 deleteOmittedReason={deleteOmittedReason}
               />
-            </div>
-          </div>
+          </AdminCmsRecordCard>
         )})}
-      </div>
 
       {/* Pagination */}
       {totalPages > 1 && (

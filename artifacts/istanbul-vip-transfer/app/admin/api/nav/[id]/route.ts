@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  computeCustomerContentSourceHash,
+  enqueueCustomerContentTranslations,
+} from '@/lib/customer-content-translation';
 import { z } from 'zod';
 
 const updateSchema = z.object({
@@ -53,10 +57,22 @@ export async function PUT(request: NextRequest, { params }: Params) {
       if (!result) return NextResponse.json({ error: 'Daha fazla hareket ettirilemiyor.' }, { status: 400 });
       return NextResponse.json({ ok: true, ...result });
     }
+    const [current] = await db.select().from(navigationItems).where(eq(navigationItems.id, id)).limit(1);
+    if (!current) return NextResponse.json({ error: 'Bulunamadı.' }, { status: 404 });
     const [updated] = await db.update(navigationItems).set({ ...parsed.data }).where(eq(navigationItems.id, id)).returning();
     if (!updated) return NextResponse.json({ error: 'Bulunamadı.' }, { status: 404 });
 
     await db.insert(auditLogs).values({ adminUserId: session.adminId, action: 'UPDATE', entityType: 'NavigationItem', entityId: id }).catch(() => {});
+    if (parsed.data.label !== undefined && parsed.data.label !== current.label) {
+      await enqueueCustomerContentTranslations({
+        entityType: 'navigation',
+        entityId: id,
+        sourceHash: computeCustomerContentSourceHash({
+          label: updated.label, href: updated.href, location: updated.location,
+        }),
+        adminId: session.adminId,
+      });
+    }
     return NextResponse.json({ item: updated });
   } catch (err) {
     console.error('Nav update error:', err);

@@ -11,6 +11,7 @@ import type {
 import { AISeoGenerator } from '@/app/admin/_components/AISeoGenerator';
 import { AdminRecordActions } from '@/app/admin/_components/AdminRecordActions';
 import { AdminActionButton } from '@/app/admin/_components/AdminActionButton';
+import { AdminCmsRecordCard } from '@/app/admin/_components/AdminCmsRecordCard';
 import { groupManagedLocationOptions, type ManagedLocationOption } from '@/lib/admin-location-options';
 
 // ── Design tokens ────────────────────────────────────────────────────────────
@@ -1044,7 +1045,7 @@ export default function TransferRotalariList() {
       setError('');
     }
     try {
-      const res = await fetch('/admin/api/transfer-routes');
+      const res = await fetchWithTimeout('/admin/api/transfer-routes');
       if (!res.ok) throw new Error('API hatası');
       const json = await res.json();
       setRoutes(json.routes ?? []);
@@ -1188,83 +1189,63 @@ export default function TransferRotalariList() {
           <p style={{ color: MUTED, fontSize: '14px', fontFamily: 'Inter, sans-serif', margin: 0 }}>Henüz güzergah eklenmedi. &quot;Yeni Güzergah Ekle&quot; butonunu kullanın.</p>
         </div>
       ) : (
-        /* Table */
-        <div style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: '12px', overflow: 'hidden' }}>
-           <div className="route-list-table-wrap" style={{ overflowX: 'auto' }}>
-             <table className="route-list-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>
-              <thead>
-                <tr style={{ borderBottom: `1px solid ${BORDER}`, background: '#F8FAFC' }}>
-                  {['Görsel', 'Güzergah', 'Mesafe / Süre', 'Vito (€)', 'Sprinter (€)', 'Sıra', 'Durum', 'İşlem'].map(h => (
-                    <th key={h} style={{ padding: '12px 16px', color: MUTED, fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap', fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {routes.map((r, index) => (
-                  <tr key={r.id} data-testid={`transfer-route-row-${r.id}`} style={{ borderBottom: `1px solid #EDF2F7` }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#F8FAFC'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+        <div className="grid min-w-0 gap-3">
+          {routes.map((r, index) => {
+            const languageStatuses = Object.fromEntries([
+              ['tr', r.active ? 'PUBLISHED' : 'DRAFT'],
+              ...(r.translations ?? []).map(translation => [translation.languageCode, translation.status]),
+            ]);
+            return (
+              <AdminCmsRecordCard
+                key={r.id}
+                title={r.name}
+                description={
+                  <div className="grid min-w-0 gap-1 sm:grid-cols-2">
+                    <span className="break-words">{r.origin} → {r.destination}</span>
+                    <span>{r.distanceKm} km · {formatDuration(r.durationMinutes)}</span>
+                    <span>
+                      {r.distanceSource === 'ADMIN_VERIFIED'
+                        ? 'Doğrulanmış mesafe'
+                        : r.distanceSource === 'COORDINATE_ESTIMATE'
+                          ? 'Koordinat tahmini'
+                          : 'Doğrulanmamış mesafe'}
+                    </span>
+                    <span>Vito: {r.priceVitoMinEur}–{r.priceVitoMaxEur} € · Sprinter: {r.priceSprinterMinEur}–{r.priceSprinterMaxEur} €</span>
+                  </div>
+                }
+                status={
+                  <span
+                    className="inline-flex min-h-7 items-center rounded-full border px-2.5 text-xs font-semibold"
+                    style={{
+                      background: r.active ? '#F0FDF4' : '#FEF2F2',
+                      color: r.active ? '#16A34A' : '#D64545',
+                      borderColor: r.active ? '#BBF7D0' : '#FECACA',
+                    }}
                   >
-                    {/* Image */}
-                    <td style={{ padding: '12px 16px' }}>
-                      {r.imagePath ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={r.imagePath} alt={r.name} style={{ width: '64px', height: '44px', objectFit: 'cover', borderRadius: '4px', background: '#EDF2F7' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                      ) : (
-                        <div style={{ width: '64px', height: '44px', background: '#EDF2F7', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', color: MUTED, fontWeight: 600 }}>Görsel Yok</div>
-                      )}
-                    </td>
-
-                    {/* Name */}
-                    <td style={{ padding: '12px 16px', maxWidth: '240px' }}>
-                      <div style={{ color: TEXT, fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>{r.name}</div>
-                      <div style={{ color: MUTED, fontSize: '12px' }}>{r.origin} → {r.destination}</div>
-                    </td>
-
-                    {/* Distance / Duration */}
-                    <td style={{ padding: '12px 16px', color: MUTED, whiteSpace: 'nowrap' }}>
-                      <div style={{ color: TEXT, fontWeight: 500, marginBottom: '2px' }}>{r.distanceKm} km</div>
-                      <div style={{ fontSize: '12px' }}>{formatDuration(r.durationMinutes)}</div>
-                      <div style={{ marginTop: '4px', fontSize: '11px', fontWeight: 700, color: r.distanceSource === 'ADMIN_VERIFIED' ? '#047857' : r.distanceSource === 'COORDINATE_ESTIMATE' ? '#1D4ED8' : '#A16207' }}>
-                        {r.distanceSource === 'ADMIN_VERIFIED' ? 'Doğrulanmış' : r.distanceSource === 'COORDINATE_ESTIMATE' ? 'Güvenlik tahmini' : 'Doğrulanmamış'}
-                      </div>
-                    </td>
-
-                    {/* Vito price */}
-                    <td style={{ padding: '12px 16px', color: TEXT, whiteSpace: 'nowrap', fontWeight: 600 }}>
-                      {r.priceVitoMinEur}–{r.priceVitoMaxEur}
-                    </td>
-
-                    {/* Sprinter price */}
-                    <td style={{ padding: '12px 16px', color: TEXT, whiteSpace: 'nowrap', fontWeight: 600 }}>
-                      {r.priceSprinterMinEur}–{r.priceSprinterMaxEur}
-                    </td>
-
-                    {/* Display order */}
-                    <td style={{ padding: '12px 16px', color: MUTED }}>{r.displayOrder}</td>
-
-                    {/* Status */}
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '9999px', fontSize: '11px', fontWeight: 600, background: r.active ? '#F0FDF4' : '#FEF2F2', color: r.active ? '#16A34A' : '#D64545', border: `1px solid ${r.active ? '#BBF7D0' : '#FECACA'}` }}>
-                        {r.active ? 'Aktif' : 'Pasif'}
-                      </span>
-                    </td>
-
-                    {/* Actions */}
-                    <td style={{ padding: '12px 16px' }}>
-                      <AdminRecordActions
-                        up={{ onClick: () => listAction(r, 'up'), disabled: index === 0 || actionId !== null }}
-                        down={{ onClick: () => listAction(r, 'down'), disabled: index === routes.length - 1 || actionId !== null }}
-                        edit={{ onClick: () => setModal({ ...r }) }}
-                        activation={{ onClick: () => listAction(r, 'toggle-active'), isActive: r.active, disabled: actionId !== null }}
-                        delete={{ onClick: () => setConfirmDelete(r) }}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    {r.active ? 'Aktif' : 'Pasif'}
+                  </span>
+                }
+                languageStatuses={languageStatuses}
+              >
+                {r.imagePath && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={r.imagePath}
+                    alt={r.name}
+                    className="h-11 w-16 shrink-0 rounded object-cover"
+                    onError={event => { (event.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                )}
+                <AdminRecordActions
+                  up={{ onClick: () => listAction(r, 'up'), disabled: index === 0 || actionId !== null }}
+                  down={{ onClick: () => listAction(r, 'down'), disabled: index === routes.length - 1 || actionId !== null }}
+                  edit={{ onClick: () => setModal({ ...r }) }}
+                  activation={{ onClick: () => listAction(r, 'toggle-active'), isActive: r.active, disabled: actionId !== null }}
+                  delete={{ onClick: () => setConfirmDelete(r) }}
+                />
+              </AdminCmsRecordCard>
+            );
+          })}
         </div>
       )}
 

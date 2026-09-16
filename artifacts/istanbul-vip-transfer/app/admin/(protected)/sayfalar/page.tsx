@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { AdminActionButton } from '../../_components/AdminActionButton';
 import { db } from '@/db';
-import { content } from '@/db/schema';
-import { and, eq, desc, count } from 'drizzle-orm';
+import { content, contentTranslations } from '@/db/schema';
+import { and, eq, desc, count, inArray } from 'drizzle-orm';
 import AdminPageHeader from '../../_components/AdminPageHeader';
 import ContentList from '../../_components/ContentList';
 
@@ -24,6 +24,7 @@ export default async function SayfalarPage({
   let items: (typeof content.$inferSelect)[] = [];
   let total = 0;
   let dbError = false;
+  let translationStatusesById: Record<string, Record<string, string>> = {};
 
   try {
     const [rows, totalRows] = await Promise.all([
@@ -38,6 +39,21 @@ export default async function SayfalarPage({
     ]);
     items = rows;
     total = totalRows[0]?.count ?? 0;
+    if (items.length > 0) {
+      const translations = await db.select({
+        entityId: contentTranslations.entityId,
+        targetLanguageCode: contentTranslations.targetLanguageCode,
+        status: contentTranslations.status,
+      }).from(contentTranslations).where(and(
+        eq(contentTranslations.entityType, 'content'),
+        inArray(contentTranslations.entityId, items.map(item => item.id)),
+      ));
+      translationStatusesById = translations.reduce<Record<string, Record<string, string>>>((acc, row) => {
+        if (!row.entityId) return acc;
+        (acc[row.entityId] ??= {})[row.targetLanguageCode] = row.status;
+        return acc;
+      }, {});
+    }
   } catch {
     dbError = true;
   }
@@ -54,7 +70,13 @@ export default async function SayfalarPage({
       {dbError ? (
         <p style={{ color: '#f87171', fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>Veritabanı bağlantı hatası. Migration çalıştırıldığını kontrol edin.</p>
       ) : (
-        <ContentList items={items} baseUrl="/admin/sayfalar" page={page} total={total} limit={limit} />
+        <ContentList
+          items={items.map(item => ({ ...item, translations: translationStatusesById[item.id] ?? {} }))}
+          baseUrl="/admin/sayfalar"
+          page={page}
+          total={total}
+          limit={limit}
+        />
       )}
     </div>
   );

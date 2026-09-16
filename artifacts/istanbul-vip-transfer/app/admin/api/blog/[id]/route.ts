@@ -12,6 +12,10 @@ import { z } from 'zod';
 import { requireAdminSession } from '@/lib/auth/session';
 import { getBlogAdminRecord, BLOG_ENTITY_TYPE, invalidatePublicBlogCache } from '@/lib/blog-cms';
 import { SITE } from '@/lib/site-config';
+import {
+  computeCustomerContentSourceHash,
+  enqueueCustomerContentTranslations,
+} from '@/lib/customer-content-translation';
 import 'server-only';
 
 type Params = { params: Promise<{ id: string }> };
@@ -102,13 +106,7 @@ async function saveRevision(
 
 /** Compute a simple hash of translatable blog fields to detect source changes. */
 function computeBlogSourceHash(body: string, title: string, excerpt?: string | null): string {
-  const raw = [title, excerpt ?? '', body].join('\n---\n');
-  // djb2 hash — deterministic, no crypto needed
-  let hash = 5381;
-  for (let i = 0; i < raw.length; i++) {
-    hash = ((hash << 5) + hash) ^ raw.charCodeAt(i);
-  }
-  return (hash >>> 0).toString(16);
+  return computeCustomerContentSourceHash({ title, excerpt: excerpt ?? null, body });
 }
 
 // ── GET ────────────────────────────────────────────────────────────────────────
@@ -318,14 +316,14 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
   // Mark PUBLISHED translations OUTDATED when source body/title changes
   if (!savingDraftOfPublished) {
-    const srcHash = computeBlogSourceHash(data.body, data.title, data.excerpt);
+    const legacySrcHash = computeBlogSourceHash(data.body, data.title, data.excerpt);
     const txRows = await db
       .select({ id: contentTranslations.id, status: contentTranslations.status, sourceHash: contentTranslations.sourceHash })
       .from(contentTranslations)
       .where(eq(contentTranslations.entityId, id));
 
     const toOutdate = txRows
-      .filter(tx => ['PUBLISHED', 'APPROVED'].includes(tx.status) && tx.sourceHash !== srcHash)
+      .filter(tx => ['PUBLISHED', 'APPROVED'].includes(tx.status) && tx.sourceHash !== legacySrcHash)
       .map(tx => tx.id);
 
     if (toOutdate.length > 0) {
@@ -335,57 +333,29 @@ export async function PUT(req: NextRequest, { params }: Params) {
         .where(inArray(contentTranslations.id, toOutdate));
     }
 
-    const { fillMissingTranslations, AUTO_TRANSLATION_LOCALES } = await import('@/lib/ai/fill-missing-translations');
-    const existingRows = await db
-      .select()
-      .from(contentTranslations)
-      .where(eq(contentTranslations.entityId, id));
-    const existingMap = Object.fromEntries(existingRows.map((tx) => [
-      tx.targetLanguageCode,
-      tx.isManuallyLocked ? {
-        title: data.title, excerpt: data.excerpt ?? '', body: data.body,
-        metaTitle: data.seoTitle ?? '', metaDescription: data.seoDescription ?? '',
-      } : {
-        title: tx.title, excerpt: tx.excerpt, body: tx.body,
-        metaTitle: tx.metaTitle, metaDescription: tx.metaDescription,
-      },
-    ]));
-    const completed = await fillMissingTranslations({
-      title: data.title,
-      excerpt: data.excerpt,
-      body: data.body,
-      metaTitle: data.seoTitle,
-      metaDescription: data.seoDescription,
-    }, existingMap);
-
-    for (const locale of AUTO_TRANSLATION_LOCALES) {
-      const current = existingRows.find((tx) => tx.targetLanguageCode === locale);
-      if (current?.isManuallyLocked) continue;
-      const fields = completed[locale];
-      if (!fields?.title || !fields.body) continue;
-      const values = {
-        title: fields.title,
-        excerpt: fields.excerpt || null,
-        body: fields.body,
-        metaTitle: fields.metaTitle || null,
-        metaDescription: fields.metaDescription || null,
+    const customerVisibleSnapshot = {
+      title: data.title, slug: data.slug, excerpt: data.excerpt ?? null, body: data.body,
+      seoTitle: data.seoTitle ?? null, seoDescription: data.seoDescription ?? null,
+      heroImageAlt: data.heroImageAlt ?? null, ogTitle: data.ogTitle ?? null,
+      ogDescription: data.ogDescription ?? null, cta: row.cta, internalLinks: row.internalLinks,
+    };
+    const srcHash = computeCustomerContentSourceHash(customerVisibleSnapshot);
+    const wasPublished = row.status === 'PUBLISHED';
+    const sourceChanged = data.title !== row.title
+      || data.slug !== row.slug
+      || (data.excerpt ?? null) !== (row.excerpt ?? null)
+      || data.body !== row.body
+      || (data.seoTitle ?? null) !== (row.seoTitle ?? null)
+      || (data.seoDescription ?? null) !== (row.seoDescription ?? null)
+      || (data.heroImageAlt ?? null) !== (row.heroImageAlt ?? null);
+    const finalStatusForTranslation = requestedStatus ?? currentStatus;
+    if (finalStatusForTranslation === 'PUBLISHED' && (!wasPublished || sourceChanged)) {
+      await enqueueCustomerContentTranslations({
+        entityType: 'content',
+        entityId: id,
         sourceHash: srcHash,
-        isAiGenerated: current?.isAiGenerated ?? true,
-        aiPromptVersion: current?.aiPromptVersion ?? 'auto-fill-missing-v1',
-        updatedAt: now,
-      };
-      if (current) {
-        await db.update(contentTranslations).set(values as never).where(eq(contentTranslations.id, current.id));
-      } else {
-        await db.insert(contentTranslations).values({
-          entityType: BLOG_ENTITY_TYPE,
-          entityId: id,
-          targetLanguageCode: locale,
-          status: 'DRAFT',
-          ...values,
-          createdAt: now,
-        } as never);
-      }
+        adminId: adminUserId,
+      });
     }
   }
 
@@ -542,6 +512,19 @@ export async function POST(req: NextRequest, { params }: Params) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (db.update(content).set(updateFields as any).where(eq(content.id, id)));
     await writeAuditLog({ contentId: id, action, adminUserId, details: { newStatus } });
+    if (action === 'publishSource') {
+      await enqueueCustomerContentTranslations({
+        entityType: 'content',
+        entityId: id,
+        sourceHash: computeCustomerContentSourceHash({
+          title: row.title, slug: row.slug, excerpt: row.excerpt, body: row.body,
+          seoTitle: row.seoTitle, seoDescription: row.seoDescription,
+          heroImageAlt: row.heroImageAlt, ogTitle: row.ogTitle, ogDescription: row.ogDescription,
+          cta: row.cta, internalLinks: row.internalLinks,
+        }),
+        adminId: adminUserId,
+      });
+    }
     await invalidatePublicBlogCache({ id, slug: row.slug });
     const record = await getBlogAdminRecord(id);
     return NextResponse.json({ record });

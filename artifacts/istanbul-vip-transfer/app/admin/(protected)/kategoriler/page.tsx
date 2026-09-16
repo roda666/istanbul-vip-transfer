@@ -5,6 +5,7 @@ import { Plus, Loader2, Check, X, Languages } from 'lucide-react';
 import AdminPageHeader from '@/app/admin/_components/AdminPageHeader';
 import { AdminRecordActions } from '@/app/admin/_components/AdminRecordActions';
 import { AdminActionButton } from '@/app/admin/_components/AdminActionButton';
+import { AdminCmsLanguageBadges } from '@/app/admin/_components/AdminCmsLanguageBadges';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -240,18 +241,10 @@ export default function KategorilerPage() {
                   </div>
                 </div>
 
-                {/* Lang coverage */}
-                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', flex: '1 1 120px' }}>
-                  {LOCALES.map(loc => (
-                    <span key={loc} title={LOCALE_LABELS[loc]} style={{
-                      fontSize: '10px', fontWeight: 700, padding: '3px 6px', borderRadius: '4px',
-                      background: cat.nameTranslations[loc] ? '#DCFCE7' : '#F1F5F9',
-                      color: cat.nameTranslations[loc] ? '#166534' : '#CBD5E1',
-                      fontFamily: 'Inter, sans-serif',
-                    }}>
-                      {loc.toUpperCase()}
-                    </span>
-                  ))}
+                <div className="min-w-0 flex-[1_1_120px]">
+                  <AdminCmsLanguageBadges statuses={Object.fromEntries(
+                    Object.entries(cat.nameTranslations).map(([locale, value]) => [locale, value ? 'PUBLISHED' : 'DRAFT']),
+                  )} />
                 </div>
 
                 {/* Actions */}

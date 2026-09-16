@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Copy, Eye, Plus } from 'lucide-react';
 import { AdminRecordActions } from '@/app/admin/_components/AdminRecordActions';
 import { AdminActionButton } from '@/app/admin/_components/AdminActionButton';
+import { AdminCmsLanguageBadges } from '@/app/admin/_components/AdminCmsLanguageBadges';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -44,25 +45,6 @@ const STATUS_STYLE: Record<string, { label: string; color: string; bg: string }>
   MISSING:   { label: '⚠ Kayıt Yok', color: '#B42318', bg: '#FEF3F2' },
 };
 
-const TX_STATUS_DOT: Record<string, string> = {
-  NOT_STARTED:  '#CBD5E1',
-  QUEUED:       '#F59E0B',
-  TRANSLATING:  '#3B82F6',
-  DRAFT:        '#A855F7',
-  REVIEW:       '#A855F7',
-  APPROVED:     '#06B6D4',
-  PUBLISHED:    '#10B981',
-  FAILED:       '#EF4444',
-  ARCHIVED:     '#94A3B8',
-  OUTDATED:     '#F97316',
-};
-
-const TX_STATUS_LABEL: Record<string, string> = {
-  NOT_STARTED: 'Başlamadı', QUEUED: 'Bekliyor', TRANSLATING: 'Çevriliyor',
-  DRAFT: 'Taslak', REVIEW: 'İnceleniyor', APPROVED: 'Onaylandı',
-  PUBLISHED: 'Yayında', FAILED: 'Hata', ARCHIVED: 'Arşiv', OUTDATED: 'Güncelleme Gerekli',
-};
-
 // CATEGORY_LABELS is now fetched dynamically from /admin/api/categories
 
 const TARGET_LOCALES = ['en', 'de', 'ru', 'ar', 'fr', 'es', 'it', 'nl'];
@@ -79,29 +61,7 @@ const sel: React.CSSProperties = { ...inp, cursor: 'pointer' };
 // ── Sub-components ─────────────────────────────────────────────────────────
 
 function LangDots({ translations }: { translations: Record<string, string> }) {
-  return (
-    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-      <span title="Türkçe — Kaynak" style={{
-        fontSize: '10px', fontWeight: 600, padding: '2px 5px',
-        borderRadius: '4px', background: '#ECFDF5', color: '#059669',
-      }}>TR</span>
-      {TARGET_LOCALES.map(lc => {
-        const txStatus = translations[lc] ?? 'NOT_STARTED';
-        const dotColor = TX_STATUS_DOT[txStatus] ?? '#CBD5E1';
-        const label    = TX_STATUS_LABEL[txStatus] ?? txStatus;
-        return (
-          <span key={lc} title={`${lc.toUpperCase()}: ${label}`} style={{
-            fontSize: '10px', fontWeight: 600, padding: '2px 5px',
-            borderRadius: '4px', background: '#F1F5F9', color: '#374151',
-            display: 'inline-flex', alignItems: 'center', gap: '3px',
-          }}>
-            {lc.toUpperCase()}
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
-          </span>
-        );
-      })}
-    </div>
-  );
+  return <AdminCmsLanguageBadges statuses={{ tr: 'PUBLISHED', ...translations }} />;
 }
 
 function CoverThumbnail({ src, title }: { src: string | null; title: string }) {
@@ -134,6 +94,7 @@ function ActionButtons({
   actionLoading,
   onDuplicate,
   onArchive,
+  onDelete,
   onMove,
   canMoveUp,
   canMoveDown,
@@ -142,6 +103,7 @@ function ActionButtons({
   actionLoading: string | null;
   onDuplicate: (item: ServiceListItem) => void;
   onArchive:   (item: ServiceListItem) => void;
+  onDelete: (item: ServiceListItem) => void;
   onMove: (item: ServiceListItem, direction: 'up' | 'down') => void;
   canMoveUp: boolean;
   canMoveDown: boolean;
@@ -171,6 +133,12 @@ function ActionButtons({
         disabled: !!actionLoading || !!isLoading,
         isArchived: false
       } : undefined}
+      delete={['DRAFT', 'ARCHIVED', 'IDEA', 'RESEARCH'].includes(item.status) ? {
+        onClick: () => onDelete(item),
+        disabled: !!actionLoading || !!isLoading,
+        confirmMessage: `"${item.title}" hizmetini silmek istediğinizden emin misiniz? Bu işlem yalnızca bağlı olmayan taslak içeriği ve kendi çevirilerini kaldırır.`,
+      } : undefined}
+      deleteOmittedReason={!['DRAFT', 'ARCHIVED', 'IDEA', 'RESEARCH'].includes(item.status) ? 'Yayındaki hizmeti silmek için önce arşivleyin.' : undefined}
       customActions={[
         {
           id: 'duplicate',
@@ -258,6 +226,24 @@ export default function HizmetlerList({ items }: Props) {
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Hata oluştu.');
     } finally { setActionLoading(null); }
+  }
+
+  async function handleDelete(item: ServiceListItem) {
+    if (actionLoading) return;
+    setActionLoading(`delete-${item.id}`);
+    try {
+      const res = await fetch(`/admin/api/service-pages/${item.id}`, { method: 'DELETE' });
+      const data = await res.json().catch(() => ({})) as { error?: string; dependencies?: Array<{ label: string; count: number }> };
+      if (!res.ok) {
+        const details = data.dependencies?.map(dep => `${dep.label}: ${dep.count}`).join(', ');
+        throw new Error(details ? `${data.error ?? 'Silme engellendi.'} (${details})` : (data.error ?? 'Silme başarısız.'));
+      }
+      startTransition(() => router.refresh());
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Silme başarısız.');
+    } finally {
+      setActionLoading(null);
+    }
   }
 
   async function handleDuplicate(item: ServiceListItem) {
@@ -516,6 +502,7 @@ export default function HizmetlerList({ items }: Props) {
                 actionLoading={actionLoading}
                 onDuplicate={handleDuplicate}
                 onArchive={handleArchive}
+                onDelete={handleDelete}
                 onMove={handleMove}
                 canMoveUp={idx > 0}
                 canMoveDown={idx < filtered.length - 1}
@@ -603,6 +590,7 @@ export default function HizmetlerList({ items }: Props) {
                   actionLoading={actionLoading}
                   onDuplicate={handleDuplicate}
                   onArchive={handleArchive}
+                  onDelete={handleDelete}
                   onMove={handleMove}
                   canMoveUp={idx > 0}
                   canMoveDown={idx < filtered.length - 1}

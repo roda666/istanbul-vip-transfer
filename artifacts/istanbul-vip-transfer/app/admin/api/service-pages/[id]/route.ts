@@ -29,6 +29,10 @@ import {
 import { translateServicePageFields } from '@/lib/ai/translate-service-page';
 import { SITE } from '@/lib/site-config';
 import { resolveImageField, validateServiceImageAsset } from '@/lib/service-image-assets';
+import {
+  computeCustomerContentSourceHash,
+  enqueueCustomerContentTranslations,
+} from '@/lib/customer-content-translation';
 import 'server-only';
 
 type Params = { params: Promise<{ id: string }> };
@@ -274,7 +278,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const bodyObj = data.body as ServicePageBody;
   const bodyStr = JSON.stringify(bodyObj);
-  const srcHash = computeTranslatableHash(bodyObj);
+  const srcHash = computeCustomerContentSourceHash({
+    title: data.title,
+    body: bodyObj,
+    seoTitle: data.seoTitle ?? null,
+    seoDescription: data.seoDescription ?? null,
+    heroImageAlt: data.heroImageAlt ?? null,
+  });
   const savingDraftOfPublished = data.saveAsDraft && row.status === 'PUBLISHED';
   // An already-published service may use the text-only gradient hero after an
   // admin removes its uploaded image. A service that has never been published
@@ -408,22 +418,23 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     details:     { title: data.title, autoTranslate: data.autoTranslate, savingDraftOfPublished },
   });
 
-  // Auto-translate to non-TR locales (only when publishing, not saving draft of published)
-  const translationResults: Record<string, string> = {};
+  // Queue durable work only after the Turkish write commits. The request never
+  // waits for provider calls; the task runner performs those asynchronously.
   if (data.autoTranslate && !savingDraftOfPublished) {
-    const targetLocales = data.targetLocales ?? await getActiveTargetLocales();
-    await Promise.allSettled(
-      targetLocales.map(async (locale) => {
-        const r = await translateAndSave(id, bodyObj, srcHash, locale);
-        translationResults[locale] = r.ok ? 'queued' : (r.error ?? 'error');
-      }),
-    );
+    await enqueueCustomerContentTranslations({
+      entityType: 'service_page',
+      entityId: id,
+      sourceHash: srcHash,
+      adminId: session?.adminId ?? null,
+    });
   }
 
   const record = await getServicePageAdminRecord(id);
   return NextResponse.json({
     record,
-    translationResults,
+    translationResults: data.autoTranslate && !savingDraftOfPublished
+      ? Object.fromEntries(['en', 'de', 'ru', 'ar', 'es', 'fr', 'it', 'nl'].map(locale => [locale, 'queued']))
+      : {},
     // Non-blocking: the save above already succeeded even if an image
     // field could not be validated. The admin sees this as a warning, not
     // an error — the previous (still valid) image value was kept.
@@ -432,6 +443,55 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 }
 
 // ── POST (actions on translations + source record) ────────────────────────────
+
+/** DELETE /admin/api/service-pages/[id] — delete an unreferenced draft */
+export async function DELETE(_request: NextRequest, { params }: Params) {
+  let session;
+  try { session = await requireAdminSession(); }
+  catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
+  if (!session.capabilities.content.canManage) {
+    return NextResponse.json({ error: 'Bu hizmet için yönetim yetkisi gerekli.' }, { status: 403 });
+  }
+  const { id } = await params;
+  try {
+    const { db } = await import('@/db');
+    const { content, contentTranslations, auditLogs } = await import('@/db/schema');
+    const { and, eq, sql } = await import('drizzle-orm');
+    const result = await db.transaction(async tx => {
+      const [current] = await tx.select().from(content).where(and(eq(content.id, id), eq(content.contentType, 'SERVICE'))).limit(1);
+      if (!current) return { error: 'Hizmet bulunamadı.', status: 404 as const };
+      if (['PUBLISHED', 'APPROVED', 'SCHEDULED'].includes(current.status)) {
+        return { error: 'Yayındaki hizmet doğrudan silinemez. Önce arşivleyin.', status: 409 as const,
+          dependencies: [{ type: 'publication', label: 'Yayın durumu', count: 1 }] };
+      }
+      const refs = await tx.execute(sql`
+        SELECT COUNT(*)::int AS count FROM navigation_items
+        WHERE href = ${`/tr/${current.slug}`} OR href = ${`/${current.slug}`}
+      `);
+      const referenceCount = Number((Array.from(refs)[0] as { count?: number } | undefined)?.count ?? 0);
+      if (referenceCount > 0) {
+        return { error: 'Bu hizmet menüde veya dahili bağlantılarda kullanılıyor; önce bağlantıları kaldırın.', status: 409 as const,
+          dependencies: [{ type: 'navigation', label: 'Menü / dahili bağlantı', count: referenceCount }] };
+      }
+      await tx.delete(contentTranslations).where(and(
+        eq(contentTranslations.entityType, 'service_page'),
+        eq(contentTranslations.entityId, id),
+      ));
+      const [deleted] = await tx.delete(content).where(eq(content.id, id)).returning({ id: content.id, title: content.title });
+      if (!deleted) return { error: 'Hizmet bulunamadı.', status: 404 as const };
+      await tx.insert(auditLogs).values({
+        adminUserId: session.adminId, action: 'DELETE', entityType: 'ServicePage', entityId: id,
+        metadata: { title: deleted.title },
+      });
+      return { ok: true as const };
+    });
+    if ('error' in result) return NextResponse.json(result, { status: result.status });
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error('Service page delete error:', error);
+    return NextResponse.json({ error: 'Silme işlemi tamamlanamadı.' }, { status: 503 });
+  }
+}
 
 export async function POST(req: NextRequest, { params }: Params) {
   let session: Awaited<ReturnType<typeof requireAdminSession>> | null = null;
@@ -546,6 +606,18 @@ export async function POST(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'Hizmet kategorisi bulunamadı veya pasif.' }, { status: 422 });
     }
     await writeAuditLog({ contentId: id, action: 'publish_source', adminUserId });
+    await enqueueCustomerContentTranslations({
+      entityType: 'service_page',
+      entityId: id,
+      sourceHash: computeCustomerContentSourceHash({
+        title: row.title,
+        body: parseServicePageBody(row.body),
+        seoTitle: row.seoTitle,
+        seoDescription: row.seoDescription,
+        heroImageAlt: row.heroImageAlt,
+      }),
+      adminId: adminUserId,
+    });
     invalidateServiceCategories();
     revalidateAllHomepagesForServiceChange();
     revalidatePublicServiceCatalog({ categorySlugs: [row.category] });

@@ -36,6 +36,7 @@ export default async function BlogPage({ searchParams }: { searchParams: Promise
   let healthIssues: BlogHealthItem[] = [];
   let lastAutomatedCheckAt: Date | null = null;
   let lastAutomatedUnhealthyCount: number | null = null;
+  let translationStatusesById: Record<string, Record<string, string>> = {};
 
   try {
     const [rows, totalRows] = await Promise.all([
@@ -65,7 +66,7 @@ export default async function BlogPage({ searchParams }: { searchParams: Promise
       id: r.id, slug: r.slug, title: r.title,
     }));
 
-    const entityIds = sourceRows.map(r => r.id);
+    const entityIds = [...new Set([...sourceRows.map(r => r.id), ...items.map(r => r.id)])];
     const rawTranslations = entityIds.length > 0
       ? await db
           .select({
@@ -82,6 +83,11 @@ export default async function BlogPage({ searchParams }: { searchParams: Promise
       targetLanguageCode: r.targetLanguageCode,
       status:             r.status,
     }));
+    translationStatusesById = rawTranslations.reduce<Record<string, Record<string, string>>>((acc, row) => {
+      if (!row.entityId) return acc;
+      (acc[row.entityId] ??= {})[row.targetLanguageCode] = row.status;
+      return acc;
+    }, {});
 
     healthIssues = computeBlogHealthIssues(
       getKnownBlogSlugs(),
@@ -164,7 +170,13 @@ export default async function BlogPage({ searchParams }: { searchParams: Promise
               {params.archived === 'true' ? 'Yayındaki / taslaklar' : 'Arşivdekileri göster'}
             </Link>
           </div>
-          <ContentList items={items} baseUrl="/admin/blog" page={page} total={total} limit={limit} />
+          <ContentList
+            items={items.map(item => ({ ...item, translations: translationStatusesById[item.id] ?? {} }))}
+            baseUrl="/admin/blog"
+            page={page}
+            total={total}
+            limit={limit}
+          />
         </>
       )}
     </div>

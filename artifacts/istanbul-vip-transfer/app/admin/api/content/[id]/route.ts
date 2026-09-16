@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import {
+  computeCustomerContentSourceHash,
+  enqueueCustomerContentTranslations,
+} from '@/lib/customer-content-translation';
 
 // Mirror the same reserved-slug list as POST /api/admin/content
 const RESERVED_SLUGS = new Set([
@@ -92,7 +96,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
   const { eq, and, or } = await import('drizzle-orm');
 
   // Fetch current record
-  const [current] = await db.select({ id: content.id, status: content.status }).from(content).where(eq(content.id, id)).limit(1).catch(() => []);
+   const [current] = await db.select().from(content).where(eq(content.id, id)).limit(1).catch(() => []);
   if (!current) return NextResponse.json({ error: 'Bulunamadı.' }, { status: 404 });
 
   const { getApprovalReset } = await import('@/lib/workflow');
@@ -179,7 +183,22 @@ export async function PUT(request: NextRequest, { params }: Params) {
       // Translation table may not exist yet (migration not run); silently skip.
     }
 
-    return NextResponse.json({ item: updated });
+     if (updated.status === 'PUBLISHED' && (current.status !== 'PUBLISHED'
+       || data.title !== undefined || data.slug !== undefined || data.excerpt !== undefined
+       || data.body !== undefined || data.seoTitle !== undefined || data.seoDescription !== undefined
+       || data.heroImageAlt !== undefined)) {
+       await enqueueCustomerContentTranslations({
+         entityType: current.contentType === 'SERVICE' ? 'service_page' : 'content',
+         entityId: id,
+         sourceHash: computeCustomerContentSourceHash({
+           title: updated.title, slug: updated.slug, excerpt: updated.excerpt, body: updated.body,
+           seoTitle: updated.seoTitle, seoDescription: updated.seoDescription,
+           heroImageAlt: updated.heroImageAlt, canonicalUrl: updated.canonicalUrl,
+         }),
+         adminId: session.adminId,
+       });
+     }
+     return NextResponse.json({ item: updated });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : '';
     if (msg.includes('unique') || msg.includes('duplicate'))
@@ -200,21 +219,56 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
 
   const { id } = await params;
   const { db } = await import('@/db');
-  const { content, auditLogs } = await import('@/db/schema');
-  const { eq } = await import('drizzle-orm');
+  const { content, contentTranslations, auditLogs } = await import('@/db/schema');
+  const { and, eq, sql } = await import('drizzle-orm');
+  if (!session.capabilities.content.canManage) {
+    return NextResponse.json({ error: 'Bu içerik için yönetim yetkisi gerekli.' }, { status: 403 });
+  }
 
-  const [deleted] = await db.delete(content).where(eq(content.id, id)).returning({ id: content.id, title: content.title }).catch(() => []);
-  if (!deleted) return NextResponse.json({ error: 'Bulunamadı.' }, { status: 404 });
-
-  await db.insert(auditLogs).values({
-    adminUserId: session.adminId,
-    action: 'DELETE',
-    entityType: 'Content',
-    entityId: id,
-    metadata: { title: deleted.title },
-  }).catch(() => {});
-
-  return NextResponse.json({ success: true });
+  try {
+    const result = await db.transaction(async tx => {
+      const [current] = await tx.select().from(content).where(eq(content.id, id)).limit(1);
+      if (!current) return { error: 'Bulunamadı.', status: 404 as const };
+      if (['PUBLISHED', 'APPROVED', 'SCHEDULED'].includes(current.status)) {
+        return {
+          error: 'Yayındaki içerik doğrudan silinemez. Önce yayından kaldırın veya arşivleyin.',
+          status: 409 as const,
+          dependencies: [{ type: 'publication', label: 'Yayın durumu', count: 1 }],
+        };
+      }
+      const refs = await tx.execute(sql`
+        SELECT COUNT(*)::int AS count FROM navigation_items
+        WHERE href = ${`/tr/${current.slug}`} OR href = ${`/blog/${current.slug}`}
+      `);
+      const referenceCount = Number((Array.from(refs)[0] as { count?: number } | undefined)?.count ?? 0);
+      if (referenceCount > 0) {
+        return {
+          error: 'Bu içerik menüde veya dahili bağlantılarda kullanılıyor; önce bağlantıları kaldırın.',
+          status: 409 as const,
+          dependencies: [{ type: 'navigation', label: 'Menü / dahili bağlantı', count: referenceCount }],
+        };
+      }
+      await tx.delete(contentTranslations).where(and(
+        eq(contentTranslations.entityType, 'content'),
+        eq(contentTranslations.entityId, id),
+      ));
+      const [deleted] = await tx.delete(content).where(eq(content.id, id)).returning({ id: content.id, title: content.title });
+      if (!deleted) return { error: 'Bulunamadı.', status: 404 as const };
+      await tx.insert(auditLogs).values({
+        adminUserId: session.adminId,
+        action: 'DELETE',
+        entityType: 'Content',
+        entityId: id,
+        metadata: { title: deleted.title },
+      });
+      return { success: true as const };
+    });
+    if ('error' in result) return NextResponse.json(result, { status: result.status });
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error('Content delete error:', error);
+    return NextResponse.json({ error: 'Silme işlemi tamamlanamadı.' }, { status: 503 });
+  }
 }
 
 /** POST /api/admin/content/[id] — approve | publish | archive */
@@ -313,6 +367,19 @@ export async function POST(request: NextRequest, { params }: Params) {
       entityId: id,
       metadata: { title: current.title, newStatus: updated.status },
     }).catch(() => {});
+
+    if (action === 'publish' && updated.status === 'PUBLISHED') {
+      await enqueueCustomerContentTranslations({
+        entityType: current.contentType === 'SERVICE' ? 'service_page' : 'content',
+        entityId: id,
+        sourceHash: computeCustomerContentSourceHash({
+          title: updated.title, slug: updated.slug, excerpt: updated.excerpt, body: updated.body,
+          seoTitle: updated.seoTitle, seoDescription: updated.seoDescription,
+          heroImageAlt: updated.heroImageAlt, canonicalUrl: updated.canonicalUrl,
+        }),
+        adminId: session.adminId,
+      });
+    }
 
     return NextResponse.json({ item: updated });
   } catch (err) {

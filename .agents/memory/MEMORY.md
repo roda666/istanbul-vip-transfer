@@ -147,3 +147,4 @@
 - [Ferry single-price gate-pair compatibility](ferry-day-night-gate-pairs.md) — ferries use one ALL price per class and ordered gate pair; tariff-free legacy points convert only on first compact save.
 - [Responsive admin record-action tests](responsive-admin-record-action-tests.md) — at mobile width, edit/delete actions move from the card into the portaled İşlemler sheet.
 - [Serializable admin action icons](serializable-admin-action-icons.md) — Server Components pass icon identifiers, never React component functions, into shared client action controls.
+- [Customer-content CMS standard](customer-content-cms-standard.md) — published Turkish copy queues eight durable translations; old localized copy remains live; admin lists use one card/badge/action contract.

@@ -1255,6 +1255,8 @@ export const translationJobs = pgTable('translation_jobs', {
   id:             uuid('id').primaryKey().defaultRandom(),
   entityType:     text('entity_type').notNull(),
   entityId:       uuid('entity_id').notNull(),
+  /** Hash of the Turkish customer-visible source snapshot used for deduplication. */
+  sourceHash:     text('source_hash'),
   /** QUEUED | RUNNING | COMPLETED | PARTIAL | FAILED | CANCELLED */
   status:         text('status').notNull().default('QUEUED'),
   /** When true, manually-locked translations may be overwritten. */

@@ -46,6 +46,7 @@ const s: Record<string, React.CSSProperties> = {
 };
 
 const PROVIDER_PRESETS: Record<string, { host: string; port: number; secure: string }> = {
+  yandex:   { host: 'smtp.yandex.com',    port: 587, secure: 'starttls' },
   gmail:    { host: 'smtp.gmail.com',     port: 587, secure: 'starttls' },
   sendgrid: { host: 'smtp.sendgrid.net',  port: 587, secure: 'starttls' },
   mailgun:  { host: 'smtp.mailgun.org',   port: 587, secure: 'starttls' },
@@ -377,6 +378,7 @@ export default function EmailSettingsClient() {
                 value={cfg.providerType}
                 onChange={e => handleProviderChange(e.target.value)}
               >
+                <option value="yandex">Yandex (smtp.yandex.com)</option>
                 <option value="gmail">Gmail (smtp.gmail.com)</option>
                 <option value="sendgrid">SendGrid</option>
                 <option value="mailgun">Mailgun</option>

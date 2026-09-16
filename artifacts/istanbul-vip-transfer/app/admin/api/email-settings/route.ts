@@ -19,7 +19,7 @@ import {
 
 const putSchema = z.object({
   enabled:           z.boolean(),
-  providerType:      z.enum(['gmail', 'sendgrid', 'mailgun', 'custom']),
+  providerType:      z.enum(['yandex', 'gmail', 'sendgrid', 'mailgun', 'custom']),
   smtpHost:          z.string().max(253).optional().nullable(),
   smtpPort:          z.number().int().min(1).max(65535).optional().nullable(),
   smtpSecure:        z.enum(['starttls', 'ssl']),

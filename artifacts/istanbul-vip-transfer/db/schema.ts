@@ -1261,6 +1261,8 @@ export const translationJobs = pgTable('translation_jobs', {
   status:         text('status').notNull().default('QUEUED'),
   /** When true, manually-locked translations may be overwritten. */
   force:          boolean('force').notNull().default(false),
+  /** Blog-only release gate: publish the Turkish source and all task results together. */
+  publishOnComplete: boolean('publish_on_complete').notNull().default(false),
   totalTasks:     integer('total_tasks').notNull().default(0),
   completedTasks: integer('completed_tasks').notNull().default(0),
   failedTasks:    integer('failed_tasks').notNull().default(0),
@@ -1286,6 +1288,8 @@ export const translationJobTasks = pgTable('translation_job_tasks', {
   errorMessage:       text('error_message'),
   /** The contentTranslations row ID created/updated by this task. */
   translationId:      uuid('translation_id'),
+  /** Validated staged output used by the Blog all-languages atomic finalizer. */
+  resultPayload:      jsonb('result_payload').$type<Record<string, unknown>>(),
   startedAt:          timestamp('started_at',   { withTimezone: true }),
   completedAt:        timestamp('completed_at', { withTimezone: true }),
   createdAt:          timestamp('created_at',   { withTimezone: true }).defaultNow().notNull(),

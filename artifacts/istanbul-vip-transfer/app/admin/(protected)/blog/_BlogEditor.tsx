@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import type { BlogAdminRecord } from '@/lib/blog-cms';
 import { ImageUploadField } from '@/app/admin/_components/ImageUploadField';
 import { AIWriteAssist, type AIWritingField } from '@/app/admin/_components/AIWriteAssist';
@@ -165,11 +166,42 @@ type TxFieldState = Record<string, {
   metaTitle: string; metaDescription: string; dirty: boolean;
 }>;
 
+type PublishTask = {
+  id: string;
+  targetLanguageCode: string;
+  status: string;
+  errorMessage: string | null;
+};
+
+type PublishJob = {
+  id: string;
+  status: string;
+  totalTasks: number;
+  completedTasks: number;
+  failedTasks: number;
+};
+
+async function concurrentForEach<T>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<void>,
+) {
+  let index = 0;
+  const worker = async () => {
+    while (index < items.length) {
+      const item = items[index++];
+      await fn(item);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
+}
+
 // ── Main BlogEditor ──────────────────────────────────────────────────────────
 
 interface Props { blogId: string; initial: BlogAdminRecord; }
 
 export default function BlogEditor({ blogId, initial }: Props) {
+  const router = useRouter();
   // ── Source state ─────────────────────────────────────────────────────────
   const [rec,        setRec]        = useState<BlogAdminRecord>(initial);
   const [activeTab,  setActiveTab]  = useState<'tr' | string>('tr');
@@ -178,6 +210,11 @@ export default function BlogEditor({ blogId, initial }: Props) {
   const [success,    setSuccess]    = useState<string | null>(null);
   const [lastSaved,  setLastSaved]  = useState<string | null>(null);
   const [showRevisions, setShowRevisions] = useState(false);
+  const [sourceDirty, setSourceDirty] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [publishRunning, setPublishRunning] = useState(false);
+  const [publishJob, setPublishJob] = useState<PublishJob | null>(null);
+  const [publishTasks, setPublishTasks] = useState<PublishTask[]>([]);
 
   // Source fields
   const [title,          setTitle]          = useState(initial.title);
@@ -227,8 +264,12 @@ export default function BlogEditor({ blogId, initial }: Props) {
   // ── Autosave ──────────────────────────────────────────────────────────────
   const autosaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDirty = useRef(false);
+  const hasUnsavedRef = useRef(false);
 
-  function markDirty() { isDirty.current = true; }
+  function markDirty() {
+    isDirty.current = true;
+    setSourceDirty(true);
+  }
 
   const saveSource = useCallback(async (opts: { saveAsDraft?: boolean; newStatus?: string } = {}) => {
     setSaving(true); setError(null); setSuccess(null);
@@ -254,6 +295,7 @@ export default function BlogEditor({ blogId, initial }: Props) {
       if (!res.ok) throw new Error(json.error ?? 'Kaydetme hatası.');
       if (json.record) setRec(json.record);
       isDirty.current = false;
+      setSourceDirty(false);
       setLastSaved(new Date().toLocaleTimeString('tr-TR'));
       setSuccess(opts.saveAsDraft ? 'Taslak kaydedildi.' : 'Kaydedildi.');
       setTimeout(() => setSuccess(null), 3000);
@@ -263,6 +305,33 @@ export default function BlogEditor({ blogId, initial }: Props) {
       setSaving(false);
     }
   }, [title, slug, excerpt, body, heroImage, heroImageAlt, ogImage, category, author, tags, readTime, autoReadTime, ogTitle, ogDescription, seoTitle, seoDescription, canonicalUrl, scheduledAt, blogId]);
+
+  const hasDirtyTranslation = Object.values(txFields).some(field => field.dirty);
+  const hasUnsavedChanges = sourceDirty || hasDirtyTranslation;
+  hasUnsavedRef.current = hasUnsavedChanges;
+
+  useEffect(() => {
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      if (!hasUnsavedRef.current) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    const popState = () => {
+      if (hasUnsavedRef.current && !window.confirm('Kaydedilmemiş değişiklikler var. Sayfadan ayrılmak istediğinizden emin misiniz?')) {
+        window.history.pushState({ blogEditorGuard: true }, '', window.location.href);
+        return;
+      }
+      window.removeEventListener('popstate', popState);
+      window.history.back();
+    };
+    window.addEventListener('beforeunload', beforeUnload);
+    window.history.pushState({ blogEditorGuard: true }, '', window.location.href);
+    window.addEventListener('popstate', popState);
+    return () => {
+      window.removeEventListener('beforeunload', beforeUnload);
+      window.removeEventListener('popstate', popState);
+    };
+  }, []);
 
   // Autosave timer
   useEffect(() => {
@@ -276,6 +345,10 @@ export default function BlogEditor({ blogId, initial }: Props) {
 
   // ── Source status actions ─────────────────────────────────────────────────
   async function sourceAction(action: string, extra?: Record<string, unknown>) {
+    if (hasUnsavedRef.current) {
+      setError('Durum değiştirmeden önce kaydedilmemiş değişiklikleri kaydedin veya İptal ile vazgeçin.');
+      return;
+    }
     setSaving(true); setError(null);
     try {
       const res = await fetch(`/admin/api/blog/${blogId}`, {
@@ -292,6 +365,126 @@ export default function BlogEditor({ blogId, initial }: Props) {
       setError(e instanceof Error ? e.message : 'Hata.');
     } finally {
       setSaving(false);
+    }
+  }
+
+  function cancelEditing() {
+    if (hasUnsavedRef.current && !window.confirm('Kaydedilmemiş değişiklikler silinecek. Blog listesine dönmek istiyor musunuz?')) return;
+    if (autosaveRef.current) clearTimeout(autosaveRef.current);
+    isDirty.current = false;
+    hasUnsavedRef.current = false;
+    setSourceDirty(false);
+    router.push('/admin/blog');
+  }
+
+  async function deleteBlog() {
+    if (deleting) return;
+    if (hasUnsavedRef.current && !window.confirm('Kaydedilmemiş değişiklikler silme sırasında kaybolacak. Devam edilsin mi?')) return;
+    if (!window.confirm('Bu Blog yazısını kalıcı olarak silmek istediğinizden emin misiniz?')) return;
+    if (!window.confirm(`"${rec.title}" başlıklı Blog yazısı kalıcı olarak silinecek. Bu işlem geri alınamaz. Silinsin mi?`)) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/admin/api/blog/${blogId}`, { method: 'DELETE' });
+      const json = await safeJson<{ error?: string }>(res);
+      if (!res.ok) throw new Error(json.error ?? 'Blog yazısı silinemedi.');
+      if (autosaveRef.current) clearTimeout(autosaveRef.current);
+      isDirty.current = false;
+      hasUnsavedRef.current = false;
+      router.replace('/admin/blog');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Blog yazısı silinemedi.');
+      setDeleting(false);
+    }
+  }
+
+  const refreshPublishJob = useCallback(async (jobId: string) => {
+    const res = await fetch(`/admin/api/translations/jobs/${jobId}`);
+    const json = await safeJson<{ job?: PublishJob; tasks?: PublishTask[]; error?: string }>(res);
+    if (!res.ok || !json.job || !json.tasks) throw new Error(json.error ?? 'Çeviri işi okunamadı.');
+    setPublishJob(json.job);
+    setPublishTasks(json.tasks);
+    return json;
+  }, []);
+
+  const processPublishTasks = useCallback(async (jobId: string, tasks: PublishTask[]) => {
+    await concurrentForEach(
+      tasks.filter(task => ['QUEUED', 'RETRYING'].includes(task.status)),
+      2,
+      async task => {
+        setPublishTasks(prev => prev.map(item => item.id === task.id ? { ...item, status: 'RUNNING' } : item));
+        const res = await fetch(`/admin/api/translations/jobs/${jobId}/tasks/${task.id}/run`, { method: 'POST' });
+        const json = await safeJson<{ status?: string; error?: string }>(res);
+        setPublishTasks(prev => prev.map(item => item.id === task.id
+          ? { ...item, status: json.status === 'completed' ? 'COMPLETED' : json.status === 'failed' ? 'FAILED' : item.status, errorMessage: json.error ?? null }
+          : item));
+      },
+    );
+    return refreshPublishJob(jobId);
+  }, [refreshPublishJob]);
+
+  async function finishPublishRun(jobId: string, tasks: PublishTask[]) {
+    const finalState = await processPublishTasks(jobId, tasks);
+    if (finalState.job?.status === 'COMPLETED') {
+      const recordRes = await fetch(`/admin/api/blog/${blogId}`);
+      const recordJson = await safeJson<{ record?: BlogAdminRecord; error?: string }>(recordRes);
+      if (!recordRes.ok || !recordJson.record) throw new Error(recordJson.error ?? 'Yayın sonucu okunamadı.');
+      setRec(recordJson.record);
+      setSuccess('Türkçe ve 8 dil birlikte yayımlandı.');
+      setTimeout(() => setSuccess(null), 4000);
+    } else {
+      const failedLocales = (finalState.tasks ?? [])
+        .filter(task => task.status === 'FAILED')
+        .map(task => task.targetLanguageCode.toUpperCase());
+      setError(`Yayın yapılmadı. Başarısız diller: ${failedLocales.join(', ') || 'bilinmiyor'}.`);
+    }
+  }
+
+  async function publishAllLanguages() {
+    if (publishRunning) return;
+    if (hasUnsavedRef.current) {
+      setError('8 dilde yayımlamadan önce kaydedilmemiş değişiklikleri kaydedin.');
+      return;
+    }
+    setPublishRunning(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch(`/admin/api/blog/${blogId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'publishAllLanguages' }),
+      });
+      const json = await safeJson<{ job?: PublishJob; tasks?: PublishTask[]; error?: string }>(res);
+      if (!res.ok || !json.job || !json.tasks) throw new Error(json.error ?? 'Toplu yayın başlatılamadı.');
+      setPublishJob(json.job);
+      setPublishTasks(json.tasks);
+      await finishPublishRun(json.job.id, json.tasks);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Toplu yayın tamamlanamadı.');
+    } finally {
+      setPublishRunning(false);
+    }
+  }
+
+  async function retryFailedPublish() {
+    if (!publishJob || publishRunning) return;
+    setPublishRunning(true);
+    setError(null);
+    try {
+      const res = await fetch(`/admin/api/translations/jobs/${publishJob.id}/retry-failed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ force: false }),
+      });
+      const json = await safeJson<{ tasks?: PublishTask[]; error?: string }>(res);
+      if (!res.ok || !json.tasks) throw new Error(json.error ?? 'Başarısız diller yeniden başlatılamadı.');
+      setPublishTasks(json.tasks);
+      await finishPublishRun(publishJob.id, json.tasks);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Yeniden deneme tamamlanamadı.');
+    } finally {
+      setPublishRunning(false);
     }
   }
 
@@ -408,45 +601,65 @@ export default function BlogEditor({ blogId, initial }: Props) {
 
   // ── Source status machine buttons ─────────────────────────────────────────
   function SourceStatusButtons() {
-    const btns: { label: string; action: string; color: string; bg: string; border?: string }[] = [];
+    const btns: { id: string; label: string; action: string }[] = [];
+    const add = (action: string, label: string) => btns.push({ id: `${currentStatus}:${action}`, action, label });
 
-    if (['IDEA','DRAFT','RESEARCH','REVIEW','ARCHIVED'].includes(currentStatus)) {
-      if (currentStatus !== 'IDEA') btns.push({ label: '← Fikir', action: 'toIdea', color: '#7C3AED', bg: '#F5F3FF', border: '1px solid #C4B5FD' });
-      if (currentStatus !== 'RESEARCH') btns.push({ label: '🔍 Araştırma', action: 'toResearch', color: '#D97706', bg: '#FFFBEB', border: '1px solid #FDE68A' });
-      if (currentStatus !== 'DRAFT') btns.push({ label: '📝 Taslak', action: 'toDraft', color: '#6B7280', bg: '#F9FAFB', border: '1px solid #D1D5DB' });
-    }
-    if (['RESEARCH','DRAFT'].includes(currentStatus)) {
-      btns.push({ label: '👁 İncelemeye Gönder', action: 'toReview', color: '#1D4ED8', bg: '#EFF6FF', border: '1px solid #BFDBFE' });
-    }
-    if (currentStatus === 'REVIEW') {
-      btns.push({ label: '✅ Onayla', action: 'toApprove', color: '#0891B2', bg: '#ECFEFF', border: '1px solid #A5F3FC' });
-    }
-    if (currentStatus === 'APPROVED') {
-      btns.push({ label: '🚀 Yayımla', action: 'publishSource', color: '#FFFFFF', bg: '#059669' });
-      if (scheduledAt) btns.push({ label: '🕐 Planla', action: 'scheduleSource', color: '#FFFFFF', bg: '#7C3AED' });
-    }
-    if (currentStatus === 'PUBLISHED') {
-      btns.push({ label: '↩ Yayımı Kaldır', action: 'unpublishSource', color: '#374151', bg: '#F3F4F6', border: '1px solid #D1D5DB' });
-    }
-    if (!['ARCHIVED'].includes(currentStatus)) {
-      btns.push({ label: '📦 Arşivle', action: 'archiveSource', color: '#64748B', bg: '#F1F5F9', border: '1px solid #CBD5E1' });
-    }
-    if (currentStatus === 'ARCHIVED') {
-      btns.push({ label: '↩ Taslağa Döndür', action: 'toDraft', color: '#374151', bg: '#F3F4F6', border: '1px solid #D1D5DB' });
+    if (currentStatus === 'IDEA') {
+      add('toDraft', 'Taslağa Dönüştür');
+      add('toResearch', 'Araştırmaya Gönder');
+      add('archiveSource', 'Arşivle');
+    } else if (currentStatus === 'DRAFT') {
+      add('toIdea', 'Fikre Döndür');
+      add('toResearch', 'Araştırmaya Gönder');
+      add('toReview', 'İncelemeye Gönder');
+      add('archiveSource', 'Arşivle');
+    } else if (currentStatus === 'RESEARCH') {
+      add('toIdea', 'Fikre Döndür');
+      add('toDraft', 'Taslağa Döndür');
+      add('toReview', 'İncelemeye Gönder');
+      add('archiveSource', 'Arşivle');
+    } else if (currentStatus === 'REVIEW') {
+      add('toResearch', 'Araştırmaya Döndür');
+      add('toDraft', 'Taslağa Döndür');
+      add('toApprove', 'Onayla');
+      add('archiveSource', 'Arşivle');
+    } else if (currentStatus === 'APPROVED') {
+      add('toReview', 'İncelemeye Döndür');
+      if (scheduledAt) add('scheduleSource', 'Planla');
+      add('archiveSource', 'Arşivle');
+    } else if (currentStatus === 'SCHEDULED') {
+      add('toApprove', 'Planı Kaldır');
+      add('archiveSource', 'Arşivle');
+    } else if (currentStatus === 'PUBLISHED') {
+      add('unpublishSource', 'Yayımı Kaldır');
+      add('archiveSource', 'Arşivle');
+    } else if (currentStatus === 'ARCHIVED') {
+      add('toIdea', 'Fikre Döndür');
+      add('toDraft', 'Taslağa Döndür');
     }
 
     return (
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
         {btns.map(btn => (
           <AdminActionButton
-            key={btn.action}
-            label={btn.label.replace(/^[^A-Za-zÇĞİÖŞÜçğıöşü]+/u, '').trim()}
+            key={btn.id}
+            label={btn.label}
             icon={btn.action === 'archiveSource' ? Archive : btn.action === 'toApprove' ? Check : btn.action === 'publishSource' ? Rocket : btn.action === 'toReview' ? Eye : undefined}
-            variant={btn.action === 'archiveSource' ? 'archive' : btn.action === 'publishSource' || btn.action === 'scheduleSource' || btn.action === 'toApprove' ? 'activate' : 'subtle'}
-            disabled={saving}
+            variant={btn.action === 'archiveSource' ? 'archive' : btn.action === 'scheduleSource' || btn.action === 'toApprove' ? 'activate' : 'subtle'}
+            disabled={saving || publishRunning || hasUnsavedChanges}
             onClick={() => { void sourceAction(btn.action, btn.action === 'scheduleSource' && scheduledAt ? { scheduledAt: new Date(scheduledAt).toISOString() } : undefined); }}
           />
         ))}
+        {['DRAFT', 'REVIEW', 'APPROVED'].includes(currentStatus) && (
+          <AdminActionButton
+            label="8 Dile Çevir ve Yayınla"
+            icon={Rocket}
+            variant="activate"
+            loading={publishRunning}
+            disabled={saving || hasUnsavedChanges}
+            onClick={() => void publishAllLanguages()}
+          />
+        )}
       </div>
     );
   }
@@ -474,7 +687,7 @@ export default function BlogEditor({ blogId, initial }: Props) {
           {lastSaved && <span style={{ fontSize: '11px', color: '#94A3B8' }}>Son kayıt: {lastSaved}</span>}
           {saving && <span style={{ fontSize: '11px', color: '#2563EB' }}>Kaydediliyor…</span>}
         </div>
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-2 lg:flex lg:flex-wrap">
             <FacebookShareButton
               url={publishedBlogUrl}
               label="Bu yazıyı Facebook'ta paylaş"
@@ -500,11 +713,42 @@ export default function BlogEditor({ blogId, initial }: Props) {
             />
           <AdminActionButton label="Taslak Kaydet" icon={FilePlus2} variant="save" disabled={saving} onClick={() => { markDirty(); void saveSource({ saveAsDraft: true }); }} />
           <AdminActionButton label="Kaydet" icon={Save} variant="save" disabled={saving} onClick={() => { markDirty(); void saveSource({ saveAsDraft: false }); }} />
-          {(currentStatus === 'DRAFT' || currentStatus === 'APPROVED') && (
-            <AdminActionButton label="Kaydet ve Yayımla" icon={Rocket} variant="activate" disabled={saving} onClick={() => void saveSource({ newStatus: 'PUBLISHED' })} />
-          )}
+          <AdminActionButton label="İptal" icon={X} variant="cancel" manage={false} disabled={saving || publishRunning || deleting} onClick={cancelEditing} />
+          <AdminActionButton label="Sil" icon={Trash2} variant="delete" loading={deleting} disabled={saving || publishRunning} onClick={() => void deleteBlog()} />
         </div>
       </div>
+
+      {publishTasks.length > 0 && (
+        <div style={{ padding: '14px 16px', border: '1px solid #BFDBFE', background: '#EFF6FF', borderRadius: '8px', marginBottom: '16px' }}>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p style={{ margin: 0, color: '#1E3A8A', fontSize: '13px', fontWeight: 700 }}>
+                8 dilde atomik yayın
+              </p>
+              <p style={{ margin: '3px 0 0', color: '#475569', fontSize: '12px' }}>
+                {publishTasks.filter(task => task.status === 'COMPLETED').length} / 8 dil tamamlandı
+                {publishJob ? ` · ${publishJob.status}` : ''}
+              </p>
+            </div>
+            {!publishRunning && publishTasks.some(task => task.status === 'FAILED') && (
+              <AdminActionButton label="Başarısız Dilleri Yeniden Dene" icon={RefreshCw} variant="subtle" onClick={() => void retryFailedPublish()} />
+            )}
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
+            {publishTasks.map(task => (
+              <div key={task.id} title={task.errorMessage ?? undefined} style={{
+                minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderRadius: '6px', fontSize: '12px', fontWeight: 700,
+                color: task.status === 'FAILED' ? '#991B1B' : task.status === 'COMPLETED' ? '#065F46' : '#1D4ED8',
+                background: task.status === 'FAILED' ? '#FEF2F2' : task.status === 'COMPLETED' ? '#ECFDF5' : '#FFFFFF',
+                border: `1px solid ${task.status === 'FAILED' ? '#FECACA' : task.status === 'COMPLETED' ? '#A7F3D0' : '#BFDBFE'}`,
+              }}>
+                {task.targetLanguageCode.toUpperCase()} · {task.status === 'COMPLETED' ? 'Hazır' : task.status === 'FAILED' ? 'Hata' : 'İşleniyor'}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Locale tab strip ── */}
       <div style={{ display: 'flex', overflowX: 'auto', borderBottom: '2px solid #E2E8F0', marginBottom: '24px', gap: '2px' }}>

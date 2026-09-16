@@ -93,16 +93,30 @@ export async function POST(
   // ── Execute task ──────────────────────────────────────────────────────────
   const { runTranslationTask } = await import('@/lib/translation-job-runner');
 
-  const result = await runTranslationTask({
-    jobId,
-    taskId,
-    entityType: job.entityType as 'content' | 'service_page' | 'faq' | 'vehicle' | 'navigation' | 'optional_service' | 'category' | 'transfer_route' | 'homepage',
-    entityId:   job.entityId,
-    targetLang: task.targetLanguageCode,
-    force:      job.force,
-    adminId:    session.adminId,
-    attempt:    nextAttempt,
-  });
+  const result = job.publishOnComplete && job.entityType === 'content'
+    ? await (async () => {
+        const { runBlogAtomicTranslationTask } = await import('@/lib/blog-atomic-publish');
+        return runBlogAtomicTranslationTask({
+          jobId,
+          taskId,
+          entityId: job.entityId,
+          targetLang: task.targetLanguageCode,
+          sourceHash: job.sourceHash,
+          force: job.force,
+          adminId: session.adminId,
+          attempt: nextAttempt,
+        });
+      })()
+    : await runTranslationTask({
+        jobId,
+        taskId,
+        entityType: job.entityType as 'content' | 'service_page' | 'faq' | 'vehicle' | 'navigation' | 'optional_service' | 'category' | 'transfer_route' | 'homepage',
+        entityId:   job.entityId,
+        targetLang: task.targetLanguageCode,
+        force:      job.force,
+        adminId:    session.adminId,
+        attempt:    nextAttempt,
+      });
 
   // ── Update task status ────────────────────────────────────────────────────
   if (result.status === 'completed') {
@@ -141,6 +155,31 @@ export async function POST(
 
   // ── Sync job counters ─────────────────────────────────────────────────────
   await syncJobCounters(jobId);
+
+  if (result.status === 'completed' && job.publishOnComplete && job.entityType === 'content') {
+    try {
+      const { finalizeBlogAtomicPublish } = await import('@/lib/blog-atomic-publish');
+      const finalized = await finalizeBlogAtomicPublish(jobId, session.adminId);
+      if (finalized.finalized && finalized.blogId && finalized.slug) {
+        const { invalidatePublicBlogCache } = await import('@/lib/blog-cms');
+        await invalidatePublicBlogCache({
+          id: finalized.blogId,
+          slug: finalized.slug,
+          previousLocalizedSlugs: finalized.previousLocalizedSlugs,
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Toplu yayın tamamlanamadı.';
+      await db.update(translationJobTasks).set({
+        status: 'FAILED',
+        completedAt: null,
+        errorMessage: message,
+        updatedAt: sql`now()`,
+      }).where(eq(translationJobTasks.id, taskId));
+      await syncJobCounters(jobId);
+      return NextResponse.json({ status: 'failed', taskId, error: message });
+    }
+  }
 
   return NextResponse.json({ status: result.status, taskId, translationId: result.translationId, error: result.error });
 }

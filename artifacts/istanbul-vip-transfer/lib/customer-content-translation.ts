@@ -59,6 +59,10 @@ export interface EnqueueCustomerTranslationsInput {
   /** Category adapter's numeric source ID, retained for future task runners. */
   sourceAdapterId?: string;
   force?: boolean;
+  /** Blog release jobs stage all locale payloads and publish them together. */
+  publishOnComplete?: boolean;
+  /** Keep current public translations untouched while replacement payloads are staged. */
+  preservePublishedWhileRunning?: boolean;
 }
 
 export interface EnqueueCustomerTranslationsResult {
@@ -123,6 +127,7 @@ export async function enqueueCustomerContentTranslations(
         eq(translationJobs.entityType, input.entityType),
         eq(translationJobs.entityId, entityId),
         eq(translationJobs.sourceHash, input.sourceHash),
+        eq(translationJobs.publishOnComplete, input.publishOnComplete ?? false),
         inArray(translationJobs.status, [...ACTIVE_JOB_STATUSES]),
       ))
       .limit(1);
@@ -139,7 +144,11 @@ export async function enqueueCustomerContentTranslations(
     // A source edit truthfully invalidates the status badge, but does not erase
     // the currently published translation. The runner replaces it atomically
     // only after a validated result is ready.
-    if (input.entityType !== 'category' && input.entityType !== 'transfer_route') {
+    if (
+      !input.preservePublishedWhileRunning &&
+      input.entityType !== 'category' &&
+      input.entityType !== 'transfer_route'
+    ) {
       await tx.update(contentTranslations)
         .set({ status: 'OUTDATED', updatedAt: new Date() } as never)
         .where(and(
@@ -154,6 +163,7 @@ export async function enqueueCustomerContentTranslations(
       entityId,
       sourceHash: input.sourceHash,
       force: input.force ?? false,
+      publishOnComplete: input.publishOnComplete ?? false,
       totalTasks: CUSTOMER_TRANSLATION_LOCALES.length,
       createdBy: input.adminId ?? null,
       status: 'QUEUED',

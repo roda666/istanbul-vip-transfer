@@ -6,6 +6,7 @@
  * POST /admin/api/blog/[id]  { action, locale? }
  *   Translation actions: approve | publish | unpublish | retranslate
  *   Source actions:      publishSource | unpublishSource | archiveSource | scheduleSource | ideaToResearch | toDraft | toReview | toApprove
+ * DELETE /admin/api/blog/[id]                         — safe, Blog-only permanent delete
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -407,7 +408,7 @@ const actionSchema = z.object({
     // Translation workflow
     'approve', 'publish', 'unpublish', 'retranslate',
     // Source actions
-    'publishSource', 'unpublishSource', 'archiveSource', 'scheduleSource',
+    'publishSource', 'publishAllLanguages', 'unpublishSource', 'archiveSource', 'scheduleSource',
     'toIdea', 'toResearch', 'toDraft', 'toReview', 'toApprove',
     // Revision revert
     'revertToRevision',
@@ -446,6 +447,45 @@ export async function POST(req: NextRequest, { params }: Params) {
   const [settings] = await db.select({ approvalGateEnabled: siteSettings.approvalGateEnabled })
     .from(siteSettings).where(eq(siteSettings.id, 1)).limit(1);
   const approvalGateEnabled = settings?.approvalGateEnabled ?? true;
+
+  if (action === 'publishAllLanguages') {
+    if (!session?.capabilities.content.canManage) {
+      return NextResponse.json({ error: 'Blog yayımlama yetkisi gerekli.' }, { status: 403 });
+    }
+    if (!['DRAFT', 'REVIEW', 'APPROVED', 'PUBLISHED'].includes(row.status)) {
+      return NextResponse.json(
+        { error: `"${row.status}" durumundaki Blog yazısı toplu yayımlanamaz.` },
+        { status: 409 },
+      );
+    }
+    if (!row.title?.trim() || !row.body?.trim()) {
+      return NextResponse.json(
+        { error: 'Yayımlanacak içeriğin başlık ve gövde alanları dolu olmalıdır.' },
+        { status: 422 },
+      );
+    }
+    const { computeBlogAtomicSourceHash } = await import('@/lib/blog-atomic-publish');
+    const queued = await enqueueCustomerContentTranslations({
+      entityType: 'content',
+      entityId: id,
+      sourceHash: computeBlogAtomicSourceHash(row),
+      adminId: adminUserId,
+      publishOnComplete: true,
+      preservePublishedWhileRunning: true,
+    });
+    const { translationJobs, translationJobTasks } = await import('@/db/schema');
+    const tasks = await db.select().from(translationJobTasks)
+      .where(eq(translationJobTasks.jobId, queued.jobId));
+    const [job] = await db.select().from(translationJobs)
+      .where(eq(translationJobs.id, queued.jobId)).limit(1);
+    await writeAuditLog({
+      contentId: id,
+      action: 'publish_all_languages_requested',
+      adminUserId,
+      details: { jobId: queued.jobId, created: queued.created },
+    });
+    return NextResponse.json({ job, tasks });
+  }
 
   // ── Source status actions ─────────────────────────────────────────────────
 
@@ -725,4 +765,80 @@ export async function POST(req: NextRequest, { params }: Params) {
   const record = await getBlogAdminRecord(id);
   await invalidatePublicBlogCache({ id, slug: row.slug });
   return NextResponse.json({ record });
+}
+
+// ── DELETE (safe Blog-only deletion) ──────────────────────────────────────────
+
+export async function DELETE(_req: NextRequest, { params }: Params) {
+  let session: Awaited<ReturnType<typeof requireAdminSession>>;
+  try { session = await requireAdminSession(); } catch {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  if (!session.capabilities.content.canManage) {
+    return NextResponse.json({ error: 'Blog silme yetkisi gerekli.' }, { status: 403 });
+  }
+
+  const { id } = await params;
+  const { db } = await import('@/db');
+  const { auditLogs, content, contentTranslations, navigationItems } = await import('@/db/schema');
+  const { and, eq, ne } = await import('drizzle-orm');
+
+  try {
+    const result = await db.transaction(async tx => {
+      const [current] = await tx.select().from(content).where(and(
+        eq(content.id, id),
+        eq(content.contentType, 'BLOG_POST'),
+      )).limit(1);
+      if (!current) return { error: 'Blog yazısı bulunamadı.', status: 404 as const };
+      if (['PUBLISHED', 'APPROVED', 'SCHEDULED'].includes(current.status)) {
+        return {
+          error: 'Yayındaki veya onaylanmış Blog yazısı silinemez. Önce yayından kaldırın ya da arşivleyin.',
+          status: 409 as const,
+          dependencies: [{ type: 'publication', label: 'Yayın durumu', count: 1 }],
+        };
+      }
+
+      const publicHref = `/blog/${current.slug}`;
+      const navRefs = await tx.select({ id: navigationItems.id }).from(navigationItems)
+        .where(eq(navigationItems.href, publicHref));
+      const contentRefs = await tx.select({ internalLinks: content.internalLinks }).from(content)
+        .where(ne(content.id, id));
+      const internalReferenceCount = contentRefs.reduce((count, item) => {
+        const links = Array.isArray(item.internalLinks) ? item.internalLinks : [];
+        return count + links.filter(link => link?.href === publicHref).length;
+      }, 0);
+      const referenceCount = navRefs.length + internalReferenceCount;
+      if (referenceCount > 0) {
+        return {
+          error: 'Bu Blog yazısı menüde veya başka içeriklerin dahili bağlantılarında kullanılıyor. Önce bağlantıları kaldırın.',
+          status: 409 as const,
+          dependencies: [{ type: 'reference', label: 'Menü / dahili bağlantı', count: referenceCount }],
+        };
+      }
+
+      await tx.delete(contentTranslations).where(and(
+        eq(contentTranslations.entityType, BLOG_ENTITY_TYPE),
+        eq(contentTranslations.entityId, id),
+      ));
+      const [deleted] = await tx.delete(content).where(and(
+        eq(content.id, id),
+        eq(content.contentType, 'BLOG_POST'),
+      )).returning({ id: content.id, title: content.title, slug: content.slug });
+      if (!deleted) return { error: 'Blog yazısı bulunamadı.', status: 404 as const };
+      await tx.insert(auditLogs).values({
+        adminUserId: session.adminId,
+        action: 'DELETE',
+        entityType: 'blog_post',
+        entityId: deleted.id,
+        metadata: { title: deleted.title, slug: deleted.slug },
+      } as never);
+      return { success: true as const, slug: deleted.slug };
+    });
+    if ('error' in result) return NextResponse.json(result, { status: result.status });
+    await invalidatePublicBlogCache({ id, slug: result.slug });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Blog delete error:', error);
+    return NextResponse.json({ error: 'Blog yazısı silinemedi.' }, { status: 503 });
+  }
 }

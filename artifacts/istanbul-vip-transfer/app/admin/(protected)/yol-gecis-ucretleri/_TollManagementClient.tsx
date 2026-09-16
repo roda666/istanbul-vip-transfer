@@ -1363,7 +1363,7 @@ function InlineTariffEditor({
   );
 }
 
-function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onAddTariff, onTariffUpdated, onSync }: { point: TollPoint, tariffs: TollTariff[], vehicleClasses: string[], onRefresh: () => Promise<void>, onAddTariff: (vc: string) => void, onTariffUpdated: (tariff: TollTariff) => void, onSync: (t: TollTariff) => void }) {
+function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onDelete, deleting, onAddTariff, onTariffUpdated, onSync }: { point: TollPoint, tariffs: TollTariff[], vehicleClasses: string[], onRefresh: () => Promise<void>, onDelete: () => void, deleting: boolean, onAddTariff: (vc: string) => void, onTariffUpdated: (tariff: TollTariff) => void, onSync: (t: TollTariff) => void }) {
   const [quickTariffClassRequest, setQuickTariffClassRequest] = useState<QuickTariffClassRequest | null>(null);
   const [tariffActionError, setTariffActionError] = useState('');
   const [editingTariffId, setEditingTariffId] = useState<string | null>(null);
@@ -1518,14 +1518,26 @@ function PointDetail({ point, tariffs, vehicleClasses, onRefresh, onAddTariff, o
           <span className="font-bold text-sm text-slate-900">Sistemde Kullanılabilir (Aktif)</span>
         </label>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-4 mt-5">
+        <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 min-[480px]:justify-end min-[480px]:[grid-template-columns:auto_auto] mt-5">
            <AdminActionButton
              label={saved ? 'Değişiklikler Kaydedildi' : 'Değişiklikleri Kaydet'}
              icon={saved ? Check : Save}
              variant="save"
              onClick={handleSave}
-               disabled={loading}
+              disabled={loading || deleting}
              loading={loading}
+             className="w-full min-[480px]:w-auto"
+           />
+           <AdminActionButton
+             label={deleting ? 'Siliniyor...' : 'Sil'}
+             icon={Trash2}
+             variant="delete"
+             onClick={onDelete}
+             disabled={loading || deleting}
+             loading={deleting}
+             ariaLabel={`${point.name} geçiş noktasını sil`}
+             testId="delete-toll-point"
+             className="w-full min-[480px]:w-auto"
            />
         </div>
       </div>
@@ -1658,7 +1670,11 @@ function PointsManager({ data, onRefresh, onTariffUpdated }: { data: DataPayload
   const [syncModalTariff, setSyncModalTariff] = useState<TollTariff | null>(null);
   const [reorderBusyId, setReorderBusyId] = useState<string | null>(null);
   const [reorderError, setReorderError] = useState('');
+  const [pointActionMessage, setPointActionMessage] = useState('');
+  const [pointActionError, setPointActionError] = useState('');
+  const [deletingPointId, setDeletingPointId] = useState<string | null>(null);
   const reorderInFlightRef = useRef(false);
+  const deleteInFlightRef = useRef(false);
 
   const selectedPoint = data.points.find(p => p.id === selectedPointId) || null;
   useEffect(() => { setOrderedPoints(data.points); }, [data.points]);
@@ -1686,8 +1702,42 @@ function PointsManager({ data, onRefresh, onTariffUpdated }: { data: DataPayload
     }
   };
 
+  const deleteSelectedPoint = async () => {
+    if (!selectedPoint || deleteInFlightRef.current) return;
+    if (!window.confirm(`“${selectedPoint.name}” geçiş noktası kalıcı olarak silinecek. Bu işlemi açıkça onaylıyor musunuz?`)) return;
+
+    const currentIndex = orderedPoints.findIndex((item) => item.id === selectedPoint.id);
+    const fallbackPointId = orderedPoints[currentIndex + 1]?.id ?? orderedPoints[currentIndex - 1]?.id ?? null;
+    deleteInFlightRef.current = true;
+    setDeletingPointId(selectedPoint.id);
+    setPointActionError('');
+    setPointActionMessage('');
+    try {
+      const response = await fetch(`/admin/api/pricing/tolls/${selectedPoint.id}`, { method: 'DELETE' });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error ?? 'Geçiş noktası silinemedi.');
+      await onRefresh();
+      setSelectedPointId(fallbackPointId);
+      setPointActionMessage(`“${selectedPoint.name}” geçiş noktası başarıyla silindi.`);
+    } catch (error: unknown) {
+      setPointActionError(errorMessage(error, 'Geçiş noktası silinemedi. Hiçbir bağlı kayıt değiştirilmedi.'));
+    } finally {
+      deleteInFlightRef.current = false;
+      setDeletingPointId(null);
+    }
+  };
+
   return (
-    <div className="flex flex-col lg:flex-row gap-6">
+    <div>
+      {(pointActionMessage || pointActionError) && (
+        <div
+          role={pointActionError ? 'alert' : 'status'}
+          className={`mb-4 rounded-lg border px-4 py-3 text-sm font-bold ${pointActionError ? 'border-red-200 bg-red-50 text-red-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}
+        >
+          {pointActionError || pointActionMessage}
+        </div>
+      )}
+      <div className="flex flex-col lg:flex-row gap-6">
       <div className="w-full lg:w-[38%] xl:w-[36%] flex flex-col gap-3">
         <AdminActionButton
           label="Yeni Geçiş Noktası"
@@ -1732,6 +1782,8 @@ function PointsManager({ data, onRefresh, onTariffUpdated }: { data: DataPayload
                tariffs={data.tariffs} 
                vehicleClasses={data.vehicleClasses} 
                onRefresh={onRefresh}
+              onDelete={deleteSelectedPoint}
+              deleting={deletingPointId === selectedPoint.id}
                 onAddTariff={(vc) => setNewTariffModal({vc})}
                 onTariffUpdated={onTariffUpdated}
                onSync={(t) => setSyncModalTariff(t)}
@@ -1744,6 +1796,7 @@ function PointsManager({ data, onRefresh, onTariffUpdated }: { data: DataPayload
              <p className="text-sm font-medium text-slate-500 max-w-sm">Görüntülemek veya düzenlemek için sol taraftaki listeden bir geçiş noktası seçin.</p>
            </div>
          )}
+      </div>
       </div>
 
       {newPointModal && (

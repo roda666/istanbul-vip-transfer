@@ -33,21 +33,44 @@ const attachSchema = z.object({
   placement: z.enum(['hero', 'body']),
 });
 
+type ImageTarget =
+  | {
+      kind: 'content';
+      contentType: 'BLOG_POST' | 'SERVICE';
+      id: string;
+      slug: string;
+      body: string | null;
+    }
+  | {
+      kind: 'vehicle';
+      id: string;
+      slug: string;
+      gallery: unknown;
+    };
+
 function targetFolder(target: z.infer<typeof targetSchema>) {
   return target === 'BLOG_POST' ? 'blog' : target === 'SERVICE' ? 'service' : 'vehicle';
 }
 
-async function findTarget(id: string, target: z.infer<typeof targetSchema>) {
+async function findTarget(id: string, target: z.infer<typeof targetSchema>): Promise<ImageTarget | null> {
   const { db } = await import('@/db');
   const { content, vehicles } = await import('@/db/schema');
   const { and, eq } = await import('drizzle-orm');
   if (target === 'VEHICLE') {
-    const [row] = await db.select().from(vehicles).where(eq(vehicles.id, id)).limit(1);
-    return row ?? null;
+    const [row] = await db.select({
+      id: vehicles.id,
+      slug: vehicles.slug,
+      gallery: vehicles.gallery,
+    }).from(vehicles).where(eq(vehicles.id, id)).limit(1);
+    return row ? { kind: 'vehicle', ...row } : null;
   }
-  const [row] = await db.select().from(content)
+  const [row] = await db.select({
+    id: content.id,
+    slug: content.slug,
+    body: content.body,
+  }).from(content)
     .where(and(eq(content.id, id), eq(content.contentType, target))).limit(1);
-  return row ?? null;
+  return row ? { kind: 'content', contentType: target, ...row } : null;
 }
 
 /** Invalidate detail, localized detail, listing and metadata routes after DB commit. */
@@ -223,13 +246,12 @@ export async function POST(req: NextRequest) {
     const { content, vehicles, auditLogs } = await import('@/db/schema');
     const { eq } = await import('drizzle-orm');
     const now = new Date();
-    if (data.target === 'VEHICLE') {
+    if (target.kind === 'vehicle') {
       if (data.placement === 'hero') {
         await db.update(vehicles).set({ coverImage: data.imagePath, coverImageAlt: data.altText, updatedAt: now })
           .where(eq(vehicles.id, target.id));
       } else {
-        const galleryValue = (target as { gallery?: unknown }).gallery;
-        const gallery = Array.isArray(galleryValue) ? galleryValue : [];
+        const gallery = Array.isArray(target.gallery) ? target.gallery : [];
         await db.update(vehicles).set({
           gallery: [...gallery, { url: data.imagePath, alt: data.altText }] as never,
           updatedAt: now,
@@ -241,21 +263,28 @@ export async function POST(req: NextRequest) {
     } else {
       const body = data.target === 'SERVICE'
         ? (() => {
-            const parsedBody = parseServicePageBody((target as { body?: string | null }).body ?? null);
+            if (target.kind !== 'content' || target.contentType !== 'SERVICE') return null;
+            const parsedBody = parseServicePageBody(target.body);
             return parsedBody
               ? JSON.stringify(appendServiceInlineImage(parsedBody, {
                   id: crypto.randomUUID(), src: data.imagePath, alt: data.altText,
                 }))
               : null;
           })()
-        : `${(target as { body?: string | null }).body ?? ''}\n\n![${data.altText.replace(/[[\]]/g, '\\$&')}](${data.imagePath})\n`;
+        : target.kind === 'content'
+          ? `${target.body ?? ''}\n\n![${data.altText.replace(/[[\]]/g, '\\$&')}](${data.imagePath})\n`
+          : null;
       if (body === null) {
         return NextResponse.json({ error: 'Hizmet sayfası gövdesi geçerli yapılandırılmış JSON değil.' }, { status: 409 });
       }
       await db.update(content).set({ body, updatedAt: now })
         .where(eq(content.id, target.id));
     }
-    await revalidateAttachedContent({ id: target.id, slug: target.slug, contentType: data.target });
+    await revalidateAttachedContent({
+      id: target.id,
+      slug: target.slug,
+      contentType: target.kind === 'vehicle' ? 'VEHICLE' : target.contentType,
+    });
     await db.insert(auditLogs).values({
       entityType: data.target === 'BLOG_POST' ? 'blog_post' : data.target === 'SERVICE' ? 'service_page' : 'vehicle',
       entityId: target.id, action: 'ai_image_attached', adminUserId: session.adminId,

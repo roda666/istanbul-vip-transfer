@@ -9,7 +9,7 @@ const generatorSource = fs.readFileSync(path.join(root, 'app/admin/(protected)/a
 
 describe('AI image target contract', () => {
   it('keeps all supported targets on the server and central generator screen', () => {
-    for (const target of ['BLOG_POST', 'SERVICE', 'VEHICLE']) {
+    for (const target of ['BLOG_POST', 'SERVICE', 'VEHICLE', 'HOMEPAGE']) {
       expect(routeSource).toContain(target);
       expect(generatorSource).toContain(target);
     }
@@ -25,5 +25,23 @@ describe('AI image target contract', () => {
   it('stores generated assets under the private object-storage path', () => {
     expect(routeSource).toContain('putPrivateWebp');
     expect(routeSource).toContain('ai-images/${targetFolder(data.target)}');
+  });
+
+  it('defines an allowlisted homepage attachment contract', () => {
+    expect(routeSource).toContain("homepageField: z.enum(['hero_image', 'og_image'])");
+    expect(routeSource).toContain("eq(content.slug, 'ana-sayfa')");
+    expect(routeSource).toContain("sections.hero =");
+    expect(routeSource).toContain("sections.seo =");
+    expect(routeSource).toContain("revalidateTag('homepage-cms')");
+  });
+
+  it('wires both homepage image fields to the shared widget', () => {
+    const homepageSource = fs.readFileSync(
+      path.join(root, 'app/admin/(protected)/sayfalar/ana-sayfa/_HomepageEditor.tsx'),
+      'utf8',
+    );
+    expect(homepageSource).toContain("target: 'HOMEPAGE'");
+    expect(homepageSource).toContain("homepageField: 'hero_image'");
+    expect(homepageSource).toContain("homepageField: 'og_image'");
   });
 });

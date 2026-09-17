@@ -11,8 +11,8 @@ const C = {
   gold: '#C99A32', text: '#172B3A', muted: '#52697A', light: '#718596',
 };
 
-type ContentType = 'BLOG_POST' | 'SERVICE' | 'VEHICLE';
-type Placement = 'hero' | 'body';
+type ContentType = 'BLOG_POST' | 'SERVICE' | 'VEHICLE' | 'HOMEPAGE';
+type Placement = 'hero' | 'body' | 'og';
 
 interface Target {
   id: string;
@@ -50,6 +50,7 @@ export default function StudioImageGeneratorPage() {
   const [targets, setTargets] = useState<Target[]>([]);
   const [targetId, setTargetId] = useState('');
   const [placement, setPlacement] = useState<Placement>('hero');
+  const [homepageField, setHomepageField] = useState<'hero_image' | 'og_image'>('hero_image');
   const [prompt, setPrompt] = useState('');
   const [altText, setAltText] = useState('');
   const [generated, setGenerated] = useState<GeneratedImage | null>(null);
@@ -109,7 +110,7 @@ export default function StudioImageGeneratorPage() {
       const response = await fetch('/admin/api/studio/images', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'generate', prompt: prompt.trim(), altText: altText.trim(), target: contentType, id: targetId }),
+          body: JSON.stringify({ action: 'generate', prompt: prompt.trim(), altText: altText.trim(), target: contentType, id: targetId, ...(contentType === 'HOMEPAGE' ? { homepageField } : {}) }),
       });
       const data = await response.json().catch(() => null) as { image?: GeneratedImage } | null;
       if (!response.ok) throw new Error(serverMessage(data, 'Görsel üretilemedi.'));
@@ -137,7 +138,8 @@ export default function StudioImageGeneratorPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'attach', imagePath: generated.imagePath,
-          altText: altText.trim(), target: contentType, id: targetId, placement,
+           altText: altText.trim(), target: contentType, id: targetId, placement,
+           ...(contentType === 'HOMEPAGE' ? { homepageField } : {}),
         }),
       });
       const data = await response.json().catch(() => null);
@@ -171,10 +173,11 @@ export default function StudioImageGeneratorPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '17px' }}>
               <div>
                 <label htmlFor="content-type" style={labelStyle}>İçerik türü</label>
-                <select id="content-type" value={contentType} onChange={event => { setContentType(event.target.value as ContentType); setGenerated(null); clearNotices(); }} style={fieldStyle}>
+                <select id="content-type" value={contentType} onChange={event => { const next = event.target.value as ContentType; setContentType(next); setPlacement(next === 'HOMEPAGE' ? 'hero' : 'hero'); setHomepageField('hero_image'); setGenerated(null); clearNotices(); }} style={fieldStyle}>
                   <option value="BLOG_POST">Blog yazısı</option>
                   <option value="SERVICE">Hizmet sayfası</option>
                   <option value="VEHICLE">Araç</option>
+                  <option value="HOMEPAGE">Ana sayfa</option>
                 </select>
               </div>
               <div>
@@ -189,8 +192,18 @@ export default function StudioImageGeneratorPage() {
                 <select id="placement" value={placement} onChange={event => setPlacement(event.target.value as Placement)} style={fieldStyle}>
                   <option value="hero">Kapak görseli (hero)</option>
                   <option value="body">İçerik gövdesi (body)</option>
+                  {contentType === 'HOMEPAGE' && <option value="og">Sosyal medya (OG)</option>}
                 </select>
               </div>
+              {contentType === 'HOMEPAGE' && (
+                <div>
+                  <label htmlFor="homepage-field" style={labelStyle}>Ana sayfa alanı</label>
+                  <select id="homepage-field" value={homepageField} onChange={event => { const value = event.target.value as 'hero_image' | 'og_image'; setHomepageField(value); setPlacement(value === 'og_image' ? 'og' : 'hero'); }} style={fieldStyle}>
+                    <option value="hero_image">Hero görseli</option>
+                    <option value="og_image">OG / sosyal medya görseli</option>
+                  </select>
+                </div>
+              )}
               <div>
                 <label htmlFor="prompt" style={labelStyle}>Görsel istemi (prompt)</label>
                 <textarea id="prompt" value={prompt} onChange={event => setPrompt(event.target.value)} placeholder="Örn. İstanbul Havalimanı önünde modern, markasız VIP transfer aracı..." rows={5} style={{ ...fieldStyle, resize: 'vertical', lineHeight: 1.5 }} />

@@ -214,7 +214,7 @@ function HeroImagePresets({ currentPath, onSelect }: { currentPath: string; onSe
   );
 }
 
-function HeroEditor({ data, onChange, dir, ro }: { data: HeroSection; onChange: (d: HeroSection) => void; dir: string; ro?: boolean }) {
+function HeroEditor({ data, onChange, dir, ro, homepageId }: { data: HeroSection; onChange: (d: HeroSection) => void; dir: string; ro?: boolean; homepageId?: string }) {
   const set = (key: keyof HeroSection, val: string | boolean) => onChange({ ...data, [key]: val });
   return (
     <div>
@@ -246,6 +246,7 @@ function HeroEditor({ data, onChange, dir, ro }: { data: HeroSection; onChange: 
           value={data.imagePath}
           onChange={v => set('imagePath', v)}
           namespace="homepage/hero"
+          ai={{ target: 'HOMEPAGE', id: homepageId, placement: 'hero', homepageField: 'hero_image', promptHint: 'Ana sayfa hero görselini açıklayın…' }}
           hint="Veya yukarıdaki önizlemelerden birini seçin. Paylaşılan alan — tüm dillerde aynıdır. JPEG, PNG, WebP, GIF, AVIF — max 10 MB."
         />
       )}
@@ -413,7 +414,7 @@ function FooterEditor({ data, onChange, dir, ro }: { data: FooterSectionData; on
   );
 }
 
-function SeoEditor({ data, onChange, ro }: { data: HomepageSeoData; onChange: (d: HomepageSeoData) => void; dir: string; ro?: boolean }) {
+function SeoEditor({ data, onChange, ro, homepageId }: { data: HomepageSeoData; onChange: (d: HomepageSeoData) => void; dir: string; ro?: boolean; homepageId?: string }) {
   const set = (key: keyof HomepageSeoData, val: string | boolean) => onChange({ ...data, [key]: val });
   return (
     <div>
@@ -439,6 +440,7 @@ function SeoEditor({ data, onChange, ro }: { data: HomepageSeoData; onChange: (d
           value={data.ogImage}
           onChange={v => set('ogImage', v)}
           namespace="homepage/og"
+          ai={{ target: 'HOMEPAGE', id: homepageId, placement: 'og', homepageField: 'og_image', promptHint: 'Ana sayfa sosyal medya görselini açıklayın…' }}
           hint="Paylaşılan alan — sosyal paylaşımlarda görünür (1200×630 önerilir)."
         />
       )}
@@ -784,7 +786,7 @@ export default function HomepageEditor({ initialTrRecord, locales }: { initialTr
   const renderSection = () => {
     const ro = !isSource; // Non-TR tabs show read-only AI-translated content
     switch (activeSection) {
-      case 'hero':        return <HeroEditor data={sections.hero} onChange={d => updateSection('hero', d)} dir={dir} ro={ro} />;
+      case 'hero':        return <HeroEditor data={sections.hero} onChange={d => updateSection('hero', d)} dir={dir} ro={ro} homepageId={records.tr?.id ?? undefined} />;
       case 'heroStats':   return <StatsEditor data={sections.heroStats} onChange={d => updateSection('heroStats', d)} dir={dir} ro={ro} />;
       case 'services':    return <ServicesSectionEditor data={sections.servicesSection} onChange={d => updateSection('servicesSection', d)} dir={dir} ro={ro} />;
       case 'trust':       return <TrustEditor data={sections.trustSection} onChange={d => updateSection('trustSection', d)} dir={dir} ro={ro} />;
@@ -793,7 +795,7 @@ export default function HomepageEditor({ initialTrRecord, locales }: { initialTr
       case 'reservation': return <ReservationEditor data={sections.reservationSection} onChange={d => updateSection('reservationSection', d)} dir={dir} ro={ro} />;
       case 'contact':     return <ContactEditor data={sections.contactSection} onChange={d => updateSection('contactSection', d)} dir={dir} ro={ro} />;
       case 'footer':      return <FooterEditor data={sections.footerSection} onChange={d => updateSection('footerSection', d)} dir={dir} ro={ro} />;
-      case 'seo':         return <SeoEditor data={sections.seo} onChange={d => updateSection('seo', d)} dir={dir} ro={ro} />;
+      case 'seo':         return <SeoEditor data={sections.seo} onChange={d => updateSection('seo', d)} dir={dir} ro={ro} homepageId={records.tr?.id ?? undefined} />;
       default: return null;
     }
   };

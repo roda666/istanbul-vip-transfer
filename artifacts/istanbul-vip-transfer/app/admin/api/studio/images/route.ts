@@ -6,7 +6,7 @@
 import 'server-only';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { z } from 'zod';
 import { requireAdminSession } from '@/lib/auth/session';
 import { SUPPORTED_LANGS } from '@/lib/i18n';
@@ -16,7 +16,7 @@ import { buildSeoImageFilename } from '@/lib/studio/image-filename';
 
 export const dynamic = 'force-dynamic';
 
-const targetSchema = z.enum(['BLOG_POST', 'SERVICE', 'VEHICLE']);
+const targetSchema = z.enum(['BLOG_POST', 'SERVICE', 'VEHICLE', 'HOMEPAGE']);
 const generateSchema = z.object({
   action: z.literal('generate'),
   target: targetSchema,
@@ -28,9 +28,13 @@ const attachSchema = z.object({
   action: z.literal('attach'),
   target: targetSchema,
   id: z.string().uuid(),
-  imagePath: z.string().regex(/^\/api\/storage\/objects\/ai-images\/(blog|service|vehicle)\/[a-z0-9-]+\/[a-z0-9]+(?:-[a-z0-9]+)*\.webp$/),
+  imagePath: z.string().regex(/^\/api\/storage\/objects\/ai-images\/(blog|service|vehicle|homepage)\/[a-z0-9-]+\/[a-z0-9]+(?:-[a-z0-9]+)*\.webp$/),
   altText: z.string().trim().min(5).max(300),
-  placement: z.enum(['hero', 'body']),
+  placement: z.enum(['hero', 'body', 'og']),
+  homepageField: z.enum(['hero_image', 'og_image']).optional(),
+}).superRefine((value, ctx) => {
+  if (value.target === 'HOMEPAGE' && !value.homepageField) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['homepageField'], message: 'Homepage alanı zorunludur.' });
+  if (value.target !== 'HOMEPAGE' && value.homepageField) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['homepageField'], message: 'Homepage alanı yalnız HOMEPAGE hedefinde kullanılabilir.' });
 });
 
 type ImageTarget =
@@ -46,10 +50,16 @@ type ImageTarget =
       id: string;
       slug: string;
       gallery: unknown;
+    }
+  | {
+      kind: 'homepage';
+      id: string;
+      slug: string;
+      body: string | null;
     };
 
 function targetFolder(target: z.infer<typeof targetSchema>) {
-  return target === 'BLOG_POST' ? 'blog' : target === 'SERVICE' ? 'service' : 'vehicle';
+  return target === 'BLOG_POST' ? 'blog' : target === 'SERVICE' ? 'service' : target === 'VEHICLE' ? 'vehicle' : 'homepage';
 }
 
 async function findTarget(id: string, target: z.infer<typeof targetSchema>): Promise<ImageTarget | null> {
@@ -64,6 +74,11 @@ async function findTarget(id: string, target: z.infer<typeof targetSchema>): Pro
     }).from(vehicles).where(eq(vehicles.id, id)).limit(1);
     return row ? { kind: 'vehicle', ...row } : null;
   }
+  if (target === 'HOMEPAGE') {
+    const [row] = await db.select({ id: content.id, slug: content.slug, body: content.body })
+      .from(content).where(and(eq(content.id, id), eq(content.slug, 'ana-sayfa'))).limit(1);
+    return row ? { kind: 'homepage', ...row } : null;
+  }
   const [row] = await db.select({
     id: content.id,
     slug: content.slug,
@@ -77,7 +92,7 @@ async function findTarget(id: string, target: z.infer<typeof targetSchema>): Pro
 async function revalidateAttachedContent(target: {
   id: string;
   slug: string;
-  contentType: 'BLOG_POST' | 'SERVICE' | 'VEHICLE';
+  contentType: 'BLOG_POST' | 'SERVICE' | 'VEHICLE' | 'HOMEPAGE';
 }) {
   if (target.contentType === 'BLOG_POST') {
     revalidatePath(`/blog/${target.slug}`);
@@ -105,10 +120,13 @@ async function revalidateAttachedContent(target: {
       revalidatePath(localizedServicePath(target.slug, locale));
       revalidatePath(localizedStaticPath('hizmetler', locale));
     }
-  }
-  else {
+  } else if (target.contentType === 'VEHICLE') {
     revalidatePath('/araclar');
     revalidatePath(`/araclar/${target.slug}`);
+  } else {
+    revalidateTag('homepage-cms');
+    for (const locale of SUPPORTED_LANGS) revalidateTag(`homepage-${locale}`);
+    revalidatePath('/');
   }
   revalidatePath('/sitemap.xml');
 }
@@ -178,7 +196,7 @@ async function putPrivateWebp(entityId: string, inputBytes: Uint8Array): Promise
 export async function GET(req: NextRequest) {
   try { await requireAdminSession(); } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
   const target = targetSchema.safeParse(req.nextUrl.searchParams.get('target'));
-  if (!target.success) return NextResponse.json({ error: 'target BLOG_POST, SERVICE veya VEHICLE olmalıdır.' }, { status: 400 });
+  if (!target.success) return NextResponse.json({ error: 'target BLOG_POST, SERVICE, VEHICLE veya HOMEPAGE olmalıdır.' }, { status: 400 });
   try {
     const { db } = await import('@/db');
     const { content, vehicles } = await import('@/db/schema');
@@ -186,6 +204,9 @@ export async function GET(req: NextRequest) {
     const targets = target.data === 'VEHICLE'
       ? await db.select({ id: vehicles.id, title: vehicles.name, slug: vehicles.slug })
         .from(vehicles).orderBy(asc(vehicles.name)).limit(200)
+      : target.data === 'HOMEPAGE'
+      ? await db.select({ id: content.id, title: content.title, slug: content.slug, heroImage: content.heroImage, heroImageAlt: content.heroImageAlt })
+        .from(content).where(eq(content.slug, 'ana-sayfa')).limit(1)
       : await db.select({
           id: content.id, title: content.title, slug: content.slug,
           heroImage: content.heroImage, heroImageAlt: content.heroImageAlt,
@@ -246,7 +267,29 @@ export async function POST(req: NextRequest) {
     const { content, vehicles, auditLogs } = await import('@/db/schema');
     const { eq } = await import('drizzle-orm');
     const now = new Date();
-    if (target.kind === 'vehicle') {
+    if (target.kind === 'homepage') {
+      if (!data.homepageField || (data.placement !== 'hero' && data.placement !== 'og')) {
+        return NextResponse.json({ error: 'Homepage görsel alanı geçersiz.' }, { status: 400 });
+      }
+      let sections: Record<string, unknown>;
+      try {
+        const parsed = JSON.parse(target.body ?? '{}') as unknown;
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('invalid');
+        sections = parsed as Record<string, unknown>;
+      } catch {
+        return NextResponse.json({ error: 'Homepage içerik yapısı geçersiz.' }, { status: 409 });
+      }
+      if (data.homepageField === 'hero_image') {
+        const hero = sections.hero;
+        if (!hero || typeof hero !== 'object' || Array.isArray(hero)) return NextResponse.json({ error: 'Homepage hero alanı bulunamadı.' }, { status: 409 });
+        sections.hero = { ...(hero as Record<string, unknown>), imagePath: data.imagePath, imageAlt: data.altText };
+      } else {
+        const seo = sections.seo;
+        if (!seo || typeof seo !== 'object' || Array.isArray(seo)) return NextResponse.json({ error: 'Homepage SEO alanı bulunamadı.' }, { status: 409 });
+        sections.seo = { ...(seo as Record<string, unknown>), ogImage: data.imagePath, ogImageAlt: data.altText };
+      }
+      await db.update(content).set({ body: JSON.stringify(sections), updatedAt: now }).where(eq(content.id, target.id));
+    } else if (target.kind === 'vehicle') {
       if (data.placement === 'hero') {
         await db.update(vehicles).set({ coverImage: data.imagePath, coverImageAlt: data.altText, updatedAt: now })
           .where(eq(vehicles.id, target.id));
@@ -283,10 +326,10 @@ export async function POST(req: NextRequest) {
     await revalidateAttachedContent({
       id: target.id,
       slug: target.slug,
-      contentType: target.kind === 'vehicle' ? 'VEHICLE' : target.contentType,
+      contentType: target.kind === 'vehicle' ? 'VEHICLE' : target.kind === 'homepage' ? 'HOMEPAGE' : target.contentType,
     });
     await db.insert(auditLogs).values({
-      entityType: data.target === 'BLOG_POST' ? 'blog_post' : data.target === 'SERVICE' ? 'service_page' : 'vehicle',
+      entityType: data.target === 'BLOG_POST' ? 'blog_post' : data.target === 'SERVICE' ? 'service_page' : data.target === 'VEHICLE' ? 'vehicle' : 'homepage',
       entityId: target.id, action: 'ai_image_attached', adminUserId: session.adminId,
       metadata: { placement: data.placement, imagePath: data.imagePath }, createdAt: now,
     } as never);

@@ -51,9 +51,10 @@ interface ImageUploadFieldProps {
   altLabel?: string;
   /** Optional inline AI generation. The record must already be saved. */
   ai?: {
-    target: 'BLOG_POST' | 'SERVICE' | 'VEHICLE';
+    target: 'BLOG_POST' | 'SERVICE' | 'VEHICLE' | 'HOMEPAGE';
     id?: string;
-    placement?: 'hero' | 'body';
+    placement?: 'hero' | 'body' | 'og';
+    homepageField?: 'hero_image' | 'og_image';
     promptHint?: string;
   };
 }
@@ -158,6 +159,7 @@ export function ImageUploadField({
           id: ai.id,
           prompt: aiPrompt.trim(),
           altText: aiAlt.trim(),
+            ...(ai.homepageField ? { homepageField: ai.homepageField } : {}),
         }),
       });
       const payload = await response.json().catch(() => null) as { image?: { imagePath?: string }; error?: string } | null;

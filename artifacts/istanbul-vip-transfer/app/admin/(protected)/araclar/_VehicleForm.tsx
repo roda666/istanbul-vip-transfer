@@ -747,6 +747,7 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [] }: Prop
           altValue={form.coverImageAlt}
           onAltChange={(v) => setForm((f) => ({ ...f, coverImageAlt: v }))}
           altLabel="Kapak Görseli ALT Metni"
+          ai={{ target: 'VEHICLE', id: vehicle?.id, placement: 'hero', promptHint: 'Araç kapak görselini açıklayın…' }}
         />
         {form.coverImage && !form.coverImageAlt && (
           <p style={{ color: '#f87171', fontSize: '11px', fontFamily: 'Inter, sans-serif', marginTop: '4px' }}>
@@ -821,6 +822,7 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [] }: Prop
               altValue={item.alt}
               onAltChange={(v) => setGalleryItem(i, 'alt', v)}
               altLabel="ALT Metni"
+              ai={{ target: 'VEHICLE', id: vehicle?.id, placement: 'body', promptHint: 'Araç galeri görselini açıklayın…' }}
             />
           </div>
         </div>
@@ -912,6 +914,7 @@ export default function VehicleForm({ vehicle, userRole, tollPoints = [] }: Prop
           onChange={(v) => setForm((f) => ({ ...f, ogImage: v }))}
           namespace={`vehicles/${form.slug || 'yeni'}`}
           hint="Sosyal paylaşımlarda görünen görsel — 1200×630 piksel önerilir."
+          ai={{ target: 'VEHICLE', id: vehicle?.id, placement: 'hero', promptHint: 'Araç sosyal paylaşım görselini açıklayın…' }}
         />
       </div>
 

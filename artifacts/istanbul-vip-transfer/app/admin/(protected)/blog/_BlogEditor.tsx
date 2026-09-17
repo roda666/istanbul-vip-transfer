@@ -848,6 +848,7 @@ export default function BlogEditor({ blogId, initial }: Props) {
               value={heroImage}
               onChange={url => { setHeroImage(url); markDirty(); }}
               namespace="blog"
+              ai={{ target: 'BLOG_POST', id: blogId, placement: 'hero', promptHint: 'Makale kapak görselini açıklayın…' }}
             />
             {heroImage && (
                 <AdminActionButton type="button" label="Görseli Kaldır" icon={Trash2} variant="delete" className="mt-1 text-xs" onClick={() => { setHeroImage(''); markDirty(); }} />
@@ -867,6 +868,13 @@ export default function BlogEditor({ blogId, initial }: Props) {
               style={{ ...s.ta('ltr', 20), fontFamily: 'ui-monospace, monospace', fontSize: '12px' }} />
             <p style={s.hint}>## H2, ### H3, **kalın**, [bağlantı](url), - madde, ![alt metin](/gorsel.jpg). Tablo: | Başlık | Değer | ardından | --- | --- | satırı.</p>
             <AIWriteAssist context="blog" field="body" label="İçerik (Markdown)" value={body} onChange={v => { setBody(v); markDirty(); }} maxLength={12_000} />
+            <ImageUploadField
+              label="İçerik İçi AI Görseli"
+              value=""
+              onChange={url => { setBody(current => `${current}\n\n![İçerik görseli](${url})\n`); markDirty(); }}
+              namespace="blog"
+              ai={{ target: 'BLOG_POST', id: blogId, placement: 'body', promptHint: 'Makale içinde kullanılacak görseli açıklayın…' }}
+            />
           </div>
 
           {/* SEO */}
@@ -881,7 +889,8 @@ export default function BlogEditor({ blogId, initial }: Props) {
             <Field label="OG Açıklaması" value={ogDescription} onChange={v => { setOgDescription(v); markDirty(); }} multiline rows={2} maxLen={200} aiField="seo_description" />
             <div style={s.fld}>
               <label style={s.lbl}>OG Görseli</label>
-              <ImageUploadField value={ogImage} onChange={url => { setOgImage(url); markDirty(); }} namespace="blog" />
+              <ImageUploadField value={ogImage} onChange={url => { setOgImage(url); markDirty(); }} namespace="blog"
+                ai={{ target: 'BLOG_POST', id: blogId, placement: 'hero', promptHint: 'Sosyal paylaşım görselini açıklayın…' }} />
               {ogImage && (
                 <AdminActionButton type="button" label="OG Görselini Kaldır" icon={Trash2} variant="delete" className="mt-1 text-xs" onClick={() => { setOgImage(''); markDirty(); }} />
               )}

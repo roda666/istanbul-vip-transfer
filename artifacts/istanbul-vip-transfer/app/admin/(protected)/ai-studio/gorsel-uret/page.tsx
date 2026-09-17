@@ -11,7 +11,7 @@ const C = {
   gold: '#C99A32', text: '#172B3A', muted: '#52697A', light: '#718596',
 };
 
-type ContentType = 'BLOG_POST' | 'SERVICE';
+type ContentType = 'BLOG_POST' | 'SERVICE' | 'VEHICLE';
 type Placement = 'hero' | 'body';
 
 interface Target {
@@ -174,6 +174,7 @@ export default function StudioImageGeneratorPage() {
                 <select id="content-type" value={contentType} onChange={event => { setContentType(event.target.value as ContentType); setGenerated(null); clearNotices(); }} style={fieldStyle}>
                   <option value="BLOG_POST">Blog yazısı</option>
                   <option value="SERVICE">Hizmet sayfası</option>
+                  <option value="VEHICLE">Araç</option>
                 </select>
               </div>
               <div>

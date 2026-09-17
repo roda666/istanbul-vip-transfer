@@ -49,6 +49,13 @@ interface ImageUploadFieldProps {
   onAltChange?: (v: string) => void;
   /** Label for the ALT text sub-field. Defaults to "ALT Metni". */
   altLabel?: string;
+  /** Optional inline AI generation. The record must already be saved. */
+  ai?: {
+    target: 'BLOG_POST' | 'SERVICE' | 'VEHICLE';
+    id?: string;
+    placement?: 'hero' | 'body';
+    promptHint?: string;
+  };
 }
 
 const baseLabel: React.CSSProperties = {
@@ -84,10 +91,14 @@ export function ImageUploadField({
   altValue,
   onAltChange,
   altLabel,
+  ai,
 }: ImageUploadFieldProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [previewError, setPreviewError] = useState(false);
+  const [showAi, setShowAi] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiAlt, setAiAlt] = useState(altValue ?? '');
   const fileRef = useRef<HTMLInputElement>(null);
   useEffect(() => setPreviewError(false), [value]);
 
@@ -129,6 +140,38 @@ export function ImageUploadField({
     }
   };
 
+  async function generateWithAi() {
+    if (!ai?.id) return;
+    if (aiPrompt.trim().length < 10 || aiAlt.trim().length < 5) {
+      setUploadError('AI görseli için en az 10 karakterlik istem ve 5 karakterlik alt metin girin.');
+      return;
+    }
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const response = await fetch('/admin/api/studio/images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'generate',
+          target: ai.target,
+          id: ai.id,
+          prompt: aiPrompt.trim(),
+          altText: aiAlt.trim(),
+        }),
+      });
+      const payload = await response.json().catch(() => null) as { image?: { imagePath?: string }; error?: string } | null;
+      if (!response.ok || !payload?.image?.imagePath) throw new Error(payload?.error ?? 'AI görseli oluşturulamadı.');
+      onChange(payload.image.imagePath);
+      onAltChange?.(aiAlt.trim());
+      setShowAi(false);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'AI görseli oluşturulamadı.');
+    } finally {
+      setUploading(false);
+    }
+  }
+
   const hasPreview = value && (value.startsWith('/') || value.startsWith('http'));
 
   return (
@@ -139,7 +182,7 @@ export function ImageUploadField({
         <input style={baseInput(true)} value={value} readOnly />
       ) : (
         <>
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'stretch' }}>
+           <div style={{ display: 'flex', gap: '6px', alignItems: 'stretch', flexWrap: 'wrap' }}>
             {/* URL / link input */}
             <input
               style={{ ...baseInput(), flex: 1 }}
@@ -172,6 +215,23 @@ export function ImageUploadField({
             >
               {uploading ? '⏳ Yükleniyor…' : '⬆ Dosya Yükle'}
             </button>
+            {ai && (
+              <button
+                type="button"
+                onClick={() => ai.id && setShowAi(true)}
+                disabled={uploading || !ai.id}
+                title={ai.id ? 'AI ile güvenli görsel oluşturun' : 'Önce kaydedin; AI görseli kayıt oluşturulduktan sonra kullanılabilir'}
+                style={{
+                  border: '1px solid #BAE6FD', background: uploading || !ai.id ? '#F8FAFC' : '#ECFEFF',
+                  color: uploading || !ai.id ? '#94A3B8' : '#0369A1', borderRadius: '6px',
+                  padding: '0 14px', cursor: uploading || !ai.id ? 'not-allowed' : 'pointer',
+                  fontSize: '12px', fontWeight: 600, fontFamily: 'Inter, sans-serif',
+                  whiteSpace: 'nowrap', minHeight: '40px',
+                }}
+              >
+                ✨ AI ile Üret
+              </button>
+            )}
             {value && (
               <button
                 type="button"
@@ -203,6 +263,43 @@ export function ImageUploadField({
               onChange={handleFile}
             />
           </div>
+          {ai && !ai.id && (
+            <p style={{ fontSize: '11px', color: '#64748B', margin: '5px 0 0', fontFamily: 'Inter, sans-serif' }}>
+              AI görseli için önce kaydedin.
+            </p>
+          )}
+          {showAi && ai?.id && (
+            <div role="dialog" aria-label="AI görseli oluştur" style={{
+              marginTop: '10px', padding: '14px', border: '1px solid #BAE6FD',
+              borderRadius: '8px', background: '#F0FDFA', display: 'grid', gap: '8px',
+            }}>
+              <strong style={{ fontSize: '12px', color: '#0F4C5C', fontFamily: 'Inter, sans-serif' }}>AI ile görsel üret</strong>
+              <textarea
+                value={aiPrompt}
+                onChange={event => setAiPrompt(event.target.value)}
+                placeholder={ai.promptHint ?? 'Görselde ne olacağını açıklayın…'}
+                rows={3}
+                style={{ ...baseInput(), resize: 'vertical' }}
+              />
+              <input
+                value={aiAlt}
+                onChange={event => setAiAlt(event.target.value)}
+                placeholder="Zorunlu alt metin"
+                aria-label="AI görsel alt metni"
+                style={baseInput()}
+              />
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button type="button" onClick={() => void generateWithAi()} disabled={uploading} style={{
+                  border: 0, borderRadius: '6px', padding: '9px 12px', background: '#0F766E',
+                  color: '#fff', fontSize: '12px', fontWeight: 700, cursor: uploading ? 'wait' : 'pointer',
+                }}>{uploading ? 'Üretiliyor…' : 'Üret ve ekle'}</button>
+                <button type="button" onClick={() => setShowAi(false)} disabled={uploading} style={{
+                  border: '1px solid #CBD5E1', borderRadius: '6px', padding: '9px 12px',
+                  background: '#fff', color: '#475569', fontSize: '12px', cursor: 'pointer',
+                }}>Vazgeç</button>
+              </div>
+            </div>
+          )}
 
           {uploadError && (
             <p style={{

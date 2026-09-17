@@ -16,7 +16,7 @@ import { buildSeoImageFilename } from '@/lib/studio/image-filename';
 
 export const dynamic = 'force-dynamic';
 
-const targetSchema = z.enum(['BLOG_POST', 'SERVICE']);
+const targetSchema = z.enum(['BLOG_POST', 'SERVICE', 'VEHICLE']);
 const generateSchema = z.object({
   action: z.literal('generate'),
   target: targetSchema,
@@ -28,19 +28,23 @@ const attachSchema = z.object({
   action: z.literal('attach'),
   target: targetSchema,
   id: z.string().uuid(),
-  imagePath: z.string().regex(/^\/api\/storage\/objects\/ai-images\/(blog|service)\/[a-z0-9-]+\/[a-z0-9]+(?:-[a-z0-9]+)*\.webp$/),
+  imagePath: z.string().regex(/^\/api\/storage\/objects\/ai-images\/(blog|service|vehicle)\/[a-z0-9-]+\/[a-z0-9]+(?:-[a-z0-9]+)*\.webp$/),
   altText: z.string().trim().min(5).max(300),
   placement: z.enum(['hero', 'body']),
 });
 
 function targetFolder(target: z.infer<typeof targetSchema>) {
-  return target === 'BLOG_POST' ? 'blog' : 'service';
+  return target === 'BLOG_POST' ? 'blog' : target === 'SERVICE' ? 'service' : 'vehicle';
 }
 
 async function findTarget(id: string, target: z.infer<typeof targetSchema>) {
   const { db } = await import('@/db');
-  const { content } = await import('@/db/schema');
+  const { content, vehicles } = await import('@/db/schema');
   const { and, eq } = await import('drizzle-orm');
+  if (target === 'VEHICLE') {
+    const [row] = await db.select().from(vehicles).where(eq(vehicles.id, id)).limit(1);
+    return row ?? null;
+  }
   const [row] = await db.select().from(content)
     .where(and(eq(content.id, id), eq(content.contentType, target))).limit(1);
   return row ?? null;
@@ -50,7 +54,7 @@ async function findTarget(id: string, target: z.infer<typeof targetSchema>) {
 async function revalidateAttachedContent(target: {
   id: string;
   slug: string;
-  contentType: 'BLOG_POST' | 'SERVICE';
+  contentType: 'BLOG_POST' | 'SERVICE' | 'VEHICLE';
 }) {
   if (target.contentType === 'BLOG_POST') {
     revalidatePath(`/blog/${target.slug}`);
@@ -71,13 +75,17 @@ async function revalidateAttachedContent(target: {
         revalidatePath(`/${translation.locale}/blog`);
       }
     }
-  } else {
+  } else if (target.contentType === 'SERVICE') {
     revalidatePath(localizedServicePath(target.slug, 'tr'));
     revalidatePath(localizedStaticPath('hizmetler', 'tr'));
     for (const locale of SUPPORTED_LANGS) {
       revalidatePath(localizedServicePath(target.slug, locale));
       revalidatePath(localizedStaticPath('hizmetler', locale));
     }
+  }
+  else {
+    revalidatePath('/araclar');
+    revalidatePath(`/araclar/${target.slug}`);
   }
   revalidatePath('/sitemap.xml');
 }
@@ -147,15 +155,18 @@ async function putPrivateWebp(entityId: string, inputBytes: Uint8Array): Promise
 export async function GET(req: NextRequest) {
   try { await requireAdminSession(); } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
   const target = targetSchema.safeParse(req.nextUrl.searchParams.get('target'));
-  if (!target.success) return NextResponse.json({ error: 'target BLOG_POST veya SERVICE olmalıdır.' }, { status: 400 });
+  if (!target.success) return NextResponse.json({ error: 'target BLOG_POST, SERVICE veya VEHICLE olmalıdır.' }, { status: 400 });
   try {
     const { db } = await import('@/db');
-    const { content } = await import('@/db/schema');
+    const { content, vehicles } = await import('@/db/schema');
     const { asc, eq } = await import('drizzle-orm');
-    const targets = await db.select({
-      id: content.id, title: content.title, slug: content.slug,
-      heroImage: content.heroImage, heroImageAlt: content.heroImageAlt,
-    }).from(content).where(eq(content.contentType, target.data)).orderBy(asc(content.title)).limit(200);
+    const targets = target.data === 'VEHICLE'
+      ? await db.select({ id: vehicles.id, title: vehicles.name, slug: vehicles.slug })
+        .from(vehicles).orderBy(asc(vehicles.name)).limit(200)
+      : await db.select({
+          id: content.id, title: content.title, slug: content.slug,
+          heroImage: content.heroImage, heroImageAlt: content.heroImageAlt,
+        }).from(content).where(eq(content.contentType, target.data)).orderBy(asc(content.title)).limit(200);
     return NextResponse.json({ targets });
   } catch {
     return NextResponse.json({ error: 'Hedef içerikler alınamadı.' }, { status: 503 });
@@ -173,7 +184,7 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: 'Geçersiz görsel isteği.' }, { status: 400 });
   const data = parsed.data;
   const target = await findTarget(data.id, data.target);
-  if (!target) return NextResponse.json({ error: 'Hedef içerik bulunamadı.' }, { status: 404 });
+  if (!target) return NextResponse.json({ error: 'Hedef kayıt bulunamadı.' }, { status: 404 });
 
   if (data.action === 'generate') {
     const { generateImageAsset } = await import('@/lib/studio/ai-studio');
@@ -209,23 +220,35 @@ export async function POST(req: NextRequest) {
   }
   try {
     const { db } = await import('@/db');
-    const { content, auditLogs } = await import('@/db/schema');
+    const { content, vehicles, auditLogs } = await import('@/db/schema');
     const { eq } = await import('drizzle-orm');
     const now = new Date();
-    if (data.placement === 'hero') {
+    if (data.target === 'VEHICLE') {
+      if (data.placement === 'hero') {
+        await db.update(vehicles).set({ coverImage: data.imagePath, coverImageAlt: data.altText, updatedAt: now })
+          .where(eq(vehicles.id, target.id));
+      } else {
+        const galleryValue = (target as { gallery?: unknown }).gallery;
+        const gallery = Array.isArray(galleryValue) ? galleryValue : [];
+        await db.update(vehicles).set({
+          gallery: [...gallery, { url: data.imagePath, alt: data.altText }] as never,
+          updatedAt: now,
+        }).where(eq(vehicles.id, target.id));
+      }
+    } else if (data.placement === 'hero') {
       await db.update(content).set({ heroImage: data.imagePath, heroImageAlt: data.altText, updatedAt: now })
         .where(eq(content.id, target.id));
     } else {
       const body = data.target === 'SERVICE'
         ? (() => {
-            const parsedBody = parseServicePageBody(target.body);
+            const parsedBody = parseServicePageBody((target as { body?: string | null }).body ?? null);
             return parsedBody
               ? JSON.stringify(appendServiceInlineImage(parsedBody, {
                   id: crypto.randomUUID(), src: data.imagePath, alt: data.altText,
                 }))
               : null;
           })()
-        : `${target.body ?? ''}\n\n![${data.altText.replace(/[[\]]/g, '\\$&')}](${data.imagePath})\n`;
+        : `${(target as { body?: string | null }).body ?? ''}\n\n![${data.altText.replace(/[[\]]/g, '\\$&')}](${data.imagePath})\n`;
       if (body === null) {
         return NextResponse.json({ error: 'Hizmet sayfası gövdesi geçerli yapılandırılmış JSON değil.' }, { status: 409 });
       }
@@ -234,7 +257,7 @@ export async function POST(req: NextRequest) {
     }
     await revalidateAttachedContent({ id: target.id, slug: target.slug, contentType: data.target });
     await db.insert(auditLogs).values({
-      entityType: data.target === 'BLOG_POST' ? 'blog_post' : 'service_page',
+      entityType: data.target === 'BLOG_POST' ? 'blog_post' : data.target === 'SERVICE' ? 'service_page' : 'vehicle',
       entityId: target.id, action: 'ai_image_attached', adminUserId: session.adminId,
       metadata: { placement: data.placement, imagePath: data.imagePath }, createdAt: now,
     } as never);

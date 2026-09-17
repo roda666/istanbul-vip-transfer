@@ -3,7 +3,9 @@ import { defineConfig, devices } from '@playwright/test';
 // Use `pnpm test:admin-acceptance`: invoking Playwright directly bypasses the
 // signal-aware runner and therefore cannot guarantee cleanup after interruption.
 const port = process.env.PORT ?? '26004';
-const baseURL = process.env.BASE_URL ?? `http://localhost:${port}`;
+// IPv4 is intentional: the preview proxy/container may advertise localhost as
+// ::1 even though the Next listener is only reachable on the IPv4 loopback.
+const baseURL = process.env.BASE_URL ?? `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: './tests',

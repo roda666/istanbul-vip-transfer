@@ -152,7 +152,7 @@ export const test = base.extend<AdminFixtures, AdminWorkerFixtures>({
     }
     },
     { scope: 'worker' }],
-  adminContext: async ({ browser, baseURL, adminIdentity }, use) => {
+  adminContext: [async ({ browser, baseURL, adminIdentity }, use) => {
     const context = await browser.newContext();
     try {
       const request = context.request;
@@ -175,7 +175,7 @@ export const test = base.extend<AdminFixtures, AdminWorkerFixtures>({
     } finally {
       await context.close().catch(() => {});
     }
-  },
+  }, { scope: 'worker' }],
   adminPage: async ({ adminContext }, use) => {
     const page = await adminContext.newPage();
     try {

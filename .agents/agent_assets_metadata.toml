@@ -196,3 +196,45 @@ mtime_ms = 1789141466710
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/cda2fa89-5311-46f6-915f-db55e2ca87a8/04cbf7dd-e661-4120-aab3-4ce7fcb3a77d"
 storage_version_token = "1789141600229873"
 content_type = "text/csv"
+
+[[outputs]]
+id = "ZWT8E0xqG9PT4mwEIPmUl"
+uri = "file://artifacts/istanbul-vip-transfer/test-results/evidence/final-mobile-home.jpg"
+type = "image"
+title = "390px mobil preview"
+description = "Production build sonrası yeniden başlatılan uygulamanın 390×844 görünümü."
+logical_id = "96be2c9b-3ddb-4f61-b33c-1286d62a4b2b"
+content_hash = "sha256:55b748d08a2f074a5a229589e2abfe59549cd5f8657ba351f59d9c1074ba6b93"
+size = 39365
+mtime_ms = 1789629750865
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/96be2c9b-3ddb-4f61-b33c-1286d62a4b2b/d4f4098d-1550-43af-8076-3fa204a79817"
+storage_version_token = "1789629806754919"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "AzQOBrsayVjtqu2rHYwWH"
+uri = "file://artifacts/istanbul-vip-transfer/test-results/admin-acceptance/admin-record-actions-blog-desktop-1789629097860.png"
+type = "image"
+title = "Blog admin aksiyonları — desktop"
+description = "Ortak AdminRecordActions sözleşmesini kullanan Blog liste ekranı."
+logical_id = "4015e0dd-c732-42e8-a75f-15ebc61f3270"
+content_hash = "sha256:6a824f7a344644c959c2f77da466dbf3de920b86488f40581ceebdc3d4208b16"
+size = 865358
+mtime_ms = 1789629098319
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/4015e0dd-c732-42e8-a75f-15ebc61f3270/aa9b9e17-cd76-451d-b447-5be462dd4f2e"
+storage_version_token = "1789629808201132"
+content_type = "image/png"
+
+[[outputs]]
+id = "hrlCCa1mLiuxkns2-HaQs"
+uri = "file://artifacts/istanbul-vip-transfer/test-results/admin-acceptance/admin-record-actions-hizmetler-desktop-1789629133583.png"
+type = "image"
+title = "Hizmetler admin aksiyonları — desktop"
+description = "Ortak AdminRecordActions sözleşmesini kullanan Hizmetler liste ekranı."
+logical_id = "d36db058-b578-4435-a4a9-7fdbe6b1d2c0"
+content_hash = "sha256:1e03ee8c583d20dd3d5d3c88ad321e6fbad66f2883b924db26481ca40e59da50"
+size = 826899
+mtime_ms = 1789629134254
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/d36db058-b578-4435-a4a9-7fdbe6b1d2c0/e0a10a92-21c1-48e2-9500-06953bff5486"
+storage_version_token = "1789629809645824"
+content_type = "image/png"

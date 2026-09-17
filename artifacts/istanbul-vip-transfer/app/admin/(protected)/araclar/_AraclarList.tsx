@@ -350,7 +350,7 @@ export default function AraclarList() {
           .vehicle-list-table td:first-child,
           .vehicle-list-table td:nth-child(2),
           .vehicle-list-table td:last-child { grid-column: 1 / -1; }
-          .vehicle-list-table td:last-child > div { flex-wrap: wrap; }
+          .vehicle-list-table td:last-child > div { min-width: 0; max-width: 100%; }
         }
         @media (max-width: 480px) {
           .vehicle-list-table tr { grid-template-columns: 1fr; }

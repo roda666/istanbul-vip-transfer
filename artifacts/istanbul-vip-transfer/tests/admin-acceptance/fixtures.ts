@@ -75,7 +75,12 @@ export async function screenshotEvidence(page: Page, name: string) {
   // removed by the runner/report lifecycle. Canonical acceptance evidence is
   // deliberately kept outside it, with one deterministic file per route and
   // viewport so a passing run leaves an auditable 36-file matrix.
-  const evidenceDir = path.resolve(process.cwd(), 'reports/admin-action-screenshots');
+  const runName = process.env.ADMIN_ACTION_EVIDENCE_RUN?.replace(/[^a-z0-9._-]+/gi, '-');
+  const evidenceDir = path.resolve(
+    process.cwd(),
+    'reports/admin-action-screenshots',
+    runName || 'latest',
+  );
   await mkdir(evidenceDir, { recursive: true });
   const evidencePath = path.join(evidenceDir, `${safeName}.png`);
   await page.screenshot({

@@ -37,12 +37,12 @@ describe('service social preview images', () => {
       .not.toBe(getServiceHeroImage('saglik-turizmi-transfer'));
   });
 
-  it('fails explicitly instead of falling back to the generic social image', () => {
-    expect(() => getServiceHeroImage('unregistered-service')).toThrow(
-      'Missing service-specific hero image',
+  it('uses the generic social image without crashing for a CMS-created service slug', () => {
+    expect(getServiceHeroImage('unregistered-service')).toBe(
+      'https://www.istanbulviptransfer.com/images/og-card.jpg',
     );
-    expect(() => getServiceOgImageUrl('unregistered-service', 'https://example.com')).toThrow(
-      'Missing service-specific hero image',
+    expect(getServiceOgImageUrl('unregistered-service', 'https://example.com')).toBe(
+      'https://www.istanbulviptransfer.com/images/og-card.jpg',
     );
   });
 

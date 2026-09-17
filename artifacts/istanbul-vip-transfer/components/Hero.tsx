@@ -178,7 +178,7 @@ export default function Hero({ homepageMode = false }: { homepageMode?: boolean 
 
             {/* Trust bar */}
             <div
-              className="ivt-hero-trust flex flex-wrap items-center gap-6 md:gap-8 pt-7 mb-10"
+              className="ivt-hero-trust flex flex-wrap items-center gap-6 pb-7 pt-7 md:gap-8"
               style={{ borderTop: '1px solid #D9E2EC' }}
               data-testid="hero-trust-bar"
             >
@@ -203,28 +203,31 @@ export default function Hero({ homepageMode = false }: { homepageMode?: boolean 
 
             {/* Metrics Strip */}
             <div
-              className="ivt-hero-metrics grid grid-cols-2 md:grid-cols-4 gap-4 p-5 sm:p-6 rounded-2xl"
-              style={{
-                background: 'linear-gradient(135deg, rgba(16,42,67,0.85) 0%, rgba(16,42,67,0.95) 100%)',
-                backdropFilter: 'blur(10px)',
-                WebkitBackdropFilter: 'blur(10px)',
-                border: '1px solid rgba(199,154,53,0.15)',
-                boxShadow: '0 12px 32px rgba(16,42,67,0.1)'
-              }}
+              className="ivt-hero-metrics mb-10 grid grid-cols-2 border-t border-[#D9E2EC] pt-7 md:grid-cols-4"
               data-testid="hero-metrics-strip"
             >
               {heroMetrics.map((metric, i) => (
-                <div key={i} className="flex flex-col justify-center items-center text-center" data-testid={`hero-metric-${i}`}>
+                <div
+                  key={i}
+                  className={[
+                    'flex min-w-0 flex-col px-4 sm:px-5',
+                    i === 0 ? 'pl-0' : '',
+                    i === 1 || i === 3 ? 'border-l border-[#D9E2EC]' : '',
+                    i >= 2 ? 'mt-5 border-t border-[#D9E2EC] pt-5 md:mt-0 md:border-t-0 md:pt-0' : '',
+                    i === 2 ? 'pl-0 md:border-l md:border-[#D9E2EC] md:pl-5' : '',
+                  ].join(' ')}
+                  data-testid={`hero-metric-${i}`}
+                >
                   <span
-                    className="text-2xl sm:text-3xl font-bold tracking-tight mb-1"
-                    style={{ color: '#C79A35', fontFamily: 'Playfair Display, Georgia, serif' }}
+                    className="text-lg font-bold sm:text-xl"
+                    style={{ color: '#8A651C', fontFamily: 'Playfair Display, Georgia, serif' }}
                     dir="ltr"
                   >
                     {metric.value}
                   </span>
                   <span
-                    className="text-[9px] sm:text-[10px] tracking-[0.1em] font-medium"
-                    style={{ color: '#FFFFFF', fontFamily: 'Inter, sans-serif', opacity: 0.85 }}
+                    className="mt-0.5 text-[11px] uppercase tracking-wider"
+                    style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
                   >
                     {metric.label}
                   </span>

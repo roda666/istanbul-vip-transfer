@@ -21,6 +21,7 @@ export interface ServiceListItem {
   showOnHomepage: boolean;
   showInNav: boolean;
   heroImage: string | null;
+  hasReachableHeroImage: boolean;
   updatedAt: string;
   translations: Record<string, string>; // locale → status
   /** Live "starting from" EUR price computed from panel pricing data. null = no price data defined yet. */
@@ -86,6 +87,18 @@ function CoverThumbnail({ src, title }: { src: string | null; title: string }) {
       onError={() => setFailed(true)}
       style={{ width: '42px', height: '32px', borderRadius: '5px', objectFit: 'cover', flexShrink: 0, border: '1px solid #E2E8F0' }}
     />
+  );
+}
+
+function MissingHeroBadge() {
+  return (
+    <span title="Kapak görseli yok veya kayıtlı görsel artık erişilebilir değil" style={{
+      display: 'block', marginTop: '3px', fontSize: '10px', fontWeight: 700,
+      color: '#B42318', background: '#FEF3F2', border: '1px solid #FDA29B',
+      borderRadius: '8px', padding: '1px 6px', width: 'fit-content',
+    }}>
+      ⚠ Kapak görseli eksik
+    </span>
   );
 }
 
@@ -422,11 +435,11 @@ export default function HizmetlerList({ items }: Props) {
       }}>
         {/* Table header — desktop only */}
         <div className="hl-table-header" style={{
-          gridTemplateColumns: '36px 52px 1fr 110px 1fr 90px 60px 50px 140px',
+          gridTemplateColumns: '36px 52px minmax(150px,1fr) 110px minmax(170px,1fr) 90px 60px 50px minmax(380px,auto)',
           gap: '8px', padding: '10px 18px',
           background: '#F8FAFC', borderBottom: '1px solid #E2E8F0',
           fontFamily: 'Inter, sans-serif',
-          minWidth: '760px',
+          minWidth: '1120px',
         }}>
           {['#', 'Kapak', 'Başlık / Slug', 'Kategori', 'Dil Durumu (9 dil)', 'Durum', 'Ana Sayfa', 'Menü', 'İşlem'].map(h => (
             <span key={h} style={{ fontSize: '11px', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase' }}>{h}</span>
@@ -445,18 +458,18 @@ export default function HizmetlerList({ items }: Props) {
 
           return (
             <div data-testid="service-row" data-service-id={item.id} key={item.id} className="hl-table-row" style={{
-              gridTemplateColumns: '36px 52px 1fr 110px 1fr 90px 60px 50px 140px',
+              gridTemplateColumns: '36px 52px minmax(150px,1fr) 110px minmax(170px,1fr) 90px 60px 50px minmax(380px,auto)',
               gap: '8px', padding: '12px 18px',
               borderBottom: '1px solid #F1F5F9', alignItems: 'center',
               fontFamily: 'Inter, sans-serif',
               background: item.missingRecord ? '#FFFBFA' : (!item.isActive ? '#FAFAFA' : undefined),
               opacity: actionLoading?.endsWith(item.id) ? 0.6 : 1,
-              minWidth: '760px',
+               minWidth: '1120px',
             }}
               title={item.missingRecord ? `"${item.slug}" PAGE_REGISTRY'de kayıtlı ama veritabanında hiç kaydı yok (taslak dahi yok). Ziyaretçiler bu sayfada boş/noindex içerik görür.` : undefined}
             >
               <span style={{ fontSize: '11px', color: '#94A3B8' }}>{idx + 1}</span>
-              <CoverThumbnail src={item.heroImage} title={item.title} />
+              <CoverThumbnail src={item.hasReachableHeroImage ? item.heroImage : null} title={item.title} />
 
               <div>
                 <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: '#1E293B' }}>
@@ -484,6 +497,7 @@ export default function HizmetlerList({ items }: Props) {
                       ⚠ Fiyat verisi eksik
                     </span>
                   )}
+                   {!item.hasReachableHeroImage && <MissingHeroBadge />}
                 </span>
               )}
 
@@ -533,7 +547,7 @@ export default function HizmetlerList({ items }: Props) {
             >
               {/* Title row */}
               <div className="hl-card-top">
-                <CoverThumbnail src={item.heroImage} title={item.title} />
+                <CoverThumbnail src={item.hasReachableHeroImage ? item.heroImage : null} title={item.title} />
                 <p className="hl-card-title">
                   <span style={{ color: '#94A3B8', fontWeight: 400, marginRight: '6px' }}>{idx + 1}.</span>
                   {item.title}
@@ -564,6 +578,7 @@ export default function HizmetlerList({ items }: Props) {
                         borderRadius: '4px', padding: '1px 6px', fontWeight: 700,
                       }}>⚠ Fiyat verisi eksik</span>
                     )}
+                    {!item.hasReachableHeroImage && <MissingHeroBadge />}
                     <span style={{
                       background: item.showOnHomepage ? '#ECFDF5' : '#F1F5F9',
                       color: item.showOnHomepage ? '#059669' : '#64748B',

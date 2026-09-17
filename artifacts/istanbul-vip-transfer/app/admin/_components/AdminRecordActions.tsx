@@ -230,14 +230,16 @@ export function AdminRecordActions({
         title={title}
         ariaLabel={action.label}
         testId={`admin-record-action-${action.id}`}
-        className={isMobile ? 'w-full justify-start rounded-none border-0 bg-transparent px-4 py-3 text-left hover:bg-slate-50' : ''}
+        className={isMobile
+          ? 'w-full justify-start rounded-none border-0 bg-transparent px-4 py-3 text-left hover:bg-slate-50'
+          : 'shrink-0'}
       />
     );
   };
 
   return (
     <div
-      className="flex items-center justify-end gap-2"
+      className="flex min-w-0 max-w-full items-center justify-end gap-2"
       data-admin
       data-admin-record-actions
       data-admin-action-order={visibleActions.map(action =>
@@ -245,7 +247,10 @@ export function AdminRecordActions({
       ).join(',')}
     >
       {/* Desktop/Tablet row */}
-      <div className="hidden min-[481px]:flex flex-wrap items-center justify-end gap-2" data-admin-actions-desktop>
+      <div
+        className="hidden min-w-0 max-w-full min-[481px]:flex flex-nowrap items-center justify-end gap-2 overflow-x-auto"
+        data-admin-actions-desktop
+      >
         {deleteOmittedReason && (!del || del.hidden) && (
           <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 bg-slate-50 border border-slate-200 px-2.5 min-h-[44px] rounded-md" title={deleteOmittedReason}>
             <Info size={14} />

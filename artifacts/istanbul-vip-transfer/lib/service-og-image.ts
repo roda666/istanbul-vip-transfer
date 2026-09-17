@@ -33,12 +33,7 @@ const SERVICE_HERO_IMAGES: Record<string, string> = {
 
 export function getServiceHeroImage(slug: string): string {
   const path = SERVICE_HERO_IMAGES[slug];
-  if (!path) {
-    throw new Error(
-      `Missing service-specific hero image for "${slug}". Register a public hero asset before publishing this service.`,
-    );
-  }
-  return `${SITE.siteUrl}${path}`;
+  return new URL(path ?? SITE.ogImage.url, SITE.siteUrl).toString();
 }
 
 export function getRegisteredServiceHeroSlugs(): string[] {

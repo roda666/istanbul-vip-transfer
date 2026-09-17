@@ -364,3 +364,255 @@ mtime_ms = 1789652742978
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/f2ea326b-08ef-42b2-aaba-0d13fb508dee/d16ad98a-be20-4415-b57a-0a2b91cff462"
 storage_version_token = "1789652828965537"
 content_type = "image/png"
+
+[[outputs]]
+id = "0LcYSGFXkCGo8vLXEo39Y"
+uri = "file://artifacts/istanbul-vip-transfer/reports/homepage-hero-metrics/style-refresh-desktop-1440.jpg"
+type = "image"
+title = "Hero istatistikleri — yeni masaüstü stil"
+description = "1440px gerçek preview: koyu kart kaldırıldı; iki güven satırı aynı açık, altın/gri görsel ailede."
+logical_id = "4434454a-3cdd-4159-85b5-6ccd94088657"
+content_hash = "sha256:35856694b43cb09709ffa270e13f39c536fc95345a87b8674175654192d97099"
+size = 106780
+mtime_ms = 1789660539804
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/4434454a-3cdd-4159-85b5-6ccd94088657/7249cb11-5f65-483c-b0aa-66b432b3affc"
+storage_version_token = "1789661004977810"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "eWCj4iPMhgqU_sDeVbWr5"
+uri = "file://artifacts/istanbul-vip-transfer/reports/homepage-hero-metrics/style-refresh-tablet-768.jpg"
+type = "image"
+title = "Hero istatistikleri — yeni tablet stil"
+description = "768px gerçek preview: kutusuz dört sütun ve ince ayırıcılar."
+logical_id = "9c55ed25-0ca5-45c0-b1d2-47cd8baf1292"
+content_hash = "sha256:58bf5d9526537935fbef14172bd6642b34481063f68a0de32df5295dc23b257c"
+size = 71449
+mtime_ms = 1789660544740
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/9c55ed25-0ca5-45c0-b1d2-47cd8baf1292/a396247c-897e-48f8-847d-b9418cee763a"
+storage_version_token = "1789661006390710"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "JfGpIjdBfP0_63iLOUo3u"
+uri = "file://artifacts/istanbul-vip-transfer/reports/homepage-hero-metrics/style-refresh-mobile-390-tall.jpg"
+type = "image"
+title = "Hero istatistikleri — yeni mobil stil"
+description = "390px gerçek preview: kutusuz 2×2 grid, ince yatay ve dikey iç ayırıcılar."
+logical_id = "9c9c0dfe-2b2b-4d87-a982-a1fa055919bc"
+content_hash = "sha256:3aa18f7721d0ede22dcd1f91b7f240b9b636f7a5f7cfeb46cfbe92f734848cf4"
+size = 51051
+mtime_ms = 1789660952621
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/9c9c0dfe-2b2b-4d87-a982-a1fa055919bc/1bb3c79d-e971-4452-8d6d-b675ff86c016"
+storage_version_token = "1789661007746017"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "0clUFMH2RZv_2z4h8NhYU"
+uri = "file://artifacts/istanbul-vip-transfer/reports/service-safety/admin-aaaaa-risk-row-before-cleanup.png"
+type = "image"
+title = "Gerçek aaaaa satırı — düzeltme kanıtı"
+description = "Cleanup öncesi gerçek DB kaydı: fiyat yok, bozuk kapak, Ana Sayfa ve Menü açık; yeni admin uyarıları ve ayrı ortak aksiyon kontrolleri aynı satırda."
+logical_id = "39dd8c19-a188-42ac-b21a-5f235fe0f23b"
+content_hash = "sha256:f66d13cb578f278d44a8d6d28ce27d2db886d75e2eafc65cb11f1209a3a212c5"
+size = 140676
+mtime_ms = 1789661953865
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/39dd8c19-a188-42ac-b21a-5f235fe0f23b/61e8f1e6-ca10-46bf-b01b-f526c5321854"
+storage_version_token = "1789662485492324"
+content_type = "image/png"
+
+[[outputs]]
+id = "NqHJRAuS-o_7ps57mkLoX"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/owner-recheck-20260917-1649/contact-sheet.jpg"
+type = "image"
+title = "13 admin ekranı — taze preview contact sheet"
+description = "Bu talimattan sonra, güncel pike preview üzerinde üretilen 13 ekranın genel görünümü."
+logical_id = "b3b60594-ada8-4e18-9a0e-9d55fd380c66"
+content_hash = "sha256:aa679d930dc7ac3307ac2d0d91b428d2e45f897f3d0dc13e1f67412848ae8a26"
+size = 411018
+mtime_ms = 1789664463253
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/b3b60594-ada8-4e18-9a0e-9d55fd380c66/d17e760f-cfb9-4311-87d4-2de03c9815dd"
+storage_version_token = "1789664660473881"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "MmxqJAfTNaQbz1SWZJzl6"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/owner-recheck-20260917-1649/fresh-preview-blog-desktop.png"
+type = "image"
+title = "Blog — güncel preview"
+description = "No-cache, taze authenticated browser oturumu, 1440×900."
+logical_id = "4b4007dc-3285-43b0-a0f1-9dc098c573f4"
+content_hash = "sha256:924d8320805a2dd9a580371f322e61ca3e7826c6c5830abc83f6a0b44faa8255"
+size = 866710
+mtime_ms = 1789663653758
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/4b4007dc-3285-43b0-a0f1-9dc098c573f4/0fb24d45-3912-41e2-9ad9-e9b1d87c66a6"
+storage_version_token = "1789664661922359"
+content_type = "image/png"
+
+[[outputs]]
+id = "hLl4Z6qMixpRF-IdTFvDm"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/owner-recheck-20260917-1649/fresh-preview-hizmetler-desktop.png"
+type = "image"
+title = "Hizmetler — güncel preview"
+description = "No-cache, taze authenticated browser oturumu, 1440×900."
+logical_id = "15af1bbe-9988-42cf-b602-2d83ad64143b"
+content_hash = "sha256:07c95b7c87721d52c3e4f7d3052660b75d8de44f35b5d7c46b321dbbf9e4ba9f"
+size = 905623
+mtime_ms = 1789663663321
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/15af1bbe-9988-42cf-b602-2d83ad64143b/c9452a62-bf70-41b7-a7f6-10656509b1b6"
+storage_version_token = "1789664663249626"
+content_type = "image/png"
+
+[[outputs]]
+id = "9tYPd9slPyfudci1GrOT6"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/owner-recheck-20260917-1649/fresh-preview-araclar-desktop.png"
+type = "image"
+title = "Araçlar — güncel preview"
+description = "Bildirilen iki-satır sorununun düzeltildiği gerçek Araçlar ekranı, 1440×900."
+logical_id = "64fe470d-a60e-48f8-a87d-cae072640870"
+content_hash = "sha256:948c3d171dd49ba03dd987f3dcc22a8a39a93a27ee4aea9698e1956707cbeb55"
+size = 914062
+mtime_ms = 1789663687532
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/64fe470d-a60e-48f8-a87d-cae072640870/29c86c16-e388-4c42-bc81-b3a8fbf8f859"
+storage_version_token = "1789664664591949"
+content_type = "image/png"
+
+[[outputs]]
+id = "15LFCeoG-3Dv_WQc6gfbF"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/owner-recheck-20260917-1649/fresh-preview-soforler-desktop.png"
+type = "image"
+title = "Sürücüler — güncel preview"
+description = "No-cache, taze authenticated browser oturumu, 1440×900."
+logical_id = "cd5c20cb-c344-4796-97a3-d5b272cf1f32"
+content_hash = "sha256:7c7b339db2c2f622d8084271e230a90ec982bb3b6861fcce6d1333eb5e7724f4"
+size = 853866
+mtime_ms = 1789663734515
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/cd5c20cb-c344-4796-97a3-d5b272cf1f32/454861f5-2f0a-4bd8-9c44-507683414fbf"
+storage_version_token = "1789664665895336"
+content_type = "image/png"
+
+[[outputs]]
+id = "-arDxhvv_ebozphMOk6Tp"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/owner-recheck-20260917-1649/fresh-preview-kategoriler-desktop.png"
+type = "image"
+title = "Kategoriler — referans ekran"
+description = "Ortak AdminRecordActions görsel standardının referans ekranı, 1440×900."
+logical_id = "0a761be9-f78e-476e-853d-3b10de15e32a"
+content_hash = "sha256:273d817375a3c2049c2dff5d120a29ab4ac4089745fd7b94a162a5171b024572"
+size = 845794
+mtime_ms = 1789663746395
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/0a761be9-f78e-476e-853d-3b10de15e32a/73111b9c-c88c-48dc-9f0f-37eb49496bf2"
+storage_version_token = "1789664667199910"
+content_type = "image/png"
+
+[[outputs]]
+id = "HC8UVa2-teSNOxpeTwMgv"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/owner-recheck-20260917-1649/fresh-preview-rakipler-desktop.png"
+type = "image"
+title = "Rakipler — güncel preview"
+description = "No-cache, taze authenticated browser oturumu, 1440×900."
+logical_id = "ee599f46-20e3-4d08-9054-b6eba29d685b"
+content_hash = "sha256:af4ca7de54c5892e20ba835d874150d5a474aec4e25672b09907449c76e31c2c"
+size = 860913
+mtime_ms = 1789663755540
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/ee599f46-20e3-4d08-9054-b6eba29d685b/2df781b5-84c3-4aaf-a7a8-08044db982d9"
+storage_version_token = "1789664668575581"
+content_type = "image/png"
+
+[[outputs]]
+id = "3vg9M333v6jkOkZqog51r"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/owner-recheck-20260917-1649/fresh-preview-personel-desktop.png"
+type = "image"
+title = "Personel — güncel preview"
+description = "No-cache, taze authenticated browser oturumu, 1440×900."
+logical_id = "e972ae98-2ca8-48e8-b83f-1707a5f6eb49"
+content_hash = "sha256:b47d5f18fd48e8bdac33c5c5b982188c17a5dc53ce272406895a03ffb54f85df"
+size = 794891
+mtime_ms = 1789663796565
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/e972ae98-2ca8-48e8-b83f-1707a5f6eb49/3fade674-51b8-4d72-b9e3-478dfce3225c"
+storage_version_token = "1789664669917536"
+content_type = "image/png"
+
+[[outputs]]
+id = "pxIqoT2asQ1B8kxXcdxPg"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/owner-recheck-20260917-1649/fresh-preview-menu-desktop.png"
+type = "image"
+title = "Menü — güncel preview"
+description = "No-cache, taze authenticated browser oturumu, 1440×900."
+logical_id = "68ab30a8-77c0-4bc8-9005-0a7872ed75f5"
+content_hash = "sha256:27dfbdbfdaf1fb3fab9f022af9f56218b1cf6f7642b1c90fcedb5b58ba407d9a"
+size = 831463
+mtime_ms = 1789663960553
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/68ab30a8-77c0-4bc8-9005-0a7872ed75f5/1157d7b5-0828-4415-b9d6-075b76546576"
+storage_version_token = "1789664671221718"
+content_type = "image/png"
+
+[[outputs]]
+id = "iTpuXkdYXsUrwMs5pDmj_"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/owner-recheck-20260917-1649/fresh-preview-transfer-rotalari-desktop.png"
+type = "image"
+title = "Transfer Rotaları — güncel preview"
+description = "No-cache, taze authenticated browser oturumu, 1440×900."
+logical_id = "8b893326-369b-4f7c-a7fb-b7aaab2fc235"
+content_hash = "sha256:181dd136c1127f228f480bf9926cc0d827307797cacf71414ae43442fd5ee72f"
+size = 888660
+mtime_ms = 1789664285354
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/8b893326-369b-4f7c-a7fb-b7aaab2fc235/db654507-c127-40d2-bfe4-59fa1931380e"
+storage_version_token = "1789664672504811"
+content_type = "image/png"
+
+[[outputs]]
+id = "-bjfLFhPIKamkr44r4SHb"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/owner-recheck-20260917-1649/fresh-preview-sss-desktop.png"
+type = "image"
+title = "SSS — güncel preview"
+description = "No-cache, taze authenticated browser oturumu, 1440×900."
+logical_id = "0387ac80-949f-4bd5-bcc2-2c0cccf3b269"
+content_hash = "sha256:82aa1bd5d180e3e0ac9db37cd76582bc841fbbc1ef7b6a35daeeaf7889e58228"
+size = 900052
+mtime_ms = 1789664306803
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/0387ac80-949f-4bd5-bcc2-2c0cccf3b269/3c60ce23-0203-4ebe-85b6-139cfb38d755"
+storage_version_token = "1789664673784588"
+content_type = "image/png"
+
+[[outputs]]
+id = "W6WMxO4rta7qVlNTXdqkV"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/owner-recheck-20260917-1649/fresh-preview-lokasyonlar-desktop.png"
+type = "image"
+title = "Lokasyonlar — güncel preview"
+description = "Rezervasyon Ayarları içindeki Lokasyonlar ekranı, 1440×900."
+logical_id = "cfbe28b0-9855-4c70-8027-31b7e060e2dc"
+content_hash = "sha256:c3055a466626e12d7c8da62318d6f0222a8a169243ee7c0828ef50d22b066f55"
+size = 902227
+mtime_ms = 1789664314538
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/cfbe28b0-9855-4c70-8027-31b7e060e2dc/4103ff54-ce16-4ef0-9a86-301d7237cb19"
+storage_version_token = "1789664675169626"
+content_type = "image/png"
+
+[[outputs]]
+id = "-jMXKMMIwBF2Msb5oOkaB"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/owner-recheck-20260917-1649/fresh-preview-ek-hizmetler-desktop.png"
+type = "image"
+title = "Ek Hizmetler — güncel preview"
+description = "Fiyat Kuralları içindeki Ek Hizmetler ekranı, 1440×900."
+logical_id = "f9938c84-3bda-4cb4-8d77-5a8a07658fdc"
+content_hash = "sha256:3300421dc97fe5c98cd6aa64e2df6e6154db0776e7af02ec2fd720bf45e166bb"
+size = 859259
+mtime_ms = 1789664336308
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/f9938c84-3bda-4cb4-8d77-5a8a07658fdc/57bad467-79ef-454a-8f5c-6c20d7bc543a"
+storage_version_token = "1789664676464187"
+content_type = "image/png"
+
+[[outputs]]
+id = "zW80Y5qg9MKJBkPDRbq5_"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/owner-recheck-20260917-1649/fresh-preview-transferler-desktop.png"
+type = "image"
+title = "Transfer Operasyonları — güncel preview"
+description = "Beklendiği gibi uydurulmuş record-action grubu bulunmayan operasyon ekranı, 1440×900."
+logical_id = "d513e45d-4ab8-4a22-b9c3-e002de36ad57"
+content_hash = "sha256:3c3f9c1ec8c1c9a34aed5109041d686649ccbd6b54f805316d024a9869abb788"
+size = 787243
+mtime_ms = 1789664353516
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/d513e45d-4ab8-4a22-b9c3-e002de36ad57/f370a1ff-ef4b-44a4-80ae-c1221f8013ae"
+storage_version_token = "1789664677869505"
+content_type = "image/png"

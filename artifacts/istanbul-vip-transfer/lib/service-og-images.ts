@@ -17,19 +17,19 @@
  */
 import {
   getRegisteredServiceHeroSlugs,
-  getServiceHeroImage,
 } from '@/lib/service-og-image';
+import { SITE } from '@/lib/site-config';
 
 export const SERVICE_OG_IMAGES: Record<string, string> = Object.fromEntries(
   getRegisteredServiceHeroSlugs().map((slug) => [slug, `/images/og/og-${slug}.jpg`]),
 );
 
 /**
- * Returns a branded card for every registered service. The hero fallback only
- * applies to an unregistered slug, so a bad CMS value can never collapse
- * service shares onto the global site preview.
+ * Returns a branded card for every registered service. A CMS-created slug may
+ * not have a generated card yet; metadata must remain safe in that case, so it
+ * falls back to the global site preview instead of throwing during rendering.
  */
 export function getServiceOgImageUrl(slug: string, siteUrl: string): string {
   const path = SERVICE_OG_IMAGES[slug];
-  return path ? `${siteUrl}${path}` : getServiceHeroImage(slug);
+  return new URL(path ?? SITE.ogImage.url, siteUrl).toString();
 }

@@ -67,22 +67,6 @@ async function getTranslation(contentId: string, locale: string) {
   return row ?? null;
 }
 
-async function getActiveTargetLocales(): Promise<string[]> {
-  try {
-    const { db }       = await import('@/db');
-    const { languages } = await import('@/db/schema');
-    const { eq }       = await import('drizzle-orm');
-    const rows = await db
-      .select({ code: languages.code })
-      .from(languages)
-      .where(eq(languages.isEnabled, true));
-    return rows.map(r => r.code).filter(c => c !== 'tr');
-  } catch {
-    const { NON_SOURCE_LOCALES } = await import('@/lib/i18n/locale-registry');
-    return [...NON_SOURCE_LOCALES];
-  }
-}
-
 /** Write an audit log entry to the shared audit_logs table. */
 async function writeAuditLog(opts: {
   contentId: string;

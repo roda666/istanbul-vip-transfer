@@ -771,6 +771,13 @@
       "when": 1789560000000,
       "tag": "0109_blog_atomic_publish",
       "breakpoints": true
+    },
+    {
+      "idx": 110,
+      "version": "7",
+      "when": 1789561000000,
+      "tag": "0110_blog_atomic_source_snapshot",
+      "breakpoints": true
     }
   ]
 }

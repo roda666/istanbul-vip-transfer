@@ -11,19 +11,29 @@ import {
   type TranslationInput,
   type TranslationOutput,
 } from '@/lib/ai/translate';
+import { containsCustomerVisibleTollCopy } from '@/lib/customer-visible-copy';
 
 type BlogSourceSnapshot = {
   title: string;
   slug: string;
   excerpt: string | null;
   body: string | null;
+  heroImage?: string | null;
   seoTitle: string | null;
   seoDescription: string | null;
   heroImageAlt: string | null;
+  ogImage?: string | null;
   ogTitle: string | null;
   ogDescription: string | null;
+  canonicalUrl?: string | null;
+  category?: string | null;
+  author?: string | null;
+  tags?: string[] | null;
+  readTimeMinutes?: number | null;
   cta: unknown;
   internalLinks: unknown;
+  /** Hash of the previously live source when this payload was staged. */
+  baseHash?: string;
 };
 
 export function computeBlogAtomicSourceHash(source: BlogSourceSnapshot): string {
@@ -42,7 +52,7 @@ export function computeBlogAtomicSourceHash(source: BlogSourceSnapshot): string 
   });
 }
 
-function validateBlogTranslation(
+export function validateBlogTranslation(
   value: unknown,
   sourceBody: string | null,
 ): { ok: true; data: TranslationOutput } | { ok: false; error: string } {
@@ -59,6 +69,19 @@ function validateBlogTranslation(
   if (missingLink) {
     return { ok: false, error: `Çeviri zorunlu dahili bağlantıyı korumadı: ${missingLink}` };
   }
+  const customerFields = [
+    parsed.data.title,
+    parsed.data.excerpt,
+    parsed.data.body,
+    parsed.data.metaTitle,
+    parsed.data.metaDescription,
+    parsed.data.imageAlt,
+    parsed.data.imageTitle,
+    parsed.data.imageCaption,
+  ];
+  if (customerFields.some(field => containsCustomerVisibleTollCopy(field))) {
+    return { ok: false, error: 'Çeviri müşteri görünür geçiş ücreti/köprü/otoyol ifadesi içeriyor; yayın engellendi.' };
+  }
   return { ok: true, data: parsed.data };
 }
 
@@ -73,7 +96,7 @@ export async function runBlogAtomicTranslationTask(input: {
   attempt: number;
 }) {
   const { db } = await import('@/db');
-  const { content, contentTranslations, translationJobTasks } = await import('@/db/schema');
+  const { content, contentTranslations, translationJobTasks, translationJobs } = await import('@/db/schema');
   const { and, eq } = await import('drizzle-orm');
 
   if (!(CUSTOMER_TRANSLATION_LOCALES as readonly string[]).includes(input.targetLang)) {
@@ -85,13 +108,19 @@ export async function runBlogAtomicTranslationTask(input: {
     eq(content.contentType, 'BLOG_POST'),
   )).limit(1);
   if (!source) return { status: 'failed' as const, error: 'Blog kaynağı bulunamadı.' };
-  if (!source.title.trim() || !source.body?.trim()) {
+  const [job] = await db.select({ sourceSnapshot: translationJobs.sourceSnapshot })
+    .from(translationJobs)
+    .where(eq(translationJobs.id, input.jobId))
+    .limit(1);
+  const snapshot = job?.sourceSnapshot as BlogSourceSnapshot | null | undefined;
+  const releaseSource = snapshot ?? source;
+  if (!releaseSource.title.trim() || !releaseSource.body?.trim()) {
     return { status: 'failed' as const, error: 'Blog başlığı ve gövdesi yayımlama için dolu olmalıdır.' };
   }
   if (!['DRAFT', 'REVIEW', 'APPROVED', 'PUBLISHED'].includes(source.status)) {
     return { status: 'failed' as const, error: `Blog "${source.status}" durumundayken toplu yayımlanamaz.` };
   }
-  if (!input.sourceHash || computeBlogAtomicSourceHash(source) !== input.sourceHash) {
+  if (!input.sourceHash || computeBlogAtomicSourceHash(releaseSource) !== input.sourceHash) {
     return { status: 'failed' as const, error: 'Türkçe kaynak çeviri sırasında değişti. Yeniden başlatın.' };
   }
 
@@ -119,13 +148,13 @@ export async function runBlogAtomicTranslationTask(input: {
   }
 
   const sourceInput: TranslationInput = {
-    title: source.title,
-    slug: source.slug,
-    excerpt: source.excerpt,
-    body: source.body,
-    metaTitle: source.seoTitle,
-    metaDescription: source.seoDescription,
-    imageAlt: source.heroImageAlt,
+     title: releaseSource.title,
+     slug: releaseSource.slug,
+     excerpt: releaseSource.excerpt,
+     body: releaseSource.body,
+     metaTitle: releaseSource.seoTitle,
+     metaDescription: releaseSource.seoDescription,
+     imageAlt: releaseSource.heroImageAlt,
   };
 
   let raw: unknown;
@@ -168,7 +197,7 @@ export async function runBlogAtomicTranslationTask(input: {
     }
   }
 
-  const validated = validateBlogTranslation(raw, source.body);
+  const validated = validateBlogTranslation(raw, releaseSource.body);
   if (!validated.ok) {
     return { status: 'failed' as const, translationId: existing?.id, error: validated.error };
   }
@@ -214,7 +243,12 @@ export async function finalizeBlogAtomicPublish(jobId: string, adminId: string) 
       eq(content.contentType, 'BLOG_POST'),
     )).limit(1);
     if (!source) throw new Error('Blog kaynağı bulunamadı.');
-    if (!job.sourceHash || computeBlogAtomicSourceHash(source) !== job.sourceHash) {
+    const staged = job.sourceSnapshot as BlogSourceSnapshot | null;
+    if (staged?.baseHash && computeBlogAtomicSourceHash(source) !== staged.baseHash) {
+      throw new Error('Türkçe kaynak çeviri sırasında değişti. Yayın tamamlanmadı.');
+    }
+    const releaseSource = staged ?? source;
+    if (!job.sourceHash || computeBlogAtomicSourceHash(releaseSource) !== job.sourceHash) {
       throw new Error('Türkçe kaynak çeviri sırasında değişti. Yayın tamamlanmadı.');
     }
     if (!['DRAFT', 'REVIEW', 'APPROVED', 'PUBLISHED'].includes(source.status)) {
@@ -236,7 +270,7 @@ export async function finalizeBlogAtomicPublish(jobId: string, adminId: string) 
 
     const now = new Date();
     for (const task of tasks) {
-      const validated = validateBlogTranslation(task.resultPayload, source.body);
+      const validated = validateBlogTranslation(task.resultPayload, releaseSource.body);
       if (!validated.ok) throw new Error(`${task.targetLanguageCode.toUpperCase()}: ${validated.error}`);
       const data = validated.data;
       await tx.insert(contentTranslations).values({
@@ -245,7 +279,7 @@ export async function finalizeBlogAtomicPublish(jobId: string, adminId: string) 
         targetLanguageCode: task.targetLanguageCode,
         sourceLanguageCode: 'tr',
         status: 'PUBLISHED',
-        title: data.title,
+      title: data.title,
         slug: data.slug,
         excerpt: data.excerpt,
         body: data.body,
@@ -298,6 +332,23 @@ export async function finalizeBlogAtomicPublish(jobId: string, adminId: string) 
     }
 
     await tx.update(content).set({
+      title: releaseSource.title,
+      slug: releaseSource.slug,
+      excerpt: releaseSource.excerpt,
+      body: releaseSource.body,
+      draftBody: null,
+      heroImage: releaseSource.heroImage ?? null,
+      heroImageAlt: releaseSource.heroImageAlt ?? null,
+      ogImage: releaseSource.ogImage ?? null,
+      seoTitle: releaseSource.seoTitle ?? null,
+      seoDescription: releaseSource.seoDescription ?? null,
+      ogTitle: releaseSource.ogTitle ?? null,
+      ogDescription: releaseSource.ogDescription ?? null,
+      canonicalUrl: releaseSource.canonicalUrl ?? null,
+      category: releaseSource.category ?? null,
+      author: releaseSource.author ?? null,
+      tags: releaseSource.tags ?? [],
+      readTimeMinutes: releaseSource.readTimeMinutes ?? null,
       status: 'PUBLISHED',
       publishedAt: source.publishedAt ?? now,
       approvedAt: source.approvedAt ?? now,

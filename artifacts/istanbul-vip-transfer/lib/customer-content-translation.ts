@@ -63,6 +63,8 @@ export interface EnqueueCustomerTranslationsInput {
   publishOnComplete?: boolean;
   /** Keep current public translations untouched while replacement payloads are staged. */
   preservePublishedWhileRunning?: boolean;
+  /** Full Turkish payload consumed by an atomic Blog release. */
+  sourceSnapshot?: Record<string, unknown> | null;
 }
 
 export interface EnqueueCustomerTranslationsResult {
@@ -162,6 +164,7 @@ export async function enqueueCustomerContentTranslations(
       entityType: input.entityType,
       entityId,
       sourceHash: input.sourceHash,
+      sourceSnapshot: input.sourceSnapshot ?? null,
       force: input.force ?? false,
       publishOnComplete: input.publishOnComplete ?? false,
       totalTasks: CUSTOMER_TRANSLATION_LOCALES.length,

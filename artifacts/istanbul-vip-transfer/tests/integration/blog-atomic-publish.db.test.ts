@@ -192,4 +192,93 @@ describe.sequential('Blog atomic all-language publish', () => {
       await cleanup(adminId, contentId, jobIds);
     }
   });
+
+  it('refuses finalization when the Turkish source changes after queueing', async () => {
+    const { adminId, contentId, source } = await fixture();
+    const jobIds: string[] = [];
+    try {
+      const sourceHash = computeBlogAtomicSourceHash(source);
+      const queued = await enqueueCustomerContentTranslations({
+        entityType: 'content',
+        entityId: contentId,
+        sourceHash,
+        adminId,
+        publishOnComplete: true,
+        preservePublishedWhileRunning: true,
+      });
+      jobIds.push(queued.jobId);
+
+      await db.update(content).set({ body: 'Changed after queueing' } as never)
+        .where(eq(content.id, contentId));
+      const tasks = await db.select().from(translationJobTasks)
+        .where(eq(translationJobTasks.jobId, queued.jobId));
+      await db.update(translationJobTasks).set({
+        status: 'COMPLETED',
+        resultPayload: translatedFields('en'),
+      } as never).where(eq(translationJobTasks.jobId, queued.jobId));
+
+      await expect(finalizeBlogAtomicPublish(queued.jobId, adminId)).rejects.toThrow(
+        'Türkçe kaynak çeviri sırasında değişti',
+      );
+      const [unchangedSource] = await db.select({ status: content.status }).from(content)
+        .where(eq(content.id, contentId));
+      expect(unchangedSource.status).toBe('DRAFT');
+      expect(tasks).toHaveLength(8);
+    } finally {
+      await cleanup(adminId, contentId, jobIds);
+    }
+  });
+
+  it('keeps the prior Turkish and translated payload live while a published edit fails', async () => {
+    const { adminId, contentId, source } = await fixture();
+    const jobIds: string[] = [];
+    try {
+      await db.update(content).set({
+        status: 'PUBLISHED',
+        body: 'Old live Turkish body',
+        publishedAt: new Date(),
+      } as never).where(eq(content.id, contentId));
+      const [oldEnglish] = await db.insert(contentTranslations).values({
+        entityType: 'content',
+        entityId: contentId,
+        targetLanguageCode: 'en',
+        status: 'PUBLISHED',
+        title: 'Old live English',
+        slug: 'old-live-english',
+        body: 'Old live English body',
+        publishedAt: new Date(),
+      } as never).returning();
+      const oldSource = { ...source, status: 'PUBLISHED', body: 'Old live Turkish body' };
+      const queued = await enqueueCustomerContentTranslations({
+        entityType: 'content',
+        entityId: contentId,
+        sourceHash: computeBlogAtomicSourceHash({ ...oldSource, body: 'New staged Turkish body' }),
+        sourceSnapshot: {
+          ...oldSource,
+          body: 'New staged Turkish body',
+          title: 'New staged title',
+          baseHash: computeBlogAtomicSourceHash(oldSource),
+        },
+        adminId,
+        publishOnComplete: true,
+        preservePublishedWhileRunning: true,
+      });
+      jobIds.push(queued.jobId);
+      await db.update(translationJobTasks).set({
+        status: 'FAILED',
+        errorMessage: 'de provider failure',
+      }).where(eq(translationJobTasks.jobId, queued.jobId));
+
+      const finalized = await finalizeBlogAtomicPublish(queued.jobId, adminId);
+      expect(finalized).toMatchObject({ finalized: false, reason: 'tasks_incomplete' });
+      const [liveSource] = await db.select({ status: content.status, body: content.body })
+        .from(content).where(eq(content.id, contentId));
+      expect(liveSource).toMatchObject({ status: 'PUBLISHED', body: 'Old live Turkish body' });
+      const [liveEnglish] = await db.select().from(contentTranslations)
+        .where(eq(contentTranslations.id, oldEnglish.id));
+      expect(liveEnglish).toMatchObject({ status: 'PUBLISHED', body: 'Old live English body' });
+    } finally {
+      await cleanup(adminId, contentId, jobIds);
+    }
+  });
 });

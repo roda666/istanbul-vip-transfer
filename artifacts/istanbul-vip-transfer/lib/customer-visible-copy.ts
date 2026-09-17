@@ -11,6 +11,11 @@ import type { ServicePageBody } from '@/lib/service-page-types';
  */
 const TOLL_FEE_TERMS = /(?:geçiş\s*ücret|köprü|tünel|otoyol|\btolls?\b|\bbridge(?:s)?\b|\btunnel(?:s)?\b|\bhighway(?:s)?\b|\bmotorway(?:s)?\b|\bpéage(?:s)?\b|\bpont(?:s)?\b|\bautoroute(?:s)?\b|\bmaut\b|\bbrücke(?:n)?\b|\bautobahn(?:en)?\b|\bpedaggio(?:i)?\b|\bponte(?:i)?\b|\bautostrada(?:e)?\b|\bpeaje(?:s)?\b|\bpuente(?:s)?\b|\btúnel(?:es)?\b|\bautopista(?:s)?\b|\btol(?:len)?\b|\bbrug(?:gen)?\b|\bsnelweg(?:en)?\b|(?:мост|туннел|автомагистрал|платн)\p{L}*|(?:جسر|نفق|طريق\s+سريع|رسوم\s+(?:العبور|الطريق|طرق)))/iu;
 
+/** Reject unsafe AI/customer copy before it can enter a public translation. */
+export function containsCustomerVisibleTollCopy(value: string | null | undefined): boolean {
+  return Boolean(value && TOLL_FEE_TERMS.test(value));
+}
+
 /**
  * Removes complete customer-visible sentences or list entries that discuss
  * toll-related route details. It is intentionally pure and used only by public readers; admin

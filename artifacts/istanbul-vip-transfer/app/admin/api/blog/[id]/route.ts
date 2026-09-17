@@ -217,9 +217,53 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
   // Draft-of-published semantics
   const savingDraftOfPublished = data.saveAsDraft && row.status === 'PUBLISHED';
+  const sourceChanged = data.title !== row.title
+    || data.slug !== row.slug
+    || (data.excerpt ?? null) !== (row.excerpt ?? null)
+    || data.body !== row.body
+    || (data.seoTitle ?? null) !== (row.seoTitle ?? null)
+    || (data.seoDescription ?? null) !== (row.seoDescription ?? null)
+    || (data.heroImageAlt ?? null) !== (row.heroImageAlt ?? null);
+  const automaticPublicationRequested = !data.saveAsDraft
+    && Boolean(data.title?.trim() && data.body?.trim())
+    && sourceChanged
+    && ['IDEA', 'DRAFT', 'REVIEW', 'APPROVED', 'PUBLISHED'].includes(requestedStatus ?? currentStatus);
+  const atomicSourceSnapshot = {
+    title: data.title,
+    slug: data.slug,
+    excerpt: data.excerpt ?? null,
+    body: data.body,
+    heroImage: data.heroImage ?? null,
+    heroImageAlt: data.heroImageAlt ?? null,
+    ogImage: data.ogImage ?? null,
+    seoTitle: data.seoTitle ?? null,
+    seoDescription: data.seoDescription ?? null,
+    ogTitle: data.ogTitle ?? null,
+    ogDescription: data.ogDescription ?? null,
+    canonicalUrl,
+    category: data.category ?? null,
+    author: data.author ?? null,
+    tags: data.tags ?? [],
+    readTimeMinutes: data.readTimeMinutes ?? null,
+    cta: row.cta,
+    internalLinks: row.internalLinks,
+    ...(automaticPublicationRequested && currentStatus === 'PUBLISHED'
+      ? { baseHash: computeCustomerContentSourceHash({
+          title: row.title, slug: row.slug, excerpt: row.excerpt ?? null, body: row.body,
+          seoTitle: row.seoTitle, seoDescription: row.seoDescription,
+          heroImageAlt: row.heroImageAlt, ogTitle: row.ogTitle, ogDescription: row.ogDescription,
+          cta: row.cta, internalLinks: row.internalLinks,
+        }) }
+      : {}),
+  };
 
   let updateFields: Record<string, unknown>;
-  if (savingDraftOfPublished) {
+  if (automaticPublicationRequested && currentStatus === 'PUBLISHED') {
+    // Keep the last public Turkish payload live while the eight translations
+    // are generated. The atomic finalizer promotes this snapshot only after
+    // every task passes validation.
+    updateFields = { draftBody: data.body, updatedAt: now };
+  } else if (savingDraftOfPublished) {
     updateFields = {
       draftBody:  data.body,
       updatedAt:  now,
@@ -236,7 +280,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
         );
       }
       const existingRow = row as Record<string, unknown>;
-      if (approvalGateEnabled && (!existingRow.approvedAt || !existingRow.approvedBy)) {
+      if (approvalGateEnabled && !automaticPublicationRequested && (!existingRow.approvedAt || !existingRow.approvedBy)) {
         return NextResponse.json(
           { error: 'Yayınlamadan önce içerik onaylanmalıdır. Onay kapısı ayarlarda etkin.' },
           { status: 409 },
@@ -245,7 +289,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
       // A saved edit and a publish request must never share an old approval.
       // Editors must save the edit, send it back through review, then publish
       // the unchanged approved revision in a separate operation.
-      if (approvalGateEnabled && (
+      if (approvalGateEnabled && !automaticPublicationRequested && (
         (data.title ?? row.title) !== row.title ||
         (data.body ?? row.body) !== row.body ||
         (data.excerpt === undefined ? row.excerpt : data.excerpt) !== row.excerpt
@@ -277,7 +321,12 @@ export async function PUT(req: NextRequest, { params }: Params) {
       canonicalUrl,
       indexable:      true,
       isActive:       true,
-      status:         finalStatus,
+      // A newly created IDEA becomes a durable draft once it has complete
+      // Turkish content. The translation queue can then publish it atomically
+      // without requiring the old approval transition.
+      status:         finalStatus === 'IDEA' && !data.saveAsDraft && data.body.trim()
+        ? 'DRAFT'
+        : finalStatus,
       publishedAt:    finalStatus === 'PUBLISHED' ? (row.publishedAt ?? now) : row.publishedAt,
       scheduledAt:    data.scheduledAt ? new Date(data.scheduledAt) : (row.scheduledAt ?? null),
       updatedAt:      now,
@@ -316,7 +365,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
   await (db.update(content).set(updateFields as any).where(eq(content.id, id)));
 
   // Mark PUBLISHED translations OUTDATED when source body/title changes
-  if (!savingDraftOfPublished) {
+  if (!savingDraftOfPublished && !(automaticPublicationRequested && currentStatus === 'PUBLISHED')) {
     const legacySrcHash = computeBlogSourceHash(data.body, data.title, data.excerpt);
     const txRows = await db
       .select({ id: contentTranslations.id, status: contentTranslations.status, sourceHash: contentTranslations.sourceHash })
@@ -334,28 +383,25 @@ export async function PUT(req: NextRequest, { params }: Params) {
         .where(inArray(contentTranslations.id, toOutdate));
     }
 
-    const customerVisibleSnapshot = {
-      title: data.title, slug: data.slug, excerpt: data.excerpt ?? null, body: data.body,
-      seoTitle: data.seoTitle ?? null, seoDescription: data.seoDescription ?? null,
-      heroImageAlt: data.heroImageAlt ?? null, ogTitle: data.ogTitle ?? null,
-      ogDescription: data.ogDescription ?? null, cta: row.cta, internalLinks: row.internalLinks,
-    };
+    const customerVisibleSnapshot = atomicSourceSnapshot;
     const srcHash = computeCustomerContentSourceHash(customerVisibleSnapshot);
-    const wasPublished = row.status === 'PUBLISHED';
-    const sourceChanged = data.title !== row.title
-      || data.slug !== row.slug
-      || (data.excerpt ?? null) !== (row.excerpt ?? null)
-      || data.body !== row.body
-      || (data.seoTitle ?? null) !== (row.seoTitle ?? null)
-      || (data.seoDescription ?? null) !== (row.seoDescription ?? null)
-      || (data.heroImageAlt ?? null) !== (row.heroImageAlt ?? null);
     const finalStatusForTranslation = requestedStatus ?? currentStatus;
-    if (finalStatusForTranslation === 'PUBLISHED' && (!wasPublished || sourceChanged)) {
+    // Blog source saves are durable publication requests, not an approval
+    // workflow. The queue runner owns the provider call and the atomic
+    // finalizer publishes Turkish + all eight locales together. A deliberate
+    // saveAsDraft remains the sole opt-out for editors preparing unpublished
+    // work; manual translation locks are still respected by the atomic runner.
+    const autoPublishEligible = automaticPublicationRequested
+      && ['IDEA', 'DRAFT', 'REVIEW', 'APPROVED', 'PUBLISHED'].includes(finalStatusForTranslation);
+    if (autoPublishEligible) {
       await enqueueCustomerContentTranslations({
         entityType: 'content',
         entityId: id,
         sourceHash: srcHash,
         adminId: adminUserId,
+        publishOnComplete: true,
+        preservePublishedWhileRunning: true,
+        sourceSnapshot: atomicSourceSnapshot,
       });
     }
   }

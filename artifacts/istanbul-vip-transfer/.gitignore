@@ -10,3 +10,6 @@ public/images/og-card.jpg
 # Playwright test artifacts
 test-results/
 playwright-report/
+# Canonical admin action screenshots are runtime evidence: retain locally but
+# never commit generated PNGs.
+reports/admin-action-screenshots/

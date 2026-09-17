@@ -1,4 +1,6 @@
 import { expect, test as base, type BrowserContext, type Page } from '@playwright/test';
+import { mkdir } from 'node:fs/promises';
+import path from 'node:path';
 import { and, eq, or } from 'drizzle-orm';
 import { db } from '../../db';
 import { adminUsers, auditLogs, vehicles, drivers, locations, navigationItems } from '../../db/schema';
@@ -69,21 +71,27 @@ export async function waitForSettledAdminPage(page: Page) {
 
 export async function screenshotEvidence(page: Page, name: string) {
   const safeName = name.replace(/[^a-z0-9._-]+/gi, '-');
-  const path = `test-results/admin-acceptance/${safeName}-${Date.now()}.png`;
+  // Playwright's test-results directory is disposable output and can be
+  // removed by the runner/report lifecycle. Canonical acceptance evidence is
+  // deliberately kept outside it, with one deterministic file per route and
+  // viewport so a passing run leaves an auditable 36-file matrix.
+  const evidenceDir = path.resolve(process.cwd(), 'reports/admin-action-screenshots');
+  await mkdir(evidenceDir, { recursive: true });
+  const evidencePath = path.join(evidenceDir, `${safeName}.png`);
   await page.screenshot({
-    path,
+    path: evidencePath,
     fullPage: false,
   });
-  return path;
+  return evidencePath;
 }
 
 type AdminFixtures = {
+  adminContext: BrowserContext;
   adminPage: Page;
 };
 
 type AdminWorkerFixtures = {
   adminIdentity: AdminIdentity;
-  adminContext: BrowserContext;
 };
 
 export const test = base.extend<AdminFixtures, AdminWorkerFixtures>({
@@ -164,15 +172,15 @@ export const test = base.extend<AdminFixtures, AdminWorkerFixtures>({
     }
     },
     { scope: 'worker' }],
-  adminContext: [async ({ browser, adminIdentity }, use) => {
-    const context = await browser.newContext();
+  adminContext: async ({ browser, baseURL, viewport, adminIdentity }, use) => {
+    const context = await browser.newContext({ viewport });
     try {
       const request = context.request;
-      const baseURL = process.env.BASE_URL ?? `http://127.0.0.1:${process.env.PORT ?? '26004'}`;
+      const resolvedBaseURL = baseURL ?? process.env.BASE_URL ?? `http://127.0.0.1:${process.env.PORT ?? '26004'}`;
       let response;
       for (let attempt = 0; attempt < 3; attempt += 1) {
         try {
-          response = await request.post(new URL('/admin/api/login', baseURL).toString(), {
+          response = await request.post(new URL('/admin/api/login', resolvedBaseURL).toString(), {
             data: { email: adminIdentity.email, password: adminIdentity.password },
             headers: { 'content-type': 'application/json' },
             timeout: 45_000,
@@ -188,7 +196,7 @@ export const test = base.extend<AdminFixtures, AdminWorkerFixtures>({
     } finally {
       await context.close().catch(() => {});
     }
-  }, { scope: 'worker' }],
+  },
   adminPage: async ({ adminContext }, use) => {
     const page = await adminContext.newPage();
     try {

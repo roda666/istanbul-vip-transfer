@@ -22,6 +22,29 @@ const settingsSchema = z.object({
   })).max(50).default([]),
 });
 
+type CustomFeature = z.infer<typeof settingsSchema>['customFeatures'][number];
+
+function jsonError(message: string, code: string, status: number) {
+  return NextResponse.json({ ok: false, error: message, code }, { status });
+}
+
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  concurrency: number,
+  task: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+  async function worker() {
+    while (nextIndex < items.length) {
+      const index = nextIndex++;
+      results[index] = await task(items[index]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
+  return results;
+}
+
 /** GET /admin/api/vehicle-feature-defaults */
 export async function GET() {
   try {
@@ -58,9 +81,15 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const parsed = settingsSchema.safeParse(await request.json().catch(() => null));
+  let requestBody: unknown;
+  try {
+    requestBody = await request.json();
+  } catch {
+    return jsonError('Gönderilen bilgiler okunamadı. Lütfen sayfayı yenileyip tekrar deneyin.', 'INVALID_JSON', 400);
+  }
+  const parsed = settingsSchema.safeParse(requestBody);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.errors[0]?.message ?? 'Doğrulama hatası.' }, { status: 422 });
+    return jsonError('Özel özellik bilgileri geçersiz. Türkçe alanın dolu olduğundan emin olun.', 'VALIDATION_ERROR', 422);
   }
 
   const { db } = await import('@/db');
@@ -68,7 +97,7 @@ export async function PUT(request: NextRequest) {
   const { invalidateVehicleFeatureDefaults } = await import('@/lib/vehicle-feature-defaults-server');
   const { translateServicePageFields } = await import('@/lib/ai/translate-service-page');
   const now = new Date();
-  let customFeatures;
+  let customFeatures: CustomFeature[];
   try {
     customFeatures = await Promise.all(parsed.data.customFeatures.map(async (feature) => {
       const translations = { ...feature.translations } as Record<PublicVehicleLocale, string>;
@@ -77,7 +106,7 @@ export async function PUT(request: NextRequest) {
           locale !== 'tr' && !translations[locale]?.trim(),
       );
 
-      const generated = await Promise.all(missingLocales.map(async (locale) => {
+      const generated = await mapWithConcurrency(missingLocales, 2, async (locale) => {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 45_000);
         try {
@@ -87,34 +116,41 @@ export async function PUT(request: NextRequest) {
             controller.signal,
           );
           if (!result.ok || !result.translated.label?.trim()) {
-            throw new Error(`${locale.toUpperCase()} çevirisi üretilemedi.`);
+            throw new Error(`${locale.toUpperCase()}:${result.ok ? 'empty' : result.reason}`);
           }
           return [locale, result.translated.label.trim()] as const;
         } finally {
           clearTimeout(timeout);
         }
-      }));
+      });
 
       for (const [locale, value] of generated) translations[locale] = value;
       return { code: feature.code, translations };
     }));
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Otomatik çeviri üretilemedi.' },
-      { status: 502 },
+    console.error('[vehicle-feature-defaults] AI translation failed:', error);
+    return jsonError(
+      'Çeviri sırasında hata oluştu, lütfen tekrar deneyin.',
+      'TRANSLATION_FAILED',
+      502,
     );
   }
 
-  const [row] = await db
-    .insert(vehicleFeatureDefaults)
-    .values({ id: 1, codes: parsed.data.codes, customFeatures, updatedAt: now, updatedBy: session.adminId })
-    .onConflictDoUpdate({
-      target: vehicleFeatureDefaults.id,
-      set: { codes: parsed.data.codes, customFeatures, updatedAt: now, updatedBy: session.adminId },
-    })
-    .returning();
+  try {
+    const [row] = await db
+      .insert(vehicleFeatureDefaults)
+      .values({ id: 1, codes: parsed.data.codes, customFeatures, updatedAt: now, updatedBy: session.adminId })
+      .onConflictDoUpdate({
+        target: vehicleFeatureDefaults.id,
+        set: { codes: parsed.data.codes, customFeatures, updatedAt: now, updatedBy: session.adminId },
+      })
+      .returning();
 
-  invalidateVehicleFeatureDefaults();
+    invalidateVehicleFeatureDefaults();
 
-  return NextResponse.json({ codes: row.codes, customFeatures: row.customFeatures });
+    return NextResponse.json({ ok: true, codes: row.codes, customFeatures: row.customFeatures });
+  } catch (error) {
+    console.error('[vehicle-feature-defaults] Persistence failed:', error);
+    return jsonError('Özel özellikler kaydedilemedi. Lütfen tekrar deneyin.', 'SAVE_FAILED', 500);
+  }
 }

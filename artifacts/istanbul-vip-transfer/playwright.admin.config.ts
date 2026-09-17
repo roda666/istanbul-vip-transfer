@@ -9,7 +9,10 @@ const baseURL = process.env.BASE_URL ?? `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: './tests',
-  testMatch: 'admin-acceptance/**/*.spec.ts',
+  testMatch: [
+    'admin-acceptance/**/*.spec.ts',
+    'studio-image-homepage.spec.ts',
+  ],
   timeout: 60_000,
   workers: 1,
   // Acceptance tests create their own isolated account, so retries only hide

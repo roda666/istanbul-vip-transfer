@@ -149,3 +149,5 @@
 - [Serializable admin action icons](serializable-admin-action-icons.md) — Server Components pass icon identifiers, never React component functions, into shared client action controls.
 - [Customer-content CMS standard](customer-content-cms-standard.md) — published Turkish copy queues eight durable translations; old localized copy remains live; admin lists use one card/badge/action contract.
 - [Atomic Blog publication](atomic-blog-publication.md) — stage all eight validated locale payloads; publish TR+8 together only after every task succeeds and the source hash still matches.
+- [Production acceptance over loopback HTTP](production-acceptance-loopback-http.md) — Secure admin cookies need a runner-only HTTP exception; API mutations must send same-origin Origin headers.
+- [Real AI acceptance cleanup](real-ai-acceptance-cleanup.md) — snapshot exact DB fields before real-provider mutations and restore directly; partial admin APIs may trigger workflows or reject cleanup.

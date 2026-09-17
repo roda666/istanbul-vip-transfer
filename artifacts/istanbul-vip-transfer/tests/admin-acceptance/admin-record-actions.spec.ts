@@ -38,7 +38,7 @@ for (const viewport of [
         expect(redirectedToLogin, `${route.name} must remain authenticated`).toBe(false);
         expect([401, 403].includes(status), `${route.name} must not return permission denied`).toBe(false);
 
-        const records = page.locator('[data-admin-record-actions]');
+        const records = page.locator('[data-admin-record-actions]:visible');
         await expect(records.first(), `${route.name} needs a seeded acceptance record`).toBeVisible({ timeout: 15_000 });
 
         const first = records.first();

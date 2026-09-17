@@ -32,7 +32,7 @@ async function main() {
   const port = process.env.PORT ?? '26004';
   const baseURL = process.env.BASE_URL ?? `http://127.0.0.1:${port}`;
   const serverMode = process.env.ADMIN_ACCEPTANCE_SERVER ?? 'production';
-  const env = { ...process.env, PORT: port, BASE_URL: baseURL };
+  const env = { ...process.env, PORT: port, BASE_URL: baseURL, ADMIN_ACCEPTANCE_TEST: '1' };
 
   if (serverMode === 'production') {
     await access('.next/BUILD_ID').catch(() => {

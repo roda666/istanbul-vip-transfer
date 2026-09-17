@@ -56,7 +56,10 @@ function buildSessionOptions() {
     cookieName: COOKIE_NAME,
     cookieOptions: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      // The canonical local acceptance runner starts a production build over
+      // loopback HTTP. Keep its disposable test session usable without
+      // weakening cookies in deployed production.
+      secure: process.env.NODE_ENV === 'production' && process.env.ADMIN_ACCEPTANCE_TEST !== '1',
       sameSite: 'lax' as const,
       maxAge: 60 * 60 * 8, // 8 hours
       path: '/',
@@ -77,7 +80,7 @@ export function tryBuildSessionOptions() {
     cookieName: COOKIE_NAME,
     cookieOptions: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.NODE_ENV === 'production' && process.env.ADMIN_ACCEPTANCE_TEST !== '1',
       sameSite: 'lax' as const,
       maxAge: 60 * 60 * 8,
       path: '/',

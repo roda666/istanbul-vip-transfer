@@ -8,6 +8,20 @@ const GOLD = '#C9A84C';
 const BORDER = '#D8E1E9';
 const TEXT = '#172033';
 const MUTED = '#64748B';
+const FALLBACK_SAVE_ERROR = 'İşlem tamamlanamadı. Lütfen tekrar deneyin.';
+
+async function readJsonResponse(response: Response): Promise<Record<string, unknown>> {
+  const text = await response.text();
+  if (!text.trim()) return {};
+  try {
+    const parsed: unknown = JSON.parse(text);
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : {};
+  } catch {
+    return {};
+  }
+}
 
 /**
  * Fleet-wide default "ek özellikler" (amenity) codes shown on any vehicle
@@ -30,10 +44,12 @@ export default function VehicleFeatureDefaultsPanel() {
     (async () => {
       try {
         const res = await fetch('/admin/api/vehicle-feature-defaults');
-        const data = await res.json();
+        const data = await readJsonResponse(res);
         if (!cancelled && res.ok) {
-          setCodes(data.codes ?? []);
-          setCustomFeatures(data.customFeatures ?? []);
+          setCodes(Array.isArray(data.codes) ? data.codes as string[] : []);
+          setCustomFeatures(Array.isArray(data.customFeatures)
+            ? data.customFeatures as Array<{ code: string; translations: Record<string, string> }>
+            : []);
         }
       } catch {
         // Silent — panel simply shows the empty state; not fatal.
@@ -57,13 +73,20 @@ export default function VehicleFeatureDefaultsPanel() {
         headers: { 'Content-Type': 'application/json' },
          body: JSON.stringify({ codes, customFeatures }),
       });
-       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Kaydedilemedi.');
-       setCodes(data.codes ?? codes);
-       setCustomFeatures(data.customFeatures ?? customFeatures);
+       const data = await readJsonResponse(res);
+       if (!res.ok) {
+         const message = typeof data.error === 'string' && data.error.trim()
+           ? data.error
+           : FALLBACK_SAVE_ERROR;
+         throw new Error(message);
+       }
+        setCodes(Array.isArray(data.codes) ? data.codes as string[] : codes);
+        setCustomFeatures(Array.isArray(data.customFeatures)
+          ? data.customFeatures as Array<{ code: string; translations: Record<string, string> }>
+          : customFeatures);
       setSavedAt(Date.now());
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Kaydedilemedi.');
+      setError(err instanceof Error && err.message.trim() ? err.message : FALLBACK_SAVE_ERROR);
     } finally {
       setSaving(false);
     }

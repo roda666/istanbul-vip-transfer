@@ -1,7 +1,7 @@
 import { expect, test as base, type BrowserContext, type Page } from '@playwright/test';
 import { and, eq, or } from 'drizzle-orm';
 import { db } from '../../db';
-import { adminUsers, auditLogs, vehicles, drivers, locations } from '../../db/schema';
+import { adminUsers, auditLogs, vehicles, drivers, locations, navigationItems } from '../../db/schema';
 import { hashPassword } from '../../lib/auth/password';
 import { cleanupAdminAcceptanceAccounts } from '../../scripts/cleanup-admin-acceptance';
 
@@ -78,11 +78,13 @@ export async function screenshotEvidence(page: Page, name: string) {
 }
 
 type AdminFixtures = {
-  adminContext: BrowserContext;
   adminPage: Page;
 };
 
-type AdminWorkerFixtures = { adminIdentity: AdminIdentity };
+type AdminWorkerFixtures = {
+  adminIdentity: AdminIdentity;
+  adminContext: BrowserContext;
+};
 
 export const test = base.extend<AdminFixtures, AdminWorkerFixtures>({
   adminIdentity: [async ({}, use) => {
@@ -104,6 +106,7 @@ export const test = base.extend<AdminFixtures, AdminWorkerFixtures>({
     const vehicleId = crypto.randomUUID();
     const driverId = crypto.randomUUID();
     const locationId = crypto.randomUUID();
+    const menuId = crypto.randomUUID();
     const fixtureSuffix = id.slice(0, 8);
     await db.insert(vehicles).values({
       id: vehicleId,
@@ -132,12 +135,21 @@ export const test = base.extend<AdminFixtures, AdminWorkerFixtures>({
       createdBy: id,
       updatedBy: id,
     });
+    await db.insert(navigationItems).values({
+      id: menuId,
+      label: `Acceptance Menu ${fixtureSuffix}`,
+      href: `/playwright-acceptance-${fixtureSuffix}`,
+      location: 'HEADER',
+      sortOrder: 999999,
+      active: true,
+    });
     try {
       await use({ id, email, password });
     } finally {
       // Transfer-operation references are nullable, but explicitly clear any
       // rows created by a browser run before deleting the disposable records.
       await db.delete(locations).where(eq(locations.id, locationId)).catch(() => {});
+      await db.delete(navigationItems).where(eq(navigationItems.id, menuId)).catch(() => {});
       await db.delete(drivers).where(eq(drivers.id, driverId)).catch(() => {});
       await db.delete(vehicles).where(eq(vehicles.id, vehicleId)).catch(() => {});
       // Delete our audit trail before removing the account. The second
@@ -152,10 +164,11 @@ export const test = base.extend<AdminFixtures, AdminWorkerFixtures>({
     }
     },
     { scope: 'worker' }],
-  adminContext: [async ({ browser, baseURL, adminIdentity }, use) => {
+  adminContext: [async ({ browser, adminIdentity }, use) => {
     const context = await browser.newContext();
     try {
       const request = context.request;
+      const baseURL = process.env.BASE_URL ?? `http://127.0.0.1:${process.env.PORT ?? '26004'}`;
       let response;
       for (let attempt = 0; attempt < 3; attempt += 1) {
         try {

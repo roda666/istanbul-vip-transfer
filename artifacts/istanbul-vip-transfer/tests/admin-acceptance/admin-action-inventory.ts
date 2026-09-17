@@ -10,7 +10,9 @@ export const ADMIN_ACTION_APPLICABILITY: Record<string, string[]> = {
   soforler: ['up', 'down', 'edit', 'activation', 'delete'],
   kategoriler: ['up', 'down', 'edit', 'activation', 'delete'],
   rakipler: ['edit', 'delete'],
-  personel: ['edit', 'activation', 'delete'],
+  // Şifre Yenile is a real personnel-only domain action. AdminRecordActions
+  // places it in the canonical `custom` slot before delete.
+  personel: ['edit', 'activation', 'custom', 'delete'],
   menu: ['up', 'down', 'edit', 'delete'],
   'transfer-rotalari': ['up', 'down', 'edit', 'activation', 'delete'],
   sss: ['up', 'down', 'edit', 'delete'],

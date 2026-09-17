@@ -14,3 +14,9 @@ For responsive smoke tests against Next development mode, navigate with `domcont
 **Why:** Cold route compilation and long admin pages can consume the whole test timeout after the UI assertions are already valid, producing false failures.
 
 **How to apply:** Keep explicit loading-indicator, visible-content, overflow, and touch-target assertions. Warm the login route before a batch when the workflow has just restarted, and treat fixture/login timeouts separately from UI failures.
+
+For large route-by-viewport screenshot matrices, a timeout after the target controls are already present is test-harness instability, not evidence that the responsive contract failed.
+
+**Why:** Long single-worker matrices can spend minutes in route teardown or screenshot capture after assertions have succeeded, causing reruns to fail on screens that passed moments earlier.
+
+**How to apply:** Keep screenshots viewport-sized, record explicit no-record/permission skips, and diagnose the first timeout from its trace before rerunning a bounded subset instead of restarting the entire matrix.

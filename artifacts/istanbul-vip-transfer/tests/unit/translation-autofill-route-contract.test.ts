@@ -7,10 +7,12 @@ const appRoot = resolve(__dirname, '../..');
 
 const missingOnlyRoutes = [
   'app/admin/api/categories/route.ts',
-  'app/admin/api/categories/[id]/route.ts',
   'app/admin/api/faqs/route.ts',
-  'app/admin/api/faqs/[id]/route.ts',
   'app/admin/api/transfer-routes/[id]/route.ts',
+];
+
+const queuedRegenerationRoutes = [
+  'app/admin/api/categories/[id]/route.ts',
   'app/admin/api/blog/[id]/route.ts',
 ];
 
@@ -19,6 +21,25 @@ describe('translation autofill route contract', () => {
     const source = readFileSync(resolve(appRoot, relativePath), 'utf8');
 
     expect(source).toContain('fillMissingTranslations');
+  });
+
+  it.each(queuedRegenerationRoutes)(
+    '%s queues the eight-locale translation workflow after a Turkish edit',
+    (relativePath) => {
+      const source = readFileSync(resolve(appRoot, relativePath), 'utf8');
+
+      expect(source).toContain('enqueueCustomerContentTranslations');
+    },
+  );
+
+  it('forces FAQ regeneration after an owner edits the Turkish source', () => {
+    const source = readFileSync(
+      resolve(appRoot, 'app/admin/api/faqs/[id]/route.ts'),
+      'utf8',
+    );
+
+    expect(source).toContain('enqueueCustomerContentTranslations');
+    expect(source).toContain('force: true');
   });
 
   it('keeps vehicle translations on the field-by-locale merge path', () => {

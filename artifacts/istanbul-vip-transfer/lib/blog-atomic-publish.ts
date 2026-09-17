@@ -11,7 +11,7 @@ import {
   type TranslationInput,
   type TranslationOutput,
 } from '@/lib/ai/translate';
-import { containsCustomerVisibleTollCopy } from '@/lib/customer-visible-copy';
+import { findTollFeeViolations } from '@/lib/toll-fee-rules';
 
 type BlogSourceSnapshot = {
   title: string;
@@ -55,6 +55,7 @@ export function computeBlogAtomicSourceHash(source: BlogSourceSnapshot): string 
 export function validateBlogTranslation(
   value: unknown,
   sourceBody: string | null,
+  targetLang: string,
 ): { ok: true; data: TranslationOutput } | { ok: false; error: string } {
   const parsed = TranslationOutputSchema.safeParse(normalizeRequiredTranslationFields(value));
   if (!parsed.success) {
@@ -79,8 +80,10 @@ export function validateBlogTranslation(
     parsed.data.imageTitle,
     parsed.data.imageCaption,
   ];
-  if (customerFields.some(field => containsCustomerVisibleTollCopy(field))) {
-    return { ok: false, error: 'Çeviri müşteri görünür geçiş ücreti/köprü/otoyol ifadesi içeriyor; yayın engellendi.' };
+  const violation = customerFields
+    .flatMap((field, index) => findTollFeeViolations(field, targetLang).map(reason => `${index + 1}: ${reason}`))[0];
+  if (violation) {
+    return { ok: false, error: `Çeviri müşteri görünür geçiş ücreti ifadesi içeriyor; yayın engellendi (${targetLang}: ${violation}).` };
   }
   return { ok: true, data: parsed.data };
 }
@@ -197,7 +200,7 @@ export async function runBlogAtomicTranslationTask(input: {
     }
   }
 
-  const validated = validateBlogTranslation(raw, releaseSource.body);
+  const validated = validateBlogTranslation(raw, releaseSource.body, input.targetLang);
   if (!validated.ok) {
     return { status: 'failed' as const, translationId: existing?.id, error: validated.error };
   }
@@ -270,7 +273,7 @@ export async function finalizeBlogAtomicPublish(jobId: string, adminId: string) 
 
     const now = new Date();
     for (const task of tasks) {
-      const validated = validateBlogTranslation(task.resultPayload, releaseSource.body);
+      const validated = validateBlogTranslation(task.resultPayload, releaseSource.body, task.targetLanguageCode);
       if (!validated.ok) throw new Error(`${task.targetLanguageCode.toUpperCase()}: ${validated.error}`);
       const data = validated.data;
       await tx.insert(contentTranslations).values({

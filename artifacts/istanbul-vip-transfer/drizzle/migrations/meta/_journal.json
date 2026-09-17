@@ -778,6 +778,13 @@
       "when": 1789561000000,
       "tag": "0110_blog_atomic_source_snapshot",
       "breakpoints": true
+    },
+    {
+      "idx": 111,
+      "version": "7",
+      "when": 1789562000000,
+      "tag": "0111_service_type_translations",
+      "breakpoints": true
     }
   ]
 }

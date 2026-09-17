@@ -616,3 +616,59 @@ mtime_ms = 1789664353516
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/d513e45d-4ab8-4a22-b9c3-e002de36ad57/f370a1ff-ef4b-44a4-80ae-c1221f8013ae"
 storage_version_token = "1789664677869505"
 content_type = "image/png"
+
+[[outputs]]
+id = "cLy8hrRxMO7M1H0vWyhYt"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/service-types-owner-proof-20260917/service-types-before-list-no-create-button.png"
+type = "image"
+title = "Önce — Hizmet Türleri listesi"
+description = "Değişiklikten önceki gerçek kod ve gerçek veritabanı: Yeni Hizmet Türü Ekle butonu bulunmuyor."
+logical_id = "42d6f1ec-d324-47ac-ba67-cbbd8f7025ce"
+content_hash = "sha256:316939009b24e98daea66fe9f9b1942457cff440ffd36f05e01384f5e7f4321b"
+size = 955423
+mtime_ms = 1789665683763
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/42d6f1ec-d324-47ac-ba67-cbbd8f7025ce/184a6132-1572-41ed-83b5-008779e764ef"
+storage_version_token = "1789666698161127"
+content_type = "image/png"
+
+[[outputs]]
+id = "azvA5U-A81BokS4XWqgfA"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/service-types-owner-proof-20260917/service-types-after-desktop-list-with-create-button.png"
+type = "image"
+title = "Sonra — Hizmet Türleri listesi"
+description = "Güncel gerçek admin ekranı: Yeni Hizmet Türü Ekle butonu görünür."
+logical_id = "a88c84cd-b0c7-4036-8809-d11f9ff30072"
+content_hash = "sha256:9a7e6cfbcbd3a9b0556df5dceba20690294c07a5f1556327ef653ca643d96d41"
+size = 960116
+mtime_ms = 1789666206937
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/a88c84cd-b0c7-4036-8809-d11f9ff30072/7376b4f4-0207-45a5-abb3-1ef05c884912"
+storage_version_token = "1789666699707422"
+content_type = "image/png"
+
+[[outputs]]
+id = "1OyJyieg31TLUhfpCq4D8"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/service-types-owner-proof-20260917/service-types-before-edit-duplicate-close-controls.png"
+type = "image"
+title = "Önce — Düzenleme formu"
+description = "Değişiklikten önceki gerçek form: Kapat ve İptal kontrolleri birlikte görünüyor."
+logical_id = "ba2d8134-d2d2-4e34-9402-4c5054722eb1"
+content_hash = "sha256:20e4927410b037242d296afec31e2696bc1cc0e0c4e831a4ca216925af5dc330"
+size = 977628
+mtime_ms = 1789665684385
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/ba2d8134-d2d2-4e34-9402-4c5054722eb1/6b19649b-12e2-42e6-b846-1985a2fe6656"
+storage_version_token = "1789666701148039"
+content_type = "image/png"
+
+[[outputs]]
+id = "BXdAqddn_kbzk9NTQP76I"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/service-types-owner-proof-20260917/service-types-after-desktop-edit-single-cancel.png"
+type = "image"
+title = "Sonra — Düzenleme formu"
+description = "Güncel gerçek form: yalnız İptal bulunuyor ve otomatik çeviri/yayın açıklaması gösteriliyor."
+logical_id = "70d8f269-e038-4c37-9fb5-cd9d38f2158b"
+content_hash = "sha256:d5b9fce5e370daa0b42bdb3909ba9b4f37adeb7473fef0cac180eff729ac23f3"
+size = 985160
+mtime_ms = 1789666207793
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/70d8f269-e038-4c37-9fb5-cd9d38f2158b/85fe4474-541f-4465-9b89-c2aaea2df88c"
+storage_version_token = "1789666702621780"
+content_type = "image/png"

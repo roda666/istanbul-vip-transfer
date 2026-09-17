@@ -15,7 +15,6 @@ import { resolvePublishedVehicles } from '@/lib/vehicle-localization';
 import {
   EMPTY_BOOKING_FORM_INITIAL_DATA,
   EMPTY_BOOKING_FORM_OPTIONS,
-  FALLBACK_BOOKING_SERVICE_TYPES,
   type BookingFormBootstrap,
   type BookingFormInitialData,
   type BookingLocationOption,
@@ -23,6 +22,7 @@ import {
 } from '@/lib/booking-form-types';
 import { PUBLICLY_UNAVAILABLE_BOOKING_LOCATION_SLUGS } from '@/lib/booking-location-policy';
 import { vehicleDisplayOrder } from '@/lib/inventory-order';
+import { localizeServiceType } from '@/lib/service-type-localization';
 
 export const BOOKING_FORM_BOOTSTRAP_TAG = 'public-booking-form-bootstrap';
 
@@ -41,13 +41,14 @@ function sortLocations(rows: BookingLocationOption[], scope: 'local' | 'intercit
 }
 
 const getCachedBookingFormInitialData = unstable_cache(
-  async (): Promise<BookingFormInitialData> => {
+  async (lang: string): Promise<BookingFormInitialData> => {
     const [serviceRows, settingRows, customFieldRows] = await Promise.all([
         db.select({
           id: serviceTypes.id,
           key: serviceTypes.key,
           label: serviceTypes.label,
           description: serviceTypes.description,
+          translations: serviceTypes.translations,
           quoteEnabled: serviceTypes.quoteEnabled,
           reservationEnabled: serviceTypes.reservationEnabled,
         }).from(serviceTypes).where(eq(serviceTypes.enabled, true)).orderBy(asc(serviceTypes.displayOrder)),
@@ -65,7 +66,7 @@ const getCachedBookingFormInitialData = unstable_cache(
       ]);
 
     return {
-      serviceTypes: serviceRows.length ? serviceRows : FALLBACK_BOOKING_SERVICE_TYPES,
+      serviceTypes: serviceRows.map((row) => localizeServiceType(row, lang)),
       formSettings: {
         showLuggageCount: settingRows[0]?.showLuggageCount === true,
         showChildSeatCount: settingRows[0]?.showChildSeatCount === true,
@@ -163,9 +164,9 @@ const getCachedBookingFormOptions = unstable_cache(
   { revalidate: 300, tags: [BOOKING_FORM_BOOTSTRAP_TAG] },
 );
 
-export async function getBookingFormInitialData(): Promise<BookingFormInitialData> {
+export async function getBookingFormInitialData(lang = 'tr'): Promise<BookingFormInitialData> {
   try {
-    return await getCachedBookingFormInitialData();
+    return await getCachedBookingFormInitialData(lang);
   } catch (error) {
     console.error('Booking form initial data error:', error);
     return EMPTY_BOOKING_FORM_INITIAL_DATA;
@@ -187,7 +188,7 @@ export async function getBookingFormOptionsStrict(lang: string): Promise<Booking
 
 export async function getBookingFormBootstrap(lang: string): Promise<BookingFormBootstrap> {
   const [initial, options] = await Promise.all([
-    getBookingFormInitialData(),
+    getBookingFormInitialData(lang),
     getBookingFormOptions(lang),
   ]);
   return { ...initial, ...options };

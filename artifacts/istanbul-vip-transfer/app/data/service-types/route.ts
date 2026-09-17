@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { localizeServiceType } from '@/lib/service-type-localization';
 
 /**
  * Public (no auth) service types endpoint for the booking form.
@@ -8,11 +10,12 @@ import { NextResponse } from 'next/server';
  */
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const { db } = await import('@/db');
     const { serviceTypes } = await import('@/db/schema');
     const { eq, asc } = await import('drizzle-orm');
+    const lang = request.nextUrl.searchParams.get('lang')?.trim().toLowerCase() || 'tr';
 
     const items = await db
       .select({
@@ -20,6 +23,7 @@ export async function GET() {
         key: serviceTypes.key,
         label: serviceTypes.label,
         description: serviceTypes.description,
+        translations: serviceTypes.translations,
         quoteEnabled: serviceTypes.quoteEnabled,
         reservationEnabled: serviceTypes.reservationEnabled,
         displayOrder: serviceTypes.displayOrder,
@@ -29,22 +33,14 @@ export async function GET() {
       .orderBy(asc(serviceTypes.displayOrder));
 
     return NextResponse.json(
-      { items },
-      { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30' } },
+      { items: items.map((item) => localizeServiceType(item, lang)) },
+      { headers: { 'Cache-Control': 'no-store, max-age=0, must-revalidate' } },
     );
   } catch (err) {
     console.error('Public service-types error:', err);
-    // Return hardcoded fallback so form always works
     return NextResponse.json(
-      {
-        items: [
-          { id: '1', key: 'AIRPORT_TRANSFER', label: 'Havalimanı / Şehir İçi Transfer', description: null, quoteEnabled: true, reservationEnabled: true, displayOrder: 0 },
-          { id: '2', key: 'INTERCITY', label: 'Şehirler Arası Transfer', description: null, quoteEnabled: true, reservationEnabled: true, displayOrder: 1 },
-          { id: '3', key: 'ALLOCATION', label: 'Araç Tahsisi', description: null, quoteEnabled: true, reservationEnabled: true, displayOrder: 2 },
-          { id: '4', key: 'TOUR', label: 'Özel Tur / Gezi', description: null, quoteEnabled: true, reservationEnabled: true, displayOrder: 3 },
-        ],
-      },
-      { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30' } },
+      { error: 'Hizmet türleri şu anda alınamıyor.' },
+      { status: 503, headers: { 'Cache-Control': 'no-store, max-age=0' } },
     );
   }
 }

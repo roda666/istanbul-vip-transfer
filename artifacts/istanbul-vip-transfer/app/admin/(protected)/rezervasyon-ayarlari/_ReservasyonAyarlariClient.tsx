@@ -389,8 +389,13 @@ function LocationModal({ loc, onSave, onClose }: { loc?: Location; onSave: () =>
 }
 
 // ── Service Type Editor (inline) ───────────────────────────────────────────────
-function ServiceTypeRow({ st, onSaved }: { st: ServiceTypeItem; onSaved: () => void }) {
-  const [editing, setEditing] = useState(false);
+function ServiceTypeRow({ st, onSaved, isNew = false, onCancel }: {
+  st: ServiceTypeItem;
+  onSaved: () => void;
+  isNew?: boolean;
+  onCancel?: () => void;
+}) {
+  const [editing, setEditing] = useState(isNew);
   const [form, setForm] = useState({ label: st.label, description: st.description ?? '', enabled: st.enabled, quoteEnabled: st.quoteEnabled, reservationEnabled: st.reservationEnabled, displayOrder: String(st.displayOrder) });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
@@ -399,8 +404,8 @@ function ServiceTypeRow({ st, onSaved }: { st: ServiceTypeItem; onSaved: () => v
     setSaving(true);
     setMsg('');
     try {
-      const res = await fetch(`/admin/api/service-types/${st.id}`, {
-        method: 'PATCH',
+      const res = await fetch(isNew ? '/admin/api/service-types' : `/admin/api/service-types/${st.id}`, {
+        method: isNew ? 'POST' : 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           label: form.label,
@@ -418,25 +423,37 @@ function ServiceTypeRow({ st, onSaved }: { st: ServiceTypeItem; onSaved: () => v
   }
 
   const inputS: React.CSSProperties = { minHeight: '44px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '6px', color: NAVY, fontSize: '13px', fontFamily: 'Inter, sans-serif', padding: '6px 10px', outline: 'none', width: '100%', boxSizing: 'border-box' };
+  useEffect(() => {
+    if (!editing && !isNew) {
+      setForm({ label: st.label, description: st.description ?? '', enabled: st.enabled, quoteEnabled: st.quoteEnabled, reservationEnabled: st.reservationEnabled, displayOrder: String(st.displayOrder) });
+    }
+  }, [editing, isNew, st]);
+  const cancel = () => {
+    setEditing(false);
+    setMsg('');
+    onCancel?.();
+  };
 
   return (
     <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '18px 20px', marginBottom: '10px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 600, color: NAVY }}>{st.label}</span>
-            <span style={{ background: '#F1F5F9', color: MUTED, fontSize: '11px', padding: '1px 7px', borderRadius: '10px', fontFamily: 'Inter, sans-serif' }}>{st.key}</span>
+            <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 600, color: NAVY }}>{isNew ? 'Yeni Hizmet Türü' : st.label}</span>
+            {!isNew && <span style={{ background: '#F1F5F9', color: MUTED, fontSize: '11px', padding: '1px 7px', borderRadius: '10px', fontFamily: 'Inter, sans-serif' }}>{st.key}</span>}
             {!st.enabled && <span style={{ background: '#FEF2F2', color: RED, fontSize: '11px', padding: '1px 7px', borderRadius: '10px', fontFamily: 'Inter, sans-serif' }}>Devre Dışı</span>}
             {st.enabled && <span style={{ background: '#ECFDF5', color: '#065F46', fontSize: '11px', padding: '1px 7px', borderRadius: '10px', fontFamily: 'Inter, sans-serif' }}>Aktif</span>}
           </div>
           {st.description && <p style={{ color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif', marginTop: '4px', marginBottom: 0 }}>{st.description}</p>}
         </div>
-        <AdminActionButton
-          label={editing ? 'Kapat' : 'Düzenle'}
-          icon={editing ? X : Pencil}
-          variant={editing ? 'cancel' : 'edit'}
-          onClick={() => { setEditing(e => !e); setMsg(''); }}
-        />
+        {!editing && !isNew && (
+          <AdminActionButton
+            label="Düzenle"
+            icon={Pencil}
+            variant="edit"
+            onClick={() => { setEditing(true); setMsg(''); }}
+          />
+        )}
       </div>
 
       {editing && (
@@ -460,12 +477,15 @@ function ServiceTypeRow({ st, onSaved }: { st: ServiceTypeItem; onSaved: () => v
             <Toggle checked={form.quoteEnabled} onChange={v => setForm(f => ({ ...f, quoteEnabled: v }))} label="Fiyat Teklifi Almaya İzin Ver" />
             <Toggle checked={form.reservationEnabled} onChange={v => setForm(f => ({ ...f, reservationEnabled: v }))} label="Rezervasyon Talebine İzin Ver" />
           </div>
+          <p style={{ color: MUTED, fontSize: '11px', lineHeight: 1.5, margin: '0 0 14px', fontFamily: 'Inter, sans-serif' }}>
+            Görünen ad ve açıklama kaydedilirken aktif dillere otomatik çevrilir ve doğrudan rezervasyon formunda yayınlanır.
+          </p>
           {msg && (
             <div style={{ background: msg === 'Kaydedildi.' ? '#ECFDF5' : '#FEF2F2', border: `1px solid ${msg === 'Kaydedildi.' ? '#86EFAC' : '#FECACA'}`, borderRadius: '8px', padding: '8px 12px', color: msg === 'Kaydedildi.' ? '#065F46' : RED, fontSize: '12px', fontFamily: 'Inter, sans-serif', marginBottom: '12px' }}>{msg}</div>
           )}
           <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-            <Btn variant="ghost" onClick={() => { setEditing(false); setMsg(''); }}>İptal</Btn>
-            <Btn variant="primary" loading={saving} onClick={save}>{saving ? 'Kaydediliyor…' : 'Kaydet'}</Btn>
+            <Btn variant="ghost" onClick={cancel}>İptal</Btn>
+            <Btn variant="primary" loading={saving} onClick={save}>{saving ? 'Kaydediliyor…' : isNew ? 'Ekle' : 'Kaydet'}</Btn>
           </div>
         </div>
       )}
@@ -492,6 +512,7 @@ export default function ReservasyonAyarlariClient() {
   // ── Hizmet Türleri state ──
   const [serviceTypes, setServiceTypes] = useState<ServiceTypeItem[]>([]);
   const [stLoading, setStLoading] = useState(true);
+  const [creatingServiceType, setCreatingServiceType] = useState(false);
 
   // ── Form Ayarları state ──
   const [settings, setSettings] = useState<FormSettings>({ timeStepMinutes: 5, exactAddressRequired: false, locationSearchEnabled: true, roadDistanceMultiplier: 1.25, showLuggageCount: false, showChildSeatCount: false, showVehiclePreference: false, showAdditionalNotes: false, adminNewReservationNotification: false, customerConfirmationEmail: false, optionalFieldServiceTypes: {} });
@@ -920,12 +941,29 @@ export default function ReservasyonAyarlariClient() {
       {tab === 'hizmet-turleri' && (
         <div style={{ maxWidth: '680px' }}>
           <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px', padding: '20px', marginBottom: '16px', boxShadow: '0 2px 8px rgba(23,43,58,0.06)' }}>
-            <h3 style={{ color: GOLD, fontSize: '12px', fontFamily: 'Inter, sans-serif', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 6px', paddingBottom: '12px', borderBottom: `1px solid ${BORDER}` }}>
-              Hizmet Türleri
-            </h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', paddingBottom: '12px', borderBottom: `1px solid ${BORDER}` }}>
+              <h3 style={{ color: GOLD, fontSize: '12px', fontFamily: 'Inter, sans-serif', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>
+                Hizmet Türleri
+              </h3>
+              <AdminActionButton
+                label="Yeni Hizmet Türü Ekle"
+                icon={Plus}
+                variant="save"
+                onClick={() => setCreatingServiceType(true)}
+                disabled={creatingServiceType}
+              />
+            </div>
             <p style={{ color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif', marginTop: '0', marginBottom: '16px' }}>
               Rezervasyon formunda görünen hizmet türlerini yönetin. Sistem anahtarları (key) değiştirilmez.
             </p>
+            {creatingServiceType && (
+              <ServiceTypeRow
+                isNew
+                st={{ id: 'new', key: '', label: '', description: null, enabled: true, quoteEnabled: true, reservationEnabled: true, displayOrder: serviceTypes.length }}
+                onCancel={() => setCreatingServiceType(false)}
+                onSaved={() => { setCreatingServiceType(false); void fetchServiceTypes(); }}
+              />
+            )}
             {stLoading ? (
               <div style={{ color: MUTED, fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>Yükleniyor…</div>
             ) : serviceTypes.map((st) => (

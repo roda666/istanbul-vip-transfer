@@ -562,6 +562,10 @@ export const serviceTypes = pgTable('service_types', {
   key: text('key').notNull().unique(),
   label: text('label').notNull(),
   description: text('description'),
+  translations: jsonb('translations').$type<Record<string, {
+    label?: string;
+    description?: string | null;
+  }>>().default({}).notNull(),
   enabled: boolean('enabled').default(true).notNull(),
   quoteEnabled: boolean('quote_enabled').default(true).notNull(),
   reservationEnabled: boolean('reservation_enabled').default(true).notNull(),

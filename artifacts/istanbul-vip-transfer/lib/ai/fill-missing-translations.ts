@@ -61,11 +61,16 @@ export async function syncStructuralTranslations(
   source: TranslationFields,
   existing: LocaleTranslationMap = {},
   changedFields: readonly string[] = Object.keys(source),
+  targetLocales: readonly string[] = AUTO_TRANSLATION_LOCALES,
 ): Promise<LocaleTranslationMap> {
   const allowed = new Set(changedFields);
   const result: LocaleTranslationMap = structuredClone(existing);
+  const supportedTargets = targetLocales.filter(
+    (locale): locale is AutoTranslationLocale =>
+      (AUTO_TRANSLATION_LOCALES as readonly string[]).includes(locale),
+  );
 
-  await Promise.all(AUTO_TRANSLATION_LOCALES.map(async (locale) => {
+  await Promise.all(supportedTargets.map(async (locale) => {
     const current = { ...(result[locale] ?? {}) };
     const requested = Object.fromEntries(
       Object.entries(source).filter(([key, value]) => allowed.has(key) && present(value)),

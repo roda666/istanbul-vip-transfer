@@ -361,14 +361,6 @@ export default function BookingForm({
   const bootstrap = useBookingFormData();
   const homepageSection = homepageMode ? cms?.reservationSection : null;
 
-  // Localised service-type card labels — DB labels are always Turkish
-  const ST_LABELS: Record<string, string> = {
-    AIRPORT_TRANSFER: b.stAirportTransfer,
-    INTERCITY:        b.stIntercity,
-    ALLOCATION:       b.stAllocation,
-    TOUR:             b.stTour,
-  };
-
   const pathname = usePathname();
   // Extract the service slug from the URL for custom-field filtering
   // e.g. /tr/istanbul-havalimani-transfer → istanbul-havalimani-transfer
@@ -570,7 +562,7 @@ export default function BookingForm({
     setSubmissionNotice(null);
     setSubmitting(true);
 
-    const serviceLabel = ST_LABELS[activeService] ?? activeST?.label ?? activeService;
+    const serviceLabel = activeST?.label ?? activeService;
     // Do not retain values from a field that was visible before the visitor
     // changed service type; only fields applicable to the active service submit.
     const activeFormData: FormData = {
@@ -776,7 +768,7 @@ export default function BookingForm({
                         data-testid={`service-type-${st.key}`}
                       >
                         <span style={{ color: iconColor }}>{SERVICE_ICONS[st.key] ?? <MapPin size={20} />}</span>
-                        <span className="text-center leading-tight">{ST_LABELS[st.key] ?? st.label}</span>
+                        <span className="text-center leading-tight">{st.label}</span>
                       </button>
                     );
                   })}
@@ -828,7 +820,8 @@ export default function BookingForm({
                   {activeService === 'AIRPORT_TRANSFER' ? b.routeFieldsLabel
                     : activeService === 'INTERCITY'     ? b.routeFieldsLabel
                     : activeService === 'ALLOCATION'    ? b.allocationFieldsLabel
-                    : b.tourFieldsLabel}
+                    : activeService === 'TOUR'          ? b.tourFieldsLabel
+                    : activeST?.label ?? b.serviceTypeLabel}
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
 
@@ -1033,6 +1026,12 @@ export default function BookingForm({
                       </div>
                     </div>
                   </>)}
+
+                  {!['AIRPORT_TRANSFER', 'INTERCITY', 'ALLOCATION', 'TOUR'].includes(activeService) && activeST?.description && (
+                    <p className="md:col-span-2 text-sm leading-6" style={{ color: '#50677A' }}>
+                      {activeST.description}
+                    </p>
+                  )}
 
                 </div>
               </div>

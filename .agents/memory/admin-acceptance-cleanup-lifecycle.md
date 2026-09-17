@@ -20,3 +20,9 @@ For large route-by-viewport screenshot matrices, a timeout after the target cont
 **Why:** Long single-worker matrices can spend minutes in route teardown or screenshot capture after assertions have succeeded, causing reruns to fail on screens that passed moments earlier.
 
 **How to apply:** Keep screenshots viewport-sized, record explicit no-record/permission skips, and diagnose the first timeout from its trace before rerunning a bounded subset instead of restarting the entire matrix.
+
+Visible tab controls can remain stuck in Playwright's scroll/actionability loop while unrelated admin polling routes cold-compile, even when the React click handler is ready.
+
+**Why:** Background admin counters have held Next development requests for tens of seconds, creating false click timeouts on otherwise working screens.
+
+**How to apply:** Prefer a production-build acceptance server. If dev mode is unavoidable, pre-warm the route and use a visibility assertion plus DOM click for tab controls that do not depend on pointer geometry.

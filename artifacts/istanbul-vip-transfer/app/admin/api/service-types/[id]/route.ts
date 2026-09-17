@@ -46,22 +46,61 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const { eq } = await import('drizzle-orm');
 
   const [current] = await db
-    .select({ id: serviceTypes.id, key: serviceTypes.key })
+    .select({
+      id: serviceTypes.id,
+      key: serviceTypes.key,
+      label: serviceTypes.label,
+      description: serviceTypes.description,
+      translations: serviceTypes.translations,
+    })
     .from(serviceTypes)
     .where(eq(serviceTypes.id, id))
     .limit(1)
     .catch(() => []);
   if (!current) return NextResponse.json({ error: 'Bulunamadı.' }, { status: 404 });
 
+  const { sanitizeText } = await import('@/lib/sanitize');
+  const nextLabel = data.label !== undefined ? sanitizeText(data.label) : current.label;
+  const nextDescription = data.description !== undefined
+    ? (data.description ? sanitizeText(data.description) : null)
+    : current.description;
+  const changedTextFields: Array<'label' | 'description'> = [];
+  const { AUTO_TRANSLATION_LOCALES } = await import('@/lib/ai/fill-missing-translations');
+  const hasMissingTranslation = (field: 'label' | 'description') =>
+    AUTO_TRANSLATION_LOCALES.some((locale) => {
+      const value = current.translations?.[locale]?.[field];
+      return field === 'description' && !nextDescription
+        ? value !== null
+        : typeof value !== 'string' || value.trim().length === 0;
+    });
+  if (nextLabel !== current.label || (data.label !== undefined && hasMissingTranslation('label'))) {
+    changedTextFields.push('label');
+  }
+  if (
+    nextDescription !== current.description
+    || (data.description !== undefined && hasMissingTranslation('description'))
+  ) {
+    changedTextFields.push('description');
+  }
+
   const updateValues: Record<string, unknown> = { updatedAt: new Date(), updatedBy: session.adminId };
-  if (data.label !== undefined) updateValues.label = data.label;
-  if (data.description !== undefined) updateValues.description = data.description;
+  if (data.label !== undefined) updateValues.label = nextLabel;
+  if (data.description !== undefined) updateValues.description = nextDescription;
   if (data.enabled !== undefined) updateValues.enabled = data.enabled;
   if (data.quoteEnabled !== undefined) updateValues.quoteEnabled = data.quoteEnabled;
   if (data.reservationEnabled !== undefined) updateValues.reservationEnabled = data.reservationEnabled;
   if (data.displayOrder !== undefined) updateValues.displayOrder = data.displayOrder;
 
   try {
+    if (changedTextFields.length > 0) {
+      const { syncServiceTypeTranslations } = await import('@/lib/service-type-localization');
+      updateValues.translations = await syncServiceTypeTranslations({
+        label: nextLabel,
+        description: nextDescription,
+        existing: current.translations,
+        changedFields: changedTextFields,
+      });
+    }
     const [updated] = await db
       .update(serviceTypes)
       .set(updateValues)
@@ -84,7 +123,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ item: updated });
   } catch (err) {
-    console.error('Service type update error:', err);
+    const message = err instanceof Error ? err.message : '';
+    if (message.includes('çeviri') || message.includes('güvenlik kontrolünden')) {
+      return NextResponse.json({ error: message }, { status: 502 });
+    }
     return NextResponse.json({ error: 'Veritabanı hatası.' }, { status: 503 });
   }
 }

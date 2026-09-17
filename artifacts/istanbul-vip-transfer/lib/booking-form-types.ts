@@ -71,7 +71,7 @@ export const FALLBACK_BOOKING_SERVICE_TYPES: BookingServiceTypeOption[] = [
 ];
 
 export const EMPTY_BOOKING_FORM_BOOTSTRAP: BookingFormBootstrap = {
-  serviceTypes: FALLBACK_BOOKING_SERVICE_TYPES,
+  serviceTypes: [],
   vehicles: [],
   formSettings: { showVehiclePreference: false, showLuggageCount: false, showChildSeatCount: false, showAdditionalNotes: false, optionalFieldServiceTypes: {} },
   customFields: [],
@@ -94,7 +94,7 @@ export const EMPTY_BOOKING_FORM_OPTIONS: BookingFormOptions = {
 };
 
 export const EMPTY_BOOKING_FORM_INITIAL_DATA: BookingFormInitialData = {
-  serviceTypes: FALLBACK_BOOKING_SERVICE_TYPES,
+  serviceTypes: [],
   formSettings: { showVehiclePreference: false, showLuggageCount: false, showChildSeatCount: false, showAdditionalNotes: false, optionalFieldServiceTypes: {} },
   customFields: [],
 };

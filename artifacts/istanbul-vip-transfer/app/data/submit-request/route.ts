@@ -168,7 +168,7 @@ function sanitizeStructuredValue(value: unknown, depth = 0): unknown {
 // ── Zod input schema ──────────────────────────────────────────────────────────
 const RequestSchema = z.object({
   intent:            z.enum(['QUOTE', 'RESERVATION']),
-  serviceType:       z.enum(['AIRPORT_TRANSFER', 'INTERCITY', 'ALLOCATION', 'TOUR']),
+  serviceType:       z.string().regex(/^[A-Z0-9_]{1,80}$/),
   adSoyad:           z.string().min(2).max(120),
   telefon:           z.string().min(7).max(30),
   email:             z.string().max(254).nullable().optional(),
@@ -369,6 +369,21 @@ export async function POST(req: NextRequest) {
   }
 
   const data = parsed.data;
+  try {
+    const { db } = await import('@/db');
+    const { serviceTypes } = await import('@/db/schema');
+    const { and, eq } = await import('drizzle-orm');
+    const [availableServiceType] = await db
+      .select({ id: serviceTypes.id })
+      .from(serviceTypes)
+      .where(and(eq(serviceTypes.key, data.serviceType), eq(serviceTypes.enabled, true)))
+      .limit(1);
+    if (!availableServiceType) {
+      return NextResponse.json({ error: 'Geçersiz veya devre dışı hizmet türü.' }, { status: 422 });
+    }
+  } catch {
+    return NextResponse.json({ error: 'Hizmet türü doğrulanamadı.' }, { status: 503 });
+  }
   // This key is created by the browser and reused by its retry loop. Legacy
   // callers without one still receive a server-generated UUID.
   const submissionId = data.submissionId ?? randomUUID();

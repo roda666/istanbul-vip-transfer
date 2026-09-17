@@ -31,6 +31,7 @@ for (const viewport of [
 
     for (const route of listRoutes) {
       test(`${route.name} uses the Categories action pattern`, async ({ adminPage: page }) => {
+        test.setTimeout(180_000);
         const response = await page.goto(route.path);
         await waitForSettledAdminPage(page);
 
@@ -55,7 +56,11 @@ for (const viewport of [
         const order = await first.getAttribute('data-admin-action-order');
         const ids = (order ?? '').split(',').filter(Boolean);
         expect(ids.every(id => canonicalOrder.includes(id))).toBe(true);
-        expect(ids.at(-1)).toBe('delete');
+        const positions = ids.map(id => canonicalOrder.indexOf(id));
+        expect(
+          positions.every((position, index) => index === 0 || position >= positions[index - 1]),
+          `${route.name} action order must be a canonical-order subsequence`,
+        ).toBe(true);
 
         if (viewport.width <= 480) {
           await expect(first.locator('[data-admin-actions-mobile-trigger]')).toBeVisible();

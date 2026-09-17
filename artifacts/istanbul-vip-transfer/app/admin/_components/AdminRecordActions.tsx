@@ -240,7 +240,9 @@ export function AdminRecordActions({
       className="flex items-center justify-end gap-2"
       data-admin
       data-admin-record-actions
-      data-admin-action-order={visibleActions.map(action => action.id).join(',')}
+      data-admin-action-order={visibleActions.map(action =>
+        (ADMIN_RECORD_ACTION_ORDER as readonly string[]).includes(action.id) ? action.id : 'custom'
+      ).join(',')}
     >
       {/* Desktop/Tablet row */}
       <div className="hidden min-[481px]:flex flex-wrap items-center justify-end gap-2" data-admin-actions-desktop>

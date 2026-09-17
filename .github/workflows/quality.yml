@@ -59,7 +59,13 @@ jobs:
         run: pnpm --filter @workspace/istanbul-vip-transfer lint
 
       - name: Build
-        run: pnpm --filter @workspace/istanbul-vip-transfer build
+        # CI intentionally has no application database. Run the full prebuild
+        # safety chain, then validate Next.js compilation without DB-backed
+        # static page generation. Real production builds still use `pnpm build`
+        # and perform the complete generate phase against the real database.
+        run: |
+          pnpm --filter @workspace/istanbul-vip-transfer prebuild
+          pnpm --filter @workspace/istanbul-vip-transfer exec next build --experimental-build-mode=compile
         env:
           # Dummy values so module-level initialisers don't crash during build.
           # Routes use force-dynamic so handlers never actually run at build time.

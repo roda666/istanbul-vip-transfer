@@ -327,7 +327,9 @@ export default function ContentForm({ mode, contentType, initialData, backUrl }:
           onAltChange={setHeroImageAlt}
           altLabel="Hero Görseli ALT Metni"
           ai={contentType === 'BLOG_POST' || contentType === 'SERVICE'
-            ? { target: contentType, id: initialData?.id, placement: 'hero', promptHint: 'İçeriğin hero görselini açıklayın…' }
+            ? { target: contentType, id: initialData?.id, placement: 'hero', imageField: 'hero_image', promptHint: 'İçeriğin hero görselini açıklayın…' }
+            : contentType === 'PAGE'
+            ? { target: 'PAGE', id: initialData?.id, placement: 'hero', imageField: 'hero_image', promptHint: 'Sayfa hero görselini açıklayın…' }
             : undefined}
         />
       </div>

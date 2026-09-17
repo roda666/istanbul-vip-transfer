@@ -848,7 +848,7 @@ export default function BlogEditor({ blogId, initial }: Props) {
               value={heroImage}
               onChange={url => { setHeroImage(url); markDirty(); }}
               namespace="blog"
-              ai={{ target: 'BLOG_POST', id: blogId, placement: 'hero', promptHint: 'Makale kapak görselini açıklayın…' }}
+              ai={{ target: 'BLOG_POST', id: blogId, placement: 'hero', imageField: 'hero_image', promptHint: 'Makale kapak görselini açıklayın…' }}
             />
             {heroImage && (
                 <AdminActionButton type="button" label="Görseli Kaldır" icon={Trash2} variant="delete" className="mt-1 text-xs" onClick={() => { setHeroImage(''); markDirty(); }} />
@@ -873,7 +873,7 @@ export default function BlogEditor({ blogId, initial }: Props) {
               value=""
               onChange={url => { setBody(current => `${current}\n\n![İçerik görseli](${url})\n`); markDirty(); }}
               namespace="blog"
-              ai={{ target: 'BLOG_POST', id: blogId, placement: 'body', promptHint: 'Makale içinde kullanılacak görseli açıklayın…' }}
+              ai={{ target: 'BLOG_POST', id: blogId, placement: 'body', imageField: 'body', promptHint: 'Makale içinde kullanılacak görseli açıklayın…' }}
             />
           </div>
 
@@ -890,7 +890,7 @@ export default function BlogEditor({ blogId, initial }: Props) {
             <div style={s.fld}>
               <label style={s.lbl}>OG Görseli</label>
               <ImageUploadField value={ogImage} onChange={url => { setOgImage(url); markDirty(); }} namespace="blog"
-                ai={{ target: 'BLOG_POST', id: blogId, placement: 'hero', promptHint: 'Sosyal paylaşım görselini açıklayın…' }} />
+                ai={{ target: 'BLOG_POST', id: blogId, placement: 'og', imageField: 'og_image', promptHint: 'Sosyal paylaşım görselini açıklayın…' }} />
               {ogImage && (
                 <AdminActionButton type="button" label="OG Görselini Kaldır" icon={Trash2} variant="delete" className="mt-1 text-xs" onClick={() => { setOgImage(''); markDirty(); }} />
               )}

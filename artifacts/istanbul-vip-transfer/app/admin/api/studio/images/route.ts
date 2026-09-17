@@ -16,31 +16,44 @@ import { buildSeoImageFilename } from '@/lib/studio/image-filename';
 
 export const dynamic = 'force-dynamic';
 
-const targetSchema = z.enum(['BLOG_POST', 'SERVICE', 'VEHICLE', 'HOMEPAGE']);
+const targetSchema = z.enum(['BLOG_POST', 'SERVICE', 'VEHICLE', 'PAGE', 'HOMEPAGE']);
 const generateSchema = z.object({
   action: z.literal('generate'),
   target: targetSchema,
   id: z.string().uuid(),
   prompt: z.string().trim().min(10).max(4_000),
   altText: z.string().trim().min(5).max(300),
+  homepageField: z.enum(['hero_image', 'og_image']).optional(),
+  imageField: z.enum(['hero_image', 'og_image', 'body', 'cover_image', 'gallery']).optional(),
+}).superRefine((value, ctx) => {
+  if (value.target === 'HOMEPAGE' && !value.homepageField) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['homepageField'], message: 'Homepage alanı zorunludur.' });
+  if (value.target !== 'HOMEPAGE' && !value.imageField) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['imageField'], message: 'Görsel alanı zorunludur.' });
+  if (value.target === 'PAGE' && value.imageField !== 'hero_image') ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['imageField'], message: 'PAGE yalnız hero_image alanını destekler.' });
+  if ((value.target === 'BLOG_POST' || value.target === 'SERVICE') && !['hero_image', 'og_image', 'body'].includes(value.imageField ?? '')) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['imageField'], message: 'İçerik görsel alanı belirtilmelidir.' });
+  if (value.target === 'VEHICLE' && !['cover_image', 'og_image', 'gallery'].includes(value.imageField ?? '')) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['imageField'], message: 'Araç görsel alanı belirtilmelidir.' });
 });
 const attachSchema = z.object({
   action: z.literal('attach'),
   target: targetSchema,
   id: z.string().uuid(),
-  imagePath: z.string().regex(/^\/api\/storage\/objects\/ai-images\/(blog|service|vehicle|homepage)\/[a-z0-9-]+\/[a-z0-9]+(?:-[a-z0-9]+)*\.webp$/),
+  imagePath: z.string().regex(/^\/api\/storage\/objects\/ai-images\/(blog|service|vehicle|page|homepage)\/[a-z0-9-]+\/[a-z0-9]+(?:-[a-z0-9]+)*\.webp$/),
   altText: z.string().trim().min(5).max(300),
   placement: z.enum(['hero', 'body', 'og']),
   homepageField: z.enum(['hero_image', 'og_image']).optional(),
+  imageField: z.enum(['hero_image', 'og_image', 'body', 'cover_image', 'gallery']).optional(),
 }).superRefine((value, ctx) => {
   if (value.target === 'HOMEPAGE' && !value.homepageField) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['homepageField'], message: 'Homepage alanı zorunludur.' });
   if (value.target !== 'HOMEPAGE' && value.homepageField) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['homepageField'], message: 'Homepage alanı yalnız HOMEPAGE hedefinde kullanılabilir.' });
+  if (value.target === 'HOMEPAGE' && value.imageField) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['imageField'], message: 'Homepage imageField kullanmaz.' });
+  if (value.target === 'PAGE' && value.imageField !== 'hero_image') ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['imageField'], message: 'PAGE yalnız hero_image alanını destekler.' });
+  if ((value.target === 'BLOG_POST' || value.target === 'SERVICE') && !['hero_image', 'og_image', 'body'].includes(value.imageField ?? '')) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['imageField'], message: 'İçerik görsel alanı belirtilmelidir.' });
+  if (value.target === 'VEHICLE' && !['cover_image', 'og_image', 'gallery'].includes(value.imageField ?? '')) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['imageField'], message: 'Araç görsel alanı belirtilmelidir.' });
 });
 
 type ImageTarget =
   | {
       kind: 'content';
-      contentType: 'BLOG_POST' | 'SERVICE';
+      contentType: 'BLOG_POST' | 'SERVICE' | 'PAGE';
       id: string;
       slug: string;
       body: string | null;
@@ -59,7 +72,7 @@ type ImageTarget =
     };
 
 function targetFolder(target: z.infer<typeof targetSchema>) {
-  return target === 'BLOG_POST' ? 'blog' : target === 'SERVICE' ? 'service' : target === 'VEHICLE' ? 'vehicle' : 'homepage';
+  return target === 'BLOG_POST' ? 'blog' : target === 'SERVICE' ? 'service' : target === 'VEHICLE' ? 'vehicle' : target === 'PAGE' ? 'page' : 'homepage';
 }
 
 async function findTarget(id: string, target: z.infer<typeof targetSchema>): Promise<ImageTarget | null> {
@@ -79,6 +92,11 @@ async function findTarget(id: string, target: z.infer<typeof targetSchema>): Pro
       .from(content).where(and(eq(content.id, id), eq(content.slug, 'ana-sayfa'))).limit(1);
     return row ? { kind: 'homepage', ...row } : null;
   }
+  if (target === 'PAGE') {
+    const [row] = await db.select({ id: content.id, slug: content.slug, body: content.body })
+      .from(content).where(and(eq(content.id, id), eq(content.contentType, 'PAGE'))).limit(1);
+    return row ? { kind: 'content', contentType: 'PAGE', ...row } : null;
+  }
   const [row] = await db.select({
     id: content.id,
     slug: content.slug,
@@ -92,7 +110,7 @@ async function findTarget(id: string, target: z.infer<typeof targetSchema>): Pro
 async function revalidateAttachedContent(target: {
   id: string;
   slug: string;
-  contentType: 'BLOG_POST' | 'SERVICE' | 'VEHICLE' | 'HOMEPAGE';
+  contentType: 'BLOG_POST' | 'SERVICE' | 'VEHICLE' | 'PAGE' | 'HOMEPAGE';
 }) {
   if (target.contentType === 'BLOG_POST') {
     revalidatePath(`/blog/${target.slug}`);
@@ -123,6 +141,9 @@ async function revalidateAttachedContent(target: {
   } else if (target.contentType === 'VEHICLE') {
     revalidatePath('/araclar');
     revalidatePath(`/araclar/${target.slug}`);
+  } else if (target.contentType === 'PAGE') {
+    revalidatePath(`/${target.slug}`);
+    revalidatePath(`/pages/${target.slug}`);
   } else {
     revalidateTag('homepage-cms');
     for (const locale of SUPPORTED_LANGS) revalidateTag(`homepage-${locale}`);
@@ -196,13 +217,13 @@ async function putPrivateWebp(entityId: string, inputBytes: Uint8Array): Promise
 export async function GET(req: NextRequest) {
   try { await requireAdminSession(); } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
   const target = targetSchema.safeParse(req.nextUrl.searchParams.get('target'));
-  if (!target.success) return NextResponse.json({ error: 'target BLOG_POST, SERVICE, VEHICLE veya HOMEPAGE olmalıdır.' }, { status: 400 });
+  if (!target.success) return NextResponse.json({ error: 'target BLOG_POST, SERVICE, VEHICLE, PAGE veya HOMEPAGE olmalıdır.' }, { status: 400 });
   try {
     const { db } = await import('@/db');
     const { content, vehicles } = await import('@/db/schema');
     const { asc, eq } = await import('drizzle-orm');
     const targets = target.data === 'VEHICLE'
-      ? await db.select({ id: vehicles.id, title: vehicles.name, slug: vehicles.slug })
+      ? await db.select({ id: vehicles.id, title: vehicles.name, slug: vehicles.slug, ogImage: vehicles.ogImage })
         .from(vehicles).orderBy(asc(vehicles.name)).limit(200)
       : target.data === 'HOMEPAGE'
       ? await db.select({ id: content.id, title: content.title, slug: content.slug, heroImage: content.heroImage, heroImageAlt: content.heroImageAlt })
@@ -290,8 +311,11 @@ export async function POST(req: NextRequest) {
       }
       await db.update(content).set({ body: JSON.stringify(sections), updatedAt: now }).where(eq(content.id, target.id));
     } else if (target.kind === 'vehicle') {
-      if (data.placement === 'hero') {
+      if (data.imageField === 'cover_image') {
         await db.update(vehicles).set({ coverImage: data.imagePath, coverImageAlt: data.altText, updatedAt: now })
+          .where(eq(vehicles.id, target.id));
+      } else if (data.imageField === 'og_image') {
+        await db.update(vehicles).set({ ogImage: data.imagePath, updatedAt: now })
           .where(eq(vehicles.id, target.id));
       } else {
         const gallery = Array.isArray(target.gallery) ? target.gallery : [];
@@ -300,8 +324,11 @@ export async function POST(req: NextRequest) {
           updatedAt: now,
         }).where(eq(vehicles.id, target.id));
       }
-    } else if (data.placement === 'hero') {
+    } else if (data.imageField === 'hero_image' || (data.target === 'HOMEPAGE' && data.homepageField === 'hero_image')) {
       await db.update(content).set({ heroImage: data.imagePath, heroImageAlt: data.altText, updatedAt: now })
+        .where(eq(content.id, target.id));
+    } else if (data.imageField === 'og_image') {
+      await db.update(content).set({ ogImage: data.imagePath, updatedAt: now })
         .where(eq(content.id, target.id));
     } else {
       const body = data.target === 'SERVICE'
@@ -329,7 +356,7 @@ export async function POST(req: NextRequest) {
       contentType: target.kind === 'vehicle' ? 'VEHICLE' : target.kind === 'homepage' ? 'HOMEPAGE' : target.contentType,
     });
     await db.insert(auditLogs).values({
-      entityType: data.target === 'BLOG_POST' ? 'blog_post' : data.target === 'SERVICE' ? 'service_page' : data.target === 'VEHICLE' ? 'vehicle' : 'homepage',
+      entityType: data.target === 'BLOG_POST' ? 'blog_post' : data.target === 'SERVICE' ? 'service_page' : data.target === 'VEHICLE' ? 'vehicle' : data.target === 'PAGE' ? 'page' : 'homepage',
       entityId: target.id, action: 'ai_image_attached', adminUserId: session.adminId,
       metadata: { placement: data.placement, imagePath: data.imagePath }, createdAt: now,
     } as never);

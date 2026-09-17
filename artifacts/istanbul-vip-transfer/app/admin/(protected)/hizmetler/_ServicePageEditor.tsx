@@ -1066,7 +1066,7 @@ export default function ServicePageEditor({ initialRecord }: Props) {
               altValue={heroImageAlt}
               onAltChange={setHeroImageAlt}
               altLabel="Hero Görseli ALT Metni (Türkçe — çeviride ayrıca lokalize edilir)"
-              ai={{ target: 'SERVICE', id: initialRecord.id, placement: 'hero', promptHint: 'Hizmet sayfası hero görselini açıklayın…' }}
+              ai={{ target: 'SERVICE', id: initialRecord.id, placement: 'hero', imageField: 'hero_image', promptHint: 'Hizmet sayfası hero görselini açıklayın…' }}
             />
             <ImageUploadField
               label="OG / Sosyal Medya Görseli"
@@ -1074,7 +1074,7 @@ export default function ServicePageEditor({ initialRecord }: Props) {
               onChange={setOgImage}
               namespace={`service-pages/${record.slug}`}
               hint="Hizmete özel sosyal görsel. 1200×630 önerilir. Yazı, logo, marka amblemi, okunabilir tabela/plaka ve önden yakın insan yüzü içermeyen bir görsel seçin."
-              ai={{ target: 'SERVICE', id: initialRecord.id, placement: 'hero', promptHint: 'Hizmet sosyal paylaşım görselini açıklayın…' }}
+              ai={{ target: 'SERVICE', id: initialRecord.id, placement: 'og', imageField: 'og_image', promptHint: 'Hizmet sosyal paylaşım görselini açıklayın…' }}
             />
           </SectionCard>
 

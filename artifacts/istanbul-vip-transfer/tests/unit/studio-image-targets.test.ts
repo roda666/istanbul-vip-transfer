@@ -9,7 +9,7 @@ const generatorSource = fs.readFileSync(path.join(root, 'app/admin/(protected)/a
 
 describe('AI image target contract', () => {
   it('keeps all supported targets on the server and central generator screen', () => {
-    for (const target of ['BLOG_POST', 'SERVICE', 'VEHICLE', 'HOMEPAGE']) {
+    for (const target of ['BLOG_POST', 'SERVICE', 'VEHICLE', 'PAGE', 'HOMEPAGE']) {
       expect(routeSource).toContain(target);
       expect(generatorSource).toContain(target);
     }
@@ -33,6 +33,15 @@ describe('AI image target contract', () => {
     expect(routeSource).toContain("sections.hero =");
     expect(routeSource).toContain("sections.seo =");
     expect(routeSource).toContain("revalidateTag('homepage-cms')");
+  });
+
+  it('defines typed contracts for every stored editorial image field', () => {
+    expect(routeSource).toContain("targetSchema = z.enum(['BLOG_POST', 'SERVICE', 'VEHICLE', 'PAGE', 'HOMEPAGE'])");
+    for (const field of ['hero_image', 'og_image', 'body', 'cover_image', 'gallery']) {
+      expect(routeSource).toContain(field);
+    }
+    expect(routeSource).toContain("eq(content.contentType, 'PAGE')");
+    expect(routeSource).toContain("ogImage: data.imagePath");
   });
 
   it('wires both homepage image fields to the shared widget', () => {

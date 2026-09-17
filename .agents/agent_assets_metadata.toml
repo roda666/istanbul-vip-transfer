@@ -322,3 +322,45 @@ mtime_ms = 1789644079129
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/176a518c-c8f4-49af-a795-582134165852/f5f2650b-4e3e-4fcf-ba14-931e7c69e2bf"
 storage_version_token = "1789644316484474"
 content_type = "image/png"
+
+[[outputs]]
+id = "rumHslvjR3feeLl8BEAG0"
+uri = "file://artifacts/istanbul-vip-transfer/reports/homepage-hero-metrics/desktop-1440.png"
+type = "image"
+title = "Hero güven şeridi — masaüstü"
+description = "1440px gerçek browser acceptance screenshot’ı; yeni dört metrik mevcut bilgi satırının altında."
+logical_id = "d8df7ff1-e623-42d9-ba99-4985753209a3"
+content_hash = "sha256:6dc52690d22d07177b43bd04ecc4d3907e611efed5132fe70b908e7ab807c8e6"
+size = 1755077
+mtime_ms = 1789652741318
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/d8df7ff1-e623-42d9-ba99-4985753209a3/eb2a5025-087b-4c85-99a1-6c24dd9bbb65"
+storage_version_token = "1789652826028196"
+content_type = "image/png"
+
+[[outputs]]
+id = "dmGO8q2IilXGqPwXNxQ_D"
+uri = "file://artifacts/istanbul-vip-transfer/reports/homepage-hero-metrics/tablet-768.png"
+type = "image"
+title = "Hero güven şeridi — tablet"
+description = "768px gerçek browser acceptance screenshot’ı; responsive yerleşim ve yatay taşma kontrolü geçti."
+logical_id = "44b31d00-0989-4443-9e1d-5691e8cca0ea"
+content_hash = "sha256:2d12e54c8dfbf2071fd2067d91f06775176b1511d75df871ba1961e04f408ba5"
+size = 1077042
+mtime_ms = 1789652742286
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/44b31d00-0989-4443-9e1d-5691e8cca0ea/74e2da31-865b-4332-a068-d5a018b443df"
+storage_version_token = "1789652827567967"
+content_type = "image/png"
+
+[[outputs]]
+id = "YJgxPGvulbQ0lA22yKtCw"
+uri = "file://artifacts/istanbul-vip-transfer/reports/homepage-hero-metrics/mobile-390.png"
+type = "image"
+title = "Hero güven şeridi — mobil"
+description = "390px gerçek browser acceptance screenshot’ı; dört metrik mobil yerleşimde görüntüleniyor."
+logical_id = "f2ea326b-08ef-42b2-aaba-0d13fb508dee"
+content_hash = "sha256:9da1b1765016e8ae55f3e8b0f7773343a5c13f5394d95f53b90d4ef93635860e"
+size = 736586
+mtime_ms = 1789652742978
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/f2ea326b-08ef-42b2-aaba-0d13fb508dee/d16ad98a-be20-4415-b57a-0a2b91cff462"
+storage_version_token = "1789652828965537"
+content_type = "image/png"

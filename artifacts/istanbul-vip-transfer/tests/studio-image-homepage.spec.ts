@@ -12,19 +12,20 @@ type Contract = {
 
 type TargetRow = { id: string; heroImage?: string | null; heroImageAlt?: string | null; ogImage?: string | null };
 
-async function targetRow(page: Page, target: Contract['target']): Promise<TargetRow> {
-  const response = await page.request.get(`/admin/api/studio/images?target=${target}`);
-  expect(response.ok(), `${target} target list must be available`).toBeTruthy();
+async function targetRow(page: Page, baseURL: string, target: Contract['target']): Promise<TargetRow> {
+  const response = await page.request.get(new URL(`/admin/api/studio/images?target=${target}`, baseURL).toString());
+  expect(response.ok(), `${target} target list must be available (${response.status()} ${await response.text()})`).toBeTruthy();
   const payload = await response.json() as { targets?: TargetRow[] };
   const row = payload.targets?.[0];
   expect(row?.id, `${target} must have a real target record`).toBeTruthy();
   return row!;
 }
 
-async function generateAndAttach(page: Page, contract: Contract) {
+async function generateAndAttach(page: Page, baseURL: string, contract: Contract) {
   const prompt = `Editorial ${contract.target.toLowerCase()} image for Istanbul VIP transfer, an unbranded luxury vehicle at dawn, no people`;
   const altText = `${contract.target} güvenli gerçek AI görseli`;
-  const generated = await page.request.post('/admin/api/studio/images', {
+  const endpoint = new URL('/admin/api/studio/images', baseURL).toString();
+  const generated = await page.request.post(endpoint, {
     data: {
       action: 'generate',
       target: contract.target,
@@ -44,7 +45,7 @@ async function generateAndAttach(page: Page, contract: Contract) {
   const imagePath = generatedJson.image?.imagePath;
   expect(imagePath).toMatch(/\/api\/storage\/objects\/ai-images\//);
 
-  const attached = await page.request.post('/admin/api/studio/images', {
+  const attached = await page.request.post(endpoint, {
     data: {
       action: 'attach',
       target: contract.target,
@@ -60,59 +61,65 @@ async function generateAndAttach(page: Page, contract: Contract) {
   return imagePath!;
 }
 
-test('all inline AI image field contracts use the real provider, persist, reload, and restore', async ({ adminPage }) => {
+test('all inline AI image field contracts use the real provider, persist, reload, and restore', async ({ adminPage, baseURL }) => {
   const page = adminPage;
-  const homepageResponse = await page.request.get('/admin/api/homepage/tr');
-  expect(homepageResponse.ok(), 'homepage source must be available').toBeTruthy();
+  // The acceptance fixture creates a manual BrowserContext without Playwright's
+  // baseURL option. Resolve every request explicitly while retaining its login
+  // cookie jar through page.request.
+  if (!baseURL) throw new Error('Playwright BASE_URL is required for authenticated image contract requests');
+  const origin = baseURL;
+  const absolute = (path: string) => new URL(path, origin).toString();
+  const homepageResponse = await page.request.get(absolute('/admin/api/homepage/tr'));
+  expect(homepageResponse.ok(), `homepage source must be available (${homepageResponse.status()} ${await homepageResponse.text()})`).toBeTruthy();
   const homepageRecord = await homepageResponse.json() as {
     id: string;
     sections: { hero: Record<string, string | null>; seo: Record<string, string | null> };
   };
   const homepageSections = structuredClone(homepageRecord.sections);
 
-  const pageRow = await targetRow(page, 'PAGE');
-  const blogRow = await targetRow(page, 'BLOG_POST');
-  const serviceRow = await targetRow(page, 'SERVICE');
-  const vehicleRow = await targetRow(page, 'VEHICLE');
+  const pageRow = await targetRow(page, origin, 'PAGE');
+  const blogRow = await targetRow(page, origin, 'BLOG_POST');
+  const serviceRow = await targetRow(page, origin, 'SERVICE');
+  const vehicleRow = await targetRow(page, origin, 'VEHICLE');
   const contracts: Contract[] = [
     {
       target: 'HOMEPAGE', field: 'hero_image', id: homepageRecord.id,
       oldValue: homepageSections.hero?.imagePath ?? null, oldAlt: homepageSections.hero?.imageAlt ?? null,
-      restore: async () => { homepageSections.hero.imagePath = homepageRecord.sections.hero.imagePath; homepageSections.hero.imageAlt = homepageRecord.sections.hero.imageAlt; },
+      restore: async () => { expect((await page.request.put(absolute(`/admin/api/content/${homepageRecord.id}`), { data: { body: JSON.stringify(homepageRecord.sections) } })).ok()).toBeTruthy(); },
     },
     {
       target: 'HOMEPAGE', field: 'og_image', id: homepageRecord.id,
       oldValue: homepageSections.seo?.ogImage ?? null, oldAlt: homepageSections.seo?.ogImageAlt ?? null,
-      restore: async () => { homepageSections.seo.ogImage = homepageRecord.sections.seo.ogImage; homepageSections.seo.ogImageAlt = homepageRecord.sections.seo.ogImageAlt; },
+      restore: async () => { expect((await page.request.put(absolute(`/admin/api/content/${homepageRecord.id}`), { data: { body: JSON.stringify(homepageRecord.sections) } })).ok()).toBeTruthy(); },
     },
     {
       target: 'PAGE', field: 'hero_image', id: pageRow.id, oldValue: pageRow.heroImage ?? null, oldAlt: pageRow.heroImageAlt ?? null,
-      restore: async () => { expect((await page.request.put(`/admin/api/content/${pageRow.id}`, { data: { heroImage: pageRow.heroImage, heroImageAlt: pageRow.heroImageAlt } })).ok()).toBeTruthy(); },
+      restore: async () => { expect((await page.request.put(absolute(`/admin/api/content/${pageRow.id}`), { data: { heroImage: pageRow.heroImage, heroImageAlt: pageRow.heroImageAlt } })).ok()).toBeTruthy(); },
     },
     {
       target: 'BLOG_POST', field: 'og_image', id: blogRow.id, oldValue: blogRow.ogImage ?? null,
-      restore: async () => { expect((await page.request.put(`/admin/api/blog/${blogRow.id}`, { data: { ogImage: blogRow.ogImage } })).ok()).toBeTruthy(); },
+      restore: async () => { expect((await page.request.put(absolute(`/admin/api/blog/${blogRow.id}`), { data: { ogImage: blogRow.ogImage } })).ok()).toBeTruthy(); },
     },
     {
       target: 'SERVICE', field: 'og_image', id: serviceRow.id, oldValue: serviceRow.ogImage ?? null,
-      restore: async () => { expect((await page.request.put(`/admin/api/service-pages/${serviceRow.id}`, { data: { ogImage: serviceRow.ogImage, saveAsDraft: true } })).ok()).toBeTruthy(); },
+      restore: async () => { expect((await page.request.put(absolute(`/admin/api/service-pages/${serviceRow.id}`), { data: { ogImage: serviceRow.ogImage, saveAsDraft: true } })).ok()).toBeTruthy(); },
     },
     {
       target: 'VEHICLE', field: 'og_image', id: vehicleRow.id, oldValue: vehicleRow.ogImage ?? null,
-      restore: async () => { expect((await page.request.put(`/admin/api/vehicles/${vehicleRow.id}`, { data: { ogImage: vehicleRow.ogImage } })).ok()).toBeTruthy(); },
+      restore: async () => { expect((await page.request.put(absolute(`/admin/api/vehicles/${vehicleRow.id}`), { data: { ogImage: vehicleRow.ogImage } })).ok()).toBeTruthy(); },
     },
   ];
 
   try {
     for (const contract of contracts) {
-      const path = await generateAndAttach(page, contract);
-      const refreshed = await page.request.get(`/admin/api/studio/images?target=${contract.target}`);
+      const path = await generateAndAttach(page, origin, contract);
+      const refreshed = await page.request.get(absolute(`/admin/api/studio/images?target=${contract.target}`));
       expect(refreshed.ok()).toBeTruthy();
       const rows = await refreshed.json() as { targets: TargetRow[] };
       const row = rows.targets.find(item => item.id === contract.id);
       const persisted = contract.target === 'HOMEPAGE'
-        ? (await page.request.get('/admin/api/homepage/tr')).ok()
-          ? ((await (await page.request.get('/admin/api/homepage/tr')).json() as { sections: { hero: Record<string, string | null>; seo: Record<string, string | null> } }).sections[contract.field === 'hero_image' ? 'hero' : 'seo'][contract.field === 'hero_image' ? 'imagePath' : 'ogImage'])
+        ? (await page.request.get(absolute('/admin/api/homepage/tr'))).ok()
+          ? ((await (await page.request.get(absolute('/admin/api/homepage/tr'))).json() as { sections: { hero: Record<string, string | null>; seo: Record<string, string | null> } }).sections[contract.field === 'hero_image' ? 'hero' : 'seo'][contract.field === 'hero_image' ? 'imagePath' : 'ogImage'])
           : null
         : contract.field === 'hero_image' ? row?.heroImage : row?.ogImage;
       expect(persisted, `${contract.target}/${contract.field} must reload with persisted path`).toBe(path);
@@ -123,7 +130,10 @@ test('all inline AI image field contracts use the real provider, persist, reload
     homepageSections.hero.imageAlt = homepageRecord.sections.hero.imageAlt;
     homepageSections.seo.ogImage = homepageRecord.sections.seo.ogImage;
     homepageSections.seo.ogImageAlt = homepageRecord.sections.seo.ogImageAlt;
-    expect((await page.request.patch('/admin/api/homepage/tr', { data: { sections: homepageSections, autoPublish: false } })).ok()).toBeTruthy();
-    for (const contract of contracts.slice(2)) await contract.restore();
+    const restoreErrors: unknown[] = [];
+    for (const contract of contracts) {
+      try { await contract.restore(); } catch (error) { restoreErrors.push(error); }
+    }
+    expect(restoreErrors, 'all original CMS image values must be restored').toEqual([]);
   }
 });

@@ -1,6 +1,9 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type {
   ServicePageRecord,
   ServicePageBody,
@@ -75,6 +78,18 @@ const btnSecondary: React.CSSProperties = {
   background: '#F1F5F9', color: '#374151', border: '1px solid #D1D5DB',
   borderRadius: '8px', padding: '10px 20px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
 };
+
+// Schema suggestions are customer-visible structured data: never allow AI to
+// introduce toll/bridge claims while applying a suggestion.
+const UNSAFE_SCHEMA_TERMS = /köprü|bridge|tünel|tunnel|otoyol|highway|motorway|feribot|ferry|toll|geçiş\s+ücret/i;
+function applySchemaSuggestion(
+  key: string,
+  value: string,
+  setBody: Dispatch<SetStateAction<ServicePageBody>>,
+) {
+  if (UNSAFE_SCHEMA_TERMS.test(value)) return;
+  setBody(b => ({ ...b, schemaExtras: { ...b.schemaExtras, [key]: key === 'availableLanguage' ? value.split(',').map(s => s.trim()).filter(Boolean) : value } }));
+}
 
 // ── Reusable field components ───────────────────────────────────────────────
 
@@ -617,6 +632,7 @@ const DEFAULT_BODY: ServicePageBody = {
 };
 
 export default function ServicePageEditor({ initialRecord }: Props) {
+  const router = useRouter();
   const [record,       setRecord]       = useState<ServicePageRecord>(initialRecord);
   const [activeLocale, setActiveLocale] = useState('tr');
   const [saving,       setSaving]       = useState(false);
@@ -725,6 +741,21 @@ export default function ServicePageEditor({ initialRecord }: Props) {
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Bilinmeyen hata.');
     } finally {
+      setSaving(false);
+    }
+  };
+
+  const canDelete = ['DRAFT', 'ARCHIVED', 'IDEA', 'RESEARCH'].includes(record.status);
+  const deleteService = async () => {
+    if (!canDelete || !window.confirm(`"${record.title}" hizmetini silmek istediğinize emin misiniz?`)) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/admin/api/service-pages/${record.id}`, { method: 'DELETE' });
+      const data = await safeJson<{ error?: string }>(res);
+      if (!res.ok) throw new Error(data.error ?? 'Silme engellendi.');
+      router.push('/admin/hizmetler');
+    } catch (error) {
+      showToast('error', error instanceof Error ? error.message : 'Silme başarısız.');
       setSaving(false);
     }
   };
@@ -843,6 +874,16 @@ export default function ServicePageEditor({ initialRecord }: Props) {
         </div>
         {activeLocale === 'tr' && (
           <div className="spe-action-btns">
+            <AdminActionButton label="İptal" variant="cancel" manage={false} onClick={() => router.push('/admin/hizmetler')} disabled={saving} />
+            <AdminActionButton
+              label="Sil"
+              icon={Trash2}
+              variant="delete"
+              manage={false}
+              onClick={deleteService}
+              disabled={saving || !canDelete}
+              title={canDelete ? 'Bu taslak hizmeti güvenle sil' : 'Yayındaki hizmeti silmek için önce arşivleyin.'}
+            />
             <FacebookShareButton
               url={publishedServiceUrl}
               label="Bu hizmeti Facebook'ta paylaş"
@@ -1117,18 +1158,21 @@ export default function ServicePageEditor({ initialRecord }: Props) {
               onChange={v => setBody(b => ({ ...b, schemaExtras: { ...b.schemaExtras, serviceType: v } }))}
               hint='Örn: "Airport Transfer", "Limousine Service", "Day Tour"'
             />
+            <AIWriteAssist context="service" field="schema_service_type" label="serviceType önerisi" value={body.schemaExtras?.serviceType ?? ''} sourceContext={`${title}\n${body.hero.title}\n${body.hero.subtitle}`} onChange={v => applySchemaSuggestion('serviceType', v, setBody)} />
             <Field
               name="Çalışma Saatleri (openingHours)"
               value={body.schemaExtras?.openingHours ?? ''}
               onChange={v => setBody(b => ({ ...b, schemaExtras: { ...b.schemaExtras, openingHours: v } }))}
               hint='Örn: "Mo-Su 00:00-24:00" — Schema.org biçimi'
             />
+            <AIWriteAssist context="service" field="schema_opening_hours" label="openingHours önerisi" value={body.schemaExtras?.openingHours ?? ''} sourceContext={`${title}\n${body.hero.title}\n${body.hero.subtitle}`} onChange={v => applySchemaSuggestion('openingHours', v, setBody)} />
             <Field
               name="Fiyat Aralığı (priceRange)"
               value={body.schemaExtras?.priceRange ?? ''}
               onChange={v => setBody(b => ({ ...b, schemaExtras: { ...b.schemaExtras, priceRange: v } }))}
               hint='Örn: "₺₺" — Genel fiyat seviyesi'
             />
+            <AIWriteAssist context="service" field="schema_price_range" label="priceRange önerisi" value={body.schemaExtras?.priceRange ?? ''} sourceContext={`${title}\n${body.hero.title}\n${body.hero.subtitle}`} onChange={v => applySchemaSuggestion('priceRange', v, setBody)} />
             <Field
               name="Diller (availableLanguage)"
               value={(body.schemaExtras?.availableLanguage ?? []).join(', ')}
@@ -1141,6 +1185,7 @@ export default function ServicePageEditor({ initialRecord }: Props) {
               }))}
               hint='Virgülle ayırın. Örn: "Turkish, English, Arabic"'
             />
+            <AIWriteAssist context="service" field="schema_languages" label="Diller önerisi" value={(body.schemaExtras?.availableLanguage ?? []).join(', ')} sourceContext={`${title}\n${body.hero.title}\n${body.hero.subtitle}`} onChange={v => applySchemaSuggestion('availableLanguage', v, setBody)} />
           </SectionCard>
 
           {/* Audit log */}

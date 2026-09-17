@@ -28,6 +28,7 @@ type BlogSourceSnapshot = {
   canonicalUrl?: string | null;
   category?: string | null;
   author?: string | null;
+  showAuthor?: boolean;
   tags?: string[] | null;
   readTimeMinutes?: number | null;
   cta: unknown;
@@ -47,6 +48,7 @@ export function computeBlogAtomicSourceHash(source: BlogSourceSnapshot): string 
     heroImageAlt: source.heroImageAlt,
     ogTitle: source.ogTitle,
     ogDescription: source.ogDescription,
+    showAuthor: source.showAuthor ?? true,
     cta: source.cta,
     internalLinks: source.internalLinks,
   });
@@ -350,6 +352,7 @@ export async function finalizeBlogAtomicPublish(jobId: string, adminId: string) 
       canonicalUrl: releaseSource.canonicalUrl ?? null,
       category: releaseSource.category ?? null,
       author: releaseSource.author ?? null,
+      showAuthor: releaseSource.showAuthor ?? true,
       tags: releaseSource.tags ?? [],
       readTimeMinutes: releaseSource.readTimeMinutes ?? null,
       status: 'PUBLISHED',

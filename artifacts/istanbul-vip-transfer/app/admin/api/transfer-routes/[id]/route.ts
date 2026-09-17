@@ -168,6 +168,41 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     ? slugify(String(body.slug))
     : undefined;
 
+  let translatedRoute;
+  try {
+    const existingRows = await db.select().from(transferRouteTranslations)
+      .where(eq(transferRouteTranslations.routeId, id));
+    const existingMap = Object.fromEntries(existingRows.map((translation) => [
+      translation.languageCode,
+      {
+        title: translation.title,
+        description: translation.description,
+        seoTitle: translation.seoTitle,
+        seoDescription: translation.seoDescription,
+        ogTitle: translation.ogTitle,
+        ogDescription: translation.ogDescription,
+        introParagraph: translation.introParagraph,
+        origin: null,
+        destination: null,
+      },
+    ]));
+    const { translateRouteTextFields } = await import('@/lib/transfer-route-localization');
+    translatedRoute = await translateRouteTextFields({
+      title: String(name),
+      description: text(description),
+      seoTitle: text(seoTitle),
+      seoDescription: text(seoDescription),
+      ogTitle: text(ogTitle),
+      ogDescription: text(ogDescription),
+      introParagraph: text(introParagraph),
+      origin: String(origin),
+      destination: String(destination),
+    }, existingMap);
+  } catch (error) {
+    console.error('admin transfer-routes PUT translation error:', error);
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Rota çevirileri oluşturulamadı.' }, { status: 502 });
+  }
+
   try {
     const [before] = await db.select({
       imagePath: transferRoutes.imagePath,
@@ -362,6 +397,47 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       updatedAt: new Date(),
     }).where(eq(transferRoutes.id, row.id));
     }
+
+    const routeNameTranslations = { ...(row.nameTranslations ?? {}) };
+    const routeOriginTranslations = { ...(row.originTranslations ?? {}) };
+    const routeDestinationTranslations = { ...(row.destinationTranslations ?? {}) };
+    const currentRows = await db.select().from(transferRouteTranslations)
+      .where(eq(transferRouteTranslations.routeId, row.id));
+    for (const [languageCode, fields] of Object.entries(translatedRoute ?? {})) {
+      if (!fields.title || !fields.description) continue;
+      const current = currentRows.find((translation) => translation.languageCode === languageCode);
+      const values = {
+        title: fields.title,
+        description: fields.description,
+        seoTitle: fields.seoTitle ?? null,
+        seoDescription: fields.seoDescription ?? null,
+        ogTitle: fields.ogTitle ?? null,
+        ogDescription: fields.ogDescription ?? null,
+        introParagraph: fields.introParagraph ?? null,
+        status: 'DRAFT' as const,
+        isManuallyLocked: false,
+        publishedAt: null,
+        updatedAt: new Date(),
+      };
+      routeNameTranslations[languageCode] = fields.title;
+      if (fields.origin) routeOriginTranslations[languageCode] = fields.origin;
+      if (fields.destination) routeDestinationTranslations[languageCode] = fields.destination;
+      if (current) {
+        await db.update(transferRouteTranslations).set(values).where(eq(transferRouteTranslations.id, current.id));
+      } else {
+        await db.insert(transferRouteTranslations).values({
+          routeId: row.id,
+          languageCode,
+          ...values,
+        });
+      }
+    }
+    await db.update(transferRoutes).set({
+      nameTranslations: routeNameTranslations,
+      originTranslations: routeOriginTranslations,
+      destinationTranslations: routeDestinationTranslations,
+      updatedAt: new Date(),
+    }).where(eq(transferRoutes.id, row.id));
 
     await enqueueCustomerContentTranslations({
       entityType: 'transfer_route',

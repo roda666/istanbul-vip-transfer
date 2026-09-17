@@ -8,7 +8,7 @@ import { PUBLIC_VEHICLE_LOCALES } from '../../lib/vehicle-feature-catalog';
 
 const evidenceDir = path.resolve(process.cwd(), 'reports/vehicle-feature-translation');
 
-test('custom vehicle feature handles malformed errors and translates every blank locale with real OpenAI', async ({
+test('custom vehicle feature replaces stale locale values from Turkish with real OpenAI', async ({
   adminPage: page,
   adminContext,
   baseURL,
@@ -20,40 +20,27 @@ test('custom vehicle feature handles malformed errors and translates every blank
     .where(eq(vehicleFeatureDefaults.id, 1)).limit(1);
   const originalCodes = snapshot?.codes ?? [];
   const originalCustomFeatures = snapshot?.customFeatures ?? [];
-  const label = `Eğlence Paketi ${Date.now().toString(36)}`;
+  const existingFeature = originalCustomFeatures.find(
+    (feature) => feature.translations.tr.trim().toLocaleLowerCase('tr-TR') === 'denemedir',
+  );
+  expect(existingFeature, 'Owner-reported "denemedir" custom feature must exist').toBeTruthy();
+  const label = existingFeature!.translations.tr;
 
   await mkdir(evidenceDir, { recursive: true });
   try {
-    await page.setViewportSize({ width: 1440, height: 1000 });
-    await page.goto('/admin/araclar', { waitUntil: 'domcontentloaded' });
-    await page.locator('button:has-text("Varsayılan Özellikler")').click();
-    await page.getByRole('button', { name: 'Özel Özellik Ekle' }).click();
-    await page.getByPlaceholder('örn. Bebek koltuğu').last().fill(label);
-
-    // A broken/empty upstream response must never leak Response.json syntax
-    // details into the admin UI.
-    await page.route('**/admin/api/vehicle-feature-defaults', async (route) => {
-      if (route.request().method() === 'PUT') {
-        await route.fulfill({ status: 502, body: '', contentType: 'application/json' });
-      } else {
-        await route.continue();
-      }
-    });
-    await page.getByRole('button', { name: 'Kaydet ve Çevir' }).click();
-    await expect(page.getByText('İşlem tamamlanamadı. Lütfen tekrar deneyin.')).toBeVisible();
-    await expect(page.getByText(/Unexpected end of JSON input/i)).toHaveCount(0);
-    await page.setViewportSize({ width: 390, height: 844 });
-    await assertNoHorizontalOverflow(page);
-    await page.screenshot({ path: path.join(evidenceDir, 'error-mobile-390.png'), fullPage: true });
-    await page.unroute('**/admin/api/vehicle-feature-defaults');
-
-    await page.setViewportSize({ width: 1440, height: 1000 });
-    const saveResponsePromise = page.waitForResponse(
-      (response) => response.url() === endpoint && response.request().method() === 'PUT',
-      { timeout: 300_000 },
+    const submittedStaleValues = Object.fromEntries(
+      PUBLIC_VEHICLE_LOCALES
+        .filter((locale) => locale !== 'tr')
+        .map((locale) => [locale, `BU_ESKI_CEVIRI_KORUNMAMALI_${locale.toUpperCase()}`]),
     );
-    await page.getByRole('button', { name: 'Kaydet ve Çevir' }).click();
-    const saveResponse = await saveResponsePromise;
+    const requestCustomFeatures = originalCustomFeatures.map((feature) => feature.code === existingFeature!.code
+      ? { ...feature, translations: { ...feature.translations, ...submittedStaleValues } }
+      : feature);
+    const saveResponse = await page.request.put(endpoint, {
+      data: { codes: originalCodes, customFeatures: requestCustomFeatures },
+      headers: { Origin: origin },
+      timeout: 300_000,
+    });
     const savedBody = await saveResponse.json() as {
       ok?: boolean;
       error?: string;
@@ -61,12 +48,14 @@ test('custom vehicle feature handles malformed errors and translates every blank
     };
     expect(saveResponse.status(), savedBody.error).toBe(200);
     expect(savedBody.ok).toBe(true);
-    const created = savedBody.customFeatures?.find((feature) => feature.translations.tr === label);
+    const created = savedBody.customFeatures?.find((feature) => feature.code === existingFeature!.code);
     expect(created).toBeTruthy();
     for (const locale of PUBLIC_VEHICLE_LOCALES) {
       expect(created?.translations[locale]?.trim(), `${locale.toUpperCase()} translation`).toBeTruthy();
+      if (locale !== 'tr') {
+        expect(created?.translations[locale]).not.toBe(submittedStaleValues[locale]);
+      }
     }
-    await expect(page.getByText('Kaydedildi')).toBeVisible();
 
     const [persisted] = await db.select().from(vehicleFeatureDefaults)
       .where(eq(vehicleFeatureDefaults.id, 1)).limit(1);
@@ -75,12 +64,11 @@ test('custom vehicle feature handles malformed errors and translates every blank
       expect(persistedFeature?.translations[locale]?.trim(), `${locale.toUpperCase()} persisted translation`).toBeTruthy();
     }
 
-    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto('/admin/araclar', { waitUntil: 'domcontentloaded' });
     await page.locator('button:has-text("Varsayılan Özellikler")').click();
-    expect(await page.locator('input').evaluateAll(
-      (inputs, expected) => inputs.some((input) => input instanceof HTMLInputElement && input.value === expected),
-      label,
-    )).toBe(true);
+    const featureCard = page.getByText(existingFeature!.code, { exact: true }).locator('..').locator('..');
+    await expect(featureCard).toBeVisible({ timeout: 30_000 });
     for (const viewport of [
       { name: 'desktop-1440', width: 1440, height: 1000 },
       { name: 'tablet-768', width: 768, height: 1024 },

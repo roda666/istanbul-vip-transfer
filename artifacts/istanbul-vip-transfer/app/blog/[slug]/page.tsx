@@ -91,6 +91,7 @@ export default async function BlogArticlePage({ params }: Props) {
       url: BASE,
       logo: { '@type': 'ImageObject', url: SITE.logoUrl, width: 600, height: 240 },
     },
+    ...(post.showAuthor && post.author?.trim() ? { author: { '@type': 'Person', name: post.author } } : {}),
     keywords: post.tags.join(', ') || undefined,
   };
 
@@ -148,6 +149,12 @@ export default async function BlogArticlePage({ params }: Props) {
             </span>
           ))}
         </div>
+      )}
+
+      {post.showAuthor && post.author?.trim() && (
+        <p className="max-w-3xl mx-auto px-5 md:px-8 pt-6 text-sm" style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}>
+          Yazar: {post.author}
+        </p>
       )}
 
       {/* Article body */}

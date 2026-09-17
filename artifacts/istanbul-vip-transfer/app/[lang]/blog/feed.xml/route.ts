@@ -37,6 +37,7 @@ export async function GET(_req: NextRequest, { params }: Props) {
       <guid isPermaLink="true">${BASE}/${lang}/blog/${slug}</guid>
       <description>${escapeXml(post.excerpt ?? '')}</description>
       ${post.publishedAt ? `<pubDate>${post.publishedAt.toUTCString()}</pubDate>` : ''}
+       ${post.sourceShowAuthor && post.sourceAuthor?.trim() ? `<author>${escapeXml(post.sourceAuthor)}</author>` : ''}
     </item>`;
   }).join('\n');
 

@@ -785,6 +785,13 @@
       "when": 1789562000000,
       "tag": "0111_service_type_translations",
       "breakpoints": true
+    },
+    {
+      "idx": 112,
+      "version": "7",
+      "when": 1789563000000,
+      "tag": "0112_blog_author_visibility",
+      "breakpoints": true
     }
   ]
 }

@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { Plus, Loader2, Check, X, Languages } from 'lucide-react';
 import AdminPageHeader from '@/app/admin/_components/AdminPageHeader';
 import { AdminRecordActions } from '@/app/admin/_components/AdminRecordActions';
+import { AdminCmsRecordCard } from '@/app/admin/_components/AdminCmsRecordCard';
 import { AdminActionButton } from '@/app/admin/_components/AdminActionButton';
-import { AdminCmsLanguageBadges } from '@/app/admin/_components/AdminCmsLanguageBadges';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -207,48 +207,18 @@ export default function KategorilerPage() {
       ) : (
         <div style={{ display: 'grid', gap: '8px', marginBottom: '24px' }}>
           {cats.map((cat, idx) => (
-            <div key={cat.id} style={{
-              background: '#FFFFFF', border: '1px solid #E2E8F0',
-              borderRadius: '10px', overflow: 'hidden',
-            }}>
-              {/* ── Summary row ─────────────────────────────────────── */}
-              <div style={{
-                display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '16px', padding: '16px',
-              }}>
-                {/* Category info */}
-                <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                  <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px', fontWeight: 600, color: '#0F172A', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {cat.nameTranslations['tr'] ?? cat.slug}
-                  </p>
-                  <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: '#94A3B8', margin: '4px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    slug: {cat.slug}
-                    {cat.nameTranslations['en'] && ` • EN: ${cat.nameTranslations['en']}`}
-                  </p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px', flexWrap: 'wrap' }}>
-                    <span style={{ display: 'inline-flex', padding: '3px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: 700, color: cat.isActive ? '#166534' : '#B91C1C', background: cat.isActive ? '#DCFCE7' : '#FEE2E2' }}>
-                      {cat.isActive ? 'AKTİF' : 'DEVRE DIŞI'}
-                    </span>
-                    <span style={{
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      background: cat.serviceCount > 0 ? '#EFF6FF' : '#F8FAFC',
-                      color: cat.serviceCount > 0 ? '#1D4ED8' : '#94A3B8',
-                      border: `1px solid ${cat.serviceCount > 0 ? '#BFDBFE' : '#E2E8F0'}`,
-                      borderRadius: '20px', padding: '3px 10px',
-                      fontSize: '11px', fontWeight: 600, fontFamily: 'Inter, sans-serif',
-                    }}>
-                      {cat.serviceCount} hizmet
-                    </span>
-                  </div>
-                </div>
-
-                <div className="min-w-0 flex-[1_1_120px]">
-                  <AdminCmsLanguageBadges statuses={Object.fromEntries(
-                    Object.entries(cat.nameTranslations).map(([locale, value]) => [locale, value ? 'PUBLISHED' : 'DRAFT']),
-                  )} />
-                </div>
-
-                {/* Actions */}
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginLeft: 'auto' }}>
+            <AdminCmsRecordCard
+              key={cat.id}
+              title={cat.nameTranslations['tr'] ?? cat.slug}
+              description={<>{`slug: ${cat.slug}`}{cat.nameTranslations['en'] && ` • EN: ${cat.nameTranslations['en']}`}<div className="mt-2">{cat.serviceCount} hizmet</div></>}
+              status={<span style={{ display: 'inline-flex', padding: '3px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: 700, color: cat.isActive ? '#166534' : '#B91C1C', background: cat.isActive ? '#DCFCE7' : '#FEE2E2' }}>
+                {cat.isActive ? 'AKTİF' : 'DEVRE DIŞI'}
+              </span>}
+              languageStatuses={Object.fromEntries(
+                Object.entries(cat.nameTranslations).map(([locale, value]) => [locale, value ? 'PUBLISHED' : 'DRAFT']),
+              )}
+            >
+                <div data-admin-record-actions-row="true" style={{ display: 'flex', width: '100%', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginLeft: 'auto', justifyContent: 'flex-end' }}>
                   {editId === cat.id ? (
                     <>
                       <AdminActionButton label="Kaydet" icon={Check} variant="save" loading={saving} onClick={saveEdit} />
@@ -269,7 +239,6 @@ export default function KategorilerPage() {
                     />
                   )}
                 </div>
-              </div>
 
               {/* ── Inline edit panel ────────────────────────────────── */}
               {editId === cat.id && (
@@ -296,7 +265,7 @@ export default function KategorilerPage() {
                   </div>
                 </div>
               )}
-            </div>
+            </AdminCmsRecordCard>
           ))}
         </div>
       )}

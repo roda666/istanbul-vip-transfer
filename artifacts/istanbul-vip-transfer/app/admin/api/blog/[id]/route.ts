@@ -139,6 +139,7 @@ const putSchema = z.object({
   ogImage:        z.string().max(500).nullable().optional(),
   category:       z.string().max(100).nullable().optional(),
   author:         z.string().max(200).nullable().optional(),
+  showAuthor:     z.boolean().optional(),
   tags:           z.array(z.string().max(80)).max(20).optional(),
   readTimeMinutes: z.number().int().min(1).max(120).nullable().optional(),
   ogTitle:        z.string().max(200).nullable().optional(),
@@ -217,13 +218,24 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
   // Draft-of-published semantics
   const savingDraftOfPublished = data.saveAsDraft && row.status === 'PUBLISHED';
+  const showAuthor = data.showAuthor ?? row.showAuthor ?? true;
   const sourceChanged = data.title !== row.title
     || data.slug !== row.slug
     || (data.excerpt ?? null) !== (row.excerpt ?? null)
     || data.body !== row.body
     || (data.seoTitle ?? null) !== (row.seoTitle ?? null)
     || (data.seoDescription ?? null) !== (row.seoDescription ?? null)
-    || (data.heroImageAlt ?? null) !== (row.heroImageAlt ?? null);
+    || (data.heroImageAlt ?? null) !== (row.heroImageAlt ?? null)
+    || (data.heroImage ?? null) !== (row.heroImage ?? null)
+    || (data.ogImage ?? null) !== (row.ogImage ?? null)
+    || (data.ogTitle ?? null) !== (row.ogTitle ?? null)
+    || (data.ogDescription ?? null) !== (row.ogDescription ?? null)
+    || (data.canonicalUrl ?? null) !== (row.canonicalUrl ?? null)
+    || (data.category ?? null) !== (row.category ?? null)
+    || (data.author ?? null) !== (row.author ?? null)
+    || JSON.stringify(data.tags ?? []) !== JSON.stringify(row.tags ?? [])
+    || (data.readTimeMinutes ?? null) !== (row.readTimeMinutes ?? null)
+    || showAuthor !== row.showAuthor;
   const automaticPublicationRequested = !data.saveAsDraft
     && Boolean(data.title?.trim() && data.body?.trim())
     && sourceChanged
@@ -243,6 +255,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     canonicalUrl,
     category: data.category ?? null,
     author: data.author ?? null,
+    showAuthor,
     tags: data.tags ?? [],
     readTimeMinutes: data.readTimeMinutes ?? null,
     cta: row.cta,
@@ -252,6 +265,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
           title: row.title, slug: row.slug, excerpt: row.excerpt ?? null, body: row.body,
           seoTitle: row.seoTitle, seoDescription: row.seoDescription,
           heroImageAlt: row.heroImageAlt, ogTitle: row.ogTitle, ogDescription: row.ogDescription,
+          showAuthor: row.showAuthor,
           cta: row.cta, internalLinks: row.internalLinks,
         }) }
       : {}),
@@ -312,6 +326,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
       ogImage:        data.ogImage ?? null,
       category:       data.category ?? null,
       author:         data.author ?? null,
+      showAuthor,
       tags:           data.tags ?? [],
       readTimeMinutes: data.readTimeMinutes ?? null,
       ogTitle:        data.ogTitle ?? null,
@@ -419,6 +434,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
       heroImageAlt:   data.heroImageAlt ?? null,
       ogImage:        data.ogImage ?? null,
       author:         data.author ?? null,
+      showAuthor,
       category:       data.category ?? null,
       tags:           data.tags ?? [],
       readTimeMinutes: data.readTimeMinutes ?? null,

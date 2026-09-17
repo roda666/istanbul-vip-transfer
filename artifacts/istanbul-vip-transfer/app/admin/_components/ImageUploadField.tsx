@@ -53,6 +53,7 @@ interface ImageUploadFieldProps {
   ai?: {
     target: 'BLOG_POST' | 'SERVICE' | 'VEHICLE' | 'PAGE' | 'HOMEPAGE';
     id?: string;
+    draftSlug?: string;
     placement?: 'hero' | 'body' | 'og';
     imageField?: 'hero_image' | 'og_image' | 'body' | 'cover_image' | 'gallery';
     homepageField?: 'hero_image' | 'og_image';
@@ -143,7 +144,7 @@ export function ImageUploadField({
   };
 
   async function generateWithAi() {
-    if (!ai?.id) return;
+    if (!ai || (!ai.id && !(ai.target === 'PAGE' && ai.draftSlug))) return;
     if (aiPrompt.trim().length < 10 || aiAlt.trim().length < 5) {
       setUploadError('AI görseli için en az 10 karakterlik istem ve 5 karakterlik alt metin girin.');
       return;
@@ -157,7 +158,8 @@ export function ImageUploadField({
         body: JSON.stringify({
           action: 'generate',
           target: ai.target,
-          id: ai.id,
+          ...(ai.id ? { id: ai.id } : {}),
+          ...(ai.draftSlug ? { draftSlug: ai.draftSlug } : {}),
           prompt: aiPrompt.trim(),
           altText: aiAlt.trim(),
             ...(ai.homepageField ? { homepageField: ai.homepageField } : {}),
@@ -222,13 +224,13 @@ export function ImageUploadField({
             {ai && (
               <button
                 type="button"
-                onClick={() => ai.id && setShowAi(true)}
-                disabled={uploading || !ai.id}
-                title={ai.id ? 'AI ile güvenli görsel oluşturun' : 'Önce kaydedin; AI görseli kayıt oluşturulduktan sonra kullanılabilir'}
+                onClick={() => setShowAi(true)}
+                disabled={uploading}
+                title="AI ile güvenli görsel oluşturun"
                 style={{
-                  border: '1px solid #BAE6FD', background: uploading || !ai.id ? '#F8FAFC' : '#ECFEFF',
-                  color: uploading || !ai.id ? '#94A3B8' : '#0369A1', borderRadius: '6px',
-                  padding: '0 14px', cursor: uploading || !ai.id ? 'not-allowed' : 'pointer',
+                  border: '1px solid #BAE6FD', background: uploading ? '#F8FAFC' : '#ECFEFF',
+                  color: uploading ? '#94A3B8' : '#0369A1', borderRadius: '6px',
+                  padding: '0 14px', cursor: uploading ? 'not-allowed' : 'pointer',
                   fontSize: '12px', fontWeight: 600, fontFamily: 'Inter, sans-serif',
                   whiteSpace: 'nowrap', minHeight: '40px',
                 }}
@@ -267,12 +269,7 @@ export function ImageUploadField({
               onChange={handleFile}
             />
           </div>
-          {ai && !ai.id && (
-            <p style={{ fontSize: '11px', color: '#64748B', margin: '5px 0 0', fontFamily: 'Inter, sans-serif' }}>
-              AI görseli için önce kaydedin.
-            </p>
-          )}
-          {showAi && ai?.id && (
+          {showAi && ai && (ai.id || (ai.target === 'PAGE' && ai.draftSlug)) && (
             <div role="dialog" aria-label="AI görseli oluştur" style={{
               marginTop: '10px', padding: '14px', border: '1px solid #BAE6FD',
               borderRadius: '8px', background: '#F0FDFA', display: 'grid', gap: '8px',

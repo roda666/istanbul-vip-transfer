@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, CheckCircle, Globe, Archive, Save } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Globe, Archive, Save, Trash2, X, Sparkles, Loader2 } from 'lucide-react';
 import { STATUS_LABELS, type ContentStatus } from '@/lib/workflow';
 import { ImageUploadField } from './ImageUploadField';
 import { AISeoGenerator } from './AISeoGenerator';
@@ -85,6 +85,7 @@ export default function ContentForm({ mode, contentType, initialData, backUrl }:
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [generatingBody, setGeneratingBody] = useState(false);
 
   const needsApprovalReset =
     isEdit && (initialData?.status === 'APPROVED' || initialData?.status === 'SCHEDULED');
@@ -173,6 +174,51 @@ export default function ContentForm({ mode, contentType, initialData, backUrl }:
       }
     } catch {
       setError('Sunucu hatası.');
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function generateBody() {
+    if (generatingBody) return;
+    setGeneratingBody(true);
+    setError('');
+    try {
+      const res = await fetch('/admin/api/ai-writing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          context: contentType === 'BLOG_POST' ? 'blog' : contentType === 'SERVICE' ? 'service' : 'homepage',
+          language: 'tr',
+          field: 'body',
+          fieldLabel: 'Sayfa gövde içeriği',
+          currentText: body,
+          maxLength: 12000,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || typeof data.text !== 'string') throw new Error(data.error || 'AI içeriği oluşturulamadı.');
+      setBody(data.text);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'AI içeriği oluşturulamadı.');
+    } finally {
+      setGeneratingBody(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!isEdit || !initialData) return;
+    if (!window.confirm('Bu içerik kalıcı olarak silinsin mi? Bu işlem geri alınamaz.')) return;
+    setActionLoading('delete');
+    setError('');
+    try {
+      const res = await fetch(`/admin/api/content/${initialData.id}`, { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Silme işlemi tamamlanamadı.');
+      router.push(backUrl);
+      router.refresh();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Silme işlemi tamamlanamadı.');
     } finally {
       setActionLoading(null);
     }
@@ -297,6 +343,10 @@ export default function ContentForm({ mode, contentType, initialData, backUrl }:
         <p style={sectionTitle}>İçerik</p>
         <div>
           <label style={labelStyle} htmlFor="body">Gövde</label>
+          <button type="button" onClick={generateBody} disabled={generatingBody} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginBottom: '8px', border: '1px solid #C7D2FE', borderRadius: '6px', padding: '6px 9px', background: '#EEF2FF', color: '#4338CA', fontSize: '11px', fontWeight: 700, cursor: generatingBody ? 'wait' : 'pointer' }}>
+            {generatingBody ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+            {generatingBody ? 'İçerik oluşturuluyor...' : 'AI ile Oluştur'}
+          </button>
           <p style={{ color: '#718596', fontSize: '11px', fontFamily: 'Inter, sans-serif', marginBottom: '8px' }}>
             Desteklenen: ## Başlık, ### Alt başlık, - Liste, **kalın**, [bağlantı](url)
           </p>
@@ -329,7 +379,7 @@ export default function ContentForm({ mode, contentType, initialData, backUrl }:
           ai={contentType === 'BLOG_POST' || contentType === 'SERVICE'
             ? { target: contentType, id: initialData?.id, placement: 'hero', imageField: 'hero_image', promptHint: 'İçeriğin hero görselini açıklayın…' }
             : contentType === 'PAGE'
-            ? { target: 'PAGE', id: initialData?.id, placement: 'hero', imageField: 'hero_image', promptHint: 'Sayfa hero görselini açıklayın…' }
+            ? { target: 'PAGE', id: initialData?.id, draftSlug: slug || 'yeni-sayfa', placement: 'hero', imageField: 'hero_image', promptHint: 'Sayfa hero görselini açıklayın…' }
             : undefined}
         />
       </div>
@@ -430,6 +480,7 @@ export default function ContentForm({ mode, contentType, initialData, backUrl }:
 
       {/* Action buttons */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '8px' }}>
+        <AdminActionButton type="button" label="İptal" icon={X} variant="cancel" manage={false} onClick={() => router.push(backUrl)} />
         {/* Save */}
         <AdminActionButton type="submit" label={saving ? 'Kaydediliyor...' : 'Kaydet'} icon={Save} variant="save" loading={saving} />
 
@@ -447,6 +498,17 @@ export default function ContentForm({ mode, contentType, initialData, backUrl }:
         {isEdit && ['PUBLISHED', 'APPROVED', 'SCHEDULED'].includes(initialData?.status ?? '') && (
           <AdminActionButton label={actionLoading === 'archive' ? 'Arşivleniyor...' : 'Arşivle'} icon={Archive} variant="archive" loading={actionLoading === 'archive'} onClick={() => handleAction('archive')} />
         )}
+        <AdminActionButton
+          type="button"
+          label={isEdit ? (actionLoading === 'delete' ? 'Siliniyor...' : 'Sil') : 'Sil (önce kaydedin)'}
+          icon={Trash2}
+          variant="delete"
+          manage={false}
+          disabled={!isEdit || saving || actionLoading !== null}
+          title={!isEdit ? 'Yeni sayfa henüz kaydedilmediği için silinecek bir kayıt yok.' : undefined}
+          loading={actionLoading === 'delete'}
+          onClick={() => void handleDelete()}
+        />
       </div>
     </form>
   );

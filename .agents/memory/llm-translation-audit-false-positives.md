@@ -12,3 +12,11 @@ Running `scripts/audit-blog-translation-language.mjs` (144 published blog transl
 **Why:** the model's allow-list instructions in the prompt are not reliably followed at scale; treating raw `flagged` count as ground truth overstates real defects by ~3x here.
 
 **How to apply:** after running this audit (or any similar LLM content-QA script), do a direct DB `indexOf`/regex check of every flagged `exactText` against the actual row body before deciding it's a real defect or before reporting a "flagged" count to the user. If the exact text isn't found verbatim, it's a hallucination — discard it. If it's a proper noun/place/brand name, discard it per the prompt's own allow-list.
+
+## Translation overwrite acceptance assertions
+
+Do not prove that a stale value was replaced by asserting a natural word such as “test” can never be returned. “Test” is itself a valid translation in some target languages, so a correct provider response can create a false failure.
+
+**Why:** a real-provider acceptance run correctly translated a Turkish test label to the literal word “test” in French, which made a generic `not.toBe('test')` assertion fail even though overwrite behavior was correct.
+
+**How to apply:** submit a unique, clearly invalid per-locale sentinel as the stale input, assert each returned/persisted value differs from its own sentinel and is non-empty, then restore the exact pre-test DB snapshot.

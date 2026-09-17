@@ -153,3 +153,4 @@
 - [Real AI acceptance cleanup](real-ai-acceptance-cleanup.md) — snapshot exact DB fields before real-provider mutations and restore directly; partial admin APIs may trigger workflows or reject cleanup.
 - [Legacy CMS body evolution](legacy-cms-body-evolution.md) — new structured CMS fields must be normalized at parsers and shared-sync boundaries because workers may consume older serialized bodies directly.
 - [Hero trust-row visual family](hero-trust-row-visual-family.md) — on the cream hero, trust metrics stay unboxed and reuse the existing gold-number/gray-label style.
+- [EAFNOSUPPORT in acceptance tests](admin-acceptance-eafnosupport-workflow-down.md) — a whole-suite login-fetch failure at test start usually means the web workflow is stopped, not a code/test bug; restart it first.

@@ -6,6 +6,7 @@ import type { ContentStatus } from '@/lib/workflow';
 import { STATUS_LABELS } from '@/lib/workflow';
 import StatusBadge from '../../_components/StatusBadge';
 import { AdminRecordActions } from '../../_components/AdminRecordActions';
+import { AdminCmsRecordCard } from '../../_components/AdminCmsRecordCard';
 
 const GOLD = '#C99A32';
 
@@ -189,17 +190,6 @@ export default function AraclarList() {
   useEffect(() => { fetchVehicles(); }, [fetchVehicles]);
   useEffect(() => { setPage(1); }, [search, statusFilter, sort, order]);
 
-  function confirmArchive(v: Vehicle) {
-    setActionError('');
-    setConfirm({
-      title: 'Aracı Arşivle',
-      message: `"${v.name}" aracı arşivlenecektir. Araç listeden kaldırılır ancak kalıcı olarak silinmez.`,
-      confirmLabel: 'Arşivle',
-      danger: true,
-      onConfirm: () => doArchive(v.id),
-    });
-  }
-
   function confirmDelete(v: Vehicle) {
     setActionError('');
     setConfirm({
@@ -209,60 +199,6 @@ export default function AraclarList() {
       danger: true,
       onConfirm: () => doDelete(v.id),
     });
-  }
-
-  function confirmRestore(v: Vehicle) {
-    setActionError('');
-    setConfirm({
-      title: 'Aracı Geri Yükle',
-      message: `"${v.name}" aracı taslak olarak geri yüklenecektir.`,
-      confirmLabel: 'Geri Yükle',
-      onConfirm: () => doRestore(v.id),
-    });
-  }
-
-  async function doArchive(id: string) {
-    setActionLoading(id);
-    try {
-      const res = await fetch(`/admin/api/vehicles/${id}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'archive' }),
-      });
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        setActionError(json.error ?? 'Arşivleme başarısız.');
-      } else {
-        await fetchVehicles();
-      }
-    } catch {
-      setActionError('Bağlantı hatası.');
-    } finally {
-      setActionLoading(null);
-      setConfirm(null);
-    }
-  }
-
-  async function doRestore(id: string) {
-    setActionLoading(id);
-    try {
-      const res = await fetch(`/admin/api/vehicles/${id}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'restore' }),
-      });
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        setActionError(json.error ?? 'Geri yükleme başarısız.');
-      } else {
-        await fetchVehicles();
-      }
-    } catch {
-      setActionError('Bağlantı hatası.');
-    } finally {
-      setActionLoading(null);
-      setConfirm(null);
-    }
   }
 
   async function doDelete(id: string) {
@@ -328,34 +264,6 @@ export default function AraclarList() {
 
   return (
     <div>
-      <style>{`
-        @media (max-width: 899px) {
-          .vehicle-list-table-wrap { overflow: visible !important; }
-          .vehicle-list-table, .vehicle-list-table tbody { display: block; width: 100%; }
-          .vehicle-list-table thead { display: none; }
-          .vehicle-list-table tr {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 0 10px;
-            padding: 10px;
-            border-bottom: 1px solid #D8E1E9;
-          }
-          .vehicle-list-table td {
-            display: flex;
-            align-items: center;
-            min-width: 0;
-            padding: 8px 4px !important;
-            overflow-wrap: anywhere;
-          }
-          .vehicle-list-table td:first-child,
-          .vehicle-list-table td:nth-child(2),
-          .vehicle-list-table td:last-child { grid-column: 1 / -1; }
-          .vehicle-list-table td:last-child > div { min-width: 0; max-width: 100%; }
-        }
-        @media (max-width: 480px) {
-          .vehicle-list-table tr { grid-template-columns: 1fr; }
-        }
-      `}</style>
       {/* ── Filters ── */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
         <input
@@ -414,87 +322,27 @@ export default function AraclarList() {
         </div>
       ) : (
         <>
-          {/* ── Table ── */}
-          <div style={{ background: '#FFFFFF', border: '1px solid #D8E1E9', borderRadius: '12px', overflow: 'hidden' }}>
-           <div className="vehicle-list-table-wrap" style={{ overflowX: 'auto' }}>
-             <table className="vehicle-list-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #D8E1E9', background: '#F8FAFC' }}>
-                    {['Görsel', 'Araç', 'Kap.', 'Durum', 'Aktif', 'Öne Çıkan', 'Sıra', 'Güncellendi', 'İşlem'].map((h) => (
-                      <th key={h} style={{ padding: '10px 12px', color: '#718596', fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap', fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {vehicles.map((v) => {
-                    return (
-                      <tr key={v.id} style={{ borderBottom: '1px solid #EDF2F7' }}
-                        onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = '#F8FAFC'; }}
-                        onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'; }}
-                      >
-                        {/* Thumbnail */}
-                        <td style={{ padding: '10px 12px' }}>
-                          {v.coverImage ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={v.coverImage}
-                              alt={v.coverImageAlt ?? v.name}
-                              style={{ width: '52px', height: '36px', objectFit: 'cover', borderRadius: '4px', background: '#EDF2F7' }}
-                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                            />
-                          ) : (
-                            <div style={{ width: '52px', height: '36px', background: '#EDF2F7', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#A0B0BC', fontSize: '18px' }}>
-                              🚗
-                            </div>
-                          )}
-                        </td>
-
-                        {/* Name */}
-                        <td style={{ padding: '10px 12px' }}>
-                          <div style={{ color: '#172B3A', fontWeight: 500 }}>{v.name}</div>
-                          {v.vehicleType && (
-                            <div style={{ color: '#718596', fontSize: '11px', marginTop: '2px' }}>{v.vehicleType}</div>
-                          )}
-                        </td>
-
-                        {/* Capacity */}
-                        <td style={{ padding: '10px 12px', color: '#718596', whiteSpace: 'nowrap' }}>
-                          {v.passengerCapacity != null ? `${v.passengerCapacity} yolcu` : '—'}
-                        </td>
-
-                        {/* Status */}
-                        <td style={{ padding: '10px 12px' }}>
-                          <StatusBadge status={v.status as ContentStatus} size="sm" />
-                        </td>
-
-                        {/* Active */}
-                        <td style={{ padding: '10px 12px' }}>
-                          <span style={{ color: v.isActive ? '#047857' : '#718596', fontSize: '12px', fontWeight: 600 }}>
-                            {v.isActive ? 'Aktif' : 'Pasif'}
-                          </span>
-                        </td>
-
-                        {/* Featured */}
-                        <td style={{ padding: '10px 12px', textAlign: 'center' }}>
-                          {v.isFeatured ? (
-                            <span style={{ color: GOLD, fontSize: '15px' }}>★</span>
-                          ) : (
-                            <span style={{ color: '#D8E1E9', fontSize: '15px' }}>☆</span>
-                          )}
-                        </td>
-
-                        {/* Display order */}
-                        <td style={{ padding: '10px 12px', color: '#718596' }}>{v.displayOrder}</td>
-
-                        {/* Updated at */}
-                        <td style={{ padding: '10px 12px', color: '#718596', whiteSpace: 'nowrap' }}>
-                          {formatDate(v.updatedAt)}
-                        </td>
-
-                        {/* Actions */}
-                        <td style={{ padding: '10px 12px' }}>
+           <div data-admin-record-list="true" style={{ display: 'grid', gap: '8px', marginBottom: '24px' }}>
+             {vehicles.map((v) => (
+               <AdminCmsRecordCard
+                 key={v.id}
+                 title={v.name}
+                 description={v.vehicleType ?? undefined}
+                 status={<StatusBadge status={v.status as ContentStatus} size="sm" />}
+               >
+                 <div className="grid w-full min-w-0 grid-cols-2 gap-3 text-xs text-slate-500 min-[769px]:grid-cols-4">
+                   <div className="flex min-w-0 items-center gap-2">
+                     {v.coverImage ? (
+                       // eslint-disable-next-line @next/next/no-img-element
+                       <img src={v.coverImage} alt={v.coverImageAlt ?? v.name} className="h-9 w-[52px] shrink-0 rounded object-cover bg-slate-100" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                     ) : <span className="flex h-9 w-[52px] shrink-0 items-center justify-center rounded bg-slate-100 text-lg">🚗</span>}
+                     <span>{v.passengerCapacity != null ? `${v.passengerCapacity} yolcu` : '—'}</span>
+                   </div>
+                   <div><span className="font-medium text-slate-700">Aktiflik:</span> {v.isActive ? 'Aktif' : 'Pasif'}</div>
+                   <div><span className="font-medium text-slate-700">Öne Çıkan:</span> {v.isFeatured ? 'Evet' : 'Hayır'}</div>
+                   <div><span className="font-medium text-slate-700">Sıra:</span> {v.displayOrder} · {formatDate(v.updatedAt)}</div>
+                 </div>
+                 <div data-admin-record-actions-row="true" className="flex w-full min-w-0 justify-end">
                           <AdminRecordActions
                             up={{
                               onClick: () => reorder(v, 'up'),
@@ -517,11 +365,6 @@ export default function AraclarList() {
                               isActive: v.isActive,
                               onClick: () => setActive(v.id, !v.isActive)
                             }}
-                            archive={{
-                              isArchived: v.status === 'ARCHIVED',
-                              onClick: () => confirmArchive(v),
-                              onRestore: () => confirmRestore(v)
-                            }}
                             delete={{
                               onClick: () => confirmDelete(v),
                               disabled: v.isActive || v.publishedAt !== null || !['DRAFT', 'RESEARCH', 'REVIEW', 'ARCHIVED'].includes(v.status),
@@ -534,13 +377,9 @@ export default function AraclarList() {
                                   : undefined,
                             }}
                           />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                 </div>
+               </AdminCmsRecordCard>
+             ))}
           </div>
 
           {/* ── Pagination ── */}

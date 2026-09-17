@@ -28,6 +28,7 @@ export interface PublishedBlogPost {
   heroImageAlt: string | null;
   category: string | null;
   author: string | null;
+  showAuthor: boolean;
   tags: string[];
   readTimeMinutes: number | null;
   publishedAt: Date | null;
@@ -54,6 +55,7 @@ export interface PublishedBlogTranslation {
   sourceHeroImageAlt: string | null;
   sourceCategory: string | null;
   sourceAuthor: string | null;
+  sourceShowAuthor: boolean;
   sourceTags: string[];
 }
 
@@ -61,7 +63,7 @@ export interface PublishedBlogTranslation {
 export type PublishedBlogCard = Pick<
   PublishedBlogPost,
   'id' | 'slug' | 'title' | 'excerpt' | 'heroImage' | 'heroImageAlt' |
-  'category' | 'author' | 'readTimeMinutes' | 'publishedAt' | 'updatedAt' |
+  'category' | 'author' | 'showAuthor' | 'readTimeMinutes' | 'publishedAt' | 'updatedAt' |
   'seoDescription'
 >;
 
@@ -106,7 +108,7 @@ function normalizeBlogCard(post: PublishedBlogCard): PublishedBlogCard {
     excerpt: post.excerpt ? removeCustomerVisibleTollCopy(post.excerpt) : null,
     heroImageAlt: normalizeImageAlt(post.heroImageAlt),
     category: post.category ? removeCustomerVisibleTollCopy(post.category) : null,
-    author: post.author ? removeCustomerVisibleTollCopy(post.author) : null,
+    author: post.showAuthor && post.author?.trim() ? removeCustomerVisibleTollCopy(post.author) : null,
     seoDescription: post.seoDescription ? removeCustomerVisibleTollCopy(post.seoDescription) : null,
     publishedAt: normalizeOptionalDate(post.publishedAt),
     updatedAt: normalizeRequiredDate(post.updatedAt),
@@ -133,7 +135,7 @@ function normalizeBlogPost(post: PublishedBlogPost): PublishedBlogPost {
     body: post.body ? normalizeBlogBody(post.body) : null,
     heroImageAlt: normalizeImageAlt(post.heroImageAlt),
     category: post.category ? removeCustomerVisibleTollCopy(post.category) : null,
-    author: post.author ? removeCustomerVisibleTollCopy(post.author) : null,
+    author: post.showAuthor && post.author?.trim() ? removeCustomerVisibleTollCopy(post.author) : null,
     tags: post.tags.map(removeCustomerVisibleTollCopy).filter(Boolean),
     seoTitle: post.seoTitle ? removeCustomerVisibleTollCopy(post.seoTitle) : null,
     seoDescription: post.seoDescription ? removeCustomerVisibleTollCopy(post.seoDescription) : null,
@@ -186,6 +188,7 @@ const cachedPublishedBlogCards = unstable_cache(
           heroImageAlt: content.heroImageAlt,
           category: content.category,
           author: content.author,
+          showAuthor: content.showAuthor,
           readTimeMinutes: content.readTimeMinutes,
           publishedAt: content.publishedAt,
           updatedAt: content.updatedAt,
@@ -234,6 +237,7 @@ const cachedRelatedBlogCards = unstable_cache(
           heroImageAlt: content.heroImageAlt,
           category: content.category,
           author: content.author,
+          showAuthor: content.showAuthor,
           readTimeMinutes: content.readTimeMinutes,
           publishedAt: content.publishedAt,
           updatedAt: content.updatedAt,
@@ -296,6 +300,7 @@ async function readPublishedBlogPost(slug: string): Promise<PublishedBlogPost | 
       heroImageAlt:   row.heroImageAlt ?? null,
       category:       row.category ?? null,
       author:         row.author ?? null,
+      showAuthor:     row.showAuthor ?? true,
       tags:           (row.tags as string[] | null) ?? [],
       readTimeMinutes: row.readTimeMinutes ?? null,
       publishedAt:    row.publishedAt ?? null,
@@ -353,6 +358,7 @@ async function readPublishedBlogTranslation(
         sourceHeroImageAlt: content.heroImageAlt,
         sourceCategory:  content.category,
         sourceAuthor:    content.author,
+        sourceShowAuthor: content.showAuthor,
         sourceTags:      content.tags,
       })
       .from(contentTranslations)
@@ -388,7 +394,8 @@ async function readPublishedBlogTranslation(
       sourceHeroImage:  row.sourceHeroImage,
       sourceHeroImageAlt: row.sourceHeroImageAlt,
       sourceCategory:   row.sourceCategory,
-      sourceAuthor:     row.sourceAuthor,
+      sourceAuthor:      row.sourceShowAuthor !== false && row.sourceAuthor?.trim() ? row.sourceAuthor : null,
+      sourceShowAuthor:  row.sourceShowAuthor !== false,
       sourceTags:       (row.sourceTags as string[] | null) ?? [],
     };
   } catch {
@@ -422,6 +429,8 @@ export interface TranslatedBlogListItem {
   sourceHeroImage: string | null;
   sourceHeroImageAlt: string | null;
   sourceCategory: string | null;
+  sourceAuthor: string | null;
+  sourceShowAuthor: boolean;
 }
 
 async function readPublishedBlogTranslations(
@@ -443,6 +452,8 @@ async function readPublishedBlogTranslations(
         sourceHeroImage: content.heroImage,
         sourceHeroImageAlt: content.heroImageAlt,
         sourceCategory:  content.category,
+        sourceAuthor:    content.author,
+        sourceShowAuthor: content.showAuthor,
       })
       .from(contentTranslations)
       // entity_id is TEXT, content.id is UUID — explicit cast required
@@ -645,6 +656,7 @@ export interface BlogAdminRecord {
   isActive: boolean;
   category: string | null;
   author: string | null;
+  showAuthor: boolean;
   tags: string[];
   readTimeMinutes: number | null;
   ogTitle: string | null;
@@ -740,6 +752,9 @@ export async function getBlogAdminRecord(id: string): Promise<BlogAdminRecord> {
   const draftTags = Array.isArray(draftSnapshot?.tags)
     ? draftSnapshot.tags.filter((tag): tag is string => typeof tag === 'string')
     : (row.tags as string[] | null) ?? [];
+  const draftShowAuthor = typeof draftSnapshot?.showAuthor === 'boolean'
+    ? draftSnapshot.showAuthor
+    : row.showAuthor ?? true;
 
   return {
     id:             row.id,
@@ -757,6 +772,7 @@ export async function getBlogAdminRecord(id: string): Promise<BlogAdminRecord> {
     isActive:       row.isActive,
     category:       draftText('category', row.category ?? null),
     author:         draftText('author', row.author ?? null),
+    showAuthor:      draftShowAuthor,
     tags:           draftTags,
     readTimeMinutes: typeof draftSnapshot?.readTimeMinutes === 'number'
       ? draftSnapshot.readTimeMinutes

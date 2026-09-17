@@ -69,6 +69,10 @@ export async function PUT(request: NextRequest, { params }: Params) {
         entityId: id,
         sourceHash: computeCustomerContentSourceHash({ question: nextQuestion, answer: nextAnswer }),
         adminId: session.adminId,
+        // An FAQ source edit is an explicit owner request to regenerate every
+        // active locale.  Do not let a previous manual translation lock turn
+        // into stale customer-facing copy.
+        force: true,
       });
     }
     revalidateHomepageLocale('tr');

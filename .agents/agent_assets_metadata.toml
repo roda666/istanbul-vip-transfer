@@ -672,3 +672,87 @@ mtime_ms = 1789666207793
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/70d8f269-e038-4c37-9fb5-cd9d38f2158b/85fe4474-541f-4465-9b89-c2aaea2df88c"
 storage_version_token = "1789666702621780"
 content_type = "image/png"
+
+[[outputs]]
+id = "ZlWvbWHT55aqr9maOdubH"
+uri = "file://artifacts/istanbul-vip-transfer/reports/vehicle-feature-translation/desktop-1440.png"
+type = "image"
+title = "G1 — Vehicle feature translations"
+description = "After evidence from the passing real-provider acceptance run using the existing denemedir record."
+logical_id = "079b1928-af3c-41ac-bfb6-327aac246adf"
+content_hash = "sha256:bbd4e80f1bbc37e9c6b8ee245d623e0695b542f3148db6f1bd48c9eedc21b911"
+size = 965929
+mtime_ms = 1789672570256
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/079b1928-af3c-41ac-bfb6-327aac246adf/9767504a-9f2d-4023-a0ea-aed66bce9032"
+storage_version_token = "1789674260481077"
+content_type = "image/png"
+
+[[outputs]]
+id = "qO_C83Yfh_LFvUeOwp1EJ"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/g1-g6-20260917-190138-g2-g6/admin-record-actions-araclar-desktop.png"
+type = "image"
+title = "G2 — Vehicle actions"
+description = "After evidence: vehicle records use the shared card layout and one-row canonical action strip."
+logical_id = "e93dfd80-1632-403b-b67a-582768131505"
+content_hash = "sha256:fad55e16ff85d923df204e603980341959e68fbe5d5b2f189f3c2c1039e6975b"
+size = 852329
+mtime_ms = 1789672726684
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/e93dfd80-1632-403b-b67a-582768131505/7d17b79e-9ace-4a8a-82de-14c671f0e6d4"
+storage_version_token = "1789674262829345"
+content_type = "image/png"
+
+[[outputs]]
+id = "eJuj2uUHdI6DlOApnVKSz"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/g1-g6-20260917-190138-g2-g6/admin-record-actions-kategoriler-desktop.png"
+type = "image"
+title = "G3 — Category reference actions"
+description = "Reference evidence: category records use the same shared card and action contract."
+logical_id = "93377ab9-a9b2-41b9-85f3-4dd52bcb65db"
+content_hash = "sha256:19aa8350a9642da68d79f40a92e5d14ec6e380e43962b5afb0213a00254da2b4"
+size = 840324
+mtime_ms = 1789672744901
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/93377ab9-a9b2-41b9-85f3-4dd52bcb65db/813b8fd2-6f19-4233-9895-606780568c3b"
+storage_version_token = "1789674264397752"
+content_type = "image/png"
+
+[[outputs]]
+id = "0hjp0La3zEjRGv2WIq7sw"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/g1-g6-20260917-190138-g4-g6-pass/owner-g4-route-ai-tablet-768.png"
+type = "image"
+title = "G4 — Route AI and translations"
+description = "Tablet after evidence: Sayfa Açıklaması has AI ile Doldur and the multilingual route editor remains responsive."
+logical_id = "9a9ccfed-2222-47a3-9065-b45000f97e95"
+content_hash = "sha256:9f94947b8f6701278a54d26572dc992922c9d5f697b054b177e34a9e080f3cd6"
+size = 601257
+mtime_ms = 1789673533536
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/9a9ccfed-2222-47a3-9065-b45000f97e95/8eec2546-c7c7-4487-ad94-40c3d48e9ce3"
+storage_version_token = "1789674265855249"
+content_type = "image/png"
+
+[[outputs]]
+id = "S84X85_lqB_aeU204Vhqb"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/g1-g6-20260917-190138-g4-g6-mobile-pass/owner-g5-blog-author-mobile-390.png"
+type = "image"
+title = "G5 — Blog author visibility"
+description = "Mobile after evidence: Yazarı göster is present and checked by default in the existing blog editor."
+logical_id = "c14afd3c-9fa3-4133-8057-d1e8d85d7a0c"
+content_hash = "sha256:9a84ef94d9002bf069ba2aa59c7a61f899d7b76c07ca6a577873d010acef697c"
+size = 285338
+mtime_ms = 1789673719139
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/c14afd3c-9fa3-4133-8057-d1e8d85d7a0c/b34f4dda-544f-4c39-a17b-ffa10a9c6212"
+storage_version_token = "1789674267236837"
+content_type = "image/png"
+
+[[outputs]]
+id = "muH3hVaqddZ2RJywxpuZi"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/g1-g6-20260917-190138-g4-g6-pass/owner-g6-pages-delete-tablet-768.png"
+type = "image"
+title = "G6 — Safe page deletion"
+description = "Tablet after evidence: Sil is present in the shared page action strip with status-based safety behavior."
+logical_id = "fb563922-ce0f-4ffe-ab6a-28bea2cbefa9"
+content_hash = "sha256:79a6084ac959307686427d5f496e61d2e4d419a5718c0fa8a5262365c4e2a7c4"
+size = 600476
+mtime_ms = 1789673565233
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/fb563922-ce0f-4ffe-ab6a-28bea2cbefa9/7421048b-2517-4952-b24e-3ea629ae38f5"
+storage_version_token = "1789674268597313"
+content_type = "image/png"

@@ -157,7 +157,7 @@ export default function VehicleFeatureDefaultsPanel() {
               <div style={{ marginTop: '18px' }}>
                 <div style={{ color: TEXT, fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>Özel özellikler</div>
                 <div style={{ color: MUTED, fontSize: '12px', lineHeight: 1.5, marginBottom: '10px' }}>
-                  Yalnızca Türkçe zorunludur. Boş bırakılan diğer diller kaydederken AI ile otomatik çevrilir; oluşan metinleri daha sonra düzenleyebilirsiniz.
+                   Türkçe metin her kayıtta aktif tüm müşteri dillerine yeniden çevrilir; eski çeviriler korunmaz.
                 </div>
                 {customFeatures.map((feature, index) => (
                   <div key={feature.code} style={{ border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '10px', marginBottom: '8px' }}>

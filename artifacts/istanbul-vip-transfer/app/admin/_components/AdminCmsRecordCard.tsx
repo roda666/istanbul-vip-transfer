@@ -9,15 +9,20 @@ export function AdminCmsRecordCard({
   status,
   languageStatuses,
   children,
+  className,
+  ...rest
 }: {
   title: string;
   description?: ReactNode;
   status?: ReactNode;
   languageStatuses?: Record<string, unknown> | null;
   children: ReactNode;
+  className?: string;
+  'data-testid'?: string;
+  'data-service-id'?: string;
 }) {
   return (
-    <article className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <article data-admin-record-card="true" {...rest} className={`min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm${className ? ` ${className}` : ''}`}>
       <div className="min-w-0 space-y-2 p-4">
         <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -28,7 +33,7 @@ export function AdminCmsRecordCard({
         </div>
         {languageStatuses && <AdminCmsLanguageBadges statuses={languageStatuses} />}
       </div>
-      <div className="flex min-w-0 flex-wrap items-center gap-2 border-t border-slate-100 bg-slate-50/70 p-3 [&_a]:min-h-11 [&_button]:min-h-11">
+      <div data-admin-record-actions-row="true" className="flex min-w-0 flex-wrap items-center gap-2 border-t border-slate-100 bg-slate-50/70 p-3 [&_a]:min-h-11 [&_button]:min-h-11">
         {children}
       </div>
     </article>

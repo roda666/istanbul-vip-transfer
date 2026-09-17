@@ -223,6 +223,7 @@ export default function BlogEditor({ blogId, initial }: Props) {
   const [body,           setBody]           = useState(initial.body ?? '');
   const [category,       setCategory]       = useState(initial.category ?? '');
   const [author,         setAuthor]         = useState(initial.author ?? '');
+  const [showAuthor,     setShowAuthor]     = useState(initial.showAuthor !== false);
   const [tags,           setTags]           = useState<string[]>(initial.tags ?? []);
   const [readTime,       setReadTime]       = useState<number | ''>(initial.readTimeMinutes ?? '');
   const [heroImage,      setHeroImage]      = useState(initial.heroImage ?? '');
@@ -282,6 +283,7 @@ export default function BlogEditor({ blogId, initial }: Props) {
           heroImage: heroImage || null, heroImageAlt: heroImageAlt || null,
           ogImage: ogImage || null,
           category: category || null, author: author || null, tags,
+           showAuthor,
           readTimeMinutes: readTime !== '' ? Number(readTime) : autoReadTime,
           ogTitle: ogTitle || null, ogDescription: ogDescription || null,
           seoTitle: seoTitle || null, seoDescription: seoDescription || null,
@@ -304,7 +306,7 @@ export default function BlogEditor({ blogId, initial }: Props) {
     } finally {
       setSaving(false);
     }
-  }, [title, slug, excerpt, body, heroImage, heroImageAlt, ogImage, category, author, tags, readTime, autoReadTime, ogTitle, ogDescription, seoTitle, seoDescription, canonicalUrl, scheduledAt, blogId]);
+  }, [title, slug, excerpt, body, heroImage, heroImageAlt, ogImage, category, author, showAuthor, tags, readTime, autoReadTime, ogTitle, ogDescription, seoTitle, seoDescription, canonicalUrl, scheduledAt, blogId]);
 
   const hasDirtyTranslation = Object.values(txFields).some(field => field.dirty);
   const hasUnsavedChanges = sourceDirty || hasDirtyTranslation;
@@ -341,7 +343,7 @@ export default function BlogEditor({ blogId, initial }: Props) {
       if (isDirty.current) saveSource({ saveAsDraft: rec.status === 'PUBLISHED' });
     }, 30_000);
     return () => { if (autosaveRef.current) clearTimeout(autosaveRef.current); };
-  }, [title, slug, excerpt, body, category, author, tags, readTime, heroImage, heroImageAlt, seoTitle, seoDescription, ogTitle, ogDescription, saveSource, rec.status]);
+  }, [title, slug, excerpt, body, category, author, showAuthor, tags, readTime, heroImage, heroImageAlt, seoTitle, seoDescription, ogTitle, ogDescription, saveSource, rec.status]);
 
   // ── Source status actions ─────────────────────────────────────────────────
   async function sourceAction(action: string, extra?: Record<string, unknown>) {
@@ -608,39 +610,7 @@ export default function BlogEditor({ blogId, initial }: Props) {
     const btns: { id: string; label: string; action: string }[] = [];
     const add = (action: string, label: string) => btns.push({ id: `${currentStatus}:${action}`, action, label });
 
-    if (currentStatus === 'IDEA') {
-      add('toDraft', 'Taslağa Dönüştür');
-      add('toResearch', 'Araştırmaya Gönder');
-      add('archiveSource', 'Arşivle');
-    } else if (currentStatus === 'DRAFT') {
-      add('toIdea', 'Fikre Döndür');
-      add('toResearch', 'Araştırmaya Gönder');
-      add('toReview', 'İncelemeye Gönder');
-      add('archiveSource', 'Arşivle');
-    } else if (currentStatus === 'RESEARCH') {
-      add('toIdea', 'Fikre Döndür');
-      add('toDraft', 'Taslağa Döndür');
-      add('toReview', 'İncelemeye Gönder');
-      add('archiveSource', 'Arşivle');
-    } else if (currentStatus === 'REVIEW') {
-      add('toResearch', 'Araştırmaya Döndür');
-      add('toDraft', 'Taslağa Döndür');
-      add('toApprove', 'Onayla');
-      add('archiveSource', 'Arşivle');
-    } else if (currentStatus === 'APPROVED') {
-      add('toReview', 'İncelemeye Döndür');
-      if (scheduledAt) add('scheduleSource', 'Planla');
-      add('archiveSource', 'Arşivle');
-    } else if (currentStatus === 'SCHEDULED') {
-      add('toApprove', 'Planı Kaldır');
-      add('archiveSource', 'Arşivle');
-    } else if (currentStatus === 'PUBLISHED') {
-      add('unpublishSource', 'Yayımı Kaldır');
-      add('archiveSource', 'Arşivle');
-    } else if (currentStatus === 'ARCHIVED') {
-      add('toIdea', 'Fikre Döndür');
-      add('toDraft', 'Taslağa Döndür');
-    }
+    if (currentStatus !== 'ARCHIVED') add('archiveSource', 'Arşivle');
 
     return (
       <div className="mt-3 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
@@ -648,8 +618,8 @@ export default function BlogEditor({ blogId, initial }: Props) {
           <AdminActionButton
             key={btn.id}
             label={btn.label}
-            icon={btn.action === 'archiveSource' ? Archive : btn.action === 'toApprove' ? Check : btn.action === 'publishSource' ? Rocket : btn.action === 'toReview' ? Eye : undefined}
-            variant={btn.action === 'archiveSource' ? 'archive' : btn.action === 'scheduleSource' || btn.action === 'toApprove' ? 'activate' : 'subtle'}
+            icon={Archive}
+            variant="archive"
             disabled={saving || publishRunning || hasUnsavedChanges}
             onClick={() => { void sourceAction(btn.action, btn.action === 'scheduleSource' && scheduledAt ? { scheduledAt: new Date(scheduledAt).toISOString() } : undefined); }}
           />
@@ -680,7 +650,7 @@ export default function BlogEditor({ blogId, initial }: Props) {
       )}
 
       {/* ── Autosave indicator ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+      <div data-testid="blog-top-status" style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <StatusBadge status={currentStatus} map={SRC_STATUS} />
           {rec.hasPendingDraft && (
@@ -690,35 +660,6 @@ export default function BlogEditor({ blogId, initial }: Props) {
           )}
           {lastSaved && <span style={{ fontSize: '11px', color: '#94A3B8' }}>Son kayıt: {lastSaved}</span>}
           {saving && <span style={{ fontSize: '11px', color: '#2563EB' }}>Kaydediliyor…</span>}
-        </div>
-        <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-2 lg:flex lg:flex-wrap">
-            <FacebookShareButton
-              url={publishedBlogUrl}
-              label="Bu yazıyı Facebook'ta paylaş"
-              disabled={currentStatus !== 'PUBLISHED'}
-            />
-            <XShareButton
-              title={rec.title}
-              summary={shareSummary}
-              url={publishedBlogUrl}
-              label="Bu yazıyı X'te paylaş"
-              disabled={currentStatus !== 'PUBLISHED'}
-            />
-            <LinkedInShareButton
-              url={publishedBlogUrl}
-              label="Bu yazıyı LinkedIn'de paylaş"
-              disabled={currentStatus !== 'PUBLISHED'}
-            />
-            <TelegramShareButton
-              title={rec.title}
-              url={publishedBlogUrl}
-              label="Bu yazıyı Telegram'da paylaş"
-              disabled={currentStatus !== 'PUBLISHED'}
-            />
-          <AdminActionButton label="Taslak Kaydet" icon={FilePlus2} variant="save" disabled={saving} onClick={() => { markDirty(); void saveSource({ saveAsDraft: true }); }} />
-          <AdminActionButton label="Kaydet" icon={Save} variant="save" disabled={saving} onClick={() => { markDirty(); void saveSource({ saveAsDraft: false }); }} />
-          <AdminActionButton label="İptal" icon={X} variant="cancel" manage={false} disabled={saving || publishRunning || deleting} onClick={cancelEditing} />
-          <AdminActionButton label="Sil" icon={Trash2} variant="delete" loading={deleting} disabled={saving || publishRunning} onClick={() => void deleteBlog()} />
         </div>
       </div>
 
@@ -820,6 +761,14 @@ export default function BlogEditor({ blogId, initial }: Props) {
             </div>
             <div>
               <Field label="Yazar" value={author} onChange={v => { setAuthor(v); markDirty(); }} hint="Belirtilmezse 'VIP Transfer Istanbul' gösterilir." />
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '-8px', marginBottom: '16px', fontSize: '12px', color: '#374151', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={showAuthor}
+                  onChange={e => { setShowAuthor(e.target.checked); markDirty(); }}
+                />
+                Yazarı göster
+              </label>
             </div>
             <div>
               <div style={s.fld}>
@@ -937,6 +886,16 @@ export default function BlogEditor({ blogId, initial }: Props) {
                 ))}
               </div>
             )}
+          </div>
+
+          <div data-testid="blog-bottom-actions" className="grid w-full grid-cols-1 gap-2 border-t border-slate-200 pt-4 sm:grid-cols-2 lg:flex lg:flex-wrap">
+            <FacebookShareButton url={publishedBlogUrl} label="Bu yazıyı Facebook'ta paylaş" disabled={currentStatus !== 'PUBLISHED'} />
+            <XShareButton title={rec.title} summary={shareSummary} url={publishedBlogUrl} label="Bu yazıyı X'te paylaş" disabled={currentStatus !== 'PUBLISHED'} />
+            <LinkedInShareButton url={publishedBlogUrl} label="Bu yazıyı LinkedIn'de paylaş" disabled={currentStatus !== 'PUBLISHED'} />
+            <TelegramShareButton title={rec.title} url={publishedBlogUrl} label="Bu yazıyı Telegram'da paylaş" disabled={currentStatus !== 'PUBLISHED'} />
+            <AdminActionButton label="Taslak Kaydet" icon={FilePlus2} variant="save" disabled={saving} onClick={() => { markDirty(); void saveSource({ saveAsDraft: true }); }} />
+            <AdminActionButton label="İptal" icon={X} variant="cancel" manage={false} disabled={saving || publishRunning || deleting} onClick={cancelEditing} />
+            <AdminActionButton label="Sil" icon={Trash2} variant="delete" loading={deleting} disabled={saving || publishRunning} onClick={() => void deleteBlog()} />
           </div>
         </div>
       )}

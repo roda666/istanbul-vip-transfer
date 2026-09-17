@@ -4,6 +4,7 @@ import {
   computeCustomerContentSourceHash,
   enqueueCustomerContentTranslations,
 } from '@/lib/customer-content-translation';
+import { findTollFeeViolations } from '@/lib/toll-fee-rules';
 
 // Mirror the same reserved-slug list as POST /api/admin/content
 const RESERVED_SLUGS = new Set([
@@ -83,6 +84,18 @@ export async function PUT(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: parsed.error.errors[0]?.message ?? 'Doğrulama hatası.' }, { status: 422 });
 
   const data = parsed.data;
+
+  // Turkish is the source of truth. Never persist copy that leaks toll/bridge
+  // fees; translations inherit this safety requirement through the queue.
+  const sourceCopy = [data.title, data.excerpt, data.body, data.seoTitle, data.seoDescription]
+    .filter((value): value is string => typeof value === 'string').join('\n');
+  const sourceViolations = findTollFeeViolations(sourceCopy, 'tr');
+  if (sourceViolations.length > 0) {
+    return NextResponse.json({
+      error: 'İçerik güvenlik kontrolünden geçemedi: geçiş/köprü/ücret bilgisi içeren metin kaydedilemez.',
+      violations: sourceViolations,
+    }, { status: 422 });
+  }
 
   if (data.slug !== undefined && isReservedSlug(data.slug)) {
     return NextResponse.json(
@@ -183,11 +196,33 @@ export async function PUT(request: NextRequest, { params }: Params) {
       // Translation table may not exist yet (migration not run); silently skip.
     }
 
-     if (updated.status === 'PUBLISHED' && (current.status !== 'PUBLISHED'
+      let translationJob: Awaited<ReturnType<typeof enqueueCustomerContentTranslations>> | null = null;
+      if (data.title !== undefined || data.slug !== undefined || data.excerpt !== undefined
+        || data.body !== undefined || data.seoTitle !== undefined || data.seoDescription !== undefined
+        || data.heroImageAlt !== undefined || data.canonicalUrl !== undefined) {
+        translationJob = await enqueueCustomerContentTranslations({
+          entityType: current.contentType === 'SERVICE' ? 'service_page' : 'content',
+          entityId: id,
+          sourceHash: computeCustomerContentSourceHash({
+            title: updated.title, slug: updated.slug, excerpt: updated.excerpt, body: updated.body,
+            seoTitle: updated.seoTitle, seoDescription: updated.seoDescription,
+            heroImageAlt: updated.heroImageAlt, canonicalUrl: updated.canonicalUrl,
+          }),
+          adminId: session.adminId,
+          force: true,
+          sourceSnapshot: {
+            title: updated.title, slug: updated.slug, excerpt: updated.excerpt, body: updated.body,
+            seoTitle: updated.seoTitle, seoDescription: updated.seoDescription,
+            heroImageAlt: updated.heroImageAlt, canonicalUrl: updated.canonicalUrl,
+          },
+        });
+      }
+      /* Legacy publish path retained for callers that publish without editing. */
+      if (!translationJob && updated.status === 'PUBLISHED' && (current.status !== 'PUBLISHED'
        || data.title !== undefined || data.slug !== undefined || data.excerpt !== undefined
        || data.body !== undefined || data.seoTitle !== undefined || data.seoDescription !== undefined
        || data.heroImageAlt !== undefined)) {
-       await enqueueCustomerContentTranslations({
+        translationJob = await enqueueCustomerContentTranslations({
          entityType: current.contentType === 'SERVICE' ? 'service_page' : 'content',
          entityId: id,
          sourceHash: computeCustomerContentSourceHash({
@@ -198,7 +233,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
          adminId: session.adminId,
        });
      }
-     return NextResponse.json({ item: updated });
+      return NextResponse.json({ item: updated, translationJob });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : '';
     if (msg.includes('unique') || msg.includes('duplicate'))

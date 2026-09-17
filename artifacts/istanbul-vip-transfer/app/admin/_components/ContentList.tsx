@@ -95,7 +95,9 @@ export default function ContentList({ items, baseUrl, page, total, limit }: Prop
   return (
     <div className="space-y-3">
       {items.map((item, index) => {
-          const isSafeToDelete = ['IDEA', 'DRAFT', 'RESEARCH'].includes(item.status);
+           // The DELETE endpoint permits every non-live workflow state; it
+           // performs the additional navigation-reference guard server-side.
+           const isSafeToDelete = ['IDEA', 'DRAFT', 'RESEARCH', 'REVIEW', 'ARCHIVED'].includes(item.status);
           const deleteOmittedReason = isSafeToDelete
             ? undefined
             : 'Yayında, onayda veya arşivlenmiş içerikler doğrudan silinemez. Önce taslağa alın.';
@@ -120,12 +122,12 @@ export default function ContentList({ items, baseUrl, page, total, limit }: Prop
                 edit={{
                   href: `${baseUrl}/${item.id}`,
                 }}
-                delete={isSafeToDelete ? {
+                delete={{
                   onClick: () => handleDelete(item.id),
-                  disabled: deleting === item.id,
+                   disabled: deleting === item.id || !isSafeToDelete,
+                   disabledReason: !isSafeToDelete ? deleteOmittedReason : undefined,
                   confirmMessage: `"${item.title}" içeriğini kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem ilişkili çevirileri de kaldırabilir ve geri alınamaz.`,
-                } : undefined}
-                deleteOmittedReason={deleteOmittedReason}
+                 }}
               />
           </AdminCmsRecordCard>
         )})}

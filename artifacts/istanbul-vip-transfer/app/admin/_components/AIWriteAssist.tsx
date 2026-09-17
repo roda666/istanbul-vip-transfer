@@ -14,7 +14,11 @@ export type AIWritingField =
   | 'seo_description'
   | 'faq_question'
   | 'faq_answer'
-  | 'chatbot_answer';
+  | 'chatbot_answer'
+  | 'schema_service_type'
+  | 'schema_opening_hours'
+  | 'schema_price_range'
+  | 'schema_languages';
 
 type AIWriteAssistProps = {
   context: AIWritingContext;
@@ -24,6 +28,7 @@ type AIWriteAssistProps = {
   onChange: (value: string) => void;
   language?: string;
   maxLength?: number;
+  sourceContext?: string;
   disabled?: boolean;
 };
 
@@ -53,6 +58,7 @@ export function AIWriteAssist({
   onChange,
   language = 'tr',
   maxLength,
+  sourceContext,
   disabled = false,
 }: AIWriteAssistProps) {
   const [loading, setLoading] = useState(false);
@@ -60,6 +66,8 @@ export function AIWriteAssist({
   const [error, setError] = useState<string | null>(null);
 
   const isContinuation = value.trim().length > 0;
+  const isSchemaField = field.startsWith('schema_');
+  const actionLabel = isSchemaField ? 'AI ile Oluştur' : isContinuation ? 'AI ile devam et' : 'AI ile yaz';
 
   async function generate() {
     if (loading || disabled) return;
@@ -79,6 +87,7 @@ export function AIWriteAssist({
           currentText: value,
           language,
           maxLength,
+          sourceContext,
         }),
       });
       const payload = await readJson(response);
@@ -108,7 +117,7 @@ export function AIWriteAssist({
         type="button"
         onClick={generate}
         disabled={disabled || loading}
-        aria-label={`${label} için ${isContinuation ? 'AI ile devam et' : 'AI ile yaz'}`}
+        aria-label={`${label} için ${actionLabel}`}
         style={{
           display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '5px 9px',
           borderRadius: '6px', border: '1px solid #C7D2FE', background: '#EEF2FF',
@@ -117,7 +126,7 @@ export function AIWriteAssist({
         }}
       >
         {loading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-        {loading ? 'Yazılıyor…' : isContinuation ? 'AI ile devam et' : 'AI ile yaz'}
+        {loading ? 'Yazılıyor…' : actionLabel}
       </button>
 
       {error && (

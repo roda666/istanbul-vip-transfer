@@ -28,7 +28,7 @@ export async function GET() {
       <description>${escapeXml(post.excerpt ?? post.seoDescription ?? '')}</description>
       ${post.publishedAt ? `<pubDate>${post.publishedAt.toUTCString()}</pubDate>` : ''}
       ${post.category ? `<category>${escapeXml(post.category)}</category>` : ''}
-      ${post.author ? `<author>${escapeXml(post.author)}</author>` : ''}
+       ${post.showAuthor && post.author?.trim() ? `<author>${escapeXml(post.author)}</author>` : ''}
     </item>`).join('\n');
 
   const rss = `<?xml version="1.0" encoding="UTF-8"?>

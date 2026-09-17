@@ -209,6 +209,8 @@ export const content = pgTable('content', {
   draftBody: text('draft_body'),
   /** Blog-specific fields — NULL for SERVICE/PAGE content types */
   author: text('author'),
+  /** Blog author is shown publicly only when this explicit editorial switch is enabled. */
+  showAuthor: boolean('show_author').default(true).notNull(),
   tags: jsonb('tags').$type<string[]>(),
   readTimeMinutes: integer('read_time_minutes'),
   internalLinks: jsonb('internal_links').$type<Array<{ label: string; href: string; anchor?: string }>>(),

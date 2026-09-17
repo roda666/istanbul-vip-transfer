@@ -7,4 +7,4 @@ The social-card generator relies on ImageMagick, which must be declared as a pro
 
 **Why:** Deployment environments can differ from the interactive workspace; an ambient executable is not a reliable production dependency, and the generated card is intentionally excluded from source control.
 
-**How to apply:** Keep the package declaration, prebuild hook, and generated-file validation aligned whenever changing the social-card pipeline or any other build-generated public asset.
+**How to apply:** Keep the package declaration, prebuild hook, and generated-file validation aligned whenever changing the social-card pipeline or any other build-generated public asset. GitHub's Ubuntu runner may install ImageMagick 6 without the ImageMagick 7 `magick` entrypoint; CI needs an explicit compatible entrypoint rather than assuming the apt package provides `magick`.

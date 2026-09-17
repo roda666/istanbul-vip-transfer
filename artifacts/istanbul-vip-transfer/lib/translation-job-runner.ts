@@ -12,6 +12,7 @@
  */
 
 import type { TranslationInput } from '@/lib/ai/translate';
+import { findTollFeeViolations } from '@/lib/toll-fee-rules';
 
 export type RunTaskEntityType = 'content' | 'service_page' | 'faq' | 'vehicle' | 'navigation' | 'optional_service' | 'category' | 'transfer_route' | 'homepage';
 
@@ -496,6 +497,17 @@ export async function runTranslationTask(params: RunTaskParams): Promise<RunTask
         .where(eq(contentTranslations.id, jobRowId));
 
     } else if (sourceInput) {
+      // FAQ copy is customer-visible and must never publish toll/bridge-fee
+      // claims.  Run this immediately before the database write so a rejected
+      // model response cannot replace an older, valid translation.
+      const assertFaqTranslationSafe = (fields: { title?: string | null; body?: string | null }) => {
+        if (entityType !== 'faq') return;
+        const text = [fields.title, fields.body].filter(Boolean).join('\n');
+        const violations = findTollFeeViolations(text, targetLang);
+        if (violations.length) {
+          throw new Error(`${targetLang.toUpperCase()} SSS çevirisi geçiş ücreti güvenlik kontrolünden geçemedi.`);
+        }
+      };
       if (process.env.NODE_ENV === 'test') {
         const { runCustomerTranslationProvider } = await import('@/lib/customer-content-translation');
         const fake = await runCustomerTranslationProvider({
@@ -511,6 +523,7 @@ export async function runTranslationTask(params: RunTaskParams): Promise<RunTask
             .where(eq(contentTranslations.id, jobRowId));
           return { status: 'failed', translationId: jobRowId, error };
         }
+        assertFaqTranslationSafe(fake.fields);
         await db.update(contentTranslations).set({
           status: publishValidated ? 'PUBLISHED' : 'DRAFT',
           publishedAt: publishValidated ? sql`now()` : null,
@@ -547,6 +560,7 @@ export async function runTranslationTask(params: RunTaskParams): Promise<RunTask
         return { status: 'failed', translationId: jobRowId, error: aiResult.message ?? 'Yapay zeka çeviriyi tamamlayamadı.' };
       }
 
+      assertFaqTranslationSafe(aiResult.data);
       await db.update(contentTranslations)
         .set({
            status: publishValidated ? 'PUBLISHED' : 'DRAFT', publishedAt: publishValidated ? sql`now()` : null, updatedAt: sql`now()`,

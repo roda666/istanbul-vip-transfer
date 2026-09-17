@@ -147,6 +147,9 @@ export default async function TranslatedBlogPost({ params }: Props) {
           url: postUrl, inLanguage: lang,
           datePublished: translation.publishedAt?.toISOString(),
           image: translation.sourceHeroImage ?? undefined,
+           ...(translation.sourceShowAuthor && translation.sourceAuthor?.trim()
+             ? { author: { '@type': 'Person', name: translation.sourceAuthor } }
+             : {}),
           publisher: {
             '@type': 'Organization',
             name: 'VIP Transfer Istanbul',

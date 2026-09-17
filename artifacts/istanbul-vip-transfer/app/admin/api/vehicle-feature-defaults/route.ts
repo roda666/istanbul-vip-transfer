@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { PUBLIC_VEHICLE_LOCALES, VEHICLE_FEATURE_CODES, type PublicVehicleLocale } from '@/lib/vehicle-feature-catalog';
+import { findTollFeeViolations } from '@/lib/toll-fee-rules';
 
 const translationsSchema = z.object({
   tr: z.string().trim().min(1),
@@ -26,6 +27,13 @@ type CustomFeature = z.infer<typeof settingsSchema>['customFeatures'][number];
 
 function jsonError(message: string, code: string, status: number) {
   return NextResponse.json({ ok: false, error: message, code }, { status });
+}
+
+function assertTranslationSafety(text: string, locale: string): void {
+  const violations = findTollFeeViolations(text, locale);
+  if (violations.length > 0) {
+    throw new Error(`${locale.toUpperCase()} özel özellik çevirisi geçiş ücreti güvenlik kontrolünden geçemedi.`);
+  }
 }
 
 async function mapWithConcurrency<T, R>(
@@ -101,12 +109,15 @@ export async function PUT(request: NextRequest) {
   try {
     customFeatures = await Promise.all(parsed.data.customFeatures.map(async (feature) => {
       const translations = { ...feature.translations } as Record<PublicVehicleLocale, string>;
-      const missingLocales = PUBLIC_VEHICLE_LOCALES.filter(
-        (locale): locale is Exclude<PublicVehicleLocale, 'tr'> =>
-          locale !== 'tr' && !translations[locale]?.trim(),
+      const targetLocales = PUBLIC_VEHICLE_LOCALES.filter(
+        (locale): locale is Exclude<PublicVehicleLocale, 'tr'> => locale !== 'tr',
       );
+      assertTranslationSafety(translations.tr.trim(), 'tr');
 
-      const generated = await mapWithConcurrency(missingLocales, 2, async (locale) => {
+      // A Turkish edit invalidates every customer-language value. Never retain
+      // stale text from the request body; the complete replacement is prepared
+      // before the single DB upsert below so the operation remains atomic.
+      const generated = await mapWithConcurrency(targetLocales, 2, async (locale) => {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 45_000);
         try {
@@ -118,14 +129,17 @@ export async function PUT(request: NextRequest) {
           if (!result.ok || !result.translated.label?.trim()) {
             throw new Error(`${locale.toUpperCase()}:${result.ok ? 'empty' : result.reason}`);
           }
-          return [locale, result.translated.label.trim()] as const;
+           const translated = result.translated.label.trim();
+           assertTranslationSafety(translated, locale);
+           return [locale, translated] as const;
         } finally {
           clearTimeout(timeout);
         }
       });
 
-      for (const [locale, value] of generated) translations[locale] = value;
-      return { code: feature.code, translations };
+       const freshTranslations = { tr: translations.tr.trim() } as Record<PublicVehicleLocale, string>;
+       for (const [locale, value] of generated) freshTranslations[locale] = value;
+       return { code: feature.code, translations: freshTranslations };
     }));
   } catch (error: unknown) {
     console.error('[vehicle-feature-defaults] AI translation failed:', error);

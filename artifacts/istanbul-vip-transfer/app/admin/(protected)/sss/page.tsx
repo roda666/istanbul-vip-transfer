@@ -141,7 +141,7 @@ export default function SssPage() {
       />
 
       {/* Form */}
-      {showForm && (
+      {showForm && !editId && (
         <div style={{ background: '#FFFFFF', border: '1px solid #D8E1E9', borderRadius: '12px', padding: '20px', marginBottom: '20px', boxShadow: '0 2px 8px rgba(23,43,58,0.06)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
             <h3 style={{ color: '#172B3A', fontSize: '14px', fontFamily: 'Inter, sans-serif', fontWeight: 600, margin: 0 }}>{editId ? 'SSS Düzenle' : 'Yeni SSS'}</h3>
@@ -198,8 +198,24 @@ export default function SssPage() {
               ]),
             ]);
             return (
+            <div key={faq.id} data-testid={`faq-row-${faq.id}`} style={{ borderBottom: i < faqs.length - 1 ? '1px solid #E8EEF2' : undefined }}>
+            {showForm && editId === faq.id && (
+              <div data-testid={`faq-editor-${faq.id}`} style={{ background: '#F8FBFD', borderBottom: '1px solid #D8E1E9', padding: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+                  <h3 style={{ color: '#172B3A', fontSize: '14px', fontFamily: 'Inter, sans-serif', fontWeight: 600, margin: 0 }}>SSS Düzenle</h3>
+                  <button type="button" onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', color: '#718596', cursor: 'pointer' }}><X size={16} /></button>
+                </div>
+                {formError && <p style={{ color: '#D64545', fontSize: '12px', fontFamily: 'Inter, sans-serif', marginBottom: '12px' }}>{formError}</p>}
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div><label style={labelStyle}>İlgili İçerik</label><select value={contentId} onChange={(e) => setContentId(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }} required><option value="">Seçin...</option>{contentOptions.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}</select></div>
+                  <div><label style={labelStyle}>Soru *</label><input type="text" value={question} onChange={(e) => setQuestion(e.target.value)} style={inputStyle} required maxLength={500} /></div>
+                  <div><label style={labelStyle}>Cevap *</label><textarea value={answer} onChange={(e) => setAnswer(e.target.value)} style={{ ...inputStyle, minHeight: '100px', resize: 'vertical' }} required /></div>
+                  <div><label style={labelStyle}>Sıra</label><input type="number" value={sortOrder} onChange={(e) => setSortOrder(parseInt(e.target.value))} style={{ ...inputStyle, width: '80px' }} min={0} /></div>
+                  <div style={{ display: 'flex', gap: '8px' }}><AdminActionButton type="submit" label="Kaydet" icon={Check} variant="save" loading={saving} /><AdminActionButton type="button" label="İptal" variant="cancel" manage={false} onClick={() => setShowForm(false)} /></div>
+                </form>
+              </div>
+            )}
             <AdminCmsRecordCard
-              key={faq.id}
               title={faq.question}
               description={faq.answer}
               languageStatuses={languageStatuses}
@@ -211,6 +227,7 @@ export default function SssPage() {
                 delete={{ onClick: () => handleDelete(faq.id), disabled: deleting === faq.id }}
               />
             </AdminCmsRecordCard>
+            </div>
             );
           })}
         </div>

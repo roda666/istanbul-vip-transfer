@@ -445,6 +445,8 @@ function RouteModal({ route, locationOptions, vehicleOptions, serviceOptions, on
   const [aiFilling, setAiFilling] = useState(false);
   const aiFillingRef = useRef(false);
   const [aiFillMessage, setAiFillMessage] = useState('');
+  const [descriptionAiFilling, setDescriptionAiFilling] = useState(false);
+  const [descriptionAiMessage, setDescriptionAiMessage] = useState('');
   const [aiImageGenerating, setAiImageGenerating] = useState(false);
   const aiImageGeneratingRef = useRef(false);
   const [aiImageMessage, setAiImageMessage] = useState('');
@@ -681,6 +683,40 @@ function RouteModal({ route, locationOptions, vehicleOptions, serviceOptions, on
     }
   };
 
+  const fillDescriptionWithAI = async () => {
+    if (descriptionAiFilling || !form.name || !form.origin || !form.destination) return;
+    setDescriptionAiFilling(true);
+    setDescriptionAiMessage('');
+    try {
+      const response = await fetchWithTimeout('/admin/api/transfer-routes/ai-fill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          origin: form.origin,
+          destination: form.destination,
+          originLocationId: form.originLocationId,
+          destinationLocationId: form.destinationLocationId,
+          includeImage: false,
+          overwrite: true,
+          field: 'description',
+        }),
+      });
+      const payload = await readJsonResponse(response);
+      if (!response.ok) throw new Error(responseError(payload, 'Sayfa açıklaması oluşturulamadı.'));
+      const content = isJsonRecord(payload.content) ? payload.content : {};
+      if (typeof content.description !== 'string' || !content.description.trim()) {
+        throw new Error('AI geçerli bir sayfa açıklaması döndürmedi.');
+      }
+      set('description', content.description.trim());
+      setDescriptionAiMessage('Sayfa açıklaması dolduruldu.');
+    } catch (error) {
+      setDescriptionAiMessage(error instanceof Error ? error.message : 'Sayfa açıklaması oluşturulamadı.');
+    } finally {
+      setDescriptionAiFilling(false);
+    }
+  };
+
   const numField = (key: keyof TransferRoute, label: string, placeholder?: string) => (
     <div>
       <label style={labelStyle}>{label}</label>
@@ -800,9 +836,20 @@ function RouteModal({ route, locationOptions, vehicleOptions, serviceOptions, on
             <input style={inputStyle} placeholder="örn: Taksim → Sabiha Gökçen Havalimanı" value={form.name ?? ''} onChange={e => set('name', e.target.value)} />
           </div>
 
-          <div>
-            <label style={labelStyle}>Sayfa Açıklaması *</label>
+           <div>
+             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
+               <label style={{ ...labelStyle, marginBottom: 0 }}>Sayfa Açıklaması *</label>
+               <AdminActionButton
+                 type="button"
+                 onClick={fillDescriptionWithAI}
+                 disabled={descriptionAiFilling || !form.name || !form.origin || !form.destination}
+                 loading={descriptionAiFilling}
+                 label={descriptionAiFilling ? 'Dolduruluyor…' : 'AI ile Doldur'}
+                 variant="subtle"
+               />
+             </div>
             <textarea style={{ ...inputStyle, minHeight: '94px', resize: 'vertical' }} placeholder="Güzergah için ziyaretçiye gösterilecek özgün açıklama" value={form.description ?? ''} onChange={e => set('description', e.target.value)} />
+             {descriptionAiMessage && <p role="status" style={{ color: descriptionAiMessage.includes('dolduruldu') ? '#15803D' : '#B91C1C', fontSize: '12px', margin: '6px 0 0' }}>{descriptionAiMessage}</p>}
           </div>
 
           {/* Origin / Destination */}

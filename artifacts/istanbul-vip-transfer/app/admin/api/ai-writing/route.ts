@@ -21,9 +21,15 @@ const requestSchema = z.union([
   }),
   z.object({
     ...commonRequestSchema,
-    field: z.enum(['title', 'body', 'description', 'short_text', 'cta', 'seo_title', 'seo_description', 'faq_question', 'faq_answer', 'chatbot_answer']),
+    field: z.enum([
+      'title', 'body', 'description', 'short_text', 'cta', 'seo_title',
+      'seo_description', 'faq_question', 'faq_answer', 'chatbot_answer',
+      'schema_service_type', 'schema_opening_hours', 'schema_price_range',
+      'schema_languages',
+    ]),
     fieldLabel: z.string().trim().min(1).max(100),
     currentText: z.string().max(12_000).default(''),
+    sourceContext: z.string().max(12_000).optional(),
     maxLength: z.number().int().min(20).max(12_000).optional(),
   }),
 ]);

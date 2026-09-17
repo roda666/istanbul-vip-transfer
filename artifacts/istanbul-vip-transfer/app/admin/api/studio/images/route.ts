@@ -20,12 +20,15 @@ const targetSchema = z.enum(['BLOG_POST', 'SERVICE', 'VEHICLE', 'PAGE', 'HOMEPAG
 const generateSchema = z.object({
   action: z.literal('generate'),
   target: targetSchema,
-  id: z.string().uuid(),
+  id: z.string().uuid().optional(),
+  draftSlug: z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(200).optional(),
   prompt: z.string().trim().min(10).max(4_000),
   altText: z.string().trim().min(5).max(300),
   homepageField: z.enum(['hero_image', 'og_image']).optional(),
   imageField: z.enum(['hero_image', 'og_image', 'body', 'cover_image', 'gallery']).optional(),
 }).superRefine((value, ctx) => {
+  if (!value.id && value.target !== 'PAGE') ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['id'], message: 'Hedef kayıt zorunludur.' });
+  if (!value.id && value.target === 'PAGE' && !value.draftSlug) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['draftSlug'], message: 'Yeni sayfa slug değeri zorunludur.' });
   if (value.target === 'HOMEPAGE' && !value.homepageField) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['homepageField'], message: 'Homepage alanı zorunludur.' });
   if (value.target !== 'HOMEPAGE' && !value.imageField) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['imageField'], message: 'Görsel alanı zorunludur.' });
   if (value.target === 'PAGE' && value.imageField !== 'hero_image') ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['imageField'], message: 'PAGE yalnız hero_image alanını destekler.' });
@@ -248,7 +251,15 @@ export async function POST(req: NextRequest) {
   const parsed = (isGenerate ? generateSchema : attachSchema).safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: 'Geçersiz görsel isteği.' }, { status: 400 });
   const data = parsed.data;
-  const target = await findTarget(data.id, data.target);
+  const target = data.action === 'generate' && !data.id && data.target === 'PAGE'
+    ? {
+        kind: 'content' as const,
+        contentType: 'PAGE' as const,
+        id: 'unsaved-page-draft',
+        slug: data.draftSlug ?? 'yeni-sayfa',
+        body: null,
+      }
+    : await findTarget(data.id!, data.target);
   if (!target) return NextResponse.json({ error: 'Hedef kayıt bulunamadı.' }, { status: 404 });
 
   if (data.action === 'generate') {

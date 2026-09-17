@@ -3,10 +3,11 @@
 import { useState, useMemo, useTransition, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Copy, Eye, Plus } from 'lucide-react';
+import { Eye, Plus, Trash2 } from 'lucide-react';
 import { AdminRecordActions } from '@/app/admin/_components/AdminRecordActions';
 import { AdminActionButton } from '@/app/admin/_components/AdminActionButton';
 import { AdminCmsLanguageBadges } from '@/app/admin/_components/AdminCmsLanguageBadges';
+import { AdminCmsRecordCard } from '@/app/admin/_components/AdminCmsRecordCard';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -105,7 +106,6 @@ function MissingHeroBadge() {
 function ActionButtons({
   item,
   actionLoading,
-  onDuplicate,
   onArchive,
   onDelete,
   onMove,
@@ -114,7 +114,6 @@ function ActionButtons({
 }: {
   item: ServiceListItem;
   actionLoading: string | null;
-  onDuplicate: (item: ServiceListItem) => void;
   onArchive:   (item: ServiceListItem) => void;
   onDelete: (item: ServiceListItem) => void;
   onMove: (item: ServiceListItem, direction: 'up' | 'down') => void;
@@ -125,14 +124,23 @@ function ActionButtons({
 
   if (item.missingRecord) {
     return (
-      <AdminActionButton
-        href={`/admin/hizmetler/yeni?slug=${encodeURIComponent(item.slug)}&title=${encodeURIComponent(item.title)}`}
-        label="İçerik Oluştur"
-        icon={Plus}
-        variant="new"
-        manage={false}
-        className="text-xs"
-      />
+      <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+        <AdminActionButton
+          href={`/admin/hizmetler/yeni?slug=${encodeURIComponent(item.slug)}&title=${encodeURIComponent(item.title)}`}
+          label="İçerik Oluştur"
+          icon={Plus}
+          variant="new"
+          manage={false}
+          className="text-xs"
+        />
+        <AdminActionButton
+          label="Sil"
+          icon={Trash2}
+          variant="delete"
+          disabled
+          title="Bu satırın veritabanında silinebilecek bir hizmet kaydı yok."
+        />
+      </div>
     );
   }
 
@@ -146,21 +154,14 @@ function ActionButtons({
         disabled: !!actionLoading || !!isLoading,
         isArchived: false
       } : undefined}
-      delete={['DRAFT', 'ARCHIVED', 'IDEA', 'RESEARCH'].includes(item.status) ? {
+      delete={{
         onClick: () => onDelete(item),
-        disabled: !!actionLoading || !!isLoading,
+        disabled: !!actionLoading || !!isLoading || !['DRAFT', 'ARCHIVED', 'IDEA', 'RESEARCH'].includes(item.status),
+        disabledReason: !['DRAFT', 'ARCHIVED', 'IDEA', 'RESEARCH'].includes(item.status)
+          ? 'Yayındaki hizmeti silmek için önce arşivleyin.' : undefined,
         confirmMessage: `"${item.title}" hizmetini silmek istediğinizden emin misiniz? Bu işlem yalnızca bağlı olmayan taslak içeriği ve kendi çevirilerini kaldırır.`,
-      } : undefined}
-      deleteOmittedReason={!['DRAFT', 'ARCHIVED', 'IDEA', 'RESEARCH'].includes(item.status) ? 'Yayındaki hizmeti silmek için önce arşivleyin.' : undefined}
+      }}
       customActions={[
-        {
-          id: 'duplicate',
-          label: 'Kopyala',
-          icon: Copy,
-          colorClass: 'text-slate-700 bg-slate-50 border border-slate-200 hover:bg-slate-100',
-          onClick: () => onDuplicate(item),
-          disabled: !!actionLoading || !!isLoading
-        },
         {
           id: 'preview',
           label: 'Önizle ↗',
@@ -259,21 +260,6 @@ export default function HizmetlerList({ items }: Props) {
     }
   }
 
-  async function handleDuplicate(item: ServiceListItem) {
-    setActionLoading(`dup-${item.id}`);
-    try {
-      const res = await fetch(`/admin/api/service-pages/${item.id}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'duplicate' }),
-      });
-      const data = await res.json() as { newId?: string; error?: string };
-      if (!res.ok || !data.newId) throw new Error(data.error ?? 'Kopyalama başarısız.');
-      router.push(`/admin/hizmetler/${data.newId}`);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Hata oluştu.');
-    } finally { setActionLoading(null); }
-  }
-
   async function handleMove(item: ServiceListItem, direction: 'up' | 'down') {
     const index = filtered.findIndex(i => i.id === item.id);
     if (!filtered[index + (direction === 'up' ? -1 : 1)]) return;
@@ -290,28 +276,12 @@ export default function HizmetlerList({ items }: Props) {
     <div>
       {/* ── Responsive styles ──────────────────────────────────────────── */}
       <style>{`
-        /* Scrollable table wrapper — always present but only needed on narrow viewports */
-        .hl-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .hl-cards { display: flex; flex-direction: column; gap: 8px; }
 
-        /* Mobile card grid — hidden on desktop */
-        .hl-cards { display: none; }
-
-        /* Table header + rows — visible on desktop */
-        .hl-table-header { display: grid; }
-        .hl-table-row    { display: grid; }
-
-        @media (max-width: 768px) {
-          /* Switch to card layout */
-          .hl-table-header { display: none !important; }
-          .hl-table-row    { display: none !important; }
-          .hl-cards        { display: flex; flex-direction: column; gap: 10px; }
-
-          /* Card item */
           .hl-card {
             background: #FFFFFF;
             border: 1px solid #E2E8F0;
             border-radius: 10px;
-            padding: 14px 16px;
             font-family: Inter, sans-serif;
           }
           .hl-card-top {
@@ -350,21 +320,13 @@ export default function HizmetlerList({ items }: Props) {
           }
           .hl-card-actions {
             display: flex;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
+            justify-content: flex-end;
             gap: 6px;
-          }
-          .hl-card-actions a,
-          .hl-card-actions button {
-            flex: 1 1 auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 44px;
-            text-align: center;
-            min-width: 72px;
+            min-width: 0;
           }
 
-          /* Toolbar wraps well on mobile already, but ensure min sizing */
+        @media (max-width: 768px) {
           .hl-toolbar input, .hl-toolbar select {
             min-height: 44px !important;
             min-width: 0 !important;
@@ -378,10 +340,7 @@ export default function HizmetlerList({ items }: Props) {
         }
 
         @media (max-width: 480px) {
-          .hl-card-actions a,
-          .hl-card-actions button {
-            flex: 1 1 100%;
-          }
+          .hl-card-actions { width: 100%; }
         }
       `}</style>
 
@@ -428,105 +387,7 @@ export default function HizmetlerList({ items }: Props) {
         </select>
       </div>
 
-      {/* ── Desktop table ────────────────────────────────────────────────── */}
-      <div className="hl-table-wrap" style={{
-        background: '#FFFFFF', border: '1px solid #E2E8F0',
-        borderRadius: '10px', overflow: 'hidden',
-      }}>
-        {/* Table header — desktop only */}
-        <div className="hl-table-header" style={{
-          gridTemplateColumns: '36px 52px minmax(150px,1fr) 110px minmax(170px,1fr) 90px 60px 50px minmax(380px,auto)',
-          gap: '8px', padding: '10px 18px',
-          background: '#F8FAFC', borderBottom: '1px solid #E2E8F0',
-          fontFamily: 'Inter, sans-serif',
-          minWidth: '1120px',
-        }}>
-          {['#', 'Kapak', 'Başlık / Slug', 'Kategori', 'Dil Durumu (9 dil)', 'Durum', 'Ana Sayfa', 'Menü', 'İşlem'].map(h => (
-            <span key={h} style={{ fontSize: '11px', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase' }}>{h}</span>
-          ))}
-        </div>
-
-        {filtered.length === 0 && (
-          <div style={{ padding: '40px', textAlign: 'center', color: '#94A3B8', fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
-            {items.length === 0 ? 'Henüz hizmet sayfası eklenmemiş.' : 'Filtrelerle eşleşen hizmet bulunamadı.'}
-          </div>
-        )}
-
-        {filtered.map((item, idx) => {
-          const s        = STATUS_STYLE[item.status] ?? STATUS_STYLE.DRAFT;
-          const catLabel = item.category ? (catMap[item.category] ?? item.category) : '—';
-
-          return (
-            <div data-testid="service-row" data-service-id={item.id} key={item.id} className="hl-table-row" style={{
-              gridTemplateColumns: '36px 52px minmax(150px,1fr) 110px minmax(170px,1fr) 90px 60px 50px minmax(380px,auto)',
-              gap: '8px', padding: '12px 18px',
-              borderBottom: '1px solid #F1F5F9', alignItems: 'center',
-              fontFamily: 'Inter, sans-serif',
-              background: item.missingRecord ? '#FFFBFA' : (!item.isActive ? '#FAFAFA' : undefined),
-              opacity: actionLoading?.endsWith(item.id) ? 0.6 : 1,
-               minWidth: '1120px',
-            }}
-              title={item.missingRecord ? `"${item.slug}" PAGE_REGISTRY'de kayıtlı ama veritabanında hiç kaydı yok (taslak dahi yok). Ziyaretçiler bu sayfada boş/noindex içerik görür.` : undefined}
-            >
-              <span style={{ fontSize: '11px', color: '#94A3B8' }}>{idx + 1}</span>
-              <CoverThumbnail src={item.hasReachableHeroImage ? item.heroImage : null} title={item.title} />
-
-              <div>
-                <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: '#1E293B' }}>
-                  {item.title}
-                  {!item.isActive && !item.missingRecord && <span style={{ marginLeft: '6px', fontSize: '10px', color: '#94A3B8', fontWeight: 400 }}>(pasif)</span>}
-                </p>
-                <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#94A3B8' }}>
-                  /{item.slug.slice(0, 40)}{item.slug.length > 40 ? '…' : ''}
-                </p>
-              </div>
-
-              {item.missingRecord ? (
-                <span style={{ fontSize: '11px', color: '#B45309', fontWeight: 600 }}>
-                  PAGE_REGISTRY&apos;de var, DB kaydı yok
-                </span>
-              ) : (
-                <span style={{ fontSize: '11px', color: '#64748B' }}>
-                  {catLabel}
-                  {item.startingPriceEur === null && (
-                    <span title="Bu hizmet için tanımlı fiyat verisi yok" style={{
-                      display: 'block', marginTop: '3px', fontSize: '10px', fontWeight: 700,
-                      color: '#B45309', background: '#FFF7ED', border: '1px solid #FBBF24',
-                      borderRadius: '8px', padding: '1px 6px', width: 'fit-content',
-                    }}>
-                      ⚠ Fiyat verisi eksik
-                    </span>
-                  )}
-                   {!item.hasReachableHeroImage && <MissingHeroBadge />}
-                </span>
-              )}
-
-              {item.missingRecord ? <span /> : <LangDots translations={item.translations} />}
-
-              <span style={{
-                fontSize: '11px', fontWeight: 600, padding: '3px 8px',
-                borderRadius: '12px', color: s.color, background: s.bg, textAlign: 'center',
-              }}>{s.label}</span>
-
-              <span style={{ fontSize: '13px', textAlign: 'center' }}>{item.missingRecord ? '—' : (item.showOnHomepage ? '✓' : '—')}</span>
-              <span style={{ fontSize: '13px', textAlign: 'center' }}>{item.missingRecord ? '—' : (item.showInNav ? '✓' : '—')}</span>
-
-              <ActionButtons
-                item={item}
-                actionLoading={actionLoading}
-                onDuplicate={handleDuplicate}
-                onArchive={handleArchive}
-                onDelete={handleDelete}
-                onMove={handleMove}
-                canMoveUp={idx > 0}
-                canMoveDown={idx < filtered.length - 1}
-              />
-            </div>
-          );
-        })}
-      </div>
-
-      {/* ── Mobile card list ──────────────────────────────────────────────── */}
+      {/* ── Shared card list: desktop, tablet and mobile ─────────────────── */}
       <div className="hl-cards" style={{ marginTop: '4px' }}>
         {filtered.length === 0 && (
           <p style={{ padding: '24px', textAlign: 'center', color: '#94A3B8', fontFamily: 'Inter, sans-serif', fontSize: '13px', margin: 0 }}>
@@ -539,7 +400,14 @@ export default function HizmetlerList({ items }: Props) {
           const catLabel = item.category ? (catMap[item.category] ?? item.category) : null;
 
           return (
-            <div data-testid="service-row" data-service-id={item.id} key={item.id} className="hl-card"
+            <AdminCmsRecordCard
+              title={`${idx + 1}. ${item.title}`}
+              description={`/${item.slug}`}
+              status={<span style={{ fontSize: '11px', fontWeight: 600, color: s.color, background: s.bg, padding: '3px 8px', borderRadius: '12px' }}>{s.label}</span>}
+              languageStatuses={item.missingRecord ? null : { tr: 'PUBLISHED', ...item.translations }}
+              data-testid="service-row" data-service-id={item.id} key={item.id} className="hl-card"
+            >
+            <div
               style={{
                 opacity: actionLoading?.endsWith(item.id) ? 0.6 : 1,
                 ...(item.missingRecord ? { background: '#FFFBFA', borderColor: '#FDA29B' } : {}),
@@ -603,7 +471,6 @@ export default function HizmetlerList({ items }: Props) {
                 <ActionButtons
                   item={item}
                   actionLoading={actionLoading}
-                  onDuplicate={handleDuplicate}
                   onArchive={handleArchive}
                   onDelete={handleDelete}
                   onMove={handleMove}
@@ -612,6 +479,7 @@ export default function HizmetlerList({ items }: Props) {
                 />
               </div>
             </div>
+            </AdminCmsRecordCard>
           );
         })}
       </div>

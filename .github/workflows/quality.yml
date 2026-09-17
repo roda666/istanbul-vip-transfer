@@ -38,12 +38,18 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install ImageMagick
-        # Ubuntu's `imagemagick` apt package does not ship the IM7 `magick`
-        # binary (only `convert`/`mogrify`), but generate-og-card.sh requires
-        # it. Use the official static IM7 build instead.
+        # Ubuntu ships ImageMagick 6 (`convert`/`identify`) without the IM7
+        # `magick` entrypoint expected by generate-og-card.sh. Provide a small
+        # compatibility entrypoint while preserving the generator's contract.
         run: |
-          sudo wget -q https://imagemagick.org/archive/binaries/magick -O /usr/local/bin/magick
-          sudo chmod +x /usr/local/bin/magick
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+          printf '%s\n' \
+            '#!/usr/bin/env bash' \
+            'if [ "$1" = "identify" ]; then shift; exec /usr/bin/identify "$@"; fi' \
+            'exec /usr/bin/convert "$@"' \
+            | sudo tee /usr/local/bin/magick >/dev/null
+          sudo chmod 0755 /usr/local/bin/magick
           magick -version
 
       - name: Typecheck

@@ -15,9 +15,9 @@
  * Run: node scripts/check-image-filenames.mjs
  * Exit code 0 = clean. Exit code 1 = a violation was found.
  */
-import postgres from '../node_modules/postgres/src/index.js';
+import { connectOrSkipInCi } from './lib/ci-db-guard.mjs';
 
-const sql = postgres(process.env.DATABASE_URL);
+const sql = await connectOrSkipInCi('check-image-filenames');
 const OBJ_PREFIX = '/api/storage/objects/';
 
 function isBareUuidFile(url) {

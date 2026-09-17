@@ -25,10 +25,10 @@
  * Run: node scripts/check-toll-fee-mentions.mjs
  * Exit code 0 = clean. Exit code 1 = a genuine fee mention was found.
  */
-import postgres from '../node_modules/postgres/src/index.js';
 import { LANGS, findViolations, findViolationsInField, collectStrings } from './lib/toll-fee-rules.mjs';
+import { connectOrSkipInCi } from './lib/ci-db-guard.mjs';
 
-const sql = postgres(process.env.DATABASE_URL);
+const sql = await connectOrSkipInCi('check-toll-fee-mentions');
 
 const findings = [];
 let scannedRows = 0;

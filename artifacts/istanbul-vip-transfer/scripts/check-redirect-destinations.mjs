@@ -38,7 +38,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import postgres from '../node_modules/postgres/src/index.js';
+import { connectOrSkipInCi } from './lib/ci-db-guard.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -119,7 +119,7 @@ async function loadRedirectRules() {
 
 async function main() {
   const rules = await loadRedirectRules();
-  const sql = postgres(process.env.DATABASE_URL);
+  const sql = await connectOrSkipInCi('check-redirect-destinations');
 
   const failures = [];
   const info = [];

@@ -26,7 +26,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import postgres from '../node_modules/postgres/src/index.js';
+import { connectOrSkipInCi } from './lib/ci-db-guard.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -42,9 +42,8 @@ function hasHardcodedNoindex(filePath) {
   return /robots:\s*\{\s*index:\s*false/.test(src);
 }
 
-const sql = postgres(process.env.DATABASE_URL);
-
 async function main() {
+  const sql = await connectOrSkipInCi('check-sitemap-noindex-conflict');
   const conflicts = [];
 
   // ── Sitemap-eligible SERVICE slugs (same predicate as app/sitemap.ts) ──────

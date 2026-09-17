@@ -226,11 +226,11 @@ export async function GET(req: NextRequest) {
       ? await db.select({ id: vehicles.id, title: vehicles.name, slug: vehicles.slug, ogImage: vehicles.ogImage })
         .from(vehicles).orderBy(asc(vehicles.name)).limit(200)
       : target.data === 'HOMEPAGE'
-      ? await db.select({ id: content.id, title: content.title, slug: content.slug, heroImage: content.heroImage, heroImageAlt: content.heroImageAlt })
+      ? await db.select({ id: content.id, title: content.title, slug: content.slug, heroImage: content.heroImage, heroImageAlt: content.heroImageAlt, ogImage: content.ogImage })
         .from(content).where(eq(content.slug, 'ana-sayfa')).limit(1)
       : await db.select({
           id: content.id, title: content.title, slug: content.slug,
-          heroImage: content.heroImage, heroImageAlt: content.heroImageAlt,
+          heroImage: content.heroImage, heroImageAlt: content.heroImageAlt, ogImage: content.ogImage,
         }).from(content).where(eq(content.contentType, target.data)).orderBy(asc(content.title)).limit(200);
     return NextResponse.json({ targets });
   } catch {

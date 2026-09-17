@@ -1,92 +1,129 @@
-import { expect, test, type Page } from '@playwright/test';
+import { test, expect } from './admin-acceptance/fixtures';
+import type { Page } from '@playwright/test';
 
-const adminEmail = process.env.E2E_ADMIN_EMAIL;
-const adminPassword = process.env.E2E_ADMIN_PASSWORD;
+type Contract = {
+  target: 'HOMEPAGE' | 'PAGE' | 'BLOG_POST' | 'SERVICE' | 'VEHICLE';
+  field: 'hero_image' | 'og_image';
+  id: string;
+  oldValue: string | null;
+  oldAlt?: string | null;
+  restore: () => Promise<void>;
+};
 
-test.skip(!adminEmail || !adminPassword, 'E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD are required');
+type TargetRow = { id: string; heroImage?: string | null; heroImageAlt?: string | null; ogImage?: string | null };
 
-async function login(page: Page) {
-  await page.goto('/admin/login');
-  await page.getByLabel('E-Posta').fill(adminEmail!);
-  await page.getByLabel('Şifre', { exact: true }).fill(adminPassword!);
-  await page.getByRole('button', { name: 'Giriş Yap' }).click();
-  await page.waitForURL(url => !url.pathname.startsWith('/admin/login'));
+async function targetRow(page: Page, target: Contract['target']): Promise<TargetRow> {
+  const response = await page.request.get(`/admin/api/studio/images?target=${target}`);
+  expect(response.ok(), `${target} target list must be available`).toBeTruthy();
+  const payload = await response.json() as { targets?: TargetRow[] };
+  const row = payload.targets?.[0];
+  expect(row?.id, `${target} must have a real target record`).toBeTruthy();
+  return row!;
 }
 
-test('homepage hero AI image uses the real provider, persists, and reloads', async ({ page }) => {
-  await login(page);
-  await page.goto('/admin/sayfalar/ana-sayfa');
-  await expect(page.getByText('A · Hero', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: '✨ AI ile Üret' }).click();
-  await page.getByPlaceholder('Görselde ne olacağını açıklayın…').fill(
-    'A quiet Istanbul airport arrival lane with an unbranded black luxury transfer vehicle at dawn, no people',
-  );
-  await page.getByLabel('AI görsel alt metni').fill('İstanbul havalimanında lüks transfer aracı');
-  await page.getByRole('button', { name: 'Üret ve ekle' }).click();
-  await expect(page.getByRole('button', { name: 'Üret ve ekle' })).toBeHidden({ timeout: 90_000 });
-  await expect(page.locator('img[alt="Önizleme"]')).toBeVisible();
-
-  await page.getByRole('button', { name: 'Kaydet ve Tüm Dillerde Yayımla' }).click();
-  await expect(page.getByText(/Türkçe kaydediliyor|Yayımlandı|Tamamlandı/i)).toBeVisible({ timeout: 120_000 });
-  await page.reload();
-  await expect(page.locator('img[alt="Önizleme"]')).toBeVisible();
-});
-
-async function generateAndAttach(
-  page: Page,
-  target: 'PAGE' | 'VEHICLE',
-  id: string,
-  imageField: 'hero_image' | 'og_image',
-) {
+async function generateAndAttach(page: Page, contract: Contract) {
+  const prompt = `Editorial ${contract.target.toLowerCase()} image for Istanbul VIP transfer, an unbranded luxury vehicle at dawn, no people`;
+  const altText = `${contract.target} güvenli gerçek AI görseli`;
   const generated = await page.request.post('/admin/api/studio/images', {
     data: {
       action: 'generate',
-      target,
-      id,
-      imageField,
-      prompt: `Editorial ${target.toLowerCase()} image with an unbranded luxury transfer vehicle at dawn, no people`,
-      altText: `${target} güvenli AI görseli`,
+      target: contract.target,
+      id: contract.id,
+      prompt,
+      altText,
+      ...(contract.target === 'HOMEPAGE'
+        ? { homepageField: contract.field }
+        : { imageField: contract.field }),
     },
   });
-  expect(generated.ok()).toBeTruthy();
-  const generatedJson = await generated.json() as { image?: { imagePath?: string } };
+  expect(generated.ok(), `${contract.target}/${contract.field} generation must call the configured provider`).toBeTruthy();
+  const generatedJson = await generated.json() as { image?: { imagePath?: string; model?: string } };
+  // A stable private object path and provider model are the non-fake evidence:
+  // the test does not route or mock this request.
+  expect(generatedJson.image?.model, 'generation must return the configured provider model').toBeTruthy();
   const imagePath = generatedJson.image?.imagePath;
   expect(imagePath).toMatch(/\/api\/storage\/objects\/ai-images\//);
+
   const attached = await page.request.post('/admin/api/studio/images', {
     data: {
       action: 'attach',
-      target,
-      id,
+      target: contract.target,
+      id: contract.id,
       imagePath,
-      imageField,
-      placement: imageField === 'og_image' ? 'og' : 'hero',
-      altText: `${target} güvenli AI görseli`,
+      altText,
+      imageField: contract.target === 'HOMEPAGE' ? undefined : contract.field,
+      homepageField: contract.target === 'HOMEPAGE' ? contract.field : undefined,
+      placement: contract.field === 'og_image' ? 'og' : 'hero',
     },
   });
-  expect(attached.ok()).toBeTruthy();
+  expect(attached.ok(), `${contract.target}/${contract.field} attachment must persist`).toBeTruthy();
   return imagePath!;
 }
 
-test('PAGE hero and VEHICLE OG contracts use real provider and restore originals', async ({ page }) => {
-  await login(page);
-  for (const [target, field] of [['PAGE', 'hero_image'], ['VEHICLE', 'og_image']] as const) {
-    const listing = await page.request.get(`/admin/api/studio/images?target=${target}`);
-    expect(listing.ok()).toBeTruthy();
-    const payload = await listing.json() as { targets?: Array<Record<string, string | null>> };
-    const record = payload.targets?.[0];
-    expect(record?.id).toBeTruthy();
-    const id = String(record!.id);
-    const oldValue = field === 'hero_image' ? record!.heroImage : record!.ogImage;
-    try {
-      const path = await generateAndAttach(page, target, id, field);
-      const refreshed = await page.request.get(`/admin/api/studio/images?target=${target}`);
-      const after = (await refreshed.json() as { targets: Array<Record<string, string | null>> }).targets.find(item => item.id === id);
-      expect(field === 'hero_image' ? after?.heroImage : after?.ogImage).toBe(path);
-    } finally {
-      const restore = target === 'PAGE'
-        ? page.request.put(`/admin/api/content/${id}`, { data: { heroImage: oldValue } })
-        : page.request.put(`/admin/api/vehicles/${id}`, { data: { ogImage: oldValue } });
-      expect((await restore).ok()).toBeTruthy();
+test('all inline AI image field contracts use the real provider, persist, reload, and restore', async ({ adminPage }) => {
+  const page = adminPage;
+  const homepageResponse = await page.request.get('/admin/api/homepage/tr');
+  expect(homepageResponse.ok(), 'homepage source must be available').toBeTruthy();
+  const homepageRecord = await homepageResponse.json() as {
+    id: string;
+    sections: { hero: Record<string, string | null>; seo: Record<string, string | null> };
+  };
+  const homepageSections = structuredClone(homepageRecord.sections);
+
+  const pageRow = await targetRow(page, 'PAGE');
+  const blogRow = await targetRow(page, 'BLOG_POST');
+  const serviceRow = await targetRow(page, 'SERVICE');
+  const vehicleRow = await targetRow(page, 'VEHICLE');
+  const contracts: Contract[] = [
+    {
+      target: 'HOMEPAGE', field: 'hero_image', id: homepageRecord.id,
+      oldValue: homepageSections.hero?.imagePath ?? null, oldAlt: homepageSections.hero?.imageAlt ?? null,
+      restore: async () => { homepageSections.hero.imagePath = homepageRecord.sections.hero.imagePath; homepageSections.hero.imageAlt = homepageRecord.sections.hero.imageAlt; },
+    },
+    {
+      target: 'HOMEPAGE', field: 'og_image', id: homepageRecord.id,
+      oldValue: homepageSections.seo?.ogImage ?? null, oldAlt: homepageSections.seo?.ogImageAlt ?? null,
+      restore: async () => { homepageSections.seo.ogImage = homepageRecord.sections.seo.ogImage; homepageSections.seo.ogImageAlt = homepageRecord.sections.seo.ogImageAlt; },
+    },
+    {
+      target: 'PAGE', field: 'hero_image', id: pageRow.id, oldValue: pageRow.heroImage ?? null, oldAlt: pageRow.heroImageAlt ?? null,
+      restore: async () => { expect((await page.request.put(`/admin/api/content/${pageRow.id}`, { data: { heroImage: pageRow.heroImage, heroImageAlt: pageRow.heroImageAlt } })).ok()).toBeTruthy(); },
+    },
+    {
+      target: 'BLOG_POST', field: 'og_image', id: blogRow.id, oldValue: blogRow.ogImage ?? null,
+      restore: async () => { expect((await page.request.put(`/admin/api/blog/${blogRow.id}`, { data: { ogImage: blogRow.ogImage } })).ok()).toBeTruthy(); },
+    },
+    {
+      target: 'SERVICE', field: 'og_image', id: serviceRow.id, oldValue: serviceRow.ogImage ?? null,
+      restore: async () => { expect((await page.request.put(`/admin/api/service-pages/${serviceRow.id}`, { data: { ogImage: serviceRow.ogImage, saveAsDraft: true } })).ok()).toBeTruthy(); },
+    },
+    {
+      target: 'VEHICLE', field: 'og_image', id: vehicleRow.id, oldValue: vehicleRow.ogImage ?? null,
+      restore: async () => { expect((await page.request.put(`/admin/api/vehicles/${vehicleRow.id}`, { data: { ogImage: vehicleRow.ogImage } })).ok()).toBeTruthy(); },
+    },
+  ];
+
+  try {
+    for (const contract of contracts) {
+      const path = await generateAndAttach(page, contract);
+      const refreshed = await page.request.get(`/admin/api/studio/images?target=${contract.target}`);
+      expect(refreshed.ok()).toBeTruthy();
+      const rows = await refreshed.json() as { targets: TargetRow[] };
+      const row = rows.targets.find(item => item.id === contract.id);
+      const persisted = contract.target === 'HOMEPAGE'
+        ? (await page.request.get('/admin/api/homepage/tr')).ok()
+          ? ((await (await page.request.get('/admin/api/homepage/tr')).json() as { sections: { hero: Record<string, string | null>; seo: Record<string, string | null> } }).sections[contract.field === 'hero_image' ? 'hero' : 'seo'][contract.field === 'hero_image' ? 'imagePath' : 'ogImage'])
+          : null
+        : contract.field === 'hero_image' ? row?.heroImage : row?.ogImage;
+      expect(persisted, `${contract.target}/${contract.field} must reload with persisted path`).toBe(path);
     }
+  } finally {
+    // Restore every CMS value, including if an earlier provider call failed.
+    homepageSections.hero.imagePath = homepageRecord.sections.hero.imagePath;
+    homepageSections.hero.imageAlt = homepageRecord.sections.hero.imageAlt;
+    homepageSections.seo.ogImage = homepageRecord.sections.seo.ogImage;
+    homepageSections.seo.ogImageAlt = homepageRecord.sections.seo.ogImageAlt;
+    expect((await page.request.patch('/admin/api/homepage/tr', { data: { sections: homepageSections, autoPublish: false } })).ok()).toBeTruthy();
+    for (const contract of contracts.slice(2)) await contract.restore();
   }
 });

@@ -1,7 +1,7 @@
 import { expect, test as base, type BrowserContext, type Page } from '@playwright/test';
 import { and, eq, or } from 'drizzle-orm';
 import { db } from '../../db';
-import { adminUsers, auditLogs } from '../../db/schema';
+import { adminUsers, auditLogs, vehicles, drivers, locations } from '../../db/schema';
 import { hashPassword } from '../../lib/auth/password';
 import { cleanupAdminAcceptanceAccounts } from '../../scripts/cleanup-admin-acceptance';
 
@@ -97,9 +97,49 @@ export const test = base.extend<AdminFixtures, AdminWorkerFixtures>({
       role: 'SUPER_ADMIN',
       active: true,
     });
+    // Keep the responsive action matrix independent from the shared database's
+    // current catalog. Vehicles and drivers are commonly empty in development,
+    // so provision one disposable row per worker and remove it before the
+    // disposable admin. The prefixed slugs/names make cleanup deterministic.
+    const vehicleId = crypto.randomUUID();
+    const driverId = crypto.randomUUID();
+    const locationId = crypto.randomUUID();
+    const fixtureSuffix = id.slice(0, 8);
+    await db.insert(vehicles).values({
+      id: vehicleId,
+      name: `Acceptance Vehicle ${fixtureSuffix}`,
+      slug: `playwright-acceptance-vehicle-${fixtureSuffix}`,
+      vehicleType: 'VAN',
+      passengerCapacity: 7,
+      luggageCapacity: 7,
+      displayOrder: 999999,
+      createdBy: id,
+      updatedBy: id,
+    });
+    await db.insert(drivers).values({
+      id: driverId,
+      name: `Acceptance Driver ${fixtureSuffix}`,
+      displayOrder: 999999,
+      createdBy: id,
+      updatedBy: id,
+    });
+    await db.insert(locations).values({
+      id: locationId,
+      name: `Acceptance Location ${fixtureSuffix}`,
+      slug: `playwright-acceptance-location-${fixtureSuffix}`,
+      city: 'İstanbul',
+      displayOrder: 999999,
+      createdBy: id,
+      updatedBy: id,
+    });
     try {
       await use({ id, email, password });
     } finally {
+      // Transfer-operation references are nullable, but explicitly clear any
+      // rows created by a browser run before deleting the disposable records.
+      await db.delete(locations).where(eq(locations.id, locationId)).catch(() => {});
+      await db.delete(drivers).where(eq(drivers.id, driverId)).catch(() => {});
+      await db.delete(vehicles).where(eq(vehicles.id, vehicleId)).catch(() => {});
       // Delete our audit trail before removing the account. The second
       // predicate also catches AdminUser entity rows written by older routes.
       await db.delete(auditLogs).where(or(

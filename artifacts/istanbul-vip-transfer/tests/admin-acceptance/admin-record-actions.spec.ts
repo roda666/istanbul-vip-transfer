@@ -1,4 +1,5 @@
 import { expect, screenshotEvidence, test, waitForSettledAdminPage } from './fixtures';
+import { ADMIN_ACTION_APPLICABILITY } from './admin-action-inventory';
 
 const listRoutes = [
   { id: 'blog', name: 'Blog', path: '/admin/blog' },
@@ -11,12 +12,8 @@ const listRoutes = [
   { id: 'menu', name: 'Menü', path: '/admin/menu' },
   { id: 'transfer-rotalari', name: 'Transfer Rotaları', path: '/admin/transfer-rotalari' },
   { id: 'sss', name: 'SSS', path: '/admin/sss' },
+  { id: 'lokasyonlar', name: 'Lokasyonlar', path: '/admin/rezervasyon-ayarlari' },
   { id: 'ek-hizmetler', name: 'Ek Hizmetler', path: '/admin/fiyat-kurallari?tab=ek-hizmetler' },
-  { id: 'talepler', name: 'Talepler', path: '/admin/talepler' },
-  { id: 'chatbot-bilgi-bankasi', name: 'Chatbot Bilgi Bankası', path: '/admin/chatbot-bilgi-bankasi' },
-  { id: 'rezervasyon-ayarlari', name: 'Rezervasyon Ayarları', path: '/admin/rezervasyon-ayarlari' },
-  { id: 'dil-ve-ceviri', name: 'Dil ve Çeviri', path: '/admin/dil-ve-ceviri' },
-  { id: 'yol-gecis-ucretleri', name: 'Yol ve Geçiş Ücretleri', path: '/admin/yol-gecis-ucretleri' },
 ];
 
 const canonicalOrder = ['up', 'down', 'edit', 'activation', 'archive', 'custom', 'delete'];
@@ -31,31 +28,27 @@ for (const viewport of [
 
     for (const route of listRoutes) {
       test(`${route.name} uses the Categories action pattern`, async ({ adminPage: page }) => {
-        test.setTimeout(180_000);
-        const response = await page.goto(route.path);
+        test.setTimeout(45_000);
+        const response = await page.goto(route.path, { waitUntil: 'domcontentloaded', timeout: 30_000 });
         await waitForSettledAdminPage(page);
 
         const screenshotName = `admin-record-actions/${route.id}-${viewport.name}`;
         const status = response?.status() ?? 0;
         const redirectedToLogin = new URL(page.url()).pathname === '/admin/login';
-        if (redirectedToLogin || [401, 403].includes(status)) {
-          await screenshotEvidence(page, `${screenshotName}-skipped-permission`);
-          test.skip(true, `${route.name} skipped: permission denied (HTTP ${status || 'redirected to /admin/login'})`);
-          return;
-        }
+        expect(redirectedToLogin, `${route.name} must remain authenticated`).toBe(false);
+        expect([401, 403].includes(status), `${route.name} must not return permission denied`).toBe(false);
 
         const records = page.locator('[data-admin-record-actions]');
-        if (await records.count() === 0) {
-          await screenshotEvidence(page, `${screenshotName}-skipped-no-records`);
-          test.skip(true, `${route.name} has no records in the acceptance database`);
-          return;
-        }
+        await expect(records.first(), `${route.name} needs a seeded acceptance record`).toBeVisible({ timeout: 15_000 });
 
         const first = records.first();
         await expect(first).toHaveAttribute('data-admin-action-order', /.+/);
         const order = await first.getAttribute('data-admin-action-order');
         const ids = (order ?? '').split(',').filter(Boolean);
         expect(ids.every(id => canonicalOrder.includes(id))).toBe(true);
+        const applicable = ADMIN_ACTION_APPLICABILITY[route.id];
+        expect(applicable, `${route.name} must have an explicit action applicability record`).toBeDefined();
+        expect(ids.every(id => applicable.includes(id)), `${route.name} rendered an undocumented action`).toBe(true);
         const positions = ids.map(id => canonicalOrder.indexOf(id));
         expect(
           positions.every((position, index) => index === 0 || position >= positions[index - 1]),

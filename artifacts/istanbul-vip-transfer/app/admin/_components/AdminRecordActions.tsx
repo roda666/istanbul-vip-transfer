@@ -229,15 +229,21 @@ export function AdminRecordActions({
         loading={isBusy}
         title={title}
         ariaLabel={action.label}
+        testId={`admin-record-action-${action.id}`}
         className={isMobile ? 'w-full justify-start rounded-none border-0 bg-transparent px-4 py-3 text-left hover:bg-slate-50' : ''}
       />
     );
   };
 
   return (
-    <div className="flex items-center justify-end gap-2" data-admin>
+    <div
+      className="flex items-center justify-end gap-2"
+      data-admin
+      data-admin-record-actions
+      data-admin-action-order={visibleActions.map(action => action.id).join(',')}
+    >
       {/* Desktop/Tablet row */}
-      <div className="hidden min-[481px]:flex flex-wrap items-center justify-end gap-2">
+      <div className="hidden min-[481px]:flex flex-wrap items-center justify-end gap-2" data-admin-actions-desktop>
         {deleteOmittedReason && (!del || del.hidden) && (
           <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 bg-slate-50 border border-slate-200 px-2.5 min-h-[44px] rounded-md" title={deleteOmittedReason}>
             <Info size={14} />
@@ -260,6 +266,7 @@ export function AdminRecordActions({
           className="inline-flex items-center gap-2 min-h-[44px] px-3 rounded-md bg-white border border-slate-200 text-slate-700 font-medium text-sm hover:bg-slate-50"
           aria-expanded={sheetOpen}
           aria-haspopup="dialog"
+          data-admin-actions-mobile-trigger
         >
           <MoreVertical size={16} />
           İşlemler
@@ -293,7 +300,7 @@ export function AdminRecordActions({
               </button>
             </div>
             
-            <div className="overflow-y-auto pb-6">
+            <div className="overflow-y-auto pb-6" data-admin-actions-mobile-sheet>
               {deleteOmittedReason && (!del || del.hidden) && (
                 <div className="flex items-start gap-2 p-4 bg-slate-50 border-b border-slate-100 text-sm text-slate-600">
                   <Info size={16} className="mt-0.5 shrink-0 text-slate-400" />

@@ -78,6 +78,9 @@ export function extractTranslatableFields(s: HomepageSections): Record<string, s
   for (const stat of s.heroStats) {
     out[`heroStat.${stat.key}.label`] = stat.label;
   }
+  for (const metric of s.heroMetrics) {
+    out[`heroMetric.${metric.key}.label`] = metric.label;
+  }
 
   // C – Services section
   const sv = s.servicesSection;
@@ -186,6 +189,15 @@ export function syncSharedFields(
       ? { ...targetStat, numberText: src.numberText, key: src.key, order: src.order, enabled: src.enabled }
       : { ...src };
   });
+  const targetMetrics = Array.isArray(t.heroMetrics) ? t.heroMetrics : [];
+  const sourceMetrics = Array.isArray(s.heroMetrics) ? s.heroMetrics : [];
+  const targetMetricsByKey = Object.fromEntries(targetMetrics.map(metric => [metric.key, metric]));
+  t.heroMetrics = sourceMetrics.map((src) => {
+    const targetMetric = targetMetricsByKey[src.key];
+    return targetMetric
+      ? { ...targetMetric, valueText: src.valueText, key: src.key, order: src.order, enabled: src.enabled }
+      : { ...src };
+  });
 
   // Services
   t.servicesSection.allServicesRoute = s.servicesSection.allServicesRoute;
@@ -241,6 +253,10 @@ export function applyTranslatedFields(
       const fieldName = parts[2];
       const stat = t.heroStats.find(s => s.key === statKey);
       if (stat && fieldName === 'label') stat.label = value;
+    } else if (key.startsWith('heroMetric.')) {
+      const parts = key.split('.');
+      const metric = t.heroMetrics.find(item => item.key === parts[1]);
+      if (metric && parts[2] === 'label') metric.label = value;
     } else if (key.startsWith('services.')) {
       const field = key.slice(9) as keyof ServicesSectionData;
       if (typeof t.servicesSection[field] === 'string') (t.servicesSection as unknown as Record<string, unknown>)[field] = value;

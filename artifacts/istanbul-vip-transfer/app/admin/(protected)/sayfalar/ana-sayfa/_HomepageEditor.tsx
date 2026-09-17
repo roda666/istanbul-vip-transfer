@@ -7,7 +7,7 @@ import { ImageUploadField } from '@/app/admin/_components/ImageUploadField';
 import { AIWriteAssist, type AIWritingField } from '@/app/admin/_components/AIWriteAssist';
 import { AISeoGenerator } from '@/app/admin/_components/AISeoGenerator';
 import type {
-  HomepageSections, HeroSection, HeroStat, ServicesSectionData,
+  HomepageSections, HeroSection, HeroStat, HeroMetric, ServicesSectionData,
   TrustSectionData, VehiclesSectionData, ReviewsSectionData,
   ReservationSectionData, ContactSectionData, FooterSectionData,
   HomepageSeoData,
@@ -36,6 +36,69 @@ async function safeJson<T = Record<string, unknown>>(res: Response): Promise<T> 
   }
 }
 
+type HomepageTranslationTask = {
+  id: string;
+  status: string;
+  targetLanguageCode: string;
+  errorMessage?: string | null;
+};
+
+type HomepageTranslationJob = {
+  status: string;
+};
+
+async function concurrentForEach<T>(
+  items: readonly T[],
+  concurrency: number,
+  worker: (item: T) => Promise<void>,
+) {
+  let nextIndex = 0;
+  async function run() {
+    while (nextIndex < items.length) {
+      const index = nextIndex++;
+      await worker(items[index]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, run));
+}
+
+async function runHomepageTranslationJob(jobId: string) {
+  const readJob = async () => {
+    const response = await fetch(`/admin/api/translations/jobs/${jobId}`);
+    const payload = await safeJson<{
+      job?: HomepageTranslationJob;
+      tasks?: HomepageTranslationTask[];
+      error?: string;
+    }>(response);
+    if (!response.ok || !payload.job || !payload.tasks) {
+      throw new Error(payload.error ?? 'Çeviri işi okunamadı.');
+    }
+    return { job: payload.job, tasks: payload.tasks };
+  };
+
+  let state = await readJob();
+  for (let pass = 0; pass < 2; pass += 1) {
+    const runnable = state.tasks.filter(task => ['QUEUED', 'RETRYING'].includes(task.status));
+    if (runnable.length === 0) break;
+    await concurrentForEach(runnable, 2, async task => {
+      const response = await fetch(`/admin/api/translations/jobs/${jobId}/tasks/${task.id}/run`, { method: 'POST' });
+      const payload = await safeJson<{ status?: string; error?: string }>(response);
+      if (!response.ok && response.status !== 409) {
+        throw new Error(payload.error ?? `${task.targetLanguageCode.toUpperCase()} çevirisi çalıştırılamadı.`);
+      }
+    });
+    state = await readJob();
+  }
+
+  if (state.job.status !== 'COMPLETED') {
+    const failed = state.tasks
+      .filter(task => task.status === 'FAILED')
+      .map(task => task.targetLanguageCode.toUpperCase());
+    throw new Error(`Çeviri tamamlanamadı. Başarısız diller: ${failed.join(', ') || 'bilinmiyor'}.`);
+  }
+  return state;
+}
+
 // ── Constants ──────────────────────────────────────────────────────────────
 
 export interface EditorLocale {
@@ -60,15 +123,16 @@ const FALLBACK_LOCALES: EditorLocale[] = [
 
 const SECTIONS = [
   { key: 'hero',        label: 'A · Hero' },
-  { key: 'heroStats',   label: 'B · İstatistikler' },
-  { key: 'services',    label: 'C · Hizmetler' },
-  { key: 'trust',       label: 'D · Güven Kartları' },
-  { key: 'vehicles',    label: 'E · Araçlar' },
-  { key: 'reviews',     label: 'F · Yorumlar' },
-  { key: 'reservation', label: 'G · Rezervasyon' },
-  { key: 'contact',     label: 'H · İletişim' },
-  { key: 'footer',      label: 'I · Footer' },
-  { key: 'seo',         label: 'J · SEO' },
+  { key: 'heroMetrics', label: 'B · Metrikler' },
+  { key: 'heroStats',   label: 'C · İstatistikler' },
+  { key: 'services',    label: 'D · Hizmetler' },
+  { key: 'trust',       label: 'E · Güven Kartları' },
+  { key: 'vehicles',    label: 'F · Araçlar' },
+  { key: 'reviews',     label: 'G · Yorumlar' },
+  { key: 'reservation', label: 'H · Rezervasyon' },
+  { key: 'contact',     label: 'I · İletişim' },
+  { key: 'footer',      label: 'J · Footer' },
+  { key: 'seo',         label: 'K · SEO' },
 ] as const;
 
 // Translation status display config
@@ -269,6 +333,28 @@ function StatsEditor({ data, onChange, dir, ro }: { data: HeroStat[]; onChange: 
         <div key={stat.key} style={{ padding: '14px', border: '1px solid #E2E8F0', borderRadius: '8px', marginBottom: '12px', background: '#F8FAFC' }}>
           <p style={{ ...lbl, marginBottom: '10px', color: '#C79A35' }}>{stat.key.toUpperCase()} — <span dir="ltr">{stat.numberText}</span></p>
           <Field name="Etiket (çeviri)" value={stat.label} onChange={v => set(i, 'label', v)} dir={dir} readOnly={ro} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MetricsEditor({ data, onChange, dir, ro }: { data: HeroMetric[]; onChange: (d: HeroMetric[]) => void; dir: string; ro?: boolean }) {
+  const set = (i: number, key: keyof HeroMetric, val: string | boolean | number) => {
+    const next = [...data]; next[i] = { ...next[i], [key]: val }; onChange(next);
+  };
+  return (
+    <div data-testid="homepage-metrics-editor">
+      <p style={{ fontSize: '12px', color: '#64748B', marginBottom: '16px', fontFamily: 'Inter, sans-serif' }}>
+        Değer metinleri (örn. 12.000+, 4.9 ★) TR tarafında düzenlenebilir ve diğer dillerde (LTR korunarak) aynı görünür. Yalnızca etiket çevrilir.
+      </p>
+      {data.map((metric, i) => (
+        <div key={metric.key} data-testid={`homepage-metric-editor-${metric.key}`} style={{ padding: '14px', border: '1px solid #E2E8F0', borderRadius: '8px', marginBottom: '12px', background: '#F8FAFC' }}>
+          <p style={{ ...lbl, marginBottom: '10px', color: '#C79A35' }}>{metric.key.toUpperCase()}</p>
+          <div className="hpe-fg2">
+            <Field name="Değer (ör. 12.000+)" value={metric.valueText} onChange={v => set(i, 'valueText', v)} dir="ltr" hint="Paylaşılan alan — tüm dillerde aynı (sadece TR'den düzenlenir)" readOnly={ro} />
+            <Field name="Etiket (çeviri)" value={metric.label} onChange={v => set(i, 'label', v)} dir={dir} readOnly={ro} />
+          </div>
         </div>
       ))}
     </div>
@@ -652,15 +738,22 @@ export default function HomepageEditor({ initialTrRecord, locales }: { initialTr
       const data = await safeJson<{
         success: boolean;
         code?: string; message?: string;
+        translationJobId?: string;
         syncResults?: Record<string, { status: string; reason?: string }>;
       }>(res);
       if (!res.ok) throw new Error(data.message ?? data.code ?? 'Kaydetme başarısız.');
+
+      if (data.translationJobId) {
+        await runHomepageTranslationJob(data.translationJobId);
+      }
 
       // Refresh all locales from server to reflect real DB status
       await Promise.all(LOCALES.map(l => refreshLocale(l.code)));
 
       if (data.code === 'AI_PROVIDER_NOT_CONFIGURED') {
         setMessage({ type: 'info', text: data.message ?? 'Türkçe kaydedildi. AI sağlayıcısı yapılandırılmamış.' });
+      } else if (data.translationJobId) {
+        setMessage({ type: 'ok', text: 'Türkçe ve tüm diller yayımlandı.' });
       } else if (data.syncResults) {
         const results = data.syncResults;
         const published = Object.entries(results).filter(([, r]) => r.status === 'published').map(([k]) => k.toUpperCase());
@@ -787,6 +880,7 @@ export default function HomepageEditor({ initialTrRecord, locales }: { initialTr
     const ro = !isSource; // Non-TR tabs show read-only AI-translated content
     switch (activeSection) {
       case 'hero':        return <HeroEditor data={sections.hero} onChange={d => updateSection('hero', d)} dir={dir} ro={ro} homepageId={records.tr?.id ?? undefined} />;
+      case 'heroMetrics': return <MetricsEditor data={sections.heroMetrics ?? HOMEPAGE_FALLBACK[activeLocale].heroMetrics} onChange={d => updateSection('heroMetrics', d)} dir={dir} ro={ro} />;
       case 'heroStats':   return <StatsEditor data={sections.heroStats} onChange={d => updateSection('heroStats', d)} dir={dir} ro={ro} />;
       case 'services':    return <ServicesSectionEditor data={sections.servicesSection} onChange={d => updateSection('servicesSection', d)} dir={dir} ro={ro} />;
       case 'trust':       return <TrustEditor data={sections.trustSection} onChange={d => updateSection('trustSection', d)} dir={dir} ro={ro} />;

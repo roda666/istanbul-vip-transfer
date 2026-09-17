@@ -188,6 +188,7 @@ export async function PATCH(
       success: true,
       draftSaved: true,
       translationJobsCreated: orchestration.created ? orchestration.taskCount : 0,
+      translationJobId: orchestration.jobId,
       targetLocales,
       trHash: computeTranslatableHash(sections),
       syncResults,

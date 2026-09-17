@@ -151,3 +151,4 @@
 - [Atomic Blog publication](atomic-blog-publication.md) — stage all eight validated locale payloads; publish TR+8 together only after every task succeeds and the source hash still matches.
 - [Production acceptance over loopback HTTP](production-acceptance-loopback-http.md) — Secure admin cookies need a runner-only HTTP exception; API mutations must send same-origin Origin headers.
 - [Real AI acceptance cleanup](real-ai-acceptance-cleanup.md) — snapshot exact DB fields before real-provider mutations and restore directly; partial admin APIs may trigger workflows or reject cleanup.
+- [Legacy CMS body evolution](legacy-cms-body-evolution.md) — new structured CMS fields must be normalized at parsers and shared-sync boundaries because workers may consume older serialized bodies directly.

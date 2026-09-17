@@ -25,6 +25,14 @@ export interface HeroStat {
   enabled: boolean;
 }
 
+export interface HeroMetric {
+  key: 'transfers' | 'rating' | 'ontime' | 'customers';
+  valueText: string;  // Shared verbatim text; never translated or locale-formatted
+  label: string;      // Translatable
+  order: number;
+  enabled: boolean;
+}
+
 export interface ServicesSectionData {
   eyebrow: string;
   heading: string;
@@ -103,6 +111,7 @@ export interface HomepageSections {
   version: 1;
   hero: HeroSection;
   heroStats: HeroStat[];
+  heroMetrics: HeroMetric[];
   servicesSection: ServicesSectionData;
   trustSection: TrustSectionData;
   vehiclesSection: VehiclesSectionData;
@@ -124,11 +133,18 @@ export function isHomepageSections(v: unknown): v is HomepageSections {
 }
 
 /** Safely parse JSON body string → HomepageSections | null */
-export function parseHomepageSections(body: string | null | undefined): HomepageSections | null {
+export function parseHomepageSections(body: string | null | undefined, locale = 'tr'): HomepageSections | null {
   if (!body) return null;
   try {
     const parsed = JSON.parse(body);
-    return isHomepageSections(parsed) ? parsed : null;
+    if (!isHomepageSections(parsed)) return null;
+    const fallback = HOMEPAGE_FALLBACK[locale] ?? HOMEPAGE_FALLBACK.en;
+    return {
+      ...parsed,
+      heroMetrics: Array.isArray(parsed.heroMetrics) && parsed.heroMetrics.length === 4
+        ? parsed.heroMetrics
+        : structuredClone(fallback.heroMetrics),
+    };
   } catch {
     return null;
   }
@@ -155,6 +171,12 @@ export const HOMEPAGE_FALLBACK: Record<string, HomepageSections> = {
       { key: 'airport',  numberText: 'IST & SAW',       label: 'Havalimanı Transfer',    order: 0, enabled: true },
       { key: 'support',  numberText: '7/24',             label: 'Rezervasyon Desteği',    order: 1, enabled: true },
       { key: 'vehicles', numberText: 'Vito & Sprinter',  label: 'VIP Araç Seçenekleri',  order: 2, enabled: true },
+    ],
+    heroMetrics: [
+      { key: 'transfers', valueText: '12.000+', label: 'Transferler', order: 0, enabled: true },
+      { key: 'rating', valueText: '4.9 ★', label: 'Puan', order: 1, enabled: true },
+      { key: 'ontime', valueText: '%99.7', label: 'Zamanında', order: 2, enabled: true },
+      { key: 'customers', valueText: '1.500+', label: 'Müşteri', order: 3, enabled: true },
     ],
     servicesSection: {
       eyebrow: 'Hizmetlerimiz',
@@ -190,6 +212,12 @@ export const HOMEPAGE_FALLBACK: Record<string, HomepageSections> = {
       { key: 'support',  numberText: '7/24',             label: 'Booking Support',     order: 1, enabled: true },
       { key: 'vehicles', numberText: 'Vito & Sprinter',  label: 'VIP Vehicle Options', order: 2, enabled: true },
     ],
+    heroMetrics: [
+      { key: 'transfers', valueText: '12.000+', label: 'Transfers', order: 0, enabled: true },
+      { key: 'rating', valueText: '4.9 ★', label: 'Rating', order: 1, enabled: true },
+      { key: 'ontime', valueText: '%99.7', label: 'On Time', order: 2, enabled: true },
+      { key: 'customers', valueText: '1.500+', label: 'Customers', order: 3, enabled: true },
+    ],
     servicesSection: { eyebrow: 'Our Services', heading: 'Transfer for Every Need', description: 'Individual or corporate — comprehensive VIP service for all your transfer needs.', allServicesText: 'All Services →', allServicesRoute: '/en/services', enabled: true },
     trustSection: {
       eyebrow: 'Why Choose Us', heading: 'Our Service Approach',
@@ -215,6 +243,12 @@ export const HOMEPAGE_FALLBACK: Record<string, HomepageSections> = {
       { key: 'airport',  numberText: 'IST & SAW',       label: 'Flughafentransfer',    order: 0, enabled: true },
       { key: 'support',  numberText: '7/24',             label: 'Buchungsservice',      order: 1, enabled: true },
       { key: 'vehicles', numberText: 'Vito & Sprinter',  label: 'VIP-Fahrzeugoptionen', order: 2, enabled: true },
+    ],
+    heroMetrics: [
+      { key: 'transfers', valueText: '12.000+', label: 'Transfers', order: 0, enabled: true },
+      { key: 'rating', valueText: '4.9 ★', label: 'Bewertung', order: 1, enabled: true },
+      { key: 'ontime', valueText: '%99.7', label: 'Pünktlich', order: 2, enabled: true },
+      { key: 'customers', valueText: '1.500+', label: 'Kunden', order: 3, enabled: true },
     ],
     servicesSection: { eyebrow: 'Unsere Dienstleistungen', heading: 'Transfer für jeden Bedarf', description: 'Für Privatreisende und Unternehmen — umfassender VIP-Service für alle Ihre Transferbedürfnisse.', allServicesText: 'Alle Dienste →', allServicesRoute: '/de/services', enabled: true },
     trustSection: {
@@ -242,6 +276,12 @@ export const HOMEPAGE_FALLBACK: Record<string, HomepageSections> = {
       { key: 'support',  numberText: '7/24',             label: 'Поддержка бронирования',      order: 1, enabled: true },
       { key: 'vehicles', numberText: 'Vito & Sprinter',  label: 'Варианты VIP-автомобилей',    order: 2, enabled: true },
     ],
+    heroMetrics: [
+      { key: 'transfers', valueText: '12.000+', label: 'Трансферы', order: 0, enabled: true },
+      { key: 'rating', valueText: '4.9 ★', label: 'Рейтинг', order: 1, enabled: true },
+      { key: 'ontime', valueText: '%99.7', label: 'Вовремя', order: 2, enabled: true },
+      { key: 'customers', valueText: '1.500+', label: 'Клиенты', order: 3, enabled: true },
+    ],
     servicesSection: { eyebrow: 'Наши услуги', heading: 'Трансфер для любых нужд', description: 'Для частных лиц и корпоративных клиентов — комплексный VIP-сервис для всех ваших потребностей.', allServicesText: 'Все услуги →', allServicesRoute: '/ru/services', enabled: true },
     trustSection: {
       eyebrow: 'Почему мы', heading: 'Наш подход к сервису',
@@ -267,6 +307,12 @@ export const HOMEPAGE_FALLBACK: Record<string, HomepageSections> = {
       { key: 'airport',  numberText: 'IST & SAW',       label: 'نقل المطار',          order: 0, enabled: true },
       { key: 'support',  numberText: '7/24',             label: 'دعم الحجز',           order: 1, enabled: true },
       { key: 'vehicles', numberText: 'Vito & Sprinter',  label: 'خيارات سيارات VIP',   order: 2, enabled: true },
+    ],
+    heroMetrics: [
+      { key: 'transfers', valueText: '12.000+', label: 'خدمات النقل', order: 0, enabled: true },
+      { key: 'rating', valueText: '4.9 ★', label: 'التقييم', order: 1, enabled: true },
+      { key: 'ontime', valueText: '%99.7', label: 'في الموعد', order: 2, enabled: true },
+      { key: 'customers', valueText: '1.500+', label: 'العملاء', order: 3, enabled: true },
     ],
     servicesSection: { eyebrow: 'خدماتنا', heading: 'النقل لكل احتياج', description: 'للأفراد والشركات — خدمة VIP شاملة لجميع احتياجات النقل.', allServicesText: 'جميع الخدمات ←', allServicesRoute: '/ar/services', enabled: true },
     trustSection: {
@@ -294,6 +340,12 @@ export const HOMEPAGE_FALLBACK: Record<string, HomepageSections> = {
       { key: 'support',  numberText: '7/24',             label: 'Asistencia para reservas',  order: 1, enabled: true },
       { key: 'vehicles', numberText: 'Vito & Sprinter',  label: 'Opciones de vehículos VIP', order: 2, enabled: true },
     ],
+    heroMetrics: [
+      { key: 'transfers', valueText: '12.000+', label: 'Traslados', order: 0, enabled: true },
+      { key: 'rating', valueText: '4.9 ★', label: 'Puntuación', order: 1, enabled: true },
+      { key: 'ontime', valueText: '%99.7', label: 'A tiempo', order: 2, enabled: true },
+      { key: 'customers', valueText: '1.500+', label: 'Clientes', order: 3, enabled: true },
+    ],
     servicesSection: { eyebrow: 'Nuestros servicios', heading: 'Traslados para cada necesidad', description: 'Para particulares o empresas: un servicio VIP integral para todas sus necesidades de traslado.', allServicesText: 'Todos los servicios →', allServicesRoute: '/es/services', enabled: true },
     trustSection: {
       eyebrow: 'Por qué elegirnos', heading: 'Nuestra forma de ofrecer el servicio',
@@ -319,6 +371,12 @@ export const HOMEPAGE_FALLBACK: Record<string, HomepageSections> = {
       { key: 'airport',  numberText: 'IST & SAW',       label: 'Transfert aéroport',         order: 0, enabled: true },
       { key: 'support',  numberText: '7/24',             label: 'Assistance à la réservation', order: 1, enabled: true },
       { key: 'vehicles', numberText: 'Vito & Sprinter',  label: 'Véhicules VIP',              order: 2, enabled: true },
+    ],
+    heroMetrics: [
+      { key: 'transfers', valueText: '12.000+', label: 'Transferts', order: 0, enabled: true },
+      { key: 'rating', valueText: '4.9 ★', label: 'Note', order: 1, enabled: true },
+      { key: 'ontime', valueText: '%99.7', label: 'À l’heure', order: 2, enabled: true },
+      { key: 'customers', valueText: '1.500+', label: 'Clients', order: 3, enabled: true },
     ],
     servicesSection: { eyebrow: 'Nos services', heading: 'Un transfert pour chaque besoin', description: 'Pour les particuliers comme pour les entreprises — un service VIP complet pour tous vos besoins de transfert.', allServicesText: 'Tous les services →', allServicesRoute: '/fr/services', enabled: true },
     trustSection: {
@@ -346,6 +404,12 @@ export const HOMEPAGE_FALLBACK: Record<string, HomepageSections> = {
       { key: 'support',  numberText: '7/24',             label: 'Assistenza per le prenotazioni', order: 1, enabled: true },
       { key: 'vehicles', numberText: 'Vito & Sprinter',  label: 'Veicoli VIP disponibili',       order: 2, enabled: true },
     ],
+    heroMetrics: [
+      { key: 'transfers', valueText: '12.000+', label: 'Transfer', order: 0, enabled: true },
+      { key: 'rating', valueText: '4.9 ★', label: 'Valutazione', order: 1, enabled: true },
+      { key: 'ontime', valueText: '%99.7', label: 'Puntuale', order: 2, enabled: true },
+      { key: 'customers', valueText: '1.500+', label: 'Clienti', order: 3, enabled: true },
+    ],
     servicesSection: { eyebrow: 'I nostri servizi', heading: 'Un transfer per ogni esigenza', description: 'Per privati o aziende: un servizio VIP completo per ogni esigenza di transfer.', allServicesText: 'Tutti i servizi →', allServicesRoute: '/it/services', enabled: true },
     trustSection: {
       eyebrow: 'Perché sceglierci', heading: 'La nostra filosofia di servizio',
@@ -371,6 +435,12 @@ export const HOMEPAGE_FALLBACK: Record<string, HomepageSections> = {
       { key: 'airport',  numberText: 'IST & SAW',       label: 'Luchthaventransfer',      order: 0, enabled: true },
       { key: 'support',  numberText: '7/24',             label: 'Boekingsondersteuning',   order: 1, enabled: true },
       { key: 'vehicles', numberText: 'Vito & Sprinter',  label: 'VIP-voertuigopties',      order: 2, enabled: true },
+    ],
+    heroMetrics: [
+      { key: 'transfers', valueText: '12.000+', label: 'Transfers', order: 0, enabled: true },
+      { key: 'rating', valueText: '4.9 ★', label: 'Beoordeling', order: 1, enabled: true },
+      { key: 'ontime', valueText: '%99.7', label: 'Op tijd', order: 2, enabled: true },
+      { key: 'customers', valueText: '1.500+', label: 'Klanten', order: 3, enabled: true },
     ],
     servicesSection: { eyebrow: 'Onze diensten', heading: 'Transfer voor elke behoefte', description: 'Voor particulieren of bedrijven — uitgebreide VIP-service voor al uw transferbehoeften.', allServicesText: 'Alle diensten →', allServicesRoute: '/nl/services', enabled: true },
     trustSection: {

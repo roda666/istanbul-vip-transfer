@@ -18,4 +18,8 @@ export const ADMIN_ACTION_APPLICABILITY: Record<string, string[]> = {
   sss: ['up', 'down', 'edit', 'delete'],
   lokasyonlar: ['up', 'down', 'edit', 'activation', 'archive', 'delete'],
   'ek-hizmetler': ['up', 'down', 'edit', 'activation', 'archive', 'delete'],
+  // Transfer operations currently expose inline assignment fields, not record
+  // actions. Keeping the screen in the inventory prevents future local action
+  // buttons from bypassing AdminRecordActions.
+  transferler: [],
 };

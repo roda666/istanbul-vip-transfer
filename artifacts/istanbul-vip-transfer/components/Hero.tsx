@@ -43,6 +43,17 @@ export default function Hero({ homepageMode = false }: { homepageMode?: boolean 
       { number: '7/24', label: dict.hero.trustSupportLabel },
       { number: 'Vito & Sprinter', label: dict.hero.trustVehiclesLabel },
     ];
+  const heroMetrics = homepageCms?.heroMetrics
+    ? homepageCms.heroMetrics
+      .filter((metric) => metric.enabled)
+      .sort((a, b) => a.order - b.order)
+      .map((metric) => ({ value: metric.valueText, label: metric.label }))
+    : [
+      { value: '12.000+', label: 'Transferler' },
+      { value: '4.9 ★', label: 'Puan' },
+      { value: '%99.7', label: 'Zamanında' },
+      { value: '1.500+', label: 'Müşteri' },
+    ];
   const heroImageAlt = h.imageAlt?.trim()
     || `${h.headline1} ${h.headlineAccent} ${h.headline2}`.trim()
     || 'Istanbul VIP transfer vehicle';
@@ -167,7 +178,7 @@ export default function Hero({ homepageMode = false }: { homepageMode?: boolean 
 
             {/* Trust bar */}
             <div
-              className="ivt-hero-trust flex flex-wrap items-center gap-6 md:gap-8 pt-7"
+              className="ivt-hero-trust flex flex-wrap items-center gap-6 md:gap-8 pt-7 mb-10"
               style={{ borderTop: '1px solid #D9E2EC' }}
               data-testid="hero-trust-bar"
             >
@@ -185,6 +196,37 @@ export default function Hero({ homepageMode = false }: { homepageMode?: boolean 
                     style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
                   >
                     {item.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Metrics Strip */}
+            <div
+              className="ivt-hero-metrics grid grid-cols-2 md:grid-cols-4 gap-4 p-5 sm:p-6 rounded-2xl"
+              style={{
+                background: 'linear-gradient(135deg, rgba(16,42,67,0.85) 0%, rgba(16,42,67,0.95) 100%)',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
+                border: '1px solid rgba(199,154,53,0.15)',
+                boxShadow: '0 12px 32px rgba(16,42,67,0.1)'
+              }}
+              data-testid="hero-metrics-strip"
+            >
+              {heroMetrics.map((metric, i) => (
+                <div key={i} className="flex flex-col justify-center items-center text-center" data-testid={`hero-metric-${i}`}>
+                  <span
+                    className="text-2xl sm:text-3xl font-bold tracking-tight mb-1"
+                    style={{ color: '#C79A35', fontFamily: 'Playfair Display, Georgia, serif' }}
+                    dir="ltr"
+                  >
+                    {metric.value}
+                  </span>
+                  <span
+                    className="text-[9px] sm:text-[10px] tracking-[0.1em] font-medium"
+                    style={{ color: '#FFFFFF', fontFamily: 'Inter, sans-serif', opacity: 0.85 }}
+                  >
+                    {metric.label}
                   </span>
                 </div>
               ))}

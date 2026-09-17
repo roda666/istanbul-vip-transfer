@@ -58,6 +58,10 @@ describe('homepage source synchronization', () => {
     source.vehiclesSection.ctaRoute = '/rezervasyon/yeni';
     source.seo.ogImage = '/hero/social-new.webp';
     source.seo.indexable = false;
+    source.heroMetrics[0].valueText = '12.000+';
+    source.heroMetrics[0].label = 'Transferler';
+    target.heroMetrics[0].valueText = 'old-shared-value';
+    target.heroMetrics[0].label = 'Transfers';
     source.heroStats = source.heroStats.filter((stat) => stat.key !== 'support');
     source.trustSection.cards = source.trustSection.cards.slice(0, 2);
 
@@ -80,13 +84,22 @@ describe('homepage source synchronization', () => {
       ogTitle: target.seo.ogTitle,
     });
     expect(result.heroStats.map((stat) => stat.key)).toEqual(['airport', 'vehicles']);
+    expect(result.heroMetrics[0]).toMatchObject({
+      valueText: '12.000+',
+      label: 'Transfers',
+    });
     expect(result.trustSection.cards.map((card) => card.id)).toEqual(source.trustSection.cards.map((card) => card.id));
 
     const translated = applyTranslatedFields(result, {
       'hero.imageAlt': 'New English alt text',
+      'heroMetric.transfers.label': 'Translated transfers',
       'seo.ogTitle': 'New social title',
     });
     expect(translated.hero.imageAlt).toBe('New English alt text');
+    expect(translated.heroMetrics[0]).toMatchObject({
+      valueText: '12.000+',
+      label: 'Translated transfers',
+    });
     expect(translated.seo.ogTitle).toBe('New social title');
   });
 
@@ -105,6 +118,7 @@ describe('homepage source synchronization', () => {
     newerSource.hero.imagePath = '/hero/new-shared-image.webp';
     newerSource.hero.enabled = false;
     newerSource.servicesSection.allServicesRoute = '/hizmetler/guncel';
+    newerSource.heroMetrics[0].valueText = '12.001+';
 
     // Shared fields intentionally do not cause a second provider request.
     expect(computeTranslatableHash(newerSource)).toBe(computeTranslatableHash(initialSource));
@@ -115,6 +129,19 @@ describe('homepage source synchronization', () => {
       enabled: false,
     });
     expect(refreshedSharedPayload.servicesSection.allServicesRoute).toBe('/hizmetler/guncel');
+    expect(refreshedSharedPayload.heroMetrics[0].valueText).toBe('12.001+');
+  });
+
+  it('hydrates canonical metrics when a legacy translated body has no heroMetrics field', () => {
+    const source = structuredClone(HOMEPAGE_FALLBACK.tr);
+    const legacyTarget = structuredClone(HOMEPAGE_FALLBACK.en) as typeof HOMEPAGE_FALLBACK.en & {
+      heroMetrics?: typeof HOMEPAGE_FALLBACK.en.heroMetrics;
+    };
+    delete legacyTarget.heroMetrics;
+
+    const result = syncSharedFields(legacyTarget as typeof HOMEPAGE_FALLBACK.en, source);
+
+    expect(result.heroMetrics).toEqual(source.heroMetrics);
   });
 });
 

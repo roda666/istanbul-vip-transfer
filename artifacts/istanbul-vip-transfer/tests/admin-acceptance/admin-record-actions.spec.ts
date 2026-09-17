@@ -14,6 +14,7 @@ const listRoutes = [
   { id: 'sss', name: 'SSS', path: '/admin/sss' },
   { id: 'lokasyonlar', name: 'Lokasyonlar', path: '/admin/rezervasyon-ayarlari' },
   { id: 'ek-hizmetler', name: 'Ek Hizmetler', path: '/admin/fiyat-kurallari?tab=ek-hizmetler' },
+  { id: 'transferler', name: 'Transfer Operasyonları', path: '/admin/transferler', expectsRecordActions: false },
 ];
 
 const canonicalOrder = ['up', 'down', 'edit', 'activation', 'archive', 'custom', 'delete'];
@@ -27,7 +28,7 @@ for (const viewport of [
     test.use({ viewport });
 
     for (const route of listRoutes) {
-      test(`${route.name} uses the Categories action pattern`, async ({ adminPage: page }) => {
+      test(`${route.name} follows the shared action standard`, async ({ adminPage: page }) => {
         test.setTimeout(45_000);
         const response = await page.goto(route.path, { waitUntil: 'domcontentloaded', timeout: 30_000 });
         await waitForSettledAdminPage(page);
@@ -38,16 +39,28 @@ for (const viewport of [
         expect(redirectedToLogin, `${route.name} must remain authenticated`).toBe(false);
         expect([401, 403].includes(status), `${route.name} must not return permission denied`).toBe(false);
 
+        const applicable = ADMIN_ACTION_APPLICABILITY[route.id];
+        expect(applicable, `${route.name} must have an explicit action applicability record`).toBeDefined();
         const records = page.locator('[data-admin-record-actions]:visible');
-        await expect(records.first(), `${route.name} needs a seeded acceptance record`).toBeVisible({ timeout: 15_000 });
+        if (route.expectsRecordActions === false) {
+          await page.getByRole('button', { name: 'Yeni Transfer' }).click();
+          await expect(page.getByRole('heading', { name: 'Yeni Transfer Planla' })).toBeVisible();
+          await expect(records, `${route.name} must not invent local record actions`).toHaveCount(0);
+          expect(applicable).toEqual([]);
+          await screenshotEvidence(page, screenshotName);
+          const submit = page.getByRole('button', { name: 'Transfer Oluştur' });
+          await submit.scrollIntoViewIfNeeded();
+          await expect(submit).toBeVisible();
+          await screenshotEvidence(page, `transfer-form-submit-${viewport.name}`);
+          return;
+        }
 
+        await expect(records.first(), `${route.name} needs a seeded acceptance record`).toBeVisible({ timeout: 15_000 });
         const first = records.first();
         await expect(first).toHaveAttribute('data-admin-action-order', /.+/);
         const order = await first.getAttribute('data-admin-action-order');
         const ids = (order ?? '').split(',').filter(Boolean);
         expect(ids.every(id => canonicalOrder.includes(id))).toBe(true);
-        const applicable = ADMIN_ACTION_APPLICABILITY[route.id];
-        expect(applicable, `${route.name} must have an explicit action applicability record`).toBeDefined();
         expect(ids.every(id => applicable.includes(id)), `${route.name} rendered an undocumented action`).toBe(true);
         const positions = ids.map(id => canonicalOrder.indexOf(id));
         expect(

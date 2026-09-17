@@ -46,7 +46,7 @@ export async function getPublishedHomepageData(locale: string): Promise<Homepage
         .from(content)
         .where(and(eq(content.slug, HOMEPAGE_SLUG), eq(content.status, 'PUBLISHED')))
         .limit(1);
-      const parsed = parseHomepageSections(row?.body);
+      const parsed = parseHomepageSections(row?.body, 'tr');
       return parsed ?? (HOMEPAGE_FALLBACK.tr as HomepageSections);
     }
 
@@ -72,7 +72,7 @@ export async function getPublishedHomepageData(locale: string): Promise<Homepage
       )
       .limit(1);
 
-    const parsed = parseHomepageSections(tx?.body);
+    const parsed = parseHomepageSections(tx?.body, locale);
     if (!parsed) {
       return HOMEPAGE_FALLBACK[locale] as HomepageSections ?? HOMEPAGE_FALLBACK.en as HomepageSections;
     }
@@ -81,7 +81,7 @@ export async function getPublishedHomepageData(locale: string): Promise<Homepage
     // published Turkish source. Overlay them at read time so a stale or
     // manually protected translation can never show an outdated asset.
     const publishedSource = src.status === 'PUBLISHED'
-      ? parseHomepageSections(src.body)
+      ? parseHomepageSections(src.body, 'tr')
       : null;
     return publishedSource ? syncSharedFields(parsed, publishedSource) : parsed;
   } catch {
@@ -125,7 +125,7 @@ export async function getHomepageAdminRecord(locale: string): Promise<HomepageAd
       id: row?.id ?? null,
       locale,
       status: row?.status ?? 'DRAFT',
-      sections: parseHomepageSections(row?.body),
+      sections: parseHomepageSections(row?.body, 'tr'),
       updatedAt: row?.updatedAt ?? null,
       publishedAt: row?.publishedAt ?? null,
       sourceHash: null,
@@ -168,7 +168,7 @@ export async function getHomepageAdminRecord(locale: string): Promise<HomepageAd
     id: tx?.id ?? null,
     locale,
     status: tx?.status ?? 'NOT_STARTED',
-    sections: parseHomepageSections(tx?.body),
+    sections: parseHomepageSections(tx?.body, locale),
     updatedAt: tx?.updatedAt ?? null,
     publishedAt: tx?.publishedAt ?? null,
     sourceHash: tx?.sourceHash ?? null,

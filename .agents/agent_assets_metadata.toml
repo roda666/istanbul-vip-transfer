@@ -238,3 +238,87 @@ mtime_ms = 1789629134254
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/d36db058-b578-4435-a4a9-7fdbe6b1d2c0/e0a10a92-21c1-48e2-9500-06953bff5486"
 storage_version_token = "1789629809645824"
 content_type = "image/png"
+
+[[outputs]]
+id = "wyHArTOJJ0CA_ZXwqpOnx"
+uri = "file://artifacts/istanbul-vip-transfer/reports/homepage-hero-metrics/preview-desktop-1440.jpg"
+type = "image"
+title = "Hero metrik şeridi — masaüstü"
+description = "1440 px ana sayfa hero görünümü; eski üçlü satır ve yeni 4 sütunlu koyu metrik şeridi."
+logical_id = "c8ce5780-debc-4c83-9b6a-0a48067f86d6"
+content_hash = "sha256:8765d18b7aadc2815dcca44219c2361627c413110f449c74eb29ab65c121b335"
+size = 109686
+mtime_ms = 1789643069269
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/c8ce5780-debc-4c83-9b6a-0a48067f86d6/9d6a111c-e991-4066-8e9a-44f0c071cc69"
+storage_version_token = "1789643129162627"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "VH9mV8bwZJdedllxLlXVY"
+uri = "file://artifacts/istanbul-vip-transfer/reports/homepage-hero-metrics/preview-mobile-390-tall.jpg"
+type = "image"
+title = "Hero metrik şeridi — mobil"
+description = "390 px mobil görünüm; eski üçlü satır korunmuş ve yeni metrik şeridi 2×2 yerleşimde."
+logical_id = "ddcead2c-6e07-4f9b-aff0-e9107aaa7ea3"
+content_hash = "sha256:8201268d511680d306826232140a2949cd84c815090adcdb30f5984e329c2ee2"
+size = 53717
+mtime_ms = 1789643086572
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/ddcead2c-6e07-4f9b-aff0-e9107aaa7ea3/f8ea5879-a7c0-4f72-86a6-1b4b53053350"
+storage_version_token = "1789643130787847"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "5wHEVD0J_adhZp3_i3CZK"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/transfer-form-submit-desktop.png"
+type = "image"
+title = "Transfer Operasyonları — masaüstü form"
+description = "1440px authenticated browser kanıtı: iki gruplu form kartı, filtre satırı ve ortak koyu/altın Transfer Oluştur butonu."
+logical_id = "ffe5172a-0aa6-446b-adb7-56aa350e39e0"
+content_hash = "sha256:edb2e6908bfe44679273c4fe827602da4b0c0d92af42b73a939d60aa96270ed1"
+size = 840436
+mtime_ms = 1789644161977
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/ffe5172a-0aa6-446b-adb7-56aa350e39e0/73217cf8-61a0-49e7-a25a-897fa03cba59"
+storage_version_token = "1789644312267868"
+content_type = "image/png"
+
+[[outputs]]
+id = "LkoywyemTyKanoGqhKaB5"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/transfer-form-submit-tablet.png"
+type = "image"
+title = "Transfer Operasyonları — tablet form"
+description = "768px authenticated browser kanıtı: responsive form, submit ve filtre alanları."
+logical_id = "6d9cf591-f6e9-4d74-9bc0-24044ca5f988"
+content_hash = "sha256:0c8bb72e51e9486ec9fdb9cc6aa5415602ba0a4ceb0f384152ea6dcb6593c38b"
+size = 569745
+mtime_ms = 1789644164648
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/6d9cf591-f6e9-4d74-9bc0-24044ca5f988/82aa6bc6-e201-42e0-82e5-73c983bafe1d"
+storage_version_token = "1789644313647505"
+content_type = "image/png"
+
+[[outputs]]
+id = "oBdWfrRmprTdytz4FJ9m6"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/transfer-form-submit-mobile.png"
+type = "image"
+title = "Transfer Operasyonları — mobil form"
+description = "390px authenticated browser kanıtı: tek sütun kartlar, tam genişlik ortak submit ve stacked filtreler."
+logical_id = "ceb1da17-8c3b-4dfd-815c-0cee3cba2a60"
+content_hash = "sha256:1f337a25b6f6a1b7542d4d2457fd801332ee28cc5da8771bdc7e7f1449d3101e"
+size = 265543
+mtime_ms = 1789644166605
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/ceb1da17-8c3b-4dfd-815c-0cee3cba2a60/d1d79a85-3722-4597-a11d-ba57769f808e"
+storage_version_token = "1789644315038057"
+content_type = "image/png"
+
+[[outputs]]
+id = "1bEdKpIMrRnLs-13B6s_l"
+uri = "file://artifacts/istanbul-vip-transfer/reports/admin-action-screenshots/transfer-operations-desktop.png"
+type = "image"
+title = "Transfer Operasyonları — gerçek kayıt"
+description = "Acceptance sırasında gerçekten oluşturulan ve disposable araç/sürücüye atanan transferin masaüstü liste görünümü; kayıt test sonunda silindi."
+logical_id = "176a518c-c8f4-49af-a795-582134165852"
+content_hash = "sha256:aff56d8040b6a0a3020ebee33aa3d891871f6290fff0326440f1aec83e9ac131"
+size = 925915
+mtime_ms = 1789644079129
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:aea65d87-84b5-4072-a761-326b623640a4/176a518c-c8f4-49af-a795-582134165852/f5f2650b-4e3e-4fcf-ba14-931e7c69e2bf"
+storage_version_token = "1789644316484474"
+content_type = "image/png"

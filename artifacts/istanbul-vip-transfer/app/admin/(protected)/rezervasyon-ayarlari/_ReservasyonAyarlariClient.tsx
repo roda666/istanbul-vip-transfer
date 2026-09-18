@@ -395,6 +395,7 @@ function ServiceTypeRow({ st, onSaved, isNew = false, onCancel }: {
   isNew?: boolean;
   onCancel?: () => void;
 }) {
+  const isCore = ['AIRPORT_TRANSFER', 'INTERCITY', 'ALLOCATION', 'TOUR'].includes(st.key);
   const [editing, setEditing] = useState(isNew);
   const [form, setForm] = useState({ label: st.label, description: st.description ?? '', enabled: st.enabled, quoteEnabled: st.quoteEnabled, reservationEnabled: st.reservationEnabled, displayOrder: String(st.displayOrder) });
   const [saving, setSaving] = useState(false);
@@ -416,10 +417,29 @@ function ServiceTypeRow({ st, onSaved, isNew = false, onCancel }: {
           displayOrder: parseInt(form.displayOrder, 10) || 0,
         }),
       });
-      if (!res.ok) { const j = await res.json(); setMsg(j.error ?? 'Hata oluştu.'); }
+      if (!res.ok) { const j = await res.json().catch(() => ({})) as { error?: string }; setMsg(j.error ?? 'Hata oluştu.'); }
       else { setMsg('Kaydedildi.'); setEditing(false); onSaved(); }
     } catch { setMsg('Bağlantı hatası.'); }
     setSaving(false);
+  }
+
+  async function remove() {
+    if (!window.confirm(`“${st.label}” hizmet türü silinsin mi? Geçmiş rezervasyon kayıtları korunur.`)) return;
+    setSaving(true);
+    setMsg('');
+    try {
+      const res = await fetch(`/admin/api/service-types/${st.id}`, { method: 'DELETE' });
+      const json = await res.json().catch(() => ({})) as { error?: string };
+      if (!res.ok) {
+        setMsg(json.error ?? 'Hizmet türü silinemedi.');
+      } else {
+        onSaved();
+      }
+    } catch {
+      setMsg('Bağlantı hatası.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   const inputS: React.CSSProperties = { minHeight: '44px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '6px', color: NAVY, fontSize: '13px', fontFamily: 'Inter, sans-serif', padding: '6px 10px', outline: 'none', width: '100%', boxSizing: 'border-box' };
@@ -441,18 +461,29 @@ function ServiceTypeRow({ st, onSaved, isNew = false, onCancel }: {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 600, color: NAVY }}>{isNew ? 'Yeni Hizmet Türü' : st.label}</span>
             {!isNew && <span style={{ background: '#F1F5F9', color: MUTED, fontSize: '11px', padding: '1px 7px', borderRadius: '10px', fontFamily: 'Inter, sans-serif' }}>{st.key}</span>}
+            {!isNew && isCore && <span style={{ background: '#FFF7ED', color: '#9A3412', fontSize: '11px', padding: '1px 7px', borderRadius: '10px', fontFamily: 'Inter, sans-serif' }}>Sistem — silinemez</span>}
             {!st.enabled && <span style={{ background: '#FEF2F2', color: RED, fontSize: '11px', padding: '1px 7px', borderRadius: '10px', fontFamily: 'Inter, sans-serif' }}>Devre Dışı</span>}
             {st.enabled && <span style={{ background: '#ECFDF5', color: '#065F46', fontSize: '11px', padding: '1px 7px', borderRadius: '10px', fontFamily: 'Inter, sans-serif' }}>Aktif</span>}
           </div>
           {st.description && <p style={{ color: MUTED, fontSize: '12px', fontFamily: 'Inter, sans-serif', marginTop: '4px', marginBottom: 0 }}>{st.description}</p>}
         </div>
         {!editing && !isNew && (
-          <AdminActionButton
-            label="Düzenle"
-            icon={Pencil}
-            variant="edit"
-            onClick={() => { setEditing(true); setMsg(''); }}
-          />
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <AdminActionButton
+              label="Düzenle"
+              icon={Pencil}
+              variant="edit"
+              onClick={() => { setEditing(true); setMsg(''); }}
+            />
+            <AdminActionButton
+              label="Sil"
+              icon={Trash2}
+              variant="delete"
+              disabled={isCore || saving}
+              title={isCore ? 'Sistem hizmet türleri silinemez.' : 'Hizmet türünü sil'}
+              onClick={remove}
+            />
+          </div>
         )}
       </div>
 

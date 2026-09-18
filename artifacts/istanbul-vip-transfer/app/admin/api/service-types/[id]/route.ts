@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { CANONICAL_SERVICE_TYPES } from '@/lib/service-type-scope';
 
 const updateSchema = z.object({
   label: z.string().min(1).max(200).optional(),
@@ -128,5 +129,72 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: message }, { status: 502 });
     }
     return NextResponse.json({ error: 'Veritabanı hatası.' }, { status: 503 });
+  }
+}
+
+/** DELETE /admin/api/service-types/[id] — custom service types only. */
+export async function DELETE(_request: NextRequest, { params }: Params) {
+  let session;
+  try {
+    session = await (await import('@/lib/auth/session')).requireAdminSession();
+  } catch {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { id } = await params;
+  const { db } = await import('@/db');
+  const { serviceTypes, siteSettings, auditLogs } = await import('@/db/schema');
+  const { eq } = await import('drizzle-orm');
+
+  try {
+    const deleted = await db.transaction(async (tx) => {
+      const [current] = await tx
+        .select({ id: serviceTypes.id, key: serviceTypes.key, label: serviceTypes.label })
+        .from(serviceTypes)
+        .where(eq(serviceTypes.id, id))
+        .limit(1);
+      if (!current) return { status: 404 as const };
+      if ((CANONICAL_SERVICE_TYPES as readonly string[]).includes(current.key)) {
+        return { status: 403 as const };
+      }
+
+      const [settings] = await tx
+        .select({ optionalFieldServiceTypes: siteSettings.optionalFieldServiceTypes })
+        .from(siteSettings)
+        .where(eq(siteSettings.id, 1))
+        .limit(1);
+      const existing = settings?.optionalFieldServiceTypes ?? {};
+      const cleaned = Object.fromEntries(
+        Object.entries(existing).map(([field, keys]) => [
+          field,
+          Array.isArray(keys) ? keys.filter((key) => key !== current.key) : keys,
+        ]),
+      );
+      if (settings) {
+        await tx.update(siteSettings)
+          .set({ optionalFieldServiceTypes: cleaned, updatedAt: new Date() })
+          .where(eq(siteSettings.id, 1));
+      }
+      await tx.delete(serviceTypes).where(eq(serviceTypes.id, id));
+      await tx.insert(auditLogs).values({
+        adminUserId: session.adminId,
+        action: 'DELETE',
+        entityType: 'ServiceType',
+        entityId: id,
+        metadata: { key: current.key, label: current.label },
+      });
+      return { status: 200 as const };
+    });
+
+    if (deleted.status === 404) return NextResponse.json({ error: 'Bulunamadı.' }, { status: 404 });
+    if (deleted.status === 403) return NextResponse.json({ error: 'Sistem hizmet türleri silinemez.' }, { status: 403 });
+
+    const { revalidatePath } = await import('next/cache');
+    revalidatePath('/data/service-types');
+    const { revalidateBookingFormBootstrap } = await import('@/lib/booking-form-bootstrap');
+    revalidateBookingFormBootstrap();
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ error: 'Hizmet türü silinemedi.' }, { status: 503 });
   }
 }

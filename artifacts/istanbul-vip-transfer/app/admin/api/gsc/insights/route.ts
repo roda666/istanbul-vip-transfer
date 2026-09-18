@@ -17,7 +17,12 @@ export async function GET() {
 
   const connected = await isGscConnected();
   if (!connected) {
-    return NextResponse.json({ error: 'gsc_not_connected', opportunities: [] }, { status: 200 });
+    const connection = await (await import('@/lib/gsc')).getGscConnection();
+    const reconnectRequired = connection?.lastError === 'gsc_reconnect_required';
+    return NextResponse.json({
+      error: reconnectRequired ? 'gsc_reconnect_required' : 'gsc_not_connected',
+      opportunities: [],
+    }, { status: 200 });
   }
 
   const result = await findKeywordOpportunities(20);

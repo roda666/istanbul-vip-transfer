@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { resolveIntegrationSecret } from '@/lib/integration-secrets';
 import { requireAdminSession } from '@/lib/auth/session';
 import { classifyGoogleOAuthProviderError } from '@/lib/google-oauth-feedback';
+import { classifyGscTokenEndpointFailure } from '@/lib/gsc';
 import { getPublicUrl } from '@/lib/social-public-url';
 
 export const dynamic = 'force-dynamic';
@@ -54,7 +55,11 @@ async function persistGscConnectionError(error: string) {
   try {
     const { db } = await import('@/db');
     const { gscConnections } = await import('@/db/schema');
-    await db.update(gscConnections).set({ lastError: error, updatedAt: new Date() });
+    await db.update(gscConnections).set({
+      lastError: error,
+      ...(error === 'gsc_reconnect_required' ? { connected: false, enabled: false } : {}),
+      updatedAt: new Date(),
+    });
   } catch {
     // The redirect must still succeed if the connection table is unavailable.
   }
@@ -112,9 +117,12 @@ export async function GET(req: NextRequest) {
     });
 
     if (!tokenRes.ok) {
-      console.error('[GSC callback] Token exchange failed:', tokenRes.status);
-      await persistGscConnectionError('token_exchange_failed');
-      return errorRedirect('token_exchange_failed');
+      let payload: unknown = null;
+      try { payload = await tokenRes.json(); } catch { /* use generic exchange failure */ }
+      const classified = classifyGscTokenEndpointFailure(tokenRes.status, payload);
+      const reason = classified === 'gsc_reconnect_required' ? classified : 'token_exchange_failed';
+      await persistGscConnectionError(reason);
+      return errorRedirect(reason);
     }
 
     const tokens: unknown = await tokenRes.json();

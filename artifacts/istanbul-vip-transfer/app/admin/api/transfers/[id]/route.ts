@@ -30,7 +30,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       if (status === 'PLANNED' && assignedDriver) throw new Error('STATUS_ASSIGNMENT');
       const [updated] = await tx.update(transferOperations).set({ ...next, status, assignedAt: assignedDriver && !current.driverId ? new Date() : current.assignedAt, assignedBy: assignedDriver && !current.driverId ? admin.adminId : current.assignedBy, unassignedAt: !assignedDriver && current.driverId ? new Date() : current.unassignedAt, unassignedBy: !assignedDriver && current.driverId ? admin.adminId : current.unassignedBy, updatedAt: new Date(), updatedBy: admin.adminId }).where(eq(transferOperations.id, id)).returning();
       if (next.driverId !== undefined || next.vehicleId !== undefined) await tx.insert(transferAssignmentAudits).values({ transferOperationId: id, action: assignedDriver ? 'ASSIGNED' : 'UNASSIGNED', previousDriverId: current.driverId, driverId: assignedDriver, previousVehicleId: current.vehicleId, vehicleId: assignedVehicle, adminUserId: admin.adminId, metadata: {} });
-      await tx.insert(auditLogs).values({ adminUserId: admin.adminId, action: 'UPDATE', entityType: 'transfer_operation', entityId: id, metadata: { fields: Object.keys(next) } });
+      const statusChanged = next.status !== undefined && next.status !== current.status;
+      await tx.insert(auditLogs).values({
+        adminUserId: admin.adminId,
+        action: statusChanged && next.status === 'CANCELLED' ? 'CANCEL' : 'UPDATE',
+        entityType: 'transfer_operation',
+        entityId: id,
+        metadata: {
+          fields: Object.keys(next),
+          ...(statusChanged ? { from: current.status, to: next.status } : {}),
+        },
+      });
       return [updated];
     });
     return NextResponse.json({ item });

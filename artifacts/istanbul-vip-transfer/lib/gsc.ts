@@ -19,6 +19,27 @@ export interface GscConnection {
   updatedAt: Date;
 }
 
+export type GscAvailabilityReason = 'gsc_reconnect_required' | 'token_refresh_failed';
+
+/**
+ * Classifies the safe, documented portion of an OAuth token error.  Callers
+ * must pass only the parsed error fields; never log or return the response
+ * body because it can contain credentials or provider diagnostics.
+ */
+export function classifyGscTokenEndpointFailure(
+  status: number,
+  payload: unknown,
+): GscAvailabilityReason {
+  const error = payload && typeof payload === 'object'
+    ? (payload as { error?: unknown }).error
+    : undefined;
+  if ((status === 400 && (error === 'invalid_grant' || error === 'invalid_client'))
+    || (status === 401 && error === 'invalid_client')) {
+    return 'gsc_reconnect_required';
+  }
+  return 'token_refresh_failed';
+}
+
 export interface SearchRow {
   query: string;
   clicks: number;
@@ -113,7 +134,8 @@ async function getRawConnection(): Promise<{
 /** Returns true if GSC tokens are stored in the DB */
 export async function isGscConnected(): Promise<boolean> {
   const conn = await getRawConnection();
-  return !!conn?.connected && !!conn.refresh_token;
+  return !!conn?.connected && !!conn.enabled && !!conn.refresh_token
+    && conn.last_error !== 'gsc_reconnect_required';
 }
 
 /** Returns public connection info (no tokens) */
@@ -132,19 +154,38 @@ export async function getGscConnection(): Promise<GscConnection | null> {
 }
 
 /** Returns a valid access token, refreshing if necessary */
-async function getAccessToken(): Promise<string | null> {
+async function persistTokenFailure(reason: GscAvailabilityReason): Promise<void> {
+  try {
+    const { db } = await import('@/db');
+    const { gscConnections } = await import('@/db/schema');
+    await db.update(gscConnections).set({
+      lastError: reason,
+      ...(reason === 'gsc_reconnect_required' ? { connected: false, enabled: false } : {}),
+      updatedAt: new Date(),
+    }).where(sql`${gscConnections.id} = (SELECT id FROM gsc_connections ORDER BY id DESC LIMIT 1)`);
+  } catch {
+    // A provider failure must never turn into a credential-bearing error.
+  }
+}
+
+async function getAccessToken(): Promise<
+  { token: string } | { failure: GscAvailabilityReason } | null
+> {
   const conn = await getRawConnection();
   if (!conn) return null;
+  if (!conn.connected || !conn.enabled || conn.last_error === 'gsc_reconnect_required') {
+    return { failure: 'gsc_reconnect_required' };
+  }
 
   const clientId = await resolveIntegrationSecret('GOOGLE_CLIENT_ID');
   const clientSecret = await resolveIntegrationSecret('GOOGLE_CLIENT_SECRET');
-  if (!clientId || !clientSecret) return null;
+  if (!clientId || !clientSecret) return { failure: 'token_refresh_failed' };
 
   const now = new Date();
   const expiry = conn.token_expiry ? new Date(conn.token_expiry) : null;
   const needsRefresh = !conn.access_token || !expiry || expiry <= new Date(now.getTime() + 60_000);
 
-  if (!needsRefresh && conn.access_token) return conn.access_token;
+  if (!needsRefresh && conn.access_token) return { token: conn.access_token };
 
   // Refresh
   try {
@@ -159,23 +200,31 @@ async function getAccessToken(): Promise<string | null> {
       }),
     });
     if (!res.ok) {
-      console.error('[GSC] Token refresh failed:', res.status);
-      return null;
+      let payload: unknown = null;
+      try { payload = await res.json(); } catch { /* classified as transient */ }
+      const reason = classifyGscTokenEndpointFailure(res.status, payload);
+      await persistTokenFailure(reason);
+      return { failure: reason };
     }
-    const data = await res.json() as { access_token: string; expires_in: number };
+    const data = await res.json() as { access_token?: unknown; expires_in?: unknown };
+    if (typeof data.access_token !== 'string' || !data.access_token
+      || typeof data.expires_in !== 'number' || !Number.isFinite(data.expires_in)) {
+      await persistTokenFailure('token_refresh_failed');
+      return { failure: 'token_refresh_failed' };
+    }
     const newExpiry = new Date(Date.now() + data.expires_in * 1000);
 
     // Update DB
     const { db } = await import('@/db');
     const { gscConnections } = await import('@/db/schema');
     await db.update(gscConnections)
-      .set({ accessToken: data.access_token, tokenExpiry: newExpiry, updatedAt: new Date() })
+      .set({ accessToken: data.access_token, tokenExpiry: newExpiry, lastError: null, updatedAt: new Date() })
       .where(sql`${gscConnections.id} = (SELECT id FROM gsc_connections ORDER BY id DESC LIMIT 1)`);
 
-    return data.access_token;
+    return { token: data.access_token };
   } catch {
-    console.error('[GSC] Token refresh error');
-    return null;
+    await persistTokenFailure('token_refresh_failed');
+    return { failure: 'token_refresh_failed' };
   }
 }
 
@@ -185,14 +234,16 @@ async function getAccessToken(): Promise<string | null> {
  */
 export async function fetchPageSearchAnalytics(opts: PageAnalyticsOptions): Promise<
   { ok: true; rows: PageSearchRow[] } |
-  { ok: false; reason: 'invalid_date_range' | 'invalid_limit' | 'not_connected' | 'token_refresh_failed' | 'api_error' | 'fetch_error' }
+  { ok: false; reason: 'invalid_date_range' | 'invalid_limit' | 'not_connected' | 'gsc_reconnect_required' | 'token_refresh_failed' | 'api_error' | 'fetch_error' }
 > {
   const validated = validatePageAnalyticsOptions(opts);
   if (!validated.ok) return validated;
   const conn = await getRawConnection();
   if (!conn) return { ok: false, reason: 'not_connected' };
-  const token = await getAccessToken();
-  if (!token) return { ok: false, reason: 'token_refresh_failed' };
+  const tokenResult = await getAccessToken();
+  if (!tokenResult) return { ok: false, reason: 'token_refresh_failed' };
+  if ('failure' in tokenResult) return { ok: false, reason: tokenResult.failure };
+  const token = tokenResult.token;
 
   try {
     const siteUrl = encodeURIComponent(conn.site_url);
@@ -242,8 +293,10 @@ export async function fetchSearchAnalytics(opts?: {
   const conn = await getRawConnection();
   if (!conn) return { ok: false, reason: 'not_connected' };
 
-  const token = await getAccessToken();
-  if (!token) return { ok: false, reason: 'token_refresh_failed' };
+  const tokenResult = await getAccessToken();
+  if (!tokenResult) return { ok: false, reason: 'token_refresh_failed' };
+  if ('failure' in tokenResult) return { ok: false, reason: tokenResult.failure };
+  const token = tokenResult.token;
 
   const days = opts?.days ?? 90;
   const rowLimit = opts?.rowLimit ?? 500;

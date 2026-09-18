@@ -35,6 +35,7 @@ async function getGscStatus(): Promise<{
   updatedAt: Date | null;
   email?: string | null;
   siteUrl?: string;
+  reconnectRequired?: boolean;
 }> {
   try {
     const { getGscConnection } = await import('@/lib/gsc');
@@ -47,6 +48,7 @@ async function getGscStatus(): Promise<{
       updatedAt: conn.updatedAt,
       email: conn.connectedEmail,
       siteUrl: conn.siteUrl,
+      reconnectRequired: conn.lastError === 'gsc_reconnect_required',
     };
   } catch {
     return { connected: false, enabled: false, lastError: null, updatedAt: null };
@@ -142,6 +144,8 @@ function formatConnectionError(error: string | null) {
     token_exchange_failed: 'Token alışverişi başarısız oldu.',
     no_refresh_token: 'Google refresh token döndürmedi.',
     server_error: 'Son bağlantı işlemi sunucu hatasıyla tamamlanamadı.',
+    gsc_reconnect_required: 'Google Search Console yetkilendirmesi sona erdi. Verileri yeniden kullanmak için Google hesabınızı tekrar yetkilendirin.',
+    token_refresh_failed: 'Google Search Console geçici olarak yenilenemedi. Lütfen biraz sonra tekrar deneyin.',
   };
   return error ? (errorMessages[error] ?? 'Son bağlantı işlemi tamamlanamadı.') : '—';
 }
@@ -266,9 +270,27 @@ export default async function IcerikEntegrasyonlariPage({
         <div style={cardHead}>
           <Search size={18} color="#2563EB" />
           <h2 style={headTitle}>Google Search Console</h2>
-          <StatusBadge ok={gscStatus.connected} />
+          <StatusBadge ok={gscStatus.connected} label={gscStatus.reconnectRequired ? 'Yeniden Yetkilendirme Gerekli' : undefined} />
         </div>
         <DatabaseStatusDetails status={gscStatus} />
+        {gscStatus.reconnectRequired && (
+          <div style={{ margin: '16px 20px 0', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '10px', padding: '14px 16px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+            <AlertCircle size={16} color="#C2410C" style={{ flexShrink: 0, marginTop: 2 }} />
+            <div>
+              <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: '#9A3412', margin: '0 0 8px', fontWeight: 700 }}>
+                Google Search Console yeniden yetkilendirme istiyor
+              </p>
+              <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: '#9A3412', margin: '0 0 12px' }}>
+                Google erişim izni sona ermiş olabilir. Kayıtlı hesap ve site bilgileri korunmuştur; verileri tekrar almak için bağlantıyı yenileyin.
+              </p>
+              <Link href="/admin/api/gsc/connect" style={{ textDecoration: 'none' }}>
+                <button style={{ padding: '8px 14px', borderRadius: '8px', border: 'none', background: '#C2410C', color: '#fff', fontSize: '12px', fontWeight: 700, fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+                  Google ile yeniden yetkilendir
+                </button>
+              </Link>
+            </div>
+          </div>
+        )}
 
         {!hasGscCredentials ? (
           /* Credentials not configured — show setup instructions */
@@ -301,7 +323,7 @@ export default async function IcerikEntegrasyonlariPage({
               Search Console, sitenizde hangi sorgularda gösterildiğinizi, tıklama oranlarını ve ortalama pozisyonları gösterir. AI Studio bu verileri haftalık taslak konu seçimi için kullanır.
             </p>
           </div>
-        ) : gscStatus.connected ? (
+        ) : gscStatus.connected || gscStatus.reconnectRequired ? (
           /* Connected state */
           <div>
             <div style={row}>
@@ -309,7 +331,7 @@ export default async function IcerikEntegrasyonlariPage({
                 <p style={labelStyle}>Bağlı Hesap</p>
                 <p style={{ ...hint, margin: 0 }}>{gscStatus.email ?? '—'}</p>
               </div>
-              <StatusBadge ok label="Aktif" />
+               <StatusBadge ok={gscStatus.connected} label={gscStatus.connected ? 'Aktif' : 'Yeniden Yetkilendirme Gerekli'} />
             </div>
             <div style={row}>
               <div>

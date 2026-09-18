@@ -30,7 +30,9 @@ export async function GET(req: NextRequest) {
   if (!result.ok) {
     const status = result.reason === 'invalid_date_range' || result.reason === 'invalid_limit' ? 400 : 200;
     return NextResponse.json({
-      error: status === 400 ? 'invalid_request' : 'gsc_page_analytics_unavailable',
+      error: result.reason === 'gsc_reconnect_required'
+        ? result.reason
+        : status === 400 ? 'invalid_request' : 'gsc_page_analytics_unavailable',
       rows: [],
     }, { status });
   }

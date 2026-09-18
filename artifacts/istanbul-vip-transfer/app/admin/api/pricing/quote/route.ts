@@ -61,6 +61,21 @@ export async function POST(request: NextRequest) {
     const { createAdminQuote } = await import('@/lib/admin-pricing-service');
     const { pickupAt, ...rest } = payload.data;
     const quote = await createAdminQuote({ ...rest, pickupAt: pickupAt ? new Date(pickupAt) : undefined, adminId: session.adminId });
+    // Keep the audit focused on the quote response and safe identifiers only;
+    // coordinates, addresses and calculated pricing details are not retained.
+    const { db } = await import('@/db');
+    const { auditLogs } = await import('@/db/schema');
+    await db.insert(auditLogs).values({
+      adminUserId: session.adminId,
+      action: 'QUOTE_RESPONSE',
+      entityType: 'price_quote',
+      entityId: quote.quoteSnapshotId ?? payload.data.reservationRequestId ?? null,
+      metadata: {
+        state: quote.result.state,
+        mode: payload.data.mode,
+        serviceType: payload.data.serviceType,
+      },
+    }).catch(() => {});
     return NextResponse.json(quote, { status: quote.result.state === 'AVAILABLE' ? 200 : 422 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Fiyat hesaplanamadı.';

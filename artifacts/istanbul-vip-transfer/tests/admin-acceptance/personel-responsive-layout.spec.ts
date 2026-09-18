@@ -1,4 +1,10 @@
-import { expect, test, waitForSettledAdminPage } from './fixtures';
+import {
+  assertNoHorizontalOverflow,
+  expect,
+  screenshotEvidence,
+  test,
+  waitForSettledAdminPage,
+} from './fixtures';
 
 const VIEWPORTS = [
   { name: 'desktop', width: 1440, height: 1000 },
@@ -57,21 +63,35 @@ test.describe('Personel Yönetimi responsive layout', () => {
     });
   }
 
-  test('keeps Personel Yönetimi as the last standalone navigation item', async ({ adminPage }) => {
-    await adminPage.setViewportSize({ width: 1440, height: 1000 });
-    await adminPage.goto('/admin/personel');
-    await waitForSettledAdminPage(adminPage);
+  test('keeps Personel Yönetimi inside the roomy scrollable navigation at every viewport', async ({ adminPage }) => {
+    test.setTimeout(120_000);
+    for (const viewport of VIEWPORTS) {
+      await adminPage.setViewportSize({ width: viewport.width, height: viewport.height });
+      await adminPage.goto('/admin/personel');
+      await waitForSettledAdminPage(adminPage);
+      if (viewport.width <= 768) {
+        await adminPage.getByRole('button', { name: 'Menüyü aç' }).click();
+      }
 
-    const personnel = adminPage.locator('a[href="/admin/personel"]');
-    // The shared test account is not necessarily a super admin. Its absence is
-    // the expected existing visibility filter; a super-admin session sees the
-    // standalone item directly above the fixed account footer.
-    if (await personnel.count() === 0) return;
-    const logout = adminPage.getByRole('button', { name: 'Çıkış Yap', exact: true });
-    await expect(personnel).toBeVisible();
-    await expect(logout).toBeVisible();
-    const personnelBox = await personnel.boundingBox();
-    const logoutBox = await logout.boundingBox();
-    expect((personnelBox?.y ?? 0) + (personnelBox?.height ?? 0)).toBeLessThan(logoutBox?.y ?? 0);
+      const navKind = viewport.width <= 768 ? 'mobile' : 'desktop';
+      const nav = adminPage.locator(`[data-admin-sidebar-nav="${navKind}"]`);
+      const personnel = nav.locator('a[href="/admin/personel"]');
+      const logout = adminPage.getByRole('button', { name: 'Çıkış Yap', exact: true });
+      await expect(nav).toBeVisible();
+      await expect(personnel).toHaveCount(1);
+      expect(await nav.evaluate((element) => getComputedStyle(element).overflowY)).toBe('auto');
+      expect(await nav.evaluate((element) => element.clientHeight > 0)).toBe(true);
+      await assertNoHorizontalOverflow(adminPage);
+      await screenshotEvidence(adminPage, `sidebar-personel-in-scroll-${viewport.name}`);
+
+      if (viewport.width > 768) {
+        await personnel.scrollIntoViewIfNeeded();
+        await expect(personnel).toBeVisible();
+        await expect(logout).toBeVisible();
+        const personnelBox = await personnel.boundingBox();
+        const logoutBox = await logout.boundingBox();
+        expect((personnelBox?.y ?? 0) + (personnelBox?.height ?? 0)).toBeLessThan(logoutBox?.y ?? 0);
+      }
+    }
   });
 });

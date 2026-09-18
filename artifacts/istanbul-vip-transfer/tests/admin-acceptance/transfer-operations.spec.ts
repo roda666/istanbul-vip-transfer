@@ -57,9 +57,11 @@ test('transfer form validates, creates a real assigned record, renders responsiv
     await form.getByLabel('Sürücü (İsteğe Bağlı)').selectOption({ label: driver!.name }, { force: true });
     await form.getByLabel('Araç (İsteğe Bağlı)').selectOption({ label: vehicle!.name }, { force: true });
 
-    const createResponse = page.waitForResponse(response =>
-      response.url().endsWith('/admin/api/transfers') &&
-      response.request().method() === 'POST',
+    const createResponse = page.waitForResponse(
+      response =>
+        response.url().endsWith('/admin/api/transfers') &&
+        response.request().method() === 'POST',
+      { timeout: 60_000 },
     );
     await page.getByRole('button', { name: 'Transfer Oluştur' }).click();
     const response = await createResponse;

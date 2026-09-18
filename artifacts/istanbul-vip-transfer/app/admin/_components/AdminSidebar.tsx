@@ -463,7 +463,7 @@ export default function AdminSidebar({ userName, userEmail, userRole, capabiliti
       </div>
 
       {/* Nav */}
-      <nav style={{ flex: 1, padding: '8px 8px 12px', overflowY: 'auto' }}>
+      <nav data-admin-sidebar-nav="desktop" style={{ flex: 1, minHeight: 0, padding: '8px 8px 12px', overflowY: 'auto', overflowX: 'hidden' }}>
         <>
           {/* Dashboard always first, standalone */}
           {capabilities.dashboard.canView && renderNavItem({ href: '/admin/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> })}
@@ -478,15 +478,10 @@ export default function AdminSidebar({ userName, userEmail, userRole, capabiliti
               renderNavItem={renderNavItem}
             />
           ))}
+          {userRole === 'SUPER_ADMIN' &&
+            renderNavItem({ href: '/admin/personel', label: 'Personel Yönetimi', icon: <Users size={18} /> })}
         </>
       </nav>
-
-      {/* Personel (standalone above footer) */}
-      {userRole === 'SUPER_ADMIN' && (
-        <div style={{ padding: '0 8px 12px', flexShrink: 0 }}>
-          {renderNavItem({ href: '/admin/personel', label: 'Personel Yönetimi', icon: <Users size={18} /> })}
-        </div>
-      )}
 
       {/* User footer */}
       <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', padding: collapsed ? '12px 8px' : '12px 14px', flexShrink: 0 }}>
@@ -641,7 +636,7 @@ export default function AdminSidebar({ userName, userEmail, userRole, capabiliti
             </div>
 
             {/* ② NAV — flex:1 + min-height:0 forces it to fill remaining space and scroll */}
-            <nav style={{
+            <nav data-admin-sidebar-nav="mobile" style={{
               flex: 1,
               minHeight: 0,           /* ← critical: prevents nav from growing past container */
               overflowY: 'auto',
@@ -661,15 +656,10 @@ export default function AdminSidebar({ userName, userEmail, userRole, capabiliti
                     renderNavItem={renderNavItem}
                   />
                 ))}
+                {userRole === 'SUPER_ADMIN' &&
+                  renderNavItem({ href: '/admin/personel', label: 'Personel Yönetimi', icon: <Users size={18} /> })}
               </>
             </nav>
-
-            {/* Personel (standalone above footer) */}
-            {userRole === 'SUPER_ADMIN' && (
-              <div style={{ padding: '0 8px 12px', flexShrink: 0 }}>
-                {renderNavItem({ href: '/admin/personel', label: 'Personel Yönetimi', icon: <Users size={18} /> })}
-              </div>
-            )}
 
             {/* ③ FOOTER — always visible, safe bottom inset */}
             <div style={{

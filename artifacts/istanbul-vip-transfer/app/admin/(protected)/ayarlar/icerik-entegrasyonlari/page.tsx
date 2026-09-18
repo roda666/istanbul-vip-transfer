@@ -286,10 +286,8 @@ export default async function IcerikEntegrasyonlariPage({
               <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: '#9A3412', margin: '0 0 12px' }}>
                 Google erişim izni sona ermiş olabilir. Kayıtlı hesap ve site bilgileri korunmuştur; verileri tekrar almak için bağlantıyı yenileyin.
               </p>
-              <Link href="/admin/api/gsc/connect" style={{ textDecoration: 'none' }}>
-                <button style={{ padding: '8px 14px', borderRadius: '8px', border: 'none', background: '#C2410C', color: '#fff', fontSize: '12px', fontWeight: 700, fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
-                  Google ile yeniden yetkilendir
-                </button>
+              <Link href="/admin/api/gsc/connect" style={{ display: 'inline-flex', padding: '8px 14px', borderRadius: '8px', border: 'none', background: '#C2410C', color: '#fff', fontSize: '12px', fontWeight: 700, fontFamily: 'Inter, sans-serif', cursor: 'pointer', textDecoration: 'none' }}>
+                Google ile yeniden yetkilendir
               </Link>
             </div>
           </div>
@@ -384,10 +382,8 @@ export default async function IcerikEntegrasyonlariPage({
             )}
 
             <div style={{ padding: '16px 20px', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <Link href="/admin/api/gsc/connect" style={{ textDecoration: 'none' }}>
-                <button style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #D8E1E9', background: '#F3F6FA', color: '#172B3A', fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
-                  Yeniden Bağlan
-                </button>
+              <Link href="/admin/api/gsc/connect" style={{ display: 'inline-flex', padding: '8px 16px', borderRadius: '8px', border: '1px solid #D8E1E9', background: '#F3F6FA', color: '#172B3A', fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif', cursor: 'pointer', textDecoration: 'none' }}>
+                Yeniden Bağlan
               </Link>
               <form action="/admin/api/gsc/insights" method="post">
                 <input type="hidden" name="_method" value="DELETE" />
@@ -405,11 +401,9 @@ export default async function IcerikEntegrasyonlariPage({
             <p style={{ ...hint, marginBottom: '16px' }}>
               Scope: <code style={{ fontSize: '11px', background: '#F1F5F9', padding: '2px 5px', borderRadius: '4px' }}>webmasters.readonly</code> — yalnızca okuma yetkisi, site verinize yazamaz.
             </p>
-            <Link href="/admin/api/gsc/connect" style={{ textDecoration: 'none' }}>
-              <button style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: '#2563EB', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
-                <Search size={15} />
-                Google ile Bağlan (Search Console)
-              </button>
+            <Link href="/admin/api/gsc/connect" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: '#2563EB', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif', cursor: 'pointer', textDecoration: 'none' }}>
+              <Search size={15} />
+              Google ile Bağlan (Search Console)
             </Link>
           </div>
         )}
@@ -455,10 +449,8 @@ export default async function IcerikEntegrasyonlariPage({
               </p>
             </div>
             <div style={{ padding: '16px 20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <Link href="/admin/api/google-ads/connect" style={{ textDecoration: 'none' }}>
-                <button style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #D8E1E9', background: '#F3F6FA', color: '#172B3A', fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
-                  Yeniden Bağlan
-                </button>
+              <Link href="/admin/api/google-ads/connect" style={{ display: 'inline-flex', padding: '8px 16px', borderRadius: '8px', border: '1px solid #D8E1E9', background: '#F3F6FA', color: '#172B3A', fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif', cursor: 'pointer', textDecoration: 'none' }}>
+                Yeniden Bağlan
               </Link>
               <DisconnectGadsButton />
             </div>
@@ -483,11 +475,9 @@ export default async function IcerikEntegrasyonlariPage({
               adresini Authorized Redirect URI olarak ekleyin.
             </p>
             {hasGscCredentials && gadsStatus.hasDevToken && gadsStatus.hasLoginCustomerId && gadsStatus.hasCustomerId ? (
-              <Link href="/admin/api/google-ads/connect" style={{ textDecoration: 'none' }}>
-                <button style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: '#2563EB', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
-                  <TrendingUp size={15} />
-                  Google ile Bağlan (Keyword Planner)
-                </button>
+              <Link href="/admin/api/google-ads/connect" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: '#2563EB', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif', cursor: 'pointer', textDecoration: 'none' }}>
+                <TrendingUp size={15} />
+                Google ile Bağlan (Keyword Planner)
               </Link>
             ) : (
               <p style={{ fontSize: '13px', color: '#94A3B8', fontFamily: 'Inter, sans-serif' }}>

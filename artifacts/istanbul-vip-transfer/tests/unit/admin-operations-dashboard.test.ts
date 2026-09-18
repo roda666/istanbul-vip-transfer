@@ -63,15 +63,14 @@ describe('operation source contracts', () => {
     expect(source).toContain('Yarınki transferler');
     expect(source).toContain('Yeniden dene');
     expect(source).toContain('Bugün planlanmış transfer bulunmuyor');
+    expect(source).not.toContain('Bekleyen İşler');
+    expect(source).not.toContain('data.pending');
   });
-  it('uses an explicit review marker rather than visibility for pending Google reviews', () => {
-    const dashboard = read('app/admin/(protected)/dashboard/page.tsx');
+  it('uses an explicit review marker rather than visibility when reviews are managed', () => {
     const reviewRoute = read('app/admin/api/homepage/reviews/[id]/route.ts');
     const schema = read('db/schema.ts');
     expect(schema).toContain("reviewedAt:            timestamp('reviewed_at'");
     expect(schema).toContain("reviewedBy:            uuid('reviewed_by')");
-    expect(dashboard).toContain('isNull(googleReviews.reviewedAt)');
-    expect(dashboard).not.toContain('eq(googleReviews.isVisible, false)');
     expect(reviewRoute).toContain('markReviewed');
     expect(reviewRoute).toContain('reviewedBy: markReviewed === true ? session.adminId');
     expect(reviewRoute).toContain('const { markReviewed, ...reviewFields } = parsed.data');

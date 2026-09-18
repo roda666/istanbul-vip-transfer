@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, Car, ChevronDown, Clock, MapPin, Plus, RefreshCw, Save, User, X } from 'lucide-react';
 import { AdminActionButton } from '../../_components/AdminActionButton';
+import { safeJson } from '@/lib/safe-fetch-json';
 
 type Item = { id: string; plannedPickupAt: string; pickupLocationSummary: string; dropoffLocationSummary: string; customerSummary: string; status: string; driver?: { name: string } | null; vehicle?: { name: string } | null };
 type Driver = { id: string; name: string; isActive: boolean };
@@ -53,6 +54,7 @@ export default function TransfersClient() {
 
   const [items, setItems] = useState<Item[] | null>(null);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [showCreate, setShowCreate] = useState(false);
@@ -100,16 +102,29 @@ export default function TransfersClient() {
   async function create(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
+    setError('');
+    setNotice('');
     try {
       const r = await fetch('/admin/api/transfers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...form, plannedPickupAt: new Date(form.plannedPickupAt).toISOString(), driverId: form.driverId || null, vehicleId: form.vehicleId || null })
       });
-      if (!r.ok) throw new Error((await r.json()).error);
+      const result = await safeJson<{ item?: Item; error?: string }>(r, 'transfer-create');
+      if (!result.ok) {
+        const message = result.data?.error
+          ?? (result.httpStatus >= 500
+            ? 'Transfer kaydedilemedi: sunucu geçerli bir yanıt vermedi. Lütfen tekrar deneyin.'
+            : result.error);
+        throw new Error(message);
+      }
+      if (!result.data?.item?.id) {
+        throw new Error('Transfer kaydı sunucu tarafından doğrulanamadı. Lütfen listeyi yenileyip kontrol edin.');
+      }
       setShowCreate(false);
       setForm({ plannedPickupAt: '', pickupLocationSummary: '', dropoffLocationSummary: '', routeSummary: '', customerSummary: '', driverId: '', vehicleId: '' });
       await load();
+      setNotice('Transfer başarıyla oluşturuldu.');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Transfer oluşturulamadı.');
     } finally {
@@ -164,6 +179,20 @@ export default function TransfersClient() {
             className="min-h-[44px] whitespace-nowrap rounded-lg px-4 font-bold text-red-900 transition-colors hover:bg-red-100 -m-2 ml-2"
           >
             Yeniden dene
+          </button>
+        </div>
+      )}
+
+      {notice && (
+        <div role="status" className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800 shadow-sm">
+          <span>{notice}</span>
+          <button
+            type="button"
+            onClick={() => setNotice('')}
+            aria-label="Başarı mesajını kapat"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-emerald-700 transition-colors hover:bg-emerald-100"
+          >
+            <X size={18} />
           </button>
         </div>
       )}

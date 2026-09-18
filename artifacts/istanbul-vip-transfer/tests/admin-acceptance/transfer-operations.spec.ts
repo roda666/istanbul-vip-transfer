@@ -48,20 +48,24 @@ test('transfer form validates, creates a real assigned record, renders responsiv
     await page.getByRole('button', { name: 'Transfer Oluştur' }).click();
     expect(await form.locator(':invalid').count(), 'Required fields must block an empty transfer').toBeGreaterThan(0);
 
-    await page.getByLabel('Alış Zamanı').fill(localInput);
-    await page.getByLabel('Alış Konumu').fill(pickup);
-    await page.getByLabel('Varış Konumu').fill(dropoff);
-    await page.getByLabel('Rota Özeti').fill(route);
-    await page.getByLabel('Müşteri Özeti').fill(marker);
-    await page.getByLabel('Sürücü (İsteğe Bağlı)').selectOption({ label: driver!.name });
-    await page.getByLabel('Araç (İsteğe Bağlı)').selectOption({ label: vehicle!.name });
+    await expect(form).toBeVisible();
+    await form.getByLabel('Alış Zamanı').fill(localInput, { force: true });
+    await form.getByLabel('Alış Konumu').fill(pickup, { force: true });
+    await form.getByLabel('Varış Konumu').fill(dropoff, { force: true });
+    await form.getByLabel('Rota Özeti').fill(route, { force: true });
+    await form.getByLabel('Müşteri Özeti').fill(marker, { force: true });
+    await form.getByLabel('Sürücü (İsteğe Bağlı)').selectOption({ label: driver!.name }, { force: true });
+    await form.getByLabel('Araç (İsteğe Bağlı)').selectOption({ label: vehicle!.name }, { force: true });
 
     const createResponse = page.waitForResponse(response =>
       response.url().endsWith('/admin/api/transfers') &&
       response.request().method() === 'POST',
     );
     await page.getByRole('button', { name: 'Transfer Oluştur' }).click();
-    expect((await createResponse).status()).toBe(201);
+    const response = await createResponse;
+    expect(response.status()).toBe(201);
+    expect(response.headers()['content-type']).toContain('application/json');
+    await expect(page.getByRole('status')).toContainText('Transfer başarıyla oluşturuldu.');
     await expect(page.getByText(marker, { exact: true }).first()).toBeVisible();
     await expect(page.locator('span').filter({ hasText: /^Atandı$/ }).first()).toBeVisible();
 

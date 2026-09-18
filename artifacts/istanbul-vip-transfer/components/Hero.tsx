@@ -203,30 +203,42 @@ export default function Hero({ homepageMode = false }: { homepageMode?: boolean 
 
             {/* Metrics Strip */}
             <div
-              className="ivt-hero-metrics mb-10 grid grid-cols-2 border-t border-[#D9E2EC] pt-7 md:grid-cols-4"
+              className="ivt-hero-metrics mb-10 grid grid-cols-2 border-y border-[#D7C28E] py-7 md:grid-cols-4 md:py-8"
+              style={{
+                background: 'linear-gradient(90deg, rgba(199,154,53,0.035), rgba(255,255,255,0.28), rgba(199,154,53,0.035))',
+              }}
               data-testid="hero-metrics-strip"
             >
               {heroMetrics.map((metric, i) => (
                 <div
                   key={i}
                   className={[
-                    'flex min-w-0 flex-col px-4 sm:px-5',
+                    'flex min-w-0 flex-col items-center px-3 text-center sm:px-5',
                     i === 0 ? 'pl-0' : '',
                     i === 1 || i === 3 ? 'border-l border-[#D9E2EC]' : '',
-                    i >= 2 ? 'mt-5 border-t border-[#D9E2EC] pt-5 md:mt-0 md:border-t-0 md:pt-0' : '',
+                    i >= 2 ? 'mt-6 border-t border-[#D9E2EC] pt-6 md:mt-0 md:border-t-0 md:pt-0' : '',
                     i === 2 ? 'pl-0 md:border-l md:border-[#D9E2EC] md:pl-5' : '',
                   ].join(' ')}
                   data-testid={`hero-metric-${i}`}
                 >
                   <span
-                    className="text-lg font-bold sm:text-xl"
-                    style={{ color: '#8A651C', fontFamily: 'Playfair Display, Georgia, serif' }}
+                    className="mb-3 h-0.5 w-8 rounded-full"
+                    style={{ background: 'linear-gradient(90deg, #C79A35, #E4B84B)' }}
+                    aria-hidden="true"
+                  />
+                  <span
+                    className="whitespace-nowrap text-[2rem] font-extrabold leading-none tracking-[-0.025em] sm:text-[2.25rem] md:text-[1.9rem] xl:text-[2.25rem]"
+                    style={{
+                      color: '#7A5815',
+                      fontFamily: 'Playfair Display, Georgia, serif',
+                      textShadow: '0 1px 0 rgba(255,255,255,0.8)',
+                    }}
                     dir="ltr"
                   >
                     {metric.value}
                   </span>
                   <span
-                    className="mt-0.5 text-[11px] uppercase tracking-wider"
+                    className="mt-2 text-xs font-semibold uppercase leading-snug tracking-[0.12em]"
                     style={{ color: '#50677A', fontFamily: 'Inter, sans-serif' }}
                   >
                     {metric.label}

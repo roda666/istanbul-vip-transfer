@@ -57,7 +57,13 @@ export default function KategorilerPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Yüklenemedi.');
        setCats((current) => (data.categories ?? []).map((c: Category) => ({
-         ...c, serviceCount: current.find(x => x.id === c.id)?.serviceCount ?? 0,
+         ...c,
+         // GET returns the authoritative count. Mutation responses currently
+         // omit it, so only preserve the existing value when the API did not
+         // provide a count at all.
+         serviceCount: typeof c.serviceCount === 'number'
+           ? c.serviceCount
+           : current.find(x => x.id === c.id)?.serviceCount ?? 0,
        })));
     } catch (e: unknown) {
       setError(String(e));

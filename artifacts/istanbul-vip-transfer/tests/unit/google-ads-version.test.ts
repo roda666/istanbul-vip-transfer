@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { getGoogleAdsApiBase, getGoogleAdsApiVersion } from '@/lib/google-ads';
+import { getGoogleAdsApiBase, getGoogleAdsApiVersion, normalizeGoogleAdsCustomerId } from '@/lib/google-ads';
 
 const originalVersion = process.env.GOOGLE_ADS_API_VERSION;
 
@@ -20,5 +20,11 @@ describe('Google Ads Keyword Planner endpoint', () => {
     expect(getGoogleAdsApiBase()).toBe('https://googleads.googleapis.com/v25');
     process.env.GOOGLE_ADS_API_VERSION = 'v24/unsafe';
     expect(getGoogleAdsApiVersion()).toBe('v24');
+  });
+
+  it('normalizes valid MCC and target customer IDs independently', () => {
+    expect(normalizeGoogleAdsCustomerId('477-406-2070')).toBe('4774062070');
+    expect(normalizeGoogleAdsCustomerId('2492938833')).toBe('2492938833');
+    expect(normalizeGoogleAdsCustomerId('not-a-customer')).toBeNull();
   });
 });

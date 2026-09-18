@@ -72,14 +72,16 @@ async function getGoogleAdsStatus(): Promise<{
   email?: string | null;
   hasDevToken: boolean;
   hasLoginCustomerId: boolean;
+  hasCustomerId: boolean;
 }> {
   const hasDevToken = !!(await resolveIntegrationSecret('GOOGLE_ADS_DEVELOPER_TOKEN'));
   const hasLoginCustomerId = !!(await resolveIntegrationSecret('GOOGLE_ADS_LOGIN_CUSTOMER_ID'));
+  const hasCustomerId = !!(await resolveIntegrationSecret('GOOGLE_ADS_CUSTOMER_ID'));
   try {
     const { getGoogleAdsConnection } = await import('@/lib/google-ads');
     const conn = await getGoogleAdsConnection();
     if (!conn) {
-      return { connected: false, enabled: false, lastError: null, updatedAt: null, hasDevToken, hasLoginCustomerId };
+      return { connected: false, enabled: false, lastError: null, updatedAt: null, hasDevToken, hasLoginCustomerId, hasCustomerId };
     }
     return {
       connected: conn.connected,
@@ -89,9 +91,10 @@ async function getGoogleAdsStatus(): Promise<{
       email: conn.connectedEmail,
       hasDevToken,
       hasLoginCustomerId,
+      hasCustomerId,
     };
   } catch {
-    return { connected: false, enabled: false, lastError: null, updatedAt: null, hasDevToken, hasLoginCustomerId };
+    return { connected: false, enabled: false, lastError: null, updatedAt: null, hasDevToken, hasLoginCustomerId, hasCustomerId };
   }
 }
 
@@ -422,7 +425,7 @@ export default async function IcerikEntegrasyonlariPage({
         <DatabaseStatusDetails status={gadsStatus} />
 
         {/* Server-side configuration missing; never request or expose credentials in the UI. */}
-        {(!gadsStatus.hasDevToken || !gadsStatus.hasLoginCustomerId) && (
+        {(!gadsStatus.hasDevToken || !gadsStatus.hasLoginCustomerId || !gadsStatus.hasCustomerId) && (
           <div style={{ padding: '16px 20px', background: '#FFFBEB', borderBottom: '1px solid #E8EDF2' }}>
             <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: '#92400E', fontWeight: 600, margin: '0 0 8px' }}>
               ⚠️ Google Ads sunucu yapılandırması eksik
@@ -479,7 +482,7 @@ export default async function IcerikEntegrasyonlariPage({
               <strong>https://www.istanbulviptransfer.com/admin/api/google-ads/callback</strong>{' '}
               adresini Authorized Redirect URI olarak ekleyin.
             </p>
-            {hasGscCredentials && gadsStatus.hasDevToken && gadsStatus.hasLoginCustomerId ? (
+            {hasGscCredentials && gadsStatus.hasDevToken && gadsStatus.hasLoginCustomerId && gadsStatus.hasCustomerId ? (
               <Link href="/admin/api/google-ads/connect" style={{ textDecoration: 'none' }}>
                 <button style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: '#2563EB', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
                   <TrendingUp size={15} />

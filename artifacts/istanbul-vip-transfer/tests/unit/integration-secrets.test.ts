@@ -14,6 +14,8 @@ describe('integration secret catalog', () => {
       expect(INTEGRATION_CATALOG.find(entry => entry.key === key)?.editable).toBe(false);
     }
     expect(EDITABLE_INTEGRATION_KEYS).toContain('GOOGLE_CLIENT_SECRET');
+    expect(EDITABLE_INTEGRATION_KEYS).toContain('GOOGLE_ADS_CUSTOMER_ID');
+    expect(INTEGRATION_CATALOG.find(entry => entry.key === 'GOOGLE_ADS_CUSTOMER_ID')?.editable).toBe(true);
     expect(maskSecret('abcdefgh')).toBe('••••efgh');
     expect(maskSecret('abc')).toBe('••••abc');
     expect(maskSecret('')).toBeNull();

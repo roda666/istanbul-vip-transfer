@@ -9,7 +9,8 @@
  * Security:
  *  • access_token / refresh_token are NEVER logged or returned to clients.
  *  • developer-token is read from GOOGLE_ADS_DEVELOPER_TOKEN env secret.
- *  • login-customer-id is read from GOOGLE_ADS_LOGIN_CUSTOMER_ID env secret.
+ *  • login-customer-id is read from GOOGLE_ADS_LOGIN_CUSTOMER_ID.
+ *  • the target advertising account is read separately from GOOGLE_ADS_CUSTOMER_ID.
  */
 import 'server-only';
 import { sql } from 'drizzle-orm';
@@ -49,6 +50,13 @@ export function getGoogleAdsApiVersion(): string {
 
 export function getGoogleAdsApiBase(): string {
   return `https://googleads.googleapis.com/${getGoogleAdsApiVersion()}`;
+}
+
+/** Accept Google Ads IDs with or without display hyphens and return API format. */
+export function normalizeGoogleAdsCustomerId(value: string | undefined): string | null {
+  if (!value) return null;
+  const normalized = value.trim().replaceAll('-', '');
+  return /^\d{10}$/.test(normalized) ? normalized : null;
 }
 
 // ── Token management ──────────────────────────────────────────────────────────
@@ -117,7 +125,8 @@ export async function getGoogleAdsConnection(): Promise<{
 export async function getGoogleAdsStatus(): Promise<{ connected: boolean; ready: boolean; label: string }> {
   const connection = await getGoogleAdsConnection();
   const configured = Boolean(await resolveIntegrationSecret('GOOGLE_ADS_DEVELOPER_TOKEN') &&
-    await resolveIntegrationSecret('GOOGLE_ADS_LOGIN_CUSTOMER_ID') &&
+    normalizeGoogleAdsCustomerId(await resolveIntegrationSecret('GOOGLE_ADS_LOGIN_CUSTOMER_ID')) &&
+    normalizeGoogleAdsCustomerId(await resolveIntegrationSecret('GOOGLE_ADS_CUSTOMER_ID')) &&
     await resolveIntegrationSecret('GOOGLE_CLIENT_ID') &&
     await resolveIntegrationSecret('GOOGLE_CLIENT_SECRET'));
   const connected = Boolean(connection?.connected && connection.enabled);
@@ -190,7 +199,10 @@ export async function generateKeywordIdeas(
 ): Promise<KeywordIdea[]> {
   const devToken = await resolveIntegrationSecret('GOOGLE_ADS_DEVELOPER_TOKEN');
   const loginCustId = await resolveIntegrationSecret('GOOGLE_ADS_LOGIN_CUSTOMER_ID');
-  if (!devToken || !loginCustId) {
+  const targetCustId = await resolveIntegrationSecret('GOOGLE_ADS_CUSTOMER_ID');
+  const loginCustomerId = normalizeGoogleAdsCustomerId(loginCustId);
+  const customerId = normalizeGoogleAdsCustomerId(targetCustId);
+  if (!devToken || !loginCustomerId || !customerId) {
     throw new GoogleAdsUnavailableError();
   }
 
@@ -200,9 +212,6 @@ export async function generateKeywordIdeas(
   const accessToken = await getAccessToken();
   if (!accessToken) throw new GoogleAdsUnavailableError();
 
-  // Use the login customer as the "customer" for keyword planning (MCC account)
-  const customerId = loginCustId.replace(/-/g, '');
-
   try {
     const res = await fetch(
       `${getGoogleAdsApiBase()}/customers/${customerId}:generateKeywordIdeas`,
@@ -211,7 +220,7 @@ export async function generateKeywordIdeas(
         headers: {
           Authorization:     `Bearer ${accessToken}`,
           'developer-token': devToken,
-          'login-customer-id': loginCustId,
+          'login-customer-id': loginCustomerId,
           'Content-Type':    'application/json',
         },
         body: JSON.stringify({

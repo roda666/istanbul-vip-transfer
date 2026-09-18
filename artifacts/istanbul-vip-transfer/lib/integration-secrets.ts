@@ -4,7 +4,7 @@ import { decryptIntegrationSecret } from './integration-secrets-crypto';
 export const EDITABLE_INTEGRATION_KEYS = [
   'GOOGLE_MAPS_API_KEY', 'OPENAI_API_KEY', 'AI_INTEGRATIONS_OPENAI_API_KEY',
   'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET',
-  'GOOGLE_ADS_DEVELOPER_TOKEN', 'GOOGLE_ADS_LOGIN_CUSTOMER_ID', 'META_APP_ID',
+  'GOOGLE_ADS_DEVELOPER_TOKEN', 'GOOGLE_ADS_LOGIN_CUSTOMER_ID', 'GOOGLE_ADS_CUSTOMER_ID', 'META_APP_ID',
   'META_APP_SECRET', 'META_LOGIN_CONFIG_ID', 'X_CONSUMER_KEY', 'X_CONSUMER_SECRET',
   'X_OAUTH2_CLIENT_ID',
   'CRON_SECRET', 'TOLL_SYNC_TOKEN_SECRET',
@@ -32,7 +32,7 @@ export function maskSecret(value: string | null | undefined): string | null {
   return `••••${value.slice(-4)}`;
 }
 const entries: Array<{ key: EditableIntegrationKey; label: string; purpose: string }> = [
-  ['GOOGLE_MAPS_API_KEY', 'Google Haritalar API anahtarı', 'Rota mesafesi hesaplama'], ['OPENAI_API_KEY', 'OpenAI API anahtarı', 'AI içerik ve çeviri'], ['AI_INTEGRATIONS_OPENAI_API_KEY', 'Replit AI OpenAI anahtarı', 'AI proxy kimlik doğrulaması'], ['GOOGLE_CLIENT_ID', 'Google OAuth istemci kimliği', 'GSC, Ads ve İşletme bağlantısı'], ['GOOGLE_CLIENT_SECRET', 'Google OAuth istemci sırrı', 'Google token yenileme'], ['GOOGLE_ADS_DEVELOPER_TOKEN', 'Google Ads geliştirici anahtarı', 'Keyword Planner erişimi'], ['GOOGLE_ADS_LOGIN_CUSTOMER_ID', 'Google Ads yönetici müşteri kimliği', 'Keyword Planner hesap bağlamı'], ['META_APP_ID', 'Meta uygulama kimliği', 'Facebook ve Instagram OAuth'], ['META_APP_SECRET', 'Meta uygulama sırrı', 'Facebook ve Instagram OAuth'], ['META_LOGIN_CONFIG_ID', 'Meta giriş yapılandırma kimliği', 'Meta OAuth yapılandırması'], ['X_CONSUMER_KEY', 'X tüketici anahtarı', 'X OAuth 1.0a'], ['X_CONSUMER_SECRET', 'X tüketici sırrı', 'X OAuth 1.0a'], ['X_OAUTH2_CLIENT_ID', 'X OAuth 2 istemci kimliği', 'X OAuth 2 yapılandırması'], ['CRON_SECRET', 'Zamanlanmış görev anahtarı', 'Cron uç noktası doğrulaması'], ['TOLL_SYNC_TOKEN_SECRET', 'Tarife senkron anahtarı', 'Tarife önizleme imzası'],
+  ['GOOGLE_MAPS_API_KEY', 'Google Haritalar API anahtarı', 'Rota mesafesi hesaplama'], ['OPENAI_API_KEY', 'OpenAI API anahtarı', 'AI içerik ve çeviri'], ['AI_INTEGRATIONS_OPENAI_API_KEY', 'Replit AI OpenAI anahtarı', 'AI proxy kimlik doğrulaması'], ['GOOGLE_CLIENT_ID', 'Google OAuth istemci kimliği', 'GSC, Ads ve İşletme bağlantısı'], ['GOOGLE_CLIENT_SECRET', 'Google OAuth istemci sırrı', 'Google token yenileme'], ['GOOGLE_ADS_DEVELOPER_TOKEN', 'Google Ads geliştirici anahtarı', 'Keyword Planner erişimi'], ['GOOGLE_ADS_LOGIN_CUSTOMER_ID', 'Google Ads yönetici (MCC) kimliği', 'login-customer-id başlığı'], ['GOOGLE_ADS_CUSTOMER_ID', 'Google Ads hedef müşteri kimliği', 'Keyword Planner sorgularının çalışacağı alt reklam hesabı'], ['META_APP_ID', 'Meta uygulama kimliği', 'Facebook ve Instagram OAuth'], ['META_APP_SECRET', 'Meta uygulama sırrı', 'Facebook ve Instagram OAuth'], ['META_LOGIN_CONFIG_ID', 'Meta giriş yapılandırma kimliği', 'Meta OAuth yapılandırması'], ['X_CONSUMER_KEY', 'X tüketici anahtarı', 'X OAuth 1.0a'], ['X_CONSUMER_SECRET', 'X tüketici sırrı', 'X OAuth 1.0a'], ['X_OAUTH2_CLIENT_ID', 'X OAuth 2 istemci kimliği', 'X OAuth 2 yapılandırması'], ['CRON_SECRET', 'Zamanlanmış görev anahtarı', 'Cron uç noktası doğrulaması'], ['TOLL_SYNC_TOKEN_SECRET', 'Tarife senkron anahtarı', 'Tarife önizleme imzası'],
 ].map(([key, label, purpose]) => ({ key: key as EditableIntegrationKey, label, purpose }));
 export const INTEGRATION_CATALOG = [
   ...entries.map(entry => ({ ...entry, editable: true })),
